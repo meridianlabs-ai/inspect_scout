@@ -11,7 +11,7 @@ import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import { useServerScansDir } from "./app/server/hooks";
+import { useConfig } from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -38,7 +38,7 @@ export interface AppRouterConfig {
 }
 
 // Creates a layout component that handles embedded state and tracks route changes
-const createAppLayout = (config: AppRouterConfig) => {
+const createAppLayout = (routerConfig: AppRouterConfig) => {
   const AppLayout = () => {
     const navigate = useNavigate();
     const selectedScanner = useStore((state) => state.selectedScanner);
@@ -55,7 +55,8 @@ const createAppLayout = (config: AppRouterConfig) => {
       (state) => state.selectedScanLocation
     );
     const userScansDir = useStore((state) => state.userScansDir);
-    const serverScansDir = useServerScansDir();
+    const config = useConfig();
+    const serverScansDir = config.scans_dir;
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData
@@ -146,7 +147,7 @@ const createAppLayout = (config: AppRouterConfig) => {
     const content = <Outlet />;
     return (
       <AppErrorBoundary>
-        {config.mode === "workbench" && !singleFileMode ? (
+        {routerConfig.mode === "workbench" && !singleFileMode ? (
           <ActivityBarLayout>{content}</ActivityBarLayout>
         ) : (
           content

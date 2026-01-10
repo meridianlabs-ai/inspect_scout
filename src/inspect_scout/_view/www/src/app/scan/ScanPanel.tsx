@@ -7,8 +7,9 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useSelectedScan } from "../hooks";
-import { useServerScansDir, useServerScans } from "../server/hooks";
+import { useSelectedScan } from "../hooks/useSelectedScan";
+import { useConfig } from "../server/useConfig";
+import { useServerScans } from "../server/useServerScans";
 
 import styles from "./ScanPanel.module.css";
 import { ScanPanelBody } from "./ScanPanelBody";
@@ -17,7 +18,8 @@ import { ScanPanelTitle } from "./ScanPanelTitle";
 export const ScanPanel: React.FC = () => {
   // Load server data
   const { loading: scansLoading } = useServerScans();
-  const resultsDir = useServerScansDir();
+  const config = useConfig();
+  const scansDir = config.scans_dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   const userScansDir = useStore((state) => state.userScansDir);
@@ -43,13 +45,13 @@ export const ScanPanel: React.FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <ScansNavbar
-        scansDir={userScansDir || resultsDir}
+        scansDir={userScansDir || scansDir}
         setScansDir={setUserScansDir}
       />
       <LoadingBar loading={!!loading} />
       {selectedScan && (
         <>
-          <ScanPanelTitle resultsDir={resultsDir} selectedScan={selectedScan} />
+          <ScanPanelTitle resultsDir={scansDir} selectedScan={selectedScan} />
           <ExtendedFindProvider>
             <ScanPanelBody selectedScan={selectedScan} />
           </ExtendedFindProvider>

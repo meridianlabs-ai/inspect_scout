@@ -246,10 +246,12 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         cancelAndClose();
       }
       if (event.key === "Enter") {
         event.preventDefault();
+        event.stopPropagation();
         commitAndClose();
       }
     },

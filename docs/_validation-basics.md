@@ -19,9 +19,10 @@ Use the **Copy** button to copy the UUID for the transcript you are reviewing:
 As you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:
 
 ``` {.default filename="ctf-validation.csv"}
-Fg3KBpgFr6RSsEWmHBUqeo, true
-VFkCH7gXWpJYUYonvfHxrG, false
-SiEXpECj7U9nNAvM3H7JqB, true
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,true
+VFkCH7gXWpJYUYonvfHxrG,false
+SiEXpECj7U9nNAvM3H7JqB,true
 ```
 
 #### Scanning

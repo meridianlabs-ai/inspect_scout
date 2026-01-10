@@ -15,19 +15,9 @@ from .view import view_command
 
 
 @click.group()
-@click.option(
-    "--version",
-    type=bool,
-    is_flag=True,
-    default=False,
-    help="Print the scout version.",
-)
-@click.pass_context
-def scout(ctx: click.Context, version: bool) -> None:
+@click.version_option(version=__version__, prog_name="scout")
+def scout() -> None:
     """Scout CLI - scan and view transcripts."""
-    if version:
-        print(__version__)
-        ctx.exit()
 
 
 scout.add_command(scan_command)

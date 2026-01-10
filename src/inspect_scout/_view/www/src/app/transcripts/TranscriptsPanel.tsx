@@ -8,17 +8,16 @@ import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import {
-  useServerTranscriptsDir,
-  useServerTranscriptsInfinite,
-} from "../server/hooks";
+import { useConfig } from "../server/useConfig";
+import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
   // Resolve the active transcripts directory
-  const transcriptDir = useServerTranscriptsDir();
+  const config = useConfig();
+  const transcriptDir = config.transcripts_dir;
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
@@ -89,6 +88,7 @@ export const TranscriptsPanel: FC = () => {
         <TranscriptsGrid
           transcripts={transcripts}
           transcriptsDir={resolvedTranscriptDir}
+          loading={isFetching && transcripts.length === 0}
           onScrollNearEnd={handleScrollNearEnd}
           hasMore={hasNextPage}
           fetchThreshold={infiniteScrollConfig.threshold}

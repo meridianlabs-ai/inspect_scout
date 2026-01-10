@@ -1,5 +1,10 @@
 import { ScanResultInputData, Input, InputType } from "../app/types";
-import { ScansResponse, Status, TranscriptsResponse } from "../types/api-types";
+import {
+  ActiveScansResponse,
+  ScansResponse,
+  Status,
+  TranscriptsResponse,
+} from "../types/api-types";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi } from "./api";
@@ -115,6 +120,14 @@ export const apiScoutServerV1 = (
 
       // Return the DataFrameInput
       return { input, inputType: inputType as InputType };
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getActiveScans: async (): Promise<ActiveScansResponse> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    postCode: async (): Promise<Record<string, string>> => {
+      throw new Error("Not Yet Implemented");
     },
     storage: NoPersistence,
   };

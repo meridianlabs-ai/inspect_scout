@@ -7,7 +7,7 @@ import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { Explanation } from "../../components/Explanation";
 import { ValidationResult } from "../../components/ValidationResult";
 import { Value } from "../../components/Value";
-import { useSelectedScanResultInputData } from "../../hooks";
+import { useSelectedScanResultInputData } from "../../hooks/useSelectedScanResultInputData";
 import { ScanResultData } from "../../types";
 import { useMarkdownRefs } from "../../utils/refs";
 
@@ -27,7 +27,7 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
 
   return (
     <div className={clsx(styles.sidebar)}>
-      <div className={clsx(styles.container, "text-size-base")}>
+      <div className={clsx(styles.container, "text-size-small")}>
         {resultData.label && (
           <>
             <div className={clsx("text-style-label", "text-style-secondary")}>
@@ -54,19 +54,23 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
             references={refs}
             options={{ previewRefsOnHover: false }}
           />
-          {resultData.validationResult !== undefined ? (
+          {resultData.validationResult !== undefined &&
+          resultData.validationResult !== null ? (
             <div className={clsx(styles.validation)}>
               <div
                 className={clsx(
                   "text-style-label",
                   "text-style-secondary",
-                  "text-size-smallest",
                   styles.validationLabel
                 )}
               >
                 Validation
               </div>
-              <ValidationResult result={resultData.validationResult} />
+              <ValidationResult
+                result={resultData.validationResult}
+                target={resultData.validationTarget}
+                label={resultData.label}
+              />
             </div>
           ) : undefined}
         </div>

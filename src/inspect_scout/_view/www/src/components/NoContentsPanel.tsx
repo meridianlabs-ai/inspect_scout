@@ -6,13 +6,14 @@ import styles from "./NoContentsPanel.module.css";
 
 interface NoContentsPanelProps {
   text: string;
+  icon?: string;
 }
 
-export const NoContentsPanel: FC<NoContentsPanelProps> = ({ text }) => {
+export const NoContentsPanel: FC<NoContentsPanelProps> = ({ text, icon }) => {
   return (
     <div className={clsx(styles.panel)}>
       <div className={clsx(styles.container, "text-size-smaller")}>
-        <i className={ApplicationIcons.noSamples} />
+        <i className={icon || ApplicationIcons.noSamples} />
         <div>{text}</div>
       </div>
     </div>

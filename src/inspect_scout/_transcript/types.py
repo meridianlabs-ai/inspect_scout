@@ -12,6 +12,17 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
 
+
+class TranscriptTooLargeError(Exception):
+    """Raised when transcript content exceeds size limit."""
+
+    def __init__(self, transcript_id: str, size: int, max_size: int):
+        self.transcript_id = transcript_id
+        self.size = size
+        self.max_size = max_size
+        super().__init__(f"Transcript {transcript_id}: {size} bytes exceeds {max_size}")
+
+
 EventType = Literal[
     "model",
     "tool",
@@ -110,30 +121,3 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
-
-
-# Reserved column names that cannot be used as metadata keys
-# These are actual Parquet columns, so metadata keys cannot use these names
-RESERVED_COLUMNS = {
-    "transcript_id",
-    "source_type",
-    "source_id",
-    "source_uri",
-    "date",
-    "task_set",
-    "task_id",
-    "task_repeat",
-    "agent",
-    "agent_args",
-    "model",
-    "model_options",
-    "score",
-    "success",
-    "total_time",
-    "total_tokens",
-    "error",
-    "limit",
-    "messages",
-    "events",
-    "filename",  # Internal column for DuckDB file-targeting optimization
-}

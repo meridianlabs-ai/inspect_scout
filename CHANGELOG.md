@@ -1,10 +1,19 @@
 ## Unreleased
 
+- Transcript DB: Warn when there is no index or the index is out of date.
+- Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
+- CLI: Add `scout --version` to print current scout version.
+
+## 0.4.6 (08 January 2026)
+
 - LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.
 - Projects: Support local project config in `scout.local.yaml`.
 - Transcripts: Enable use of SQL for specifying filters.
 - Transcripts: Add `filter` field to scan job and project config.
+- Scanning: Add `tool_callers()` helper function for mapping tool_call_id to assistant message.
 - Rename `--results` option to `--scans`. 
+- Bugfix: Avoid `UnboundLocalError` by importing Inspect AI batch reporting functions directly.
+- Bugfix: Fix issue with reading large numbers of rows from transcript database.
 
 ## 0.4.5 (03 January 2026)
 

@@ -21,6 +21,8 @@ Then we can run a scan with simply:
 scout scan scanner.py 
 ```
 
+Note that the `filter` field contains one or more SQL WHERE clauses that address fields in the [transcript database](db_schema.qmd).
+
 You can also define the location of scanning results and other configuration in project files. For example:
 
 ```{.yaml filename="scout.yaml"}

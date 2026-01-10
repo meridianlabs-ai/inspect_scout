@@ -12,6 +12,7 @@ from pydantic import (
 from shortuuid import uuid
 from typing_extensions import Literal, NotRequired, Required, TypedDict
 
+from inspect_scout._query.condition import Condition
 from inspect_scout._query.condition_sql import condition_as_sql
 from inspect_scout._validation.types import ValidationSet
 
@@ -127,7 +128,10 @@ class ScanTranscripts(BaseModel):
         if not isinstance(values, dict):
             return values
         if values.get("conditions", None) is not None:
-            values["filter"] = [condition_as_sql(c) for c in values["conditions"]]
+            values["filter"] = [
+                condition_as_sql(Condition.model_validate(c))
+                for c in values["conditions"]
+            ]
 
         return values
 

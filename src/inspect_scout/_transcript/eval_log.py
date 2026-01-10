@@ -48,6 +48,7 @@ from inspect_ai.util import trace_action
 from typing_extensions import override
 
 from inspect_scout._query.condition_sql import conditions_as_filter
+from inspect_scout._transcript.database.schema import reserved_columns
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
@@ -60,7 +61,12 @@ from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
 from .transcripts import TranscriptsReader
-from .types import RESERVED_COLUMNS, Transcript, TranscriptContent, TranscriptInfo
+from .types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
 from .util import LazyJSONDict
 
 logger = getLogger(__name__)
@@ -303,7 +309,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             metadata_dict = {
                 k: v
                 for k, v in row_dict.items()
-                if v is not None and k not in RESERVED_COLUMNS
+                if v is not None and k not in reserved_columns()
             }
             lazy_metadata = LazyJSONDict(metadata_dict, json_keys=JSON_COLUMNS)
 
@@ -370,7 +376,12 @@ class EvalLogTranscriptsView(TranscriptsView):
         return result
 
     @override
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
         assert self._conn is not None
         cursor = self._conn.execute(
             f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
@@ -395,12 +406,17 @@ class EvalLogTranscriptsView(TranscriptsView):
             else t.source_uri
         )
         zip_reader = AsyncZipReader(self._fs, source_uri)
+        entry = await zip_reader.get_member_entry(sample_file_name)
+        if max_bytes is not None and entry.uncompressed_size > max_bytes:
+            raise TranscriptTooLargeError(
+                t.transcript_id, entry.uncompressed_size, max_bytes
+            )
         with trace_action(
             logger,
             "Scout Eval Log Read",
             f"Reading from {t.source_uri} ({sample_file_name})",
         ):
-            async with await zip_reader.open_member(sample_file_name) as json_iterable:
+            async with await zip_reader.open_member(entry) as json_iterable:
                 return await load_filtered_transcript(
                     json_iterable,
                     t,

@@ -289,7 +289,10 @@ class FileRecorder(ScanRecorder):
 
         # enumerate the scanners
         scanners = [
-            file.stem for file in sorted(UPath(scan_location).glob("*.parquet"))
+            file.stem
+            for file in sorted(
+                UPath(scan_location, use_listings_cache=False).glob("*.parquet")
+            )
         ]
 
         return _ScanResultsArrowFiles(
@@ -384,11 +387,13 @@ class FileRecorder(ScanRecorder):
     @staticmethod
     async def list(scans_location: str) -> list[Status]:
         scans_dir = UPath(scans_location)
-        return [
-            await FileRecorder.status(scan_dir.as_posix())
-            for scan_dir in scans_dir.rglob("scan_id=*")
-            if scan_dir.is_dir()
-        ]
+        scans: list[Status] = []
+        for scan_dir in scans_dir.rglob("scan_id=*"):
+            try:
+                scans.append(await FileRecorder.status(scan_dir.as_posix()))
+            except FileNotFoundError:
+                pass
+        return scans
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
@@ -399,7 +404,7 @@ def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
     scan_json = scan_dir / SCAN_JSON
     fs = filesystem(scan_dir.as_posix())
     if not fs.exists(scan_json.as_posix()):
-        raise RuntimeError(
+        raise FileNotFoundError(
             f"The specified directory '{scan_dir}' does not contain a scan."
         )
 

@@ -363,10 +363,7 @@ test,123"""
     csv_file = tmp_path / "test.csv"
     csv_file.write_text(csv_content)
 
-    with pytest.raises(
-        ValueError,
-        match="must contain either a 'target' column, 'target_\\*' columns, or 'label_\\*' columns",
-    ):
+    with pytest.raises(ValueError, match="must contain target columns"):
         validation_from(csv_file)
 
 
@@ -377,6 +374,108 @@ def test_unsupported_file_format_error(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Unsupported file format"):
         validation_from(txt_file)
+
+
+def test_missing_id_column_shows_actual_columns(tmp_path: Path) -> None:
+    """Test that missing id column error shows actual columns and expected format."""
+    # Use column names that are in the whitelist (so auto-detection won't trigger)
+    # but don't include 'id' so the error is raised
+    csv_content = """name,target
+abc123,true
+def456,false"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    with pytest.raises(ValueError) as exc_info:
+        validation_from(csv_file)
+
+    error_msg = str(exc_info.value)
+    # Should show actual columns found
+    assert "name" in error_msg
+    assert "target" in error_msg
+    # Should show expected format
+    assert "id,target" in error_msg
+
+
+def test_missing_target_shows_actual_columns(tmp_path: Path) -> None:
+    """Test that missing target column error shows actual columns."""
+    csv_content = """id,score
+abc123,100
+def456,200"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    with pytest.raises(ValueError) as exc_info:
+        validation_from(csv_file)
+
+    error_msg = str(exc_info.value)
+    # Should show actual non-id columns found
+    assert "score" in error_msg
+    # Should mention expected patterns
+    assert "target" in error_msg.lower()
+
+
+def test_csv_headerless_logs_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that auto-detection of headerless CSV logs a warning."""
+    csv_content = """abc123def456,true
+ghi789jkl012,false"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    # Capture warning calls
+    warnings_logged: list[str] = []
+    import inspect_scout._validation.validation as validation_module
+
+    monkeypatch.setattr(
+        validation_module.logger,
+        "warning",
+        lambda msg: warnings_logged.append(msg),
+    )
+
+    validation = validation_from(csv_file)
+
+    # Should still work (backwards compatibility)
+    assert len(validation.cases) == 2
+    assert validation.cases[0].target is True
+
+    # Should have logged a warning
+    assert len(warnings_logged) == 1
+    assert "no recognized headers" in warnings_logged[0]
+    assert "id,target" in warnings_logged[0]
+
+
+def test_csv_explicit_headers_no_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that proper headers don't trigger warnings."""
+    csv_content = """id,target
+abc123,true
+def456,false"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    # Capture warning calls
+    warnings_logged: list[str] = []
+    import inspect_scout._validation.validation as validation_module
+
+    monkeypatch.setattr(
+        validation_module.logger,
+        "warning",
+        lambda msg: warnings_logged.append(msg),
+    )
+
+    validation = validation_from(csv_file)
+
+    assert len(validation.cases) == 2
+
+    # Should NOT have logged any warnings about headers
+    assert len(warnings_logged) == 0
 
 
 # Type Conversion Tests

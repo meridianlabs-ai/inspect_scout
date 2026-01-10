@@ -1,5 +1,12 @@
 import io
-from typing import Any, Iterable, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Iterable,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
@@ -13,6 +20,7 @@ from inspect_ai.model import ChatMessage
 from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
+    HTTP_413_CONTENT_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
@@ -20,7 +28,9 @@ from upath import UPath
 from inspect_scout._project._project import project
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 
-from .._query import Column, Query
+from .._active_scans_store import active_scans_store
+from .._query import Column, Condition, Query
+from .._query.sql import SQLDialect
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
@@ -28,7 +38,7 @@ from .._scanresults import (
     scan_results_df_async,
 )
 from .._transcript.database.factory import transcripts_view
-from .._transcript.types import Transcript, TranscriptContent
+from .._transcript.types import Transcript, TranscriptContent, TranscriptTooLargeError
 from .._validation.types import ValidationCase
 from ._api_v2_helpers import (
     build_pagination_context,
@@ -36,6 +46,7 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
+    ActiveScansResponse,
     AppConfig,
     ScansRequest,
     ScansResponse,
@@ -52,6 +63,8 @@ from ._server_common import (
 _running_scans: set[str] = set()
 
 API_VERSION = "2.0.0-alpha"
+
+MAX_TRANSCRIPT_BYTES = 350 * 1024 * 1024  # 350MB
 
 
 def v2_api_app(
@@ -268,10 +281,19 @@ def v2_api_app(
                 )
 
             content = TranscriptContent(messages="all", events="all")
-            return await view.read(infos[0], content)
+            try:
+                return await view.read(
+                    infos[0], content, max_bytes=MAX_TRANSCRIPT_BYTES
+                )
+            except TranscriptTooLargeError as e:
+                raise HTTPException(
+                    status_code=HTTP_413_CONTENT_TOO_LARGE,
+                    detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
+                ) from None
 
     @app.post(
         "/scans",
+        response_class=InspectPydanticJSONResponse,
         summary="List scans",
         description="Returns scans from the results directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
@@ -318,6 +340,31 @@ def v2_api_app(
             next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
         return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
+
+    @app.get(
+        "/scans/active",
+        response_model=ActiveScansResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get active scans",
+        description="Returns info on all currently running scans.",
+    )
+    async def active_scans() -> ActiveScansResponse:
+        """Get info on all active scans from the KV store."""
+        with active_scans_store() as store:
+            return ActiveScansResponse(items=store.read_all())
+
+    @app.post(
+        "/code",
+        summary="Code endpoint",
+    )
+    async def code(
+        body: Condition,
+    ) -> dict[str, str]:
+        """Process condition."""
+        return {
+            "python": "Not Yet Implemented",
+            **{d.value: body.to_sql(d)[0] for d in SQLDialect},
+        }
 
     @app.get(
         "/scans/{scan}",

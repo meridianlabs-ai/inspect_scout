@@ -4,6 +4,26 @@
  */
 import { JsonValue } from "./json-value";
 export interface paths {
+    "/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Code endpoint
+         * @description Process condition.
+         */
+        post: operations["code_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -38,6 +58,26 @@ export interface paths {
          * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
          */
         post: operations["scans_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get active scans
+         * @description Returns info on all currently running scans.
+         */
+        get: operations["active_scans_scans_active_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -148,6 +188,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActiveScanInfo */
+        ActiveScanInfo: {
+            /** Last Updated */
+            last_updated: number;
+            metrics: components["schemas"]["ScanMetrics"];
+            /** Scan Id */
+            scan_id: string;
+            summary: components["schemas"]["Summary"];
+        };
+        /** ActiveScansResponse */
+        ActiveScansResponse: {
+            /** Items */
+            items: {
+                [key: string]: components["schemas"]["ActiveScanInfo"];
+            };
+        };
         /** AppConfig */
         AppConfig: {
             /** Scans Dir */
@@ -1747,6 +1803,61 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
+        /** ScanMetrics */
+        ScanMetrics: {
+            /**
+             * Batch Failures
+             * @default 0
+             */
+            batch_failures: number;
+            /** Batch Oldest Created */
+            batch_oldest_created?: number | null;
+            /**
+             * Batch Pending
+             * @default 0
+             */
+            batch_pending: number;
+            /**
+             * Buffered Scanner Jobs
+             * @default 0
+             */
+            buffered_scanner_jobs: number;
+            /**
+             * Completed Scans
+             * @default 0
+             */
+            completed_scans: number;
+            /**
+             * Memory Usage
+             * @default 0
+             */
+            memory_usage: number;
+            /**
+             * Process Count
+             * @default 0
+             */
+            process_count: number;
+            /**
+             * Task Count
+             * @default 0
+             */
+            task_count: number;
+            /**
+             * Tasks Idle
+             * @default 0
+             */
+            tasks_idle: number;
+            /**
+             * Tasks Parsing
+             * @default 0
+             */
+            tasks_parsing: number;
+            /**
+             * Tasks Scanning
+             * @default 0
+             */
+            tasks_scanning: number;
+        };
         /**
          * ScanOptions
          * @description Options used for scan.
@@ -2645,7 +2756,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: boolean;
+            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];
@@ -2896,6 +3007,32 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    code_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Condition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     config_config_get: {
         parameters: {
             query?: never;
@@ -2936,6 +3073,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScansResponse"];
+                };
+            };
+        };
+    };
+    active_scans_scans_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveScansResponse"];
                 };
             };
         };

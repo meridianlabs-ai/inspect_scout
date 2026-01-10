@@ -8,68 +8,15 @@ In a transcript database, the only strictly required field is `transcript_id` (a
 
 Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`) which you'll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include `source_*` fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the `Transcripts` API.
 
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Field           | Type                 | Description                                                                                                                                                                    |
-+=================+======================+================================================================================================================================================================================+
-| `transcript_id` | string               | Required. A globally unique identifier for a transcript.                                                                                                                       |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_type`   | string               | Optional. Type of transcript source (e.g. "weave", "logfire", "eval_log", etc.). Useful for providing a hint to readers about what might be available in the `metadata` field. |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_id`     | string               | Optional. Globally unique identifier for a transcript source (e.g. a project id).                                                                                              |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `source_uri`    | string               | Optional. URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).                                                            |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `date`          | string               | Optional. ISO 8601 datetime of transcript creation.                                                                                                                            |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `task_set`      | string               | Optional. Set from which transcript task was drawn (e.g. Inspect task name or benchmark name).                                                                                 |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `task_id`       | string               | Optional. Identifier for task (e.g. dataset sample id).                                                                                                                        |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `task_repeat`   | int                  | Optional. Repeat for a given task id within a task set (e.g. epoch).                                                                                                           |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `agent`         | string               | Optional. Agent used to to execute task.                                                                                                                                       |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `agent_args`    | dict\[str,Any\]\     | Optional. Arguments passed to create agent.                                                                                                                                    |
-|                 | <small>JSON</small>  |                                                                                                                                                                                |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `model`         | string               | Optional. Main model used by agent.                                                                                                                                            |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `model_options` | dict\[str,Any\]\     | Optional. Generation options for main model.                                                                                                                                   |
-|                 | <small>JSON</small>  |                                                                                                                                                                                |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `score`         | JsonValue\           | Optional. Value indicating score on task.                                                                                                                                      |
-|                 | <small>JSON</small>  |                                                                                                                                                                                |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `success`       | bool                 | Optional. Boolean reduction of `score` to succeeded/failed.                                                                                                                    |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `total_time`    | float                | Optional. Time (in seconds) required to execute task.                                                                                                                          |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `total_tokens`  | int                  | Optional. Tokens spent in execution of task.                                                                                                                                   |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `error`         | string               | Optional. Error message that terminated the task.                                                                                                                              |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `limit`         | string               | Optional. Limit that caused the task to exit (e.g. "tokens", "messages, etc.)                                                                                                  |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `messages`      | list\[ChatMessage\]\ | Optional. List of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) with message history.                                                    |
-|                 | <small>JSON</small>  |                                                                                                                                                                                |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| `events`        | list\[Event\]\       | Optional. List of [Event](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) with event history (e.g. model events, tool events, etc.)                               |
-|                 | <small>JSON</small>  |                                                                                                                                                                                |
-+-----------------+----------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+```{python}
+#| echo: false
+#| output: asis
 
-```{=html}
-<style type="text/css">
-#overview td:nth-child(2) {
-  font-size: 0.9em;
-  line-height: 1.2;
-}
-#overview small {
-  font-size: x-small;
-}
-</style>
+from inspect_scout._transcript.database.schema import generate_schema_table_markdown
+print(generate_schema_table_markdown())
 ```
 
-Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
+Field types marked with (JSON) are stored in the database as serialized JSON strings and then converted to richer types when accessed via the `Transcript` interface.
 
 ### Metadata
 
@@ -131,6 +78,52 @@ Most observability systems will have some equivalent of the above in their trace
 The `events` field is only important if you have scanners that will be doing event analysis. Note that the default `llm_scanner()` provided within Scout looks only at `messages` not `events`.
 :::
 
+## Schema in Code
+
+::: {.callout-note}
+Note that the programmatic access to schema described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
+If you are creating transcript databases outside of the Python `TranscriptsDB.insert()` API, you can access the schema programmatically or via the CLI.
+
+### Python API
+
+```python
+from inspect_scout import transcripts_db_schema
+
+# Get PyArrow schema for creating Parquet files
+schema = transcripts_db_schema(format="pyarrow")
+
+# Create empty DataFrame with correct types
+df = transcripts_db_schema(format="pandas")
+
+# Get Avro schema
+avro_schema = transcripts_db_schema(format="avro")
+
+# Get JSON Schema
+json_schema = transcripts_db_schema(format="json")
+```
+
+### CLI Commands
+
+```bash
+# Print Avro schema
+scout db schema --format avro
+
+# Print PyArrow schema
+scout db schema --format pyarrow
+
+# Save schema to file
+scout db schema --format avro --output transcript.avsc
+
+# Validate a database schema
+scout db validate ./my_transcript_db
+```
+
 ## Importing Data
 
 Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:
@@ -142,3 +135,4 @@ Now that you understand the schema and have an idea for how you want to map your
 3.  [Parquet Data Lake](db_importing.qmd#parquet-data-lake): Point the `TranscriptDB` at an existing data lake (ensuring that the records adhere to the transcript database schema).
 
 4.  [Inspect Logs](db_importing.qmd#inspect-logs): Import Inspect AI eval logs from a log directory.
+

@@ -1,5 +1,6 @@
 """End-to-end tests for the validation feature."""
 
+import json
 import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -208,12 +209,14 @@ async def test_validation_basic_single_target_e2e() -> None:
         # (targets match what the bool_scanner would return for those transcript IDs)
         for _, row in df_validated.iterrows():
             tid = row["transcript_id"]
-            expected_value = hash(tid) % 2 == 0
+            # values can be stored as native values (since there is also a value_type column), but validation_targets is alway a json encoded value (string or dict)
+            expected_value = True if hash(tid) % 2 == 0 else False
+            expected_target = "true" if hash(tid) % 2 == 0 else "false"
             assert row["value"] == expected_value, (
                 f"Scanner value for {tid} should be {expected_value}"
             )
-            assert row["validation_target"] == expected_value, (
-                f"Validation target for {tid} should be {expected_value}"
+            assert row["validation_target"] == expected_target, (
+                f"Validation target for {tid} should be {expected_target}"
             )
 
 
@@ -332,7 +335,7 @@ async def test_validation_multiple_scanners_e2e() -> None:
         df_a = results_a.scanners["validation_scanner_a"]
         assert "validation_target" in df_a.columns
         assert "validation_result" in df_a.columns
-        assert all(df_a["validation_target"] == True)  # noqa: E712
+        assert all(df_a["validation_target"] == "true")  # noqa: E712
         assert all(df_a["validation_result"]), "Scanner A validations should all pass"
 
         # Get results for scanner B
@@ -342,7 +345,7 @@ async def test_validation_multiple_scanners_e2e() -> None:
         df_b = results_b.scanners["validation_scanner_b"]
         assert "validation_target" in df_b.columns
         assert "validation_result" in df_b.columns
-        assert all(df_b["validation_target"] == False)  # noqa: E712
+        assert all(df_b["validation_target"] == "false")  # noqa: E712
         assert all(df_b["validation_result"]), "Scanner B validations should all pass"
 
 
@@ -376,12 +379,16 @@ async def test_validation_different_predicates_e2e() -> None:
         assert "validation_result" in df.columns
 
         # Verify targets are all 50
-        assert all(df["validation_target"] == 50), "All targets should be 50"
+        assert all(df["validation_target"] == "50"), "All targets should be 50"
 
         # Verify validation results are boolean (some pass, some fail depending on hash)
         validation_results = df["validation_result"].tolist()
-        assert all(isinstance(v, bool) for v in validation_results), (
-            "All validation results should be boolean"
+        # verify that if each value is deserialized from json it is a boolean
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(isinstance(v, bool) for v in deserialized_results), (
+            "All validation results should be boolean after deserialization"
         )
 
 
@@ -490,7 +497,10 @@ async def test_validation_with_custom_predicate_e2e() -> None:
 
         # Verify validation results are boolean
         validation_results = df["validation_result"].tolist()
-        assert all(isinstance(v, bool) for v in validation_results), (
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )
 
@@ -527,8 +537,11 @@ async def test_validation_failing_cases_e2e() -> None:
 
         # Verify all validations FAILED (since we flipped all targets)
         validation_results = df["validation_result"].tolist()
-        assert all(v == False for v in validation_results), (  # noqa: E712
-            f"All validations should fail but got: {validation_results}"
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(v == False for v in deserialized_results), (  # noqa: E712
+            f"All validations should fail but got: {deserialized_results}"
         )
 
 
@@ -643,8 +656,6 @@ async def test_validation_message_based_scanner_e2e() -> None:
         )
 
         # Get first 3 message IDs from the results
-        import json
-
         message_ids = []
         for input_ids_json in df_first["input_ids"].head(3):
             ids = json.loads(input_ids_json)
@@ -687,13 +698,20 @@ async def test_validation_message_based_scanner_e2e() -> None:
         )
 
         # Verify validation targets are all True (as we set them)
-        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+        validation_targets = df_validated["validation_target"].tolist()
+        deserialized_targets = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_targets
+        ]
+        assert all(t == True for t in deserialized_targets), (  # noqa: E712
             "All validation targets should be True"
         )
 
         # Verify validation results are boolean
         validation_results = df_validated["validation_result"].tolist()
-        assert all(isinstance(v, bool) for v in validation_results), (
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )
 
@@ -719,8 +737,6 @@ async def test_validation_event_based_scanner_e2e() -> None:
         assert all(df_first["input_type"] == "event"), "Input type should be 'event'"
 
         # Get first 3 event IDs from the results
-        import json
-
         event_ids = []
         for input_ids_json in df_first["input_ids"].head(3):
             ids = json.loads(input_ids_json)
@@ -763,13 +779,20 @@ async def test_validation_event_based_scanner_e2e() -> None:
         )
 
         # Verify validation targets are all True (as we set them)
-        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+        validation_targets = df_validated["validation_target"].tolist()
+        deserialized_targets = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_targets
+        ]
+        assert all(t == True for t in deserialized_targets), (  # noqa: E712
             "All validation targets should be True"
         )
 
         # Verify validation results are boolean
         validation_results = df_validated["validation_result"].tolist()
-        assert all(isinstance(v, bool) for v in validation_results), (
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )
 
@@ -815,8 +838,6 @@ def pair_scanner_factory() -> Scanner[Sequence[ChatMessage]]:
 @pytest.mark.asyncio
 async def test_validation_message_pairs_with_list_ids_e2e() -> None:
     """Test validation with custom loader for message pairs and list IDs."""
-    import json
-
     # First pass: Run scan without validation to get message pair IDs
     with tempfile.TemporaryDirectory() as tmpdir:
         scan_result = scan(
@@ -889,12 +910,19 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
             assert len(ids) == 2, "input_ids should contain 2 IDs for message pairs"
 
         # Verify validation targets are all True (as we set them)
-        assert all(df_validated["validation_target"] == True), (  # noqa: E712
+        validation_targets = df_validated["validation_target"].tolist()
+        deserialized_targets = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_targets
+        ]
+        assert all(t == True for t in deserialized_targets), (  # noqa: E712
             "All validation targets should be True"
         )
 
         # Verify validation results are boolean
         validation_results = df_validated["validation_result"].tolist()
-        assert all(isinstance(v, bool) for v in validation_results), (
+        deserialized_results = [
+            json.loads(v) if isinstance(v, str) else v for v in validation_results
+        ]
+        assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )

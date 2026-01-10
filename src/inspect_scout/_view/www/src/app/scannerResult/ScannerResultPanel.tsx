@@ -12,13 +12,11 @@ import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { ToolButton } from "../components/ToolButton";
-import {
-  useScanRoute,
-  useSelectedScan,
-  useSelectedScanResultData,
-  useSelectedScanResultInputData,
-} from "../hooks";
-import { useServerScansDir } from "../server/hooks";
+import { useScanRoute } from "../hooks/useScanRoute";
+import { useSelectedScan } from "../hooks/useSelectedScan";
+import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
+import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
+import { useConfig } from "../server/useConfig";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -43,7 +41,8 @@ export const ScannerResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  const resultsDir = useServerScansDir();
+  const config = useConfig();
+  const scansDir = config.scans_dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);
@@ -140,7 +139,7 @@ export const ScannerResultPanel: FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <ScansNavbar
-        scansDir={userScansDir || resultsDir}
+        scansDir={userScansDir || scansDir}
         setScansDir={setUserScansDir}
       >
         {visibleScannerResults.length > 0 && <ScannerResultNav />}

@@ -1,5 +1,7 @@
 import asyncio
+import json
 import sys
+from pathlib import Path
 
 import click
 import duckdb
@@ -14,6 +16,10 @@ from inspect_scout._transcript.database.parquet.encryption import (
 )
 from inspect_scout._transcript.database.parquet.index import create_index
 from inspect_scout._transcript.database.parquet.types import IndexStorage
+from inspect_scout._transcript.database.schema import (
+    transcripts_db_schema,
+    validate_transcript_schema,
+)
 
 
 def _resolve_key(key: str | None) -> str:
@@ -156,3 +162,103 @@ def index(database_location: str, key: str | None) -> None:
             conn.close()
 
     asyncio.run(_run())
+
+
+@db_command.command("schema")
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["avro", "pyarrow", "json", "pandas"]),
+    default="avro",
+    help="Output format (default: avro).",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Write to file instead of stdout.",
+)
+def schema(fmt: str, output: str | None) -> None:
+    """Print the transcript database schema.
+
+    Outputs the schema in various formats for use when creating
+    transcript databases outside of the Python API.
+
+    Examples:
+        scout db schema                     # Avro schema to stdout
+
+        scout db schema --format pyarrow    # PyArrow schema
+
+        scout db schema -o transcript.avsc  # Save to file
+    """
+    output_str: str
+    if fmt == "pyarrow":
+        # PyArrow schema has a nice string representation
+        output_str = str(transcripts_db_schema(format="pyarrow"))
+    elif fmt == "pandas":
+        # Show DataFrame info
+        df = transcripts_db_schema(format="pandas")
+        output_str = df.dtypes.to_string()
+    elif fmt == "avro":
+        output_str = json.dumps(transcripts_db_schema(format="avro"), indent=2)
+    else:  # json
+        output_str = json.dumps(transcripts_db_schema(format="json"), indent=2)
+
+    if output:
+        Path(output).write_text(output_str)
+        click.echo(f"Schema written to {output}")
+    else:
+        click.echo(output_str)
+
+
+@db_command.command("validate")
+@click.argument("database-location", type=str, required=True)
+@click.option(
+    "--key",
+    type=str,
+    default=None,
+    help="Encryption key for encrypted databases (use '-' for stdin, or set SCOUT_DB_ENCRYPTION_KEY).",
+)
+def validate(database_location: str, key: str | None) -> None:
+    """Validate a transcript database schema.
+
+    Checks that the database has the required fields and correct types.
+
+    Examples:
+        scout db validate ./my_transcript_db
+
+        scout db validate ./encrypted_db --key $KEY
+    """
+    import tempfile
+
+    path = Path(database_location)
+
+    if not path.exists():
+        click.echo(f"Error: Path does not exist: {database_location}", err=True)
+        raise SystemExit(1)
+
+    # Check if database appears to be encrypted (has .enc files)
+    enc_files = list(path.glob("*.parquet.enc"))
+    parquet_files = list(path.glob("*.parquet"))
+
+    if enc_files and not parquet_files:
+        # Database is encrypted - need key to validate
+        resolved_key = _resolve_key(key)
+
+        # Decrypt to temp directory for validation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            click.echo("Decrypting database for validation...")
+            decrypt_database(database_location, temp_dir, resolved_key, overwrite=False)
+            errors = validate_transcript_schema(Path(temp_dir))
+    else:
+        # Database is not encrypted
+        errors = validate_transcript_schema(path)
+
+    if errors:
+        click.echo("Schema validation failed:", err=True)
+        for error in errors:
+            click.echo(f"  - {error.field}: {error.message}", err=True)
+        raise SystemExit(1)
+    else:
+        click.echo("Schema validation passed.")

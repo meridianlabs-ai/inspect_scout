@@ -10,7 +10,7 @@ import { Explanation } from "../../../components/Explanation";
 import { TaskName } from "../../../components/TaskName";
 import { ValidationResult } from "../../../components/ValidationResult";
 import { Value } from "../../../components/Value";
-import { useScanRoute } from "../../../hooks";
+import { useScanRoute } from "../../../hooks/useScanRoute";
 import { ScanResultSummary } from "../../../types";
 import { useMarkdownRefs } from "../../../utils/refs";
 
@@ -120,7 +120,11 @@ const ScannerResultsRowComponent: FC<ScannerResultsRowProps> = ({
       </div>
       {hasValidations && (
         <div className={clsx("text-size-smaller")}>
-          <ValidationResult result={summary.validationResult} />
+          <ValidationResult
+            result={summary.validationResult}
+            target={summary.validationTarget}
+            label={summary.label}
+          />
         </div>
       )}
       {hasErrors && (

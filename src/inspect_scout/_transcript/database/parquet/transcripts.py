@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.path import pretty_path
 from inspect_ai.util import trace_action
 from typing_extensions import override
 from upath import UPath
@@ -24,7 +25,6 @@ from upath import UPath
 from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
-from inspect_scout._transcript.types import RESERVED_COLUMNS
 from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
@@ -35,9 +35,15 @@ from ...transcripts import (
     Transcripts,
     TranscriptsReader,
 )
-from ...types import Transcript, TranscriptContent, TranscriptInfo
+from ...types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
+from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
 from .encryption import (
     ENCRYPTION_KEY_ENV,
     ENCRYPTION_KEY_NAME,
@@ -266,83 +272,84 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Note: transcripts table already excludes messages/events, so just SELECT *
         sql = f"SELECT * FROM transcripts{suffix}"
 
-        # Execute query and yield results (stream rows in batches to avoid full materialization)
+        # Execute query and fetch all results immediately.
+        # IMPORTANT: We must fetchall() before yielding because DuckDB cursors are
+        # invalidated when other queries are executed on the same connection. Since
+        # callers may execute read() queries between yields, we need to materialize
+        # results upfront. This is safe because we're only fetching metadata (not
+        # messages/events content), which has a small memory footprint per row.
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
-        batch_size = 1000
-        while True:
-            rows = cursor.fetchmany(batch_size)
-            if not rows:
-                break
-            for row in rows:
-                row_dict = dict(zip(column_names, row, strict=True))
+        rows = cursor.fetchall()
+        for row in rows:
+            row_dict = dict(zip(column_names, row, strict=True))
 
-                # Extract reserved fields (optional fields use .get() for missing columns)
-                transcript_id = row_dict["transcript_id"]
-                transcript_source_type = row_dict.get("source_type")
-                transcript_source_id = row_dict.get("source_id")
-                transcript_source_uri = row_dict.get("source_uri")
-                transcript_filename = row_dict["filename"]
-                transcript_date = row_dict.get("date")
-                transcript_task_set = row_dict.get("task_set")
-                transcript_task_id = row_dict.get("task_id")
-                transcript_task_repeat = row_dict.get("task_repeat")
-                transcript_agent = row_dict.get("agent")
-                transcript_agent_args = row_dict.get("agent_args")
-                transcript_model = row_dict.get("model")
-                transcript_model_options = row_dict.get("model_options")
-                transcript_score = row_dict.get("score")
-                transcript_success = row_dict.get("success")
-                transcript_total_time = row_dict.get("total_time")
-                transcript_total_tokens = row_dict.get("total_tokens")
-                transcript_error = row_dict.get("error")
-                transcript_limit = row_dict.get("limit")
+            # Extract reserved fields (optional fields use .get() for missing columns)
+            transcript_id = row_dict["transcript_id"]
+            transcript_source_type = row_dict.get("source_type")
+            transcript_source_id = row_dict.get("source_id")
+            transcript_source_uri = row_dict.get("source_uri")
+            transcript_filename = row_dict["filename"]
+            transcript_date = row_dict.get("date")
+            transcript_task_set = row_dict.get("task_set")
+            transcript_task_id = row_dict.get("task_id")
+            transcript_task_repeat = row_dict.get("task_repeat")
+            transcript_agent = row_dict.get("agent")
+            transcript_agent_args = row_dict.get("agent_args")
+            transcript_model = row_dict.get("model")
+            transcript_model_options = row_dict.get("model_options")
+            transcript_score = row_dict.get("score")
+            transcript_success = row_dict.get("success")
+            transcript_total_time = row_dict.get("total_time")
+            transcript_total_tokens = row_dict.get("total_tokens")
+            transcript_error = row_dict.get("error")
+            transcript_limit = row_dict.get("limit")
 
-                # resolve json
-                if transcript_agent_args is not None:
-                    transcript_agent_args = json.loads(transcript_agent_args)
-                if transcript_model_options is not None:
-                    transcript_model_options = json.loads(transcript_model_options)
-                if isinstance(transcript_score, str) and (
-                    transcript_score.startswith("{") or transcript_score.startswith("[")
-                ):
-                    transcript_score = json.loads(transcript_score)
+            # resolve json
+            if transcript_agent_args is not None:
+                transcript_agent_args = json.loads(transcript_agent_args)
+            if transcript_model_options is not None:
+                transcript_model_options = json.loads(transcript_model_options)
+            if isinstance(transcript_score, str) and (
+                transcript_score.startswith("{") or transcript_score.startswith("[")
+            ):
+                transcript_score = json.loads(transcript_score)
 
-                # Reconstruct metadata from all non-reserved columns
-                # Use LazyJSONDict to defer JSON parsing until values are accessed
-                metadata_dict = {
-                    col: value
-                    for col, value in row_dict.items()
-                    if col not in RESERVED_COLUMNS and value is not None
-                }
-                lazy_metadata = LazyJSONDict(metadata_dict)
+            # Reconstruct metadata from all non-reserved columns
+            # Use LazyJSONDict to defer JSON parsing until values are accessed
+            metadata_dict = {
+                col: value
+                for col, value in row_dict.items()
+                if col not in reserved_columns() and value is not None
+            }
+            lazy_metadata = LazyJSONDict(metadata_dict)
 
-                # Use normal constructor for type validation/coercion, then inject
-                # LazyJSONDict for metadata for lazy parsing behavior
-                info = ParquetTranscriptInfo(
-                    transcript_id=transcript_id,
-                    source_type=transcript_source_type,
-                    source_id=transcript_source_id,
-                    source_uri=transcript_source_uri,
-                    date=transcript_date,
-                    task_set=transcript_task_set,
-                    task_id=transcript_task_id,
-                    task_repeat=transcript_task_repeat,
-                    agent=transcript_agent,
-                    agent_args=transcript_agent_args,
-                    model=transcript_model,
-                    model_options=transcript_model_options,
-                    score=transcript_score,
-                    success=transcript_success,
-                    total_time=transcript_total_time,
-                    total_tokens=transcript_total_tokens,
-                    error=transcript_error,
-                    limit=transcript_limit,
-                    metadata={},
-                    filename=transcript_filename,
-                )
-                object.__setattr__(info, "metadata", lazy_metadata)
-                yield info
+            # Use normal constructor for type validation/coercion, then inject
+            # LazyJSONDict for metadata for lazy parsing behavior
+            info = ParquetTranscriptInfo(
+                transcript_id=transcript_id,
+                source_type=transcript_source_type,
+                source_id=transcript_source_id,
+                source_uri=transcript_source_uri,
+                date=transcript_date,
+                task_set=transcript_task_set,
+                task_id=transcript_task_id,
+                task_repeat=transcript_task_repeat,
+                agent=transcript_agent,
+                agent_args=transcript_agent_args,
+                model=transcript_model,
+                model_options=transcript_model_options,
+                score=transcript_score,
+                success=transcript_success,
+                total_time=transcript_total_time,
+                total_tokens=transcript_total_tokens,
+                error=transcript_error,
+                limit=transcript_limit,
+                metadata={},
+                filename=transcript_filename,
+            )
+            object.__setattr__(info, "metadata", lazy_metadata)
+            yield info
 
     @override
     async def count(self, query: Query | None = None) -> int:
@@ -398,13 +405,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return transcript_ids
 
+    def _get_content_size(self, full_path: str, transcript_id: str) -> int:
+        """Get decompressed size of messages+events columns for a transcript."""
+        assert self._conn is not None
+        enc_config = self._read_parquet_encryption_config()
+        result = self._conn.execute(
+            f"""
+            SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+            FROM read_parquet(?{enc_config}) WHERE transcript_id = ?
+            """,
+            [full_path, transcript_id],
+        ).fetchone()
+        return result[0] if result else 0
+
     @override
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
         """Load full transcript content using DuckDB.
 
         Args:
             t: TranscriptInfo identifying the transcript.
             content: Filter for which messages/events to load.
+            max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
 
         Returns:
             Full Transcript with filtered content.
@@ -467,6 +493,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # The index stores relative filenames, so we need to construct the full path
             relative_filename = filename_result[0]
             full_path = self._full_parquet_path(relative_filename)
+
+            # Check size limit before loading content
+            if max_bytes is not None:
+                content_size = self._get_content_size(full_path, t.transcript_id)
+                if content_size > max_bytes:
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, content_size, max_bytes
+                    )
 
             # Try optimistic read first (fast path for files with all columns)
             enc_config = self._read_parquet_encryption_config()
@@ -774,8 +808,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Requirements:
         - transcript_id column must exist and be string type
-        - Optional columns (source_type, source_id, source_uri, messages, events)
-          must be string type if present
+        - Optional columns must match their expected types if present
 
         Args:
             schema: PyArrow schema to validate.
@@ -783,67 +816,48 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Raises:
             ValueError: If schema doesn't meet requirements.
         """
-        # Check transcript_id exists
-        if "transcript_id" not in schema.names:
-            raise ValueError("RecordBatch schema must contain 'transcript_id' column")
-
-        # Check transcript_id is string type
-        transcript_id_type = schema.field("transcript_id").type
-        if transcript_id_type not in (pa.string(), pa.large_string()):
-            raise ValueError(
-                f"'transcript_id' column must be string type, got {transcript_id_type}"
-            )
-
-        # Check optional string columns
-        optional_string_columns = [
-            "source_type",
-            "source_id",
-            "source_uri",
-            "date",
-            "task_set",
-            "task_id",
-            "agent",
-            "agent_args",
-            "model",
-            "model_options",
-            "score",
-            "error",
-            "limit",
-            "messages",
-            "events",
-        ]
-        for col in optional_string_columns:
-            if col in schema.names:
-                col_type = schema.field(col).type
-                if col_type not in (pa.string(), pa.large_string()):
-                    raise ValueError(
-                        f"'{col}' column must be string type, got {col_type}"
-                    )
-
-        # Check optional bool/numeric columns
-        if "success" in schema.names:
-            col_type = schema.field("success").type
-            if col_type != pa.bool_():
-                raise ValueError(f"'success' column must be bool type, got {col_type}")
-
-        if "total_time" in schema.names:
-            col_type = schema.field("total_time").type
-            if not pa.types.is_floating(col_type):
+        # Check required columns exist
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.required and field.name not in schema.names:
                 raise ValueError(
-                    f"'total_time' column must be float type, got {col_type}"
+                    f"RecordBatch schema must contain '{field.name}' column"
                 )
 
-        optional_int_columns = ["task_repeat", "total_tokens"]
-        for col in optional_int_columns:
-            if col in schema.names:
-                col_type = schema.field(col).type
+        # Validate types for columns that are present
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in schema.names:
+                continue
+
+            col_type = schema.field(field.name).type
+            expected_type = field.pyarrow_type
+
+            # String columns: allow large_string as equivalent
+            if expected_type == pa.string():
+                if col_type not in (pa.string(), pa.large_string()):
+                    raise ValueError(
+                        f"'{field.name}' column must be string type, got {col_type}"
+                    )
+            # Boolean columns
+            elif expected_type == pa.bool_():
+                if col_type != pa.bool_():
+                    raise ValueError(
+                        f"'{field.name}' column must be bool type, got {col_type}"
+                    )
+            # Float columns: allow any floating type
+            elif expected_type == pa.float64():
+                if not pa.types.is_floating(col_type):
+                    raise ValueError(
+                        f"'{field.name}' column must be float type, got {col_type}"
+                    )
+            # Integer columns: allow any integer type
+            elif expected_type == pa.int64():
                 if not pa.types.is_integer(col_type):
                     raise ValueError(
-                        f"'{col}' column must be integer type, got {col_type}"
+                        f"'{field.name}' column must be integer type, got {col_type}"
                     )
 
     def _ensure_required_columns(self, table: pa.Table) -> pa.Table:
-        """Add missing optional columns as null-filled string columns.
+        """Add missing optional columns as null-filled columns.
 
         Ensures all optional reserved columns exist in the table for
         schema consistency when writing Parquet files.
@@ -854,44 +868,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Table with all optional columns present (null-filled if missing).
         """
-        optional_string_columns = [
-            "source_type",
-            "source_id",
-            "source_uri",
-            "date",
-            "task_set",
-            "task_id",
-            "agent",
-            "agent_args",
-            "model",
-            "model_options",
-            "error",
-            "limit",
-            "messages",
-            "events",
-        ]
-        for col in optional_string_columns:
-            if col not in table.column_names:
-                null_array = pa.nulls(len(table), type=pa.string())
-                table = table.append_column(col, null_array)
-
-        # Optional bool/numeric columns
-        if "success" not in table.column_names:
-            table = table.append_column(
-                "success", pa.nulls(len(table), type=pa.bool_())
-            )
-        if "total_time" not in table.column_names:
-            table = table.append_column(
-                "total_time", pa.nulls(len(table), type=pa.float64())
-            )
-        if "task_repeat" not in table.column_names:
-            table = table.append_column(
-                "task_repeat", pa.nulls(len(table), type=pa.int64())
-            )
-        if "total_tokens" not in table.column_names:
-            table = table.append_column(
-                "total_tokens", pa.nulls(len(table), type=pa.int64())
-            )
+        # Add missing columns using types from central schema definition
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in table.column_names:
+                # ignore needed because mypy stubs are overly strict about nulls()
+                null_array = pa.nulls(len(table), type=field.pyarrow_type)  # type: ignore[call-overload]
+                table = table.append_column(field.name, null_array)
 
         return table
 
@@ -1000,34 +982,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             PyArrow schema for the Parquet file.
         """
-        # Reserved columns with fixed types
+        # Reserved columns with fixed types (from central schema definition)
+        reserved_cols = reserved_columns()
         fields: list[tuple[str, pa.DataType]] = [
-            ("transcript_id", pa.string()),
-            ("source_type", pa.string()),
-            ("source_id", pa.string()),
-            ("source_uri", pa.string()),
-            ("date", pa.string()),
-            ("task_set", pa.string()),
-            ("task_id", pa.string()),
-            ("task_repeat", pa.int64()),
-            ("agent", pa.string()),
-            ("agent_args", pa.string()),
-            ("model", pa.string()),
-            ("model_options", pa.string()),
-            ("score", pa.string()),
-            ("success", pa.bool_()),
-            ("total_time", pa.float64()),
-            ("total_tokens", pa.int64()),
-            ("error", pa.string()),
-            ("limit", pa.string()),
-            ("messages", pa.string()),
-            ("events", pa.string()),
+            (f.name, f.pyarrow_type) for f in TRANSCRIPT_SCHEMA_FIELDS
         ]
 
         # Discover all metadata keys across all rows
         metadata_keys: set[str] = set()
         for row in rows:
-            metadata_keys.update(k for k in row.keys() if k not in RESERVED_COLUMNS)
+            metadata_keys.update(k for k in row.keys() if k not in reserved_cols)
 
         # Infer type for each metadata key (sorted for determinism)
         for key in sorted(metadata_keys):
@@ -1166,9 +1130,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if self._index_storage is not None:
                 idx_files = await _discover_index_files(self._index_storage)
 
+            # Skip index warnings when snapshot is provided - workers already have
+            # efficient access via the transcript_id->filename mapping from parent
+            has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
+
             if idx_files:
                 await self._init_from_index()
+                # Check for unindexed parquet files (skip for worker processes)
+                if not has_snapshot:
+                    await self._check_index_coverage()
             else:
+                # Warn about missing index (skip for worker processes)
+                if not has_snapshot:
+                    logger.warning(
+                        f"No index found for {pretty_path(self._location)}. "
+                        f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
+                    )
                 await self._init_from_parquet()
 
     async def _init_from_index(self) -> None:
@@ -1309,28 +1286,21 @@ class ParquetTranscriptsDB(TranscriptsDB):
             SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
             WHERE FALSE
         """)
-        self._conn.execute("""
+
+        # Generate column list from central schema definition
+        column_defs = []
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+            default_value = _duckdb_default_value(field.pyarrow_type)
+            column_defs.append(f"{default_value}::{duckdb_type} AS {field.name}")
+        # Add filename column (internal)
+        column_defs.append("''::VARCHAR AS filename")
+
+        columns_sql = ",\n                ".join(column_defs)
+        self._conn.execute(f"""
             CREATE VIEW transcripts AS
             SELECT
-                ''::VARCHAR AS transcript_id,
-                ''::VARCHAR AS source_type,
-                ''::VARCHAR AS source_id,
-                ''::VARCHAR AS source_uri,
-                ''::VARCHAR AS source_uri,
-                ''::VARCHAR AS date,
-                ''::VARCHAR AS task_set,
-                ''::VARCHAR AS task_id,
-                1::BIGINT AS task_repeat,
-                ''::VARCHAR AS agent,
-                ''::VARCHAR AS agent_args,
-                ''::VARCHAR AS model,
-                ''::VARCHAR AS model_options,
-                FALSE::BOOLEAN AS success,
-                0.0::DOUBLE AS total_time,
-                0::BIGINT AS total_tokens,
-                ''::VARCHAR AS error,
-                ''::VARCHAR AS limit,
-                ''::VARCHAR AS filename
+                {columns_sql}
             WHERE FALSE
         """)
 
@@ -1752,6 +1722,55 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         return f"{location}/{filename}"
 
+    def _to_relative_filename(self, absolute_path: str) -> str:
+        """Convert absolute path to filename relative to database location.
+
+        Inverse of _full_parquet_path(). Used for comparing discovered parquet
+        files against filenames stored in the index.
+
+        Args:
+            absolute_path: Full path (e.g., '/path/to/db/file.parquet' or
+                          's3://bucket/db/file.parquet')
+
+        Returns:
+            Relative filename (e.g., 'file.parquet')
+        """
+        if self._location is None:
+            return absolute_path
+
+        location_prefix = self._location.rstrip("/") + "/"
+        if absolute_path.startswith(location_prefix):
+            return absolute_path[len(location_prefix) :]
+
+        # Already relative or different prefix - return as-is
+        return absolute_path
+
+    async def _check_index_coverage(self) -> None:
+        """Warn if parquet files exist that aren't in the index.
+
+        Compares filenames stored in the index against actual parquet files
+        on disk. If any files are missing from the index, logs a warning.
+        """
+        assert self._conn is not None
+
+        # Get filenames from loaded index (already in memory)
+        result = self._conn.execute(
+            "SELECT DISTINCT filename FROM transcript_index"
+        ).fetchall()
+        indexed_filenames = {row[0] for row in result}
+
+        # Discover actual parquet files and normalize to relative paths
+        actual_files = await self._discover_parquet_files()
+        actual_filenames = {self._to_relative_filename(f) for f in actual_files}
+
+        # Check for unindexed files
+        unindexed = actual_filenames - indexed_filenames
+        if unindexed:
+            logger.warning(
+                f"Index is stale: {len(unindexed)} parquet file(s) not indexed. "
+                f"Run `scout db index {pretty_path(self._location)}` to rebuild."
+            )
+
     def _init_hf_auth(self) -> None:
         assert self._conn is not None
         hf_token = os.environ.get("HF_TOKEN", None)
@@ -1823,8 +1842,40 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
     Raises:
         ValueError: If metadata contains reserved column names.
     """
-    conflicts = RESERVED_COLUMNS & metadata.keys()
+    conflicts = reserved_columns() & metadata.keys()
     if conflicts:
         raise ValueError(
             f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
         )
+
+
+def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
+    """Convert PyArrow type to DuckDB SQL type string."""
+    if pa_type == pa.string():
+        return "VARCHAR"
+    elif pa_type == pa.int64():
+        return "BIGINT"
+    elif pa_type == pa.int32():
+        return "INTEGER"
+    elif pa_type == pa.float64():
+        return "DOUBLE"
+    elif pa_type == pa.float32():
+        return "REAL"
+    elif pa_type == pa.bool_():
+        return "BOOLEAN"
+    else:
+        return "VARCHAR"
+
+
+def _duckdb_default_value(pa_type: pa.DataType) -> str:
+    """Get default value literal for a PyArrow type in DuckDB."""
+    if pa_type == pa.string():
+        return "''"
+    elif pa_type in (pa.int64(), pa.int32()):
+        return "0"
+    elif pa_type in (pa.float64(), pa.float32()):
+        return "0.0"
+    elif pa_type == pa.bool_():
+        return "FALSE"
+    else:
+        return "''"

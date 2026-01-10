@@ -1,0 +1,78 @@
+import re
+
+from pydantic import BaseModel, Field
+from shortuuid import uuid
+
+from inspect_scout import (
+    Reference, 
+    Result, 
+    Scanner, 
+    Transcript, 
+    scanner, 
+    tool_callers
+)
+
+class CommandNotFound(BaseModel):
+    message_id: str = Field(description="Message that made the tool call.")
+    command: str = Field(description="The command that was not found.")
+    tool: str | None = Field(description="Tool that produced the output.")
+
+@scanner(messages="all")
+def command_not_found() -> Scanner[Transcript]:
+
+    async def scan(transcript: Transcript) -> list[Result]:
+
+        results: list[Result] = []
+
+        # Build a mapping from tool_call_id to assistant message
+        tool_call_to_assistant = tool_callers(transcript)
+
+        # Pattern to match "command not found" errors
+        pattern = r"(\w+): line \d+: (\w+): command not found"
+
+        # Iterate through all tool messages with tool call ids
+        for message in (m for m in transcript.messages if m.role == "tool"):
+         
+            # skip messages with no tool_call_id
+            if message.tool_call_id is None:
+                continue
+
+            # look for 'command not found'
+            match = re.search(pattern, message.text)
+            if match:
+                # extract the command and tool name
+                command = match.group(2)
+                tool_name = message.function
+
+                # find the assistant message that made this tool call
+                # (skip messages with no correpsonding assistant message)
+                assistant_msg, assistant_idx = tool_call_to_assistant.get(
+                    message.tool_call_id, (None, 0)
+                )
+                if assistant_msg is None:
+                    continue
+                
+                # append the result
+                results.append(
+                    Result(
+                        value=CommandNotFound(
+                            message_id=f"M{assistant_idx}",
+                            command=command,
+                            tool=tool_name,
+                        ).model_dump(),
+                        explanation=(
+                            f"[M{assistant_idx}] Found 'command not found' "
+                            f"for command {command}' in {tool_name} output"
+                        ),
+                        references=[Reference(
+                            type="message",
+                            cite=f"M{assistant_idx}",
+                            id=assistant_msg.id or uuid()
+                        )],
+                    )
+                )
+               
+
+        return results
+
+    return scan

@@ -23,15 +23,17 @@ In the above examples, we provided a validation set of transcript_id =\> boolean
 For example, imagine we have a scanner that counts the incidences of "backtracking" in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
 
 ``` {.default filename="backtracking.csv"}
-Fg3KBpgFr6RSsEWmHBUqeo, 2
-VFkCH7gXWpJYUYonvfHxrG, 0
-SiEXpECj7U9nNAvM3H7JqB, 3
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,2
+VFkCH7gXWpJYUYonvfHxrG,0
+SiEXpECj7U9nNAvM3H7JqB,3
 ```
 
 In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
 
 ``` {.default filename="validation.csv"}
-"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG", true
+id,target
+"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG",true
 ```
 
 ### Result Set Validation
@@ -40,7 +42,7 @@ When a scanner returns a list of multiple results (see [Multiple Results](scanne
 
 #### Format
 
-For CSV files, use `label_*` columns instead of `target_*` columns:
+For CSV files, use `label_*` columns:
 
 ``` {.default filename="security-validation.csv"}
 id, label_deception, label_jailbreak, label_misconfig
@@ -91,7 +93,21 @@ VFkCH7gXWpJYUYonvfHxrG, false, 0
 
 ## File Formats {#validation-files}
 
-You can specify a `ValidationSet` either in code, as a CSV, or as a YAML or JSON file. We've demonstrated CSV above, here is what as equivalent YAML file would look like for a single target:
+You can specify a `ValidationSet` either in code, as a CSV, or as a YAML or JSON file. 
+
+### CSV
+
+Here are the various ways you can structure a validation CSV for different scenarios:
+
+| Format | Header Row | Example |
+|--------|------------|---------|
+| Single target | `id,target` | `id,target`<br>`abc123,true` |
+| Dict targets | `id,target_*,...` | `id,target_foo,target_bar`<br>`abc123,true,42` |
+| Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak`<br>`abc123,true,false` |
+
+### YAML
+
+Here is what a YAML file would look like for a single target:
 
 ``` {.yaml filename="validation.yaml"}
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -101,7 +117,7 @@ You can specify a `ValidationSet` either in code, as a CSV, or as a YAML or JSON
   target: false
 ```
 
-And for multiple targets:
+Here is a YAML file for multiple targets:
 
 ``` {.yaml filename="validation.yaml"}
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -114,3 +130,22 @@ And for multiple targets:
      deception: false
      backtracks: 0
 ```
+
+Here is a YAML file for label-based validation (resultsets):
+
+``` {.yaml filename="validation.yaml"}
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  labels:
+     deception: true
+     jailbreak: false
+     misconfig: false
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  labels:
+     deception: false
+     jailbreak: true
+     misconfig: false
+```
+
+
+

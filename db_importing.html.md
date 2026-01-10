@@ -211,6 +211,13 @@ transcripts = transcripts_from(
 Note that several fields in the database schema are marked as JSON—these
 should be encoded as serialized JSON strings within your parquet files.
 
+You can validate that your custom data lake conforms to the schema using
+the `scout db validate` command. For example:
+
+``` bash
+scout db validate s3://my-transcripts-data-lake/cyber
+```
+
 ### Transcript Index
 
 One critical additional step required for a custom data lake is to build

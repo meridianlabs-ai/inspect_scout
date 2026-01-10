@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -350,6 +385,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#messages" id="toc-messages" class="nav-link" data-scroll-target="#messages">Messages</a></li>
   <li><a href="#events" id="toc-events" class="nav-link" data-scroll-target="#events">Events</a></li>
   </ul></li>
+  <li><a href="#schema-in-code" id="toc-schema-in-code" class="nav-link" data-scroll-target="#schema-in-code">Schema in Code</a>
+  <ul class="collapse">
+  <li><a href="#python-api" id="toc-python-api" class="nav-link" data-scroll-target="#python-api">Python API</a></li>
+  <li><a href="#cli-commands" id="toc-cli-commands" class="nav-link" data-scroll-target="#cli-commands">CLI Commands</a></li>
+  </ul></li>
   <li><a href="#importing-data" id="toc-importing-data" class="nav-link" data-scroll-target="#importing-data">Importing Data</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -381,6 +421,11 @@ ul.task-list li input[type="checkbox"] {
 <p>In a transcript database, the only strictly required field is <code>transcript_id</code> (although you’ll almost always want to also include a <code>messages</code> field as that’s the main thing targeted by most scanners).</p>
 <p>Further, there are many standard fields (e.g.&nbsp;<code>task</code>, <code>agent</code>, <code>model</code>, <code>score</code>) which you’ll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include <code>source_*</code> fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts">Transcripts</a></span> API.</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Field</th>
@@ -426,18 +471,17 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><code>task_repeat</code></td>
-<td>int</td>
+<td>int64</td>
 <td>Optional. Repeat for a given task id within a task set (e.g.&nbsp;epoch).</td>
 </tr>
 <tr class="odd">
 <td><code>agent</code></td>
 <td>string</td>
-<td>Optional. Agent used to to execute task.</td>
+<td>Optional. Agent used to execute task.</td>
 </tr>
 <tr class="even">
 <td><code>agent_args</code></td>
-<td>dict[str,Any]<br>
-<small>JSON</small></td>
+<td>string (JSON)</td>
 <td>Optional. Arguments passed to create agent.</td>
 </tr>
 <tr class="odd">
@@ -447,14 +491,12 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><code>model_options</code></td>
-<td>dict[str,Any]<br>
-<small>JSON</small></td>
+<td>string (JSON)</td>
 <td>Optional. Generation options for main model.</td>
 </tr>
 <tr class="odd">
 <td><code>score</code></td>
-<td>JsonValue<br>
-<small>JSON</small></td>
+<td>string (JSON)</td>
 <td>Optional. Value indicating score on task.</td>
 </tr>
 <tr class="even">
@@ -464,12 +506,12 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td><code>total_time</code></td>
-<td>float</td>
+<td>float64</td>
 <td>Optional. Time (in seconds) required to execute task.</td>
 </tr>
 <tr class="even">
 <td><code>total_tokens</code></td>
-<td>int</td>
+<td>int64</td>
 <td>Optional. Tokens spent in execution of task.</td>
 </tr>
 <tr class="odd">
@@ -480,32 +522,21 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><code>limit</code></td>
 <td>string</td>
-<td>Optional. Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
+<td>Optional. Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages”, etc.).</td>
 </tr>
 <tr class="odd">
 <td><code>messages</code></td>
-<td>list[ChatMessage]<br>
-<small>JSON</small></td>
-<td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">ChatMessage</a> with message history.</td>
+<td>string (JSON)</td>
+<td>Optional. List of ChatMessage with message history.</td>
 </tr>
 <tr class="even">
 <td><code>events</code></td>
-<td>list[Event]<br>
-<small>JSON</small></td>
-<td>Optional. List of <a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html">Event</a> with event history (e.g.&nbsp;model events, tool events, etc.)</td>
+<td>string (JSON)</td>
+<td>Optional. List of Event with event history (e.g.&nbsp;model events, tool events, etc.).</td>
 </tr>
 </tbody>
 </table>
-<style type="text/css">
-#overview td:nth-child(2) {
-  font-size: 0.9em;
-  line-height: 1.2;
-}
-#overview small {
-  font-size: x-small;
-}
-</style>
-<p>Field types marked with <small>JSON</small> are stored in the database as serialized JSON strings and then converted to richer types when accessed via the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> interface.</p>
+<p>Field types marked with (JSON) are stored in the database as serialized JSON strings and then converted to richer types when accessed via the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> interface.</p>
 <section id="metadata" class="level3">
 <h3 class="anchored" data-anchor-id="metadata">Metadata</h3>
 <p>You can include arbitrary other fields in your database which will be made available as <code>Transcript.metadata</code>. These fields can then be used for filtering in calls to <code>Transcripts.where()</code>.</p>
@@ -599,6 +630,54 @@ ul.task-list li input[type="checkbox"] {
 <p>The <code>events</code> field is only important if you have scanners that will be doing event analysis. Note that the default <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> provided within Scout looks only at <code>messages</code> not <code>events</code>.</p>
 </div>
 </div>
+</section>
+</section>
+<section id="schema-in-code" class="level2">
+<h2 class="anchored" data-anchor-id="schema-in-code">Schema in Code</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Note that the programmatic access to schema described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pip install git<span class="op">+</span>https:<span class="op">//</span>github.com<span class="op">/</span>meridianlabs<span class="op">-</span>ai<span class="op">/</span>inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+<p>If you are creating transcript databases outside of the Python <code>TranscriptsDB.insert()</code> API, you can access the schema programmatically or via the CLI.</p>
+<section id="python-api" class="level3">
+<h3 class="anchored" data-anchor-id="python-api">Python API</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db_schema</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Get PyArrow schema for creating Parquet files</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>schema <span class="op">=</span> transcripts_db_schema(<span class="bu">format</span><span class="op">=</span><span class="st">"pyarrow"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Create empty DataFrame with correct types</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> transcripts_db_schema(<span class="bu">format</span><span class="op">=</span><span class="st">"pandas"</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Get Avro schema</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>avro_schema <span class="op">=</span> transcripts_db_schema(<span class="bu">format</span><span class="op">=</span><span class="st">"avro"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Get JSON Schema</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>json_schema <span class="op">=</span> transcripts_db_schema(<span class="bu">format</span><span class="op">=</span><span class="st">"json"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="cli-commands" class="level3">
+<h3 class="anchored" data-anchor-id="cli-commands">CLI Commands</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Print Avro schema</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db schema <span class="at">--format</span> avro</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Print PyArrow schema</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db schema <span class="at">--format</span> pyarrow</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Save schema to file</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db schema <span class="at">--format</span> avro <span class="at">--output</span> transcript.avsc</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate a database schema</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db validate ./my_transcript_db</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="importing-data" class="level2">

@@ -3695,19 +3695,7 @@ reference to where the transcript originated,. Finally, arbitrary other
 fields can be included. All fields are queryable using the `Transcripts`
 API.
 
-[TABLE]
-
-<style type="text/css">
-#overview td:nth-child(2) {
-  font-size: 0.9em;
-  line-height: 1.2;
-}
-#overview small {
-  font-size: x-small;
-}
-</style>
-
-Field types marked with JSON are stored in the database as serialized
+Field types marked with (JSON) are stored in the database as serialized
 JSON strings and then converted to richer types when accessed via the
 `Transcript` interface.
 
@@ -3769,6 +3757,56 @@ converting raw model API payloads to `ChatMessage`.
 > The `events` field is only important if you have scanners that will be
 > doing event analysis. Note that the default `llm_scanner()` provided
 > within Scout looks only at `messages` not `events`.
+
+## Schema in Code
+
+> [!NOTE]
+>
+> Note that the programmatic access to schema described below is
+> available only in the development version of Inspect Scout. Install
+> the development version from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+If you are creating transcript databases outside of the Python
+`TranscriptsDB.insert()` API, you can access the schema programmatically
+or via the CLI.
+
+### Python API
+
+``` python
+from inspect_scout import transcripts_db_schema
+
+# Get PyArrow schema for creating Parquet files
+schema = transcripts_db_schema(format="pyarrow")
+
+# Create empty DataFrame with correct types
+df = transcripts_db_schema(format="pandas")
+
+# Get Avro schema
+avro_schema = transcripts_db_schema(format="avro")
+
+# Get JSON Schema
+json_schema = transcripts_db_schema(format="json")
+```
+
+### CLI Commands
+
+``` bash
+# Print Avro schema
+scout db schema --format avro
+
+# Print PyArrow schema
+scout db schema --format pyarrow
+
+# Save schema to file
+scout db schema --format avro --output transcript.avsc
+
+# Validate a database schema
+scout db validate ./my_transcript_db
+```
 
 ## Importing Data
 
@@ -4003,6 +4041,13 @@ transcripts = transcripts_from(
 
 Note that several fields in the database schema are marked as JSON—these
 should be encoded as serialized JSON strings within your parquet files.
+
+You can validate that your custom data lake conforms to the schema using
+the `scout db validate` command. For example:
+
+``` bash
+scout db validate s3://my-transcripts-data-lake/cyber
+```
 
 ### Transcript Index
 

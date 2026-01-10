@@ -450,6 +450,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcripts_db_schema" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_db_schema</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
  <span class="menu-text">TranscriptsDB</span></a>
   </div>
@@ -726,6 +732,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#scout-db-encrypt" id="toc-scout-db-encrypt" class="nav-link active" data-scroll-target="#scout-db-encrypt">scout db encrypt</a></li>
   <li><a href="#scout-db-decrypt" id="toc-scout-db-decrypt" class="nav-link" data-scroll-target="#scout-db-decrypt">scout db decrypt</a></li>
   <li><a href="#scout-db-index" id="toc-scout-db-index" class="nav-link" data-scroll-target="#scout-db-index">scout db index</a></li>
+  <li><a href="#scout-db-schema" id="toc-scout-db-schema" class="nav-link" data-scroll-target="#scout-db-schema">scout db schema</a></li>
+  <li><a href="#scout-db-validate" id="toc-scout-db-validate" class="nav-link" data-scroll-target="#scout-db-validate">scout db validate</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -804,6 +812,14 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><a href="#scout-db-index">index</a></td>
 <td>Create or rebuild the index for a transcript database.</td>
+</tr>
+<tr class="even">
+<td><a href="#scout-db-schema">schema</a></td>
+<td>Print the transcript database schema.</td>
+</tr>
+<tr class="odd">
+<td><a href="#scout-db-validate">validate</a></td>
+<td>Validate a transcript database schema.</td>
 </tr>
 </tbody>
 </table>
@@ -978,6 +994,122 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="subcommands-3" class="level4">
 <h4 class="anchored" data-anchor-id="subcommands-3">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+
+</table>
+</section>
+</section>
+<section id="scout-db-schema" class="level2" data-toc-label="schema">
+<h2 data-toc-label="schema" class="anchored" data-anchor-id="scout-db-schema">scout db schema</h2>
+<p>Print the transcript database schema.</p>
+<p>Outputs the schema in various formats for use when creating transcript databases outside of the Python API.</p>
+<p>Examples: scout db schema # Avro schema to stdout</p>
+<pre><code>scout db schema --format pyarrow    # PyArrow schema
+
+scout db schema -o transcript.avsc  # Save to file</code></pre>
+<section id="usage-4" class="level4">
+<h4 class="anchored" data-anchor-id="usage-4">Usage</h4>
+<pre class="text"><code>scout db schema [OPTIONS]</code></pre>
+</section>
+<section id="options-4" class="level4">
+<h4 class="anchored" data-anchor-id="options-4">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--format</code></td>
+<td>choice (<code>avro</code> | <code>pyarrow</code> | <code>json</code> | <code>pandas</code>)</td>
+<td>Output format (default: avro).</td>
+<td><code>avro</code></td>
+</tr>
+<tr class="even">
+<td><code>--output</code>, <code>-o</code></td>
+<td>path</td>
+<td>Write to file instead of stdout.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands-4" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-4">Subcommands</h4>
+<table class="table-borderless caption-top">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+
+</table>
+</section>
+</section>
+<section id="scout-db-validate" class="level2" data-toc-label="validate">
+<h2 data-toc-label="validate" class="anchored" data-anchor-id="scout-db-validate">scout db validate</h2>
+<p>Validate a transcript database schema.</p>
+<p>Checks that the database has the required fields and correct types.</p>
+<p>Examples: scout db validate ./my_transcript_db</p>
+<pre><code>scout db validate ./encrypted_db --key $KEY</code></pre>
+<section id="usage-5" class="level4">
+<h4 class="anchored" data-anchor-id="usage-5">Usage</h4>
+<pre class="text"><code>scout db validate [OPTIONS] DATABASE_LOCATION</code></pre>
+</section>
+<section id="options-5" class="level4">
+<h4 class="anchored" data-anchor-id="options-5">Options</h4>
+<table class="table-sm table-borderless small caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 15%">
+<col style="width: 50%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--key</code></td>
+<td>text</td>
+<td>Encryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="subcommands-5" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-5">Subcommands</h4>
 <table class="table-borderless caption-top">
 <colgroup>
 <col style="width: 35%">

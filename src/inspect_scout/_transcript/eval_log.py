@@ -61,7 +61,12 @@ from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import LocalFilesCache, init_task_files_cache
 from .transcripts import TranscriptsReader
-from .types import Transcript, TranscriptContent, TranscriptInfo
+from .types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
 from .util import LazyJSONDict
 
 logger = getLogger(__name__)

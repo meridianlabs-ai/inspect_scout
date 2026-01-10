@@ -54,8 +54,8 @@ export const TranscriptsPanel: FC = () => {
 
   const {
     data: filterCodeValues,
-    error: codeError,
-    loading,
+    error: _codeError,
+    loading: _codeLoading,
   } = useCode(condition);
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =

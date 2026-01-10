@@ -371,7 +371,12 @@ class EvalLogTranscriptsView(TranscriptsView):
         return result
 
     @override
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
         assert self._conn is not None
         cursor = self._conn.execute(
             f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
@@ -396,12 +401,17 @@ class EvalLogTranscriptsView(TranscriptsView):
             else t.source_uri
         )
         zip_reader = AsyncZipReader(self._fs, source_uri)
+        entry = await zip_reader.get_member_entry(sample_file_name)
+        if max_bytes is not None and entry.uncompressed_size > max_bytes:
+            raise TranscriptTooLargeError(
+                t.transcript_id, entry.uncompressed_size, max_bytes
+            )
         with trace_action(
             logger,
             "Scout Eval Log Read",
             f"Reading from {t.source_uri} ({sample_file_name})",
         ):
-            async with await zip_reader.open_member(sample_file_name) as json_iterable:
+            async with await zip_reader.open_member(entry) as json_iterable:
                 return await load_filtered_transcript(
                     json_iterable,
                     t,

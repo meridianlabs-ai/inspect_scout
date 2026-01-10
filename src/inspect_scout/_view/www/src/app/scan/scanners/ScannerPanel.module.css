@@ -3,6 +3,7 @@
   grid-template-columns: 200px 1fr;
   grid-template-rows: 1fr max-content;
   height: 100%;
+  width: 100%;
 }
 
 .footer {

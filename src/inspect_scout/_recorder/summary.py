@@ -48,8 +48,10 @@ class Summary(BaseModel):
     ):
         if isinstance(scanners, list):
             super().__init__(scanners={k: ScannerSummary() for k in scanners}, **data)
-        else:
+        elif scanners is not None:
             super().__init__(scanners=scanners, **data)
+        else:
+            super().__init__(**data)
 
     def _report(
         self,

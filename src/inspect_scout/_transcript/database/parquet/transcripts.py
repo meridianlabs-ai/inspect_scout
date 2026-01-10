@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.path import pretty_path
 from inspect_ai.util import trace_action
 from typing_extensions import override
 from upath import UPath
@@ -34,7 +35,12 @@ from ...transcripts import (
     Transcripts,
     TranscriptsReader,
 )
-from ...types import Transcript, TranscriptContent, TranscriptInfo
+from ...types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
 from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
@@ -399,13 +405,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return transcript_ids
 
+    def _get_content_size(self, full_path: str, transcript_id: str) -> int:
+        """Get decompressed size of messages+events columns for a transcript."""
+        assert self._conn is not None
+        enc_config = self._read_parquet_encryption_config()
+        result = self._conn.execute(
+            f"""
+            SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+            FROM read_parquet(?{enc_config}) WHERE transcript_id = ?
+            """,
+            [full_path, transcript_id],
+        ).fetchone()
+        return result[0] if result else 0
+
     @override
-    async def read(self, t: TranscriptInfo, content: TranscriptContent) -> Transcript:
+    async def read(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
         """Load full transcript content using DuckDB.
 
         Args:
             t: TranscriptInfo identifying the transcript.
             content: Filter for which messages/events to load.
+            max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
 
         Returns:
             Full Transcript with filtered content.
@@ -468,6 +493,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # The index stores relative filenames, so we need to construct the full path
             relative_filename = filename_result[0]
             full_path = self._full_parquet_path(relative_filename)
+
+            # Check size limit before loading content
+            if max_bytes is not None:
+                content_size = self._get_content_size(full_path, t.transcript_id)
+                if content_size > max_bytes:
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, content_size, max_bytes
+                    )
 
             # Try optimistic read first (fast path for files with all columns)
             enc_config = self._read_parquet_encryption_config()
@@ -1097,9 +1130,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if self._index_storage is not None:
                 idx_files = await _discover_index_files(self._index_storage)
 
+            # Skip index warnings when snapshot is provided - workers already have
+            # efficient access via the transcript_id->filename mapping from parent
+            has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
+
             if idx_files:
                 await self._init_from_index()
+                # Check for unindexed parquet files (skip for worker processes)
+                if not has_snapshot:
+                    await self._check_index_coverage()
             else:
+                # Warn about missing index (skip for worker processes)
+                if not has_snapshot:
+                    logger.warning(
+                        f"No index found for {pretty_path(self._location)}. "
+                        f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
+                    )
                 await self._init_from_parquet()
 
     async def _init_from_index(self) -> None:
@@ -1675,6 +1721,55 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return filename
 
         return f"{location}/{filename}"
+
+    def _to_relative_filename(self, absolute_path: str) -> str:
+        """Convert absolute path to filename relative to database location.
+
+        Inverse of _full_parquet_path(). Used for comparing discovered parquet
+        files against filenames stored in the index.
+
+        Args:
+            absolute_path: Full path (e.g., '/path/to/db/file.parquet' or
+                          's3://bucket/db/file.parquet')
+
+        Returns:
+            Relative filename (e.g., 'file.parquet')
+        """
+        if self._location is None:
+            return absolute_path
+
+        location_prefix = self._location.rstrip("/") + "/"
+        if absolute_path.startswith(location_prefix):
+            return absolute_path[len(location_prefix) :]
+
+        # Already relative or different prefix - return as-is
+        return absolute_path
+
+    async def _check_index_coverage(self) -> None:
+        """Warn if parquet files exist that aren't in the index.
+
+        Compares filenames stored in the index against actual parquet files
+        on disk. If any files are missing from the index, logs a warning.
+        """
+        assert self._conn is not None
+
+        # Get filenames from loaded index (already in memory)
+        result = self._conn.execute(
+            "SELECT DISTINCT filename FROM transcript_index"
+        ).fetchall()
+        indexed_filenames = {row[0] for row in result}
+
+        # Discover actual parquet files and normalize to relative paths
+        actual_files = await self._discover_parquet_files()
+        actual_filenames = {self._to_relative_filename(f) for f in actual_files}
+
+        # Check for unindexed files
+        unindexed = actual_filenames - indexed_filenames
+        if unindexed:
+            logger.warning(
+                f"Index is stale: {len(unindexed)} parquet file(s) not indexed. "
+                f"Run `scout db index {pretty_path(self._location)}` to rebuild."
+            )
 
     def _init_hf_auth(self) -> None:
         assert self._conn is not None

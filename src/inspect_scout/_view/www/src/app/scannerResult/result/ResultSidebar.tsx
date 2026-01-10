@@ -27,7 +27,7 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
 
   return (
     <div className={clsx(styles.sidebar)}>
-      <div className={clsx(styles.container, "text-size-base")}>
+      <div className={clsx(styles.container, "text-size-small")}>
         {resultData.label && (
           <>
             <div className={clsx("text-style-label", "text-style-secondary")}>
@@ -61,13 +61,16 @@ export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
                 className={clsx(
                   "text-style-label",
                   "text-style-secondary",
-                  "text-size-smallest",
                   styles.validationLabel
                 )}
               >
                 Validation
               </div>
-              <ValidationResult result={resultData.validationResult} />
+              <ValidationResult
+                result={resultData.validationResult}
+                target={resultData.validationTarget}
+                label={resultData.label}
+              />
             </div>
           ) : undefined}
         </div>

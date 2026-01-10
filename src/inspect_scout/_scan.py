@@ -46,7 +46,8 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
+from ._active_scans_store import active_scans_store
+from ._concurrency.common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
 from ._display._display import (
@@ -764,14 +765,23 @@ async def _scan_async_inner(
                     await recorder.record(transcript, scanner, results, metrics)
                     scan_display.results(transcript, scanner, results, metrics)
 
-                await strategy(
-                    parse_jobs=_parse_jobs(scan, recorder, tr),
-                    parse_function=_parse_function,
-                    scan_function=_scan_function,
-                    record_results=record_results,
-                    update_metrics=scan_display.metrics,
-                    completed=_strategy_completed,
-                )
+                with active_scans_store() as active_store:
+
+                    def update_metrics(metrics: ScanMetrics) -> None:
+                        active_store.put(scan.spec.scan_id, metrics)
+                        scan_display.metrics(metrics)
+
+                    try:
+                        await strategy(
+                            parse_jobs=_parse_jobs(scan, recorder, tr),
+                            parse_function=_parse_function,
+                            scan_function=_scan_function,
+                            record_results=record_results,
+                            update_metrics=update_metrics,
+                            completed=_strategy_completed,
+                        )
+                    finally:
+                        active_store.delete_current()
 
                 # we've been throttle metrics calculation, now report it all
                 for scanner in metrics_accum:

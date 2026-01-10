@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { FC, useCallback, useRef } from "react";
 
 import { PopOver } from "../../../components/PopOver";
 import type { SimpleCondition } from "../../../query/types";
@@ -7,7 +7,7 @@ import type { FilterType } from "../../../state/store";
 import { ColumnFilterButton } from "./ColumnFilterButton";
 import styles from "./ColumnFilterControl.module.css";
 import { ColumnFilterEditor } from "./ColumnFilterEditor";
-import { useColumnFilter } from "./useColumnFilter";
+import { useColumnFilterPopover } from "./useColumnFilterPopover";
 
 interface ColumnFilterControlProps {
   columnId: string;
@@ -22,14 +22,11 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
   condition,
   onChange,
 }) => {
-  // popover state
   const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const cancelRef = useRef(false);
-  const prevOpenRef = useRef(false);
 
-  // filter logic
   const {
+    isOpen,
+    setIsOpen,
     operator,
     setOperator,
     rawValue,
@@ -38,45 +35,21 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
     isValueDisabled,
     valueSelectRef,
     valueInputRef,
-    buildCondition,
-  } = useColumnFilter({
+    commitAndClose,
+    cancelAndClose,
+  } = useColumnFilterPopover({
     columnId,
     filterType,
     condition,
-    isOpen,
+    onChange,
   });
 
-  const handlePopoverOpenChange = useCallback((nextOpen: boolean) => {
-    setIsOpen(nextOpen);
-  }, []);
-
-  const cancelAndClose = useCallback(() => {
-    cancelRef.current = true;
-    handlePopoverOpenChange(false);
-  }, [handlePopoverOpenChange]);
-
-  const commitAndClose = useCallback(() => {
-    const nextCondition = buildCondition(operator, rawValue);
-    if (nextCondition === undefined) {
-      return;
-    }
-    handlePopoverOpenChange(false);
-  }, [buildCondition, handlePopoverOpenChange, operator, rawValue]);
-
-  // commit changes when popover closes (unless cancelled)
-  useEffect(() => {
-    if (prevOpenRef.current && !isOpen) {
-      if (cancelRef.current) {
-        cancelRef.current = false;
-      } else {
-        const nextCondition = buildCondition(operator, rawValue);
-        if (nextCondition !== undefined) {
-          onChange(nextCondition);
-        }
-      }
-    }
-    prevOpenRef.current = isOpen;
-  }, [buildCondition, isOpen, onChange, operator, rawValue]);
+  const handlePopoverOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setIsOpen(nextOpen);
+    },
+    [setIsOpen]
+  );
 
   return (
     <div className={styles.headerActions}>

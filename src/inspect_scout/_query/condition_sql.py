@@ -166,16 +166,16 @@ def condition_as_sql(
     """
     if dialect == "filter":
         return _condition_as_filter_sql(condition)
-    sql, params = _build_condition_sql(condition, dialect)
+    sql, params = _build_parameterized_sql(condition, dialect)
     return (sql, params)
 
 
-def _build_condition_sql(
+def _build_parameterized_sql(
     condition: Condition,
     dialect: Literal["sqlite", "duckdb", "postgres"],
     param_offset: int = 0,
 ) -> tuple[str, list[Any]]:
-    """Recursively build SQL string and collect parameters.
+    """Build dialect-specific SQL with parameter placeholders.
 
     Args:
         condition: The Condition object to serialize.
@@ -188,7 +188,7 @@ def _build_condition_sql(
     if condition.is_compound:
         if condition.operator == LogicalOperator.NOT:
             assert isinstance(condition.left, Condition)
-            left_sql, left_params = _build_condition_sql(
+            left_sql, left_params = _build_parameterized_sql(
                 condition.left,
                 dialect,
                 param_offset,
@@ -198,14 +198,14 @@ def _build_condition_sql(
             assert isinstance(condition.left, Condition)
             assert isinstance(condition.right, Condition)
             assert condition.operator is not None
-            left_sql, left_params = _build_condition_sql(
+            left_sql, left_params = _build_parameterized_sql(
                 condition.left,
                 dialect,
                 param_offset,
             )
             # Update offset for right side based on left side parameters
             right_offset = param_offset + len(left_params)
-            right_sql, right_params = _build_condition_sql(
+            right_sql, right_params = _build_parameterized_sql(
                 condition.right,
                 dialect,
                 right_offset,
@@ -217,7 +217,7 @@ def _build_condition_sql(
     else:
         # Simple condition
         assert isinstance(condition.left, str)
-        column = _format_condition_column(condition.left, dialect)
+        column = _format_column_for_dialect(condition.left, dialect)
         is_json_path = "." in condition.left
 
         # Apply type casting for JSON paths (postgres/duckdb only)
@@ -245,9 +245,7 @@ def _build_condition_sql(
                 return "1 = 0", []  # empty IN = always false
             sql_parts = []
             if vals:
-                placeholders = _get_condition_placeholders(
-                    len(vals), dialect, param_offset
-                )
+                placeholders = _get_placeholders(len(vals), dialect, param_offset)
                 sql_parts.append(f"{column} IN ({placeholders})")
             if has_null:
                 sql_parts.append(f"{column} IS NULL")
@@ -262,9 +260,7 @@ def _build_condition_sql(
                 return "1 = 1", []  # empty NOT IN = always true
             sql_parts = []
             if vals:
-                placeholders = _get_condition_placeholders(
-                    len(vals), dialect, param_offset
-                )
+                placeholders = _get_placeholders(len(vals), dialect, param_offset)
                 sql_parts.append(f"{column} NOT IN ({placeholders})")
             if has_null:
                 sql_parts.append(f"{column} IS NOT NULL")
@@ -273,21 +269,21 @@ def _build_condition_sql(
                 sql = f"({sql})"
             return sql, vals
         elif condition.operator == Operator.BETWEEN:
-            p1 = _get_condition_placeholder(param_offset, dialect)
-            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            p1 = _get_placeholder(param_offset, dialect)
+            p2 = _get_placeholder(param_offset + 1, dialect)
             return f"{column} BETWEEN {p1} AND {p2}", list(condition.params)
         elif condition.operator == Operator.NOT_BETWEEN:
-            p1 = _get_condition_placeholder(param_offset, dialect)
-            p2 = _get_condition_placeholder(param_offset + 1, dialect)
+            p1 = _get_placeholder(param_offset, dialect)
+            p2 = _get_placeholder(param_offset + 1, dialect)
             return f"{column} NOT BETWEEN {p1} AND {p2}", list(condition.params)
         elif condition.operator == Operator.ILIKE:
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             if dialect == "postgres":
                 return f"{column} ILIKE {placeholder}", list(condition.params)
             # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
             return f"LOWER({column}) LIKE LOWER({placeholder})", list(condition.params)
         elif condition.operator == Operator.NOT_ILIKE:
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             if dialect == "postgres":
                 return f"{column} NOT ILIKE {placeholder}", list(condition.params)
             # For SQLite and DuckDB, use LOWER() for case-insensitive comparison
@@ -296,7 +292,7 @@ def _build_condition_sql(
             )
         else:
             assert condition.operator is not None
-            placeholder = _get_condition_placeholder(param_offset, dialect)
+            placeholder = _get_placeholder(param_offset, dialect)
             return f"{column} {condition.operator.value} {placeholder}", list(
                 condition.params
             )
@@ -307,7 +303,8 @@ def _escape_identifier(s: str) -> str:
     return s.replace('"', '""')
 
 
-def _esc_single(s: str) -> str:
+def _escape_single_quotes(s: str) -> str:
+    """Escape single quotes for SQL string literals by doubling them."""
     return s.replace("'", "''")
 
 
@@ -394,7 +391,14 @@ def _parse_json_path(path: str) -> tuple[str, list[tuple[str, bool]]]:
     return base or path, segments
 
 
-def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
+def _format_column_for_dialect(column_name: str, dialect: SQLDialect) -> str:
+    """Format a column reference for the target SQL dialect.
+
+    Handles JSON path syntax (config.model.name) per dialect:
+    - sqlite: json_extract("col", '$.path')
+    - duckdb: json_extract_string("col", '$.path')
+    - postgres: "col"->'path'->>'leaf'
+    """
     # If dotted, treat as: <base_column>.<json.path.inside.it>
     if "." in column_name or "[" in column_name:
         base, path_parts = _parse_json_path(column_name)
@@ -417,7 +421,7 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract(\"{_escape_identifier(base)}\", '{_esc_single(json_path)}')"
+            return f"json_extract(\"{_escape_identifier(base)}\", '{_escape_single_quotes(json_path)}')"
 
         elif dialect == "duckdb":
             # Use json_extract_string to extract as VARCHAR for direct comparison
@@ -431,7 +435,7 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract_string(\"{_escape_identifier(base)}\", '{_esc_single(json_path)}')"
+            return f"json_extract_string(\"{_escape_identifier(base)}\", '{_escape_single_quotes(json_path)}')"
 
         elif dialect == "postgres":
             result = f'"{_escape_identifier(base)}"'
@@ -442,14 +446,14 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                     result = f"{result}{op}{segment}"
                 else:
                     # Object key: use quoted string
-                    result = f"{result}{op}'{_esc_single(segment)}'"
+                    result = f"{result}{op}'{_escape_single_quotes(segment)}'"
             return result
 
     # Simple (non-JSON) column
     return f'"{_escape_identifier(column_name)}"'
 
 
-def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
+def _get_placeholder(position: int, dialect: SQLDialect) -> str:
     """Get parameter placeholder for the dialect.
 
     Args:
@@ -462,9 +466,7 @@ def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
         return "?"
 
 
-def _get_condition_placeholders(
-    count: int, dialect: SQLDialect, offset: int = 0
-) -> str:
+def _get_placeholders(count: int, dialect: SQLDialect, offset: int = 0) -> str:
     """Get multiple parameter placeholders for the dialect.
 
     Args:
@@ -480,7 +482,7 @@ def _get_condition_placeholders(
 
 
 def _build_filter_sql(condition: Condition) -> str:
-    """Recursively build SQL string from condition."""
+    """Build SQL for the filter DSL (human-readable, values inlined)."""
     if condition.is_compound:
         if condition.operator == LogicalOperator.NOT:
             assert isinstance(condition.left, Condition)
@@ -496,7 +498,7 @@ def _build_filter_sql(condition: Condition) -> str:
     else:
         # Simple condition
         assert isinstance(condition.left, str)
-        column = _format_column(condition.left)
+        column = _format_filter_column(condition.left)
 
         if condition.operator == Operator.IS_NULL:
             return f"{column} IS NULL"
@@ -554,8 +556,8 @@ def _build_filter_sql(condition: Condition) -> str:
             return f"{column} {condition.operator.value} {format_sql_value(condition.right)}"
 
 
-def _format_column(column_name: str) -> str:
-    """Format column name, using shorthand for JSON paths.
+def _format_filter_column(column_name: str) -> str:
+    """Format a column for the filter DSL (human-readable, not executable).
 
     Simple columns are output unquoted if they don't need quoting.
     JSON paths use dot notation: config.model.name
@@ -657,7 +659,6 @@ def _needs_quoting(identifier: str) -> bool:
     return False
 
 
-# Placeholder for condition_from_sql - will be implemented next
 def condition_from_sql(sql: str) -> Condition:
     """Parse SQL expression into Condition.
 
@@ -888,7 +889,7 @@ def _match_identifier_chain(sql: str, start: int) -> tuple[str, int] | None:
 
 
 def _parse_identifier_chain(chain: str) -> list[str]:
-    """Parse an identifier chain into its parts."""
+    """Split a dotted identifier chain like 'config.model.name' into parts."""
     parts: list[str] = []
     i = 0
     n = len(chain)

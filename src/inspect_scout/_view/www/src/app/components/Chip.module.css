@@ -1,0 +1,32 @@
+.chip {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0.2rem;
+  padding: 0.1rem 0.4rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  font-family: var(--bs-font-monospace);
+  align-items: center;
+}
+
+.label {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+
+.value {
+}
+
+.icon {
+  margin-right: 0.2rem;
+  font-size: 0.8em;
+}
+
+.closeIcon {
+  margin-left: 0.3rem;
+  font-size: 0.8em;
+}
+
+.clickable {
+  cursor: pointer;
+}

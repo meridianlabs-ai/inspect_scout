@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
@@ -8,13 +8,21 @@ import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useCode } from "../server/useCode";
 import { useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
+import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
+import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
+import { TranscriptFilterBar } from "./TranscriptFilterBar";
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
+  // Column picker state
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const columnButtonRef = useRef<HTMLButtonElement>(null);
+
   // Resolve the active transcripts directory
   const config = useConfig();
   const transcriptDir = config.transcripts_dir;
@@ -27,9 +35,9 @@ export const TranscriptsPanel: FC = () => {
   // Filtering
   const columnFilters =
     useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
-  const filterConditions = Object.values(columnFilters).filter(
-    (filter): filter is SimpleCondition => Boolean(filter)
-  );
+  const filterConditions = Object.values(columnFilters)
+    .map((filter) => filter.condition)
+    .filter((condition): condition is SimpleCondition => Boolean(condition));
 
   // Sorting
   const condition = filterConditions.reduce<Condition | undefined>(
@@ -43,6 +51,12 @@ export const TranscriptsPanel: FC = () => {
   useEffect(() => {
     clearTranscriptState();
   }, [clearTranscriptState]);
+
+  const {
+    data: filterCodeValues,
+    error: _codeError,
+    loading: _codeLoading,
+  } = useCode(condition);
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
@@ -67,13 +81,23 @@ export const TranscriptsPanel: FC = () => {
     [fetchNextPage]
   );
 
-  // TODO: is data?.pages[0]?.["total_count"] expected to be present (type system seems not to think so)
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         bordered={true}
         transcriptsDir={resolvedTranscriptDir}
         setTranscriptsDir={setUserTranscriptsDir}
+      >
+        <TranscriptColumnsButton
+          ref={columnButtonRef}
+          isOpen={showColumnPicker}
+          onClick={() => setShowColumnPicker(!showColumnPicker)}
+        />
+      </TranscriptsNavbar>
+      <TranscriptColumnsPopover
+        positionEl={columnButtonRef.current}
+        isOpen={showColumnPicker}
+        setIsOpen={setShowColumnPicker}
       />
       <LoadingBar loading={isFetching} />
       {error && (
@@ -85,18 +109,21 @@ export const TranscriptsPanel: FC = () => {
         />
       )}
       {!error && (
-        <TranscriptsGrid
-          transcripts={transcripts}
-          transcriptsDir={resolvedTranscriptDir}
-          loading={isFetching && transcripts.length === 0}
-          onScrollNearEnd={handleScrollNearEnd}
-          hasMore={hasNextPage}
-          fetchThreshold={infiniteScrollConfig.threshold}
-        />
+        <>
+          <TranscriptFilterBar filterCodeValues={filterCodeValues} />
+          <TranscriptsGrid
+            transcripts={transcripts}
+            transcriptsDir={resolvedTranscriptDir}
+            loading={isFetching && transcripts.length === 0}
+            onScrollNearEnd={handleScrollNearEnd}
+            hasMore={hasNextPage}
+            fetchThreshold={infiniteScrollConfig.threshold}
+          />
+        </>
       )}
       <Footer
         id={"transcripts-footer"}
-        itemCount={data?.pages[0]?.["total_count"] || 0}
+        itemCount={data?.pages[0]?.total_count || 0}
         paginated={false}
       />
     </div>

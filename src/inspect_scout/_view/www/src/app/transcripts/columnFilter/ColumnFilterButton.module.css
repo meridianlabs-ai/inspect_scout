@@ -1,0 +1,14 @@
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary);
+  cursor: pointer;
+}
+
+.filterButtonActive {
+  color: var(--bs-primary);
+}

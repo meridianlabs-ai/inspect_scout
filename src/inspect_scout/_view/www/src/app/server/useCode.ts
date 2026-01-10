@@ -4,12 +4,13 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 export const useCode = (
-  condition: Condition
+  condition: Condition | undefined
 ): AsyncData<Record<string, string>> => {
   const api = useApi();
   return useAsyncDataFromQuery({
     queryKey: ["code", condition],
-    queryFn: () => api.postCode(condition),
+    enabled: !!condition,
+    queryFn: () => api.postCode(condition!),
     staleTime: Infinity,
   });
 };

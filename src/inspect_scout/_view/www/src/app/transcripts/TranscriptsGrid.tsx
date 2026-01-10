@@ -86,18 +86,19 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const focusedRowId = useStore(
     (state) => state.transcriptsTableState.focusedRowId
   );
-  const visibleColumns =
-    useStore((state) => state.transcriptsTableState.visibleColumns) ?? [
-      "success",
-      "date",
-      "task_set",
-      "task_id",
-      "task_repeat",
-      "model",
-      "score",
-      "total_time",
-      "total_tokens",
-    ];
+  const visibleColumns = useStore(
+    (state) => state.transcriptsTableState.visibleColumns
+  ) ?? [
+    "success",
+    "date",
+    "task_set",
+    "task_id",
+    "task_repeat",
+    "model",
+    "score",
+    "total_time",
+    "total_tokens",
+  ];
   const setTableState = useStore((state) => state.setTranscriptsTableState);
   const handleColumnFilterChange = useCallback(
     (

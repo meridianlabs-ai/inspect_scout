@@ -276,7 +276,7 @@ def _resolve_project_id(langfuse_client: Any, project: str) -> str:
     # Then check if it matches any project name
     for proj in projects:
         if getattr(proj, "name", None) == project:
-            return proj.id
+            return str(proj.id)
 
     # If no match found, raise an error with available projects
     available = [

@@ -15,7 +15,7 @@ import styles from "./TranscriptFilterBar.module.css";
 
 const kCopyCodeDescriptors = [
   { label: "Python", value: "python" },
-  { label: "Filter (SQL)", value: "sql" },
+  { label: "Filter", value: "filter" },
 ];
 
 export const TranscriptFilterBar: FC<{

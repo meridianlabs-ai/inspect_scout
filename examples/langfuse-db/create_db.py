@@ -17,7 +17,7 @@ from inspect_scout.sources import langfuse
 
 # Session IDs for test data (one per provider format)
 SESSION_IDS = {
-    "fu4epGBdMGZ84KXSCY6aWB",  # Anthropic (OTEL-normalized)
+    "bsCW6Mpd5t8y2nzwiGxzEj",  # Anthropic (OTEL with extended thinking)
     "SsZiMRBMvPH5GPnsu6Jk69",  # OpenAI Responses API
     "LhXbgLJvb4KCsuDV5rffpR",  # OpenAI Chat Completions
     "EG2UfE9MvpBSmy73R6a2UH",  # Google Gemini

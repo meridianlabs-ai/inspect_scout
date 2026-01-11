@@ -1027,16 +1027,16 @@ async def test_langfuse_anthropic() -> None:
     """Test LangFuse integration with real Anthropic traces.
 
     Validates the full integration against production data from an
-    Anthropic (Claude) model session.
+    Anthropic (Claude) model session with extended thinking enabled.
 
     Note: Anthropic OTEL data contains tool_result messages that are properly
     parsed as "tool" role, so min_user_messages is 1 (just the task prompt).
     """
-    transcript = await _fetch_langfuse_session(session_id="fu4epGBdMGZ84KXSCY6aWB")
+    transcript = await _fetch_langfuse_session(session_id="bsCW6Mpd5t8y2nzwiGxzEj")
 
     model_events, role_counts = _assert_langfuse_transcript(
         transcript,
-        session_id="fu4epGBdMGZ84KXSCY6aWB",
+        session_id="bsCW6Mpd5t8y2nzwiGxzEj",
         model_pattern="claude",
         min_user_messages=1,  # Only task prompt; tool_result → "tool" role
     )
@@ -1046,8 +1046,21 @@ async def test_langfuse_anthropic() -> None:
 
     # Verify tool results are properly captured as tool messages
     assert "tool" in role_counts, "Expected tool messages for Anthropic tool results"
-    assert role_counts["tool"] >= 5, (
-        f"Expected at least 5 tool messages, got {role_counts.get('tool', 0)}"
+    assert role_counts["tool"] >= 10, (
+        f"Expected at least 10 tool messages, got {role_counts.get('tool', 0)}"
+    )
+
+    # Verify reasoning/thinking blocks are captured in assistant messages
+    from inspect_ai._util.content import ContentReasoning
+
+    reasoning_count = 0
+    for msg in transcript.messages:
+        if msg.role == "assistant" and isinstance(msg.content, list):
+            for item in msg.content:
+                if isinstance(item, ContentReasoning):
+                    reasoning_count += 1
+    assert reasoning_count >= 5, (
+        f"Expected at least 5 reasoning blocks, got {reasoning_count}"
     )
 
 

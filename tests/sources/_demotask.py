@@ -8,34 +8,39 @@ from shortuuid import uuid
 dotenv.load_dotenv()
 
 
-def run_eval(model: str, model_args: dict[str, Any] | None = None) -> None:
+def run_eval(
+    model: str, model_args: dict[str, Any] | None = None, **config: Any
+) -> None:
     eval(
         "inspect_evals/gdm_in_house_ctf",
         model=model,
         epochs=1,
         limit=1,
         model_args=model_args or {},
+        **config,
     )
 
 
 @observe
-def langfuse_task(model: str, model_args: dict[str, Any] | None = None) -> None:
+def langfuse_task(
+    model: str, model_args: dict[str, Any] | None = None, **config: Any
+) -> None:
     client = get_client()
     session_id = uuid()
     with propagate_attributes(
         session_id=session_id, metadata={"scout": "true"}, tags=["scout"]
     ):
-        run_eval(model, model_args)
+        run_eval(model, model_args, **config)
     client.flush()
 
 
-# session_id: fu4epGBdMGZ84KXSCY6aWB
+# session_id: bsCW6Mpd5t8y2nzwiGxzEj
 def langfuse_capture_anthropic() -> None:
     # pip install opentelemetry-instrumentation-anthropic
     from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 
     AnthropicInstrumentor().instrument()
-    langfuse_task("anthropic/claude-sonnet-4-5")
+    langfuse_task("anthropic/claude-sonnet-4-5", None, reasoning_tokens=8192)
 
 
 # session_id: LhXbgLJvb4KCsuDV5rffpR

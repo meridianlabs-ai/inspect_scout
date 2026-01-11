@@ -191,18 +191,18 @@ async def _session_to_transcript(
         o for o in all_observations if getattr(o, "type", "") == "GENERATION"
     ]
 
-    # Find the last ModelEvent for messages
+    # Find model events for message extraction
     model_events = [e for e in events if getattr(e, "event", "") == "model"]
     messages: list[ChatMessage] = []
 
     if model_events:
-        final_model = model_events[-1]
-
         # For OpenAI, try to use hybrid extraction to preserve system/user context
         # The Responses API format has complete message history that OTEL often lacks
         best_resp_gen = _find_best_responses_api_generation(generations)
         if best_resp_gen is not None:
             resp_idx, resp_gen = best_resp_gen
+            final_model = model_events[-1]
+
             # Extract base messages from Responses API format (has system/user)
             base_messages = await _extract_input_messages(
                 resp_gen.input, "openai_responses"
@@ -214,13 +214,14 @@ async def _session_to_transcript(
                 messages = _merge_transcript_messages(base_messages, final_messages)
             else:
                 messages = base_messages
-        else:
-            # Fallback to current behavior for non-OpenAI or OTEL-only sessions
-            messages = list(final_model.input)
 
-        # Always add final output message
-        if final_model.output and final_model.output.message:
-            messages.append(final_model.output.message)
+            # Always add final output message
+            if final_model.output and final_model.output.message:
+                messages.append(final_model.output.message)
+        else:
+            # Build messages from events - this captures the full conversation
+            # including all model outputs (with reasoning, tool calls) and tool results
+            messages = _build_messages_from_events(events)
 
     # Get metadata from first trace
     first_trace = traces[0] if traces else None
@@ -335,10 +336,12 @@ def _detect_provider_format(gen: Any) -> str:
     2. Native OpenAI Chat Completions: output has "choices"
     3. Native Google: output has "candidates" OR input has "contents"
     4. OTEL-normalized: output is list with finish_reason (returns "openai")
-    5. Model name hints as fallback
+    5. Anthropic content blocks: messages contain tool_use/tool_result blocks
+    6. Model name hints as fallback
 
-    Note: Anthropic uses OTEL instrumentation which normalizes to OpenAI format,
-    so we return "openai" for Claude models.
+    Note: Anthropic OTEL instrumentation may produce OpenAI-like structure but with
+    Anthropic-style content blocks (tool_use, tool_result). We detect these and
+    return "anthropic" to ensure proper message conversion.
 
     Args:
         gen: LangFuse generation observation
@@ -383,19 +386,37 @@ def _detect_provider_format(gen: Any) -> str:
         if "candidates" in output_data:
             return "google"
 
-    # 3. Check for OTEL-normalized list format
+    # 3. Check for Anthropic content blocks in messages (OTEL may serialize as JSON)
+    # This MUST run before the OTEL check since Anthropic OTEL data has finish_reason
+    # but also has Anthropic-style content blocks that need special handling
+    messages = None
+    if isinstance(input_data, dict) and "messages" in input_data:
+        messages = input_data["messages"]
+    elif isinstance(input_data, list):
+        messages = input_data
+
+    if messages and isinstance(messages, list):
+        for msg in messages:
+            if isinstance(msg, dict) and "content" in msg:
+                content = msg["content"]
+                # Try parsing JSON string content
+                parsed = _parse_json_content(content)
+                if _has_anthropic_tool_blocks(parsed):
+                    return "anthropic"
+
+    # 4. Check for OTEL-normalized list format (after Anthropic check)
     if isinstance(output_data, list) and output_data:
         first = output_data[0]
         if isinstance(first, dict):
             if "tool_calls" in first or "finish_reason" in first:
                 return "openai"
 
-    # 4. Check input structure
+    # 5. Check input structure
     if isinstance(input_data, dict):
         if "contents" in input_data:
             return "google"
 
-    # 5. Fall back to model name hints
+    # 6. Fall back to model name hints
     if any(p in model_lower for p in ["gpt-", "o1-", "text-davinci", "text-embedding"]):
         return "openai"
     if "claude" in model_lower:
@@ -494,6 +515,45 @@ def _merge_transcript_messages(
             base_keys.add(key)
 
     return merged
+
+
+def _build_messages_from_events(events: list[Any]) -> list[ChatMessage]:
+    """Build message list from model events.
+
+    This reconstructs the full conversation using the LAST model event's input
+    (which contains the complete conversation history) plus its output.
+
+    For OTEL-instrumented providers (Anthropic, Google, OpenAI):
+    - Each model event's input contains the full conversation up to that point
+    - The last model event's input has all messages including system, user, and tool
+    - OpenAI Responses API is handled separately before this function is called
+
+    Args:
+        events: List of events (ModelEvent, ToolEvent, etc.)
+
+    Returns:
+        List of ChatMessage objects representing the full conversation
+    """
+    messages: list[ChatMessage] = []
+
+    # Find model events
+    model_events = [e for e in events if getattr(e, "event", "") == "model"]
+
+    if not model_events:
+        return messages
+
+    last_model = model_events[-1]
+
+    # Use the last model event's input - it has the complete conversation
+    if last_model.input:
+        for msg in last_model.input:
+            messages.append(msg)
+
+    # Add the output message (the final assistant response)
+    if last_model.output and last_model.output.message:
+        messages.append(last_model.output.message)
+
+    return messages
 
 
 def _parse_google_content_repr(s: str) -> dict[str, Any]:
@@ -753,6 +813,57 @@ def _extract_text_from_otel_contents(contents: Any) -> str:
     return "\n".join(texts) if texts else ""
 
 
+def _parse_json_content(content: Any) -> Any:
+    """Parse content if it's a JSON string containing Anthropic content blocks.
+
+    OTEL instrumentations may serialize Anthropic content blocks as JSON strings.
+    This function detects and parses such strings back to structured data.
+
+    Args:
+        content: Message content (string, list, or other)
+
+    Returns:
+        Parsed list if content was JSON array string, otherwise original content
+    """
+    if not isinstance(content, str):
+        return content
+
+    # Check if it looks like a JSON array
+    stripped = content.strip()
+    if not (stripped.startswith("[") and stripped.endswith("]")):
+        return content
+
+    try:
+        import json
+
+        parsed = json.loads(content)
+        # Validate it looks like Anthropic content blocks
+        if isinstance(parsed, list) and len(parsed) > 0:
+            if isinstance(parsed[0], dict) and "type" in parsed[0]:
+                return parsed
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    return content
+
+
+def _has_anthropic_tool_blocks(content: Any) -> bool:
+    """Check if content contains Anthropic tool_use or tool_result blocks.
+
+    Args:
+        content: Message content (list or other)
+
+    Returns:
+        True if content contains tool_use or tool_result blocks
+    """
+    if not isinstance(content, list):
+        return False
+    return any(
+        isinstance(c, dict) and c.get("type") in ("tool_use", "tool_result")
+        for c in content
+    )
+
+
 def _normalize_otel_messages_to_openai(messages: Any) -> Any:
     """Normalize OTEL-instrumented messages to proper OpenAI format.
 
@@ -801,11 +912,24 @@ def _normalize_otel_messages_to_openai(messages: Any) -> Any:
         # Convert 'contents' (plural) to 'content' for OpenAI compatibility
         if "contents" in new_msg and "content" not in new_msg:
             contents = new_msg.pop("contents")
-            new_msg["content"] = _extract_text_from_otel_contents(contents)
+            # Try parsing as JSON first (may contain Anthropic tool blocks)
+            parsed = _parse_json_content(contents)
+            if _has_anthropic_tool_blocks(parsed):
+                # Keep structured Anthropic content with tool blocks
+                new_msg["content"] = parsed
+            else:
+                new_msg["content"] = _extract_text_from_otel_contents(contents)
 
-        # Also handle 'content' that's a list (should be string for OpenAI)
-        if "content" in new_msg and isinstance(new_msg["content"], list):
-            new_msg["content"] = _extract_text_from_otel_contents(new_msg["content"])
+        # Handle 'content' field - may be JSON string or list
+        if "content" in new_msg:
+            # Try parsing JSON string content
+            new_msg["content"] = _parse_json_content(new_msg["content"])
+            # Only flatten to text if it's a list without tool blocks
+            if isinstance(new_msg["content"], list):
+                if not _has_anthropic_tool_blocks(new_msg["content"]):
+                    new_msg["content"] = _extract_text_from_otel_contents(
+                        new_msg["content"]
+                    )
 
         # Normalize tool_calls in assistant messages
         if new_msg.get("role") == "assistant" and "tool_calls" in new_msg:
@@ -911,6 +1035,13 @@ async def _extract_input_messages(
                     # Extract system from messages and remove it from the list
                     system = first_msg.get("content", "")
                     messages = messages[1:]
+
+            # Parse JSON string content that contains tool_use/tool_result blocks
+            # OTEL instrumentation may serialize Anthropic content blocks as JSON strings
+            if isinstance(messages, list):
+                for msg in messages:
+                    if isinstance(msg, dict) and "content" in msg:
+                        msg["content"] = _parse_json_content(msg["content"])
 
             return await messages_from_anthropic(messages, system)
         case "google":

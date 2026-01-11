@@ -1028,6 +1028,9 @@ async def test_langfuse_anthropic() -> None:
 
     Validates the full integration against production data from an
     Anthropic (Claude) model session.
+
+    Note: Anthropic OTEL data contains tool_result messages that are properly
+    parsed as "tool" role, so min_user_messages is 1 (just the task prompt).
     """
     transcript = await _fetch_langfuse_session(session_id="fu4epGBdMGZ84KXSCY6aWB")
 
@@ -1035,10 +1038,17 @@ async def test_langfuse_anthropic() -> None:
         transcript,
         session_id="fu4epGBdMGZ84KXSCY6aWB",
         model_pattern="claude",
+        min_user_messages=1,  # Only task prompt; tool_result → "tool" role
     )
 
     # Anthropic-specific: system message should be present
     assert "system" in role_counts, "Expected system messages for Anthropic"
+
+    # Verify tool results are properly captured as tool messages
+    assert "tool" in role_counts, "Expected tool messages for Anthropic tool results"
+    assert role_counts["tool"] >= 5, (
+        f"Expected at least 5 tool messages, got {role_counts.get('tool', 0)}"
+    )
 
 
 @skip_if_no_langfuse_project

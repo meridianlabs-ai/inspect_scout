@@ -107,3 +107,14 @@ def skip_if_no_docker(func: F) -> F:
             reason="Test doesn't work without Docker installed.",
         )(func),
     )
+
+
+def skip_if_no_langfuse_project(func: F) -> F:
+    proj_public = os.environ.get("LANGFUSE_PUBLIC_KEY", None)
+    return cast(
+        F,
+        pytest.mark.skipif(
+            proj_public != "pk-lf-e69093b6-f217-407c-8841-a9923ad359a5",
+            reason="Test requires Langfuse test project",
+        )(func),
+    )

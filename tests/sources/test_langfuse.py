@@ -17,6 +17,8 @@ from inspect_scout.sources._langfuse import (
     _sum_tokens,
 )
 
+from tests.conftest import skip_if_no_langfuse_project
+
 
 class MockObservation:
     """Mock LangFuse observation for testing."""
@@ -45,14 +47,14 @@ class MockObservation:
         self.model = model
         self.input = input
         self.output = output
-        self.startTime = start_time or datetime.now()
-        self.endTime = end_time
-        self.usageDetails = usage_details
-        self.modelParameters = model_parameters
-        self.parentObservationId = parent_observation_id
+        self.start_time = start_time or datetime.now()
+        self.end_time = end_time
+        self.usage_details = usage_details
+        self.model_parameters = model_parameters
+        self.parent_observation_id = parent_observation_id
         self.latency = latency
         self.level = level
-        self.statusMessage = status_message
+        self.status_message = status_message
         self.metadata = metadata
 
 
@@ -73,9 +75,9 @@ class MockTrace:
         observations: list[MockObservation] | None = None,
     ) -> None:
         self.id = trace_id
-        self.sessionId = session_id
+        self.session_id = session_id
         self.name = name
-        self.userId = user_id
+        self.user_id = user_id
         self.tags = tags
         self.version = version
         self.release = release
@@ -94,7 +96,7 @@ class MockSession:
         traces: list[MockTrace] | None = None,
     ) -> None:
         self.id = session_id
-        self.createdAt = created_at or datetime.now()
+        self.created_at = created_at or datetime.now()
         self.traces = traces or []
 
 
@@ -118,12 +120,27 @@ class TestDetectProviderFormat:
         assert _detect_provider_format(gen) == "openai"
 
     def test_detect_anthropic_by_model_name(self) -> None:
-        """Detect Anthropic format from model name."""
-        gen = MockObservation(model="claude-3-opus-20240229", input={}, output={})
-        assert _detect_provider_format(gen) == "anthropic"
+        """Detect Anthropic format from model name with native format data.
 
+        Anthropic uses OTEL instrumentation which normalizes data to OpenAI format
+        (finish_reason instead of stop_reason, tool_calls instead of tool_use).
+        Therefore Claude models always return 'openai' format.
+        """
+        # OTEL-normalized Claude data: detected as 'openai' format
+        otel_output = [
+            {"content": "Hello", "role": "assistant", "finish_reason": "stop"}
+        ]
+        gen = MockObservation(model="claude-3-sonnet", input={}, output=otel_output)
+        assert _detect_provider_format(gen) == "openai"
+
+        gen = MockObservation(
+            model="claude-3-opus-20240229", input={}, output=otel_output
+        )
+        assert _detect_provider_format(gen) == "openai"
+
+        # Empty data with Claude model: defaults to 'openai' (OTEL format)
         gen = MockObservation(model="claude-3-sonnet", input={}, output={})
-        assert _detect_provider_format(gen) == "anthropic"
+        assert _detect_provider_format(gen) == "openai"
 
     def test_detect_google_by_model_name(self) -> None:
         """Detect Google format from model name."""
@@ -138,15 +155,6 @@ class TestDetectProviderFormat:
         output = {"choices": [{"message": {"role": "assistant", "content": "Hi"}}]}
         gen = MockObservation(model=None, input={}, output=output)
         assert _detect_provider_format(gen) == "openai"
-
-    def test_detect_anthropic_by_output_structure(self) -> None:
-        """Detect Anthropic format from output structure (stop_reason + content list)."""
-        output = {
-            "stop_reason": "end_turn",
-            "content": [{"type": "text", "text": "Hi"}],
-        }
-        gen = MockObservation(model=None, input={}, output=output)
-        assert _detect_provider_format(gen) == "anthropic"
 
     def test_detect_google_by_output_structure(self) -> None:
         """Detect Google format from output structure (candidates array)."""
@@ -629,9 +637,7 @@ class TestSessionToTranscript:
             obs_type="GENERATION",
             model="gpt-4",
             input={"messages": [{"role": "user", "content": "Hello"}]},
-            output={
-                "choices": [{"message": {"role": "assistant", "content": "Hi!"}}]
-            },
+            output={"choices": [{"message": {"role": "assistant", "content": "Hi!"}}]},
             start_time=datetime(2024, 1, 1, 12, 0, 0),
         )
 
@@ -660,9 +666,7 @@ class TestSessionToTranscript:
             obs_type="GENERATION",
             model="gpt-4",
             input={"messages": [{"role": "user", "content": "Hello"}]},
-            output={
-                "choices": [{"message": {"role": "assistant", "content": "Hi!"}}]
-            },
+            output={"choices": [{"message": {"role": "assistant", "content": "Hi!"}}]},
             start_time=datetime(2024, 1, 1, 12, 0, 0),
         )
 
@@ -673,7 +677,10 @@ class TestSessionToTranscript:
         mock_client.api.trace.get.return_value = trace
 
         transcript = await _session_to_transcript(
-            session, mock_client, project_id="proj-123", host="https://langfuse.mycompany.com/"
+            session,
+            mock_client,
+            project_id="proj-123",
+            host="https://langfuse.mycompany.com/",
         )
 
         assert transcript is not None
@@ -796,13 +803,13 @@ class TestTranscriptsFromLangfuse:
             MockTrace(trace_id="t2", session_id="s2"),
         ]
         page1_meta = MagicMock()
-        page1_meta.totalPages = 2
+        page1_meta.total_pages = 2
 
         page2_traces = [
             MockTrace(trace_id="t3", session_id="s3"),
         ]
         page2_meta = MagicMock()
-        page2_meta.totalPages = 2
+        page2_meta.total_pages = 2
 
         # Mock langfuse client
         mock_langfuse = MagicMock()
@@ -838,7 +845,7 @@ class TestTranscriptsFromLangfuse:
         # Create mock traces and sessions
         traces = [MockTrace(trace_id=f"t{i}", session_id=f"s{i}") for i in range(5)]
         meta = MagicMock()
-        meta.totalPages = 1
+        meta.total_pages = 1
 
         generation = MockObservation(
             obs_type="GENERATION",
@@ -867,3 +874,260 @@ class TestTranscriptsFromLangfuse:
 
         # Should only get 2 transcripts despite 5 sessions
         assert len(transcripts) == 2
+
+
+# ============================================================================
+# Integration Test Helpers
+# ============================================================================
+
+
+async def _fetch_langfuse_session(session_id: str) -> Any:
+    """Fetch a specific LangFuse session by ID.
+
+    Args:
+        session_id: The session ID to fetch
+
+    Returns:
+        The transcript for the session
+
+    Raises:
+        AssertionError: If the session is not found
+    """
+    from inspect_scout.sources import langfuse
+
+    async for t in langfuse(project="scout-pytest", tags=["scout"]):
+        if t.transcript_id == session_id:
+            return t
+
+    raise AssertionError(f"Session {session_id} not found")
+
+
+def _assert_langfuse_transcript(
+    transcript: Any,
+    session_id: str,
+    model_pattern: str,
+    min_model_events: int = 5,
+    min_messages: int = 10,
+    min_user_messages: int = 5,
+    min_assistant_messages: int = 5,
+) -> tuple[list[Any], dict[str, int]]:
+    """Common assertions for LangFuse transcript tests.
+
+    Args:
+        transcript: The transcript to validate
+        session_id: Expected session/transcript ID
+        model_pattern: Substring expected in model name (e.g., "claude", "gpt")
+        min_model_events: Minimum expected ModelEvents
+        min_messages: Minimum expected total messages
+        min_user_messages: Minimum expected user messages (varies by OTEL instrumentation)
+        min_assistant_messages: Minimum expected assistant messages
+
+    Returns:
+        Tuple of (model_events, role_counts) for provider-specific assertions
+    """
+    # Verify basic transcript fields
+    assert transcript.source_type == "langfuse"
+    assert transcript.transcript_id == session_id
+    assert transcript.model is not None
+    assert model_pattern in transcript.model.lower(), (
+        f"Expected {model_pattern} model, got {transcript.model}"
+    )
+
+    # Verify aggregated metrics are populated
+    # Note: total_tokens depends on the OpenTelemetry instrumentation capturing usage
+    assert transcript.total_tokens is not None, "Expected total_tokens to be set"
+
+    assert transcript.total_time is not None, "Expected total_time to be populated"
+    assert transcript.total_time > 0, (
+        f"Expected positive total_time, got {transcript.total_time}"
+    )
+
+    # Verify date is populated
+    assert transcript.date is not None, "Expected date to be populated"
+
+    # Verify source_uri is populated (link back to LangFuse)
+    assert transcript.source_uri is not None, "Expected source_uri to be populated"
+    assert "langfuse" in transcript.source_uri.lower(), (
+        f"Expected LangFuse URL in source_uri, got {transcript.source_uri}"
+    )
+
+    # Verify we have events
+    assert len(transcript.events) > 0, "Expected events in transcript"
+
+    # Find ModelEvents and verify we have multiple (multi-turn conversation)
+    model_events = [e for e in transcript.events if e.event == "model"]
+    assert len(model_events) >= min_model_events, (
+        f"Expected at least {min_model_events} ModelEvents, got {len(model_events)}"
+    )
+    print(f"\nModelEvents: {len(model_events)}")
+
+    # Check that at least one model event has tools
+    has_tools = any(len(e.tools) > 0 for e in model_events)
+    assert has_tools, "Expected at least one ModelEvent with tools"
+
+    # Verify tool structure
+    for event in model_events:
+        for tool in event.tools:
+            assert tool.name, "Tool should have a name"
+            assert tool.description, "Tool should have a description"
+            assert tool.parameters is not None, "Tool should have parameters"
+
+    # Verify ModelEvent timestamps are populated
+    for event in model_events:
+        assert event.timestamp is not None, "ModelEvent should have timestamp"
+        assert event.completed is not None, "ModelEvent should have completed time"
+
+    # Verify messages are populated with multiple messages of each type
+    assert len(transcript.messages) > 0, "Expected messages in transcript"
+
+    # Count messages by role
+    role_counts: dict[str, int] = {}
+    for msg in transcript.messages:
+        role_counts[msg.role] = role_counts.get(msg.role, 0) + 1
+
+    # Verify we have user and assistant messages
+    assert "user" in role_counts, "Expected user messages"
+    assert "assistant" in role_counts, "Expected assistant messages"
+
+    # Verify we have multiple messages (multi-turn conversation with tool use)
+    # Note: User message count varies by OTEL instrumentation - OpenAI captures fewer
+    assert role_counts["user"] >= min_user_messages, (
+        f"Expected at least {min_user_messages} user messages, got {role_counts['user']}"
+    )
+    assert role_counts["assistant"] >= min_assistant_messages, (
+        f"Expected at least {min_assistant_messages} assistant messages, "
+        f"got {role_counts['assistant']}"
+    )
+
+    # Verify total message count is substantial
+    total_messages = sum(role_counts.values())
+    assert total_messages >= min_messages, (
+        f"Expected at least {min_messages} total messages, got {total_messages}"
+    )
+
+    # Log message counts for visibility
+    print(f"Message counts: {role_counts} (total: {total_messages})")
+
+    # Verify metadata is populated with LangFuse-specific fields
+    assert transcript.metadata is not None, "Expected metadata to be populated"
+    assert "tags" in transcript.metadata, "Expected tags in metadata"
+    assert "scout" in transcript.metadata["tags"], "Expected 'scout' tag in metadata"
+
+    return model_events, role_counts
+
+
+# ============================================================================
+# Integration Tests with Real LangFuse Data
+# ============================================================================
+
+
+@skip_if_no_langfuse_project
+@pytest.mark.asyncio
+async def test_langfuse_anthropic() -> None:
+    """Test LangFuse integration with real Anthropic traces.
+
+    Validates the full integration against production data from an
+    Anthropic (Claude) model session.
+    """
+    transcript = await _fetch_langfuse_session(session_id="fu4epGBdMGZ84KXSCY6aWB")
+
+    model_events, role_counts = _assert_langfuse_transcript(
+        transcript,
+        session_id="fu4epGBdMGZ84KXSCY6aWB",
+        model_pattern="claude",
+    )
+
+    # Anthropic-specific: system message should be present
+    assert "system" in role_counts, "Expected system messages for Anthropic"
+
+
+@skip_if_no_langfuse_project
+@pytest.mark.asyncio
+async def test_langfuse_openai() -> None:
+    """Test LangFuse integration with real OpenAI traces.
+
+    Validates the full integration against production data from an
+    OpenAI (GPT) model session.
+
+    Note: The OpenAI Responses API format for this eval has only 1 user message
+    (the task prompt) since all interaction happens via function calls. Through
+    hybrid extraction, we merge messages from Responses API format (which has
+    complete system/user context) with OTEL-captured generations for the most
+    complete message history.
+    """
+    transcript = await _fetch_langfuse_session(session_id="SsZiMRBMvPH5GPnsu6Jk69")
+
+    # OpenAI OTEL captures fewer user messages - the eval task only has 1 user turn
+    _model_events, role_counts = _assert_langfuse_transcript(
+        transcript,
+        session_id="SsZiMRBMvPH5GPnsu6Jk69",
+        model_pattern="gpt",
+        min_user_messages=1,  # Only 1 user message in this eval
+        min_assistant_messages=5,
+    )
+
+    # OpenAI with hybrid extraction: system message should now be present
+    # (extracted from Responses API format generation which has complete context)
+    assert "system" in role_counts, (
+        "Expected system message for OpenAI (via hybrid Responses API extraction)"
+    )
+
+
+@skip_if_no_langfuse_project
+@pytest.mark.asyncio
+async def test_langfuse_openai_completions() -> None:
+    """Test LangFuse integration with real OpenAI Chat Completions API traces.
+
+    Validates the full integration against production data from an
+    OpenAI session using the Chat Completions API (not Responses API).
+
+    The OTEL instrumentation preserves native Chat Completions format:
+    - Input: dict with 'messages', 'model', 'tools', 'tool_choice'
+    - Output: dict with 'choices' array
+    - Messages have 'developer' role for system messages
+    """
+    transcript = await _fetch_langfuse_session(session_id="LhXbgLJvb4KCsuDV5rffpR")
+
+    _model_events, role_counts = _assert_langfuse_transcript(
+        transcript,
+        session_id="LhXbgLJvb4KCsuDV5rffpR",
+        model_pattern="gpt",
+        min_model_events=5,
+        min_user_messages=1,  # Eval task has 1 user message
+        min_assistant_messages=5,
+    )
+
+    # Chat Completions API: system message should be present
+    # (developer role in OpenAI maps to system role in ChatMessage)
+    assert "system" in role_counts, (
+        "Expected system message for OpenAI Chat Completions API"
+    )
+
+
+@skip_if_no_langfuse_project
+@pytest.mark.asyncio
+async def test_langfuse_google() -> None:
+    """Test LangFuse integration with real Google (Gemini) traces.
+
+    Validates the full integration against production data from a
+    Google Gemini model session.
+
+    The Google OTEL instrumentation serializes SDK objects using repr(),
+    requiring parsing of Content and FunctionDeclaration strings back
+    into structured data that messages_from_google can consume.
+    """
+    transcript = await _fetch_langfuse_session(session_id="EG2UfE9MvpBSmy73R6a2UH")
+
+    _model_events, role_counts = _assert_langfuse_transcript(
+        transcript,
+        session_id="EG2UfE9MvpBSmy73R6a2UH",
+        model_pattern="gemini",
+        min_model_events=5,
+        min_user_messages=1,  # Eval task has 1 user message
+        min_assistant_messages=5,
+    )
+
+    # Google: system message should be present (from config.system_instruction)
+    assert "system" in role_counts, (
+        "Expected system message for Google (from config.system_instruction)"
+    )

@@ -1,5 +1,4 @@
 import {
-  ColumnDef,
   ColumnSizingState,
   flexRender,
   getCoreRowModel,
@@ -26,53 +25,16 @@ import { useNavigate } from "react-router-dom";
 import { ApplicationIcons } from "../../components/icons";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
-import { useStore } from "../../state/store";
+import { useStore, FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
-import { Score } from "../../types/api-types";
-import { printArray } from "../../utils/array";
-import { formatNumber, formatPrettyDecimal } from "../../utils/format";
-import { printObject } from "../../utils/object";
 
-import { ColumnFilterControl, FilterType } from "./ColumnFilterControl";
+import { ColumnFilterControl } from "./columnFilter";
+import {
+  TranscriptColumn,
+  getTranscriptColumns,
+  getCellTitleValue,
+} from "./columns";
 import styles from "./TranscriptsGrid.module.css";
-
-type TranscriptColumn = ColumnDef<TranscriptInfo> & {
-  meta?: {
-    align?: "left" | "center" | "right";
-    filterable?: boolean;
-    filterType?: FilterType;
-  };
-};
-
-// Helper to create strongly-typed columns
-function createColumn<K extends keyof TranscriptInfo>(config: {
-  accessorKey: K;
-  header: string;
-  size?: number;
-  meta?: {
-    align?: "left" | "center" | "right";
-    filterable?: boolean;
-    filterType?: FilterType;
-  };
-  cell?: (value: TranscriptInfo[K]) => React.ReactNode;
-}): TranscriptColumn {
-  return {
-    accessorKey: config.accessorKey as string,
-    header: config.header,
-    size: config.size,
-    meta: config.meta,
-    cell: (info) => {
-      const value = info.getValue() as TranscriptInfo[K];
-      if (config.cell) {
-        return config.cell(value);
-      }
-      if (value === undefined || value === null) {
-        return "-";
-      }
-      return String(value);
-    },
-  };
-}
 
 // Generate a stable key for a transcript item
 function transcriptItemKey(index: number, item?: TranscriptInfo): string {
@@ -124,16 +86,49 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const focusedRowId = useStore(
     (state) => state.transcriptsTableState.focusedRowId
   );
+  const visibleColumns = useStore(
+    (state) => state.transcriptsTableState.visibleColumns
+  ) ?? [
+    "success",
+    "date",
+    "task_set",
+    "task_id",
+    "task_repeat",
+    "model",
+    "score",
+    "total_time",
+    "total_tokens",
+  ];
   const setTableState = useStore((state) => state.setTranscriptsTableState);
   const handleColumnFilterChange = useCallback(
-    (columnId: string, condition: SimpleCondition | null) => {
-      setTableState((prev) => ({
-        ...prev,
-        columnFilters: {
-          ...(prev.columnFilters ?? {}),
-          [columnId]: condition,
-        },
-      }));
+    (
+      columnId: string,
+      filterType: FilterType,
+      condition: SimpleCondition | null
+    ) => {
+      setTableState((prev) => {
+        if (condition === null) {
+          // Remove the filter entirely
+          const newFilters = { ...prev.columnFilters };
+          delete newFilters[columnId];
+          return {
+            ...prev,
+            columnFilters: newFilters,
+          };
+        }
+        // Add or update the filter
+        return {
+          ...prev,
+          columnFilters: {
+            ...prev.columnFilters,
+            [columnId]: {
+              columnId,
+              filterType,
+              condition,
+            },
+          },
+        };
+      });
     },
     [setTableState]
   );
@@ -267,142 +262,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     setDropPosition(null);
   }, []);
 
-  // Define table columns
+  // Define table columns based on visible columns from store
   const columns = useMemo<TranscriptColumn[]>(
-    () => [
-      createColumn({
-        accessorKey: "success",
-        header: "Success",
-        size: 68,
-        meta: {
-          align: "center",
-          filterable: true,
-          filterType: "boolean",
-        },
-        cell: (value) => {
-          // value is now strongly typed as boolean | undefined
-          if (value === undefined) {
-            return "-";
-          }
-
-          const icon = value
-            ? ApplicationIcons.success
-            : ApplicationIcons.error;
-          const colorCls = value ? styles.green : styles.red;
-
-          return <i className={clsx(icon, colorCls)} />;
-        },
-      }),
-      createColumn({
-        accessorKey: "date",
-        header: "date",
-        size: 180,
-        meta: {
-          filterable: true,
-          filterType: "date",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-          const date = new Date(value);
-          return date.toLocaleString();
-        },
-      }),
-      createColumn({
-        accessorKey: "task_set",
-        header: "Task Set",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "task_id",
-        header: "Task ID",
-        size: 150,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "task_repeat",
-        header: "Repeat",
-        size: 80,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-      }),
-      createColumn({
-        accessorKey: "model",
-        header: "Model",
-        size: 200,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-      }),
-      createColumn({
-        accessorKey: "score",
-        header: "Score",
-        size: 100,
-        meta: {
-          filterable: true,
-          filterType: "string",
-        },
-        cell: (value) => {
-          if (!value) {
-            return "-";
-          }
-
-          // TODO: Fixme
-          const scoreValue = (value as unknown as Score).value;
-          if (Array.isArray(scoreValue)) {
-            return printArray(scoreValue, 1000);
-          } else if (typeof scoreValue === "object") {
-            return printObject(scoreValue, 1000);
-          } else if (typeof scoreValue === "number") {
-            return formatPrettyDecimal(scoreValue);
-          } else {
-            return String(scoreValue);
-          }
-        },
-      }),
-      createColumn({
-        accessorKey: "total_tokens",
-        header: "Total Tokens",
-        size: 120,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-        cell: (value) => {
-          if (value == null) {
-            return "-";
-          }
-          return formatNumber(value);
-        },
-      }),
-      createColumn({
-        accessorKey: "total_time",
-        header: "Total Time",
-        size: 120,
-        meta: {
-          filterable: true,
-          filterType: "number",
-        },
-        cell: (value) => {
-          if (value == null) {
-            return "-";
-          }
-          return formatPrettyDecimal(value);
-        },
-      }),
-    ],
-    []
+    () => getTranscriptColumns(visibleColumns),
+    [visibleColumns]
   );
 
   // Create table instance
@@ -791,9 +654,15 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       <ColumnFilterControl
                         columnId={header.column.id}
                         filterType={filterType}
-                        condition={columnFilters[header.column.id] ?? null}
+                        condition={
+                          columnFilters[header.column.id]?.condition ?? null
+                        }
                         onChange={(condition) =>
-                          handleColumnFilterChange(header.column.id, condition)
+                          handleColumnFilterChange(
+                            header.column.id,
+                            filterType,
+                            condition
+                          )
                         }
                       />
                     ) : null}
@@ -834,8 +703,9 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                   onClick={(e) => handleRowClick(e, row.id, virtualRow.index)}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    const align = (cell.column.columnDef as TranscriptColumn)
-                      .meta?.align;
+                    const columnDef = cell.column.columnDef as TranscriptColumn;
+                    const align = columnDef.meta?.align;
+                    const titleValue = getCellTitleValue(cell, columnDef);
                     return (
                       <td
                         key={cell.id}
@@ -844,6 +714,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                           align === "center" && styles.cellCenter
                         )}
                         style={{ width: cell.column.getSize() }}
+                        title={titleValue}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

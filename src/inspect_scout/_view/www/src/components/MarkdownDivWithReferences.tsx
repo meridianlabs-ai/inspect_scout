@@ -221,4 +221,6 @@ export const MarkdownDivWithReferences = forwardRef<
   );
 });
 
+MarkdownDivWithReferences.displayName = "MarkdownDivWithReferences";
+
 const popoverKey = (ref: MarkdownReference) => `markdown-ref-popover-${ref.id}`;

@@ -8,11 +8,15 @@ import {
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
+import { ProjectPanel } from "./app/project/ProjectPanel";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import { appScansDir, useConfig } from "./app/server/useConfig";
-import { ProjectPanel } from "./app/project/ProjectPanel";
+import {
+  appScansDir,
+  appTranscriptsDir,
+  useConfig,
+} from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -31,10 +35,12 @@ import {
   scansRoute,
 } from "./router/url";
 import { useStore } from "./state/store";
+import { AppConfig } from "./types/api-types";
 import { getEmbeddedScanState } from "./utils/embeddedState";
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
+  config: AppConfig;
 }
 
 // Creates a layout component that handles embedded state and tracks route changes
@@ -43,6 +49,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     const navigate = useNavigate();
     const selectedScanner = useStore((state) => state.selectedScanner);
     const setSingleFileMode = useStore((state) => state.setSingleFileMode);
+    const singleFileMode = useStore((state) => state.singleFileMode);
     const hasInitializedEmbeddedData = useStore(
       (state) => state.hasInitializedEmbeddedData
     );
@@ -146,7 +153,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     const content = <Outlet />;
     return (
       <AppErrorBoundary>
-        {routerConfig.mode === "workbench" ? (
+        {routerConfig.mode === "workbench" && !singleFileMode ? (
           <ActivityBarLayout config={config}>{content}</ActivityBarLayout>
         ) : (
           content
@@ -187,6 +194,7 @@ const ProjectPanelRoute = () => {
 
 export const createAppRouter = (config: AppRouterConfig) => {
   const AppLayout = createAppLayout(config);
+  const transcriptsDir = appTranscriptsDir(config.config);
 
   return createHashRouter(
     [
@@ -196,7 +204,12 @@ export const createAppRouter = (config: AppRouterConfig) => {
         children: [
           {
             index: true,
-            element: <Navigate to="/scans" replace />,
+            element: (
+              <Navigate
+                to={transcriptsDir ? "/transcripts" : "/scans"}
+                replace
+              />
+            ),
           },
           {
             path: kScansRootRouteUrlPattern,

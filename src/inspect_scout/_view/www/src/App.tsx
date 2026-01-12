@@ -19,10 +19,13 @@ export interface AppProps {
 export const AppModeContext = createContext<AppProps["mode"]>("scans");
 
 export const App: FC<AppProps> = ({ mode = "scans" }) => {
-  const router = useMemo(() => createAppRouter({ mode }), [mode]);
   const { data: config } = useConfigAsync();
+  const router = useMemo(
+    () => (config ? createAppRouter({ mode, config }) : null),
+    [mode, config]
+  );
 
-  return config ? (
+  return config && router ? (
     <AppModeContext.Provider value={mode}>
       <RouterProvider router={router} />
     </AppModeContext.Provider>

@@ -17,8 +17,8 @@ export const TranscriptColumnsButton = forwardRef<
 >(({ isOpen, onClick }, ref) => {
   return (
     <ToolButton
-      icon={ApplicationIcons.checkbox.checked}
-      label="Choose Columns"
+      title="Choose columns"
+      icon={ApplicationIcons.threeDots}
       onClick={onClick}
       latched={isOpen}
       className={clsx("text-size-smallestest", styles.button)}

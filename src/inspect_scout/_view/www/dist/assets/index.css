@@ -4052,16 +4052,16 @@ so disabling selection can break that functionality */
   width: 100%;
   padding: 0.2rem;
 }
-.btn._toolButton_ojai3_1 {
+.btn._toolButton_xcf22_1 {
   background-color: var(--bs-light-border-subtle);
   white-space: nowrap;
 }
 
-._toolButton_ojai3_1 i {
+._marginRight_xcf22_6 {
   margin-right: 0.5em;
 }
 
-._toolButton_ojai3_1:focus {
+._toolButton_xcf22_1:focus {
   outline: none;
   box-shadow:
     0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
@@ -4069,14 +4069,18 @@ so disabling selection can break that functionality */
     inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-._latched_ojai3_18,
-._latched_ojai3_18:hover {
+._latched_xcf22_18,
+._latched_xcf22_18:hover {
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.15),
     inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
-._button_ekbk5_1 {
+._button_wkaow_1 {
   padding: 0.1rem 0.3rem;
+}
+
+.btn._button_wkaow_1 {
+  background-color: transparent;
 }
 ._container_1b6j7_1 {
   overflow: auto;
@@ -4522,6 +4526,22 @@ so disabling selection can break that functionality */
 ._navButton_cmger_54:hover,
 ._navButton_cmger_54:focus-visible {
   background-color: var(--bs-secondary-bg-subtle);
+}
+._container_p81af_1 {
+  height: 100%;
+  display: grid;
+  grid-template-rows: max-content max-content 1fr;
+  padding: 0.75rem 1rem;
+}
+
+._header_p81af_8 {
+  font-size: var(--inspect-font-size-large);
+  font-weight: 600;
+}
+
+._detail_p81af_13 {
+  font-size: var(--inspect-font-size-small);
+  color: var(--bs-secondary);
 }
 ._root_ke0e7_1 {
   height: 100vh;
@@ -7738,22 +7758,6 @@ span.ap-marker-container:hover span.ap-marker {
 }
 ._container_g5onx_1 {
   overflow-y: auto;
-}
-._container_p81af_1 {
-  height: 100%;
-  display: grid;
-  grid-template-rows: max-content max-content 1fr;
-  padding: 0.75rem 1rem;
-}
-
-._header_p81af_8 {
-  font-size: var(--inspect-font-size-large);
-  font-weight: 600;
-}
-
-._detail_p81af_13 {
-  font-size: var(--inspect-font-size-small);
-  color: var(--bs-secondary);
 }
 ._tabContainer_1jncw_1 {
   display: grid;

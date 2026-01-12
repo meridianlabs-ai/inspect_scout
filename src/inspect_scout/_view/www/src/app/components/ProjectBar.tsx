@@ -1,13 +1,13 @@
+import { clsx } from "clsx";
 import { FC } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { ApplicationIcons } from "../../components/icons";
 import { getActivityByRoute } from "../../router/activities";
 import { AppConfig } from "../../types/api-types";
-import { ApplicationIcons } from "../../components/icons";
+import { appAliasedPath } from "../server/useConfig";
 
 import styles from "./ProjectBar.module.css";
-import { appAliasedPath } from "../server/useConfig";
-import { clsx } from "clsx";
 
 interface ProjectBarProps {
   config: AppConfig;
@@ -25,7 +25,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
           <button
             type="button"
             className={clsx(styles.navButton, styles.historyButton)}
-            onClick={() => navigate(-1)}
+            onClick={() => void navigate(-1)}
             aria-label="Back"
             title="Back"
           >
@@ -34,7 +34,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
           <button
             type="button"
             className={clsx(styles.navButton, styles.historyButton)}
-            onClick={() => navigate(1)}
+            onClick={() => void navigate(1)}
             aria-label="Forward"
             title="Forward"
           >

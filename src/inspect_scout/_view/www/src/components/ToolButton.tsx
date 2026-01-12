@@ -4,7 +4,7 @@ import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 import styles from "./ToolButton.module.css";
 
 interface ToolButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  label: string | ReactNode;
+  label?: string | ReactNode;
   classes?: string;
   icon?: string;
   latched?: boolean;
@@ -28,7 +28,9 @@ export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
         )}
         {...rest}
       >
-        {icon && <i className={`${icon}`} />}
+        {icon && (
+          <i className={clsx(icon, label ? styles.marginRight : undefined)} />
+        )}
         {label}
       </button>
     );

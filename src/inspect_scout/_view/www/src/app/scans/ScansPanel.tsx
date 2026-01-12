@@ -9,7 +9,7 @@ import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { appScansDir, useConfig } from "../server/useConfig";
+import { appAliasedPath, appScansDir, useConfig } from "../server/useConfig";
 import { useServerScans } from "../server/useServerScans";
 
 import { ScansGrid } from "./ScansGrid";
@@ -33,7 +33,7 @@ export const ScansPanel: FC = () => {
   return (
     <div className={clsx(styles.container)}>
       <ScansNavbar
-        scansDir={userScansDir || scanDir}
+        scansDir={appAliasedPath(config, userScansDir || scanDir)}
         setScansDir={setScanDir}
         bordered={false}
       />

@@ -13,7 +13,7 @@ import { Navbar } from "./Navbar";
 import { NavButton } from "./NavButtons";
 
 interface ScansNavbarProps {
-  scansDir?: string;
+  scansDir: string | null;
   setScansDir: (path: string) => void;
   children?: ReactNode;
   bordered?: boolean;

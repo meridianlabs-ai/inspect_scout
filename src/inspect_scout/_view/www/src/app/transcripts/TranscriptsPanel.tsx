@@ -9,7 +9,11 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useCode } from "../server/useCode";
-import { appTranscriptsDir, useConfig } from "../server/useConfig";
+import {
+  appAliasedPath,
+  appTranscriptsDir,
+  useConfig,
+} from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
 import { TranscriptFilterBar } from "./TranscriptFilterBar";
@@ -79,7 +83,7 @@ export const TranscriptsPanel: FC = () => {
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         bordered={true}
-        transcriptsDir={resolvedTranscriptDir}
+        transcriptsDir={appAliasedPath(config, resolvedTranscriptDir)}
         setTranscriptsDir={setUserTranscriptsDir}
       ></TranscriptsNavbar>
       <LoadingBar loading={isFetching} />

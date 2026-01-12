@@ -572,6 +572,7 @@ def _parse_google_content_repr(s: str) -> dict[str, Any]:
         of repr() output, which is not a stable API. The repr format may
         change between SDK versions. Currently handles:
         - Text parts: Part(text='...')
+        - Thought/reasoning parts: Part(text='...', thought=True)
         - Function calls: Part(function_call=FunctionCall(args={...}, name='...'))
         - Function responses: Part(function_response=FunctionResponse(name='...'))
 
@@ -593,11 +594,17 @@ def _parse_google_content_repr(s: str) -> dict[str, Any]:
     if role_match:
         result["role"] = role_match.group(1)
 
-    # Check for text content
+    # Check for text content (may include thought=True for reasoning)
     text_match = re.search(r"text='((?:[^'\\]|\\.)*)'", s, re.DOTALL)
     if text_match:
         text = text_match.group(1)
-        result["parts"].append({"text": text})
+        # Check if this is a thought/reasoning part: Part(text='...', thought=True)
+        # The thought=True flag may appear before or after the text
+        is_thought = bool(re.search(r"\bthought=True\b", s))
+        part: dict[str, Any] = {"text": text}
+        if is_thought:
+            part["thought"] = True
+        result["parts"].append(part)
         return result
 
     # Check for function_call

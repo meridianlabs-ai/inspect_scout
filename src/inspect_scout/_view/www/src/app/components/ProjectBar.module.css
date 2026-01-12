@@ -38,7 +38,6 @@
   justify-self: center;
   display: flex;
   align-items: center;
-  font-weight: 500;
 }
 
 .right {
@@ -58,7 +57,7 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: inherit;
+  color: var(--bs-secondary);
   padding: 0.12rem 0.3rem;
   border-radius: var(--bs-border-radius);
 }

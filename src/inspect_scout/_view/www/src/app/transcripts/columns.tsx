@@ -107,7 +107,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       filterType: "boolean",
     },
     cell: (value) => {
-      if (value === undefined) {
+      if (value === undefined || value === null) {
         return "-";
       }
 
@@ -316,7 +316,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       if (value == null) {
         return "-";
       }
-      return formatPrettyDecimal(value);
+      return formatPrettyDecimal(value, 0);
     },
   }),
   limit: createColumn({

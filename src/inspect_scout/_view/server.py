@@ -30,7 +30,6 @@ class NoCacheStaticFiles(StaticFiles):
     ) -> Response:
         response = super().file_response(full_path, stat_result, scope, status_code)
 
-        print(full_path)
         # We have seen sporadic caching of the core JS file in safari though I
         # wasn't able to consistently reproduce it. To be safe, disable caching
         # for all JS files for the time being

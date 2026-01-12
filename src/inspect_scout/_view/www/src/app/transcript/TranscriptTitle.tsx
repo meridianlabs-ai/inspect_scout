@@ -15,7 +15,7 @@ interface TranscriptTitleProps {
 export const TranscriptTitle: FC<TranscriptTitleProps> = ({ transcript }) => {
   const cols: HeadingValue[] = [
     {
-      label: "Transcript ID",
+      label: "Transcript",
       value: (
         <TaskName
           taskId={transcript.task_id}

@@ -8,6 +8,7 @@ from datetime import datetime
 from logging import getLogger
 from typing import Any, AsyncIterator, Callable, TypeVar
 
+from inspect_ai._util.content import ContentText
 from inspect_ai.model._chat_message import (
     ChatMessage,
     ChatMessageUser,
@@ -219,9 +220,14 @@ async def _session_to_transcript(
             if final_model.output and final_model.output.message:
                 messages.append(final_model.output.message)
         else:
-            # Build messages from events - this captures the full conversation
-            # including all model outputs (with reasoning, tool calls) and tool results
-            messages = _build_messages_from_events(events)
+            # Google-specific: use outputs for assistant messages to preserve reasoning
+            # Google's scaffold doesn't replay reasoning, so it only exists in outputs
+            model_name = generations[0].model if generations else ""
+            if model_name and "gemini" in model_name.lower():
+                messages = _build_google_messages_from_events(events)
+            else:
+                # Build messages from events - this captures the full conversation
+                messages = _build_messages_from_events(events)
 
     # Get metadata from first trace
     first_trace = traces[0] if traces else None
@@ -554,6 +560,154 @@ def _build_messages_from_events(events: list[Any]) -> list[ChatMessage]:
         messages.append(last_model.output.message)
 
     return messages
+
+
+def _build_google_messages_from_events(events: list[Any]) -> list[ChatMessage]:
+    """Build Google message list using ModelEvent outputs for assistant messages.
+
+    Google's scaffold doesn't replay reasoning text to the model, so reasoning
+    ONLY exists in ModelEvent.output. This function builds messages by:
+
+    1. Taking non-assistant messages (system, user, tool) from the final
+       ModelEvent's input (which has the complete conversation structure)
+    2. For each assistant message in the input, finding the matching ModelEvent
+       output by content (tool calls or text) and using that instead
+
+    This ensures we capture all reasoning blocks that would otherwise be lost.
+
+    Args:
+        events: All events including ModelEvents
+
+    Returns:
+        List of ChatMessage objects with reasoning preserved
+    """
+    model_events = [e for e in events if getattr(e, "event", "") == "model"]
+
+    if not model_events:
+        return []
+
+    # Get the final model event for conversation structure
+    final_model = model_events[-1]
+
+    # Build a list of assistant messages from ALL ModelEvent outputs
+    # These contain the actual reasoning
+    assistant_outputs: list[ChatMessage] = []
+    for model_event in model_events:
+        if model_event.output and model_event.output.message:
+            assistant_outputs.append(model_event.output.message)
+
+    # Build final message list, matching assistant messages by content
+    messages: list[ChatMessage] = []
+    used_outputs: set[int] = set()
+
+    if final_model.input:
+        for msg in final_model.input:
+            if msg.role == "assistant":
+                # Find matching output by content
+                match = _find_matching_output(msg, assistant_outputs, used_outputs)
+                if match is not None:
+                    messages.append(assistant_outputs[match])
+                    used_outputs.add(match)
+                else:
+                    # No match found, use input version
+                    messages.append(msg)
+            else:
+                # Keep non-assistant messages as-is
+                messages.append(msg)
+
+    # Add any remaining unmatched outputs (e.g., the final response)
+    for i, output in enumerate(assistant_outputs):
+        if i not in used_outputs:
+            messages.append(output)
+
+    return messages
+
+
+def _find_matching_output(
+    input_msg: ChatMessage,
+    outputs: list[ChatMessage],
+    used: set[int],
+) -> int | None:
+    """Find the ModelEvent output that matches an input assistant message.
+
+    Matches by comparing:
+    1. Tool calls (by function name and arguments)
+    2. Text content
+
+    Args:
+        input_msg: Assistant message from final ModelEvent input
+        outputs: List of assistant messages from ModelEvent outputs
+        used: Set of output indices already matched
+
+    Returns:
+        Index of matching output, or None if no match found
+    """
+    # Extract tool calls from input
+    input_tool_calls = getattr(input_msg, "tool_calls", None) or []
+
+    # Extract text from input
+    input_text = _extract_text_content(input_msg)
+
+    for i, output in enumerate(outputs):
+        if i in used:
+            continue
+
+        # Try matching by tool calls first (more reliable)
+        output_tool_calls = getattr(output, "tool_calls", None) or []
+
+        if input_tool_calls and output_tool_calls:
+            if _tool_calls_match(input_tool_calls, output_tool_calls):
+                return i
+
+        # Try matching by text content
+        output_text = _extract_text_content(output)
+        if input_text and output_text and input_text == output_text:
+            return i
+
+    return None
+
+
+def _extract_text_content(msg: ChatMessage) -> str:
+    """Extract plain text content from a message."""
+    if isinstance(msg.content, str):
+        return msg.content
+
+    if isinstance(msg.content, list):
+        text_parts = []
+        for item in msg.content:
+            if isinstance(item, ContentText) and item.text:
+                text_parts.append(item.text)
+            elif isinstance(item, str):
+                text_parts.append(item)
+        return " ".join(text_parts)
+
+    return ""
+
+
+def _tool_calls_match(
+    calls1: list[Any],
+    calls2: list[Any],
+) -> bool:
+    """Check if two tool call lists match by function name and arguments."""
+    if len(calls1) != len(calls2):
+        return False
+
+    for tc1, tc2 in zip(calls1, calls2, strict=False):
+        # Compare function name (ToolCall has .function attribute)
+        name1 = getattr(tc1, "function", None)
+        name2 = getattr(tc2, "function", None)
+
+        if name1 != name2:
+            return False
+
+        # Compare arguments (ToolCall has .arguments attribute)
+        args1 = getattr(tc1, "arguments", None) or {}
+        args2 = getattr(tc2, "arguments", None) or {}
+
+        if args1 != args2:
+            return False
+
+    return True
 
 
 def _parse_google_content_repr(s: str) -> dict[str, Any]:

@@ -48,6 +48,10 @@
   align-items: center;
 }
 
+.historyButton {
+  font-size: 0.9em;
+}
+
 .navButton {
   display: inline-flex;
   align-items: center;

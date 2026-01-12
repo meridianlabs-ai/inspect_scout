@@ -35,7 +35,8 @@ export const TranscriptPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptsDir =
-    routeTranscriptsDir || userTranscriptsDir || transcriptsDir;
+    // routeTranscriptsDir ||
+    userTranscriptsDir || config.project.transcripts || transcriptsDir;
 
   return (
     <div className={clsx(styles.container)}>

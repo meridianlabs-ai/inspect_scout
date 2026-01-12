@@ -4455,7 +4455,7 @@ so disabling selection can break that functionality */
 ._content_1j111_16._scrolling_1j111_21 {
   overflow: auto;
 }
-._projectBar_mfthh_1 {
+._projectBar_193qz_1 {
   display: flex;
   flex-direction: column;
   background: var(--bs-light);
@@ -4467,7 +4467,7 @@ so disabling selection can break that functionality */
   justify-content: center;
 }
 
-._row_mfthh_13 {
+._row_193qz_13 {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -4476,13 +4476,13 @@ so disabling selection can break that functionality */
   height: 100%;
 }
 
-._left_mfthh_22,
-._center_mfthh_23,
-._right_mfthh_24 {
+._left_193qz_22,
+._center_193qz_23,
+._right_193qz_24 {
   font-size: var(--inspect-font-size-small);
 }
 
-._left_mfthh_22 {
+._left_193qz_22 {
   grid-column: 1;
   justify-self: start;
   display: flex;
@@ -4490,7 +4490,7 @@ so disabling selection can break that functionality */
   gap: 0.2rem;
 }
 
-._center_mfthh_23 {
+._center_193qz_23 {
   grid-column: 2;
   justify-self: center;
   display: flex;
@@ -4498,14 +4498,18 @@ so disabling selection can break that functionality */
   font-weight: 500;
 }
 
-._right_mfthh_24 {
+._right_193qz_24 {
   grid-column: 3;
   justify-self: end;
   display: flex;
   align-items: center;
 }
 
-._navButton_mfthh_51 {
+._historyButton_193qz_51 {
+  font-size: 0.9em;
+}
+
+._navButton_193qz_55 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4516,8 +4520,8 @@ so disabling selection can break that functionality */
   border-radius: var(--bs-border-radius);
 }
 
-._navButton_mfthh_51:hover,
-._navButton_mfthh_51:focus-visible {
+._navButton_193qz_55:hover,
+._navButton_193qz_55:focus-visible {
   background-color: var(--bs-secondary-bg-subtle);
 }
 ._root_ke0e7_1 {

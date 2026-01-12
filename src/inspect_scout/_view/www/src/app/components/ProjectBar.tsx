@@ -7,7 +7,7 @@ import { ApplicationIcons } from "../../components/icons";
 
 import styles from "./ProjectBar.module.css";
 import { appAliasedPath } from "../server/useConfig";
-import { ToolButton } from "../../components/ToolButton";
+import { clsx } from "clsx";
 
 interface ProjectBarProps {
   config: AppConfig;
@@ -24,7 +24,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
         <div className={styles.left}>
           <button
             type="button"
-            className={styles.navButton}
+            className={clsx(styles.navButton, styles.historyButton)}
             onClick={() => navigate(-1)}
             aria-label="Back"
             title="Back"
@@ -33,7 +33,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
           </button>
           <button
             type="button"
-            className={styles.navButton}
+            className={clsx(styles.navButton, styles.historyButton)}
             onClick={() => navigate(1)}
             aria-label="Forward"
             title="Forward"

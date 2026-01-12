@@ -136,7 +136,7 @@ export const TranscriptFilterBar: FC<{
                   chipRefs.current[filter.columnId] = el;
                 }}
                 label={filter.columnId}
-                value={`${filter.condition.operator} ${String(filter.condition.right)}`}
+                value={`${filter.condition.operator} ${formatRepresentativeType(filter.condition.right)}`}
                 title={`Edit ${filter.columnId} filter`}
                 closeTitle="Remove filter"
                 className={clsx(styles.filterChip, "text-size-smallestest")}
@@ -244,4 +244,18 @@ const CopyQueryButton: FC<{ itemValues?: Record<string, string> }> = ({
       items={items}
     />
   );
+};
+
+const formatRepresentativeType = (value: unknown): string => {
+  if (value === null) {
+    return "NULL";
+  } else if (Array.isArray(value)) {
+    return `[${value.map((v) => formatRepresentativeType(v)).join(", ")}]`;
+  } else if (typeof value === "object") {
+    return "{...}";
+  } else if (typeof value === "string") {
+    return `'${value}'`;
+  } else {
+    return String(value);
+  }
 };

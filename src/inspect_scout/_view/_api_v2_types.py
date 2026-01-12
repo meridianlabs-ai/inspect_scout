@@ -109,6 +109,7 @@ class ScansResponse:
 class AppConfig:
     """Application configuration returned by GET /config."""
 
+    home_dir: str
     project_dir: str
     project: ProjectConfig
 

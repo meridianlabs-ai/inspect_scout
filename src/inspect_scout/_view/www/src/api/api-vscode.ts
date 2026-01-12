@@ -58,6 +58,7 @@ export const apiVscode = (
       const project_dir = dirname(data.results_dir);
       const scans = basename(data.results_dir);
       return {
+        home_dir: "",
         project_dir,
         project: {
           scans,

@@ -35,6 +35,10 @@ export const useConfig = (): AppConfig => {
   return data;
 };
 
+export function appAliasedPath(appConfig: AppConfig, path: string): string {
+  return path.replace(appConfig.home_dir, "~");
+}
+
 export function appTranscriptsDir(appConfig: AppConfig): string | null {
   if (appConfig.project.transcripts) {
     if (isUri(appConfig.project.transcripts)) {

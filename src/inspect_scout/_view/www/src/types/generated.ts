@@ -206,6 +206,8 @@ export interface components {
         };
         /** AppConfig */
         AppConfig: {
+            /** Home Dir */
+            home_dir: string;
             project: components["schemas"]["ProjectConfig"];
             /** Project Dir */
             project_dir: string;

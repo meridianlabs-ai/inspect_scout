@@ -195,6 +195,7 @@ def v2_api_app(
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
         return AppConfig(
+            home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
             project=sync_project(),
         )

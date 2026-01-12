@@ -37,7 +37,10 @@ export const join = (file: string, dir?: string): string => {
   }
 
   // Normalize paths to ensure consistent directory separators
-  const normalizedFile = file.replace(/\\/g, "/");
+  let normalizedFile = file.replace(/\\/g, "/");
+  if (normalizedFile.startsWith("./")) {
+    normalizedFile = normalizedFile.slice(2);
+  }
   const normalizedLogDir = dir.replace(/\\/g, "/");
 
   // Ensure log_dir ends with a trailing slash

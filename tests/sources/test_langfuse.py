@@ -9,12 +9,20 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from inspect_scout.sources._langfuse import (
+from inspect_scout.sources._langfuse.detection import (
     _detect_from_messages,
-    _detect_provider_format,
-    _extract_metadata,
-    _sum_latency,
-    _sum_tokens,
+)
+from inspect_scout.sources._langfuse.detection import (
+    detect_provider_format as _detect_provider_format,
+)
+from inspect_scout.sources._langfuse.extraction import (
+    extract_metadata as _extract_metadata,
+)
+from inspect_scout.sources._langfuse.extraction import (
+    sum_latency as _sum_latency,
+)
+from inspect_scout.sources._langfuse.extraction import (
+    sum_tokens as _sum_tokens,
 )
 
 from tests.conftest import skip_if_no_langfuse_project
@@ -345,7 +353,9 @@ class TestToModelEvent:
     @pytest.mark.asyncio
     async def test_convert_openai_generation(self) -> None:
         """Convert OpenAI-format generation to ModelEvent."""
-        from inspect_scout.sources._langfuse import _to_model_event
+        from inspect_scout.sources._langfuse.events import (
+            to_model_event as _to_model_event,
+        )
 
         gen = MockObservation(
             model="gpt-4",
@@ -373,7 +383,9 @@ class TestToModelEvent:
     @pytest.mark.asyncio
     async def test_convert_generation_with_string_input(self) -> None:
         """Convert generation with plain string input."""
-        from inspect_scout.sources._langfuse import _to_model_event
+        from inspect_scout.sources._langfuse.events import (
+            to_model_event as _to_model_event,
+        )
 
         gen = MockObservation(
             model="gpt-4",
@@ -393,7 +405,9 @@ class TestToToolEvent:
 
     def test_convert_tool_observation(self) -> None:
         """Convert TOOL observation to ToolEvent."""
-        from inspect_scout.sources._langfuse import _to_tool_event
+        from inspect_scout.sources._langfuse.events import (
+            to_tool_event as _to_tool_event,
+        )
 
         obs = MockObservation(
             obs_type="TOOL",
@@ -415,7 +429,9 @@ class TestToToolEvent:
 
     def test_convert_tool_observation_with_error(self) -> None:
         """Convert TOOL observation with error."""
-        from inspect_scout.sources._langfuse import _to_tool_event
+        from inspect_scout.sources._langfuse.events import (
+            to_tool_event as _to_tool_event,
+        )
 
         obs = MockObservation(
             obs_type="TOOL",
@@ -437,7 +453,9 @@ class TestToSpanEvents:
 
     def test_convert_span_begin_event(self) -> None:
         """Convert SPAN observation to SpanBeginEvent."""
-        from inspect_scout.sources._langfuse import _to_span_begin_event
+        from inspect_scout.sources._langfuse.events import (
+            to_span_begin_event as _to_span_begin_event,
+        )
 
         obs = MockObservation(
             obs_id="span-123",
@@ -457,7 +475,9 @@ class TestToSpanEvents:
 
     def test_convert_span_end_event(self) -> None:
         """Convert SPAN observation to SpanEndEvent."""
-        from inspect_scout.sources._langfuse import _to_span_end_event
+        from inspect_scout.sources._langfuse.events import (
+            to_span_end_event as _to_span_end_event,
+        )
 
         obs = MockObservation(
             obs_id="span-123",
@@ -478,7 +498,9 @@ class TestToInfoEvent:
 
     def test_convert_event_observation(self) -> None:
         """Convert EVENT observation to InfoEvent."""
-        from inspect_scout.sources._langfuse import _to_info_event
+        from inspect_scout.sources._langfuse.events import (
+            to_info_event as _to_info_event,
+        )
 
         obs = MockObservation(
             obs_type="EVENT",
@@ -506,7 +528,9 @@ class TestObservationsToEvents:
     @pytest.mark.asyncio
     async def test_convert_mixed_observations(self) -> None:
         """Convert a mix of observation types to events."""
-        from inspect_scout.sources._langfuse import _observations_to_events
+        from inspect_scout.sources._langfuse.events import (
+            observations_to_events as _observations_to_events,
+        )
 
         observations = [
             MockObservation(
@@ -548,7 +572,9 @@ class TestObservationsToEvents:
     @pytest.mark.asyncio
     async def test_skip_unsupported_observation_types(self) -> None:
         """Skip RETRIEVER, EMBEDDING, GUARDRAIL observations."""
-        from inspect_scout.sources._langfuse import _observations_to_events
+        from inspect_scout.sources._langfuse.events import (
+            observations_to_events as _observations_to_events,
+        )
 
         observations = [
             MockObservation(obs_type="RETRIEVER", start_time=datetime(2024, 1, 1)),
@@ -715,7 +741,9 @@ class TestResolveProjectId:
 
     def test_resolve_by_project_id(self) -> None:
         """Resolve when value matches a project ID directly."""
-        from inspect_scout.sources._langfuse import _resolve_project_id
+        from inspect_scout.sources._langfuse.client import (
+            resolve_project_id as _resolve_project_id,
+        )
 
         # Create mock projects
         proj1 = MagicMock()
@@ -735,7 +763,9 @@ class TestResolveProjectId:
 
     def test_resolve_by_project_name(self) -> None:
         """Resolve when value matches a project name."""
-        from inspect_scout.sources._langfuse import _resolve_project_id
+        from inspect_scout.sources._langfuse.client import (
+            resolve_project_id as _resolve_project_id,
+        )
 
         proj1 = MagicMock()
         proj1.id = "cmk8zhiw2008jad07i5r6wqlk"
@@ -750,7 +780,9 @@ class TestResolveProjectId:
 
     def test_resolve_not_found_raises_error(self) -> None:
         """Raise ValueError when project not found."""
-        from inspect_scout.sources._langfuse import _resolve_project_id
+        from inspect_scout.sources._langfuse.client import (
+            resolve_project_id as _resolve_project_id,
+        )
 
         proj1 = MagicMock()
         proj1.id = "some-id"
@@ -764,7 +796,9 @@ class TestResolveProjectId:
 
     def test_resolve_fallback_on_api_error(self) -> None:
         """Fall back to using value as-is when API call fails."""
-        from inspect_scout.sources._langfuse import _resolve_project_id
+        from inspect_scout.sources._langfuse.client import (
+            resolve_project_id as _resolve_project_id,
+        )
 
         mock_client = MagicMock()
         mock_client.api.projects.get.side_effect = Exception("API error")
@@ -786,7 +820,9 @@ class TestTranscriptsFromLangfuse:
     @pytest.mark.asyncio
     async def test_import_error_when_langfuse_not_installed(self) -> None:
         """Raise ImportError when langfuse package is not installed."""
-        from inspect_scout.sources._langfuse import _get_langfuse_client
+        from inspect_scout.sources._langfuse.client import (
+            get_langfuse_client as _get_langfuse_client,
+        )
 
         with patch.dict("sys.modules", {"langfuse": None}):
             with pytest.raises(ImportError, match="langfuse package is required"):
@@ -824,7 +860,7 @@ class TestTranscriptsFromLangfuse:
         mock_langfuse.api.sessions.get.return_value = MockSession(traces=[empty_trace])
 
         with patch(
-            "inspect_scout.sources._langfuse._get_langfuse_client",
+            "inspect_scout.sources._langfuse.get_langfuse_client",
             return_value=mock_langfuse,
         ):
             transcripts = []
@@ -865,7 +901,7 @@ class TestTranscriptsFromLangfuse:
         )
 
         with patch(
-            "inspect_scout.sources._langfuse._get_langfuse_client",
+            "inspect_scout.sources._langfuse.get_langfuse_client",
             return_value=mock_langfuse,
         ):
             transcripts = []

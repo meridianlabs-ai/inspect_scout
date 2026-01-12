@@ -15,7 +15,7 @@ from inspect_scout._transcript.types import Transcript
 from .client import (
     LANGFUSE_SOURCE_TYPE,
     get_langfuse_client,
-    resolve_project_id,
+    resolve_project,
     retry_api_call,
 )
 from .detection import (
@@ -24,8 +24,13 @@ from .detection import (
 )
 from .events import observations_to_events
 from .extraction import (
+    extract_bool,
+    extract_dict,
     extract_input_messages,
+    extract_int,
+    extract_json,
     extract_metadata,
+    extract_str,
     sum_latency,
     sum_tokens,
 )
@@ -39,7 +44,7 @@ logger = getLogger(__name__)
 
 
 async def langfuse(
-    project: str | None = None,
+    project: str,
     environment: str | list[str] | None = None,
     from_time: datetime | None = None,
     to_time: datetime | None = None,
@@ -87,7 +92,7 @@ async def langfuse(
     langfuse_client = get_langfuse_client(public_key, secret_key, host)
 
     # Resolve project name to ID if needed
-    project_id = resolve_project_id(langfuse_client, project) if project else None
+    project_id, project_name = resolve_project(langfuse_client, project)
 
     # Since the traces API has more filters than the sessions API,
     # we query traces first, then group by session_id
@@ -145,7 +150,7 @@ async def langfuse(
 
             full_session = retry_api_call(_get_session)
             transcript = await _session_to_transcript(
-                full_session, langfuse_client, project_id, host
+                full_session, langfuse_client, project_id, project_name, host
             )
             if transcript:
                 yield transcript
@@ -160,7 +165,8 @@ async def langfuse(
 async def _session_to_transcript(
     session: Any,
     langfuse_client: Any,
-    project_id: str | None = None,
+    project_id: str,
+    project_name: str,
     host: str | None = None,
 ) -> Transcript | None:
     """Convert a LangFuse session to a Scout Transcript.
@@ -169,6 +175,7 @@ async def _session_to_transcript(
         session: LangFuse session object with traces
         langfuse_client: LangFuse client for fetching trace details
         project_id: LangFuse project ID for URL construction
+        project_name: LangFuse project name
         host: LangFuse host URL for URL construction
 
     Returns:
@@ -240,27 +247,42 @@ async def _session_to_transcript(
 
     # Get metadata from first trace
     first_trace = traces[0] if traces else None
+    metadata = extract_metadata(first_trace)
+    task_repeat = extract_int("task_repeat", metadata)
+    agent = extract_str("agent", metadata)
+    agent_args = extract_dict("agent_args", metadata)
+    model_options = extract_dict("model_options", metadata)
+    error = extract_str("error", metadata)
+    limit = extract_str("limit", metadata)
+    score = extract_json("score", metadata)
+    success = extract_bool("success", metadata)
 
     # Construct source URI
     base_url = (host or "https://cloud.langfuse.com").rstrip("/")
-    if project_id:
-        source_uri = f"{base_url}/project/{project_id}/sessions/{session.id}"
-    else:
-        source_uri = f"{base_url}/sessions/{session.id}"
+    source_uri = f"{base_url}/project/{project_id}/sessions/{session.id}"
 
     return Transcript(
         transcript_id=session.id,
         source_type=LANGFUSE_SOURCE_TYPE,
-        source_id=session.id,
+        source_id=project_id,
         source_uri=source_uri,
         date=str(session.created_at) if hasattr(session, "created_at") else None,
+        task_set=project_name,
         task_id=getattr(first_trace, "name", None) if first_trace else None,
+        task_repeat=task_repeat,
+        agent=agent,
+        agent_args=agent_args,
         model=generations[0].model if generations else None,
+        model_options=model_options,
+        score=score,
+        success=success,
         total_tokens=sum_tokens(generations),
         total_time=sum_latency(all_observations),
+        error=error,
+        limit=limit,
         messages=messages,
         events=events,
-        metadata=extract_metadata(first_trace),
+        metadata=metadata,
     )
 
 

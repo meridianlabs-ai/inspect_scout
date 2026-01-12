@@ -58,7 +58,7 @@ def get_langfuse_client(
     return Langfuse(**kwargs)
 
 
-def resolve_project_id(langfuse_client: Any, project: str) -> str:
+def resolve_project(langfuse_client: Any, project: str) -> tuple[str, str]:
     """Resolve a project name or ID to a project ID.
 
     Args:
@@ -66,7 +66,7 @@ def resolve_project_id(langfuse_client: Any, project: str) -> str:
         project: Project name or ID
 
     Returns:
-        The project ID
+        Tuple of (project_id, project_name)
 
     Raises:
         ValueError: If the project cannot be found
@@ -78,17 +78,17 @@ def resolve_project_id(langfuse_client: Any, project: str) -> str:
     except Exception as e:
         logger.warning(f"Failed to fetch projects list: {e}")
         # Fall back to using the value as-is (assume it's an ID)
-        return project
+        return project, project
 
     # First check if it matches any project ID
     for proj in projects:
         if getattr(proj, "id", None) == project:
-            return project
+            return project, str(getattr(proj, "name", project))
 
     # Then check if it matches any project name
     for proj in projects:
         if getattr(proj, "name", None) == project:
-            return str(proj.id)
+            return str(proj.id), project
 
     # If no match found, raise an error with available projects
     available = [

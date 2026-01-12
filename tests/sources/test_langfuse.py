@@ -636,7 +636,10 @@ class TestSessionToTranscript:
         assert transcript.transcript_id == "session-1"
         assert transcript.source_type == "langfuse"
         assert transcript.source_id == "foo"  # project_id
-        assert transcript.source_uri == "https://cloud.langfuse.com/project/foo/sessions/session-1"
+        assert (
+            transcript.source_uri
+            == "https://cloud.langfuse.com/project/foo/sessions/session-1"
+        )
         assert transcript.task_set == "bar"  # project_name
         assert transcript.task_id == "test-conversation"
         assert transcript.model == "gpt-4"

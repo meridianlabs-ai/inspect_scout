@@ -34,6 +34,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_message
 from shortuuid import uuid
+from upath import UPath
 
 from .encryption import (
     ENCRYPTION_KEY_NAME,
@@ -410,7 +411,7 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
         all_idx_files = [f.name for f in all_files if _is_index_file(f.name)]
     else:
         # Local storage: use glob for both extensions
-        index_path = Path(index_dir)
+        index_path = UPath(index_dir)
         if not index_path.exists():
             return []
         all_idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
@@ -474,7 +475,7 @@ async def _list_all_index_files(storage: IndexStorage) -> list[str]:
             return []
         return [f.name for f in all_files if _is_index_file(f.name)]
     else:
-        index_path = Path(index_dir)
+        index_path = UPath(index_dir)
         if not index_path.exists():
             return []
         return [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
@@ -512,7 +513,7 @@ async def _discover_data_files_internal(storage: IndexStorage) -> list[str]:
             if f.name.endswith(".parquet") and f"/{INDEX_DIR}/" not in f.name
         ]
     else:
-        location_path = Path(storage.location)
+        location_path = UPath(storage.location)
         if not location_path.exists():
             return []
 

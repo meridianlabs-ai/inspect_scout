@@ -57,7 +57,7 @@ from .index import (
     init_index_table,
 )
 from .migration import migrate_view
-from .types import IndexStorage, _normalize_location
+from .types import IndexStorage
 
 logger = getLogger(__name__)
 
@@ -101,8 +101,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
         """
-        # Normalize file:// URIs to local paths (e.g., from UPath.as_uri())
-        self._location = _normalize_location(location)
+        self._location = location
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query

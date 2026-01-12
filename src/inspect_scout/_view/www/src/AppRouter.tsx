@@ -11,7 +11,11 @@ import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import { appScansDir, useConfig } from "./app/server/useConfig";
+import {
+  appScansDir,
+  appTranscriptsDir,
+  useConfig,
+} from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -183,6 +187,7 @@ const ScanOrScanResultsRoute = () => {
 
 export const createAppRouter = (appRouterConfig: AppRouterConfig) => {
   const AppLayout = createAppLayout(appRouterConfig);
+  const transcriptsDir = appTranscriptsDir(appRouterConfig.config);
 
   return createHashRouter(
     [
@@ -194,11 +199,7 @@ export const createAppRouter = (appRouterConfig: AppRouterConfig) => {
             index: true,
             element: (
               <Navigate
-                to={
-                  appRouterConfig.config.transcripts_dir
-                    ? "/transcripts"
-                    : "/scans"
-                }
+                to={transcriptsDir ? "/transcripts" : "/scans"}
                 replace
               />
             ),

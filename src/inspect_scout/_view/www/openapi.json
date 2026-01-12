@@ -7042,7 +7042,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Condition"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Condition"
+                  },
+                  {
+                    "items": {
+                      "$ref": "#/components/schemas/Condition"
+                    },
+                    "type": "array"
+                  }
+                ],
+                "title": "Body"
               }
             }
           },

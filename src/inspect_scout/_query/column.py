@@ -15,7 +15,8 @@ Usage:
     filter = (c.status == "error") | (c.retries > 3)
 
     # Generate SQL
-    sql, params = filter.to_sql("sqlite")  # or "duckdb" or "postgres"
+    from inspect_scout._query import condition_as_sql
+    sql, params = condition_as_sql(filter, "sqlite")  # or "duckdb" or "postgres"
 """
 
 from __future__ import annotations

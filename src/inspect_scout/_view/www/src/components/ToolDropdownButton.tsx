@@ -7,12 +7,13 @@ interface ToolDropdownButtonProps extends ButtonHTMLAttributes<HTMLButtonElement
   label: string | ReactNode;
   icon?: string;
   items: Record<string, () => void>;
+  dropdownAlign?: "left" | "right";
 }
 
 export const ToolDropdownButton = forwardRef<
   HTMLButtonElement,
   ToolDropdownButtonProps
->(({ label, icon, className, items, ...rest }, ref) => {
+>(({ label, icon, className, items, dropdownAlign = "left", ...rest }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleItemClick = (fn: () => void) => {
@@ -36,7 +37,12 @@ export const ToolDropdownButton = forwardRef<
       {isOpen && (
         <>
           <div className={styles.backdrop} onClick={() => setIsOpen(false)} />
-          <div className={styles.dropdownMenu}>
+          <div
+            className={clsx(
+              styles.dropdownMenu,
+              dropdownAlign === "right" ? styles.alignRight : undefined
+            )}
+          >
             {Object.entries(items).map(([itemLabel, fn]) => (
               <button
                 key={itemLabel}

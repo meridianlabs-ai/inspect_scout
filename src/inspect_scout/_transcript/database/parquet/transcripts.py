@@ -29,7 +29,6 @@ from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
-from ...._query.sql import SQLDialect
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
@@ -58,7 +57,7 @@ from .index import (
     init_index_table,
 )
 from .migration import migrate_view
-from .types import IndexStorage
+from .types import IndexStorage, _normalize_location
 
 logger = getLogger(__name__)
 
@@ -102,7 +101,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
         """
-        self._location = location
+        # Normalize file:// URIs to local paths (e.g., from UPath.as_uri())
+        self._location = _normalize_location(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size_mb = row_group_size_mb
         self._query = query
@@ -264,7 +264,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = effective_query.to_sql_suffix(
-            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            "duckdb", shuffle_column="transcript_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -357,7 +357,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         query = query or Query()
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
-        suffix, params, _ = count_query.to_sql_suffix(SQLDialect.DUCKDB)
+        suffix, params, _ = count_query.to_sql_suffix("duckdb")
         sql = f"SELECT COUNT(*) FROM transcripts{suffix}"
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
@@ -388,7 +388,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 order_by=query.order_by,
             )
             suffix, params, register_shuffle = index_query.to_sql_suffix(
-                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+                "duckdb", shuffle_column="transcript_id"
             )
             if register_shuffle:
                 register_shuffle(self._conn)
@@ -1140,13 +1140,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if not has_snapshot:
                     await self._check_index_coverage()
             else:
-                # Warn about missing index (skip for worker processes)
-                if not has_snapshot:
-                    logger.warning(
-                        f"No index found for {pretty_path(self._location)}. "
-                        f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
-                    )
-                await self._init_from_parquet()
+                # Initialize from parquet files (warning is issued inside if files exist)
+                await self._init_from_parquet(warn_missing_index=not has_snapshot)
 
     async def _init_from_index(self) -> None:
         """Initialize from index files (fast path).
@@ -1185,7 +1180,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ):
             self._apply_query_filter_to_tables()
 
-    async def _init_from_parquet(self) -> None:
+    async def _init_from_parquet(self, warn_missing_index: bool = True) -> None:
         """Initialize from parquet files (legacy/slow path).
 
         Creates:
@@ -1194,6 +1189,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         This is the legacy path used when no index files exist. It's memory-efficient
         because the VIEW queries parquet on-demand rather than loading into memory.
+
+        Args:
+            warn_missing_index: Whether to warn about missing index (default True).
         """
         assert self._conn is not None
 
@@ -1207,10 +1205,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Standard path: discover parquet files
             file_paths = await self._discover_parquet_files()
 
-        # Handle empty case
+        # Handle empty case - no warning needed for empty databases
         if not file_paths:
             self._create_empty_structures()
             return
+
+        # Warn about missing index only if there are parquet files
+        # (empty databases don't need an index yet)
+        if warn_missing_index:
+            logger.warning(
+                f"No index found for {pretty_path(self._location)}. "
+                f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
+            )
 
         # Setup encryption if needed
         self._setup_encryption(file_paths)
@@ -1250,7 +1256,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = self._query.to_sql_suffix(
-            SQLDialect.DUCKDB, shuffle_column="transcript_id"
+            "duckdb", shuffle_column="transcript_id"
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -1362,7 +1368,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         params: list[Any] = []
         if self._query:
             suffix, params, register_shuffle = self._query.to_sql_suffix(
-                SQLDialect.DUCKDB, shuffle_column="transcript_id"
+                "duckdb", shuffle_column="transcript_id"
             )
             if register_shuffle:
                 register_shuffle(self._conn)

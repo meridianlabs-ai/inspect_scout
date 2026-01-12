@@ -129,7 +129,7 @@ class ScanTranscripts(BaseModel):
             return values
         if values.get("conditions", None) is not None:
             values["filter"] = [
-                condition_as_sql(Condition.model_validate(c))
+                condition_as_sql(Condition.model_validate(c), "filter")
                 for c in values["conditions"]
             ]
 

@@ -157,4 +157,5 @@ export const ApplicationIcons = {
   usage: "bi bi-stopwatch",
   wrap: "bi bi-text-wrap",
   x: "bi bi-x",
+  xLarge: "bi bi-x-lg",
 };

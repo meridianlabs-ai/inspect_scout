@@ -3016,7 +3016,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Condition"];
+                "application/json": components["schemas"]["Condition"] | components["schemas"]["Condition"][];
             };
         };
         responses: {

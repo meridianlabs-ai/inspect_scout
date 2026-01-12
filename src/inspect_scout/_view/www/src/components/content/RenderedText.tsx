@@ -51,3 +51,5 @@ export const RenderedText = forwardRef<
     }
   }
 );
+
+RenderedText.displayName = "RenderedText";

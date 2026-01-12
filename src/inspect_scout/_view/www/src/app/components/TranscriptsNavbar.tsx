@@ -1,6 +1,7 @@
-import { FC, useMemo } from "react";
+import { FC, useContext, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 
+import { AppModeContext } from "../../App";
 import { ApplicationIcons } from "../../components/icons";
 import { transcriptsRoute } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -22,6 +23,8 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   bordered = true,
   children,
 }) => {
+  const appMode = useContext(AppModeContext);
+  const showNavButtons = appMode !== "workbench";
   const singleFileMode = useStore((state) => state.singleFileMode);
   const [searchParams] = useSearchParams();
 
@@ -60,7 +63,7 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   return (
     <Navbar
       bordered={bordered}
-      leftButtons={navButtons}
+      leftButtons={showNavButtons ? navButtons : undefined}
       left={
         <EditablePath
           path={transcriptsDir}

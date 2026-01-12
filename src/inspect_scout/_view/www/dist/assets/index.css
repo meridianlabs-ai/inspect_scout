@@ -3890,15 +3890,35 @@ so disabling selection can break that functionality */
   height: 100%;
   row-gap: 0;
 }
-.btn._toolButton_1y0d0_1 {
+._dropdownContainer_1d3k5_1 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn._toolButton_1d3k5_7 {
   background-color: var(--bs-light-border-subtle);
 }
 
-._toolButton_1y0d0_1 i {
+.btn-tools._toolButton_1d3k5_7 {
+  border: solid 1px var(--bs-border-color);
+}
+
+._toolButton_1d3k5_7 {
+  white-space: nowrap;
+}
+
+._toolButton_1d3k5_7 i {
   margin-right: 0.5em;
 }
 
-._toolButton_1y0d0_1:focus {
+._toolButton_1d3k5_7 ._chevron_1d3k5_23 {
+  margin-left: 0.5em;
+  margin-right: 0;
+  font-size: 0.75em;
+}
+
+._toolButton_1d3k5_7:focus {
   outline: none;
   box-shadow:
     0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
@@ -3906,8 +3926,151 @@ so disabling selection can break that functionality */
     inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-._latched_1y0d0_17,
-._latched_1y0d0_17:hover {
+._backdrop_1d3k5_37 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+._dropdownMenu_1d3k5_46 {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 100%;
+  overflow: hidden;
+}
+
+._dropdownMenu_1d3k5_46._alignRight_1d3k5_60 {
+  right: 0;
+  left: auto;
+}
+
+._dropdownItem_1d3k5_65 {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.75rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  transition: background-color 0.15s ease-in-out;
+}
+
+._dropdownItem_1d3k5_65:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+._dropdownItem_1d3k5_65:active {
+  background-color: var(--bs-secondary-bg);
+}
+._chip_15up4_1 {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0rem 0;
+  padding: 0.1rem 0.4rem;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  align-items: center;
+  white-space: nowrap;
+}
+
+._label_15up4_12 {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+
+._value_15up4_17 {
+}
+
+._icon_15up4_20 {
+  margin-right: 0.2rem;
+  font-size: 0.8em;
+}
+
+._closeIcon_15up4_25 {
+  margin-left: 0.3rem;
+  font-size: 0.8em;
+}
+
+._clickable_15up4_30 {
+  cursor: pointer;
+}
+._chipGroup_1de1s_1 {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 0.3rem;
+  row-gap: 0.3rem;
+}
+._filterContent_1udn5_1 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+._filterRow_1udn5_7 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+._filterSelect_1udn5_13,
+._filterInput_1udn5_14 {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+._filterInput_1udn5_14:disabled,
+._filterSelect_1udn5_13:disabled {
+  background: var(--bs-light);
+  color: var(--bs-secondary);
+}
+
+._columnId_1udn5_30 {
+  margin-left: 0.5rem;
+  font-weight: 600;
+  font-family: var(--bs-monospace);
+}
+
+.btn._filterButton_1udn5_36 {
+  width: 100%;
+  padding: 0.2rem;
+}
+.btn._toolButton_ojai3_1 {
+  background-color: var(--bs-light-border-subtle);
+  white-space: nowrap;
+}
+
+._toolButton_ojai3_1 i {
+  margin-right: 0.5em;
+}
+
+._toolButton_ojai3_1:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+._latched_ojai3_18,
+._latched_ojai3_18:hover {
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.15),
     inset 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -4138,182 +4301,31 @@ so disabling selection can break that functionality */
 ._selected_1sw8v_41 {
   font-weight: 600;
 }
-._dropdownContainer_7vk1w_1 {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-tools._toolButton_7vk1w_7 {
-  border: solid 1px var(--bs-border-color);
-}
-
-._toolButton_7vk1w_7 {
-  white-space: nowrap;
-}
-
-._toolButton_7vk1w_7 i {
-  margin-right: 0.5em;
-}
-
-._toolButton_7vk1w_7 ._chevron_7vk1w_19 {
-  margin-left: 0.5em;
-  margin-right: 0;
-  font-size: 0.75em;
-}
-
-._toolButton_7vk1w_7:focus {
-  outline: none;
-  box-shadow:
-    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-._backdrop_7vk1w_33 {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-}
-
-._dropdownMenu_7vk1w_42 {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.25rem;
-  background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  z-index: 1001;
-  min-width: 100%;
-  overflow: hidden;
-}
-
-._dropdownMenu_7vk1w_42._alignRight_7vk1w_56 {
-  right: 0;
-  left: auto;
-}
-
-._dropdownItem_7vk1w_61 {
-  display: block;
-  width: 100%;
-  padding: 0.25rem 0.75rem;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  color: var(--bs-body-color);
-  white-space: nowrap;
-  transition: background-color 0.15s ease-in-out;
-}
-
-._dropdownItem_7vk1w_61:hover {
-  background-color: var(--bs-tertiary-bg);
-}
-
-._dropdownItem_7vk1w_61:active {
-  background-color: var(--bs-secondary-bg);
-}
-._chip_t892q_1 {
-  display: inline-flex;
-  flex-direction: row;
-  margin: 0.2rem;
-  padding: 0.1rem 0.4rem;
-  border: solid 1px var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  font-family: var(--bs-font-monospace);
-  align-items: center;
-}
-
-._label_t892q_12 {
-  font-weight: 600;
-  margin-right: 0.5em;
-}
-
-._value_t892q_17 {
-}
-
-._icon_t892q_20 {
-  margin-right: 0.2rem;
-  font-size: 0.8em;
-}
-
-._closeIcon_t892q_25 {
-  margin-left: 0.3rem;
-  font-size: 0.8em;
-}
-
-._clickable_t892q_30 {
-  cursor: pointer;
-}
-._chipGroup_1x7cb_1 {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-._filterContent_1udn5_1 {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-._filterRow_1udn5_7 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-._filterSelect_1udn5_13,
-._filterInput_1udn5_14 {
-  flex: 1;
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--bs-border-color);
-  background: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-
-._filterInput_1udn5_14:disabled,
-._filterSelect_1udn5_13:disabled {
-  background: var(--bs-light);
-  color: var(--bs-secondary);
-}
-
-._columnId_1udn5_30 {
-  margin-left: 0.5rem;
-  font-weight: 600;
-  font-family: var(--bs-monospace);
-}
-
-.btn._filterButton_1udn5_36 {
-  width: 100%;
-  padding: 0.2rem;
-}
-._container_ufusn_1 {
+._container_1szjw_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: baseline;
+  align-items: center;
   width: 100%;
 }
 
-._filterLabel_ufusn_11 {
+._filterBar_1szjw_11 {
+  margin: 1px 0;
+}
+
+._filterLabel_1szjw_15 {
   margin-right: 0.3rem;
 }
 
-._filterNone_ufusn_15 {
-  font-family: var(--bs-font-monospace);
+._filterNone_1szjw_19 {
 }
 
-._actionButtons_ufusn_19 {
+._actionButtons_1szjw_22 {
   margin-left: auto;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -4321,9 +4333,27 @@ so disabling selection can break that functionality */
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_ufusn_19 {
+._actionButton_1szjw_22 {
   padding: 0.1rem 0.4rem;
-  margin: 0.1rem 0rem;
+  margin: 0rem 0rem;
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+._actionButtonDropDown_1szjw_39 {
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+._actionButton_1szjw_22._chipButton_1szjw_43 {
+  background-color: unset;
+  margin-left: 0.3rem;
+}
+
+._sep_1szjw_48 {
+  width: 1px;
+  height: calc(100% - 4px);
+  margin: 0 0.3rem;
+
+  background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);
 }
 ._filterButton_fuk0s_1 {
@@ -4425,7 +4455,7 @@ so disabling selection can break that functionality */
 ._content_1j111_16._scrolling_1j111_21 {
   overflow: auto;
 }
-._projectBar_5sldo_1 {
+._projectBar_mfthh_1 {
   display: flex;
   flex-direction: column;
   background: var(--bs-light);
@@ -4437,7 +4467,7 @@ so disabling selection can break that functionality */
   justify-content: center;
 }
 
-._row_5sldo_13 {
+._row_mfthh_13 {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -4446,12 +4476,21 @@ so disabling selection can break that functionality */
   height: 100%;
 }
 
-._center_5sldo_22,
-._right_5sldo_23 {
+._left_mfthh_22,
+._center_mfthh_23,
+._right_mfthh_24 {
   font-size: var(--inspect-font-size-small);
 }
 
-._center_5sldo_22 {
+._left_mfthh_22 {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+._center_mfthh_23 {
   grid-column: 2;
   justify-self: center;
   display: flex;
@@ -4459,19 +4498,27 @@ so disabling selection can break that functionality */
   font-weight: 500;
 }
 
-._right_5sldo_23 {
+._right_mfthh_24 {
   grid-column: 3;
   justify-self: end;
   display: flex;
   align-items: center;
 }
 
-._projectButton_5sldo_42 {
+._navButton_mfthh_51 {
   display: inline-flex;
   align-items: center;
-  font-size: var(--inspect-font-size-small);
-  line-height: 1;
-  padding: 0.18rem 0.4rem;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0.12rem 0.3rem;
+  border-radius: var(--bs-border-radius);
+}
+
+._navButton_mfthh_51:hover,
+._navButton_mfthh_51:focus-visible {
+  background-color: var(--bs-secondary-bg-subtle);
 }
 ._root_ke0e7_1 {
   height: 100vh;
@@ -4756,24 +4803,6 @@ button._segment_19z32_10 {
   padding: 0.1rem;
   padding-left: 0.5rem;
   background-color: var(--bs-body-bg);
-}
-._toolButton_nu8dt_1 i {
-  margin-right: 0.5em;
-}
-
-._toolButton_nu8dt_1:focus {
-  outline: none;
-  box-shadow:
-    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-._latched_nu8dt_13,
-._latched_nu8dt_13:hover {
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 ._visible_tm52u_1 {
   display: block;

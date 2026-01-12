@@ -19,9 +19,18 @@
   height: 100%;
 }
 
+.left,
 .center,
 .right {
   font-size: var(--inspect-font-size-small);
+}
+
+.left {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .center {
@@ -39,10 +48,18 @@
   align-items: center;
 }
 
-.projectButton {
+.navButton {
   display: inline-flex;
   align-items: center;
-  font-size: var(--inspect-font-size-small);
-  line-height: 1;
-  padding: 0.18rem 0.4rem;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0.12rem 0.3rem;
+  border-radius: var(--bs-border-radius);
+}
+
+.navButton:hover,
+.navButton:focus-visible {
+  background-color: var(--bs-secondary-bg-subtle);
 }

@@ -597,7 +597,6 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                     key={header.id}
                     className={clsx(
                       styles.headerCell,
-                      align === "center" && styles.headerCellCenter,
                       draggedColumn === header.column.id &&
                         styles.headerCellDragging,
                       dragOverColumn === header.column.id &&
@@ -613,7 +612,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                     onDrop={(e) => handleDrop(e, header.column.id)}
                   >
                     <div
-                      className={styles.headerContent}
+                      className={clsx(
+                        styles.headerContent,
+                        align === "center" && styles.headerCellCenter
+                      )}
                       draggable
                       onDragStart={(e) => handleDragStart(e, header.column.id)}
                       onDragEnd={handleDragEnd}
@@ -623,7 +625,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                         maxWidth: `calc(${header.getSize()}px - 32px)`,
                       }}
                     >
-                      <span className={styles.headerText}>
+                      <span className={clsx(styles.headerText)}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(

@@ -115,6 +115,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
                     ? "datetime-local"
                     : "text"
             }
+            spellCheck="false"
             value={rawValue}
             onChange={handleValueChange}
             placeholder="Filter"

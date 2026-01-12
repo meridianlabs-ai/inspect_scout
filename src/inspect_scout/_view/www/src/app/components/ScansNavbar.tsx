@@ -1,6 +1,7 @@
-import { FC, ReactNode, useMemo } from "react";
+import { FC, ReactNode, useContext, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { AppModeContext } from "../../App";
 import { ApplicationIcons } from "../../components/icons";
 import { scanRoute, scansRoute } from "../../router/url";
 import { useStore } from "../../state/store";
@@ -24,6 +25,8 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
   bordered = true,
   children,
 }) => {
+  const appMode = useContext(AppModeContext);
+  const showNavButtons = appMode !== "workbench";
   const {
     relativePath,
     scanPath,
@@ -71,7 +74,7 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
     <Navbar
       bordered={bordered}
       right={children}
-      leftButtons={navButtons}
+      leftButtons={showNavButtons ? navButtons : undefined}
       left={
         scansDir ? (
           <EditablePath

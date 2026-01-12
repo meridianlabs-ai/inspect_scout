@@ -1,8 +1,8 @@
 import { forwardRef, useCallback } from "react";
 
 import { ApplicationIcons } from "../../../../components/icons";
+import { ToolButton } from "../../../../components/ToolButton";
 import { useStore } from "../../../../state/store";
-import { ToolButton } from "../../../components/ToolButton";
 
 export const ScannerDataframeFilterColumnsButton = forwardRef<
   HTMLButtonElement,

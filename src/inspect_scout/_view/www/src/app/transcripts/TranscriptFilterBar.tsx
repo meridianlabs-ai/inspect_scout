@@ -11,11 +11,13 @@ import { ChipGroup } from "../components/ChipGroup";
 
 import { ColumnFilterEditor } from "./columnFilter/ColumnFilterEditor";
 import { useColumnFilterPopover } from "./columnFilter/useColumnFilterPopover";
+import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
+import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
 import styles from "./TranscriptFilterBar.module.css";
 
 const kCopyCodeDescriptors = [
-  { label: "Python", value: "python" },
-  { label: "Filter", value: "filter" },
+  { label: "Code (Python)", value: "python" },
+  { label: "Filter (SQL)", value: "filter" },
 ];
 
 export const TranscriptFilterBar: FC<{
@@ -42,6 +44,10 @@ export const TranscriptFilterBar: FC<{
     },
     [setTranscriptsTableState]
   );
+
+  // Column picker state
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const columnButtonRef = useRef<HTMLButtonElement>(null);
 
   // Filter editing state
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
@@ -130,8 +136,9 @@ export const TranscriptFilterBar: FC<{
                   chipRefs.current[filter.columnId] = el;
                 }}
                 label={filter.columnId}
-                value={`${filter.condition.operator} ${String(filter.condition.right)}`}
+                value={`${filter.condition.operator} ${formatRepresentativeType(filter.condition.right)}`}
                 title={`Edit ${filter.columnId} filter`}
+                closeTitle="Remove filter"
                 className={clsx(styles.filterChip, "text-size-smallestest")}
                 onClose={() => {
                   removeFilter(filter.columnId);
@@ -146,6 +153,13 @@ export const TranscriptFilterBar: FC<{
           </div>
         )}
       </ChipGroup>
+      {filterEntries.length > 0 && (
+        <>
+          <CopyQueryButton itemValues={filterCodeValues} />
+          <div className={styles.sep}></div>
+        </>
+      )}
+
       {editingColumnId && editingFilter && (
         <PopOver
           id={`transcript-filter-editor-${editingColumnId}`}
@@ -178,7 +192,16 @@ export const TranscriptFilterBar: FC<{
         </PopOver>
       )}
       <div className={clsx(styles.actionButtons)}>
-        <CopyQueryButton itemValues={filterCodeValues} />
+        <TranscriptColumnsButton
+          ref={columnButtonRef}
+          isOpen={showColumnPicker}
+          onClick={() => setShowColumnPicker(!showColumnPicker)}
+        />
+        <TranscriptColumnsPopover
+          positionEl={columnButtonRef.current}
+          isOpen={showColumnPicker}
+          setIsOpen={setShowColumnPicker}
+        />
       </div>
     </div>
   );
@@ -208,16 +231,31 @@ const CopyQueryButton: FC<{ itemValues?: Record<string, string> }> = ({
     {} as Record<string, () => void>
   );
 
-  // TODO: Actually copy the text
   return (
     <ToolDropdownButton
       key="query-copy"
       label="Copy"
       icon={icon}
-      className={styles.actionButton}
+      title="Copy Filter"
+      className={clsx(styles.actionButton, styles.chipButton)}
       disabled={Object.keys(itemValues || []).length === 0}
       dropdownAlign="right"
+      dropdownClassName={"text-size-smallest"}
       items={items}
     />
   );
+};
+
+const formatRepresentativeType = (value: unknown): string => {
+  if (value === null) {
+    return "NULL";
+  } else if (Array.isArray(value)) {
+    return `[${value.map((v) => formatRepresentativeType(v)).join(", ")}]`;
+  } else if (typeof value === "object") {
+    return "{...}";
+  } else if (typeof value === "string") {
+    return `'${value}'`;
+  } else {
+    return String(value);
+  }
 };

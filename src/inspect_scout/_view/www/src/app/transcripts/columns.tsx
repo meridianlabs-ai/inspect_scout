@@ -119,7 +119,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   }),
   date: createColumn({
     accessorKey: "date",
-    header: "date",
+    header: "Date",
     size: 180,
     meta: {
       filterable: true,
@@ -165,7 +165,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   }),
   task_repeat: createColumn({
     accessorKey: "task_repeat",
-    header: "Repeat",
+    header: "N",
     size: 80,
     meta: {
       filterable: true,
@@ -291,7 +291,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   }),
   total_tokens: createColumn({
     accessorKey: "total_tokens",
-    header: "Total Tokens",
+    header: "Tokens",
     size: 120,
     meta: {
       filterable: true,
@@ -306,7 +306,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   }),
   total_time: createColumn({
     accessorKey: "total_time",
-    header: "Total Time",
+    header: "Time",
     size: 120,
     meta: {
       filterable: true,

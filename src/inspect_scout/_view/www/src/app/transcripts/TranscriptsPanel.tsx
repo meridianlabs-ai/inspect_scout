@@ -9,7 +9,7 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useCode } from "../server/useCode";
-import { useConfig } from "../server/useConfig";
+import { appTranscriptsDir, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
 import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
@@ -25,7 +25,7 @@ export const TranscriptsPanel: FC = () => {
 
   // Resolve the active transcripts directory
   const config = useConfig();
-  const transcriptDir = config.transcripts_dir;
+  const transcriptDir = appTranscriptsDir(config);
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir

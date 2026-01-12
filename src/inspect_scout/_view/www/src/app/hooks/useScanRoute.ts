@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { parseScanParams } from "../../router/url";
 import { useStore } from "../../state/store";
 import { join } from "../../utils/uri";
-import { useConfig } from "../server/useConfig";
+import { appScansDir, useConfig } from "../server/useConfig";
 
 export const useScanRoute = (): {
   scansDir?: string;
@@ -17,7 +17,7 @@ export const useScanRoute = (): {
   const params = useParams<{ scansDir?: string; "*": string }>();
   const setUserScansDir = useStore((state) => state.setUserScansDir);
   const config = useConfig();
-  const scansDir = config.scans_dir;
+  const scansDir = appScansDir(config);
 
   const route = useMemo(() => parseScanParams(params), [params]);
   const resolvedScansDir = route.scansDir || scansDir;

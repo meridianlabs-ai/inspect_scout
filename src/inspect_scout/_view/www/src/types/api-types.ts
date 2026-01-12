@@ -23,6 +23,7 @@ export type InfoEvent = components["schemas"]["InfoEvent"];
 export type InputEvent = components["schemas"]["InputEvent"];
 export type LoggerEvent = components["schemas"]["LoggerEvent"];
 export type ModelEvent = components["schemas"]["ModelEvent"];
+export type ProjectConfig = components["schemas"]["ProjectConfig"];
 export type SampleInitEvent = components["schemas"]["SampleInitEvent"];
 export type SampleLimitEvent = components["schemas"]["SampleLimitEvent"];
 export type SandboxEvent = components["schemas"]["SandboxEvent"];

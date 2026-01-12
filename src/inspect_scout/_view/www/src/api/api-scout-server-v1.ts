@@ -1,11 +1,13 @@
 import { ScanResultInputData, Input, InputType } from "../app/types";
 import {
   ActiveScansResponse,
+  ProjectConfig,
   ScansResponse,
   Status,
   TranscriptsResponse,
 } from "../types/api-types";
 import { asyncJsonParse } from "../utils/json-worker";
+import { basename, dirname } from "../utils/path";
 
 import { NoPersistence, ScanApi } from "./api";
 import { AsyncCache } from "./api-cache";
@@ -51,8 +53,15 @@ export const apiScoutServerV1 = (
   return {
     capability: "scans",
     getConfig: async () => {
-      const result = await readScans();
-      return { transcripts_dir: "", scans_dir: result.results_dir };
+      const data = await readScans();
+      const project_dir = dirname(data.results_dir);
+      const scans = basename(data.results_dir);
+      return {
+        project_dir,
+        project: {
+          scans,
+        } as ProjectConfig,
+      };
     },
     getTranscripts: (
       _transcriptsDir?: string,

@@ -206,10 +206,9 @@ export interface components {
         };
         /** AppConfig */
         AppConfig: {
-            /** Scans Dir */
-            scans_dir: string;
-            /** Transcripts Dir */
-            transcripts_dir?: string | null;
+            project: components["schemas"]["ProjectConfig"];
+            /** Project Dir */
+            project_dir: string;
         };
         /**
          * ApprovalEvent
@@ -1528,6 +1527,67 @@ export interface components {
             direction: "forward" | "backward";
             /** Limit */
             limit: number;
+        };
+        /**
+         * ProjectConfig
+         * @description Scout project configuration from scout.yaml.
+         *
+         *     Extends ScanJobConfig to represent project-level defaults. All fields
+         *     from ScanJobConfig are available as project defaults.
+         */
+        ProjectConfig: {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig"] | string;
+            } | null;
+            /**
+             * Name
+             * @default job
+             */
+            name: string;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
         };
         /**
          * ProvenanceData

@@ -5,7 +5,7 @@ from typing import Any
 from inspect_ai._util.path import chdir
 from inspect_ai._view.view import view_acquire_port
 
-from inspect_scout._project import project
+from inspect_scout._project._project import project
 from inspect_scout._scan import top_level_async_init
 from inspect_scout._util.appdirs import scout_data_dir
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR

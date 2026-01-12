@@ -45,6 +45,10 @@
       },
       "AppConfig": {
         "properties": {
+          "home_dir": {
+            "title": "Home Dir",
+            "type": "string"
+          },
           "project": {
             "$ref": "#/components/schemas/ProjectConfig"
           },
@@ -54,6 +58,7 @@
           }
         },
         "required": [
+          "home_dir",
           "project_dir",
           "project"
         ],

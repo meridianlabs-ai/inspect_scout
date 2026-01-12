@@ -7,7 +7,11 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { appTranscriptsDir, useConfig } from "../server/useConfig";
+import {
+  appAliasedPath,
+  appTranscriptsDir,
+  useConfig,
+} from "../server/useConfig";
 import { useServerTranscript } from "../server/useServerTranscript";
 import { useTranscriptDirParams } from "../utils/router";
 
@@ -34,8 +38,13 @@ export const TranscriptPanel: FC = () => {
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptsDir =
-    routeTranscriptsDir || userTranscriptsDir || transcriptsDir;
+  const resolvedTranscriptsDir = appAliasedPath(
+    config,
+    routeTranscriptsDir ||
+      userTranscriptsDir ||
+      config.project.transcripts ||
+      transcriptsDir
+  );
 
   return (
     <div className={clsx(styles.container)}>

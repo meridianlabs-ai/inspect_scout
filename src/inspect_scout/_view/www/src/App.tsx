@@ -1,4 +1,4 @@
-import { FC, useMemo } from "react";
+import { FC, createContext, useMemo } from "react";
 import { RouterProvider } from "react-router-dom";
 
 import "prismjs";
@@ -16,6 +16,8 @@ export interface AppProps {
   mode?: "scans" | "workbench";
 }
 
+export const AppModeContext = createContext<AppProps["mode"]>("scans");
+
 export const App: FC<AppProps> = ({ mode = "scans" }) => {
   const { data: config } = useConfigAsync();
   const router = useMemo(
@@ -23,5 +25,9 @@ export const App: FC<AppProps> = ({ mode = "scans" }) => {
     [mode, config]
   );
 
-  return router ? <RouterProvider router={router} /> : null;
+  return config && router ? (
+    <AppModeContext.Provider value={mode}>
+      <RouterProvider router={router} />
+    </AppModeContext.Provider>
+  ) : null;
 };

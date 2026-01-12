@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
+import { ProjectPanel } from "./app/project/ProjectPanel";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
@@ -28,6 +29,7 @@ import {
   parseScanParams,
   kTranscriptsRouteUrlPattern,
   kTranscriptDetailRoute,
+  kProjectRouteUrlPattern,
   scanResultRoute,
   scanRoute,
   scansRoute,
@@ -152,7 +154,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     return (
       <AppErrorBoundary>
         {routerConfig.mode === "workbench" && !singleFileMode ? (
-          <ActivityBarLayout>{content}</ActivityBarLayout>
+          <ActivityBarLayout config={config}>{content}</ActivityBarLayout>
         ) : (
           content
         )}
@@ -185,9 +187,14 @@ const ScanOrScanResultsRoute = () => {
   return <ScanPanel />;
 };
 
-export const createAppRouter = (appRouterConfig: AppRouterConfig) => {
-  const AppLayout = createAppLayout(appRouterConfig);
-  const transcriptsDir = appTranscriptsDir(appRouterConfig.config);
+const ProjectPanelRoute = () => {
+  const config = useConfig();
+  return <ProjectPanel config={config} />;
+};
+
+export const createAppRouter = (config: AppRouterConfig) => {
+  const AppLayout = createAppLayout(config);
+  const transcriptsDir = appTranscriptsDir(config.config);
 
   return createHashRouter(
     [
@@ -223,6 +230,10 @@ export const createAppRouter = (appRouterConfig: AppRouterConfig) => {
           {
             path: kTranscriptsRouteUrlPattern,
             element: <TranscriptsPanel />,
+          },
+          {
+            path: kProjectRouteUrlPattern,
+            element: <ProjectPanelRoute />,
           },
           {
             path: kTranscriptDetailRoute,

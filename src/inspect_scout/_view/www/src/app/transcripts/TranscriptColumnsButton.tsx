@@ -17,7 +17,7 @@ export const TranscriptColumnsButton = forwardRef<
 >(({ isOpen, onClick }, ref) => {
   return (
     <ToolButton
-      title="Select transcript columns"
+      title="Choose columns"
       icon={ApplicationIcons.threeDots}
       onClick={onClick}
       latched={isOpen}

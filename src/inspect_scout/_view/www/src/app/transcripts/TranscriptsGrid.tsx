@@ -33,6 +33,7 @@ import {
   TranscriptColumn,
   getTranscriptColumns,
   getCellTitleValue,
+  DEFAULT_COLUMN_ORDER,
 } from "./columns";
 import styles from "./TranscriptsGrid.module.css";
 
@@ -100,6 +101,16 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     "total_tokens",
   ];
   const setTableState = useStore((state) => state.setTranscriptsTableState);
+
+  // Compute effective column order: use explicit order if set, otherwise derive from DEFAULT_COLUMN_ORDER
+  const effectiveColumnOrder = useMemo(() => {
+    if (columnOrder && columnOrder.length > 0) {
+      return columnOrder;
+    }
+    // Filter DEFAULT_COLUMN_ORDER to only include visible columns
+    return DEFAULT_COLUMN_ORDER.filter((col) => visibleColumns.includes(col));
+  }, [columnOrder, visibleColumns]);
+
   const handleColumnFilterChange = useCallback(
     (
       columnId: string,
@@ -206,15 +217,15 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         setDragOverColumn(columnId);
 
         // Determine which side to show the drop indicator based on current column order
-        const draggedIndex = columnOrder.indexOf(draggedColumn);
-        const targetIndex = columnOrder.indexOf(columnId);
+        const draggedIndex = effectiveColumnOrder.indexOf(draggedColumn);
+        const targetIndex = effectiveColumnOrder.indexOf(columnId);
 
         // If dragging from left to right, show indicator on right side
         // If dragging from right to left, show indicator on left side
         setDropPosition(draggedIndex < targetIndex ? "right" : "left");
       }
     },
-    [draggedColumn, columnOrder]
+    [draggedColumn, effectiveColumnOrder]
   );
 
   const handleDragLeave = useCallback(() => {
@@ -233,8 +244,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
         return;
       }
 
-      const draggedIndex = columnOrder.indexOf(draggedColumn);
-      const targetIndex = columnOrder.indexOf(targetColumnId);
+      const draggedIndex = effectiveColumnOrder.indexOf(draggedColumn);
+      const targetIndex = effectiveColumnOrder.indexOf(targetColumnId);
 
       if (draggedIndex === -1 || targetIndex === -1) {
         setDraggedColumn(null);
@@ -244,7 +255,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       }
 
       // Create new order by moving dragged column to target position
-      const newOrder = [...columnOrder];
+      const newOrder = [...effectiveColumnOrder];
       newOrder.splice(draggedIndex, 1);
       newOrder.splice(targetIndex, 0, draggedColumn);
 
@@ -253,7 +264,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       setDragOverColumn(null);
       setDropPosition(null);
     },
-    [draggedColumn, columnOrder, setTableState]
+    [draggedColumn, effectiveColumnOrder, setTableState]
   );
 
   const handleDragEnd = useCallback(() => {
@@ -284,7 +295,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     getRowId: (row) => String(row.transcript_id),
     state: {
       columnSizing,
-      columnOrder,
+      columnOrder: effectiveColumnOrder,
       sorting,
       rowSelection,
     },

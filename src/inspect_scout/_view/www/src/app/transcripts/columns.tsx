@@ -99,8 +99,8 @@ function createObjectColumn<K extends keyof TranscriptInfo>(config: {
 const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   success: createColumn({
     accessorKey: "success",
-    header: "Success",
-    size: 68,
+    header: "✓",
+    size: 44,
     meta: {
       align: "center",
       filterable: true,

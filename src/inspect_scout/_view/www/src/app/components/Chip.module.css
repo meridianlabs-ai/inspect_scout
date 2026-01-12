@@ -1,12 +1,12 @@
 .chip {
   display: inline-flex;
   flex-direction: row;
-  margin: 0.2rem;
+  margin: 0rem 0;
   padding: 0.1rem 0.4rem;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  font-family: var(--bs-font-monospace);
   align-items: center;
+  white-space: nowrap;
 }
 
 .label {

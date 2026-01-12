@@ -4,8 +4,12 @@
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: baseline;
+  align-items: center;
   width: 100%;
+}
+
+.filterBar {
+  margin: 1px 0;
 }
 
 .filterLabel {
@@ -13,11 +17,12 @@
 }
 
 .filterNone {
-  font-family: var(--bs-font-monospace);
 }
 
 .actionButtons {
   margin-left: auto;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -27,6 +32,24 @@
 
 .actionButton {
   padding: 0.1rem 0.4rem;
-  margin: 0.1rem 0rem;
+  margin: 0rem 0rem;
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+.actionButtonDropDown {
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+.actionButton.chipButton {
+  background-color: unset;
+  margin-left: 0.3rem;
+}
+
+.sep {
+  width: 1px;
+  height: calc(100% - 4px);
+  margin: 0 0.3rem;
+
+  background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);
 }

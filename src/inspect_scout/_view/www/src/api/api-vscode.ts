@@ -4,10 +4,12 @@ import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
 import {
   ActiveScansResponse,
+  ProjectConfig,
   ScansResponse,
   Status,
   TranscriptsResponse,
 } from "../types/api-types";
+import { basename, dirname } from "../utils/path";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";
@@ -53,7 +55,14 @@ export const apiVscode = (
     capability: "scans",
     getConfig: async () => {
       const data = await fetchScansData();
-      return { transcripts_dir: "", scans_dir: data.results_dir };
+      const project_dir = dirname(data.results_dir);
+      const scans = basename(data.results_dir);
+      return {
+        project_dir,
+        project: {
+          scans,
+        } as ProjectConfig,
+      };
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getTranscripts: async (

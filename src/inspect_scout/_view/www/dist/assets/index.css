@@ -4425,23 +4425,53 @@ so disabling selection can break that functionality */
 ._content_1j111_16._scrolling_1j111_21 {
   overflow: auto;
 }
-._projectBar_1puwg_1 {
+._projectBar_5sldo_1 {
   display: flex;
   flex-direction: column;
   background: var(--bs-light);
   border-bottom: solid 1px var(--bs-border-color);
-  padding: 0.3rem 0.5rem;
+  min-height: 2em;
+  padding: 0.1rem 0.3rem;
+  row-gap: 0;
+  align-items: center;
+  justify-content: center;
 }
 
-._row_1puwg_9 {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+._row_5sldo_13 {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: 0.5rem;
+  width: 100%;
+  height: 100%;
 }
 
-._left_1puwg_15,
-._right_1puwg_16 {
+._center_5sldo_22,
+._right_5sldo_23 {
   font-size: var(--inspect-font-size-small);
+}
+
+._center_5sldo_22 {
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+._right_5sldo_23 {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+}
+
+._projectButton_5sldo_42 {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--inspect-font-size-small);
+  line-height: 1;
+  padding: 0.18rem 0.4rem;
 }
 ._root_ke0e7_1 {
   height: 100vh;

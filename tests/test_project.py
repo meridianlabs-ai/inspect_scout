@@ -7,85 +7,12 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_scout._project import (
     ProjectConfig,
     create_default_project,
-    find_git_root,
     find_local_project_file,
-    find_project_file,
     load_project_config,
     merge_configs,
 )
 from inspect_scout._scanspec import ScannerSpec, Worklist
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR, DEFAULT_TRANSCRIPTS_DIR
-
-
-class TestFindGitRoot:
-    """Tests for find_git_root function."""
-
-    def test_finds_git_root_in_repo(self, tmp_path: Path) -> None:
-        """Should find .git directory when present."""
-        # Create a fake git repo
-        git_dir = tmp_path / ".git"
-        git_dir.mkdir()
-        subdir = tmp_path / "sub" / "nested"
-        subdir.mkdir(parents=True)
-
-        result = find_git_root(subdir)
-        assert result == tmp_path
-
-    def test_returns_none_when_no_git(self, tmp_path: Path) -> None:
-        """Should return None when no .git directory exists."""
-        subdir = tmp_path / "sub" / "nested"
-        subdir.mkdir(parents=True)
-
-        result = find_git_root(subdir)
-        assert result is None
-
-
-class TestFindProjectFile:
-    """Tests for find_project_file function."""
-
-    def test_finds_project_in_current_dir(self, tmp_path: Path) -> None:
-        """Should find scout.yaml in the starting directory."""
-        project_file = tmp_path / "scout.yaml"
-        project_file.write_text("name: test")
-
-        result = find_project_file(tmp_path)
-        assert result == project_file
-
-    def test_finds_project_in_parent_dir(self, tmp_path: Path) -> None:
-        """Should find scout.yaml in parent directory."""
-        project_file = tmp_path / "scout.yaml"
-        project_file.write_text("name: test")
-        subdir = tmp_path / "sub" / "nested"
-        subdir.mkdir(parents=True)
-
-        result = find_project_file(subdir)
-        assert result == project_file
-
-    def test_stops_at_git_root(self, tmp_path: Path) -> None:
-        """Should not search above git root."""
-        # Create project file above git root
-        project_file = tmp_path / "scout.yaml"
-        project_file.write_text("name: test")
-
-        # Create git repo in subdir
-        git_repo = tmp_path / "repo"
-        git_repo.mkdir()
-        (git_repo / ".git").mkdir()
-
-        # Search from inside the repo
-        search_dir = git_repo / "sub"
-        search_dir.mkdir()
-
-        result = find_project_file(search_dir)
-        assert result is None
-
-    def test_returns_none_when_no_project(self, tmp_path: Path) -> None:
-        """Should return None when no scout.yaml exists."""
-        subdir = tmp_path / "sub"
-        subdir.mkdir()
-
-        result = find_project_file(subdir)
-        assert result is None
 
 
 class TestLoadProjectConfig:

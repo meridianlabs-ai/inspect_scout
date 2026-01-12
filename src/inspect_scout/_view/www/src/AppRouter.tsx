@@ -12,6 +12,7 @@ import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
 import { appScansDir, useConfig } from "./app/server/useConfig";
+import { ProjectPanel } from "./app/project/ProjectPanel";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -24,6 +25,7 @@ import {
   parseScanParams,
   kTranscriptsRouteUrlPattern,
   kTranscriptDetailRoute,
+  kProjectRouteUrlPattern,
   scanResultRoute,
   scanRoute,
   scansRoute,
@@ -178,6 +180,11 @@ const ScanOrScanResultsRoute = () => {
   return <ScanPanel />;
 };
 
+const ProjectPanelRoute = () => {
+  const config = useConfig();
+  return <ProjectPanel config={config} />;
+};
+
 export const createAppRouter = (config: AppRouterConfig) => {
   const AppLayout = createAppLayout(config);
 
@@ -210,6 +217,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kTranscriptsRouteUrlPattern,
             element: <TranscriptsPanel />,
+          },
+          {
+            path: kProjectRouteUrlPattern,
+            element: <ProjectPanelRoute />,
           },
           {
             path: kTranscriptDetailRoute,

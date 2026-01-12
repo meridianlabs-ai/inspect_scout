@@ -29,7 +29,7 @@ export const ActivityBarLayout: FC<ActivityBarLayoutProps> = ({
 
   // Determine the currently selected activity based on the current route
   const currentActivity = getActivityByRoute(location.pathname);
-  const selectedActivityId = currentActivity?.id ?? activities[0]?.id ?? "";
+  const selectedActivityId = currentActivity?.id ?? "";
 
   const handleSelectActivity = (activityId: string) => {
     const activity = getActivityById(activityId);

@@ -7,6 +7,7 @@ export const kScansWithPathRouteUrlPattern = "/scans/:scansDir/*";
 export const kScanRouteUrlPattern = "/scan/:scansDir/*";
 export const kScanResultRouteUrlPattern = "/scan/:scansDir/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
+export const kProjectRouteUrlPattern = "/project";
 export const kTranscriptDetailRoute =
   "/transcripts/:transcriptsDir/:transcriptId";
 export const kTranscriptDetailRouteUrlPattern =
@@ -65,6 +66,8 @@ export const transcriptsRoute = (searchParams?: URLSearchParams) => {
     ? `${route}?${searchParams.toString()}`
     : route;
 };
+
+export const projectRoute = () => "/project";
 
 export const transcriptRoute = (
   transcriptsDir: string,

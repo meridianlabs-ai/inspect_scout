@@ -7739,6 +7739,22 @@ span.ap-marker-container:hover span.ap-marker {
 ._container_g5onx_1 {
   overflow-y: auto;
 }
+._container_p81af_1 {
+  height: 100%;
+  display: grid;
+  grid-template-rows: max-content max-content 1fr;
+  padding: 0.75rem 1rem;
+}
+
+._header_p81af_8 {
+  font-size: var(--inspect-font-size-large);
+  font-weight: 600;
+}
+
+._detail_p81af_13 {
+  font-size: var(--inspect-font-size-small);
+  color: var(--bs-secondary);
+}
 ._tabContainer_1jncw_1 {
   display: grid;
   grid-template-rows: max-content minmax(0, 1fr);

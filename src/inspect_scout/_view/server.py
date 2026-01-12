@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -10,10 +11,34 @@ from inspect_ai._view.fastapi_server import (
     OnlyDirAccessPolicy,
 )
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import Scope
 
 from .._display._display import display
 from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
+
+
+class NoCacheStaticFiles(StaticFiles):
+    """StaticFiles that prevents caching of JS files during development."""
+
+    def file_response(
+        self,
+        full_path: str | os.PathLike[str],
+        stat_result: os.stat_result,
+        scope: Scope,
+        status_code: int = 200,
+    ) -> Response:
+        response = super().file_response(full_path, stat_result, scope, status_code)
+
+        # We have seen sporadic caching of the core JS file in safari though I
+        # wasn't able to consistently reproduce it. To be safe, disable caching
+        # for all JS files for the time being
+        if str(full_path).endswith(".js"):
+            response.headers["cache-control"] = "no-cache, no-store, must-revalidate"
+            response.headers["pragma"] = "no-cache"
+            response.headers["expires"] = "0"
+
+        return response
 
 
 def view_server(
@@ -55,7 +80,9 @@ def view_server(
     app.mount("/api", v1_api)
 
     dist = Path(__file__).parent / "www" / "dist"
-    app.mount("/", StaticFiles(directory=dist.as_posix(), html=True), name="static")
+    app.mount(
+        "/", NoCacheStaticFiles(directory=dist.as_posix(), html=True), name="static"
+    )
 
     # run app
     display().print("Scout View")

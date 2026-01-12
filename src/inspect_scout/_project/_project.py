@@ -20,23 +20,11 @@ from .types import ProjectConfig
 
 # Global project state
 _current_project: ProjectConfig | None = None
+_project_transcripts: str | None = None
+_project_scans: str | None = None
 
 # Local project override filename
 LOCAL_PROJECT_FILENAME = "scout.local.yaml"
-
-
-def project() -> ProjectConfig:
-    """Get the current project configuration.
-
-    Returns:
-        The current ProjectConfig.
-
-    Raises:
-        RuntimeError: If project has not been initialized.
-    """
-    if _current_project is None:
-        raise RuntimeError("Project not initialized. Call init_project() first.")
-    return _current_project
 
 
 def init_project(
@@ -54,19 +42,38 @@ def init_project(
     Returns:
         The initialized ProjectConfig.
     """
-    global _current_project
+    global _project_transcripts
+    global _project_scans
+    _project_transcripts = transcripts
+    _project_scans = scans
+    return sync_project()
 
-    project_file = find_project_file(Path.cwd())
-    if project_file:
+
+def sync_project() -> ProjectConfig:
+    """Update the global project configuration.
+
+    Always reinitializes (no caching). This is safe because scan_async()
+    and view() are never concurrent within a process, and enables multiple
+    projects to be used within a single Python script.
+
+    Returns:
+        The initialized ProjectConfig.
+    """
+    global _current_project
+    global _project_transcripts
+    global _project_scans
+
+    project_file = Path.cwd() / "scout.yaml"
+    if project_file.exists():
         _current_project = load_project_config(project_file)
     else:
         _current_project = create_default_project()
 
     # override transcripts ans scans if requested
-    if transcripts is not None:
-        _current_project.transcripts = transcripts
-    if scans is not None:
-        _current_project.scans = scans
+    if _project_transcripts is not None:
+        _current_project.transcripts = _project_transcripts
+    if _project_scans is not None:
+        _current_project.scans = _project_scans
 
     # provide default transcripts if we need to
     if _current_project.transcripts is None:
@@ -79,32 +86,18 @@ def init_project(
     return _current_project
 
 
-def find_project_file(start_dir: Path) -> Path | None:
-    """Find scout.yaml by walking up from start_dir.
-
-    Stops at git repo root (if in a repo) or filesystem root.
-
-    Args:
-        start_dir: Directory to start searching from.
+def project() -> ProjectConfig:
+    """Get the current project configuration.
 
     Returns:
-        Path to scout.yaml if found, None otherwise.
+        The current ProjectConfig.
+
+    Raises:
+        RuntimeError: If project has not been initialized.
     """
-    git_root = find_git_root(start_dir)
-    current = start_dir.resolve()
-
-    while True:
-        project_file = current / "scout.yaml"
-        if project_file.exists():
-            return project_file
-
-        # Stop if we've reached git root or filesystem root
-        if git_root and current == git_root:
-            return None
-        if current == current.parent:  # Cross-platform root detection
-            return None
-
-        current = current.parent
+    if _current_project is None:
+        raise RuntimeError("Project not initialized. Call init_project() first.")
+    return _current_project
 
 
 def find_local_project_file(project_file: Path) -> Path | None:
@@ -204,21 +197,4 @@ def default_transcripts_dir() -> str | None:
             return inspect_logs
 
     # none found
-    return None
-
-
-def find_git_root(path: Path) -> Path | None:
-    """Find git repository root by looking for .git directory.
-
-    Args:
-        path: Starting path to search from.
-
-    Returns:
-        Path to git root if found, None otherwise.
-    """
-    current = path.resolve()
-    while current != current.parent:  # Cross-platform root detection
-        if (current / ".git").exists():
-            return current
-        current = current.parent
     return None

@@ -2,7 +2,7 @@
 
 import json
 from logging import getLogger
-from typing import Any
+from typing import Any, cast
 
 from inspect_ai.model import ModelOutput
 from inspect_ai.model._chat_message import (
@@ -11,6 +11,7 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_ai.model._model_output import ModelUsage
 from inspect_ai.tool import ToolInfo, ToolParams
+from pydantic import JsonValue
 
 from .providers.anthropic import parse_json_content
 from .providers.google import (
@@ -508,3 +509,55 @@ def extract_metadata(trace: Any) -> dict[str, Any]:
         metadata.update(trace_metadata)
 
     return metadata
+
+
+def extract_json(field: str, metadata: dict[str, Any]) -> JsonValue | None:
+    value = metadata.get(field, None)
+    if isinstance(value, str) and len(value) > 0:
+        del metadata[field]
+        value_stripped = value.strip()
+        if value_stripped[0] in ["{", "["]:
+            return cast(JsonValue, json.loads(value))
+        else:
+            return value
+    else:
+        return value
+
+
+def extract_bool(field: str, metadata: dict[str, Any]) -> bool | None:
+    value = metadata.get(field, None)
+    if value is not None:
+        del metadata[field]
+        return bool(value)
+    else:
+        return None
+
+
+def extract_int(field: str, metadata: dict[str, Any]) -> int | None:
+    value = metadata.get(field, None)
+    if value is not None:
+        del metadata[field]
+        try:
+            return int(float(value))
+        except (ValueError, TypeError):
+            return None
+    else:
+        return None
+
+
+def extract_str(field: str, metadata: dict[str, Any]) -> str | None:
+    value = metadata.get(field, None)
+    if value is not None:
+        del metadata[field]
+        return str(value)
+    else:
+        return None
+
+
+def extract_dict(field: str, metadata: dict[str, Any]) -> dict[str, Any] | None:
+    value = metadata.get(field, None)
+    if isinstance(value, dict):
+        del metadata[field]
+        return value
+    else:
+        return None

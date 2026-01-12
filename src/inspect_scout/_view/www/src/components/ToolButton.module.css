@@ -1,4 +1,9 @@
-.toolButton i {
+:global(.btn).toolButton {
+  background-color: var(--bs-light-border-subtle);
+  white-space: nowrap;
+}
+
+.marginRight {
   margin-right: 0.5em;
 }
 

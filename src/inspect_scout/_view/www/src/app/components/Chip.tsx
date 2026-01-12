@@ -10,13 +10,17 @@ interface ChipProps {
   label?: string;
   value: string;
   title?: string;
+  closeTitle?: string;
   onClick?: () => void;
   onClose?: (event?: React.MouseEvent | React.KeyboardEvent) => void;
   className?: string | string[];
 }
 
 export const Chip = forwardRef<HTMLDivElement, ChipProps>(
-  ({ icon, label, value, title, onClick, onClose, className }, ref) => {
+  (
+    { icon, label, value, title, closeTitle, onClick, onClose, className },
+    ref
+  ) => {
     return (
       <div
         ref={ref}
@@ -55,6 +59,7 @@ export const Chip = forwardRef<HTMLDivElement, ChipProps>(
               styles.closeIcon,
               styles.clickable
             )}
+            title={closeTitle}
             onClick={(event) => {
               event.stopPropagation();
               onClose(event);

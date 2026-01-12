@@ -1,5 +1,6 @@
 import io
 from functools import reduce
+from pathlib import Path as PathlibPath
 from typing import (
     Any,
     Iterable,
@@ -26,8 +27,7 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._project._project import project
-from inspect_scout._util.constants import DEFAULT_SCANS_DIR
+from inspect_scout._project._project import project, sync_project
 
 from .._active_scans_store import active_scans_store
 from .._query import Column, Condition, Query, condition_as_sql
@@ -194,15 +194,9 @@ def v2_api_app(
     )
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
-        transcripts = project().transcripts
-        transcripts = (
-            UPath(transcripts).resolve().as_uri() if transcripts is not None else None
-        )
-        # resolve scans uri
-        scans = UPath(project().scans or DEFAULT_SCANS_DIR).resolve().as_uri()
         return AppConfig(
-            transcripts_dir=transcripts,
-            scans_dir=scans,
+            project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
+            project=sync_project(),
         )
 
     @app.post(

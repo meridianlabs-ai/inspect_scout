@@ -55,6 +55,8 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
     return buttons;
   }, [backUrl, singleFileMode]);
 
+  const editable = false;
+
   return (
     <Navbar
       bordered={bordered}
@@ -65,9 +67,13 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
           label="Transcripts"
           icon={ApplicationIcons.transcript}
           onPathChanged={setTranscriptsDir}
-          placeholder="Select Transcripts Folder"
+          placeholder={
+            editable
+              ? "Select Transcripts Folder"
+              : "No transcripts directory configured."
+          }
           className="text-size-smallest"
-          editable={false}
+          editable={editable}
         />
       }
       right={children}

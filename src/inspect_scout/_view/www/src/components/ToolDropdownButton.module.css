@@ -4,6 +4,10 @@
   align-items: center;
 }
 
+:global(.btn).toolButton {
+  background-color: var(--bs-light-border-subtle);
+}
+
 :global(.btn-tools).toolButton {
   border: solid 1px var(--bs-border-color);
 }

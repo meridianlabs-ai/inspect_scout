@@ -8,7 +8,7 @@ import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks/useSelectedScan";
-import { useConfig } from "../server/useConfig";
+import { appScansDir, useConfig } from "../server/useConfig";
 import { useServerScans } from "../server/useServerScans";
 
 import styles from "./ScanPanel.module.css";
@@ -19,7 +19,7 @@ export const ScanPanel: React.FC = () => {
   // Load server data
   const { loading: scansLoading } = useServerScans();
   const config = useConfig();
-  const scansDir = config.scans_dir;
+  const scansDir = appScansDir(config);
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   const userScansDir = useStore((state) => state.userScansDir);

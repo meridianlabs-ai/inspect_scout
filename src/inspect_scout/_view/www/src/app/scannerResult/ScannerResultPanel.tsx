@@ -7,16 +7,16 @@ import { ApplicationIcons } from "../../components/icons";
 import JSONPanel from "../../components/JsonPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
+import { ToolButton } from "../../components/ToolButton";
 import { EventNode, EventType } from "../../components/transcript/types";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { ToolButton } from "../components/ToolButton";
 import { useScanRoute } from "../hooks/useScanRoute";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
-import { useConfig } from "../server/useConfig";
+import { appScansDir, useConfig } from "../server/useConfig";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -42,7 +42,7 @@ export const ScannerResultPanel: FC = () => {
 
   // Required server data
   const config = useConfig();
-  const scansDir = config.scans_dir;
+  const scansDir = appScansDir(config);
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);

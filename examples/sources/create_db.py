@@ -30,7 +30,7 @@ async def main() -> None:
 
     # Filter transcripts to only include our 4 test sessions
     async def filtered_transcripts() -> AsyncIterator[Transcript]:
-        async for transcript in langfuse():
+        async for transcript in langfuse(project="scout-pytest", tags=["scout"]):
             if transcript.transcript_id in SESSION_IDS:
                 yield transcript
 

@@ -16,14 +16,17 @@ export const TaskName: FC<TaskNameProps> = ({
     return "<unknown>";
   }
 
-  const results: ReactNode[] = [
-    <span key={"task-column-task-set"}>{taskSet || "<unknown>"}</span>,
-  ];
+  const results: ReactNode[] = [];
 
-  if (taskId) {
+  if (taskSet) {
+    results.push(<span key={"task-column-task-set"}>{taskSet}</span>);
+  }
+
+  if (taskId !== undefined && taskId !== null) {
     results.push("/", <span key={"task-column-task-id"}>{taskId}</span>);
   }
-  if (taskRepeat !== undefined) {
+
+  if (taskRepeat !== undefined && taskRepeat !== null) {
     results.push(
       " ",
       <span

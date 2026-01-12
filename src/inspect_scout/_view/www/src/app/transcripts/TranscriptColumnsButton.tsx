@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { forwardRef } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
-import { ToolButton } from "../components/ToolButton";
+import { ToolButton } from "../../components/ToolButton";
 
 import styles from "./TranscriptColumnsButton.module.css";
 
@@ -17,11 +17,11 @@ export const TranscriptColumnsButton = forwardRef<
 >(({ isOpen, onClick }, ref) => {
   return (
     <ToolButton
-      icon={ApplicationIcons.checkbox.checked}
-      label="Choose Columns"
+      title="Choose columns"
+      icon={ApplicationIcons.threeDots}
       onClick={onClick}
       latched={isOpen}
-      className={clsx("text-size-smallest", styles.button)}
+      className={clsx("text-size-smallestest", styles.button)}
       ref={ref}
     />
   );

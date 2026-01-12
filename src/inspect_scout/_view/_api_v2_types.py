@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
+from inspect_scout._project.types import ProjectConfig
 from inspect_scout._query.order_by import OrderBy
 
 from .._active_scans_store import ActiveScanInfo
@@ -108,8 +109,8 @@ class ScansResponse:
 class AppConfig:
     """Application configuration returned by GET /config."""
 
-    transcripts_dir: str | None
-    scans_dir: str
+    project_dir: str
+    project: ProjectConfig
 
 
 @dataclass

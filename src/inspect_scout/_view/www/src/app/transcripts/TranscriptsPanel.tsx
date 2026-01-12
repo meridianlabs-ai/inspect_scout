@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
@@ -9,23 +9,17 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useCode } from "../server/useCode";
-import { useConfig } from "../server/useConfig";
+import { appTranscriptsDir, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
-import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
-import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
 import { TranscriptFilterBar } from "./TranscriptFilterBar";
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
-  // Column picker state
-  const [showColumnPicker, setShowColumnPicker] = useState(false);
-  const columnButtonRef = useRef<HTMLButtonElement>(null);
-
   // Resolve the active transcripts directory
   const config = useConfig();
-  const transcriptDir = config.transcripts_dir;
+  const transcriptDir = appTranscriptsDir(config);
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
@@ -87,18 +81,7 @@ export const TranscriptsPanel: FC = () => {
         bordered={true}
         transcriptsDir={resolvedTranscriptDir}
         setTranscriptsDir={setUserTranscriptsDir}
-      >
-        <TranscriptColumnsButton
-          ref={columnButtonRef}
-          isOpen={showColumnPicker}
-          onClick={() => setShowColumnPicker(!showColumnPicker)}
-        />
-      </TranscriptsNavbar>
-      <TranscriptColumnsPopover
-        positionEl={columnButtonRef.current}
-        isOpen={showColumnPicker}
-        setIsOpen={setShowColumnPicker}
-      />
+      ></TranscriptsNavbar>
       <LoadingBar loading={isFetching} />
       {error && (
         <ErrorPanel

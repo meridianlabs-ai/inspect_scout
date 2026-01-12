@@ -11,7 +11,7 @@ import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import { useConfig } from "./app/server/useConfig";
+import { appScansDir, useConfig } from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -56,7 +56,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     );
     const userScansDir = useStore((state) => state.userScansDir);
     const config = useConfig();
-    const serverScansDir = config.scans_dir;
+    const serverScansDir = appScansDir(config);
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData

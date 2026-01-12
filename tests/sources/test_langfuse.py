@@ -630,13 +630,17 @@ class TestSessionToTranscript:
         mock_client = MagicMock()
         mock_client.api.trace.get.return_value = trace
 
-        transcript = await _session_to_transcript(session, mock_client)
+        transcript = await _session_to_transcript(session, mock_client, "foo", "bar")
 
         assert transcript is not None
         assert transcript.transcript_id == "session-1"
         assert transcript.source_type == "langfuse"
-        assert transcript.source_id == "session-1"
-        assert transcript.source_uri == "https://cloud.langfuse.com/sessions/session-1"
+        assert transcript.source_id == "foo"  # project_id
+        assert (
+            transcript.source_uri
+            == "https://cloud.langfuse.com/project/foo/sessions/session-1"
+        )
+        assert transcript.task_set == "bar"  # project_name
         assert transcript.task_id == "test-conversation"
         assert transcript.model == "gpt-4"
         assert transcript.total_tokens == 15
@@ -674,7 +678,7 @@ class TestSessionToTranscript:
         mock_client.api.trace.get.return_value = trace
 
         transcript = await _session_to_transcript(
-            session, mock_client, project_id="proj-uuid-123"
+            session, mock_client, project_id="proj-uuid-123", project_name="foo"
         )
 
         assert transcript is not None
@@ -706,6 +710,7 @@ class TestSessionToTranscript:
             session,
             mock_client,
             project_id="proj-123",
+            project_name="foo",
             host="https://langfuse.mycompany.com/",
         )
 
@@ -726,7 +731,7 @@ class TestSessionToTranscript:
         mock_client = MagicMock()
         mock_client.api.trace.get.return_value = trace
 
-        transcript = await _session_to_transcript(session, mock_client)
+        transcript = await _session_to_transcript(session, mock_client, "foo", "bar")
 
         assert transcript is None
 
@@ -741,9 +746,7 @@ class TestResolveProjectId:
 
     def test_resolve_by_project_id(self) -> None:
         """Resolve when value matches a project ID directly."""
-        from inspect_scout.sources._langfuse.client import (
-            resolve_project_id as _resolve_project_id,
-        )
+        from inspect_scout.sources._langfuse.client import resolve_project
 
         # Create mock projects
         proj1 = MagicMock()
@@ -757,15 +760,13 @@ class TestResolveProjectId:
         mock_client = MagicMock()
         mock_client.api.projects.get.return_value = MagicMock(data=[proj1, proj2])
 
-        result = _resolve_project_id(mock_client, "cmk8zhiw2008jad07i5r6wqlk")
+        id, _ = resolve_project(mock_client, "cmk8zhiw2008jad07i5r6wqlk")
 
-        assert result == "cmk8zhiw2008jad07i5r6wqlk"
+        assert id == "cmk8zhiw2008jad07i5r6wqlk"
 
     def test_resolve_by_project_name(self) -> None:
         """Resolve when value matches a project name."""
-        from inspect_scout.sources._langfuse.client import (
-            resolve_project_id as _resolve_project_id,
-        )
+        from inspect_scout.sources._langfuse.client import resolve_project
 
         proj1 = MagicMock()
         proj1.id = "cmk8zhiw2008jad07i5r6wqlk"
@@ -774,14 +775,14 @@ class TestResolveProjectId:
         mock_client = MagicMock()
         mock_client.api.projects.get.return_value = MagicMock(data=[proj1])
 
-        result = _resolve_project_id(mock_client, "scout-pytest")
+        id, _ = resolve_project(mock_client, "scout-pytest")
 
-        assert result == "cmk8zhiw2008jad07i5r6wqlk"
+        assert id == "cmk8zhiw2008jad07i5r6wqlk"
 
     def test_resolve_not_found_raises_error(self) -> None:
         """Raise ValueError when project not found."""
         from inspect_scout.sources._langfuse.client import (
-            resolve_project_id as _resolve_project_id,
+            resolve_project as _resolve_project_id,
         )
 
         proj1 = MagicMock()
@@ -796,17 +797,15 @@ class TestResolveProjectId:
 
     def test_resolve_fallback_on_api_error(self) -> None:
         """Fall back to using value as-is when API call fails."""
-        from inspect_scout.sources._langfuse.client import (
-            resolve_project_id as _resolve_project_id,
-        )
+        from inspect_scout.sources._langfuse.client import resolve_project
 
         mock_client = MagicMock()
         mock_client.api.projects.get.side_effect = Exception("API error")
 
         # Should return the input value as-is
-        result = _resolve_project_id(mock_client, "some-project-id")
+        id, _ = resolve_project(mock_client, "some-project-id")
 
-        assert result == "some-project-id"
+        assert id == "some-project-id"
 
 
 # ============================================================================
@@ -849,6 +848,13 @@ class TestTranscriptsFromLangfuse:
 
         # Mock langfuse client
         mock_langfuse = MagicMock()
+
+        # Mock projects API for resolve_project
+        mock_project = MagicMock()
+        mock_project.id = "foo-id"
+        mock_project.name = "foo"
+        mock_langfuse.api.projects.get.return_value = MagicMock(data=[mock_project])
+
         mock_langfuse.api.trace.list.side_effect = [
             MagicMock(data=page1_traces, meta=page1_meta),
             MagicMock(data=page2_traces, meta=page2_meta),
@@ -864,7 +870,7 @@ class TestTranscriptsFromLangfuse:
             return_value=mock_langfuse,
         ):
             transcripts = []
-            async for t in langfuse(public_key="pk", secret_key="sk"):
+            async for t in langfuse(project="foo", public_key="pk", secret_key="sk"):
                 transcripts.append(t)
 
         # Verify trace API was called twice (2 pages)
@@ -894,6 +900,13 @@ class TestTranscriptsFromLangfuse:
         )
 
         mock_langfuse = MagicMock()
+
+        # Mock projects API for resolve_project
+        mock_project = MagicMock()
+        mock_project.id = "foo-id"
+        mock_project.name = "foo"
+        mock_langfuse.api.projects.get.return_value = MagicMock(data=[mock_project])
+
         mock_langfuse.api.trace.list.return_value = MagicMock(data=traces, meta=meta)
         mock_langfuse.api.trace.get.return_value = MockTrace(observations=[generation])
         mock_langfuse.api.sessions.get.return_value = MockSession(
@@ -905,7 +918,7 @@ class TestTranscriptsFromLangfuse:
             return_value=mock_langfuse,
         ):
             transcripts = []
-            async for t in langfuse(public_key="pk", secret_key="sk", limit=2):
+            async for t in langfuse("foo", public_key="pk", secret_key="sk", limit=2):
                 transcripts.append(t)
 
         # Should only get 2 transcripts despite 5 sessions

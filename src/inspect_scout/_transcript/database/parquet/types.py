@@ -1,13 +1,11 @@
 """Type definitions for parquet index module."""
 
 from dataclasses import dataclass
-from pathlib import Path
-from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
+from upath import UPath
 
 # Index directory and file patterns
 INDEX_DIR = "_index"
@@ -66,9 +64,6 @@ class IndexStorage:
         # Import here to avoid circular imports
         from .encryption import ENCRYPTION_KEY_ENV, get_encryption_key_from_env
 
-        # Normalize file:// URIs to local paths
-        location = _normalize_location(location)
-
         storage = cls(location=location, fs=fs, is_encrypted=False)
         is_encrypted = await storage._detect_encryption()
 
@@ -122,7 +117,7 @@ class IndexStorage:
             except FileNotFoundError:
                 idx_files = []
         else:
-            index_path = Path(index_dir)
+            index_path = UPath(index_dir)
             if index_path.exists():
                 idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
             else:
@@ -147,10 +142,3 @@ class CompactionResult:
     index_files_merged: int
     index_files_deleted: int
     new_index_path: str
-
-
-def _normalize_location(location: str) -> str:
-    if location.startswith("file://"):
-        parsed = urlparse(location)
-        return url2pathname(parsed.path)
-    return location

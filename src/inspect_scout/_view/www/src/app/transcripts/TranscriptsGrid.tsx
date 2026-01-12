@@ -728,7 +728,13 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
             })
           ) : (
             <tr className={clsx(styles.noMatching, "text-size-smaller")}>
-              <td>{loading ? "Loading..." : "No matching transcripts"}</td>
+              <td>
+                {loading
+                  ? "Loading..."
+                  : !transcriptsDir
+                    ? "No transcripts directory configured."
+                    : "No matching transcripts"}
+              </td>
             </tr>
           )}
         </tbody>

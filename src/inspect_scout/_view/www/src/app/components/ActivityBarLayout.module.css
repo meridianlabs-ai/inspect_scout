@@ -1,8 +1,15 @@
+.outerLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
 .layout {
   display: flex;
   flex-direction: row;
-  height: 100vh;
-  width: 100vw;
+  flex: 1;
   overflow: hidden;
 }
 

@@ -1,0 +1,18 @@
+.projectBar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bs-light);
+  border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.3rem 0.5rem;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.left,
+.right {
+  font-size: var(--inspect-font-size-small);
+}

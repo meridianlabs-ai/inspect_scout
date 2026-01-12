@@ -4402,21 +4402,46 @@ so disabling selection can break that functionality */
   font-size: 0.5rem;
   text-transform: uppercase;
 }
-._layout_1vjmm_1 {
+._outerLayout_1j111_1 {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
 }
 
-._content_1vjmm_9 {
+._layout_1j111_9 {
+  display: flex;
+  flex-direction: row;
   flex: 1;
   overflow: hidden;
 }
 
-._content_1vjmm_9._scrolling_1vjmm_14 {
+._content_1j111_16 {
+  flex: 1;
+  overflow: hidden;
+}
+
+._content_1j111_16._scrolling_1j111_21 {
   overflow: auto;
+}
+._projectBar_1puwg_1 {
+  display: flex;
+  flex-direction: column;
+  background: var(--bs-light);
+  border-bottom: solid 1px var(--bs-border-color);
+  padding: 0.3rem 0.5rem;
+}
+
+._row_1puwg_9 {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+._left_1puwg_15,
+._right_1puwg_16 {
+  font-size: var(--inspect-font-size-small);
 }
 ._root_ke0e7_1 {
   height: 100vh;

@@ -145,7 +145,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     return (
       <AppErrorBoundary>
         {routerConfig.mode === "workbench" ? (
-          <ActivityBarLayout>{content}</ActivityBarLayout>
+          <ActivityBarLayout config={config}>{content}</ActivityBarLayout>
         ) : (
           content
         )}

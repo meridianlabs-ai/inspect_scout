@@ -165,8 +165,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   }),
   task_repeat: createColumn({
     accessorKey: "task_repeat",
-    header: "N",
-    size: 80,
+    header: "#",
+    size: 50,
     meta: {
       filterable: true,
       filterType: "number",

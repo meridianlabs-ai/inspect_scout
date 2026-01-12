@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import anyio
 import uvicorn
@@ -45,8 +45,8 @@ def view_server(
     scans: str,
     host: str,
     port: int,
+    mode: Literal["default", "scans"] = "default",
     authorization: str | None = None,
-    workbench: bool = False,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
     # get filesystem and resolve scan_dir to full path
@@ -85,8 +85,7 @@ def view_server(
     )
 
     # run app
-    title = "Scout" if workbench else "Scout View"
-    display().print(f"{title}: {scans}")
+    display().print("Scout View")
 
     async def run_server() -> None:
         config = uvicorn.Config(app, host=host, port=port, log_config=None)
@@ -96,7 +95,7 @@ def view_server(
             while not server.started:
                 await anyio.sleep(0.05)
             # Print this for compatibility with the Inspect VSCode plugin:
-            url = view_url(host, port, workbench)
+            url = view_url(host, port, mode)
             display().print(
                 f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
@@ -108,10 +107,10 @@ def view_server(
     anyio.run(run_server)
 
 
-def view_url(host: str, port: int, workbench: bool = False) -> str:
+def view_url(host: str, port: int, mode: Literal["default", "scans"]) -> str:
     """Build the view server URL."""
-    workbench_param = "?workbench=1" if workbench else ""
-    return f"http://{host}:{port}{workbench_param}"
+    mode_param = f"?mode={mode}" if mode != "default" else ""
+    return f"http://{host}:{port}{mode_param}"
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):

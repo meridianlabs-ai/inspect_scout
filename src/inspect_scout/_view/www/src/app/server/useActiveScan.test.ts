@@ -46,7 +46,7 @@ describe("useActiveScan", () => {
     const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.data).toBeNull();
+    expect(result.current.data).toBeUndefined();
   });
 
   it("returns null when scan has no active_scan_info", () => {
@@ -57,7 +57,7 @@ describe("useActiveScan", () => {
     const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.data).toBeNull();
+    expect(result.current.data).toBeUndefined();
   });
 
   it("returns active_scan_info when scan is active", () => {
@@ -80,7 +80,7 @@ describe("useActiveScan", () => {
     const { result } = renderHook(() => useActiveScan(undefined));
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.data).toBeNull();
+    expect(result.current.data).toBeUndefined();
   });
 
   it("returns error when scans fetch fails", () => {

@@ -7600,8 +7600,10 @@ span.ap-marker-container:hover span.ap-marker {
 ._container_76qrl_7 {
   padding: 0.5rem;
 }
-._container_5gpfz_1 {
+._container_1o5t7_1 {
   padding: 1rem;
+  width: 100%;
+  height: 100%;
 }
 ._list_5fj0m_1 {
   width: 100%;
@@ -7756,8 +7758,10 @@ span.ap-marker-container:hover span.ap-marker {
 ._fullHeight_1ewhq_27 {
   height: 100%;
 }
-._container_g5onx_1 {
+._container_1yw87_1 {
   overflow-y: auto;
+  width: 100%;
+  height: 100%;
 }
 ._tabContainer_1jncw_1 {
   display: grid;

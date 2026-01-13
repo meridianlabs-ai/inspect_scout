@@ -56,7 +56,7 @@ export const ScannerResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const storeLoading = useStore((state) => state.loading);
+  const storeLoading = false;
   const loading = storeLoading || scanLoading;
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(

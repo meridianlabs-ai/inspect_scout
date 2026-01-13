@@ -52,7 +52,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   // Data
   const { data: scannerSummaries, isLoading } =
     useScanResultSummaries(columnTable);
-  const isLoadingData = useStore((state) => state.loadingData);
+  const isLoadingData = false;
   const busy = isLoading || isLoadingData;
 
   // Options / State

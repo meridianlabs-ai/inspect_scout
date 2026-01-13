@@ -69,8 +69,8 @@ const InputRenderer: FC<InputRendererProps> = ({
   initialEventId,
   highlightLabeled,
 }) => {
-  const loading = useStore((state) => state.loading);
-  const loadingData = useStore((state) => state.loadingData);
+  const loading = false;
+  const loadingData = false;
   if (!inputData) {
     return loading || loadingData ? undefined : <div>No Input Available</div>;
   }

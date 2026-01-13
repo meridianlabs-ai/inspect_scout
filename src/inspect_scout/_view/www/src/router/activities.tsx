@@ -1,8 +1,11 @@
 import { ReactElement } from "react";
 
+import { RunScanPanel } from "../app/runScan/RunScanPanel";
 import { ScansPanel } from "../app/scans/ScansPanel";
 import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
 import { ApplicationIcons } from "../components/icons";
+
+declare const __SCOUT_RUN_SCAN__: boolean;
 
 export interface ActivityConfig {
   id: string;
@@ -14,7 +17,7 @@ export interface ActivityConfig {
   element: ReactElement;
 }
 
-export const activities: ActivityConfig[] = [
+const allActivities: ActivityConfig[] = [
   {
     id: "transcripts",
     label: "Transcripts",
@@ -32,7 +35,19 @@ export const activities: ActivityConfig[] = [
     description: "View results",
     element: <ScansPanel />,
   },
+  {
+    id: "runScan",
+    label: "Run Scan",
+    icon: ApplicationIcons.play,
+    route: "/run",
+    description: "Run scans and view active scans",
+    element: <RunScanPanel />,
+  },
 ];
+
+export const activities = allActivities.filter(
+  (a) => a.id !== "runScan" || __SCOUT_RUN_SCAN__
+);
 
 export const getActivityByRoute = (
   path: string

@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "../../state/store";
-import { Status } from "../../types/api-types";
+import { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 // Lists the available scans from the server and stores in state
-export const useServerScans = (): AsyncData<Status[]> => {
+export const useServerScans = (): AsyncData<ScanStatusWithActiveInfo[]> => {
   const api = useApi();
   const queryClient = useQueryClient();
 
@@ -19,7 +19,7 @@ export const useServerScans = (): AsyncData<Status[]> => {
       }
       return response.items;
     },
-    staleTime: 10000,
-    refetchInterval: 10000,
+    staleTime: 5000,
+    refetchInterval: 5000,
   });
 };

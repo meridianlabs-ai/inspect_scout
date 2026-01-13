@@ -6,6 +6,8 @@ import {
   ActiveScansResponse,
   AppConfig,
   Pagination,
+  ProjectConfig,
+  ProjectConfigInput,
   ScansResponse,
   Status,
   Transcript,
@@ -40,6 +42,11 @@ export interface ScanApi {
   ): Promise<ScanResultInputData>;
   getActiveScans(): Promise<ActiveScansResponse>;
   postCode(condition: Condition): Promise<Record<string, string>>;
+  getProjectConfig(): Promise<{ config: ProjectConfig; etag: string }>;
+  updateProjectConfig(
+    config: ProjectConfigInput,
+    etag: string
+  ): Promise<{ config: ProjectConfig; etag: string }>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

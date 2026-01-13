@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
       __LOGGING_FILTER__: JSON.stringify(
         process.env.DEV_LOGGING_NAMESPACES || "*"
       ),
+      __SCOUT_RUN_SCAN__: JSON.stringify(process.env.SCOUT_RUN_SCAN === "true"),
     },
   };
   if (isLibrary) {

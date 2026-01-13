@@ -4,6 +4,8 @@ import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
 import {
   ActiveScansResponse,
+  ProjectConfig,
+  ProjectConfigInput,
   ScansResponse,
   Status,
   TranscriptsResponse,
@@ -59,6 +61,15 @@ export const apiVscode = (
         scans_dir: data.results_dir,
         transcripts_dir: null,
       };
+    },
+    getProjectConfig(): Promise<{ config: ProjectConfig; etag: string }> {
+      return null as any;
+    },
+    updateProjectConfig(
+      _config: ProjectConfigInput,
+      _etag: string
+    ): Promise<{ config: ProjectConfig; etag: string }> {
+      return null as any;
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getTranscripts: async (

@@ -3,6 +3,10 @@
     "schemas": {
       "ActiveScanInfo": {
         "properties": {
+          "config": {
+            "title": "Config",
+            "type": "string"
+          },
           "last_updated": {
             "title": "Last Updated",
             "type": "number"
@@ -14,15 +18,39 @@
             "title": "Scan Id",
             "type": "string"
           },
+          "scanner_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scanner Names",
+            "type": "array"
+          },
+          "start_time": {
+            "title": "Start Time",
+            "type": "number"
+          },
           "summary": {
             "$ref": "#/components/schemas/Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_scans": {
+            "title": "Total Scans",
+            "type": "integer"
           }
         },
         "required": [
           "scan_id",
           "metrics",
           "summary",
-          "last_updated"
+          "last_updated",
+          "title",
+          "config",
+          "total_scans",
+          "start_time",
+          "scanner_names"
         ],
         "title": "ActiveScanInfo",
         "type": "object"
@@ -3773,6 +3801,41 @@
           }
         ]
       },
+      "LlmScannerParams": {
+        "description": "Parameters for llm_scanner.",
+        "properties": {
+          "answer": {
+            "enum": [
+              "boolean",
+              "numeric",
+              "string"
+            ],
+            "title": "Answer",
+            "type": "string"
+          },
+          "preprocessor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageFormatOptions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "LlmScannerParams",
+        "type": "object"
+      },
       "LoggerEvent": {
         "description": "Log message recorded with Python logger.",
         "properties": {
@@ -3991,6 +4054,32 @@
           "content"
         ],
         "title": "Logprobs",
+        "type": "object"
+      },
+      "MessageFormatOptions": {
+        "properties": {
+          "exclude_reasoning": {
+            "default": false,
+            "title": "Exclude Reasoning",
+            "type": "boolean"
+          },
+          "exclude_system": {
+            "default": true,
+            "title": "Exclude System",
+            "type": "boolean"
+          },
+          "exclude_tool_usage": {
+            "default": false,
+            "title": "Exclude Tool Usage",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exclude_system",
+          "exclude_reasoning",
+          "exclude_tool_usage"
+        ],
+        "title": "MessageFormatOptions",
         "type": "object"
       },
       "ModelCall": {
@@ -5780,6 +5869,287 @@
         "title": "SandboxEvent",
         "type": "object"
       },
+      "ScanJobConfig": {
+        "additionalProperties": false,
+        "description": "Scan job configuration.",
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Filter"
+          },
+          "generate_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateConfig-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "log_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "http",
+                  "sandbox",
+                  "info",
+                  "warning",
+                  "error",
+                  "critical",
+                  "notset"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Level"
+          },
+          "max_processes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Processes"
+          },
+          "max_transcripts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transcripts"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Args"
+          },
+          "model_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Base Url"
+          },
+          "model_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelConfig-Input"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Roles"
+          },
+          "name": {
+            "default": "job",
+            "title": "Name",
+            "type": "string"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          },
+          "scanners": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanners"
+          },
+          "scans": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans"
+          },
+          "shuffle": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shuffle"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "transcripts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcripts"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationSet-Input"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "worklist": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Worklist"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worklist"
+          }
+        },
+        "required": [
+          "name",
+          "filter"
+        ],
+        "title": "ScanJobConfig",
+        "type": "object"
+      },
       "ScanMetrics": {
         "properties": {
           "batch_failures": {
@@ -6106,6 +6476,50 @@
         "title": "ScanSpec",
         "type": "object"
       },
+      "ScanStatusWithActiveInfo": {
+        "properties": {
+          "active_scan_info": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveScanInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ScanSpec"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          }
+        },
+        "required": [
+          "complete",
+          "spec",
+          "location",
+          "summary",
+          "errors"
+        ],
+        "title": "ScanStatusWithActiveInfo",
+        "type": "object"
+      },
       "ScanTranscripts": {
         "description": "Transcripts targeted by a scan.",
         "properties": {
@@ -6366,7 +6780,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/Status"
+              "$ref": "#/components/schemas/ScanStatusWithActiveInfo"
             },
             "title": "Items",
             "type": "array"
@@ -8987,6 +9401,35 @@
           }
         },
         "summary": "Update project configuration"
+      }
+    },
+    "/runllmscanner": {
+      "post": {
+        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
+        "operationId": "run_llm_scanner_runllmscanner_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanJobConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run llm_scanner"
       }
     },
     "/scans": {

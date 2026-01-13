@@ -5,8 +5,8 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
-from inspect_scout._active_scans_store import ActiveScanInfo, ActiveScansStore
 from inspect_scout._concurrency.common import ScanMetrics
+from inspect_scout._recorder.active_scans_store import ActiveScanInfo, ActiveScansStore
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._view._api_v2 import v2_api_app
 
@@ -55,6 +55,11 @@ class TestActiveScansEndpoint:
             summary=Summary(),
             metrics=metrics,
             last_updated=1704067200.0,
+            title="scan: test.py (100 transcripts)",
+            config="model: gpt-4",
+            total_scans=100,
+            start_time=1704067100.0,
+            scanner_names=["scanner1", "scanner2"],
         )
 
         with _mock_active_scans_store({"scan-abc-123": scan_info}):
@@ -81,18 +86,33 @@ class TestActiveScansEndpoint:
             summary=Summary(),
             metrics=ScanMetrics(completed_scans=50),
             last_updated=1000.0,
+            title="scan-1",
+            config="",
+            total_scans=100,
+            start_time=900.0,
+            scanner_names=["s1"],
         )
         scan2 = ActiveScanInfo(
             scan_id="scan-2",
             summary=Summary(),
             metrics=ScanMetrics(completed_scans=75),
             last_updated=2000.0,
+            title="scan-2",
+            config="",
+            total_scans=100,
+            start_time=1900.0,
+            scanner_names=["s1"],
         )
         scan3 = ActiveScanInfo(
             scan_id="scan-3",
             summary=Summary(),
             metrics=ScanMetrics(completed_scans=25),
             last_updated=3000.0,
+            title="scan-3",
+            config="",
+            total_scans=100,
+            start_time=2900.0,
+            scanner_names=["s1"],
         )
 
         store_data = {
@@ -135,6 +155,11 @@ class TestActiveScansEndpoint:
             summary=Summary(),
             metrics=metrics,
             last_updated=1704067200.0,
+            title="full-metrics-scan",
+            config="max_connections: 10",
+            total_scans=1000,
+            start_time=1704000000.0,
+            scanner_names=["scanner1"],
         )
 
         with _mock_active_scans_store({"full-metrics-scan": scan_info}):

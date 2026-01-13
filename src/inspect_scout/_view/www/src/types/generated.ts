@@ -68,6 +68,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runllmscanner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run llm_scanner
+         * @description Runs a scan using llm_scanner with the provided ScanJobConfig.
+         */
+        post: operations["run_llm_scanner_runllmscanner_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans": {
         parameters: {
             query?: never;
@@ -214,12 +234,22 @@ export interface components {
     schemas: {
         /** ActiveScanInfo */
         ActiveScanInfo: {
+            /** Config */
+            config: string;
             /** Last Updated */
             last_updated: number;
             metrics: components["schemas"]["ScanMetrics"];
             /** Scan Id */
             scan_id: string;
+            /** Scanner Names */
+            scanner_names: string[];
+            /** Start Time */
+            start_time: number;
             summary: components["schemas"]["Summary"];
+            /** Title */
+            title: string;
+            /** Total Scans */
+            total_scans: number;
         };
         /** ActiveScansResponse */
         ActiveScansResponse: {
@@ -1427,6 +1457,21 @@ export interface components {
         };
         JsonValue: JsonValue;
         /**
+         * LlmScannerParams
+         * @description Parameters for llm_scanner.
+         */
+        LlmScannerParams: {
+            /**
+             * Answer
+             * @enum {string}
+             */
+            answer: "boolean" | "numeric" | "string";
+            /** @default null */
+            preprocessor: components["schemas"]["MessageFormatOptions"] | null;
+            /** Question */
+            question: string;
+        };
+        /**
          * LoggerEvent
          * @description Log message recorded with Python logger.
          */
@@ -1536,6 +1581,24 @@ export interface components {
         Logprobs: {
             /** Content */
             content: components["schemas"]["Logprob"][];
+        };
+        /** MessageFormatOptions */
+        MessageFormatOptions: {
+            /**
+             * Exclude Reasoning
+             * @default false
+             */
+            exclude_reasoning: boolean;
+            /**
+             * Exclude System
+             * @default true
+             */
+            exclude_system: boolean;
+            /**
+             * Exclude Tool Usage
+             * @default false
+             */
+            exclude_tool_usage: boolean;
         };
         /**
          * ModelCall
@@ -2194,6 +2257,64 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
+        /**
+         * ScanJobConfig
+         * @description Scan job configuration.
+         */
+        ScanJobConfig: {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Input"] | string;
+            } | null;
+            /**
+             * Name
+             * @default job
+             */
+            name: string;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Input"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
+        };
         /** ScanMetrics */
         ScanMetrics: {
             /**
@@ -2332,6 +2453,18 @@ export interface components {
             /** Worklist */
             worklist?: components["schemas"]["Worklist"][] | null;
         };
+        /** ScanStatusWithActiveInfo */
+        ScanStatusWithActiveInfo: {
+            active_scan_info?: components["schemas"]["ActiveScanInfo"] | null;
+            /** Complete */
+            complete: boolean;
+            /** Errors */
+            errors: components["schemas"]["Error"][];
+            /** Location */
+            location: string;
+            spec: components["schemas"]["ScanSpec"];
+            summary: components["schemas"]["Summary"];
+        };
         /**
          * ScanTranscripts
          * @description Transcripts targeted by a scan.
@@ -2431,7 +2564,7 @@ export interface components {
         /** ScansResponse */
         ScansResponse: {
             /** Items */
-            items: components["schemas"]["Status"][];
+            items: components["schemas"]["ScanStatusWithActiveInfo"][];
             /** Next Cursor */
             next_cursor?: {
                 [key: string]: unknown;
@@ -3500,6 +3633,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectConfig-Output"];
+                };
+            };
+        };
+    };
+    run_llm_scanner_runllmscanner_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanJobConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
                 };
             };
         };

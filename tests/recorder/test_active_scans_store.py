@@ -17,13 +17,23 @@ from inspect_scout._recorder.active_scans_store import (
     active_scans_store,
 )
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._scanspec import ScannerSpec, ScanSpec
+
+
+def _make_spec(scan_id: str) -> ScanSpec:
+    """Create minimal ScanSpec for testing."""
+    return ScanSpec(
+        scan_id=scan_id,
+        scan_name="test",
+        scanners={"test_scanner": ScannerSpec(name="test_scanner")},
+    )
 
 
 @contextmanager
 def _temp_store_name() -> Iterator[str]:
     """Override store name for isolated testing."""
     name = f"__testing_active_scans_{secrets.token_hex(4)}__"
-    with patch("inspect_scout._active_scans_store._STORE_NAME", name):
+    with patch("inspect_scout._recorder.active_scans_store._STORE_NAME", name):
         try:
             yield name
         finally:
@@ -39,6 +49,7 @@ def test_put_and_read_all() -> None:
         scan_id = "test-scan-123"
 
         with active_scans_store() as store:
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
             store.put_metrics(scan_id, metrics)
             result = store.read_all()
 
@@ -58,6 +69,7 @@ def test_delete_current() -> None:
         scan_id = "delete-test"
 
         with active_scans_store() as store:
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
             store.put_metrics(scan_id, metrics)
             assert len(store.read_all()) == 1
             store.delete_current()
@@ -71,7 +83,9 @@ def test_multiple_scans_same_process() -> None:
         scan_id_2 = "scan-2"
 
         with active_scans_store() as store:
+            store.put_spec(scan_id_1, _make_spec(scan_id_1), total_scans=100)
             store.put_metrics(scan_id_1, ScanMetrics(completed_scans=1))
+            store.put_spec(scan_id_2, _make_spec(scan_id_2), total_scans=100)
             store.put_metrics(scan_id_2, ScanMetrics(completed_scans=2))
             result = store.read_all()
 
@@ -87,6 +101,7 @@ def test_overwrite_updates_metrics_and_timestamp() -> None:
         scan_id = "update-test"
 
         with active_scans_store() as store:
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
             store.put_metrics(scan_id, ScanMetrics(completed_scans=5))
             first_result = store.read_all()[scan_id]
             first_timestamp = first_result.last_updated

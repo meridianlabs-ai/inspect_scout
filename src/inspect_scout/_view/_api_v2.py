@@ -1,3 +1,4 @@
+import asyncio
 import io
 from functools import reduce
 from pathlib import Path as PathlibPath
@@ -27,13 +28,15 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._project._project import read_project
-from inspect_scout._util.constants import DEFAULT_SCANS_DIR
-from inspect_scout._view.types import ViewConfig
-
-from .._active_scans_store import active_scans_store
+from .._llm_scanner.params import LlmScannerParams
+from .._project._project import read_project
 from .._query import Column, Condition, Query, condition_as_sql
+from .._recorder.active_scans_store import active_scans_store
+from .._recorder.factory import scan_recorder_for_location
 from .._recorder.recorder import Status as RecorderStatus
+from .._scancontext import create_scan
+from .._scanjob import ScanJob
+from .._scanjob_config import ScanJobConfig
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
     scan_results_arrow_async,
@@ -41,7 +44,9 @@ from .._scanresults import (
 )
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import Transcript, TranscriptContent, TranscriptTooLargeError
+from .._util.constants import DEFAULT_SCANS_DIR
 from .._validation.types import ValidationCase
+from .._view.types import ViewConfig
 from ._api_v2_helpers import (
     build_pagination_context,
     build_scans_cursor,
@@ -53,6 +58,7 @@ from ._api_v2_types import (
     ScansRequest,
     ScansResponse,
     ScanStatus,
+    ScanStatusWithActiveInfo,
     TranscriptsRequest,
     TranscriptsResponse,
 )
@@ -120,6 +126,7 @@ def v2_api_app(
                 ("ValidationCase", ValidationCase),
                 ("Event", Event),
                 ("JsonChange", JsonChange),
+                ("LlmScannerParams", LlmScannerParams),
             ]
             ref_template = "#/components/schemas/{model}"
             schemas = openapi_schema.setdefault("components", {}).setdefault(
@@ -335,17 +342,39 @@ def v2_api_app(
         if ctx.needs_reverse:
             results = list(reversed(results))
 
+        # Enrich results with active scan info
+        with active_scans_store() as store:
+            active_scans_map = store.read_all()
+
+        enriched_results = [
+            ScanStatusWithActiveInfo(
+                complete=status.complete,
+                spec=status.spec,
+                location=status.location,
+                summary=status.summary,
+                errors=status.errors,
+                active_scan_info=active_scans_map.get(status.spec.scan_id),
+            )
+            for status in results
+        ]
+
         next_cursor = None
         if (
             body
             and body.pagination
-            and len(results) == body.pagination.limit
-            and results
+            and len(enriched_results) == body.pagination.limit
+            and enriched_results
         ):
-            edge = results[-1] if body.pagination.direction == "forward" else results[0]
+            edge = (
+                enriched_results[-1]
+                if body.pagination.direction == "forward"
+                else enriched_results[0]
+            )
             next_cursor = build_scans_cursor(edge, ctx.order_columns)
 
-        return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
+        return ScansResponse(
+            items=enriched_results, total_count=count, next_cursor=next_cursor
+        )
 
     @app.get(
         "/scans/active",
@@ -375,6 +404,34 @@ def v2_api_app(
             "python": f"transcripts.where({filter_sql!r})",
             "filter": filter_sql,
         }
+
+    @app.post(
+        "/runllmscanner",
+        response_model=ScanStatus,
+        response_class=InspectPydanticJSONResponse,
+        summary="Run llm_scanner",
+        description="Runs a scan using llm_scanner with the provided ScanJobConfig.",
+    )
+    async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
+        """Run an llm_scanner scan.
+
+        NOTE: Currently runs in-process. Future goal is to spawn via CLI subprocess,
+        but that requires solving scan_id propagation (pre-generating scan_id and
+        passing it through ScanJobConfig -> ScanJob -> ScanSpec).
+        """
+        scan_config = body
+        scan_job = ScanJob.from_config(scan_config)
+        scan_context = await create_scan(scan_job)
+        results_dir = body.scans or "wtf"
+        recorder = scan_recorder_for_location(results_dir)
+        await recorder.init(scan_context.spec, results_dir)
+        location = await recorder.location()
+
+        # Obviously, this isn't how we want to do it for real
+        asyncio.create_task(_run_scan_background(scan_config, location))
+
+        # Return initial status
+        return await recorder.status(location)
 
     @app.get(
         "/scans/{scan}",
@@ -523,3 +580,16 @@ def v2_api_app(
         )
 
     return app
+
+
+async def _run_scan_background(config: ScanJobConfig, location: str) -> None:
+    # import inspect_scout._display._display as display_module
+    from inspect_scout._scan import scan_async
+
+    # original_display = display_module._display
+
+    await scan_async(scanners=config)
+    # try:
+    #     display_module._display = None
+    # finally:
+    #     display_module._display = original_display

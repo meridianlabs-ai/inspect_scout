@@ -46,7 +46,6 @@ from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
-from ._active_scans_store import active_scans_store
 from ._concurrency.common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 from ._concurrency.multi_process import multi_process_strategy
 from ._concurrency.single_process import single_process_strategy
@@ -57,6 +56,7 @@ from ._display._display import (
     init_display_type,
 )
 from ._recorder import summary as recorder_summary
+from ._recorder.active_scans_store import active_scans_store
 from ._recorder.factory import (
     scan_recorder_for_location,
     scan_recorder_type_for_location,
@@ -754,19 +754,23 @@ async def _scan_async_inner(
                     else:
                         return None
 
-                async def record_results(
-                    transcript: TranscriptInfo,
-                    scanner: str,
-                    results: Sequence[ResultReport],
-                ) -> None:
-                    metrics = accumulate_metrics(scanner, results)
-                    await recorder.record(transcript, scanner, results, metrics)
-                    scan_display.results(transcript, scanner, results, metrics)
-
                 with active_scans_store() as active_store:
+                    active_store.put_spec(scan.spec.scan_id, scan.spec, total_scans)
+
+                    async def record_results(
+                        transcript: TranscriptInfo,
+                        scanner: str,
+                        results: Sequence[ResultReport],
+                    ) -> None:
+                        metrics = accumulate_metrics(scanner, results)
+                        await recorder.record(transcript, scanner, results, metrics)
+                        scan_display.results(transcript, scanner, results, metrics)
+                        active_store.put_scanner_results(
+                            scan.spec.scan_id, scanner, results
+                        )
 
                     def update_metrics(metrics: ScanMetrics) -> None:
-                        active_store.put(scan.spec.scan_id, metrics)
+                        active_store.put_metrics(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
                     try:
@@ -778,20 +782,20 @@ async def _scan_async_inner(
                             update_metrics=update_metrics,
                             completed=_strategy_completed,
                         )
+
+                        # we've been throttle metrics calculation, now report it all
+                        for scanner in metrics_accum:
+                            await recorder.record_metrics(
+                                scanner, metrics_accum[scanner].compute_metrics()
+                            )
+
+                        # report status
+                        errors = await recorder.errors()
+                        scan_status = await recorder.sync(
+                            await recorder.location(), complete=len(errors) == 0
+                        )
                     finally:
                         active_store.delete_current()
-
-                # we've been throttle metrics calculation, now report it all
-                for scanner in metrics_accum:
-                    await recorder.record_metrics(
-                        scanner, metrics_accum[scanner].compute_metrics()
-                    )
-
-                # report status
-                errors = await recorder.errors()
-                scan_status = await recorder.sync(
-                    await recorder.location(), complete=len(errors) == 0
-                )
 
         # report scan complete
         display().scan_complete(scan_status)

@@ -55,14 +55,11 @@ export const apiVscode = (
     capability: "scans",
     getConfig: async () => {
       const data = await fetchScansData();
-      const project_dir = dirname(data.results_dir);
-      const scans = basename(data.results_dir);
       return {
         home_dir: "",
-        project_dir,
-        project: {
-          scans,
-        } as ProjectConfig,
+        project_dir: ".",
+        scans_dir: data.results_dir,
+        transcripts_dir: null,
       };
     },
     // eslint-disable-next-line @typescript-eslint/require-await

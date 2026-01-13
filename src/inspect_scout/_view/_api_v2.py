@@ -28,6 +28,7 @@ from starlette.status import (
 from upath import UPath
 
 from inspect_scout._project._project import read_project
+from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 from inspect_scout._view.types import ViewConfig
 
 from .._active_scans_store import active_scans_store
@@ -198,12 +199,16 @@ def v2_api_app(
     )
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
+        project = read_project()
+        transcripts = view_config.transcripts or project.transcripts
+        scans = view_config.scans or project.scans or DEFAULT_SCANS_DIR
         return AppConfig(
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-            project=read_project(),  # always read it fresh b/c it may have changed
-            transcripts=view_config.transcripts,
-            scans=view_config.scans,
+            transcripts_dir=UPath(transcripts).resolve().as_uri()
+            if transcripts is not None
+            else None,
+            scans_dir=UPath(scans).resolve().as_uri(),
         )
 
     @app.post(

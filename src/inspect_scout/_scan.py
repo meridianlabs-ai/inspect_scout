@@ -13,7 +13,7 @@ from inspect_ai._eval.context import init_model_context
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
-from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
+from inspect_ai._util.constants import DEFAULT_LOG_LEVEL, DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
@@ -34,7 +34,6 @@ from typing_extensions import Unpack
 
 from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._project import read_project
-from inspect_scout._project.types import ProjectConfig
 from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
@@ -243,7 +242,7 @@ async def scan_async(
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
     project = read_project()
-    top_level_async_init(log_level, project=project)
+    top_level_async_init(log_level or project.log_level)
 
     # map deprecated
     results_deprecated = deprecated.get("results", None)
@@ -375,7 +374,7 @@ async def scan_resume_async(
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
-    top_level_async_init(log_level)
+    top_level_async_init(log_level or read_project().log_level)
 
     # resume job
     scan = await resume_scan(scan_location)
@@ -444,7 +443,7 @@ async def scan_complete_async(
     Returns:
        ScanStatus: Status of scan (spec, summary, errors, etc.)
     """
-    top_level_async_init(log_level)
+    top_level_async_init(log_level or read_project().log_level)
 
     # check if the scan is already complete
     recorder_type = scan_recorder_type_for_location(scan_location)
@@ -821,13 +820,12 @@ def top_level_sync_init(display: DisplayType | None) -> None:
 def top_level_async_init(
     log_level: str | None,
     *,
-    project: ProjectConfig | None = None,
     main_process: bool = True,
 ) -> None:
     init_platform(hooks=False)
     init_environment()
 
-    log_level = log_level or (project or read_project()).log_level
+    log_level = log_level or DEFAULT_LOG_LEVEL
 
     if not display_type_initialized():
         init_display_type("plain")

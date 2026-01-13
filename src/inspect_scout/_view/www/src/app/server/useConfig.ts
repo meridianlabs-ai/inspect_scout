@@ -2,7 +2,6 @@ import { useApi } from "../../state/store";
 import { AppConfig } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
-import { isUri, join } from "../../utils/uri";
 
 /**
  * Loads app config asynchronously at app initialization.
@@ -43,29 +42,4 @@ export function appAliasedPath(
     return null;
   }
   return path.replace(appConfig.home_dir, "~");
-}
-
-export function appTranscriptsDir(appConfig: AppConfig): string | null {
-  const transcripts = appConfig.transcripts || appConfig.project.transcripts;
-  if (transcripts) {
-    if (isUri(transcripts)) {
-      return transcripts;
-    } else {
-      return join(transcripts, appConfig.project_dir);
-    }
-  } else {
-    return null;
-  }
-}
-
-export function appScansDir(appConfig: AppConfig): string {
-  const scans = appConfig.scans || appConfig.project.scans;
-  if (!scans) {
-    throw new Error("Scans must be provided in AppConfig.");
-  }
-  if (isUri(scans)) {
-    return scans;
-  } else {
-    return join(scans, appConfig.project_dir);
-  }
 }

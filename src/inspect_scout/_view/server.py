@@ -58,23 +58,24 @@ def view_server(
 ) -> None:
     # get filesystem and resolve scan_dir to full path
     config = config or ViewConfig()
-    results_dir = config.scans or config.project.scans or DEFAULT_SCANS_DIR
-    fs = filesystem(results_dir, fs_options=fs_options or {})
-    if not fs.exists(results_dir):
-        fs.mkdir(results_dir, True)
+    scans = config.scans or config.project.scans or DEFAULT_SCANS_DIR
+    fs = filesystem(scans, fs_options=fs_options or {})
+    if not fs.exists(scans):
+        fs.mkdir(scans, True)
+    scans = fs.info(scans).name
 
-    access_policy = OnlyDirAccessPolicy(results_dir) if not authorization else None
+    access_policy = OnlyDirAccessPolicy(scans) if not authorization else None
 
     v1_api = v1_api_app(
         access_policy=access_policy,
-        results_dir=results_dir,
+        results_dir=scans,
         fs=fs,
     )
 
     v2_api = v2_api_app(
         view_config=config,
         access_policy=access_policy,
-        results_dir=results_dir,
+        results_dir=scans,
         fs=fs,
     )
 

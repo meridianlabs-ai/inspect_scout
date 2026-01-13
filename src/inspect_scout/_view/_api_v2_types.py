@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
-from inspect_scout._project.types import ProjectConfig
 from inspect_scout._query.order_by import OrderBy
 
 from .._active_scans_store import ActiveScanInfo
@@ -111,9 +110,8 @@ class AppConfig:
 
     home_dir: str
     project_dir: str
-    project: ProjectConfig
-    transcripts: str | None
-    scans: str | None
+    transcripts_dir: str | None
+    scans_dir: str
 
 
 @dataclass

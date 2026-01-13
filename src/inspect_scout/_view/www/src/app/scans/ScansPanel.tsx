@@ -9,7 +9,7 @@ import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { appAliasedPath, appScansDir, useConfig } from "../server/useConfig";
+import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerScans } from "../server/useServerScans";
 
 import { ScansGrid } from "./ScansGrid";
@@ -19,7 +19,7 @@ export const ScansPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useServerScans();
   const config = useConfig();
-  const scanDir = appScansDir(config);
+  const scanDir = config.scans_dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const userScansDir = useStore((state) => state.userScansDir);
   const setScanDir = useStore((state) => state.setUserScansDir);

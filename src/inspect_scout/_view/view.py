@@ -30,7 +30,7 @@ def view(
     with chdir(project_dir or "."):
         # top level init
         project = read_project()
-        top_level_async_init(log_level, project=project)
+        top_level_async_init(log_level or project.log_level)
 
         # acquire the port
         view_acquire_port(scout_data_dir("view"), port)

@@ -4,12 +4,10 @@ import { Input, InputType } from "../app/types";
 import { Condition } from "../query/types";
 import {
   ActiveScansResponse,
-  ProjectConfig,
   ScansResponse,
   Status,
   TranscriptsResponse,
 } from "../types/api-types";
-import { basename, dirname } from "../utils/path";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi } from "./api";

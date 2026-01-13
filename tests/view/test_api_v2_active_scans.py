@@ -179,5 +179,3 @@ class TestActiveScansEndpoint:
         assert m["batch_pending"] == 5
         assert m["batch_failures"] == 1
         assert m["batch_oldest_created"] == 1704000000
-
-

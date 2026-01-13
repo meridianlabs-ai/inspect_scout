@@ -92,7 +92,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     # create scan spec
     spec = ScanSpec(
         scan_file=job_file(scanjob),
-        scan_name=scanjob.name,
+        scan_name=scanjob.name or "scan",
         scan_args=job_args(scanjob),
         options=options or ScanOptions(),
         scanners=_spec_scanners(scanjob.scanners),

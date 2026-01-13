@@ -4784,9 +4784,15 @@
             "title": "Model Roles"
           },
           "name": {
-            "default": "job",
-            "title": "Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "results": {
             "anyOf": [
@@ -4906,7 +4912,6 @@
           }
         },
         "required": [
-          "name",
           "filter"
         ],
         "title": "ProjectConfig",
@@ -5065,9 +5070,15 @@
             "title": "Model Roles"
           },
           "name": {
-            "default": "job",
-            "title": "Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "results": {
             "anyOf": [
@@ -5187,7 +5198,6 @@
           }
         },
         "required": [
-          "name",
           "filter"
         ],
         "title": "ProjectConfig",
@@ -6022,9 +6032,15 @@
             "title": "Model Roles"
           },
           "name": {
-            "default": "job",
-            "title": "Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "results": {
             "anyOf": [
@@ -6144,7 +6160,6 @@
           }
         },
         "required": [
-          "name",
           "filter"
         ],
         "title": "ScanJobConfig",
@@ -9363,18 +9378,25 @@
         "summary": "Get project configuration"
       },
       "put": {
-        "description": "Updates the project configuration in scout.yaml while preserving comments and formatting. Requires If-Match header with current ETag for optimistic concurrency control.",
+        "description": "Updates the project configuration in scout.yaml while preserving comments and formatting. Optionally include If-Match header with current ETag for optimistic concurrency control. Omit If-Match to force save.",
         "operationId": "put_project_config_project_config_put",
         "parameters": [
           {
-            "description": "ETag from GET request (required for optimistic locking)",
+            "description": "ETag from GET request (optional, omit to force save)",
             "in": "header",
             "name": "if-match",
-            "required": true,
+            "required": false,
             "schema": {
-              "description": "ETag from GET request (required for optimistic locking)",
-              "title": "If-Match",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ETag from GET request (optional, omit to force save)",
+              "title": "If-Match"
             }
           }
         ],

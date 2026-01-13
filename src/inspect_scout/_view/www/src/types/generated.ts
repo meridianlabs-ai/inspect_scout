@@ -58,7 +58,7 @@ export interface paths {
         get: operations["get_project_config_project_config_get"];
         /**
          * Update project configuration
-         * @description Updates the project configuration in scout.yaml while preserving comments and formatting. Requires If-Match header with current ETag for optimistic concurrency control.
+         * @description Updates the project configuration in scout.yaml while preserving comments and formatting. Optionally include If-Match header with current ETag for optimistic concurrency control. Omit If-Match to force save.
          */
         put: operations["put_project_config_project_config_put"];
         post?: never;
@@ -1870,11 +1870,8 @@ export interface components {
             model_roles?: {
                 [key: string]: components["schemas"]["ModelConfig-Input"] | string;
             } | null;
-            /**
-             * Name
-             * @default job
-             */
-            name: string;
+            /** Name */
+            name?: string | null;
             /** Results */
             results?: string | null;
             /** Scanners */
@@ -1931,11 +1928,8 @@ export interface components {
             model_roles?: {
                 [key: string]: components["schemas"]["ModelConfig-Output"] | string;
             } | null;
-            /**
-             * Name
-             * @default job
-             */
-            name: string;
+            /** Name */
+            name?: string | null;
             /** Results */
             results?: string | null;
             /** Scanners */
@@ -2289,11 +2283,8 @@ export interface components {
             model_roles?: {
                 [key: string]: components["schemas"]["ModelConfig-Input"] | string;
             } | null;
-            /**
-             * Name
-             * @default job
-             */
-            name: string;
+            /** Name */
+            name?: string | null;
             /** Results */
             results?: string | null;
             /** Scanners */
@@ -3613,9 +3604,9 @@ export interface operations {
     put_project_config_project_config_put: {
         parameters: {
             query?: never;
-            header: {
-                /** @description ETag from GET request (required for optimistic locking) */
-                "if-match": string;
+            header?: {
+                /** @description ETag from GET request (optional, omit to force save) */
+                "if-match"?: string | null;
             };
             path?: never;
             cookie?: never;

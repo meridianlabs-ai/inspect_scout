@@ -45,7 +45,7 @@ export interface ScanApi {
   getProjectConfig(): Promise<{ config: ProjectConfig; etag: string }>;
   updateProjectConfig(
     config: ProjectConfigInput,
-    etag: string
+    etag: string | null
   ): Promise<{ config: ProjectConfig; etag: string }>;
 
   storage: ClientStorage;

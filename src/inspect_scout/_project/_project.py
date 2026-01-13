@@ -86,8 +86,6 @@ def load_project_config(path: Path) -> ProjectConfig:
         local_config = _load_single_config(local_path)
         config = merge_configs(config, local_config)
 
-    apply_config_defaults(config, path)
-
     return config
 
 
@@ -124,7 +122,6 @@ def _load_single_config(path: Path) -> ProjectConfig:
 
 def create_default_project() -> ProjectConfig:
     return ProjectConfig(
-        name=Path.cwd().name,
         transcripts=default_transcripts_dir(),
         scans=DEFAULT_SCANS_DIR,
     )
@@ -169,18 +166,27 @@ def read_project_config_with_etag() -> tuple[ProjectConfig, str]:
     """Read project configuration and compute its ETag.
 
     Reads the base scout.yaml only (ignores scout.local.yaml).
+    If no scout.yaml exists, returns a default config with an etag based on
+    what the YAML content would be.
 
     Returns:
         Tuple of (ProjectConfig, etag).
 
     Raises:
-        FileNotFoundError: If scout.yaml does not exist.
         PrerequisiteError: If the configuration is invalid.
     """
     project_file = get_project_file_path()
 
     if not project_file.exists():
-        raise FileNotFoundError(f"Project config file not found: {project_file}")
+        # Return default config with etag based on YAML serialization
+        config = create_default_project()
+        yaml = YAML()
+        yaml.preserve_quotes = True
+        output = StringIO()
+        config_dict = _clean_empty_values(config.model_dump())
+        yaml.dump(config_dict, output)
+        etag = compute_project_etag(output.getvalue())
+        return config, etag
 
     content = project_file.read_text(encoding="utf-8")
     etag = compute_project_etag(content)
@@ -188,14 +194,7 @@ def read_project_config_with_etag() -> tuple[ProjectConfig, str]:
     # Parse and validate
     config = _load_single_config(project_file)
 
-    apply_config_defaults(config, project_file)
-
     return config, etag
-
-
-def apply_config_defaults(config: ProjectConfig, project_file: Path) -> None:
-    if config.name == "job":  # default from ScanJobConfig
-        config = config.model_copy(update={"name": project_file.parent.name})
 
 
 class EtagMismatchError(Exception):
@@ -209,49 +208,57 @@ class EtagMismatchError(Exception):
 
 def write_project_config(
     config: ProjectConfig,
-    expected_etag: str,
+    expected_etag: str | None = None,
 ) -> tuple[ProjectConfig, str]:
     """Write project configuration, preserving YAML comments.
 
     Args:
         config: The new configuration to write.
         expected_etag: The expected ETag of the current file (for optimistic locking).
+            If None, skips etag verification (force save).
 
     Returns:
         Tuple of (updated ProjectConfig, new etag).
 
     Raises:
-        FileNotFoundError: If scout.yaml does not exist.
         EtagMismatchError: If the current file's ETag doesn't match expected_etag.
         PrerequisiteError: If the configuration is invalid.
     """
     project_file = get_project_file_path()
 
-    if not project_file.exists():
-        raise FileNotFoundError(f"Project config file not found: {project_file}")
-
-    # Read current content and verify etag
-    current_content = project_file.read_text(encoding="utf-8")
-    current_etag = compute_project_etag(current_content)
-
-    if current_etag != expected_etag:
-        raise EtagMismatchError(expected_etag, current_etag)
-
-    # Load with ruamel.yaml to preserve comments
     yaml = YAML()
     yaml.preserve_quotes = True
-    original_data = yaml.load(current_content)
 
-    # Convert config to dict for merging
-    config_dict: dict[str, Any] = config.model_dump(exclude_none=False)
+    if project_file.exists():
+        # Read current content and verify etag (if provided)
+        current_content = project_file.read_text(encoding="utf-8")
+        current_etag = compute_project_etag(current_content)
 
-    # Apply updates preserving comments
-    apply_config_update(original_data, config_dict)
+        if expected_etag is not None and current_etag != expected_etag:
+            raise EtagMismatchError(expected_etag, current_etag)
 
-    # Write to string
-    output = StringIO()
-    yaml.dump(original_data, output)
-    new_content = output.getvalue()
+        # Load with ruamel.yaml to preserve comments
+        original_data = yaml.load(current_content)
+
+        # Convert config to dict for merging
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=False)
+
+        # Apply updates preserving comments
+        apply_config_update(original_data, config_dict)
+
+        # Write to string
+        output = StringIO()
+        yaml.dump(original_data, output)
+        new_content = output.getvalue()
+    else:
+        # File doesn't exist - create new config
+        # Convert config to dict, excluding None values and empty collections
+        config_dict = _clean_empty_values(config.model_dump())
+
+        # Write to string
+        output = StringIO()
+        yaml.dump(config_dict, output)
+        new_content = output.getvalue()
 
     # Atomic write: write to temp file, then rename
     temp_fd, temp_path = tempfile.mkstemp(
@@ -276,3 +283,34 @@ def write_project_config(
     updated_config = _load_single_config(project_file)
 
     return updated_config, new_etag
+
+
+def _clean_empty_values(data: dict[str, Any]) -> dict[str, Any]:
+    """Recursively remove None values and empty collections from a dict.
+
+    Used when creating new YAML files to produce cleaner output.
+    """
+    result: dict[str, Any] = {}
+    for key, value in data.items():
+        if value is None:
+            continue
+        elif isinstance(value, dict):
+            cleaned = _clean_empty_values(value)
+            if cleaned:  # Only include non-empty dicts
+                result[key] = cleaned
+        elif isinstance(value, list):
+            if value:  # Only include non-empty lists
+                # Recursively clean list items that are dicts
+                cleaned_list = []
+                for item in value:
+                    if isinstance(item, dict):
+                        cleaned_item = _clean_empty_values(item)
+                        if cleaned_item:
+                            cleaned_list.append(cleaned_item)
+                    else:
+                        cleaned_list.append(item)
+                if cleaned_list:
+                    result[key] = cleaned_list
+        else:
+            result[key] = value
+    return result

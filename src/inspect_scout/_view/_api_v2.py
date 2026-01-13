@@ -33,8 +33,6 @@ from upath import UPath
 
 from inspect_scout._project._project import (
     EtagMismatchError,
-    compute_project_etag,
-    create_default_project,
     read_project,
     read_project_config_with_etag,
     write_project_config,
@@ -240,11 +238,7 @@ def v2_api_app(
     )
     async def get_project_config() -> Response:
         """Return project configuration with ETag header."""
-        try:
-            config, etag = read_project_config_with_etag()
-        except FileNotFoundError:
-            config = create_default_project()
-            etag = compute_project_etag(config.model_dump_json())
+        config, etag = read_project_config_with_etag()
 
         return InspectPydanticJSONResponse(
             content=config,
@@ -257,19 +251,19 @@ def v2_api_app(
         response_class=InspectPydanticJSONResponse,
         summary="Update project configuration",
         description="Updates the project configuration in scout.yaml while preserving "
-        "comments and formatting. Requires If-Match header with current ETag for "
-        "optimistic concurrency control.",
+        "comments and formatting. Optionally include If-Match header with current ETag for "
+        "optimistic concurrency control. Omit If-Match to force save.",
     )
     async def put_project_config(
         config: ProjectConfig,
-        if_match: str = Header(
-            ...,
-            description="ETag from GET request (required for optimistic locking)",
+        if_match: str | None = Header(
+            default=None,
+            description="ETag from GET request (optional, omit to force save)",
         ),
     ) -> Response:
         """Update project configuration with comment preservation."""
-        # Parse the If-Match header (may be quoted)
-        expected_etag = if_match.strip('"')
+        # Parse the If-Match header (may be quoted), None means force save
+        expected_etag = if_match.strip('"') if if_match else None
 
         try:
             updated_config, new_etag = write_project_config(config, expected_etag)

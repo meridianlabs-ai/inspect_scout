@@ -37,12 +37,13 @@ def apply_config_update(
         current_path = f"{path}.{key}" if path else key
         field_name = key  # The immediate field name for list matching
 
-        if key not in original:
+        if new_value is None or new_value == [] or new_value == {}:
+            # None/empty means "unset" - remove the key if it exists
+            if key in original:
+                del original[key]
+        elif key not in original:
             # New key - just add it
             original[key] = new_value
-        elif new_value is None:
-            # Setting to None
-            original[key] = None
         elif isinstance(original[key], CommentedMap) and isinstance(new_value, dict):
             # Recursively update nested dict
             apply_config_update(original[key], new_value, current_path)

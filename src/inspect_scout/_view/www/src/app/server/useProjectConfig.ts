@@ -41,7 +41,7 @@ export const useProjectConfig = (): AsyncData<ProjectConfigWithEtag> => {
 export const useUpdateProjectConfig = (): UseMutationResult<
   ProjectConfigWithEtag,
   DefaultError,
-  { config: ProjectConfigInput; etag: string }
+  { config: ProjectConfigInput; etag: string | null }
 > => {
   const api = useApi();
   const queryClient = useQueryClient();

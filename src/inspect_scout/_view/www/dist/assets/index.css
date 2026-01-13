@@ -4759,21 +4759,132 @@ so disabling selection can break that functionality */
 ._navButton_cmger_54:focus-visible {
   background-color: var(--bs-secondary-bg-subtle);
 }
-._container_p81af_1 {
+._container_ef6vx_1 {
   height: 100%;
-  display: grid;
-  grid-template-rows: max-content max-content 1fr;
+  display: flex;
+  flex-direction: column;
   padding: 0.75rem 1rem;
+  gap: 1rem;
 }
 
-._header_p81af_8 {
+._headerRow_ef6vx_9 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+._header_ef6vx_9 {
   font-size: var(--inspect-font-size-large);
   font-weight: 600;
 }
 
-._detail_p81af_13 {
+._detail_ef6vx_20 {
   font-size: var(--inspect-font-size-small);
   color: var(--bs-secondary);
+}
+
+._saveButton_ef6vx_25 {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+._saveButton_ef6vx_25:hover:not(:disabled) {
+  background-color: var(--bs-tertiary-bg);
+}
+
+._saveButton_ef6vx_25:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+._conflictBanner_ef6vx_44 {
+  background-color: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+._conflictActions_ef6vx_56 {
+  display: flex;
+  gap: 0.5rem;
+}
+
+._discardButton_ef6vx_61,
+._forceSaveButton_ef6vx_62 {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+._discardButton_ef6vx_61 {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+._forceSaveButton_ef6vx_62 {
+  background-color: var(--bs-warning);
+  color: var(--bs-warning-text-emphasis);
+  border-color: var(--bs-warning);
+}
+
+._discardButton_ef6vx_61:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+._forceSaveButton_ef6vx_62:hover {
+  opacity: 0.9;
+}
+
+._loading_ef6vx_89,
+._error_ef6vx_90 {
+  font-size: 0.875rem;
+}
+
+._error_ef6vx_90 {
+  color: var(--bs-danger);
+}
+
+._form_ef6vx_98 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+._formGroup_ef6vx_104 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+._label_ef6vx_110 {
+  font-size: 0.875rem;
+  color: var(--bs-secondary);
+}
+
+._input_ef6vx_115 {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+}
+
+._input_ef6vx_115:focus {
+  outline: none;
+  border-color: var(--bs-primary);
 }
 ._root_ke0e7_1 {
   height: 100vh;

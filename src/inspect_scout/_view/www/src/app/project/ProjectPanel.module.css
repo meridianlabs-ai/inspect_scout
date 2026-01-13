@@ -1,8 +1,15 @@
 .container {
   height: 100%;
-  display: grid;
-  grid-template-rows: max-content max-content 1fr;
+  display: flex;
+  flex-direction: column;
   padding: 0.75rem 1rem;
+  gap: 1rem;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .header {
@@ -13,4 +20,108 @@
 .detail {
   font-size: var(--inspect-font-size-small);
   color: var(--bs-secondary);
+}
+
+.saveButton {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.saveButton:hover:not(:disabled) {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.saveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.conflictBanner {
+  background-color: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.conflictActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.discardButton,
+.forceSaveButton {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.discardButton {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+.forceSaveButton {
+  background-color: var(--bs-warning);
+  color: var(--bs-warning-text-emphasis);
+  border-color: var(--bs-warning);
+}
+
+.discardButton:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+.forceSaveButton:hover {
+  opacity: 0.9;
+}
+
+.loading,
+.error {
+  font-size: 0.875rem;
+}
+
+.error {
+  color: var(--bs-danger);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--bs-secondary);
+}
+
+.input {
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--bs-primary);
 }

@@ -157,13 +157,17 @@ export const apiScoutServer = (
     },
     updateProjectConfig: async (
       config: ProjectConfigInput,
-      etag: string
+      etag: string | null
     ): Promise<{ config: ProjectConfig; etag: string }> => {
+      const headers: Record<string, string> = {};
+      if (etag) {
+        headers["If-Match"] = `"${etag}"`;
+      }
       const response = await requestApi.fetchType<ProjectConfig>(
         "PUT",
         `/project/config`,
         {
-          headers: { "If-Match": `"${etag}"` },
+          headers,
           body: JSON.stringify(config),
         }
       );

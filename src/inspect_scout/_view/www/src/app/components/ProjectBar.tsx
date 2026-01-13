@@ -4,11 +4,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { ApplicationIcons } from "../../components/icons";
 import { getActivityByRoute } from "../../router/activities";
+import { projectRoute } from "../../router/url";
 import { AppConfig } from "../../types/api-types";
 import { appAliasedPath } from "../server/useConfig";
 
 import styles from "./ProjectBar.module.css";
-import { projectRoute } from "../../router/url";
 
 interface ProjectBarProps {
   config: AppConfig;
@@ -62,7 +62,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
           <button
             type="button"
             className={styles.navButton}
-            onClick={() => navigate(projectRoute())}
+            onClick={() => void navigate(projectRoute())}
           >
             <i className={ApplicationIcons.config} />
             &nbsp;Project

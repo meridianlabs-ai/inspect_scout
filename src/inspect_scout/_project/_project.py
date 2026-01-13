@@ -86,9 +86,7 @@ def load_project_config(path: Path) -> ProjectConfig:
         local_config = _load_single_config(local_path)
         config = merge_configs(config, local_config)
 
-    # Default name to directory name if not specified
-    if config.name == "job":  # default from ScanJobConfig
-        config = config.model_copy(update={"name": path.parent.name})
+    apply_config_defaults(config, path)
 
     return config
 
@@ -190,7 +188,14 @@ def read_project_config_with_etag() -> tuple[ProjectConfig, str]:
     # Parse and validate
     config = _load_single_config(project_file)
 
+    apply_config_defaults(config, project_file)
+
     return config, etag
+
+
+def apply_config_defaults(config: ProjectConfig, project_file: Path) -> None:
+    if config.name == "job":  # default from ScanJobConfig
+        config = config.model_copy(update={"name": project_file.parent.name})
 
 
 class EtagMismatchError(Exception):

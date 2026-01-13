@@ -8,6 +8,7 @@ import { AppConfig } from "../../types/api-types";
 import { appAliasedPath } from "../server/useConfig";
 
 import styles from "./ProjectBar.module.css";
+import { projectRoute } from "../../router/url";
 
 interface ProjectBarProps {
   config: AppConfig;
@@ -58,14 +59,14 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
           {appAliasedPath(config, config.project_dir)}
         </span>
         <div className={styles.right}>
-          {/* <button
+          <button
             type="button"
             className={styles.navButton}
             onClick={() => navigate(projectRoute())}
           >
             <i className={ApplicationIcons.config} />
             &nbsp;Project
-          </button> */}
+          </button>
         </div>
       </div>
     </div>

@@ -33,6 +33,8 @@ from upath import UPath
 
 from inspect_scout._project._project import (
     EtagMismatchError,
+    compute_project_etag,
+    create_default_project,
     read_project,
     read_project_config_with_etag,
     write_project_config,
@@ -241,10 +243,8 @@ def v2_api_app(
         try:
             config, etag = read_project_config_with_etag()
         except FileNotFoundError:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Project config file (scout.yaml) not found",
-            ) from None
+            config = create_default_project()
+            etag = compute_project_etag(config.model_dump_json())
 
         return InspectPydanticJSONResponse(
             content=config,

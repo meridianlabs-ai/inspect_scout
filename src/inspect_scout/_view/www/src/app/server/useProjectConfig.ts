@@ -51,6 +51,9 @@ export const useUpdateProjectConfig = (): UseMutationResult<
     onSuccess: (data) => {
       // Update cache with new config and etag
       queryClient.setQueryData(["project-config"], data);
+      queryClient
+        .invalidateQueries({ queryKey: ["config"] })
+        .catch(console.log);
     },
   });
 };

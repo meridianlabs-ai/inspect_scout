@@ -8,19 +8,15 @@ scout.local.yaml files (not checked into version control).
 from ._project import (
     create_default_project,
     find_local_project_file,
-    init_project,
     load_project_config,
-    project,
-    sync_project,
+    read_project,
 )
 from .merge import merge_configs
 from .types import ProjectConfig
 
 __all__ = [
     "ProjectConfig",
-    "init_project",
-    "sync_project",
-    "project",
+    "read_project",
     "merge_configs",
     "find_local_project_file",
     "load_project_config",

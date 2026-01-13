@@ -17,7 +17,7 @@ from inspect_ai._util.logger import warn_once
 from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig, Model
 from typing_extensions import Unpack
 
-from inspect_scout._project._project import init_project, project
+from inspect_scout._project._project import read_project
 from inspect_scout._validation import validation_set
 from inspect_scout._validation.predicates import PREDICATES, ValidationPredicate
 from inspect_scout._validation.types import ValidationSet
@@ -440,8 +440,7 @@ def scan_command(
                 scanjob = ScanJob(transcripts=None, scanners=scanners)
 
     # need to resolve project against scanjob here so it can override env vars
-    init_project()
-    merge_project_into_scanjob(project(), scanjob)
+    merge_project_into_scanjob(read_project(), scanjob)
 
     # resolve transcripts from cli/env (apply filter)
     tx = transcripts_from(transcripts) if len(transcripts) > 0 else None

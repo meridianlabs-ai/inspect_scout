@@ -211,6 +211,10 @@ export interface components {
             project: components["schemas"]["ProjectConfig"];
             /** Project Dir */
             project_dir: string;
+            /** Scans */
+            scans?: string | null;
+            /** Transcripts */
+            transcripts?: string | null;
         };
         /**
          * ApprovalEvent

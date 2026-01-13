@@ -27,7 +27,8 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._project._project import project, sync_project
+from inspect_scout._project._project import read_project
+from inspect_scout._view.types import ViewConfig
 
 from .._active_scans_store import active_scans_store
 from .._query import Column, Condition, Query, condition_as_sql
@@ -68,6 +69,7 @@ MAX_TRANSCRIPT_BYTES = 350 * 1024 * 1024  # 350MB
 
 
 def v2_api_app(
+    view_config: ViewConfig | None = None,
     access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
@@ -78,6 +80,8 @@ def v2_api_app(
     WARNING: This is an ALPHA API. Expect breaking changes without notice.
     Do not depend on this API for production use.
     """
+    view_config = view_config or ViewConfig()
+
     app = FastAPI(
         title="Inspect Scout Viewer API",
         version=API_VERSION,
@@ -197,7 +201,9 @@ def v2_api_app(
         return AppConfig(
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-            project=sync_project(),
+            project=read_project(),  # always read it fresh b/c it may have changed
+            transcripts=view_config.transcripts,
+            scans=view_config.scans,
         )
 
     @app.post(
@@ -361,7 +367,7 @@ def v2_api_app(
             "filter",
         )
         return {
-            "python": f'transcripts = transcripts_from("{project().transcripts}").where({filter_sql!r})',
+            "python": f"transcripts.where({filter_sql!r})",
             "filter": filter_sql,
         }
 

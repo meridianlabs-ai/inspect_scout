@@ -33,8 +33,8 @@ from rich.table import Column, Table
 from typing_extensions import Unpack
 
 from inspect_scout._concurrency._mp_common import set_log_level
-from inspect_scout._project import init_project
-from inspect_scout._project._project import project
+from inspect_scout._project import read_project
+from inspect_scout._project.types import ProjectConfig
 from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
 from inspect_scout._transcript.local_files_cache import (
@@ -242,7 +242,8 @@ async def scan_async(
     Returns:
         ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
     """
-    top_level_async_init(log_level, scans=scans)
+    project = read_project()
+    top_level_async_init(log_level, project=project)
 
     # map deprecated
     results_deprecated = deprecated.get("results", None)
@@ -252,9 +253,6 @@ async def scan_async(
 
         show_results_warning()
         scans = results_deprecated
-
-    # Get project config for merging/defaults
-    proj = project()
 
     # resolve scanjob
     if isinstance(scanners, ScanJob):
@@ -267,7 +265,7 @@ async def scan_async(
     # Apply project defaults and merging (handles transcripts, results, model,
     # worklist union, scanners union, validation union, tags union, metadata union,
     # generate_config merge)
-    merge_project_into_scanjob(proj, scanjob)
+    merge_project_into_scanjob(project, scanjob)
 
     # Apply function parameter overrides on top of merged values
     if transcripts:
@@ -823,24 +821,19 @@ def top_level_sync_init(display: DisplayType | None) -> None:
 def top_level_async_init(
     log_level: str | None,
     *,
+    project: ProjectConfig | None = None,
     main_process: bool = True,
-    transcripts: str | None = None,
-    scans: str | None = None,
 ) -> None:
     init_platform(hooks=False)
     init_environment()
 
-    # initialize project
-    init_project(transcripts=transcripts, scans=scans)
-
-    # Use project log_level as fallback
-    effective_log_level = log_level or project().log_level
+    log_level = log_level or (project or read_project()).log_level
 
     if not display_type_initialized():
         init_display_type("plain")
-    init_log(effective_log_level)
+    init_log(log_level)
     if main_process:
-        set_log_level(effective_log_level)
+        set_log_level(log_level)
 
 
 def init_environment() -> None:

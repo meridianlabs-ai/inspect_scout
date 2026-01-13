@@ -10,94 +10,34 @@ from inspect_ai._util.path import pretty_path
 from jsonschema import Draft7Validator
 
 from inspect_scout._util.constants import (
+    DEFAULT_LOGS_DIR,
     DEFAULT_SCANS_DIR,
     DEFAULT_TRANSCRIPTS_DIR,
-    DFEAULT_LOGS_DIR,
 )
 
 from .merge import merge_configs
 from .types import ProjectConfig
 
-# Global project state
-_current_project: ProjectConfig | None = None
-_project_transcripts: str | None = None
-_project_scans: str | None = None
-
 # Local project override filename
 LOCAL_PROJECT_FILENAME = "scout.local.yaml"
 
 
-def init_project(
-    *, transcripts: str | None = None, scans: str | None = None
-) -> ProjectConfig:
-    """Initialize the global project configuration.
-
-    Searches for scout.yaml starting from cwd, walking up the directory tree.
-    If no project file is found, creates a default project.
-
-    Always reinitializes (no caching). This is safe because scan_async()
-    and view() are never concurrent within a process, and enables multiple
-    projects to be used within a single Python script.
-
-    Returns:
-        The initialized ProjectConfig.
-    """
-    global _project_transcripts
-    global _project_scans
-    _project_transcripts = transcripts
-    _project_scans = scans
-    return sync_project()
-
-
-def sync_project() -> ProjectConfig:
-    """Update the global project configuration.
-
-    Always reinitializes (no caching). This is safe because scan_async()
-    and view() are never concurrent within a process, and enables multiple
-    projects to be used within a single Python script.
-
-    Returns:
-        The initialized ProjectConfig.
-    """
-    global _current_project
-    global _project_transcripts
-    global _project_scans
-
+def read_project() -> ProjectConfig:
     project_file = Path.cwd() / "scout.yaml"
     if project_file.exists():
-        _current_project = load_project_config(project_file)
+        project = load_project_config(project_file)
     else:
-        _current_project = create_default_project()
-
-    # override transcripts ans scans if requested
-    if _project_transcripts is not None:
-        _current_project.transcripts = _project_transcripts
-    if _project_scans is not None:
-        _current_project.scans = _project_scans
+        project = create_default_project()
 
     # provide default transcripts if we need to
-    if _current_project.transcripts is None:
-        _current_project.transcripts = default_transcripts_dir()
+    if project.transcripts is None:
+        project.transcripts = default_transcripts_dir()
 
     # provide defaults scans if we need to
-    if _current_project.scans is None:
-        _current_project.scans = DEFAULT_SCANS_DIR
+    if project.scans is None:
+        project.scans = DEFAULT_SCANS_DIR
 
-    return _current_project
-
-
-def project() -> ProjectConfig:
-    """Get the current project configuration.
-
-    Returns:
-        The current ProjectConfig.
-
-    Raises:
-        RuntimeError: If project has not been initialized.
-    """
-    if _current_project is None:
-        raise RuntimeError("Project not initialized. Call init_project() first.")
-    return _current_project
+    return project
 
 
 def find_local_project_file(project_file: Path) -> Path | None:
@@ -191,7 +131,7 @@ def default_transcripts_dir() -> str | None:
         return DEFAULT_TRANSCRIPTS_DIR
     else:
         # inspect logs
-        inspect_logs = os.environ.get("INSPECT_LOG_DIR", DFEAULT_LOGS_DIR)
+        inspect_logs = os.environ.get("INSPECT_LOG_DIR", DEFAULT_LOGS_DIR)
         fs = filesystem(inspect_logs)
         if fs.exists(inspect_logs):
             return inspect_logs

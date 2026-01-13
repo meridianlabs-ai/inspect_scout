@@ -55,6 +55,28 @@
           "project_dir": {
             "title": "Project Dir",
             "type": "string"
+          },
+          "scans": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans"
+          },
+          "transcripts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcripts"
           }
         },
         "required": [

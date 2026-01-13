@@ -46,11 +46,12 @@ export function appAliasedPath(
 }
 
 export function appTranscriptsDir(appConfig: AppConfig): string | null {
-  if (appConfig.project.transcripts) {
-    if (isUri(appConfig.project.transcripts)) {
-      return appConfig.project.transcripts;
+  const transcripts = appConfig.transcripts || appConfig.project.transcripts;
+  if (transcripts) {
+    if (isUri(transcripts)) {
+      return transcripts;
     } else {
-      return join(appConfig.project.transcripts, appConfig.project_dir);
+      return join(transcripts, appConfig.project_dir);
     }
   } else {
     return null;
@@ -58,12 +59,13 @@ export function appTranscriptsDir(appConfig: AppConfig): string | null {
 }
 
 export function appScansDir(appConfig: AppConfig): string {
-  if (!appConfig.project?.scans) {
+  const scans = appConfig.scans || appConfig.project.scans;
+  if (!scans) {
     throw new Error("Scans must be provided in AppConfig.");
   }
-  if (isUri(appConfig.project.scans)) {
-    return appConfig.project.scans;
+  if (isUri(scans)) {
+    return scans;
   } else {
-    return join(appConfig.project.scans, appConfig.project_dir);
+    return join(scans, appConfig.project_dir);
   }
 }

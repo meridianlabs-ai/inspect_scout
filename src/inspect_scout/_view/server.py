@@ -13,6 +13,13 @@ from inspect_ai._view.fastapi_server import (
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import Scope
 
+from inspect_scout._util.constants import (
+    DEFAULT_SCANS_DIR,
+    DEFAULT_SERVER_HOST,
+    DEFAULT_VIEW_PORT,
+)
+from inspect_scout._view.types import ViewConfig
+
 from .._display._display import display
 from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
@@ -42,30 +49,32 @@ class NoCacheStaticFiles(StaticFiles):
 
 
 def view_server(
-    scans: str,
-    host: str,
-    port: int,
+    config: ViewConfig | None = None,
+    host: str = DEFAULT_SERVER_HOST,
+    port: int = DEFAULT_VIEW_PORT,
     mode: Literal["default", "scans"] = "default",
     authorization: str | None = None,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
     # get filesystem and resolve scan_dir to full path
-    fs = filesystem(scans, fs_options=fs_options or {})
-    if not fs.exists(scans):
-        fs.mkdir(scans, True)
-    scans = fs.info(scans).name
+    config = config or ViewConfig()
+    results_dir = config.scans or config.project.scans or DEFAULT_SCANS_DIR
+    fs = filesystem(results_dir, fs_options=fs_options or {})
+    if not fs.exists(results_dir):
+        fs.mkdir(results_dir, True)
 
-    access_policy = OnlyDirAccessPolicy(scans) if not authorization else None
+    access_policy = OnlyDirAccessPolicy(results_dir) if not authorization else None
 
     v1_api = v1_api_app(
         access_policy=access_policy,
-        results_dir=scans,
+        results_dir=results_dir,
         fs=fs,
     )
 
     v2_api = v2_api_app(
+        view_config=config,
         access_policy=access_policy,
-        results_dir=scans,
+        results_dir=results_dir,
         fs=fs,
     )
 

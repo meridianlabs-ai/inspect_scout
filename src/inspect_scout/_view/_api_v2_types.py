@@ -112,6 +112,8 @@ class AppConfig:
     home_dir: str
     project_dir: str
     project: ProjectConfig
+    transcripts: str | None
+    scans: str | None
 
 
 @dataclass

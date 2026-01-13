@@ -1,6 +1,7 @@
 import { ScanResultInputData, Input, InputType } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import {
+  ActiveScansResponse,
   AppConfig,
   Pagination,
   ScansResponse,
@@ -126,6 +127,10 @@ export const apiScoutServer = (
       // Return the DataFrameInput
       return { input, inputType: inputType as InputType };
     },
+    getActiveScans: async (): Promise<ActiveScansResponse> =>
+      asyncJsonParse<ActiveScansResponse>(
+        (await requestApi.fetchString("GET", `/scans/active`)).raw
+      ),
     postCode: async (condition: Condition): Promise<Record<string, string>> =>
       asyncJsonParse<Record<string, string>>(
         (

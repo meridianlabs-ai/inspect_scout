@@ -53,6 +53,7 @@ from ._api_v2_helpers import (
     build_transcripts_cursor,
 )
 from ._api_v2_types import (
+    ActiveScansResponse,
     AppConfig,
     ScansRequest,
     ScansResponse,
@@ -374,6 +375,18 @@ def v2_api_app(
         return ScansResponse(
             items=enriched_results, total_count=count, next_cursor=next_cursor
         )
+
+    @app.get(
+        "/scans/active",
+        response_model=ActiveScansResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get active scans",
+        description="Returns info on all currently running scans.",
+    )
+    async def active_scans() -> ActiveScansResponse:
+        """Get info on all active scans from the KV store."""
+        with active_scans_store() as store:
+            return ActiveScansResponse(items=store.read_all())
 
     @app.post(
         "/code",

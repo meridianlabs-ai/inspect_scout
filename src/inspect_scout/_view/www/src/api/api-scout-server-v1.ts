@@ -122,6 +122,10 @@ export const apiScoutServerV1 = (
       return { input, inputType: inputType as InputType };
     },
     // eslint-disable-next-line @typescript-eslint/require-await
+    getActiveScans: async () => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
     postCode: async (): Promise<Record<string, string>> => {
       throw new Error("Not Yet Implemented");
     },

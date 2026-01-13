@@ -55,6 +55,22 @@
         "title": "ActiveScanInfo",
         "type": "object"
       },
+      "ActiveScansResponse": {
+        "properties": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ActiveScanInfo"
+            },
+            "title": "Items",
+            "type": "object"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ActiveScansResponse",
+        "type": "object"
+      },
       "AppConfig": {
         "properties": {
           "home_dir": {
@@ -8838,6 +8854,25 @@
           }
         },
         "summary": "List scans"
+      }
+    },
+    "/scans/active": {
+      "get": {
+        "description": "Returns info on all currently running scans.",
+        "operationId": "active_scans_scans_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScansResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get active scans"
       }
     },
     "/scans/{scan}": {

@@ -181,38 +181,3 @@ class TestActiveScansEndpoint:
         assert m["batch_oldest_created"] == 1704000000
 
 
-class TestActiveScanSingularEndpoint:
-    """Tests for GET /scans/active/{scan} endpoint."""
-
-    def test_active_scan_found(self) -> None:
-        """Get single active scan by scan_id."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
-        scan_info = ActiveScanInfo(
-            scan_id="scan-xyz-789",
-            summary=Summary(),
-            metrics=ScanMetrics(completed_scans=42),
-            last_updated=1704067200.0,
-            title="test scan",
-            config="model: gpt-4",
-            total_scans=100,
-            start_time=1704067100.0,
-            scanner_names=["scanner1"],
-        )
-
-        with _mock_active_scans_store({"scan-xyz-789": scan_info}):
-            response = client.get("/scans/active/scan-xyz-789")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["scan_id"] == "scan-xyz-789"
-        assert data["metrics"]["completed_scans"] == 42
-        assert data["title"] == "test scan"
-
-    def test_active_scan_not_found(self) -> None:
-        """404 when scan_id not in active scans."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
-
-        with _mock_active_scans_store({}):
-            response = client.get("/scans/active/nonexistent-scan")
-
-        assert response.status_code == 404

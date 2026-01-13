@@ -84,6 +84,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scans/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get active scans
+         * @description Returns info on all currently running scans.
+         */
+        get: operations["active_scans_scans_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans/{scan}": {
         parameters: {
             query?: never;
@@ -206,6 +226,13 @@ export interface components {
             title: string;
             /** Total Scans */
             total_scans: number;
+        };
+        /** ActiveScansResponse */
+        ActiveScansResponse: {
+            /** Items */
+            items: {
+                [key: string]: components["schemas"]["ActiveScanInfo"];
+            };
         };
         /** AppConfig */
         AppConfig: {
@@ -3461,6 +3488,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScansResponse"];
+                };
+            };
+        };
+    };
+    active_scans_scans_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveScansResponse"];
                 };
             };
         };

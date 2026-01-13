@@ -141,6 +141,10 @@ export const apiVscode = (
       }
     },
     // eslint-disable-next-line @typescript-eslint/require-await
+    getActiveScans: async () => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
     postCode: async (): Promise<Record<string, string>> => {
       throw new Error("Not Yet Implemented");
     },

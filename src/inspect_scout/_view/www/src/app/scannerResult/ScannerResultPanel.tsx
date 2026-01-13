@@ -56,8 +56,6 @@ export const ScannerResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const storeLoading = false;
-  const loading = storeLoading || scanLoading;
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
@@ -144,7 +142,7 @@ export const ScannerResultPanel: FC = () => {
       >
         {visibleScannerResults.length > 0 && <ScannerResultNav />}
       </ScansNavbar>
-      <LoadingBar loading={!!loading || resultLoading} />
+      <LoadingBar loading={!!scanLoading || resultLoading} />
       <ScannerResultHeader inputData={inputData.data} scan={selectedScan} />
 
       {selectedResult && (

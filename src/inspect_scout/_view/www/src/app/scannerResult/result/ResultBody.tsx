@@ -19,8 +19,8 @@ import {
 import styles from "./ResultBody.module.css";
 
 export interface ResultBodyProps {
-  resultData?: ScanResultData;
-  inputData?: ScanResultInputData;
+  resultData: ScanResultData;
+  inputData: ScanResultInputData;
 }
 
 export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
@@ -53,7 +53,7 @@ export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
 interface InputRendererProps {
   className?: string | string[];
   resultData?: ScanResultData;
-  inputData?: ScanResultInputData;
+  inputData: ScanResultInputData;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   initialMessageId?: string | null;
   initialEventId?: string | null;
@@ -69,12 +69,6 @@ const InputRenderer: FC<InputRendererProps> = ({
   initialEventId,
   highlightLabeled,
 }) => {
-  const loading = false;
-  const loadingData = false;
-  if (!inputData) {
-    return loading || loadingData ? undefined : <div>No Input Available</div>;
-  }
-
   if (isTranscriptInput(inputData)) {
     if (inputData.input.messages && inputData.input.messages.length > 0) {
       const labels = resultData?.messageReferences.reduce(

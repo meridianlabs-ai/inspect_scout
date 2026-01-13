@@ -52,8 +52,6 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   // Data
   const { data: scannerSummaries, isLoading } =
     useScanResultSummaries(columnTable);
-  const isLoadingData = false;
-  const busy = isLoading || isLoadingData;
 
   // Options / State
   const listHandle = useRef<VirtuosoHandle | null>(null);
@@ -378,16 +376,16 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   );
 
   let noContentMessage: string | undefined = undefined;
-  if (!busy && scannerSummaries.length === 0) {
+  if (!isLoading && scannerSummaries.length === 0) {
     noContentMessage = "No scan results are available.";
   } else if (
-    !busy &&
+    !isLoading &&
     filteredSummaries.length === 0 &&
     selectedFilter !== kFilterAllResults &&
     !scansSearchText
   ) {
     noContentMessage = "No positive scan results were found.";
-  } else if (!busy && filteredSummaries.length === 0) {
+  } else if (!isLoading && filteredSummaries.length === 0) {
     noContentMessage = "No scan results match the current filter.";
   }
 
@@ -396,7 +394,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
       <ScannerResultsHeader gridDescriptor={gridDescriptor} />
       <LoadingBar loading={isLoading} />
       {noContentMessage && <NoContentsPanel text={noContentMessage} />}
-      {!busy && filteredSummaries.length > 0 && (
+      {!isLoading && filteredSummaries.length > 0 && (
         <LiveVirtualList<ScanResultSummary | ResultGroup>
           id={id}
           listHandle={listHandle}

@@ -16,7 +16,7 @@ import { useScanRoute } from "../hooks/useScanRoute";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
-import { appScansDir, useConfig } from "../server/useConfig";
+import { useConfig } from "../server/useConfig";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -42,7 +42,7 @@ export const ScannerResultPanel: FC = () => {
 
   // Required server data
   const config = useConfig();
-  const scansDir = appScansDir(config);
+  const scansDir = config.scans_dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);

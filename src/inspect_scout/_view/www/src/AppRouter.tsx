@@ -12,11 +12,7 @@ import { ProjectPanel } from "./app/project/ProjectPanel";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import {
-  appScansDir,
-  appTranscriptsDir,
-  useConfig,
-} from "./app/server/useConfig";
+import { useConfig } from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -62,7 +58,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     );
     const userScansDir = useStore((state) => state.userScansDir);
     const config = useConfig();
-    const serverScansDir = appScansDir(config);
+    const serverScansDir = config.scans_dir;
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData
@@ -194,7 +190,7 @@ const ProjectPanelRoute = () => {
 
 export const createAppRouter = (config: AppRouterConfig) => {
   const AppLayout = createAppLayout(config);
-  const transcriptsDir = appTranscriptsDir(config.config);
+  const transcriptsDir = config.config.transcripts_dir;
 
   return createHashRouter(
     [

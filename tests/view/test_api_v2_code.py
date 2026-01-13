@@ -2,14 +2,12 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from inspect_scout._project import init_project
 from inspect_scout._view._api_v2 import v2_api_app
 
 
 @pytest.fixture
 def client(tmp_path: str) -> TestClient:
     """Create test client with initialized project."""
-    init_project(transcripts=str(tmp_path))
     return TestClient(v2_api_app(results_dir=str(tmp_path)))
 
 
@@ -34,7 +32,7 @@ class TestCodeEndpoint:
         assert "python" in data
         assert "filter" in data
         assert "total_tokens < 75" in data["filter"]
-        assert "transcripts_from" in data["python"]
+        assert "transcripts.where" in data["python"]
         assert "total_tokens < 75" in data["python"]
 
     def test_code_compound_condition(self, client: TestClient) -> None:

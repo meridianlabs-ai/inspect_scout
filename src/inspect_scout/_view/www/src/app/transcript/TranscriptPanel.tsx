@@ -7,11 +7,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import {
-  appAliasedPath,
-  appTranscriptsDir,
-  useConfig,
-} from "../server/useConfig";
+import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscript } from "../server/useServerTranscript";
 import { useTranscriptDirParams } from "../utils/router";
 
@@ -26,12 +22,11 @@ export const TranscriptPanel: FC = () => {
 
   // Server transcripts directory
   const config = useConfig();
-  const transcriptsDir = appTranscriptsDir(config);
   const {
     loading,
     data: transcript,
     error,
-  } = useServerTranscript(transcriptsDir, transcriptId);
+  } = useServerTranscript(config.transcripts_dir, transcriptId);
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
@@ -40,10 +35,7 @@ export const TranscriptPanel: FC = () => {
   );
   const resolvedTranscriptsDir = appAliasedPath(
     config,
-    routeTranscriptsDir ||
-      userTranscriptsDir ||
-      config.project.transcripts ||
-      transcriptsDir
+    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || null
   );
 
   return (

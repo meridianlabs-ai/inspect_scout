@@ -9,11 +9,7 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useCode } from "../server/useCode";
-import {
-  appAliasedPath,
-  appTranscriptsDir,
-  useConfig,
-} from "../server/useConfig";
+import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 
 import { TranscriptFilterBar } from "./TranscriptFilterBar";
@@ -23,12 +19,12 @@ import styles from "./TranscriptsPanel.module.css";
 export const TranscriptsPanel: FC = () => {
   // Resolve the active transcripts directory
   const config = useConfig();
-  const transcriptDir = appTranscriptsDir(config);
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptDir = userTranscriptsDir || transcriptDir;
+  const resolvedTranscriptDir =
+    userTranscriptsDir || config.transcripts_dir || null;
 
   // Filtering
   const columnFilters =

@@ -44,6 +44,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/project/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get project configuration
+         * @description Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.
+         */
+        get: operations["get_project_config_project_config_get"];
+        /**
+         * Update project configuration
+         * @description Updates the project configuration in scout.yaml while preserving comments and formatting. Requires If-Match header with current ETag for optimistic concurrency control.
+         */
+        put: operations["put_project_config_project_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans": {
         parameters: {
             query?: never;
@@ -1027,6 +1051,152 @@ export interface components {
              */
             verbosity: ("low" | "medium" | "high") | null;
         };
+        /**
+         * GenerateConfig
+         * @description Model generation options.
+         */
+        "GenerateConfig-Input": {
+            /** Attempt Timeout */
+            attempt_timeout?: number | null;
+            /** Batch */
+            batch?: boolean | number | components["schemas"]["BatchConfig"] | null;
+            /** Best Of */
+            best_of?: number | null;
+            /** Cache */
+            cache?: boolean | components["schemas"]["CachePolicy"] | null;
+            /** Cache Prompt */
+            cache_prompt?: "auto" | boolean | null;
+            /** Effort */
+            effort?: ("low" | "medium" | "high") | null;
+            /** Extra Body */
+            extra_body?: {
+                [key: string]: unknown;
+            } | null;
+            /** Frequency Penalty */
+            frequency_penalty?: number | null;
+            /** Internal Tools */
+            internal_tools?: boolean | null;
+            /** Logit Bias */
+            logit_bias?: {
+                [key: string]: number;
+            } | null;
+            /** Logprobs */
+            logprobs?: boolean | null;
+            /** Max Connections */
+            max_connections?: number | null;
+            /** Max Retries */
+            max_retries?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Max Tool Output */
+            max_tool_output?: number | null;
+            /** Num Choices */
+            num_choices?: number | null;
+            /** Parallel Tool Calls */
+            parallel_tool_calls?: boolean | null;
+            /** Presence Penalty */
+            presence_penalty?: number | null;
+            /** Reasoning Effort */
+            reasoning_effort?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh") | null;
+            /** Reasoning History */
+            reasoning_history?: ("none" | "all" | "last" | "auto") | null;
+            /** Reasoning Summary */
+            reasoning_summary?: ("none" | "concise" | "detailed" | "auto") | null;
+            /** Reasoning Tokens */
+            reasoning_tokens?: number | null;
+            response_schema?: components["schemas"]["ResponseSchema-Input"] | null;
+            /** Seed */
+            seed?: number | null;
+            /** Stop Seqs */
+            stop_seqs?: string[] | null;
+            /** System Message */
+            system_message?: string | null;
+            /** Temperature */
+            temperature?: number | null;
+            /** Timeout */
+            timeout?: number | null;
+            /** Top K */
+            top_k?: number | null;
+            /** Top Logprobs */
+            top_logprobs?: number | null;
+            /** Top P */
+            top_p?: number | null;
+            /** Verbosity */
+            verbosity?: ("low" | "medium" | "high") | null;
+        };
+        /**
+         * GenerateConfig
+         * @description Model generation options.
+         */
+        "GenerateConfig-Output": {
+            /** Attempt Timeout */
+            attempt_timeout?: number | null;
+            /** Batch */
+            batch?: boolean | number | components["schemas"]["BatchConfig"] | null;
+            /** Best Of */
+            best_of?: number | null;
+            /** Cache */
+            cache?: boolean | components["schemas"]["CachePolicy"] | null;
+            /** Cache Prompt */
+            cache_prompt?: "auto" | boolean | null;
+            /** Effort */
+            effort?: ("low" | "medium" | "high") | null;
+            /** Extra Body */
+            extra_body?: {
+                [key: string]: unknown;
+            } | null;
+            /** Frequency Penalty */
+            frequency_penalty?: number | null;
+            /** Internal Tools */
+            internal_tools?: boolean | null;
+            /** Logit Bias */
+            logit_bias?: {
+                [key: string]: number;
+            } | null;
+            /** Logprobs */
+            logprobs?: boolean | null;
+            /** Max Connections */
+            max_connections?: number | null;
+            /** Max Retries */
+            max_retries?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Max Tool Output */
+            max_tool_output?: number | null;
+            /** Num Choices */
+            num_choices?: number | null;
+            /** Parallel Tool Calls */
+            parallel_tool_calls?: boolean | null;
+            /** Presence Penalty */
+            presence_penalty?: number | null;
+            /** Reasoning Effort */
+            reasoning_effort?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh") | null;
+            /** Reasoning History */
+            reasoning_history?: ("none" | "all" | "last" | "auto") | null;
+            /** Reasoning Summary */
+            reasoning_summary?: ("none" | "concise" | "detailed" | "auto") | null;
+            /** Reasoning Tokens */
+            reasoning_tokens?: number | null;
+            response_schema?: components["schemas"]["ResponseSchema-Output"] | null;
+            /** Seed */
+            seed?: number | null;
+            /** Stop Seqs */
+            stop_seqs?: string[] | null;
+            /** System Message */
+            system_message?: string | null;
+            /** Temperature */
+            temperature?: number | null;
+            /** Timeout */
+            timeout?: number | null;
+            /** Top K */
+            top_k?: number | null;
+            /** Top Logprobs */
+            top_logprobs?: number | null;
+            /** Top P */
+            top_p?: number | null;
+            /** Verbosity */
+            verbosity?: ("low" | "medium" | "high") | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1178,6 +1348,60 @@ export interface components {
              * @default null
              */
             type: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
+        };
+        /**
+         * JSONSchema
+         * @description JSON Schema for type.
+         */
+        "JSONSchema-Input": {
+            /** Additionalproperties */
+            additionalProperties?: components["schemas"]["JSONSchema-Input"] | boolean | null;
+            /** Anyof */
+            anyOf?: components["schemas"]["JSONSchema-Input"][] | null;
+            /** Default */
+            default: unknown;
+            /** Description */
+            description?: string | null;
+            /** Enum */
+            enum?: unknown[] | null;
+            /** Format */
+            format?: string | null;
+            items?: components["schemas"]["JSONSchema-Input"] | null;
+            /** Properties */
+            properties?: {
+                [key: string]: components["schemas"]["JSONSchema-Input"];
+            } | null;
+            /** Required */
+            required?: string[] | null;
+            /** Type */
+            type?: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
+        };
+        /**
+         * JSONSchema
+         * @description JSON Schema for type.
+         */
+        "JSONSchema-Output": {
+            /** Additionalproperties */
+            additionalProperties?: components["schemas"]["JSONSchema-Output"] | boolean | null;
+            /** Anyof */
+            anyOf?: components["schemas"]["JSONSchema-Output"][] | null;
+            /** Default */
+            default: unknown;
+            /** Description */
+            description?: string | null;
+            /** Enum */
+            enum?: unknown[] | null;
+            /** Format */
+            format?: string | null;
+            items?: components["schemas"]["JSONSchema-Output"] | null;
+            /** Properties */
+            properties?: {
+                [key: string]: components["schemas"]["JSONSchema-Output"];
+            } | null;
+            /** Required */
+            required?: string[] | null;
+            /** Type */
+            type?: ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null") | ("string" | "integer" | "number" | "boolean" | "array" | "object" | "null")[] | null;
         };
         /**
          * JsonChange
@@ -1336,14 +1560,29 @@ export interface components {
          * ModelConfig
          * @description Model config.
          */
-        ModelConfig: {
+        "ModelConfig-Input": {
             /** Args */
             args: {
                 [key: string]: unknown;
             };
             /** Base Url */
             base_url?: string | null;
-            config: components["schemas"]["GenerateConfig"];
+            config: components["schemas"]["GenerateConfig-Input"];
+            /** Model */
+            model: string;
+        };
+        /**
+         * ModelConfig
+         * @description Model config.
+         */
+        "ModelConfig-Output": {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /** Base Url */
+            base_url?: string | null;
+            config: components["schemas"]["GenerateConfig-Output"];
             /** Model */
             model: string;
         };
@@ -1534,6 +1773,128 @@ export interface components {
             limit: number;
         };
         /**
+         * ProjectConfig
+         * @description Scout project configuration from scout.yaml.
+         *
+         *     Extends ScanJobConfig to represent project-level defaults. All fields
+         *     from ScanJobConfig are available as project defaults.
+         */
+        "ProjectConfig-Input": {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Input"] | string;
+            } | null;
+            /**
+             * Name
+             * @default job
+             */
+            name: string;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Input"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
+        };
+        /**
+         * ProjectConfig
+         * @description Scout project configuration from scout.yaml.
+         *
+         *     Extends ScanJobConfig to represent project-level defaults. All fields
+         *     from ScanJobConfig are available as project defaults.
+         */
+        "ProjectConfig-Output": {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Output"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Output"] | string;
+            } | null;
+            /**
+             * Name
+             * @default job
+             */
+            name: string;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Output"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
+        };
+        /**
          * ProvenanceData
          * @description Metadata about who made an edit and why.
          */
@@ -1573,6 +1934,32 @@ export interface components {
              * @default null
              */
             strict: boolean | null;
+        };
+        /**
+         * ResponseSchema
+         * @description Schema for model response when using Structured Output.
+         */
+        "ResponseSchema-Input": {
+            /** Description */
+            description?: string | null;
+            json_schema: components["schemas"]["JSONSchema-Input"];
+            /** Name */
+            name: string;
+            /** Strict */
+            strict?: boolean | null;
+        };
+        /**
+         * ResponseSchema
+         * @description Schema for model response when using Structured Output.
+         */
+        "ResponseSchema-Output": {
+            /** Description */
+            description?: string | null;
+            json_schema: components["schemas"]["JSONSchema-Output"];
+            /** Name */
+            name: string;
+            /** Strict */
+            strict?: boolean | null;
         };
         /**
          * Sample
@@ -1908,10 +2295,10 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
-            model?: components["schemas"]["ModelConfig"] | null;
+            model?: components["schemas"]["ModelConfig-Output"] | null;
             /** Model Roles */
             model_roles?: {
-                [key: string]: components["schemas"]["ModelConfig"];
+                [key: string]: components["schemas"]["ModelConfig-Output"];
             } | null;
             options: components["schemas"]["ScanOptions"];
             /** Packages */
@@ -1940,7 +2327,7 @@ export interface components {
             transcripts?: components["schemas"]["ScanTranscripts"] | null;
             /** Validation */
             validation?: {
-                [key: string]: components["schemas"]["ValidationSet"];
+                [key: string]: components["schemas"]["ValidationSet-Output"];
             } | null;
             /** Worklist */
             worklist?: components["schemas"]["Worklist"][] | null;
@@ -2760,7 +3147,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
+            additionalProperties: boolean;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];
@@ -2986,7 +3373,20 @@ export interface components {
          * ValidationSet
          * @description Validation set for a scanner.
          */
-        ValidationSet: {
+        "ValidationSet-Input": {
+            /** Cases */
+            cases: components["schemas"]["ValidationCase"][];
+            /**
+             * Predicate
+             * @default eq
+             */
+            predicate: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
+        };
+        /**
+         * ValidationSet
+         * @description Validation set for a scanner.
+         */
+        "ValidationSet-Output": {
             /** Cases */
             cases: components["schemas"]["ValidationCase"][];
             /** Predicate */
@@ -3053,6 +3453,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppConfig"];
+                };
+            };
+        };
+    };
+    get_project_config_project_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectConfig-Output"];
+                };
+            };
+        };
+    };
+    put_project_config_project_config_put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description ETag from GET request (required for optimistic locking) */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectConfig-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectConfig-Output"];
                 };
             };
         };

@@ -2236,6 +2236,822 @@
         "title": "GenerateConfig",
         "type": "object"
       },
+      "GenerateConfig-Input": {
+        "description": "Model generation options.",
+        "properties": {
+          "attempt_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Timeout"
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "$ref": "#/components/schemas/BatchConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "best_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Of"
+          },
+          "cache": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/CachePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache"
+          },
+          "cache_prompt": {
+            "anyOf": [
+              {
+                "const": "auto",
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Prompt"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "extra_body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Body"
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "internal_tools": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Tools"
+          },
+          "logit_bias": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logit Bias"
+          },
+          "logprobs": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logprobs"
+          },
+          "max_connections": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Connections"
+          },
+          "max_retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Retries"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "max_tool_output": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tool Output"
+          },
+          "num_choices": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Choices"
+          },
+          "parallel_tool_calls": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Tool Calls"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "reasoning_history": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "all",
+                  "last",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning History"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "concise",
+                  "detailed",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "response_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResponseSchema-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "stop_seqs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Seqs"
+          },
+          "system_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Message"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
+          "top_logprobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Logprobs"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "verbosity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verbosity"
+          }
+        },
+        "title": "GenerateConfig",
+        "type": "object"
+      },
+      "GenerateConfig-Output": {
+        "description": "Model generation options.",
+        "properties": {
+          "attempt_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Timeout"
+          },
+          "batch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "$ref": "#/components/schemas/BatchConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch"
+          },
+          "best_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Of"
+          },
+          "cache": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/CachePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache"
+          },
+          "cache_prompt": {
+            "anyOf": [
+              {
+                "const": "auto",
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Prompt"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "extra_body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Body"
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "internal_tools": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Tools"
+          },
+          "logit_bias": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logit Bias"
+          },
+          "logprobs": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logprobs"
+          },
+          "max_connections": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Connections"
+          },
+          "max_retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Retries"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "max_tool_output": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tool Output"
+          },
+          "num_choices": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Choices"
+          },
+          "parallel_tool_calls": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Tool Calls"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "reasoning_history": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "all",
+                  "last",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning History"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "concise",
+                  "detailed",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "reasoning_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Tokens"
+          },
+          "response_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResponseSchema-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "stop_seqs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Seqs"
+          },
+          "system_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Message"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
+          "top_logprobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Logprobs"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "verbosity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verbosity"
+          }
+        },
+        "title": "GenerateConfig",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2585,6 +3401,302 @@
         "title": "JSONSchema",
         "type": "object"
       },
+      "JSONSchema-Input": {
+        "description": "JSON Schema for type.",
+        "properties": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema-Input"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additionalproperties"
+          },
+          "anyOf": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JSONSchema-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anyof"
+          },
+          "default": {
+            "title": "Default"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enum": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enum"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "properties": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JSONSchema-Input"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "array",
+                  "object",
+                  "null"
+                ],
+                "type": "string"
+              },
+              {
+                "items": {
+                  "enum": [
+                    "string",
+                    "integer",
+                    "number",
+                    "boolean",
+                    "array",
+                    "object",
+                    "null"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "default"
+        ],
+        "title": "JSONSchema",
+        "type": "object"
+      },
+      "JSONSchema-Output": {
+        "description": "JSON Schema for type.",
+        "properties": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema-Output"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additionalproperties"
+          },
+          "anyOf": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JSONSchema-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anyof"
+          },
+          "default": {
+            "title": "Default"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enum": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enum"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "properties": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JSONSchema-Output"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Properties"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "string",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "array",
+                  "object",
+                  "null"
+                ],
+                "type": "string"
+              },
+              {
+                "items": {
+                  "enum": [
+                    "string",
+                    "integer",
+                    "number",
+                    "boolean",
+                    "array",
+                    "object",
+                    "null"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "default"
+        ],
+        "title": "JSONSchema",
+        "type": "object"
+      },
       "JsonChange": {
         "description": "Describes a change to data using JSON Patch format.",
         "properties": {
@@ -2918,7 +4030,7 @@
         "title": "ModelCall",
         "type": "object"
       },
-      "ModelConfig": {
+      "ModelConfig-Input": {
         "description": "Model config.",
         "properties": {
           "args": {
@@ -2938,7 +4050,42 @@
             "title": "Base Url"
           },
           "config": {
-            "$ref": "#/components/schemas/GenerateConfig"
+            "$ref": "#/components/schemas/GenerateConfig-Input"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "config",
+          "args"
+        ],
+        "title": "ModelConfig",
+        "type": "object"
+      },
+      "ModelConfig-Output": {
+        "description": "Model config.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "config": {
+            "$ref": "#/components/schemas/GenerateConfig-Output"
           },
           "model": {
             "title": "Model",
@@ -3395,6 +4542,568 @@
         "title": "Pagination",
         "type": "object"
       },
+      "ProjectConfig-Input": {
+        "additionalProperties": false,
+        "description": "Scout project configuration from scout.yaml.\n\nExtends ScanJobConfig to represent project-level defaults. All fields\nfrom ScanJobConfig are available as project defaults.",
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Filter"
+          },
+          "generate_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateConfig-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "log_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "http",
+                  "sandbox",
+                  "info",
+                  "warning",
+                  "error",
+                  "critical",
+                  "notset"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Level"
+          },
+          "max_processes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Processes"
+          },
+          "max_transcripts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transcripts"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Args"
+          },
+          "model_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Base Url"
+          },
+          "model_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelConfig-Input"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Roles"
+          },
+          "name": {
+            "default": "job",
+            "title": "Name",
+            "type": "string"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          },
+          "scanners": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanners"
+          },
+          "scans": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans"
+          },
+          "shuffle": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shuffle"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "transcripts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcripts"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationSet-Input"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "worklist": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Worklist"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worklist"
+          }
+        },
+        "required": [
+          "name",
+          "filter"
+        ],
+        "title": "ProjectConfig",
+        "type": "object"
+      },
+      "ProjectConfig-Output": {
+        "additionalProperties": false,
+        "description": "Scout project configuration from scout.yaml.\n\nExtends ScanJobConfig to represent project-level defaults. All fields\nfrom ScanJobConfig are available as project defaults.",
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Filter"
+          },
+          "generate_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateConfig-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "log_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "http",
+                  "sandbox",
+                  "info",
+                  "warning",
+                  "error",
+                  "critical",
+                  "notset"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Level"
+          },
+          "max_processes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Processes"
+          },
+          "max_transcripts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transcripts"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Args"
+          },
+          "model_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Base Url"
+          },
+          "model_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelConfig-Output"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Roles"
+          },
+          "name": {
+            "default": "job",
+            "title": "Name",
+            "type": "string"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          },
+          "scanners": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanners"
+          },
+          "scans": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans"
+          },
+          "shuffle": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shuffle"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "transcripts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcripts"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationSet-Output"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "worklist": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Worklist"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worklist"
+          }
+        },
+        "required": [
+          "name",
+          "filter"
+        ],
+        "title": "ProjectConfig",
+        "type": "object"
+      },
       "ProvenanceData": {
         "description": "Metadata about who made an edit and why.",
         "properties": {
@@ -3465,6 +5174,86 @@
               }
             ],
             "default": null,
+            "title": "Strict"
+          }
+        },
+        "required": [
+          "name",
+          "json_schema"
+        ],
+        "title": "ResponseSchema",
+        "type": "object"
+      },
+      "ResponseSchema-Input": {
+        "description": "Schema for model response when using Structured Output.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "json_schema": {
+            "$ref": "#/components/schemas/JSONSchema-Input"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "strict": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strict"
+          }
+        },
+        "required": [
+          "name",
+          "json_schema"
+        ],
+        "title": "ResponseSchema",
+        "type": "object"
+      },
+      "ResponseSchema-Output": {
+        "description": "Schema for model response when using Structured Output.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "json_schema": {
+            "$ref": "#/components/schemas/JSONSchema-Output"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "strict": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Strict"
           }
         },
@@ -4170,7 +5959,7 @@
           "model": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ModelConfig"
+                "$ref": "#/components/schemas/ModelConfig-Output"
               },
               {
                 "type": "null"
@@ -4181,7 +5970,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/ModelConfig"
+                  "$ref": "#/components/schemas/ModelConfig-Output"
                 },
                 "type": "object"
               },
@@ -4281,7 +6070,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/ValidationSet"
+                  "$ref": "#/components/schemas/ValidationSet-Output"
                 },
                 "type": "object"
               },
@@ -6157,19 +7946,9 @@
         "description": "Description of tool parameters object in JSON Schema format.",
         "properties": {
           "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": false,
-            "title": "Additionalproperties"
+            "title": "Additionalproperties",
+            "type": "boolean"
           },
           "properties": {
             "additionalProperties": {
@@ -6195,7 +7974,8 @@
         "required": [
           "type",
           "properties",
-          "required"
+          "required",
+          "additionalProperties"
         ],
         "title": "ToolParams",
         "type": "object"
@@ -6985,7 +8765,50 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "ValidationSet": {
+      "ValidationSet-Input": {
+        "description": "Validation set for a scanner.",
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationCase"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "predicate": {
+            "anyOf": [
+              {
+                "enum": [
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "eq",
+                  "ne",
+                  "contains",
+                  "startswith",
+                  "endswith",
+                  "icontains",
+                  "iequals"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "eq",
+            "title": "Predicate"
+          }
+        },
+        "required": [
+          "cases",
+          "predicate"
+        ],
+        "title": "ValidationSet",
+        "type": "object"
+      },
+      "ValidationSet-Output": {
         "description": "Validation set for a scanner.",
         "properties": {
           "cases": {
@@ -7105,6 +8928,65 @@
           }
         },
         "summary": "Get application configuration"
+      }
+    },
+    "/project/config": {
+      "get": {
+        "description": "Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.",
+        "operationId": "get_project_config_project_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get project configuration"
+      },
+      "put": {
+        "description": "Updates the project configuration in scout.yaml while preserving comments and formatting. Requires If-Match header with current ETag for optimistic concurrency control.",
+        "operationId": "put_project_config_project_config_put",
+        "parameters": [
+          {
+            "description": "ETag from GET request (required for optimistic locking)",
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "schema": {
+              "description": "ETag from GET request (required for optimistic locking)",
+              "title": "If-Match",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectConfig-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectConfig-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Update project configuration"
       }
     },
     "/scans": {

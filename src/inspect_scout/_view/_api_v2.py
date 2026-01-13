@@ -12,22 +12,31 @@ from typing import (
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
-from fastapi import FastAPI, HTTPException, Path, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Path, Request, Response
 from fastapi.responses import StreamingResponse
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import FileSystem
 from inspect_ai._util.json import JsonChange
 from inspect_ai._view.fastapi_server import AccessPolicy
 from inspect_ai.event._event import Event
 from inspect_ai.model import ChatMessage
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
+    HTTP_412_PRECONDITION_FAILED,
     HTTP_413_CONTENT_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
 
-from inspect_scout._project._project import read_project
+from inspect_scout._project._project import (
+    EtagMismatchError,
+    read_project,
+    read_project_config_with_etag,
+    write_project_config,
+)
+from inspect_scout._project.types import ProjectConfig
 from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 from inspect_scout._view.types import ViewConfig
 
@@ -209,6 +218,72 @@ def v2_api_app(
             if transcripts is not None
             else None,
             scans_dir=UPath(scans).resolve().as_uri(),
+        )
+
+    @app.get(
+        "/project/config",
+        response_model=ProjectConfig,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get project configuration",
+        description="Returns the project configuration from scout.yaml. "
+        "The ETag header contains a hash of the file for conditional updates.",
+    )
+    async def get_project_config() -> Response:
+        """Return project configuration with ETag header."""
+        try:
+            config, etag = read_project_config_with_etag()
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Project config file (scout.yaml) not found",
+            ) from None
+
+        return InspectPydanticJSONResponse(
+            content=config,
+            headers={"ETag": f'"{etag}"'},
+        )
+
+    @app.put(
+        "/project/config",
+        response_model=ProjectConfig,
+        response_class=InspectPydanticJSONResponse,
+        summary="Update project configuration",
+        description="Updates the project configuration in scout.yaml while preserving "
+        "comments and formatting. Requires If-Match header with current ETag for "
+        "optimistic concurrency control.",
+    )
+    async def put_project_config(
+        config: ProjectConfig,
+        if_match: str = Header(
+            ...,
+            description="ETag from GET request (required for optimistic locking)",
+        ),
+    ) -> Response:
+        """Update project configuration with comment preservation."""
+        # Parse the If-Match header (may be quoted)
+        expected_etag = if_match.strip('"')
+
+        try:
+            updated_config, new_etag = write_project_config(config, expected_etag)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Project config file (scout.yaml) not found",
+            ) from None
+        except EtagMismatchError:
+            raise HTTPException(
+                status_code=HTTP_412_PRECONDITION_FAILED,
+                detail="Config file has been modified. Please refresh and try again.",
+            ) from None
+        except PrerequisiteError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from None
+
+        return InspectPydanticJSONResponse(
+            content=updated_config,
+            headers={"ETag": f'"{new_etag}"'},
         )
 
     @app.post(

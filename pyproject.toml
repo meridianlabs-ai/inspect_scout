@@ -31,6 +31,7 @@ dependencies = [
     "pydantic>=2.11.4",
     "python-dotenv>=0.16.0",
     "rich>=13.3.3,!=14.0.0",
+    "ruamel.yaml>=0.18.0",
     "shortuuid",
     "typing_extensions>=4.9.0",
     "universal-pathlib>=0.2.6",

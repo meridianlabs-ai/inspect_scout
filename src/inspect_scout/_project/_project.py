@@ -1,13 +1,18 @@
 """Project detection, loading, and global state management."""
 
+import hashlib
 import os
+import tempfile
+from io import StringIO
 from pathlib import Path
+from typing import Any
 
 from inspect_ai._util.config import read_config_object
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.path import pretty_path
 from jsonschema import Draft7Validator
+from ruamel.yaml import YAML
 
 from inspect_scout._util.constants import (
     DEFAULT_LOGS_DIR,
@@ -17,6 +22,7 @@ from inspect_scout._util.constants import (
 
 from .merge import merge_configs
 from .types import ProjectConfig
+from .yaml_merge import apply_config_update
 
 # Local project override filename
 LOCAL_PROJECT_FILENAME = "scout.local.yaml"
@@ -138,3 +144,130 @@ def default_transcripts_dir() -> str | None:
 
     # none found
     return None
+
+
+def get_project_file_path() -> Path:
+    """Get the path to the project configuration file.
+
+    Returns:
+        Path to scout.yaml in the current working directory.
+    """
+    return Path.cwd() / "scout.yaml"
+
+
+def compute_project_etag(content: str) -> str:
+    """Compute an ETag from file content.
+
+    Args:
+        content: The file content to hash.
+
+    Returns:
+        SHA-256 hash of the content as a hex string.
+    """
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def read_project_config_with_etag() -> tuple[ProjectConfig, str]:
+    """Read project configuration and compute its ETag.
+
+    Reads the base scout.yaml only (ignores scout.local.yaml).
+
+    Returns:
+        Tuple of (ProjectConfig, etag).
+
+    Raises:
+        FileNotFoundError: If scout.yaml does not exist.
+        PrerequisiteError: If the configuration is invalid.
+    """
+    project_file = get_project_file_path()
+
+    if not project_file.exists():
+        raise FileNotFoundError(f"Project config file not found: {project_file}")
+
+    content = project_file.read_text(encoding="utf-8")
+    etag = compute_project_etag(content)
+
+    # Parse and validate
+    config = _load_single_config(project_file)
+
+    return config, etag
+
+
+class EtagMismatchError(Exception):
+    """Raised when the provided ETag does not match the current file."""
+
+    def __init__(self, expected: str, actual: str) -> None:
+        super().__init__(f"ETag mismatch: expected {expected}, got {actual}")
+        self.expected = expected
+        self.actual = actual
+
+
+def write_project_config(
+    config: ProjectConfig,
+    expected_etag: str,
+) -> tuple[ProjectConfig, str]:
+    """Write project configuration, preserving YAML comments.
+
+    Args:
+        config: The new configuration to write.
+        expected_etag: The expected ETag of the current file (for optimistic locking).
+
+    Returns:
+        Tuple of (updated ProjectConfig, new etag).
+
+    Raises:
+        FileNotFoundError: If scout.yaml does not exist.
+        EtagMismatchError: If the current file's ETag doesn't match expected_etag.
+        PrerequisiteError: If the configuration is invalid.
+    """
+    project_file = get_project_file_path()
+
+    if not project_file.exists():
+        raise FileNotFoundError(f"Project config file not found: {project_file}")
+
+    # Read current content and verify etag
+    current_content = project_file.read_text(encoding="utf-8")
+    current_etag = compute_project_etag(current_content)
+
+    if current_etag != expected_etag:
+        raise EtagMismatchError(expected_etag, current_etag)
+
+    # Load with ruamel.yaml to preserve comments
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    original_data = yaml.load(current_content)
+
+    # Convert config to dict for merging
+    config_dict: dict[str, Any] = config.model_dump(exclude_none=False)
+
+    # Apply updates preserving comments
+    apply_config_update(original_data, config_dict)
+
+    # Write to string
+    output = StringIO()
+    yaml.dump(original_data, output)
+    new_content = output.getvalue()
+
+    # Atomic write: write to temp file, then rename
+    temp_fd, temp_path = tempfile.mkstemp(
+        dir=project_file.parent,
+        prefix=".scout_",
+        suffix=".yaml.tmp",
+    )
+    try:
+        with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        os.replace(temp_path, project_file)
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
+
+    # Compute new etag and return validated config
+    new_etag = compute_project_etag(new_content)
+    updated_config = _load_single_config(project_file)
+
+    return updated_config, new_etag

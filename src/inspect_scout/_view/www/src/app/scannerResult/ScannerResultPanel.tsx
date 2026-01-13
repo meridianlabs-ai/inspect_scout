@@ -56,8 +56,6 @@ export const ScannerResultPanel: FC = () => {
     }
   }, [searchParams, setSelectedScanner]);
 
-  const storeLoading = useStore((state) => state.loading);
-  const loading = storeLoading || scanLoading;
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
     (state) => state.visibleScannerResults
@@ -67,7 +65,8 @@ export const ScannerResultPanel: FC = () => {
   const { data: selectedResult, loading: resultLoading } =
     useSelectedScanResultData(scanResultUuid);
 
-  const inputData = useSelectedScanResultInputData();
+  const { loading: inputLoading, data: inputData } =
+    useSelectedScanResultInputData();
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -144,8 +143,8 @@ export const ScannerResultPanel: FC = () => {
       >
         {visibleScannerResults.length > 0 && <ScannerResultNav />}
       </ScansNavbar>
-      <LoadingBar loading={!!loading || resultLoading} />
-      <ScannerResultHeader inputData={inputData.data} scan={selectedScan} />
+      <LoadingBar loading={scanLoading || resultLoading || inputLoading} />
+      <ScannerResultHeader inputData={inputData} scan={selectedScan} />
 
       {selectedResult && (
         <ExtendedFindProvider>
@@ -188,7 +187,10 @@ export const ScannerResultPanel: FC = () => {
                 }}
                 className={styles.fullHeight}
               >
-                <ResultPanel resultData={selectedResult} />
+                <ResultPanel
+                  resultData={selectedResult}
+                  inputData={inputData}
+                />
               </TabPanel>
             ) : undefined}
             {showEvents ? (

@@ -69,7 +69,7 @@ export const apiScoutServerV1 = (
       throw new Error("Not implemented in API v1");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
-    getTranscriptColumnValues: async (): Promise<never> => {
+    getTranscriptsColumnValues: async (): Promise<never> => {
       throw new Error("Not implemented in API v1");
     },
     getScan: async (scanLocation: string): Promise<Status> => {

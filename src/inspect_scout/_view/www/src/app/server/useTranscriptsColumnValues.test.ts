@@ -7,7 +7,7 @@ import { useApi } from "../../state/store";
 import { data, loading } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
-import { useTranscriptColumnValues } from "./useServerTranscriptColumnValues";
+import { useTranscriptsColumnValues } from "./useTranscriptsColumnValues";
 
 vi.mock("../../state/store", () => ({
   useApi: vi.fn(),
@@ -30,7 +30,7 @@ describe("useServerTranscriptColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
     const { result } = renderHook(() =>
-      useTranscriptColumnValues("/transcripts", "model")
+      useTranscriptsColumnValues("/transcripts", "model")
     );
 
     expect(result.current).toEqual(loading);
@@ -41,7 +41,7 @@ describe("useServerTranscriptColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(data(mockValues));
 
     const { result } = renderHook(() =>
-      useTranscriptColumnValues("/transcripts", "model")
+      useTranscriptsColumnValues("/transcripts", "model")
     );
 
     expect(result.current.loading).toBe(false);
@@ -53,7 +53,7 @@ describe("useServerTranscriptColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
 
     const { result } = renderHook(() =>
-      useTranscriptColumnValues("/transcripts", "model")
+      useTranscriptsColumnValues("/transcripts", "model")
     );
 
     expect(result.current.loading).toBe(false);
@@ -67,7 +67,7 @@ describe("useServerTranscriptColumnValues", () => {
     mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
-    renderHook(() => useTranscriptColumnValues("/transcripts", "model"));
+    renderHook(() => useTranscriptsColumnValues("/transcripts", "model"));
 
     expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -88,7 +88,7 @@ describe("useServerTranscriptColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
     renderHook(() =>
-      useTranscriptColumnValues("/transcripts", "model", filter)
+      useTranscriptsColumnValues("/transcripts", "model", filter)
     );
 
     expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
@@ -108,7 +108,7 @@ describe("useServerTranscriptColumnValues", () => {
 
     const filter = new Column("score").gt(0.5);
     renderHook(() =>
-      useTranscriptColumnValues("/transcripts", "model", filter)
+      useTranscriptsColumnValues("/transcripts", "model", filter)
     );
 
     const callArgs = mockUseAsyncDataFromQuery.mock.calls[0]?.[0];

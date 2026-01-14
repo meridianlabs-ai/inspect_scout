@@ -64,7 +64,7 @@ export const apiScoutServer = (
       );
       return asyncJsonParse<Transcript>(result.raw);
     },
-    getTranscriptColumnValues: async (
+    getTranscriptsColumnValues: async (
       transcriptsDir: string,
       column: string,
       filter?: Condition

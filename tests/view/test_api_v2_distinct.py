@@ -51,13 +51,15 @@ async def populated_db(test_location: Path) -> AsyncIterator[ParquetTranscriptsD
     """Create and populate a parquet database."""
     db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
-    await db.insert([
-        _create_transcript("t1", "gpt-4", "math"),
-        _create_transcript("t2", "gpt-4", "coding"),
-        _create_transcript("t3", "claude", "math"),
-        _create_transcript("t4", "claude", "qa"),
-        _create_transcript("t5", "gpt-3.5", "math"),
-    ])
+    await db.insert(
+        [
+            _create_transcript("t1", "gpt-4", "math"),
+            _create_transcript("t2", "gpt-4", "coding"),
+            _create_transcript("t3", "claude", "math"),
+            _create_transcript("t4", "claude", "qa"),
+            _create_transcript("t5", "gpt-3.5", "math"),
+        ]
+    )
     yield db
     await db.disconnect()
 
@@ -71,9 +73,7 @@ def client(test_location: Path, populated_db: ParquetTranscriptsDB) -> TestClien
 class TestDistinctEndpoint:
     """Tests for POST /transcripts/{dir}/distinct endpoint."""
 
-    def test_distinct_no_filter(
-        self, client: TestClient, test_location: Path
-    ) -> None:
+    def test_distinct_no_filter(self, client: TestClient, test_location: Path) -> None:
         """Get distinct values without filter."""
         response = client.post(
             f"/transcripts/{_encode_dir(str(test_location))}/distinct",
@@ -127,9 +127,7 @@ class TestDistinctEndpoint:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_distinct_no_body(
-        self, client: TestClient, test_location: Path
-    ) -> None:
+    def test_distinct_no_body(self, client: TestClient, test_location: Path) -> None:
         """Request with no body returns empty list."""
         response = client.post(
             f"/transcripts/{_encode_dir(str(test_location))}/distinct",

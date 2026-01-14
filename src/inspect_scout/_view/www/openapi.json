@@ -1525,6 +1525,29 @@
         "title": "ContentVideo",
         "type": "object"
       },
+      "DistinctRequest": {
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "column"
+        ],
+        "title": "DistinctRequest",
+        "type": "object"
+      },
       "DocumentCitation": {
         "description": "A citation that refers to a page range in a document.",
         "properties": {
@@ -9047,6 +9070,83 @@
           }
         },
         "summary": "List transcripts"
+      }
+    },
+    "/transcripts/{dir}/distinct": {
+      "post": {
+        "description": "Returns distinct values for a column, optionally filtered.",
+        "operationId": "transcripts_distinct_transcripts__dir__distinct_post",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DistinctRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Transcripts Distinct Transcripts  Dir  Distinct Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get distinct column values"
       }
     },
     "/transcripts/{dir}/{id}": {

@@ -108,6 +108,14 @@ class TranscriptsRequest(PaginatedRequest):
 
 
 @dataclass
+class DistinctRequest:
+    """Request body for POST /transcripts/{dir}/distinct endpoint."""
+
+    column: str
+    filter: Condition | None = None
+
+
+@dataclass
 class ScansRequest(PaginatedRequest):
     """Request body for POST /scans endpoint."""
 

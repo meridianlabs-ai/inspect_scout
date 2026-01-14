@@ -25,7 +25,7 @@ export interface ScanApi {
     pagination?: Pagination
   ): Promise<TranscriptsResponse>;
   getTranscript(transcriptsDir: string, id: string): Promise<Transcript>;
-  getDistinct(
+  getTranscriptColumnValues(
     transcriptsDir: string,
     column: string,
     filter?: Condition

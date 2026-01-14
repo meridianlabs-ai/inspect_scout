@@ -72,7 +72,7 @@ export const apiVscode = (
       throw new Error("Not Yet Implemented");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
-    getDistinct: async (): Promise<never> => {
+    getTranscriptColumnValues: async (): Promise<never> => {
       throw new Error("Not Yet Implemented");
     },
     getScan: async (scanLocation: string): Promise<Status> => {

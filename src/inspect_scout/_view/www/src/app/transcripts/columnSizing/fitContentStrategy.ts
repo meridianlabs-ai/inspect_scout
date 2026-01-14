@@ -46,7 +46,9 @@ function measureHeaderExtraWidth(tableElement: HTMLTableElement): number {
     ? sortIcon.offsetWidth + 4
     : parseFloat(headerStyle.fontSize) || 12;
 
-  return paddingLeft + paddingRight + gap * 2 + filterButtonWidth + sortIconWidth;
+  return (
+    paddingLeft + paddingRight + gap * 2 + filterButtonWidth + sortIconWidth
+  );
 }
 
 /**
@@ -63,7 +65,12 @@ function measureCellPadding(cellElement: HTMLTableCellElement | null): number {
 }
 
 export const fitContentStrategy: SizingStrategy = {
-  computeSizes({ tableElement, columns, data, constraints }): ColumnSizingState {
+  computeSizes({
+    tableElement,
+    columns,
+    data,
+    constraints,
+  }): ColumnSizingState {
     const sizing: ColumnSizingState = {};
 
     // Fall back to default sizes if no table element or data
@@ -108,12 +115,17 @@ export const fitContentStrategy: SizingStrategy = {
         if (!id || !accessorKey) continue;
 
         const headerText = String(column.header || "");
-        const headerTextWidth = measureTextWidth(headerText, headerFont, measureContainer);
+        const headerTextWidth = measureTextWidth(
+          headerText,
+          headerFont,
+          measureContainer
+        );
         const headerWidth = headerTextWidth + headerExtraWidth;
 
         // Use column's textValue function if available, otherwise fall back to String()
         // If textValue returns null, skip content measurement for this column
-        const getTextValue = column.textValue ?? ((v: unknown) => (v == null ? "-" : String(v)));
+        const getTextValue =
+          column.textValue ?? ((v: unknown) => (v == null ? "-" : String(v)));
 
         let maxContentWidth = 0;
         let skipContentMeasurement = false;
@@ -130,7 +142,11 @@ export const fitContentStrategy: SizingStrategy = {
             break;
           }
 
-          const contentWidth = measureTextWidth(textContent, cellFont, measureContainer);
+          const contentWidth = measureTextWidth(
+            textContent,
+            cellFont,
+            measureContainer
+          );
           maxContentWidth = Math.max(maxContentWidth, contentWidth);
         }
 

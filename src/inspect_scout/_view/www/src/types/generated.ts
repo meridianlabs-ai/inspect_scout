@@ -184,6 +184,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/transcripts/{dir}/distinct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get distinct column values
+         * @description Returns distinct values for a column, optionally filtered.
+         */
+        post: operations["transcripts_distinct_transcripts__dir__distinct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/transcripts/{dir}/{id}": {
         parameters: {
             query?: never;
@@ -773,6 +793,12 @@ export interface components {
             type: "video";
             /** Video */
             video: string;
+        };
+        /** DistinctRequest */
+        DistinctRequest: {
+            /** Column */
+            column: string;
+            filter?: components["schemas"]["Condition"] | null;
         };
         /**
          * DocumentCitation
@@ -3610,6 +3636,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TranscriptsResponse"];
+                };
+            };
+        };
+    };
+    transcripts_distinct_transcripts__dir__distinct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DistinctRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (string | number | boolean | null)[];
                 };
             };
         };

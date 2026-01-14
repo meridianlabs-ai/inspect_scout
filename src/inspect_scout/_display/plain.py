@@ -50,8 +50,18 @@ class DisplayPlain(Display):
         summary: Summary,
         total: int,
         skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> Iterator[ScanDisplay]:
-        yield ScanDisplayPlain(scan, summary, total, skipped, self.print)
+        yield ScanDisplayPlain(
+            scan,
+            summary,
+            total,
+            skipped,
+            self.print,
+            per_scanner_total,
+            per_scanner_skipped,
+        )
 
     @override
     def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
@@ -86,6 +96,8 @@ class ScanDisplayPlain(ScanDisplay):
         total: int,
         skipped: int,
         print: Callable[..., None],
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> None:
         self._print = print
         self._print(
@@ -99,6 +111,9 @@ class ScanDisplayPlain(ScanDisplay):
         self._batch_oldest_created: int | None = None
         self._batch_pending = 0
         self._batch_failures = 0
+        self._per_scanner_total: dict[str, int] = per_scanner_total or {}
+        self._per_scanner_skipped: dict[str, int] = per_scanner_skipped or {}
+        self._per_scanner_completed: dict[str, int] = dict(self._per_scanner_skipped)
 
     @override
     def results(
@@ -108,7 +123,9 @@ class ScanDisplayPlain(ScanDisplay):
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        pass
+        self._per_scanner_completed[scanner] = (
+            self._per_scanner_completed.get(scanner, 0) + 1
+        )
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:

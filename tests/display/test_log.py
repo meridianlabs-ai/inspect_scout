@@ -182,3 +182,134 @@ def test_text_progress_log_update_with_int_count(
     record = caplog.records[0]
     assert record.__dict__["progress"] == 25
     assert record.__dict__["total"] == 100
+
+
+@pytest.mark.parametrize(
+    (
+        "per_scanner_total",
+        "per_scanner_skipped",
+        "results_scanners",
+        "expected_completed_scanners",
+    ),
+    [
+        (
+            {"scanner_a": 3},
+            {},
+            ["scanner_a", "scanner_a", "scanner_a"],
+            ["scanner_a"],
+        ),
+        (
+            {"scanner_a": 3},
+            {"scanner_a": 2},
+            ["scanner_a"],
+            ["scanner_a"],
+        ),
+        (
+            {"scanner_a": 2, "scanner_b": 3},
+            {},
+            ["scanner_a", "scanner_a", "scanner_b", "scanner_b", "scanner_b"],
+            ["scanner_a", "scanner_b"],
+        ),
+        (
+            {"scanner_a": 2},
+            {"scanner_a": 2},
+            [],
+            ["scanner_a"],
+        ),
+        (
+            {"scanner_a": 3, "scanner_b": 2},
+            {"scanner_a": 1},
+            ["scanner_a", "scanner_b", "scanner_b", "scanner_a"],
+            ["scanner_b", "scanner_a"],
+        ),
+    ],
+)
+def test_scan_display_log_scanner_completion(
+    per_scanner_total: dict[str, int],
+    per_scanner_skipped: dict[str, int],
+    results_scanners: list[str],
+    expected_completed_scanners: list[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from unittest import mock
+
+    with caplog.at_level(logging.INFO):
+        display = ScanDisplayLog(
+            total=sum(per_scanner_total.values()),
+            skipped=sum(per_scanner_skipped.values()),
+            per_scanner_total=per_scanner_total,
+            per_scanner_skipped=per_scanner_skipped,
+        )
+
+        for scanner in results_scanners:
+            display.results(mock.Mock(), scanner, [], None)
+
+    completion_logs = [
+        r for r in caplog.records if "complete" in r.message and "Scanner" in r.message
+    ]
+    completed_scanner_names = [r.__dict__["scanner"] for r in completion_logs]
+
+    assert completed_scanner_names == expected_completed_scanners
+
+
+def test_scan_display_log_scanner_completion_logs_correct_counts(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from unittest import mock
+
+    with caplog.at_level(logging.INFO):
+        display = ScanDisplayLog(
+            total=5,
+            skipped=0,
+            per_scanner_total={"scanner_a": 2, "scanner_b": 3},
+            per_scanner_skipped={},
+        )
+
+        display.results(mock.Mock(), "scanner_a", [], None)
+        display.results(mock.Mock(), "scanner_a", [], None)
+
+    completion_logs = [
+        r for r in caplog.records if "complete" in r.message and "Scanner" in r.message
+    ]
+    assert len(completion_logs) == 1
+    record = completion_logs[0]
+    assert record.__dict__["scanner"] == "scanner_a"
+    assert record.__dict__["scanners_complete"] == 1
+    assert record.__dict__["scanners_total"] == 2
+    assert record.__dict__["transcripts_completed"] == 2
+
+
+def test_scan_display_log_scanner_completion_already_complete_at_init(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    display = ScanDisplayLog(
+        total=2,
+        skipped=2,
+        per_scanner_total={"scanner_a": 2},
+        per_scanner_skipped={"scanner_a": 2},
+    )
+
+    assert "scanner_a" in display._scanners_completed
+
+
+def test_scan_display_log_no_duplicate_completion_logs(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from unittest import mock
+
+    with caplog.at_level(logging.INFO):
+        display = ScanDisplayLog(
+            total=2,
+            skipped=0,
+            per_scanner_total={"scanner_a": 2},
+            per_scanner_skipped={},
+        )
+
+        display.results(mock.Mock(), "scanner_a", [], None)
+        display.results(mock.Mock(), "scanner_a", [], None)
+        display.results(mock.Mock(), "scanner_a", [], None)
+
+    completion_logs = [
+        r for r in caplog.records if "complete" in r.message and "Scanner" in r.message
+    ]
+    assert len(completion_logs) == 1

@@ -44,6 +44,8 @@ class DisplayLog(DisplayPlain):
         summary: Summary,
         total: int,
         skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> Iterator[ScanDisplay]:
         logging.info(
             "Starting scan",
@@ -51,9 +53,10 @@ class DisplayLog(DisplayPlain):
                 "total_scans": total,
                 "skipped_scans": skipped,
                 "scan_location": scan_location,
+                "per_scanner_total": per_scanner_total,
             },
         )
-        yield ScanDisplayLog(total, skipped)
+        yield ScanDisplayLog(total, skipped, per_scanner_total, per_scanner_skipped)
 
     @override
     def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
@@ -86,10 +89,25 @@ class DisplayLog(DisplayPlain):
 
 
 class ScanDisplayLog(ScanDisplay):
-    def __init__(self, total: int, skipped: int) -> None:
-        self._total_scans = total
-        self._skipped_scans = skipped
-        self._completed_scans = skipped
+    def __init__(
+        self,
+        total: int,
+        skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
+    ) -> None:
+        self._total_scans: int = total
+        self._skipped_scans: int = skipped
+        self._completed_scans: int = skipped
+        self._per_scanner_total: dict[str, int] = per_scanner_total or {}
+        self._per_scanner_skipped: dict[str, int] = per_scanner_skipped or {}
+        self._per_scanner_completed: dict[str, int] = dict(self._per_scanner_skipped)
+        self._scanners_completed: set[str] = set()
+
+        for scanner, expected in self._per_scanner_total.items():
+            if self._per_scanner_completed.get(scanner, 0) >= expected > 0:
+                self._scanners_completed.add(scanner)
+                self._log_scanner_complete(scanner)
 
     @override
     def results(
@@ -99,7 +117,33 @@ class ScanDisplayLog(ScanDisplay):
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        pass
+        self._per_scanner_completed[scanner] = (
+            self._per_scanner_completed.get(scanner, 0) + 1
+        )
+
+        expected = self._per_scanner_total.get(scanner, 0)
+        if (
+            scanner not in self._scanners_completed
+            and self._per_scanner_completed[scanner] >= expected
+            and expected > 0
+        ):
+            self._scanners_completed.add(scanner)
+            self._log_scanner_complete(scanner)
+
+    def _log_scanner_complete(self, scanner: str) -> None:
+        logging.info(
+            "Scanner %s complete (%d/%d scanners)",
+            scanner,
+            len(self._scanners_completed),
+            len(self._per_scanner_total),
+            extra={
+                "event": "scanner_complete",
+                "scanner": scanner,
+                "scanners_complete": len(self._scanners_completed),
+                "scanners_total": len(self._per_scanner_total),
+                "transcripts_completed": self._per_scanner_completed.get(scanner, 0),
+            },
+        )
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:
@@ -140,9 +184,9 @@ class ScanDisplayLog(ScanDisplay):
 
 class TextProgressLog(TextProgress):
     def __init__(self, caption: str, count: bool | int) -> None:
-        self._caption = caption
-        self._count = count
-        self._total = 0
+        self._caption: str = caption
+        self._count: bool | int = count
+        self._total: int = 0
 
     @override
     def update(self, text: str) -> None:

@@ -37,6 +37,8 @@ class Display(abc.ABC):
         summary: Summary,
         total: int,
         skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> Iterator["ScanDisplay"]:
         yield ScanDisplayNone()
 

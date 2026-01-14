@@ -9,7 +9,6 @@ from inspect_scout._transcript.transcripts import Transcripts
 
 from ..._query import Query
 from ..._query.condition import Condition, ScalarValue
-from ..columns import Column
 from ..types import (
     Transcript,
     TranscriptContent,
@@ -99,7 +98,7 @@ class TranscriptsView(abc.ABC):
 
     @abc.abstractmethod
     async def distinct(
-        self, column: Column, condition: Condition | None
+        self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         """Get distinct values of a column, sorted ascending.
 

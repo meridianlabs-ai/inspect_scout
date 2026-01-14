@@ -49,7 +49,6 @@ from typing_extensions import override
 
 from inspect_scout._query.condition import Condition, ScalarValue
 from inspect_scout._query.condition_sql import condition_as_sql, conditions_as_filter
-from inspect_scout._transcript.columns import Column as TranscriptColumn
 from inspect_scout._transcript.database.schema import reserved_columns
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
@@ -354,10 +353,10 @@ class EvalLogTranscriptsView(TranscriptsView):
 
     @override
     async def distinct(
-        self, column: TranscriptColumn, condition: Condition | None
+        self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
-        col_name = column.name
+        col_name = column
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "sqlite")
             sql = f'SELECT DISTINCT "{col_name}" FROM {TRANSCRIPTS} WHERE {where_sql} ORDER BY "{col_name}" ASC'

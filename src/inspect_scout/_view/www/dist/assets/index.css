@@ -2288,12 +2288,161 @@ pre[class*="language-"] {
   /* Inspect Glass */
   --inspect-glass-color: #000000;
   --inspect-glass-opacity: 0.3;
+
+  /* VS Code Light Modern theme defaults (for non-VS Code context) */
+  /* Complete set of variables used by @vscode-elements/elements */
+  /* These are overridden by actual VS Code theme variables when running in VS Code */
+
+  /* Core colors */
+  --vscode-foreground: #3b3b3b;
+  --vscode-descriptionForeground: #717171;
+  --vscode-errorForeground: #f14c4c;
+  --vscode-icon-foreground: #424242;
+  --vscode-focusBorder: #0090f1;
+  --vscode-contrastBorder: transparent;
+
+  /* Font settings */
+  --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --vscode-font-size: 13px;
+  --vscode-font-weight: normal;
+  --vscode-editor-font-family: Menlo, Monaco, "Courier New", monospace;
+  --vscode-editor-font-size: 12px;
+  --vscode-editor-font-weight: normal;
+
+  /* Editor colors */
+  --vscode-editor-background: #ffffff;
+  --vscode-editor-foreground: #3b3b3b;
+  --vscode-editor-inlineValuesForeground: rgba(0, 0, 0, 0.5);
+  --vscode-editorGroup-border: #e7e7e7;
+  --vscode-editorWidget-border: #d4d4d4;
+
+  /* Input colors */
+  --vscode-input-background: #ffffff;
+  --vscode-input-foreground: #3b3b3b;
+  --vscode-input-border: #cecece;
+  --vscode-input-placeholderForeground: #767676;
+  --vscode-inputOption-activeBackground: rgba(0, 144, 241, 0.2);
+  --vscode-inputOption-activeBorder: #0090f1;
+  --vscode-inputOption-activeForeground: #000000;
+
+  /* Input validation */
+  --vscode-inputValidation-warningBackground: #f2dede;
+  --vscode-inputValidation-warningBorder: #be8800;
+  --vscode-inputValidation-errorBackground: #f2dede;
+  --vscode-inputValidation-errorBorder: #be1100;
+
+  /* Settings controls (used by vscode-elements textfield, checkbox, dropdown) */
+  --vscode-settings-textInputBackground: #ffffff;
+  --vscode-settings-textInputForeground: #3b3b3b;
+  --vscode-settings-textInputBorder: #cecece;
+  --vscode-settings-checkboxBackground: #ffffff;
+  --vscode-settings-checkboxForeground: #3b3b3b;
+  --vscode-settings-checkboxBorder: #919191;
+  --vscode-settings-dropdownBackground: #ffffff;
+  --vscode-settings-dropdownForeground: #3b3b3b;
+  --vscode-settings-dropdownBorder: #cecece;
+  --vscode-settings-dropdownListBorder: #c8c8c8;
+  --vscode-settings-headerBorder: rgba(128, 128, 128, 0.35);
+
+  /* Checkbox colors */
+  --vscode-checkbox-background: #ffffff;
+  --vscode-checkbox-foreground: #3b3b3b;
+  --vscode-checkbox-border: #919191;
+
+  /* Button colors */
+  --vscode-button-background: #007acc;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #0062a3;
+  --vscode-button-border: transparent;
+  --vscode-button-separator: rgba(255, 255, 255, 0.4);
+  --vscode-button-secondaryBackground: #5f6a79;
+  --vscode-button-secondaryForeground: #ffffff;
+  --vscode-button-secondaryHoverBackground: #4c5561;
+
+  /* Widget/shadow colors */
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.16);
+  --vscode-widget-border: #d4d4d4;
+
+  /* Toolbar */
+  --vscode-toolbar-hoverBackground: rgba(184, 184, 184, 0.31);
+  --vscode-toolbar-activeBackground: rgba(166, 166, 166, 0.31);
+  --vscode-toolbar-hoverOutline: transparent;
+
+  /* List colors (used by select/dropdown components) */
+  --vscode-list-hoverBackground: #e8e8e8;
+  --vscode-list-hoverForeground: #3b3b3b;
+  --vscode-list-activeSelectionBackground: #0060c0;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-list-activeSelectionIconForeground: #ffffff;
+  --vscode-list-inactiveSelectionBackground: #e4e6f1;
+  --vscode-list-focusOutline: #0090f1;
+  --vscode-list-focusAndSelectionOutline: #0090f1;
+  --vscode-list-focusHighlightForeground: #0066bf;
+  --vscode-list-highlightForeground: #0066bf;
+
+  /* Menu colors */
+  --vscode-menu-background: #ffffff;
+  --vscode-menu-foreground: #3b3b3b;
+  --vscode-menu-border: #d4d4d4;
+  --vscode-menu-selectionBackground: #0060c0;
+  --vscode-menu-selectionForeground: #ffffff;
+  --vscode-menu-selectionBorder: transparent;
+  --vscode-menu-separatorBackground: #d4d4d4;
+
+  /* Badge colors */
+  --vscode-badge-background: #007acc;
+  --vscode-badge-foreground: #ffffff;
+  --vscode-activityBarBadge-background: #007acc;
+  --vscode-activityBarBadge-foreground: #ffffff;
+
+  /* Panel colors */
+  --vscode-panel-background: #ffffff;
+  --vscode-panelTitle-activeBorder: #007acc;
+  --vscode-panelTitle-activeForeground: #3b3b3b;
+  --vscode-panelTitle-inactiveForeground: #717171;
+
+  /* Sidebar colors */
+  --vscode-sideBar-background: #f3f3f3;
+  --vscode-sideBarSectionHeader-background: #f3f3f3;
+  --vscode-sideBarTitle-foreground: #3b3b3b;
+
+  /* Progress bar */
+  --vscode-progressBar-background: #007acc;
+
+  /* Scrollbar colors */
+  --vscode-scrollbar-shadow: rgba(0, 0, 0, 0.16);
+  --vscode-scrollbarSlider-background: rgba(100, 100, 100, 0.4);
+  --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+  --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, 0.6);
+
+  /* Sash (resizable borders) */
+  --vscode-sash-hoverBorder: #0090f1;
+
+  /* Tree colors */
+  --vscode-tree-indentGuidesStroke: #d4d4d4;
+  --vscode-tree-inactiveIndentGuidesStroke: rgba(212, 212, 212, 0.5);
+
+  /* Keybinding table */
+  --vscode-keybindingTable-headerBackground: rgba(128, 128, 128, 0.1);
+  --vscode-keybindingTable-rowsBackground: rgba(128, 128, 128, 0.04);
 }
 
 body:not([class^="vscode-"]) button {
   --bs-nav-pills-link-active-bg: #e3eaf1;
   --bs-nav-pills-link-active-color: black;
   --bs-nav-link-color: black;
+}
+
+/* vscode-elements form component adjustments */
+vscode-label {
+  margin-bottom: 0;
+}
+
+vscode-form-helper {
+  font-size: 12px;
+  margin-top: 0;
+  margin-bottom: 6px;
 }
 
 /* AG Grid Theming */
@@ -4759,7 +4908,77 @@ so disabling selection can break that functionality */
 ._navButton_cmger_54:focus-visible {
   background-color: var(--bs-secondary-bg-subtle);
 }
-._container_ef6vx_1 {
+._backdrop_1cw9v_1 {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.36);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  z-index: 1000;
+}
+
+._modal_1cw9v_12 {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-border));
+  border-radius: 4px;
+  box-shadow: 0 4px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  max-width: 450px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+._header_1cw9v_24 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid
+    var(--vscode-widget-border, var(--vscode-editorWidget-border));
+}
+
+._title_1cw9v_33 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+._closeButton_1cw9v_40 {
+  background: none;
+  border: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+._closeButton_1cw9v_40:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  border-radius: 4px;
+}
+
+._body_1cw9v_56 {
+  padding: 16px;
+  color: var(--vscode-foreground);
+  font-size: 13px;
+  overflow-y: auto;
+}
+
+._footer_1cw9v_63 {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid
+    var(--vscode-widget-border, var(--vscode-editorWidget-border));
+}
+._container_execp_1 {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -4767,124 +4986,60 @@ so disabling selection can break that functionality */
   gap: 1rem;
 }
 
-._headerRow_ef6vx_9 {
+._headerRow_execp_9 {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: baseline;
 }
 
-._header_ef6vx_9 {
-  font-size: var(--inspect-font-size-large);
+._header_execp_9 {
+  font-size: 16px;
   font-weight: 600;
+  color: var(--vscode-foreground);
 }
 
-._detail_ef6vx_20 {
-  font-size: var(--inspect-font-size-small);
-  color: var(--bs-secondary);
+._detail_execp_21 {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
 }
 
-._saveButton_ef6vx_25 {
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-secondary-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-._saveButton_ef6vx_25:hover:not(:disabled) {
-  background-color: var(--bs-tertiary-bg);
-}
-
-._saveButton_ef6vx_25:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-._conflictBanner_ef6vx_44 {
-  background-color: var(--bs-warning-bg-subtle);
-  color: var(--bs-warning-text-emphasis);
-  padding: 0.75rem;
-  border-radius: 0.25rem;
+._conflictBanner_execp_26 {
+  background: var(--vscode-inputValidation-warningBackground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  padding: 8px 12px;
+  border-radius: 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  font-size: 0.875rem;
+  font-size: 13px;
+  color: var(--vscode-foreground);
 }
 
-._conflictActions_ef6vx_56 {
+._conflictActions_execp_38 {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
-._discardButton_ef6vx_61,
-._forceSaveButton_ef6vx_62 {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-._discardButton_ef6vx_61 {
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-}
-
-._forceSaveButton_ef6vx_62 {
-  background-color: var(--bs-warning);
-  color: var(--bs-warning-text-emphasis);
-  border-color: var(--bs-warning);
-}
-
-._discardButton_ef6vx_61:hover {
-  background-color: var(--bs-secondary-bg);
-}
-
-._forceSaveButton_ef6vx_62:hover {
-  opacity: 0.9;
-}
-
-._loading_ef6vx_89,
-._error_ef6vx_90 {
-  font-size: 0.875rem;
-}
-
-._error_ef6vx_90 {
-  color: var(--bs-danger);
-}
-
-._form_ef6vx_98 {
+._form_execp_43 {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 10px;
 }
 
-._formGroup_ef6vx_104 {
+._field_execp_49 {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
 }
 
-._label_ef6vx_110 {
-  font-size: 0.875rem;
-  color: var(--bs-secondary);
+
+._loading_execp_55,
+._error_execp_56 {
+  font-size: 13px;
+  color: var(--vscode-foreground);
 }
 
-._input_ef6vx_115 {
-  padding: 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-}
-
-._input_ef6vx_115:focus {
-  outline: none;
-  border-color: var(--bs-primary);
+._error_execp_56 {
+  color: var(--vscode-errorForeground);
 }
 ._root_ke0e7_1 {
   height: 100vh;

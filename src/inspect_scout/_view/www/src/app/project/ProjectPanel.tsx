@@ -1,7 +1,15 @@
-import clsx from "clsx";
-import { FC, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  VscodeButton,
+  VscodeFormHelper,
+  VscodeLabel,
+  VscodeTextfield,
+} from "@vscode-elements/react-elements";
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useBlocker } from "react-router-dom";
 
 import { ApiError } from "../../api/request";
+import { Modal } from "../../components/Modal";
 import { AppConfig, ProjectConfigInput } from "../../types/api-types";
 import { appAliasedPath } from "../server/useConfig";
 import {
@@ -16,6 +24,7 @@ interface ProjectPanelProps {
 }
 
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
+  const queryClient = useQueryClient();
   const { loading, error, data } = useProjectConfig();
   const mutation = useUpdateProjectConfig();
 
@@ -23,6 +32,12 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const [editedConfig, setEditedConfig] =
     useState<Partial<ProjectConfigInput> | null>(null);
   const [conflictError, setConflictError] = useState(false);
+
+  // Ref for focusing the first input
+  const firstInputRef = useRef<HTMLElement | null>(null);
+  const focusFirstInput = useCallback(() => {
+    setTimeout(() => firstInputRef.current?.focus(), 0);
+  }, []);
 
   // Initialize form state when data loads
   useEffect(() => {
@@ -32,8 +47,9 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
         scans: data.config.scans,
         model: data.config.model,
       });
+      focusFirstInput();
     }
-  }, [data, editedConfig]);
+  }, [data, editedConfig, focusFirstInput]);
 
   // Reset form when data changes (e.g., after successful save or refresh)
   useEffect(() => {
@@ -56,6 +72,12 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     );
   }, [editedConfig, data]);
 
+  // Navigation blocking when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasChanges && currentLocation.pathname !== nextLocation.pathname
+  );
+
   const handleSave = (force = false) => {
     if (!data || !editedConfig) return;
 
@@ -71,6 +93,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       {
         onSuccess: () => {
           setConflictError(false);
+          focusFirstInput();
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 412) {
@@ -81,106 +104,168 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     );
   };
 
+  const handleSaveAndNavigate = () => {
+    if (!data || !editedConfig) {
+      blocker.proceed?.();
+      return;
+    }
+
+    const updatedConfig: ProjectConfigInput = {
+      ...(data.config as ProjectConfigInput),
+      ...editedConfig,
+    };
+
+    mutation.mutate(
+      { config: updatedConfig, etag: data.etag },
+      {
+        onSuccess: () => {
+          setConflictError(false);
+          blocker.proceed?.();
+        },
+        onError: (err) => {
+          if (err instanceof ApiError && err.status === 412) {
+            setConflictError(true);
+          }
+          blocker.reset?.();
+        },
+      }
+    );
+  };
+
   const handleReload = () => {
     setConflictError(false);
     setEditedConfig(null);
-    // The query will refetch automatically, or we could invalidate
+    // Explicitly refetch since automatic refetching is disabled for optimistic locking
+    void queryClient.invalidateQueries({ queryKey: ["project-config"] });
+    // Focus will happen via the useEffect when editedConfig is re-initialized
   };
 
   return (
-    <div className={clsx(styles.container)}>
+    <div className={styles.container}>
+      {/* Header */}
       <div className={styles.headerRow}>
         <div>
-          <div className={styles.header}>Project</div>
+          <div className={styles.header}>Project Config</div>
           <div className={styles.detail}>
-            {appAliasedPath(config, config.project_dir)}
+            {appAliasedPath(config, config.project_dir)}/scout.yaml
           </div>
         </div>
-        <button
-          className={styles.saveButton}
+        <VscodeButton
           disabled={!hasChanges || mutation.isPending}
           onClick={() => handleSave(false)}
         >
           {mutation.isPending ? "Saving..." : "Save Changes"}
-        </button>
+        </VscodeButton>
       </div>
 
+      {/* Conflict Banner */}
       {conflictError && (
         <div className={styles.conflictBanner}>
           <span>Configuration was modified externally.</span>
           <div className={styles.conflictActions}>
-            <button className={styles.discardButton} onClick={handleReload}>
+            <VscodeButton secondary onClick={handleReload}>
               Discard My Changes
-            </button>
-            <button
-              className={styles.forceSaveButton}
-              onClick={() => handleSave(true)}
-            >
+            </VscodeButton>
+            <VscodeButton onClick={() => handleSave(true)}>
               Keep My Changes
-            </button>
+            </VscodeButton>
           </div>
         </div>
       )}
 
+      {/* Loading State */}
       {loading && <div className={styles.loading}>Loading...</div>}
 
+      {/* Error State */}
       {error && (
         <div className={styles.error}>
           Error loading config: {error.message}
         </div>
       )}
 
+      {/* Form */}
       {editedConfig && (
         <div className={styles.form}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Transcripts</label>
-            <input
-              type="text"
-              className={styles.input}
+          <div className={styles.field}>
+            <VscodeLabel>Transcripts</VscodeLabel>
+            <VscodeFormHelper>
+              Directory containing conversation transcripts to analyze
+            </VscodeFormHelper>
+            <VscodeTextfield
+              ref={(el) => {
+                firstInputRef.current = el;
+              }}
               value={editedConfig.transcripts ?? ""}
-              onChange={(e) =>
+              onInput={(e) =>
                 setEditedConfig((prev) => ({
                   ...prev,
-                  transcripts: e.target.value || null,
+                  transcripts: (e.target as HTMLInputElement).value || null,
                 }))
               }
               placeholder="Path to transcripts directory"
+              spellCheck={false}
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Scans</label>
-            <input
-              type="text"
-              className={styles.input}
+          <div className={styles.field}>
+            <VscodeLabel>Scans</VscodeLabel>
+            <VscodeFormHelper>
+              Output directory for scan results and reports
+            </VscodeFormHelper>
+            <VscodeTextfield
               value={editedConfig.scans ?? ""}
-              onChange={(e) =>
+              onInput={(e) =>
                 setEditedConfig((prev) => ({
                   ...prev,
-                  scans: e.target.value || null,
+                  scans: (e.target as HTMLInputElement).value || null,
                 }))
               }
               placeholder="Path to scans output directory"
+              spellCheck={false}
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Model</label>
-            <input
-              type="text"
-              className={styles.input}
+          <div className={styles.field}>
+            <VscodeLabel>Model</VscodeLabel>
+            <VscodeFormHelper>
+              Default language model for analysis (e.g., openai/gpt-4o)
+            </VscodeFormHelper>
+            <VscodeTextfield
               value={editedConfig.model ?? ""}
-              onChange={(e) =>
+              onInput={(e) =>
                 setEditedConfig((prev) => ({
                   ...prev,
-                  model: e.target.value || null,
+                  model: (e.target as HTMLInputElement).value || null,
                 }))
               }
-              placeholder="Default model (e.g., openai/gpt-4)"
+              placeholder="Default model"
+              spellCheck={false}
             />
           </div>
         </div>
       )}
+
+      {/* Unsaved Changes Modal */}
+      <Modal
+        show={blocker.state === "blocked"}
+        onHide={() => blocker.reset?.()}
+        title="Unsaved Changes"
+        footer={
+          <>
+            <VscodeButton secondary onClick={() => blocker.proceed?.()}>
+              Don't Save
+            </VscodeButton>
+            <VscodeButton secondary onClick={() => blocker.reset?.()}>
+              Cancel
+            </VscodeButton>
+            <VscodeButton data-autofocus onClick={handleSaveAndNavigate}>
+              Save
+            </VscodeButton>
+          </>
+        }
+      >
+        You have unsaved changes. Do you want to save before leaving?
+      </Modal>
     </div>
   );
 };

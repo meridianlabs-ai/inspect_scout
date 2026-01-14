@@ -19,6 +19,10 @@ export type ProjectConfigWithEtag = {
  * Loads project configuration from scout.yaml.
  *
  * Returns both the config and an etag for optimistic concurrency control.
+ *
+ * Automatic refetching is disabled to support optimistic locking:
+ * - External changes are detected via etag mismatch on save (412 error)
+ * - User explicitly chooses to reload or force save on conflict
  */
 export const useProjectConfig = (): AsyncData<ProjectConfigWithEtag> => {
   const api = useApi();
@@ -26,6 +30,10 @@ export const useProjectConfig = (): AsyncData<ProjectConfigWithEtag> => {
   return useAsyncDataFromQuery({
     queryKey: ["project-config"],
     queryFn: () => api.getProjectConfig(),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 };
 

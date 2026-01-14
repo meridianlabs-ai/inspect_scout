@@ -293,7 +293,7 @@ async def test_count_method_with_where(populated_db: ParquetTranscriptsDB) -> No
 @pytest.mark.asyncio
 async def test_distinct_no_condition(populated_db: ParquetTranscriptsDB) -> None:
     """Test distinct() without condition."""
-    values = await populated_db.distinct(c.model, None)
+    values = await populated_db.distinct("model", None)
     assert set(values) == {"gpt-4", "gpt-3.5-turbo", "claude-3-opus"}
     # Verify sorted ascending
     str_values = [str(v) for v in values]
@@ -304,7 +304,7 @@ async def test_distinct_no_condition(populated_db: ParquetTranscriptsDB) -> None
 async def test_distinct_with_condition(populated_db: ParquetTranscriptsDB) -> None:
     """Test distinct() with filter condition."""
     condition = c.task_set == "math"
-    values = await populated_db.distinct(c.model, condition)
+    values = await populated_db.distinct("model", condition)
     # Should still have all 3 models (math task has all models in test data)
     assert len(values) <= 3
     str_values = [str(v) for v in values]
@@ -315,7 +315,7 @@ async def test_distinct_with_condition(populated_db: ParquetTranscriptsDB) -> No
 async def test_distinct_empty_result(populated_db: ParquetTranscriptsDB) -> None:
     """Test distinct() with no matching results."""
     condition = c.model == "nonexistent"
-    values = await populated_db.distinct(c.task_set, condition)
+    values = await populated_db.distinct("task_set", condition)
     assert values == []
 
 

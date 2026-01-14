@@ -31,7 +31,6 @@ from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 from ...._query import Query
 from ...._query.condition import Condition, ScalarValue
 from ...._query.condition_sql import condition_as_sql
-from ...columns import Column
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
@@ -367,10 +366,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     @override
     async def distinct(
-        self, column: Column, condition: Condition | None
+        self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
-        col_name = column.name
+        col_name = column
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "duckdb")
             sql = f'SELECT DISTINCT "{col_name}" FROM transcripts WHERE {where_sql} ORDER BY "{col_name}" ASC'

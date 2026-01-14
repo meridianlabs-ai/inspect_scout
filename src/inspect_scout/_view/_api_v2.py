@@ -319,7 +319,7 @@ def v2_api_app(
         if body is None:
             return []
         async with transcripts_view(transcripts_dir) as view:
-            return await view.distinct(Column(body.column), body.filter)
+            return await view.distinct(body.column, body.filter)
 
     @app.post(
         "/scans",

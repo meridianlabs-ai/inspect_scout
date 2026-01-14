@@ -53,8 +53,6 @@ interface StoreState {
   singleFileMode?: boolean;
   hasInitializedEmbeddedData?: boolean;
   hasInitializedRouting?: boolean;
-  loading: number;
-  loadingData: number;
   scopedErrors: Record<ErrorScope, string | undefined>;
 
   // Scans
@@ -114,10 +112,6 @@ interface StoreState {
   setHasInitializedRouting: (initialized: boolean) => void;
   setError: (scope: ErrorScope, error: string | undefined) => void;
   clearError: (scope: ErrorScope) => void;
-
-  // Global app behavior
-  setLoading: (loading: boolean) => void;
-  setLoadingData: (loading: boolean) => void;
 
   // List of scans
   setVisibleScanJobCount: (count: number) => void;
@@ -283,26 +277,6 @@ export const createStore = (api: ScanApi) =>
           clearError: (scope: ErrorScope) => {
             set((state) => {
               state.scopedErrors[scope] = undefined;
-            });
-          },
-          setLoading: (loading: boolean) => {
-            set((state) => {
-              // increment or decrement loading counter
-              if (loading) {
-                state.loading += 1;
-              } else {
-                state.loading = Math.max(0, state.loading - 1);
-              }
-            });
-          },
-          setLoadingData: (loading: boolean) => {
-            set((state) => {
-              // increment or decrement loading counter
-              if (loading) {
-                state.loading += 1;
-              } else {
-                state.loading = Math.max(0, state.loading - 1);
-              }
             });
           },
           setVisibleScanJobCount: (count: number) =>

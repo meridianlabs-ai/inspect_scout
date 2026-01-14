@@ -67,7 +67,7 @@ export const apiScoutServer = (
     getTranscriptsColumnValues: async (
       transcriptsDir: string,
       column: string,
-      filter?: Condition
+      filter: Condition
     ): Promise<ScalarValue[]> => {
       const result = await requestApi.fetchString(
         "POST",

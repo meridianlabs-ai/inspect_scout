@@ -28,7 +28,7 @@ export interface ScanApi {
   getTranscriptsColumnValues(
     transcriptsDir: string,
     column: string,
-    filter?: Condition
+    filter: Condition | undefined
   ): Promise<ScalarValue[]>;
   getScans(
     filter?: Condition,

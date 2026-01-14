@@ -7,7 +7,7 @@ import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 export const useTranscriptsColumnValues = (
   transcriptsDir: string,
   column: string,
-  filter?: Condition
+  filter: Condition | undefined
 ): AsyncData<ScalarValue[]> => {
   const api = useApi();
   return useAsyncDataFromQuery({

@@ -649,6 +649,34 @@ async def test_count_method_with_where(db: EvalLogTranscriptsView) -> None:
 
 
 @pytest.mark.asyncio
+async def test_distinct_no_condition(db: EvalLogTranscriptsView) -> None:
+    """Test distinct() without condition."""
+    values = await db.distinct(c.model, None)
+    assert set(values) == {"gpt-4", "gpt-3.5-turbo", "claude"}
+    # Verify sorted ascending
+    str_values = [str(v) for v in values]
+    assert str_values == sorted(str_values)
+
+
+@pytest.mark.asyncio
+async def test_distinct_with_condition(db: EvalLogTranscriptsView) -> None:
+    """Test distinct() with filter condition."""
+    condition = c.dataset == "train"
+    values = await db.distinct(c.model, condition)
+    assert len(values) <= 3
+    str_values = [str(v) for v in values]
+    assert str_values == sorted(str_values)
+
+
+@pytest.mark.asyncio
+async def test_distinct_empty_result(db: EvalLogTranscriptsView) -> None:
+    """Test distinct() with no matching results."""
+    condition = c.model == "nonexistent"
+    values = await db.distinct(c.dataset, condition)
+    assert values == []
+
+
+@pytest.mark.asyncio
 async def test_select_with_shuffle(db: EvalLogTranscriptsView) -> None:
     """Test querying with shuffle."""
     # Get results without shuffle

@@ -11,6 +11,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
+import { ColumnSizingStrategyKey } from "../app/transcripts/columnSizing/types";
 import {
   ErrorScope,
   ResultGroup,
@@ -46,6 +47,10 @@ interface TranscriptsTableState {
   focusedRowId: string | null;
   columnFilters: Record<string, ColumnFilter>;
   visibleColumns?: Array<keyof TranscriptInfo>;
+  /** Current sizing strategy */
+  sizingStrategy: ColumnSizingStrategyKey;
+  /** Column IDs that have been manually resized by the user */
+  manuallyResizedColumns: string[];
 }
 
 interface StoreState {
@@ -251,6 +256,8 @@ export const createStore = (api: ScanApi) =>
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},
+            sizingStrategy: "fit-content",
+            manuallyResizedColumns: [],
           },
 
           // Actions

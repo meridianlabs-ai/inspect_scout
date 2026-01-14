@@ -12,6 +12,7 @@ import { useServerTranscript } from "../server/useServerTranscript";
 import { useTranscriptDirParams } from "../utils/router";
 
 import { TranscriptBody } from "./TranscriptBody";
+import { TranscriptNav } from "./TranscriptNav";
 import styles from "./TranscriptPanel.module.css";
 import { TranscriptTitle } from "./TranscriptTitle";
 
@@ -33,17 +34,22 @@ export const TranscriptPanel: FC = () => {
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptsDir = appAliasedPath(
-    config,
-    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || null
-  );
+  const transcriptsDir =
+    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || "";
+  const displayTranscriptsDir = appAliasedPath(config, transcriptsDir || null);
 
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
-        transcriptsDir={resolvedTranscriptsDir || ""}
+        transcriptsDir={displayTranscriptsDir || ""}
         setTranscriptsDir={setUserTranscriptsDir}
-      />
+      >
+        <TranscriptNav
+          transcriptId={transcriptId}
+          transcriptsDir={transcriptsDir}
+          transcript={transcript}
+        />
+      </TranscriptsNavbar>
       <LoadingBar loading={loading} />
 
       {!error && transcript && (

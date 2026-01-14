@@ -7945,7 +7945,7 @@ span.ap-marker-container:hover span.ap-marker {
 ._sixCol_1eu50_32 {
   grid-template-columns: auto auto auto auto auto auto;
 }
-._resultNav_oszqi_1 {
+._container_1i4o7_1 {
   display: grid;
   grid-template-columns: max-content auto max-content;
   align-items: center;
@@ -7953,13 +7953,17 @@ span.ap-marker-container:hover span.ap-marker {
   margin-right: 1em;
 }
 
-._nav_oszqi_9:hover:not(._disabled_oszqi_9) {
+._nav_1i4o7_9:hover:not(._disabled_1i4o7_9) {
   cursor: pointer;
 }
 
-._disabled_oszqi_9 {
+._disabled_1i4o7_9 {
   opacity: 0.5;
   pointer-events: none;
+}
+
+._center_1i4o7_18 {
+  text-align: center;
 }
 ._root_1ewhq_1 {
   height: 100vh;

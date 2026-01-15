@@ -15,8 +15,6 @@ export interface ColumnFilterEditorProps {
   operatorOptions: OperatorModel[];
   rawValue: string;
   isValueDisabled: boolean;
-  valueSelectRef: React.RefObject<HTMLSelectElement | null>;
-  valueInputRef: React.RefObject<HTMLInputElement | null>;
   onOperatorChange: (operator: OperatorModel) => void;
   onValueChange: (value: string) => void;
   onCommit?: () => void;
@@ -31,8 +29,6 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
   operatorOptions,
   rawValue,
   isValueDisabled,
-  valueSelectRef,
-  valueInputRef,
   onOperatorChange,
   onValueChange,
   onCommit,
@@ -100,7 +96,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             value={rawValue}
             onChange={handleValueChange}
             disabled={isValueDisabled}
-            ref={valueSelectRef}
+            autoFocus={true}
           >
             <option value="">(clear)</option>
             <option value="true">true</option>
@@ -113,11 +109,11 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             onChange={onValueChange}
             onCommit={onCommit}
             onCancel={onCancel}
-            inputRef={valueInputRef}
             disabled={isValueDisabled}
             placeholder="Filter"
             suggestions={suggestions}
             className={styles.filterInput}
+            autoFocus={true}
           />
         ) : (
           <input
@@ -136,7 +132,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             placeholder="Filter"
             disabled={isValueDisabled}
             step={filterType === "number" ? "any" : undefined}
-            ref={valueInputRef}
+            autoFocus={true}
           />
         )}
       </div>

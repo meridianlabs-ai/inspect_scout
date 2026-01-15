@@ -3,7 +3,6 @@ import {
   ChangeEvent,
   FC,
   KeyboardEvent,
-  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -20,11 +19,11 @@ export interface AutocompleteInputProps {
   onChange: (value: string) => void;
   onCommit?: () => void;
   onCancel?: () => void;
-  inputRef: RefObject<HTMLInputElement | null>;
   disabled?: boolean;
   placeholder?: string;
   suggestions: Array<string | number | boolean | null>;
   className?: string;
+  autoFocus?: boolean;
 }
 
 const MAX_VISIBLE_SUGGESTIONS = 10;
@@ -36,12 +35,13 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   onChange,
   onCommit,
   onCancel,
-  inputRef,
   disabled,
   placeholder = "Filter",
   suggestions,
   className,
+  autoFocus,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   // Start with no selection (-1) so Enter submits the typed value, not a suggestion
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -234,6 +234,7 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
             ? `${id}-option-${highlightedIndex}`
             : undefined
         }
+        autoFocus={autoFocus}
       />
 
       {showDropdown &&

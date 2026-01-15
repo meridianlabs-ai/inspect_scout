@@ -89,9 +89,9 @@ export const TranscriptFilterBar: FC<{
     setIsOpen: setIsEditorOpen,
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
     operatorOptions,
+    value: rawValue,
+    setValue: setRawValue,
     isValueDisabled,
     commitAndClose,
     cancelAndClose,
@@ -195,8 +195,6 @@ export const TranscriptFilterBar: FC<{
             operatorOptions={operatorOptions}
             rawValue={rawValue}
             isValueDisabled={isValueDisabled}
-            valueSelectRef={valueSelectRef}
-            valueInputRef={valueInputRef}
             onOperatorChange={setOperator}
             onValueChange={setRawValue}
             onCommit={commitAndClose}

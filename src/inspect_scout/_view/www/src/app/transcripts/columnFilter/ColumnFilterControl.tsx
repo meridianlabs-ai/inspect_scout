@@ -36,12 +36,10 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
     setIsOpen,
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
     operatorOptions,
+    value: rawValue,
+    setValue: setRawValue,
     isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
     commitAndClose,
     cancelAndClose,
   } = useColumnFilterPopover({
@@ -92,8 +90,6 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
           operatorOptions={operatorOptions}
           rawValue={rawValue}
           isValueDisabled={isValueDisabled}
-          valueSelectRef={valueSelectRef}
-          valueInputRef={valueInputRef}
           onOperatorChange={setOperator}
           onValueChange={setRawValue}
           onCommit={commitAndClose}

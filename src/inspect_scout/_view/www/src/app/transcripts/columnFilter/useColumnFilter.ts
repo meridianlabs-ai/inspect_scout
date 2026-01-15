@@ -95,12 +95,10 @@ export interface UseColumnFilterParams {
 export interface UseColumnFilterReturn {
   operator: OperatorModel;
   setOperator: (operator: OperatorModel) => void;
-  rawValue: string;
-  setRawValue: (value: string) => void;
   operatorOptions: OperatorModel[];
-  isValueDisabled: boolean;
-  valueSelectRef: React.RefObject<HTMLSelectElement | null>;
-  valueInputRef: React.RefObject<HTMLInputElement | null>;
+  value: string;
+  setValue: (value: string) => void;
+  usesValue: boolean;
   buildCondition: (
     operator: OperatorModel,
     value: string
@@ -121,7 +119,7 @@ export function useColumnFilter({
   );
 
   // value
-  const [rawValue, setRawValue] = useState<string>(
+  const [value, setValue] = useState<string>(
     formatFilterValue(condition?.right, filterType)
   );
   const isValueDisabled = OPERATORS_WITHOUT_VALUE.has(operator);
@@ -132,9 +130,9 @@ export function useColumnFilter({
   useEffect(() => {
     if (!isOpen) {
       setOperator(condition?.operator ?? defaultOperator);
-      setRawValue(formatFilterValue(condition?.right, filterType));
+      setValue(formatFilterValue(condition?.right, filterType));
     }
-  }, [condition, defaultOperator, filterType, isOpen]);
+  }, [condition, defaultOperator, filterType, isOpen, setValue]);
 
   // auto-focus value input when opened
   useEffect(() => {
@@ -186,12 +184,10 @@ export function useColumnFilter({
   return {
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
+    value,
+    setValue,
     operatorOptions,
-    isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
+    usesValue: isValueDisabled,
     buildCondition,
   };
 }

@@ -2,11 +2,9 @@ import {
   VscodeCheckbox,
   VscodeFormHelper,
   VscodeLabel,
-  VscodeOption,
-  VscodeSingleSelect,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC } from "react";
+import { FC, useCallback } from "react";
 
 import {
   BatchConfig,
@@ -15,9 +13,11 @@ import {
   ProjectConfigInput,
 } from "../../types/api-types";
 
+import { NumberField, SelectField, TextField } from "./components/FormFields";
+import { useBatchConfig, useNestedConfig } from "./hooks/useNestedConfig";
 import styles from "./ProjectPanel.module.css";
 
-// Constants
+// Constants for select options
 const LOG_LEVELS = [
   "debug",
   "http",
@@ -68,14 +68,35 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   const generateConfig = config.generate_config ?? {};
 
   // Helper to update generate_config fields
-  const updateGenerateConfig = (updates: Partial<GenerateConfigInput>) => {
-    onChange({
-      generate_config: {
-        ...filterNullValues(generateConfig),
-        ...updates,
-      },
-    });
-  };
+  const updateGenerateConfig = useCallback(
+    (updates: Partial<GenerateConfigInput>) => {
+      onChange({
+        generate_config: {
+          ...filterNullValues(generateConfig),
+          ...updates,
+        },
+      });
+    },
+    [generateConfig, onChange]
+  );
+
+  // Cache config hook
+  const cache = useNestedConfig<CachePolicy>(
+    generateConfig.cache,
+    useCallback(
+      (value) => updateGenerateConfig({ cache: value }),
+      [updateGenerateConfig]
+    )
+  );
+
+  // Batch config hook
+  const batch = useBatchConfig<BatchConfig>(
+    generateConfig.batch,
+    useCallback(
+      (value) => updateGenerateConfig({ batch: value }),
+      [updateGenerateConfig]
+    )
+  );
 
   // ===== General Section Helpers =====
   const tagsValue = Array.isArray(config.tags)
@@ -144,105 +165,27 @@ export const SettingsContent: FC<SettingsContentProps> = ({
     }
   };
 
-  // ===== Cache Section Helpers =====
-  const cache = generateConfig.cache;
-  const cacheEnabled = cache !== null && cache !== undefined && cache !== false;
-  const cachePolicy: Partial<CachePolicy> =
-    typeof cache === "object" && cache !== null ? cache : {};
-
-  const handleCacheEnableChange = (enabled: boolean) => {
-    if (enabled) {
-      updateGenerateConfig({ cache: true });
-    } else {
-      updateGenerateConfig({ cache: null });
-    }
-  };
-
-  const updateCachePolicy = (updates: Partial<CachePolicy>) => {
-    const existingConfig =
-      typeof cache === "object" && cache !== null
-        ? filterNullValues(cache)
-        : {};
-    updateGenerateConfig({
-      cache: {
-        ...existingConfig,
-        ...updates,
-      } as CachePolicy,
-    });
-  };
-
-  // ===== Batch Section Helpers =====
-  const batch = generateConfig.batch;
-  const batchEnabled = batch !== null && batch !== undefined && batch !== false;
-  const batchConfig: Partial<BatchConfig> =
-    typeof batch === "object" && batch !== null ? batch : {};
-  const simpleBatchSize = typeof batch === "number" ? batch : null;
-
-  const handleBatchEnableChange = (enabled: boolean) => {
-    if (enabled) {
-      updateGenerateConfig({ batch: true });
-    } else {
-      updateGenerateConfig({ batch: null });
-    }
-  };
-
-  const updateBatchConfig = (updates: Partial<BatchConfig>) => {
-    const existingConfig =
-      typeof batch === "object" && batch !== null
-        ? filterNullValues(batch)
-        : {};
-    const size = typeof batch === "number" ? batch : existingConfig.size;
-    updateGenerateConfig({
-      batch: {
-        ...(size !== undefined ? { size } : {}),
-        ...existingConfig,
-        ...updates,
-      } as BatchConfig,
-    });
-  };
-
-  const currentBatchSize =
-    typeof batch === "object" ? batchConfig.size : simpleBatchSize;
-
   return (
     <>
       {/* ===== LOCATIONS SECTION ===== */}
       <div id="locations" className={styles.section}>
         <div className={styles.sectionHeader}>Locations</div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Transcripts</VscodeLabel>
-          <VscodeFormHelper>
-            Transcripts to scan (filesystem, S3 bucket, etc.)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={config.transcripts ?? ""}
-            onInput={(e) =>
-              onChange({
-                transcripts: (e.target as HTMLInputElement).value || null,
-              })
-            }
-            placeholder="Path to transcripts"
-            spellCheck={false}
-          />
-        </div>
+        <TextField
+          label="Transcripts"
+          helper="Transcripts to scan (filesystem, S3 bucket, etc.)"
+          value={config.transcripts}
+          onChange={(v) => onChange({ transcripts: v })}
+          placeholder="Path to transcripts"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Scans</VscodeLabel>
-          <VscodeFormHelper>
-            Location to write scan results (filesystem, S3 bucket, etc.)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={config.scans ?? ""}
-            onInput={(e) =>
-              onChange({
-                scans: (e.target as HTMLInputElement).value || null,
-              })
-            }
-            placeholder="Path to scans output"
-            spellCheck={false}
-          />
-        </div>
+        <TextField
+          label="Scans"
+          helper="Location to write scan results (filesystem, S3 bucket, etc.)"
+          value={config.scans}
+          onChange={(v) => onChange({ scans: v })}
+          placeholder="Path to scans output"
+        />
       </div>
 
       {/* ===== FILTERING SECTION ===== */}
@@ -270,23 +213,13 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           />
         </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Limit</VscodeLabel>
-          <VscodeFormHelper>
-            Limit the number of transcripts processed per scanner
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={config.limit?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              onChange({ limit: isNaN(num) ? null : num });
-            }}
-            placeholder="No limit"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Limit"
+          helper="Limit the number of transcripts processed per scanner"
+          value={config.limit}
+          onChange={(v) => onChange({ limit: v })}
+          placeholder="No limit"
+        />
 
         <div className={styles.field}>
           <VscodeLabel>Shuffle</VscodeLabel>
@@ -322,42 +255,21 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       <div id="concurrency" className={styles.section}>
         <div className={styles.sectionHeader}>Concurrency</div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Transcripts</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum number of transcripts to process concurrently (default: 25)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={config.max_transcripts?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              onChange({ max_transcripts: isNaN(num) ? null : num });
-            }}
-            placeholder="25"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Transcripts"
+          helper="Maximum number of transcripts to process concurrently (default: 25)"
+          value={config.max_transcripts}
+          onChange={(v) => onChange({ max_transcripts: v })}
+          placeholder="25"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Processes</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum number of concurrent processes for multiprocessing (default:
-            4)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={config.max_processes?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              onChange({ max_processes: isNaN(num) ? null : num });
-            }}
-            placeholder="4"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Processes"
+          helper="Maximum number of concurrent processes for multiprocessing (default: 4)"
+          value={config.max_processes}
+          onChange={(v) => onChange({ max_processes: v })}
+          placeholder="4"
+        />
       </div>
 
       {/* ===== MISCELLANEOUS SECTION ===== */}
@@ -394,28 +306,14 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           />
         </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Log Level</VscodeLabel>
-          <VscodeFormHelper>
-            Level for logging to the console (default: warning)
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={config.log_level ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              onChange({
-                log_level: val ? (val as (typeof LOG_LEVELS)[number]) : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default (warning)</VscodeOption>
-            {LOG_LEVELS.map((level) => (
-              <VscodeOption key={level} value={level}>
-                {level}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Log Level"
+          helper="Level for logging to the console (default: warning)"
+          value={config.log_level}
+          options={LOG_LEVELS}
+          onChange={(v) => onChange({ log_level: v })}
+          defaultLabel="Default (warning)"
+        />
       </div>
 
       {/* ===== MODEL SECTION ===== */}
@@ -426,39 +324,22 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           as well as the model returned by calls to <code>get_model()</code> in
           custom scanners.
         </VscodeFormHelper>
-        <div className={styles.field}>
-          <VscodeLabel>Model</VscodeLabel>
-          <VscodeFormHelper>
-            Default model for LLM scanning (scanners can override as required)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={config.model ?? ""}
-            onInput={(e) =>
-              onChange({
-                model: (e.target as HTMLInputElement).value || null,
-              })
-            }
-            placeholder="e.g., openai/gpt-4o"
-            spellCheck={false}
-          />
-        </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Model Base URL</VscodeLabel>
-          <VscodeFormHelper>
-            Base URL for communicating with the model API
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={config.model_base_url ?? ""}
-            onInput={(e) =>
-              onChange({
-                model_base_url: (e.target as HTMLInputElement).value || null,
-              })
-            }
-            placeholder="API base URL"
-            spellCheck={false}
-          />
-        </div>
+        <TextField
+          label="Model"
+          helper="Default model for LLM scanning (scanners can override as required)"
+          value={config.model}
+          onChange={(v) => onChange({ model: v })}
+          placeholder="e.g., openai/gpt-4o"
+        />
+
+        <TextField
+          label="Model Base URL"
+          helper="Base URL for communicating with the model API"
+          value={config.model_base_url}
+          onChange={(v) => onChange({ model_base_url: v })}
+          placeholder="API base URL"
+        />
 
         <div className={styles.field}>
           <VscodeLabel>Model Args</VscodeLabel>
@@ -480,365 +361,155 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       <div id="connection" className={styles.section}>
         <div className={styles.sectionHeader}>Connection</div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Connections</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum concurrent connections to Model API (defaults to
-            max_transcripts)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.max_connections?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({
-                max_connections: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="Default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Connections"
+          helper="Maximum concurrent connections to Model API (defaults to max_transcripts)"
+          value={generateConfig.max_connections}
+          onChange={(v) => updateGenerateConfig({ max_connections: v })}
+          placeholder="Default"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Retries</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum number of times to retry request (defaults to unlimited)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.max_retries?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({ max_retries: isNaN(num) ? null : num });
-            }}
-            placeholder="Unlimited"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Retries"
+          helper="Maximum number of times to retry request (defaults to unlimited)"
+          value={generateConfig.max_retries}
+          onChange={(v) => updateGenerateConfig({ max_retries: v })}
+          placeholder="Unlimited"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Timeout</VscodeLabel>
-          <VscodeFormHelper>
-            Timeout (seconds) for entire request including retries
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.timeout?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({ timeout: isNaN(num) ? null : num });
-            }}
-            placeholder="No timeout"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Timeout"
+          helper="Timeout (seconds) for entire request including retries"
+          value={generateConfig.timeout}
+          onChange={(v) => updateGenerateConfig({ timeout: v })}
+          placeholder="No timeout"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Attempt Timeout</VscodeLabel>
-          <VscodeFormHelper>
-            Timeout (seconds) for any given attempt before retrying
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.attempt_timeout?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({
-                attempt_timeout: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="No timeout"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Attempt Timeout"
+          helper="Timeout (seconds) for any given attempt before retrying"
+          value={generateConfig.attempt_timeout}
+          onChange={(v) => updateGenerateConfig({ attempt_timeout: v })}
+          placeholder="No timeout"
+        />
       </div>
 
       {/* ===== GENERATION SECTION ===== */}
       <div id="generation" className={styles.section}>
         <div className={styles.sectionHeader}>Generation</div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Tokens</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum tokens that can be generated in the completion
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.max_tokens?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({ max_tokens: isNaN(num) ? null : num });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Tokens"
+          helper="Maximum tokens that can be generated in the completion"
+          value={generateConfig.max_tokens}
+          onChange={(v) => updateGenerateConfig({ max_tokens: v })}
+          placeholder="Model default"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Temperature</VscodeLabel>
-          <VscodeFormHelper>
-            Sampling temperature (0-2). Higher = more random
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={generateConfig.temperature?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateGenerateConfig({ temperature: isNaN(num) ? null : num });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Temperature"
+          helper="Sampling temperature (0-2). Higher = more random"
+          value={generateConfig.temperature}
+          onChange={(v) => updateGenerateConfig({ temperature: v })}
+          placeholder="Model default"
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Top P</VscodeLabel>
-          <VscodeFormHelper>Nucleus sampling probability mass</VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={generateConfig.top_p?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateGenerateConfig({ top_p: isNaN(num) ? null : num });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Top P"
+          helper="Nucleus sampling probability mass"
+          value={generateConfig.top_p}
+          onChange={(v) => updateGenerateConfig({ top_p: v })}
+          placeholder="Model default"
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Top K</VscodeLabel>
-          <VscodeFormHelper>
-            Sample from top K most likely next tokens
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.top_k?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({ top_k: isNaN(num) ? null : num });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Top K"
+          helper="Sample from top K most likely next tokens"
+          value={generateConfig.top_k}
+          onChange={(v) => updateGenerateConfig({ top_k: v })}
+          placeholder="Model default"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Frequency Penalty</VscodeLabel>
-          <VscodeFormHelper>
-            Penalize tokens based on frequency (-2 to 2)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={generateConfig.frequency_penalty?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateGenerateConfig({
-                frequency_penalty: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Frequency Penalty"
+          helper="Penalize tokens based on frequency (-2 to 2)"
+          value={generateConfig.frequency_penalty}
+          onChange={(v) => updateGenerateConfig({ frequency_penalty: v })}
+          placeholder="Model default"
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Presence Penalty</VscodeLabel>
-          <VscodeFormHelper>
-            Penalize new tokens based on presence (-2 to 2)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={generateConfig.presence_penalty?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateGenerateConfig({
-                presence_penalty: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Presence Penalty"
+          helper="Penalize new tokens based on presence (-2 to 2)"
+          value={generateConfig.presence_penalty}
+          onChange={(v) => updateGenerateConfig({ presence_penalty: v })}
+          placeholder="Model default"
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Seed</VscodeLabel>
-          <VscodeFormHelper>Random seed for reproducibility</VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.seed?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({ seed: isNaN(num) ? null : num });
-            }}
-            placeholder="Random"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Seed"
+          helper="Random seed for reproducibility"
+          value={generateConfig.seed}
+          onChange={(v) => updateGenerateConfig({ seed: v })}
+          placeholder="Random"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Verbosity</VscodeLabel>
-          <VscodeFormHelper>
-            Response verbosity (GPT 5.x models only)
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={generateConfig.verbosity ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateGenerateConfig({
-                verbosity: val
-                  ? (val as (typeof VERBOSITY_OPTIONS)[number])
-                  : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default</VscodeOption>
-            {VERBOSITY_OPTIONS.map((opt) => (
-              <VscodeOption key={opt} value={opt}>
-                {opt}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Verbosity"
+          helper="Response verbosity (GPT 5.x models only)"
+          value={generateConfig.verbosity}
+          options={VERBOSITY_OPTIONS}
+          onChange={(v) => updateGenerateConfig({ verbosity: v })}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Effort</VscodeLabel>
-          <VscodeFormHelper>
-            Response thoroughness (Claude Opus 4.5 only)
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={generateConfig.effort ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateGenerateConfig({
-                effort: val ? (val as (typeof EFFORT_OPTIONS)[number]) : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default</VscodeOption>
-            {EFFORT_OPTIONS.map((opt) => (
-              <VscodeOption key={opt} value={opt}>
-                {opt}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Effort"
+          helper="Response thoroughness (Claude Opus 4.5 only)"
+          value={generateConfig.effort}
+          options={EFFORT_OPTIONS}
+          onChange={(v) => updateGenerateConfig({ effort: v })}
+        />
       </div>
 
       {/* ===== REASONING SECTION ===== */}
       <div id="reasoning" className={styles.section}>
         <div className={styles.sectionHeader}>Reasoning</div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Reasoning Effort</VscodeLabel>
-          <VscodeFormHelper>
-            Constrains effort on reasoning (varies by provider/model)
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={generateConfig.reasoning_effort ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateGenerateConfig({
-                reasoning_effort: val
-                  ? (val as (typeof REASONING_EFFORT_OPTIONS)[number])
-                  : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default</VscodeOption>
-            {REASONING_EFFORT_OPTIONS.map((opt) => (
-              <VscodeOption key={opt} value={opt}>
-                {opt}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Reasoning Effort"
+          helper="Constrains effort on reasoning (varies by provider/model)"
+          value={generateConfig.reasoning_effort}
+          options={REASONING_EFFORT_OPTIONS}
+          onChange={(v) => updateGenerateConfig({ reasoning_effort: v })}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Reasoning Tokens</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum tokens for reasoning (Anthropic/Google only)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={generateConfig.reasoning_tokens?.toString() ?? ""}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateGenerateConfig({
-                reasoning_tokens: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="Model default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Reasoning Tokens"
+          helper="Maximum tokens for reasoning (Anthropic/Google only)"
+          value={generateConfig.reasoning_tokens}
+          onChange={(v) => updateGenerateConfig({ reasoning_tokens: v })}
+          placeholder="Model default"
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Reasoning Summary</VscodeLabel>
-          <VscodeFormHelper>
-            Summary of reasoning steps (OpenAI reasoning models only)
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={generateConfig.reasoning_summary ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateGenerateConfig({
-                reasoning_summary: val
-                  ? (val as (typeof REASONING_SUMMARY_OPTIONS)[number])
-                  : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default</VscodeOption>
-            {REASONING_SUMMARY_OPTIONS.map((opt) => (
-              <VscodeOption key={opt} value={opt}>
-                {opt}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Reasoning Summary"
+          helper="Summary of reasoning steps (OpenAI reasoning models only)"
+          value={generateConfig.reasoning_summary}
+          options={REASONING_SUMMARY_OPTIONS}
+          onChange={(v) => updateGenerateConfig({ reasoning_summary: v })}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Reasoning History</VscodeLabel>
-          <VscodeFormHelper>
-            Include reasoning in chat message history
-          </VscodeFormHelper>
-          <VscodeSingleSelect
-            value={generateConfig.reasoning_history ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateGenerateConfig({
-                reasoning_history: val
-                  ? (val as (typeof REASONING_HISTORY_OPTIONS)[number])
-                  : null,
-              });
-            }}
-          >
-            <VscodeOption value="">Default</VscodeOption>
-            {REASONING_HISTORY_OPTIONS.map((opt) => (
-              <VscodeOption key={opt} value={opt}>
-                {opt}
-              </VscodeOption>
-            ))}
-          </VscodeSingleSelect>
-        </div>
+        <SelectField
+          label="Reasoning History"
+          helper="Include reasoning in chat message history"
+          value={generateConfig.reasoning_history}
+          options={REASONING_HISTORY_OPTIONS}
+          onChange={(v) => updateGenerateConfig({ reasoning_history: v })}
+        />
       </div>
 
       {/* ===== CACHE SECTION ===== */}
@@ -847,9 +518,9 @@ export const SettingsContent: FC<SettingsContentProps> = ({
 
         <div className={styles.field}>
           <VscodeCheckbox
-            checked={cacheEnabled}
+            checked={cache.enabled}
             onChange={(e) =>
-              handleCacheEnableChange((e.target as HTMLInputElement).checked)
+              cache.setEnabled((e.target as HTMLInputElement).checked)
             }
           >
             Enable Caching
@@ -859,24 +530,14 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           </VscodeFormHelper>
         </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Expiry</VscodeLabel>
-          <VscodeFormHelper>
-            Cache expiration duration (e.g., "1W" for one week, "1D" for one
-            day)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={cachePolicy.expiry ?? "1W"}
-            disabled={!cacheEnabled}
-            onInput={(e) =>
-              updateCachePolicy({
-                expiry: (e.target as HTMLInputElement).value || null,
-              })
-            }
-            placeholder="1W"
-            spellCheck={false}
-          />
-        </div>
+        <TextField
+          label="Expiry"
+          helper='Cache expiration duration (e.g., "1W" for one week, "1D" for one day)'
+          value={cache.config.expiry ?? "1W"}
+          onChange={(v) => cache.updateConfig({ expiry: v })}
+          placeholder="1W"
+          disabled={!cache.enabled}
+        />
 
         <div className={styles.field}>
           <VscodeLabel>Per Epoch</VscodeLabel>
@@ -884,10 +545,10 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             Maintain separate cache entries per epoch
           </VscodeFormHelper>
           <VscodeCheckbox
-            checked={cachePolicy.per_epoch ?? true}
-            disabled={!cacheEnabled}
+            checked={cache.config.per_epoch ?? true}
+            disabled={!cache.enabled}
             onChange={(e) =>
-              updateCachePolicy({
+              cache.updateConfig({
                 per_epoch: (e.target as HTMLInputElement).checked,
               })
             }
@@ -903,9 +564,9 @@ export const SettingsContent: FC<SettingsContentProps> = ({
 
         <div className={styles.field}>
           <VscodeCheckbox
-            checked={batchEnabled}
+            checked={batch.enabled}
             onChange={(e) =>
-              handleBatchEnableChange((e.target as HTMLInputElement).checked)
+              batch.setEnabled((e.target as HTMLInputElement).checked)
             }
           >
             Enable Batch Processing
@@ -915,119 +576,63 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           </VscodeFormHelper>
         </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Batch Size</VscodeLabel>
-          <VscodeFormHelper>Number of requests per batch</VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={currentBatchSize?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateBatchConfig({ size: isNaN(num) ? null : num });
-            }}
-            placeholder="Default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Batch Size"
+          helper="Number of requests per batch"
+          value={batch.currentBatchSize}
+          onChange={(v) => batch.updateConfig({ size: v })}
+          placeholder="Default"
+          disabled={!batch.enabled}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Size</VscodeLabel>
-          <VscodeFormHelper>Maximum batch size allowed</VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={batchConfig.max_size?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateBatchConfig({ max_size: isNaN(num) ? null : num });
-            }}
-            placeholder="No limit"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Size"
+          helper="Maximum batch size allowed"
+          value={batch.config.max_size}
+          onChange={(v) => batch.updateConfig({ max_size: v })}
+          placeholder="No limit"
+          disabled={!batch.enabled}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Batches</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum number of batches to process
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={batchConfig.max_batches?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateBatchConfig({ max_batches: isNaN(num) ? null : num });
-            }}
-            placeholder="No limit"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Batches"
+          helper="Maximum number of batches to process"
+          value={batch.config.max_batches}
+          onChange={(v) => batch.updateConfig({ max_batches: v })}
+          placeholder="No limit"
+          disabled={!batch.enabled}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Send Delay</VscodeLabel>
-          <VscodeFormHelper>
-            Delay (seconds) before sending batch
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={batchConfig.send_delay?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateBatchConfig({ send_delay: isNaN(num) ? null : num });
-            }}
-            placeholder="0"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Send Delay"
+          helper="Delay (seconds) before sending batch"
+          value={batch.config.send_delay}
+          onChange={(v) => batch.updateConfig({ send_delay: v })}
+          placeholder="0"
+          disabled={!batch.enabled}
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Tick</VscodeLabel>
-          <VscodeFormHelper>
-            Tick interval (seconds) for batch processing
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            step={0.1}
-            value={batchConfig.tick?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseFloat(val);
-              updateBatchConfig({ tick: isNaN(num) ? null : num });
-            }}
-            placeholder="Default"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Tick"
+          helper="Tick interval (seconds) for batch processing"
+          value={batch.config.tick}
+          onChange={(v) => batch.updateConfig({ tick: v })}
+          placeholder="Default"
+          disabled={!batch.enabled}
+          step={0.1}
+        />
 
-        <div className={styles.field}>
-          <VscodeLabel>Max Check Failures</VscodeLabel>
-          <VscodeFormHelper>
-            Maximum consecutive check failures before abort
-          </VscodeFormHelper>
-          <VscodeTextfield
-            type="number"
-            value={batchConfig.max_consecutive_check_failures?.toString() ?? ""}
-            disabled={!batchEnabled}
-            onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              const num = parseInt(val, 10);
-              updateBatchConfig({
-                max_consecutive_check_failures: isNaN(num) ? null : num,
-              });
-            }}
-            placeholder="No limit"
-            spellCheck={false}
-          />
-        </div>
+        <NumberField
+          label="Max Check Failures"
+          helper="Maximum consecutive check failures before abort"
+          value={batch.config.max_consecutive_check_failures}
+          onChange={(v) =>
+            batch.updateConfig({ max_consecutive_check_failures: v })
+          }
+          placeholder="No limit"
+          disabled={!batch.enabled}
+        />
       </div>
     </>
   );

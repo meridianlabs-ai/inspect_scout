@@ -15,6 +15,12 @@ import {
   useUpdateProjectConfig,
 } from "../server/useProjectConfig";
 
+import {
+  computeConfigToSave,
+  configsEqual,
+  deepCopy,
+  initializeEditedConfig,
+} from "./configUtils";
 import styles from "./ProjectPanel.module.css";
 import { SettingsContent } from "./SettingsContent";
 
@@ -22,199 +28,39 @@ interface ProjectPanelProps {
   config: AppConfig;
 }
 
-// Deep equality check for config objects
-function configsEqual(
-  a: Partial<ProjectConfigInput> | null,
-  b: Partial<ProjectConfigInput> | null
-): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return JSON.stringify(a) === JSON.stringify(b);
+// Navigation structure for the settings panel
+interface NavItem {
+  id: string;
+  label: string;
 }
 
-// Check if a value is "empty" (null, undefined, or empty object/array)
-function isEmpty(value: unknown): boolean {
-  if (value === null || value === undefined) return true;
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "object") return Object.keys(value).length === 0;
-  return false;
+interface NavSection {
+  group: string;
+  items: NavItem[];
 }
 
-// Compute the config to save by comparing edited values against original server state
-function computeConfigToSave(
-  edited: Partial<ProjectConfigInput>,
-  original: Partial<ProjectConfigInput>,
-  serverConfig: ProjectConfigInput
-): ProjectConfigInput {
-  const result: Record<string, unknown> = {};
-
-  const allKeys = new Set([
-    ...Object.keys(edited),
-    ...Object.keys(serverConfig),
-  ]);
-
-  for (const key of allKeys) {
-    const editedValue = edited[key as keyof ProjectConfigInput];
-    const originalValue = original[key as keyof ProjectConfigInput];
-    const serverValue = serverConfig[key as keyof ProjectConfigInput];
-
-    if (key === "generate_config") {
-      const cleanedGenConfig = cleanGenerateConfig(
-        editedValue as Record<string, unknown> | null | undefined,
-        originalValue as Record<string, unknown> | null | undefined,
-        serverValue as Record<string, unknown> | null | undefined
-      );
-      if (cleanedGenConfig !== undefined) {
-        result[key] = cleanedGenConfig;
-      }
-      continue;
-    }
-
-    const valueChanged =
-      JSON.stringify(editedValue) !== JSON.stringify(originalValue);
-
-    if (valueChanged) {
-      result[key] = editedValue;
-    } else if (!isEmpty(editedValue)) {
-      result[key] = editedValue;
-    }
-  }
-
-  return result as ProjectConfigInput;
-}
-
-function cleanGenerateConfig(
-  edited: Record<string, unknown> | null | undefined,
-  original: Record<string, unknown> | null | undefined,
-  _server: Record<string, unknown> | null | undefined
-): Record<string, unknown> | null | undefined {
-  if (
-    edited === null ||
-    edited === undefined ||
-    (typeof edited === "object" && Object.keys(edited).length === 0)
-  ) {
-    const originalHasContent =
-      original !== null &&
-      original !== undefined &&
-      typeof original === "object" &&
-      Object.keys(original).length > 0;
-    if (originalHasContent) {
-      return null;
-    }
-    return undefined;
-  }
-
-  const result: Record<string, unknown> = {};
-  const editedObj = edited;
-  const originalObj = original ?? {};
-
-  for (const key of Object.keys(editedObj)) {
-    const editedValue = editedObj[key];
-    const originalValue = originalObj[key];
-
-    if (key === "cache" || key === "batch") {
-      const cleanedNested = cleanNestedConfig(
-        editedValue as
-          | Record<string, unknown>
-          | boolean
-          | number
-          | null
-          | undefined,
-        originalValue as
-          | Record<string, unknown>
-          | boolean
-          | number
-          | null
-          | undefined
-      );
-      if (cleanedNested !== undefined) {
-        result[key] = cleanedNested;
-      }
-      continue;
-    }
-
-    if (editedValue === null || editedValue === undefined) {
-      const originalHadContent =
-        originalValue !== null &&
-        originalValue !== undefined &&
-        (typeof originalValue !== "object" ||
-          Object.keys(originalValue).length > 0);
-      if (originalHadContent) {
-        result[key] = null;
-      }
-      continue;
-    }
-
-    result[key] = editedValue;
-  }
-
-  if (Object.keys(result).length === 0) {
-    return undefined;
-  }
-
-  return result;
-}
-
-function cleanNestedConfig(
-  edited: Record<string, unknown> | boolean | number | null | undefined,
-  original: Record<string, unknown> | boolean | number | null | undefined
-): Record<string, unknown> | boolean | number | null | undefined {
-  if (typeof edited === "boolean" || typeof edited === "number") {
-    return edited;
-  }
-
-  if (edited === null || edited === undefined) {
-    if (original !== null && original !== undefined) {
-      return null;
-    }
-    return undefined;
-  }
-
-  const result: Record<string, unknown> = {};
-  const originalObj =
-    typeof original === "object" && original !== null ? original : {};
-
-  for (const [key, value] of Object.entries(edited)) {
-    const origValue = originalObj[key];
-    const valueChanged = JSON.stringify(value) !== JSON.stringify(origValue);
-
-    if (valueChanged) {
-      result[key] = value;
-    } else if (!isEmpty(value)) {
-      result[key] = value;
-    }
-  }
-
-  if (Object.keys(result).length === 0) {
-    if (original !== null && original !== undefined) {
-      return true;
-    }
-    return undefined;
-  }
-
-  return result;
-}
-
-function initializeEditedConfig(
-  serverConfig: ProjectConfigInput
-): Partial<ProjectConfigInput> {
-  return {
-    transcripts: serverConfig.transcripts,
-    filter: serverConfig.filter,
-    scans: serverConfig.scans,
-    max_transcripts: serverConfig.max_transcripts,
-    max_processes: serverConfig.max_processes,
-    limit: serverConfig.limit,
-    shuffle: serverConfig.shuffle,
-    tags: serverConfig.tags,
-    metadata: serverConfig.metadata,
-    log_level: serverConfig.log_level,
-    model: serverConfig.model,
-    model_base_url: serverConfig.model_base_url,
-    model_args: serverConfig.model_args,
-    generate_config: serverConfig.generate_config ?? null,
-  };
-}
+const NAV_SECTIONS: NavSection[] = [
+  {
+    group: "General",
+    items: [
+      { id: "locations", label: "Locations" },
+      { id: "filtering", label: "Filtering" },
+      { id: "concurrency", label: "Concurrency" },
+      { id: "miscellaneous", label: "Miscellaneous" },
+    ],
+  },
+  {
+    group: "Model",
+    items: [
+      { id: "model", label: "Model" },
+      { id: "connection", label: "Connection" },
+      { id: "generation", label: "Generation" },
+      { id: "reasoning", label: "Reasoning" },
+      { id: "cache", label: "Cache" },
+      { id: "batch", label: "Batch" },
+    ],
+  },
+];
 
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const scrollContentRef = useRef<HTMLDivElement>(null);
@@ -231,6 +77,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       container.scrollTo({ top: scrollTop, behavior: "smooth" });
     }
   }, []);
+
   const queryClient = useQueryClient();
   const { loading, error, data } = useProjectConfig();
   const mutation = useUpdateProjectConfig();
@@ -241,23 +88,20 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     useState<Partial<ProjectConfigInput> | null>(null);
   const [conflictError, setConflictError] = useState(false);
 
+  // Initialize config state when data loads or etag changes
   useEffect(() => {
-    if (data && !editedConfig) {
-      const initialized = initializeEditedConfig(
-        data.config as ProjectConfigInput
-      );
-      setEditedConfig(initialized);
-      setOriginalConfig(JSON.parse(JSON.stringify(initialized)));
-    }
-  }, [data, editedConfig]);
+    if (!data) return;
 
-  useEffect(() => {
-    if (data) {
+    // Only initialize if we haven't yet, or if etag changed (external modification)
+    const shouldInitialize = !editedConfig;
+    const etagChanged = data.etag !== undefined; // etag dependency handles re-init
+
+    if (shouldInitialize || etagChanged) {
       const initialized = initializeEditedConfig(
         data.config as ProjectConfigInput
       );
       setEditedConfig(initialized);
-      setOriginalConfig(JSON.parse(JSON.stringify(initialized)));
+      setOriginalConfig(deepCopy(initialized));
     }
   }, [data?.etag]);
 
@@ -389,91 +233,23 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
           {/* Navigation */}
           <nav className={styles.treeNav}>
             <ul className={styles.navList}>
-              {/* General Group */}
-              <li className={styles.navGroup}>General</li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("locations")}
-                >
-                  Locations
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("filtering")}
-                >
-                  Filtering
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("concurrency")}
-                >
-                  Concurrency
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("miscellaneous")}
-                >
-                  Miscellaneous
-                </button>
-              </li>
-
-              {/* Model Group */}
-              <li className={styles.navGroup}>Model</li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("model")}
-                >
-                  Model
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("connection")}
-                >
-                  Connection
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("generation")}
-                >
-                  Generation
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("reasoning")}
-                >
-                  Reasoning
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("cache")}
-                >
-                  Cache
-                </button>
-              </li>
-              <li className={styles.navListItem}>
-                <button
-                  className={styles.navItem}
-                  onClick={() => scrollToSection("batch")}
-                >
-                  Batch
-                </button>
-              </li>
+              {NAV_SECTIONS.map((section) => (
+                <li key={section.group} className={styles.navListItem}>
+                  <span className={styles.navGroup}>{section.group}</span>
+                  <ul className={styles.navList}>
+                    {section.items.map((item) => (
+                      <li key={item.id} className={styles.navListItem}>
+                        <button
+                          className={styles.navItem}
+                          onClick={() => scrollToSection(item.id)}
+                        >
+                          {item.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
             </ul>
           </nav>
 

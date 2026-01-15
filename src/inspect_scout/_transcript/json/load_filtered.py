@@ -179,11 +179,6 @@ async def _parse_and_filter(
     """
     Phase 1: Single-pass stream parse, filter, and collect attachment references.
 
-    IMPORTANT ASSUMPTION: This function assumes metadata appears BEFORE messages
-    in the JSON structure. When events_filter is None and no attachment refs are
-    found in messages, parsing stops early after the messages array. If metadata
-    appears after messages in the JSON, it will be incomplete.
-
     Returns:
         Tuple of (partial transcript, attachment references dict)
     """

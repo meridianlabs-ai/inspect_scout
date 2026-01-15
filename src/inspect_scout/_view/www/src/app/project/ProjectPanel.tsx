@@ -270,7 +270,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
           {/* Scrollable Content */}
           <div ref={scrollContentRef} className={styles.scrollContent}>
             <VscodeFormHelper style={{ marginBottom: "10px" }}>
-              Project settings provides default options for scans run from the
+              Project settings provide default options for scans run from the
               project directory. You can override some or all of the defaults
               for each scan using command line parameters or a scan job config
               file.

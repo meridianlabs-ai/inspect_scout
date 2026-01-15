@@ -53,14 +53,15 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      // Prevent parent bubbling
+      event.stopPropagation();
+
       if (event.key === "Escape") {
         event.preventDefault();
-        event.stopPropagation();
         onCancel?.();
       }
       if (event.key === "Enter") {
         event.preventDefault();
-        event.stopPropagation();
         onCommit?.();
       }
     },

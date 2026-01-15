@@ -25,6 +25,7 @@ export interface AutocompleteInputProps {
   autoFocus?: boolean;
   maxSuggestions?: number;
   charactersBeforeSuggesting?: number;
+  maxSuggestionWidth?: number;
   className?: string;
 }
 
@@ -39,6 +40,7 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   placeholder = "Filter",
   maxSuggestions = 10,
   charactersBeforeSuggesting = 1,
+  maxSuggestionWidth = 300,
   autoFocus,
   className,
 }) => {
@@ -93,6 +95,14 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   useEffect(() => {
     setHighlightedIndex(-1);
   }, [filteredSuggestions]);
+
+  // Select all text when autoFocus is enabled (show start of text, not end)
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.select();
+      inputRef.current.scrollLeft = 0;
+    }
+  }, [autoFocus]);
 
   // Show dropdown when input is focused and has suggestions (only if user has typed)
   const handleFocus = useCallback(() => {
@@ -256,7 +266,8 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
               position: "fixed",
               top: dropdownPosition.top,
               left: dropdownPosition.left,
-              width: dropdownPosition.width,
+              minWidth: dropdownPosition.width,
+              maxWidth: maxSuggestionWidth,
             }}
           >
             {filteredSuggestions.map((suggestion, index) => (

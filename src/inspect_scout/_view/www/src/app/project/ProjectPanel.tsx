@@ -64,6 +64,12 @@ const NAV_SECTIONS: NavSection[] = [
 
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const scrollContentRef = useRef<HTMLDivElement>(null);
+  const focusedBeforeSaveRef = useRef<Element | null>(null);
+
+  // Capture focused element on mousedown (before click moves focus to button)
+  const handleSaveMouseDown = useCallback(() => {
+    focusedBeforeSaveRef.current = document.activeElement;
+  }, []);
 
   // Scroll to section - only scrolls within the scrollContent container
   const scrollToSection = useCallback((sectionId: string) => {
@@ -127,6 +133,9 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const handleSave = (force = false) => {
     if (!data || !editedConfig || !originalConfig) return;
 
+    // Use the element that was focused before mousedown on save button
+    const focusedElement = focusedBeforeSaveRef.current as HTMLElement | null;
+
     const updatedConfig = computeConfigToSave(
       editedConfig,
       originalConfig,
@@ -138,6 +147,10 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       {
         onSuccess: () => {
           setConflictError(false);
+          // Restore focus after the click event fully completes
+          requestAnimationFrame(() => {
+            focusedElement?.focus?.();
+          });
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 412) {
@@ -189,13 +202,14 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       {/* Header */}
       <div className={styles.headerRow}>
         <div>
-          <div className={styles.header}>Project Config</div>
+          <div className={styles.header}>Project Settings</div>
           <div className={styles.detail}>
             {appAliasedPath(config, config.project_dir)}/scout.yaml
           </div>
         </div>
         <VscodeButton
           disabled={!hasChanges || mutation.isPending}
+          onMouseDown={handleSaveMouseDown}
           onClick={() => handleSave(false)}
         >
           {mutation.isPending ? "Saving..." : "Save Changes"}
@@ -256,9 +270,10 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
           {/* Scrollable Content */}
           <div ref={scrollContentRef} className={styles.scrollContent}>
             <VscodeFormHelper style={{ marginBottom: "10px" }}>
-              Project configuration provides default options for scans run from
-              the directory. You can override some or all of the defaults for
-              each scan using command line parameters or a scan job config file.
+              Project settings provides default options for scans run from the
+              project directory. You can override some or all of the defaults
+              for each scan using command line parameters or a scan job config
+              file.
             </VscodeFormHelper>
             <SettingsContent
               config={editedConfig}

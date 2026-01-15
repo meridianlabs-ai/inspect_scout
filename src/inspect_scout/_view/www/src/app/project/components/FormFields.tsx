@@ -3,6 +3,7 @@ import {
   VscodeLabel,
   VscodeOption,
   VscodeSingleSelect,
+  VscodeTextarea,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
 import { FC, ReactNode } from "react";
@@ -48,6 +49,134 @@ export const TextField: FC<TextFieldProps> = ({
     />
   </div>
 );
+
+// ===== TextAreaField Component =====
+interface TextAreaFieldProps {
+  label: string;
+  helper?: ReactNode;
+  value: string | null | undefined;
+  onChange: (value: string | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  rows?: number;
+}
+
+export const TextAreaField: FC<TextAreaFieldProps> = ({
+  label,
+  helper,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  rows = 3,
+}) => (
+  <div className={styles.field}>
+    <VscodeLabel>{label}</VscodeLabel>
+    {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
+    <VscodeTextarea
+      value={value ?? ""}
+      disabled={disabled}
+      onInput={(e) => onChange(getInputValue(e) || null)}
+      placeholder={placeholder}
+      rows={rows}
+      spellCheck={false}
+    />
+  </div>
+);
+
+// ===== KeyValueField Component =====
+// Handles key=value pairs (one per line) or plain string values
+
+/**
+ * Convert an object or string to key=value lines for display.
+ */
+export function objectToKeyValueLines(
+  value: Record<string, unknown> | string | null | undefined
+): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return Object.entries(value)
+    .map(([k, v]) => `${k}=${String(v)}`)
+    .join("\n");
+}
+
+/**
+ * Parse key=value lines into an object, or return as string if it looks like a path.
+ */
+export function parseKeyValueLines(
+  text: string | null
+): Record<string, string> | string | null {
+  if (!text?.trim()) return null;
+
+  // If it looks like a file path, return as string
+  const trimmed = text.trim();
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("./") ||
+    trimmed.startsWith("~") ||
+    /^[a-zA-Z]:\\/.test(trimmed) // Windows path
+  ) {
+    return trimmed;
+  }
+
+  // Parse as key=value pairs
+  const result: Record<string, string> = {};
+  for (const line of text.split("\n")) {
+    const lineTrimmed = line.trim();
+    if (!lineTrimmed) continue;
+    const eqIndex = lineTrimmed.indexOf("=");
+    if (eqIndex > 0) {
+      const key = lineTrimmed.slice(0, eqIndex).trim();
+      const val = lineTrimmed.slice(eqIndex + 1).trim();
+      if (key) {
+        result[key] = val;
+      }
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+interface KeyValueFieldProps {
+  label: string;
+  helper?: ReactNode;
+  value: Record<string, unknown> | string | null | undefined;
+  onChange: (value: Record<string, string> | string | null) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  rows?: number;
+}
+
+export const KeyValueField: FC<KeyValueFieldProps> = ({
+  label,
+  helper,
+  value,
+  onChange,
+  placeholder = "key=value",
+  disabled,
+  rows = 3,
+}) => {
+  const displayValue = objectToKeyValueLines(value);
+
+  const handleChange = (text: string | null) => {
+    onChange(parseKeyValueLines(text));
+  };
+
+  return (
+    <div className={styles.field}>
+      <VscodeLabel>{label}</VscodeLabel>
+      {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
+      <VscodeTextarea
+        value={displayValue}
+        disabled={disabled}
+        onInput={(e) => handleChange(getInputValue(e) || null)}
+        placeholder={placeholder}
+        rows={rows}
+        spellCheck={false}
+      />
+    </div>
+  );
+};
 
 // ===== NumberField Component =====
 interface NumberFieldProps {

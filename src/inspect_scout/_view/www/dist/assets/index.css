@@ -4978,7 +4978,7 @@ so disabling selection can break that functionality */
   border-top: 1px solid
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
-._container_tvw20_1 {
+._container_sxaov_1 {
   height: 100%;
   display: grid;
   grid-template-rows: max-content auto 1fr;
@@ -4986,24 +4986,24 @@ so disabling selection can break that functionality */
   row-gap: 0.5rem;
 }
 
-._container_tvw20_1 > ._headerRow_tvw20_9 {
+._container_sxaov_1 > ._headerRow_sxaov_9 {
   grid-row: 1;
 }
 
-._container_tvw20_1 > ._conflictBanner_tvw20_13 {
+._container_sxaov_1 > ._conflictBanner_sxaov_13 {
   grid-row: 2;
 }
 
-._container_tvw20_1 > ._loading_tvw20_17,
-._container_tvw20_1 > ._error_tvw20_18 {
+._container_sxaov_1 > ._loading_sxaov_17,
+._container_sxaov_1 > ._error_sxaov_18 {
   grid-row: 3;
 }
 
-._container_tvw20_1 > ._splitLayout_tvw20_22 {
+._container_sxaov_1 > ._splitLayout_sxaov_22 {
   grid-row: 3;
 }
 
-._headerRow_tvw20_9 {
+._headerRow_sxaov_9 {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -5011,18 +5011,18 @@ so disabling selection can break that functionality */
   border-bottom: 1px solid var(--vscode-widget-border);
 }
 
-._header_tvw20_9 {
+._header_sxaov_9 {
   font-size: 16px;
   font-weight: 600;
   color: var(--vscode-foreground);
 }
 
-._detail_tvw20_40 {
+._detail_sxaov_40 {
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
 }
 
-._conflictBanner_tvw20_13 {
+._conflictBanner_sxaov_13 {
   background: var(--vscode-inputValidation-warningBackground);
   border: 1px solid var(--vscode-inputValidation-warningBorder);
   padding: 8px 12px;
@@ -5034,36 +5034,36 @@ so disabling selection can break that functionality */
   color: var(--vscode-foreground);
 }
 
-._conflictActions_tvw20_57 {
+._conflictActions_sxaov_57 {
   display: flex;
   gap: 8px;
 }
 
-._splitLayout_tvw20_22 {
+._splitLayout_sxaov_22 {
   display: flex;
   min-height: 0;
   gap: 1rem;
 }
 
-._treeNav_tvw20_68 {
+._treeNav_sxaov_68 {
   width: 160px;
   flex-shrink: 0;
   overflow-y: auto;
 }
 
-._navList_tvw20_74 {
+._navList_sxaov_74 {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-._navListItem_tvw20_80 {
+._navListItem_sxaov_80 {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-._navGroup_tvw20_86 {
+._navGroup_sxaov_86 {
   font-size: 12px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -5072,11 +5072,11 @@ so disabling selection can break that functionality */
   letter-spacing: 0.03em;
 }
 
-._navGroup_tvw20_86:not(:first-child) {
+._navGroup_sxaov_86:not(:first-child) {
   margin-top: 0.75rem;
 }
 
-._navItem_tvw20_99 {
+._navItem_sxaov_99 {
   display: block;
   width: 100%;
   padding: 4px 8px 4px 16px;
@@ -5089,65 +5089,68 @@ so disabling selection can break that functionality */
   border-radius: 3px;
 }
 
-._navItem_tvw20_99:hover {
+._navItem_sxaov_99:hover {
   background: var(--vscode-list-hoverBackground);
 }
 
-._navItem_tvw20_99:focus {
+._navItem_sxaov_99:focus {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
 }
 
-._scrollContent_tvw20_121 {
+._scrollContent_sxaov_121 {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding-right: 0.5rem;
+  padding-right: 50px;
 }
 
 /* Make text fields wider */
-._field_tvw20_129 vscode-textfield {
+._field_sxaov_129 vscode-textfield {
   width: 400px !important;
 }
 
-._field_tvw20_129 vscode-textfield[type="number"] {
+._field_sxaov_129 vscode-textfield[type="number"] {
   width: 250px !important;
 }
 
-._field_tvw20_129 vscode-single-select {
+._field_sxaov_129 vscode-textarea {
+  width: 400px !important;
+}
+
+._field_sxaov_129 vscode-single-select {
   width: 250px !important;
 }
 
-._section_tvw20_141 {
+._section_sxaov_145 {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-._sectionHeader_tvw20_148 {
+._sectionHeader_sxaov_152 {
   font-size: 13px;
   font-weight: 600;
   color: var(--vscode-foreground);
   padding: 0.35rem 0.75rem 0.35rem 1rem;
   margin-left: -0.75rem;
-  margin-right: -0.5rem;
   background: var(--vscode-sideBarSectionHeader-background);
   border-radius: 3px;
 }
 
-._field_tvw20_129 {
+._field_sxaov_129 {
   display: flex;
   flex-direction: column;
 }
 
-._loading_tvw20_17,
-._error_tvw20_18 {
+._loading_sxaov_17,
+._error_sxaov_18 {
   font-size: 13px;
   color: var(--vscode-foreground);
 }
 
-._error_tvw20_18 {
+._error_sxaov_18 {
   color: var(--vscode-errorForeground);
 }
 ._root_ke0e7_1 {

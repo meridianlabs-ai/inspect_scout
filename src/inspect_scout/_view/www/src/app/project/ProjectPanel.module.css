@@ -122,7 +122,7 @@
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding-right: 0.5rem;
+  padding-right: 50px;
 }
 
 /* Make text fields wider */
@@ -132,6 +132,10 @@
 
 .field :global(vscode-textfield[type="number"]) {
   width: 250px !important;
+}
+
+.field :global(vscode-textarea) {
+  width: 400px !important;
 }
 
 .field :global(vscode-single-select) {
@@ -151,7 +155,6 @@
   color: var(--vscode-foreground);
   padding: 0.35rem 0.75rem 0.35rem 1rem;
   margin-left: -0.75rem;
-  margin-right: -0.5rem;
   background: var(--vscode-sideBarSectionHeader-background);
   border-radius: 3px;
 }

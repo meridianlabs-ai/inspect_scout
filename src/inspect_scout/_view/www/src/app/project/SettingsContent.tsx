@@ -13,7 +13,12 @@ import {
   ProjectConfigInput,
 } from "../../types/api-types";
 
-import { NumberField, SelectField, TextField } from "./components/FormFields";
+import {
+  KeyValueField,
+  NumberField,
+  SelectField,
+  TextField,
+} from "./components/FormFields";
 import { useBatchConfig, useNestedConfig } from "./hooks/useNestedConfig";
 import styles from "./ProjectPanel.module.css";
 
@@ -111,10 +116,6 @@ export const SettingsContent: FC<SettingsContentProps> = ({
     ? config.tags.join(", ")
     : (config.tags ?? "");
 
-  const metadataValue = config.metadata
-    ? JSON.stringify(config.metadata, null, 2)
-    : "";
-
   const shuffleEnabled =
     config.shuffle !== null && config.shuffle !== undefined;
   const shuffleSeed =
@@ -128,19 +129,6 @@ export const SettingsContent: FC<SettingsContentProps> = ({
     onChange({ tags: tags.length > 0 ? tags : null });
   };
 
-  const handleMetadataChange = (value: string) => {
-    if (!value.trim()) {
-      onChange({ metadata: null });
-      return;
-    }
-    try {
-      const parsed = JSON.parse(value);
-      onChange({ metadata: parsed });
-    } catch {
-      // Don't update if invalid JSON - user is still typing
-    }
-  };
-
   const handleShuffleToggle = (enabled: boolean) => {
     onChange({ shuffle: enabled ? true : null });
   };
@@ -148,29 +136,6 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   const handleShuffleSeedChange = (value: string) => {
     const num = parseInt(value, 10);
     onChange({ shuffle: isNaN(num) ? true : num });
-  };
-
-  // ===== Model Section Helpers =====
-  const modelArgsValue =
-    typeof config.model_args === "object"
-      ? JSON.stringify(config.model_args, null, 2)
-      : (config.model_args ?? "");
-
-  const handleModelArgsChange = (value: string) => {
-    if (!value.trim()) {
-      onChange({ model_args: null });
-      return;
-    }
-    if (value.trim().startsWith("{")) {
-      try {
-        const parsed = JSON.parse(value);
-        onChange({ model_args: parsed });
-      } catch {
-        onChange({ model_args: value });
-      }
-    } else {
-      onChange({ model_args: value });
-    }
   };
 
   return (
@@ -299,20 +264,15 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           />
         </div>
 
-        <div className={styles.field}>
-          <VscodeLabel>Metadata</VscodeLabel>
-          <VscodeFormHelper>
-            Metadata (key/value) to apply to scans
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={metadataValue}
-            onInput={(e) =>
-              handleMetadataChange((e.target as HTMLInputElement).value)
-            }
-            placeholder='{"key": "value"}'
-            spellCheck={false}
-          />
-        </div>
+        <KeyValueField
+          label="Metadata"
+          helper="Key/value pairs to apply to scans (one per line)"
+          value={config.metadata}
+          onChange={(v) =>
+            onChange({ metadata: v as Record<string, string> | null })
+          }
+          placeholder="key=value"
+        />
 
         <SelectField
           label="Log Level"
@@ -327,10 +287,10 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       {/* ===== MODEL SECTION ===== */}
       <div id="model" className={styles.section}>
         <div className={styles.sectionHeader}>Model</div>
-        <VscodeFormHelper>
-          Model configuration affects the default model used by the LLM scanner,
-          as well as the model returned by calls to <code>get_model()</code> in
-          custom scanners.
+        <VscodeFormHelper style={{ marginBottom: "-5px" }}>
+          Model configuration specifies the defaults for the model used by the
+          LLM scanner, as well as the model returned by calls to{" "}
+          <code>get_model()</code> in custom scanners.
         </VscodeFormHelper>
 
         <TextField
@@ -349,20 +309,13 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           placeholder="API base URL"
         />
 
-        <div className={styles.field}>
-          <VscodeLabel>Model Args</VscodeLabel>
-          <VscodeFormHelper>
-            Model creation args (JSON object or path to config file)
-          </VscodeFormHelper>
-          <VscodeTextfield
-            value={modelArgsValue}
-            onInput={(e) =>
-              handleModelArgsChange((e.target as HTMLInputElement).value)
-            }
-            placeholder='{"key": "value"} or /path/to/config.yaml'
-            spellCheck={false}
-          />
-        </div>
+        <KeyValueField
+          label="Model Args"
+          helper="Model creation args (key=value per line, or path to config file)"
+          value={config.model_args}
+          onChange={(v) => onChange({ model_args: v })}
+          placeholder="key=value or /path/to/config.yaml"
+        />
       </div>
 
       {/* ===== CONNECTION SECTION ===== */}

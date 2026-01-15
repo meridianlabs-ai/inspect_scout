@@ -256,11 +256,9 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
           {/* Scrollable Content */}
           <div ref={scrollContentRef} className={styles.scrollContent}>
             <VscodeFormHelper style={{ marginBottom: "10px" }}>
-              Project configuration is written to a scout.yaml file in the
-              project directory, and provides default configuration for scans
-              run from the directory. You can override some or all of the
-              project configuration for each scan using command line parameters
-              or a scan job config file.
+              Project configuration provides default options for scans run from
+              the directory. You can override some or all of the defaults for
+              each scan using command line parameters or a scan job config file.
             </VscodeFormHelper>
             <SettingsContent
               config={editedConfig}

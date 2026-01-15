@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { skipToken } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -73,10 +74,22 @@ describe("useCode", () => {
 
     expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith({
       queryKey: ["code", simpleCondition],
-      enabled: true,
       queryFn: expect.any(Function),
       staleTime: Infinity,
     });
+  });
+
+  it("passes skipToken to disable query", () => {
+    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+
+    renderHook(() => useCode(skipToken));
+
+    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["code", skipToken],
+        queryFn: skipToken,
+      })
+    );
   });
 
   it("queryFn calls postCode with condition", async () => {

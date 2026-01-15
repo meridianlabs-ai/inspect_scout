@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import { ColumnTable } from "arquero";
 
 import { AsyncData } from "../../utils/asyncData";
@@ -10,5 +11,7 @@ export const useSelectedScanDataframe = (): AsyncData<ColumnTable> => {
   const { location } = useScanRoute();
   const scanner = useSelectedScanner();
 
-  return useScanDataframe(location, scanner.data);
+  return useScanDataframe(
+    location && scanner.data ? { location, scanner: scanner.data } : skipToken
+  );
 };

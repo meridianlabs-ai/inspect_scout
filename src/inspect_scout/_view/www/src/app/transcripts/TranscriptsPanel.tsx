@@ -46,7 +46,7 @@ export const TranscriptsPanel: FC = () => {
     data: filterCodeValues,
     error: _codeError,
     loading: _codeLoading,
-  } = useCode(condition);
+  } = useCode(condition ?? skipToken);
 
   // Fetch column values for autocomplete suggestions (scoped to other column filters)
   const {
@@ -65,10 +65,14 @@ export const TranscriptsPanel: FC = () => {
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
-      resolvedTranscriptDir,
-      TRANSCRIPTS_INFINITE_SCROLL_CONFIG.pageSize,
-      condition,
-      sorting
+      resolvedTranscriptDir
+        ? {
+            location: resolvedTranscriptDir,
+            pageSize: TRANSCRIPTS_INFINITE_SCROLL_CONFIG.pageSize,
+            filter: condition,
+            sorting,
+          }
+        : skipToken
     );
 
   const transcripts: TranscriptInfo[] = useMemo(

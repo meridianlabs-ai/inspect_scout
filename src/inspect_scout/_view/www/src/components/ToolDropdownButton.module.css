@@ -8,6 +8,10 @@
   background-color: var(--bs-light-border-subtle);
 }
 
+:global(.btn).toolButton.bodyColor {
+  background-color: var(--bs-body-bg);
+}
+
 :global(.btn-tools).toolButton {
   border: solid 1px var(--bs-border-color);
 }

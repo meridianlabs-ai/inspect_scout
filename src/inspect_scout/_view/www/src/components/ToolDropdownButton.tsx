@@ -9,6 +9,7 @@ interface ToolDropdownButtonProps extends ButtonHTMLAttributes<HTMLButtonElement
   items: Record<string, () => void>;
   dropdownAlign?: "left" | "right";
   dropdownClassName?: string | string[];
+  subtle?: boolean;
 }
 
 export const ToolDropdownButton = forwardRef<
@@ -23,6 +24,7 @@ export const ToolDropdownButton = forwardRef<
       items,
       dropdownAlign = "left",
       dropdownClassName,
+      subtle,
       ...rest
     },
     ref
@@ -39,7 +41,13 @@ export const ToolDropdownButton = forwardRef<
         <button
           ref={ref}
           type="button"
-          className={clsx("btn", "btn-tools", styles.toolButton, className)}
+          className={clsx(
+            "btn",
+            "btn-tools",
+            styles.toolButton,
+            subtle ? styles.bodyColor : undefined,
+            className
+          )}
           onClick={() => setIsOpen(!isOpen)}
           {...rest}
         >

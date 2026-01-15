@@ -145,6 +145,8 @@ const CopyToolbarButton: FC<{ transcript: Transcript }> = ({ transcript }) => {
       key="sample-copy"
       label="Copy"
       icon={icon}
+      className="text-size-smallestest"
+      subtle={true}
       items={{
         UUID: () => {
           if (transcript.transcript_id) {

@@ -4978,54 +4978,53 @@ so disabling selection can break that functionality */
   border-top: 1px solid
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
-._container_sxaov_1 {
+._container_1ch30_1 {
   height: 100%;
   display: grid;
   grid-template-rows: max-content auto 1fr;
-  padding: 1rem;
-  row-gap: 0.5rem;
 }
 
-._container_sxaov_1 > ._headerRow_sxaov_9 {
+._container_1ch30_1 > ._headerRow_1ch30_7 {
   grid-row: 1;
 }
 
-._container_sxaov_1 > ._conflictBanner_sxaov_13 {
+._container_1ch30_1 > ._conflictBanner_1ch30_11 {
   grid-row: 2;
 }
 
-._container_sxaov_1 > ._loading_sxaov_17,
-._container_sxaov_1 > ._error_sxaov_18 {
+._container_1ch30_1 > ._loading_1ch30_15,
+._container_1ch30_1 > ._error_1ch30_16 {
   grid-row: 3;
 }
 
-._container_sxaov_1 > ._splitLayout_sxaov_22 {
+._container_1ch30_1 > ._splitLayout_1ch30_20 {
   grid-row: 3;
 }
 
-._headerRow_sxaov_9 {
+._headerRow_1ch30_7 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 0.75rem;
+  padding: 1rem 1.25rem 0.75rem 1rem;
   border-bottom: 1px solid var(--vscode-widget-border);
 }
 
-._header_sxaov_9 {
+._header_1ch30_7 {
   font-size: 16px;
   font-weight: 600;
   color: var(--vscode-foreground);
 }
 
-._detail_sxaov_40 {
+._detail_1ch30_38 {
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
 }
 
-._conflictBanner_sxaov_13 {
+._conflictBanner_1ch30_11 {
   background: var(--vscode-inputValidation-warningBackground);
   border: 1px solid var(--vscode-inputValidation-warningBorder);
   padding: 8px 12px;
+  margin: 0.5rem 1rem;
   border-radius: 4px;
   display: flex;
   justify-content: space-between;
@@ -5034,36 +5033,38 @@ so disabling selection can break that functionality */
   color: var(--vscode-foreground);
 }
 
-._conflictActions_sxaov_57 {
+._conflictActions_1ch30_56 {
   display: flex;
   gap: 8px;
 }
 
-._splitLayout_sxaov_22 {
+._splitLayout_1ch30_20 {
   display: flex;
   min-height: 0;
   gap: 1rem;
+  padding-left: 1rem;
+  padding-top: 1rem;
 }
 
-._treeNav_sxaov_68 {
+._treeNav_1ch30_69 {
   width: 160px;
   flex-shrink: 0;
   overflow-y: auto;
 }
 
-._navList_sxaov_74 {
+._navList_1ch30_75 {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-._navListItem_sxaov_80 {
+._navListItem_1ch30_81 {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-._navGroup_sxaov_86 {
+._navGroup_1ch30_87 {
   font-size: 12px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -5072,11 +5073,11 @@ so disabling selection can break that functionality */
   letter-spacing: 0.03em;
 }
 
-._navGroup_sxaov_86:not(:first-child) {
+._navGroup_1ch30_87:not(:first-child) {
   margin-top: 0.75rem;
 }
 
-._navItem_sxaov_99 {
+._navItem_1ch30_100 {
   display: block;
   width: 100%;
   padding: 4px 8px 4px 16px;
@@ -5089,47 +5090,47 @@ so disabling selection can break that functionality */
   border-radius: 3px;
 }
 
-._navItem_sxaov_99:hover {
+._navItem_1ch30_100:hover {
   background: var(--vscode-list-hoverBackground);
 }
 
-._navItem_sxaov_99:focus {
+._navItem_1ch30_100:focus {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
 }
 
-._scrollContent_sxaov_121 {
+._scrollContent_1ch30_122 {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding-right: 50px;
+  padding-right: 1rem;
 }
 
 /* Make text fields wider */
-._field_sxaov_129 vscode-textfield {
+._field_1ch30_130 vscode-textfield {
   width: 400px !important;
 }
 
-._field_sxaov_129 vscode-textfield[type="number"] {
+._field_1ch30_130 vscode-textfield[type="number"] {
   width: 250px !important;
 }
 
-._field_sxaov_129 vscode-textarea {
+._field_1ch30_130 vscode-textarea {
   width: 400px !important;
 }
 
-._field_sxaov_129 vscode-single-select {
+._field_1ch30_130 vscode-single-select {
   width: 250px !important;
 }
 
-._section_sxaov_145 {
+._section_1ch30_146 {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-._sectionHeader_sxaov_152 {
+._sectionHeader_1ch30_153 {
   font-size: 13px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -5139,18 +5140,18 @@ so disabling selection can break that functionality */
   border-radius: 3px;
 }
 
-._field_sxaov_129 {
+._field_1ch30_130 {
   display: flex;
   flex-direction: column;
 }
 
-._loading_sxaov_17,
-._error_sxaov_18 {
+._loading_1ch30_15,
+._error_1ch30_16 {
   font-size: 13px;
   color: var(--vscode-foreground);
 }
 
-._error_sxaov_18 {
+._error_1ch30_16 {
   color: var(--vscode-errorForeground);
 }
 ._root_ke0e7_1 {

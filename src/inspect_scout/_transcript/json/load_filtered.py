@@ -179,6 +179,11 @@ async def _parse_and_filter(
     """
     Phase 1: Single-pass stream parse, filter, and collect attachment references.
 
+    IMPORTANT ASSUMPTION: This function assumes metadata appears BEFORE messages
+    in the JSON structure. When events_filter is None and no attachment refs are
+    found in messages, parsing stops early after the messages array. If metadata
+    appears after messages in the JSON, it will be incomplete.
+
     Returns:
         Tuple of (partial transcript, attachment references dict)
     """
@@ -217,6 +222,16 @@ async def _parse_and_filter(
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
+        # Early exit: messages-only with no attachment refs
+        # See docstring for metadata ordering assumption
+        if (
+            events_coro is None
+            and prefix == "messages"
+            and event == "end_array"
+            and not state.attachment_refs
+        ):
+            break
+
         # Inline prefix classification for performance (56M+ calls in hot path)
         if prefix != last_prefix:
             last_prefix = prefix

@@ -11,7 +11,8 @@
 
 .modal {
   background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-border));
+  border: 1px solid
+    var(--vscode-widget-border, var(--vscode-editorWidget-border));
   border-radius: 4px;
   box-shadow: 0 4px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
   max-width: 450px;

@@ -18,7 +18,8 @@ export function useNestedConfig<T extends Record<string, unknown>>(
   configValue: T | boolean | number | null | undefined,
   updateParent: (value: T | boolean | null) => void
 ) {
-  const enabled = configValue !== null && configValue !== undefined && configValue !== false;
+  const enabled =
+    configValue !== null && configValue !== undefined && configValue !== false;
 
   const config: Partial<T> = useMemo(() => {
     if (typeof configValue === "object" && configValue !== null) {
@@ -92,7 +93,9 @@ export function useBatchConfig<T extends Record<string, unknown>>(
 
   const currentBatchSize = useMemo(() => {
     if (typeof configValue === "object" && configValue !== null) {
-      return (configValue as Record<string, unknown>).size as number | undefined;
+      return (configValue as Record<string, unknown>).size as
+        | number
+        | undefined;
     }
     return simpleBatchSize ?? undefined;
   }, [configValue, simpleBatchSize]);

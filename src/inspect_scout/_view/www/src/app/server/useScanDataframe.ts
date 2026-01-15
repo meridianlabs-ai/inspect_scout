@@ -7,7 +7,7 @@ import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { expandResultsetRows } from "../utils/arrow";
 
 // Fetches scanner dataframe from the server by location and scanner
-export const useServerScanDataframe = (
+export const useScanDataframe = (
   location: string | undefined,
   scanner: string | undefined
 ): AsyncData<ColumnTable> => {

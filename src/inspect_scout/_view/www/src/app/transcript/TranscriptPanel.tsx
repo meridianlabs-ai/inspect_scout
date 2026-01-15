@@ -10,7 +10,7 @@ import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { appAliasedPath, useConfig } from "../server/useConfig";
-import { useServerTranscript } from "../server/useServerTranscript";
+import { useTranscript } from "../server/useTranscript";
 import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
 import { useTranscriptDirParams } from "../utils/router";
 
@@ -30,7 +30,7 @@ export const TranscriptPanel: FC = () => {
     loading,
     data: transcript,
     error,
-  } = useServerTranscript(config.transcripts_dir, transcriptId);
+  } = useTranscript(config.transcripts_dir, transcriptId);
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);

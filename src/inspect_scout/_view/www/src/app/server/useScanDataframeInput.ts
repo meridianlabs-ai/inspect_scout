@@ -3,7 +3,7 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { ScanResultInputData } from "../types";
 
-export const useServerScanDataframeInput = (
+export const useScanDataframeInput = (
   location: string | undefined,
   scanner: string | undefined,
   uuid: string | undefined

@@ -3,7 +3,7 @@ import { Transcript } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
-export const useServerTranscript = (
+export const useTranscript = (
   location: string | undefined | null,
   id: string | undefined
 ): AsyncData<Transcript> => {

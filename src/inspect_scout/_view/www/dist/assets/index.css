@@ -4978,6 +4978,24 @@ so disabling selection can break that functionality */
   border-top: 1px solid
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
+._visible_tm52u_1 {
+  display: block;
+}
+
+._hidden_tm52u_5 {
+  display: none;
+}
+
+._pills_tm52u_9 {
+  margin-right: 0;
+}
+
+._pill_tm52u_9 {
+  min-width: 4rem;
+  font-size: var(--inspect-font-size-small);
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--bs-border-radius);
+}
 ._container_execp_1 {
   height: 100%;
   display: flex;
@@ -5040,6 +5058,43 @@ so disabling selection can break that functionality */
 
 ._error_execp_56 {
   color: var(--vscode-errorForeground);
+}
+._tabContent_1wysb_1 {
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+._section_1wysb_8 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+._sectionHeader_1wysb_14 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+._twoColumnGrid_1wysb_22 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1.5rem;
+}
+
+._row_1wysb_28 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+
+._field_1wysb_34 {
+  display: flex;
+  flex-direction: column;
 }
 ._root_ke0e7_1 {
   height: 100vh;
@@ -5324,24 +5379,6 @@ button._segment_19z32_10 {
   padding: 0.1rem;
   padding-left: 0.5rem;
   background-color: var(--bs-body-bg);
-}
-._visible_tm52u_1 {
-  display: block;
-}
-
-._hidden_tm52u_5 {
-  display: none;
-}
-
-._pills_tm52u_9 {
-  margin-right: 0;
-}
-
-._pill_tm52u_9 {
-  min-width: 4rem;
-  font-size: var(--inspect-font-size-small);
-  padding: 0.1rem 0.6rem;
-  border-radius: var(--bs-border-radius);
 }
 ._expandablePanel_1ka1g_1 {
   position: relative;

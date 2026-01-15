@@ -240,8 +240,8 @@ def write_project_config(
         # Load with ruamel.yaml to preserve comments
         original_data = yaml.load(current_content)
 
-        # Convert config to dict for merging
-        config_dict: dict[str, Any] = config.model_dump(exclude_none=False)
+        # Convert config to dict for merging, excluding None values and empty collections
+        config_dict: dict[str, Any] = _clean_empty_values(config.model_dump())
 
         # Apply updates preserving comments
         apply_config_update(original_data, config_dict)

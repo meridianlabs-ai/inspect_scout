@@ -4,7 +4,7 @@ import {
   VscodeLabel,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, useCallback, useEffect, useState } from "react";
+import { FC, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   BatchConfig,
@@ -119,6 +119,37 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       [updateGenerateConfig]
     )
   );
+
+  // Refs for scrolling options into view when enabled
+  const cacheOptionsRef = useRef<HTMLDivElement>(null);
+  const batchOptionsRef = useRef<HTMLDivElement>(null);
+
+  // Helper to scroll parent container to bottom
+  const scrollToBottom = (element: HTMLElement | null) => {
+    if (!element) return;
+    // Find the scrollable parent container
+    const scrollContainer = element.closest('[class*="scrollContent"]') as HTMLElement;
+    if (scrollContainer) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Scroll to bottom when cache is enabled
+  useEffect(() => {
+    if (cache.enabled) {
+      requestAnimationFrame(() => scrollToBottom(cacheOptionsRef.current));
+    }
+  }, [cache.enabled]);
+
+  // Scroll to bottom when batch is enabled
+  useEffect(() => {
+    if (batch.enabled) {
+      requestAnimationFrame(() => scrollToBottom(batchOptionsRef.current));
+    }
+  }, [batch.enabled]);
 
   // ===== General Section Helpers =====
 
@@ -524,33 +555,35 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           </VscodeFormHelper>
         </div>
 
-        <TextField
-          label="Expiry"
-          helper="Cache expiration. Use a number followed by: M (minutes), H (hours), D (days), or W (weeks)."
-          value={cache.config.expiry}
-          onChange={(v) => cache.updateConfig({ expiry: v })}
-          placeholder="1W (default)"
-          disabled={!cache.enabled}
-          validate={validateCacheExpiry}
-        />
+        {cache.enabled && (
+          <div ref={cacheOptionsRef}>
+            <TextField
+              label="Expiry"
+              helper="Cache expiration. Use a number followed by: M (minutes), H (hours), D (days), or W (weeks)."
+              value={cache.config.expiry}
+              onChange={(v) => cache.updateConfig({ expiry: v })}
+              placeholder="1W (default)"
+              validate={validateCacheExpiry}
+            />
 
-        <div className={styles.field}>
-          <VscodeLabel>Per Epoch</VscodeLabel>
-          <VscodeFormHelper>
-            Maintain separate cache entries per epoch
-          </VscodeFormHelper>
-          <VscodeCheckbox
-            checked={cache.config.per_epoch ?? true}
-            disabled={!cache.enabled}
-            onChange={(e) =>
-              cache.updateConfig({
-                per_epoch: (e.target as HTMLInputElement).checked,
-              })
-            }
-          >
-            Enabled
-          </VscodeCheckbox>
-        </div>
+            <div className={styles.field}>
+              <VscodeLabel>Per Epoch</VscodeLabel>
+              <VscodeFormHelper>
+                Maintain separate cache entries per epoch
+              </VscodeFormHelper>
+              <VscodeCheckbox
+                checked={cache.config.per_epoch ?? true}
+                onChange={(e) =>
+                  cache.updateConfig({
+                    per_epoch: (e.target as HTMLInputElement).checked,
+                  })
+                }
+              >
+                Enabled
+              </VscodeCheckbox>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===== BATCH SECTION ===== */}
@@ -571,63 +604,61 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           </VscodeFormHelper>
         </div>
 
-        <NumberField
-          label="Batch Size"
-          helper="Number of requests per batch"
-          value={batch.currentBatchSize}
-          onChange={(v) => batch.updateConfig({ size: v })}
-          placeholder="Default"
-          disabled={!batch.enabled}
-        />
+        {batch.enabled && (
+          <div ref={batchOptionsRef}>
+            <NumberField
+              label="Batch Size"
+              helper="Number of requests per batch"
+              value={batch.currentBatchSize}
+              onChange={(v) => batch.updateConfig({ size: v })}
+              placeholder="Default"
+            />
 
-        <NumberField
-          label="Max Size"
-          helper="Maximum batch size allowed"
-          value={batch.config.max_size}
-          onChange={(v) => batch.updateConfig({ max_size: v })}
-          placeholder="No limit"
-          disabled={!batch.enabled}
-        />
+            <NumberField
+              label="Max Size"
+              helper="Maximum batch size allowed"
+              value={batch.config.max_size}
+              onChange={(v) => batch.updateConfig({ max_size: v })}
+              placeholder="No limit"
+            />
 
-        <NumberField
-          label="Max Batches"
-          helper="Maximum number of batches to process"
-          value={batch.config.max_batches}
-          onChange={(v) => batch.updateConfig({ max_batches: v })}
-          placeholder="No limit"
-          disabled={!batch.enabled}
-        />
+            <NumberField
+              label="Max Batches"
+              helper="Maximum number of batches to process"
+              value={batch.config.max_batches}
+              onChange={(v) => batch.updateConfig({ max_batches: v })}
+              placeholder="No limit"
+            />
 
-        <NumberField
-          label="Send Delay"
-          helper="Delay (seconds) before sending batch"
-          value={batch.config.send_delay}
-          onChange={(v) => batch.updateConfig({ send_delay: v })}
-          placeholder="0"
-          disabled={!batch.enabled}
-          step={0.1}
-        />
+            <NumberField
+              label="Send Delay"
+              helper="Delay (seconds) before sending batch"
+              value={batch.config.send_delay}
+              onChange={(v) => batch.updateConfig({ send_delay: v })}
+              placeholder="0"
+              step={0.1}
+            />
 
-        <NumberField
-          label="Tick"
-          helper="Tick interval (seconds) for batch processing"
-          value={batch.config.tick}
-          onChange={(v) => batch.updateConfig({ tick: v })}
-          placeholder="Default"
-          disabled={!batch.enabled}
-          step={0.1}
-        />
+            <NumberField
+              label="Tick"
+              helper="Tick interval (seconds) for batch processing"
+              value={batch.config.tick}
+              onChange={(v) => batch.updateConfig({ tick: v })}
+              placeholder="Default"
+              step={0.1}
+            />
 
-        <NumberField
-          label="Max Check Failures"
-          helper="Maximum consecutive check failures before abort"
-          value={batch.config.max_consecutive_check_failures}
-          onChange={(v) =>
-            batch.updateConfig({ max_consecutive_check_failures: v })
-          }
-          placeholder="No limit"
-          disabled={!batch.enabled}
-        />
+            <NumberField
+              label="Max Check Failures"
+              helper="Maximum consecutive check failures before abort"
+              value={batch.config.max_consecutive_check_failures}
+              onChange={(v) =>
+                batch.updateConfig({ max_consecutive_check_failures: v })
+              }
+              placeholder="No limit"
+            />
+          </div>
+        )}
       </div>
     </>
   );

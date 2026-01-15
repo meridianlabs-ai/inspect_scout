@@ -1,5 +1,4 @@
 .activityBar {
-  height: 100vh;
   width: 78px;
   border-right: solid 1px var(--bs-border-color);
   background-color: var(--bs-light);

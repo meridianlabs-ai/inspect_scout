@@ -1,6 +1,6 @@
 import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useRef } from "react";
 
 import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
@@ -21,6 +21,9 @@ import styles from "./TranscriptPanel.module.css";
 import { TranscriptTitle } from "./TranscriptTitle";
 
 export const TranscriptPanel: FC = () => {
+  // The core scroll element for the transcript panel
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
   // Transcript data from route
   const { transcriptId } = useRequiredParams("transcriptId");
   const routeTranscriptsDir = useTranscriptDirParams();
@@ -76,9 +79,9 @@ export const TranscriptPanel: FC = () => {
       <LoadingBar loading={loading} />
 
       {!error && transcript && (
-        <div className={styles.transcriptContainer}>
+        <div className={styles.transcriptContainer} ref={scrollRef}>
           <TranscriptTitle transcript={transcript} />
-          <TranscriptBody transcript={transcript} />
+          <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
         </div>
       )}
       {error && (

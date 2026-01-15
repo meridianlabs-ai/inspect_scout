@@ -10,6 +10,10 @@
   padding-top: 0.5rem;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+  position: sticky;
+  z-index: 1001;
+  top: 0;
+  background-color: var(--bs-body-bg);
 }
 
 :global(.nav).tabs :global(.nav-link) {
@@ -18,16 +22,19 @@
 }
 
 .tabSet {
-  height: 100%;
 }
 
 .chatTab > * > * {
   padding: 0.5rem;
 }
 
+.chatTab {
+  padding-bottom: 50px;
+}
+
 .metadata {
   padding: 0.5rem;
-  padding-bottom: 1rem;
+  padding-bottom: 50px;
 }
 
 .scrollable {
@@ -38,4 +45,17 @@
 
 .eventsList {
   padding-bottom: 1rem;
+}
+
+.eventsContainer {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.3s ease;
+  padding-bottom: 50px;
+}
+
+.eventsTab {
+  display: flex;
 }

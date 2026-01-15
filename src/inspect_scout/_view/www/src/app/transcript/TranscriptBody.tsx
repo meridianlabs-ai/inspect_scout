@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useState } from "react";
+import { FC, RefObject, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
@@ -20,9 +20,13 @@ const kTranscriptMetadataTabId = "transcript-metadata";
 
 interface TranscriptBodyProps {
   transcript: Transcript;
+  scrollRef: RefObject<HTMLDivElement | null>;
 }
 
-export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
+export const TranscriptBody: FC<TranscriptBodyProps> = ({
+  transcript,
+  scrollRef,
+}) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedTranscriptTab = useStore(
@@ -53,7 +57,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
         handleTabChange(kTranscriptMessagesTabId);
       }}
       selected={resolvedSelectedTranscriptTab === kTranscriptMessagesTabId}
-      scrollable={true}
+      scrollable={false}
     >
       <ChatViewVirtualList
         id={"transcript-id"}
@@ -61,6 +65,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
         toolCallStyle={"complete"}
         indented={false}
         className={styles.chatList}
+        scrollRef={scrollRef}
       />
     </TabPanel>,
   ];
@@ -76,13 +81,16 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
           handleTabChange(kTranscriptEventsTabId);
         }}
         selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
-        scrollable={true}
+        scrollable={false}
       >
-        <TranscriptView
-          id={"transcript-events-list"}
-          events={transcript.events || []}
-          className={styles.eventsList}
-        />
+        <div className={styles.eventsContainer}>
+          <TranscriptView
+            id={"transcript-events-list"}
+            events={transcript.events || []}
+            className={styles.eventsList}
+            scrollRef={scrollRef}
+          />
+        </div>
       </TabPanel>
     );
   }
@@ -98,7 +106,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
           handleTabChange(kTranscriptMetadataTabId);
         }}
         selected={resolvedSelectedTranscriptTab === kTranscriptMetadataTabId}
-        scrollable={true}
+        scrollable={false}
       >
         <div className={styles.scrollable}>
           <MetaDataGrid
@@ -112,18 +120,16 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({ transcript }) => {
   }
 
   return (
-    <div className={clsx(styles.tabContainer)}>
-      <TabSet
-        id={"transcript-body"}
-        type="pills"
-        tabPanelsClassName={clsx(styles.tabSet)}
-        tabControlsClassName={clsx(styles.tabControl)}
-        className={clsx(styles.tabs)}
-        tools={tabTools}
-      >
-        {tabPanels}
-      </TabSet>
-    </div>
+    <TabSet
+      id={"transcript-body"}
+      type="pills"
+      tabPanelsClassName={clsx(styles.tabSet)}
+      tabControlsClassName={clsx(styles.tabControl)}
+      className={clsx(styles.tabs)}
+      tools={tabTools}
+    >
+      {tabPanels}
+    </TabSet>
   );
 };
 

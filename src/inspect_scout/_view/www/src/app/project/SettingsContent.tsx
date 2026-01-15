@@ -70,11 +70,19 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   // Helper to update generate_config fields
   const updateGenerateConfig = useCallback(
     (updates: Partial<GenerateConfigInput>) => {
+      const merged = {
+        ...filterNullValues(generateConfig),
+        ...updates,
+      };
+
+      // Filter out null values from the merged result
+      const cleaned = filterNullValues(merged);
+
+      // If no content remains, set generate_config to null
+      const hasContent = Object.keys(cleaned).length > 0;
+
       onChange({
-        generate_config: {
-          ...filterNullValues(generateConfig),
-          ...updates,
-        },
+        generate_config: hasContent ? cleaned : null,
       });
     },
     [generateConfig, onChange]

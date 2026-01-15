@@ -204,24 +204,25 @@ export function computeConfigToSave(
 /**
  * Initialize edited config from server config.
  * Extracts the relevant fields for editing.
+ * All fields are normalized to null (not undefined) for consistent comparison.
  */
 export function initializeEditedConfig(
   serverConfig: ProjectConfigInput
 ): Partial<ProjectConfigInput> {
   return {
-    transcripts: serverConfig.transcripts,
-    filter: serverConfig.filter,
-    scans: serverConfig.scans,
-    max_transcripts: serverConfig.max_transcripts,
-    max_processes: serverConfig.max_processes,
-    limit: serverConfig.limit,
-    shuffle: serverConfig.shuffle,
-    tags: serverConfig.tags,
-    metadata: serverConfig.metadata,
-    log_level: serverConfig.log_level,
-    model: serverConfig.model,
-    model_base_url: serverConfig.model_base_url,
-    model_args: serverConfig.model_args,
+    transcripts: serverConfig.transcripts ?? null,
+    filter: serverConfig.filter ?? null,
+    scans: serverConfig.scans ?? null,
+    max_transcripts: serverConfig.max_transcripts ?? null,
+    max_processes: serverConfig.max_processes ?? null,
+    limit: serverConfig.limit ?? null,
+    shuffle: serverConfig.shuffle ?? null,
+    tags: serverConfig.tags ?? null,
+    metadata: serverConfig.metadata ?? null,
+    log_level: serverConfig.log_level ?? null,
+    model: serverConfig.model ?? null,
+    model_base_url: serverConfig.model_base_url ?? null,
+    model_args: serverConfig.model_args ?? null,
     generate_config: serverConfig.generate_config ?? null,
   };
 }

@@ -63,12 +63,34 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const scrollContentRef = useRef<HTMLDivElement>(null);
   const focusedBeforeSaveRef = useRef<Element | null>(null);
+  const saveRef = useRef<() => void>(() => {});
+  // Track the etag from our own saves to skip re-initialization
+  const lastSavedEtagRef = useRef<string | null>(null);
 
   // Capture focused element on mousedown (before click moves focus to button)
   const handleSaveMouseDown = useCallback(() => {
     focusedBeforeSaveRef.current = document.activeElement;
+  }, []);
+
+  // Ctrl/Cmd+S keyboard shortcut to save
+  // Use capture phase to intercept before web components handle the event
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        saveRef.current();
+      }
+    };
+
+    container.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      container.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, []);
 
   // Scroll to section - only scrolls within the scrollContent container
@@ -94,22 +116,37 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     useState<Partial<ProjectConfigInput> | null>(null);
   const [conflictError, setConflictError] = useState(false);
 
-  // Initialize config state when data loads or etag changes
+  // Initialize config state when data loads
+  // Skips re-init if this is our own save (etag matches what we just saved)
   useEffect(() => {
     if (!data) return;
 
-    // Only initialize if we haven't yet, or if etag changed (external modification)
-    const shouldInitialize = !editedConfig;
-    const etagChanged = data.etag !== undefined; // etag dependency handles re-init
-
-    if (shouldInitialize || etagChanged) {
+    // If editedConfig is null (initial load or after reload), initialize
+    if (!editedConfig) {
       const initialized = initializeEditedConfig(
         data.config as ProjectConfigInput
       );
       setEditedConfig(initialized);
       setOriginalConfig(deepCopy(initialized));
+      lastSavedEtagRef.current = data.etag;
+      return;
     }
-  }, [data?.etag]);
+
+    // If etag matches what we just saved, skip re-init (this is our own save)
+    if (data.etag === lastSavedEtagRef.current) {
+      return;
+    }
+
+    // Etag changed unexpectedly - reinitialize
+    // (With current flow this shouldn't happen since external changes
+    // are detected via 412 on save, but handle it just in case)
+    const initialized = initializeEditedConfig(
+      data.config as ProjectConfigInput
+    );
+    setEditedConfig(initialized);
+    setOriginalConfig(deepCopy(initialized));
+    lastSavedEtagRef.current = data.etag;
+  }, [data?.etag, editedConfig]);
 
   const hasChanges = useMemo(() => {
     return !configsEqual(editedConfig, originalConfig);
@@ -130,7 +167,43 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     []
   );
 
-  const handleSave = (force = false) => {
+  const handleSave = useCallback(
+    (force = false) => {
+      if (!data || !editedConfig || !originalConfig) return;
+
+      const updatedConfig = computeConfigToSave(
+        editedConfig,
+        originalConfig,
+        data.config as ProjectConfigInput
+      );
+
+      mutation.mutate(
+        { config: updatedConfig, etag: force ? null : data.etag },
+        {
+          onSuccess: (responseData) => {
+            setConflictError(false);
+            // Mark this etag as expected so the init effect skips re-init
+            lastSavedEtagRef.current = responseData.etag;
+            // Update originalConfig to match what we saved, so hasChanges becomes false
+            setOriginalConfig(deepCopy(editedConfig));
+          },
+          onError: (err) => {
+            if (err instanceof ApiError && err.status === 412) {
+              setConflictError(true);
+            }
+          },
+        }
+      );
+    },
+    [data, editedConfig, originalConfig, mutation]
+  );
+
+  // Keep saveRef updated for keyboard shortcut
+  useEffect(() => {
+    saveRef.current = () => handleSave(false);
+  }, [handleSave]);
+
+  const handleSaveWithFocusRestore = (force = false) => {
     if (!data || !editedConfig || !originalConfig) return;
 
     // Use the element that was focused before mousedown on save button
@@ -145,8 +218,12 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     mutation.mutate(
       { config: updatedConfig, etag: force ? null : data.etag },
       {
-        onSuccess: () => {
+        onSuccess: (responseData) => {
           setConflictError(false);
+          // Mark this etag as expected so the init effect skips re-init
+          lastSavedEtagRef.current = responseData.etag;
+          // Update originalConfig to match what we saved, so hasChanges becomes false
+          setOriginalConfig(deepCopy(editedConfig));
           // Restore focus after the click event fully completes
           requestAnimationFrame(() => {
             focusedElement?.focus?.();
@@ -176,8 +253,12 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     mutation.mutate(
       { config: updatedConfig, etag: data.etag },
       {
-        onSuccess: () => {
+        onSuccess: (responseData) => {
           setConflictError(false);
+          // Mark this etag as expected so the init effect skips re-init
+          lastSavedEtagRef.current = responseData.etag;
+          // Update originalConfig to match what we saved, so hasChanges becomes false
+          setOriginalConfig(deepCopy(editedConfig));
           blocker.proceed?.();
         },
         onError: (err) => {
@@ -194,11 +275,13 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     setConflictError(false);
     setEditedConfig(null);
     setOriginalConfig(null);
+    // Reset expected etag so the init effect will re-initialize from server
+    lastSavedEtagRef.current = null;
     void queryClient.invalidateQueries({ queryKey: ["project-config"] });
   };
 
   return (
-    <div className={styles.container}>
+    <div ref={containerRef} className={styles.container}>
       {/* Header */}
       <div className={styles.headerRow}>
         <div>
@@ -210,7 +293,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
         <VscodeButton
           disabled={!hasChanges || mutation.isPending}
           onMouseDown={handleSaveMouseDown}
-          onClick={() => handleSave(false)}
+          onClick={() => handleSaveWithFocusRestore(false)}
         >
           {mutation.isPending ? "Saving..." : "Save Changes"}
         </VscodeButton>
@@ -224,7 +307,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
             <VscodeButton secondary onClick={handleReload}>
               Discard My Changes
             </VscodeButton>
-            <VscodeButton onClick={() => handleSave(true)}>
+            <VscodeButton onClick={() => handleSaveWithFocusRestore(true)}>
               Keep My Changes
             </VscodeButton>
           </div>

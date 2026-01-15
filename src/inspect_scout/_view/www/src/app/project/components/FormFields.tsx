@@ -6,7 +6,7 @@ import {
   VscodeTextarea,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, ReactNode } from "react";
+import { FC, ReactNode, useEffect, useState } from "react";
 
 import styles from "../ProjectPanel.module.css";
 
@@ -27,6 +27,8 @@ interface TextFieldProps {
   onChange: (value: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
+  /** Optional validation function. Returns error message if invalid, null if valid. */
+  validate?: (value: string | null) => string | null;
 }
 
 export const TextField: FC<TextFieldProps> = ({
@@ -36,19 +38,55 @@ export const TextField: FC<TextFieldProps> = ({
   onChange,
   placeholder,
   disabled,
-}) => (
-  <div className={styles.field}>
-    <VscodeLabel>{label}</VscodeLabel>
-    {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
-    <VscodeTextfield
-      value={value ?? ""}
-      disabled={disabled}
-      onInput={(e) => onChange(getInputValue(e) || null)}
-      placeholder={placeholder}
-      spellCheck={false}
-    />
-  </div>
-);
+  validate,
+}) => {
+  // Disable spellcheck on the shadow DOM input element
+  const setSpellcheck = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.setAttribute("spellcheck", "false");
+    const shadowInput = el.shadowRoot?.querySelector("input");
+    if (shadowInput) {
+      shadowInput.setAttribute("spellcheck", "false");
+    }
+  };
+
+  // Debounce validation errors to avoid flashing during typing
+  const [debouncedError, setDebouncedError] = useState<string | null>(null);
+  const errorMessage = validate && !disabled ? validate(value ?? null) : null;
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setDebouncedError(errorMessage), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      // Clear error immediately when input becomes valid
+      setDebouncedError(null);
+    }
+  }, [errorMessage]);
+
+  return (
+    <div className={styles.field}>
+      <VscodeLabel>{label}</VscodeLabel>
+      {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
+      <VscodeTextfield
+        ref={setSpellcheck}
+        value={value ?? ""}
+        disabled={disabled}
+        onInput={(e) => onChange(getInputValue(e) || null)}
+        placeholder={placeholder}
+        spellCheck={false}
+        autocomplete="off"
+      />
+      {debouncedError && (
+        <VscodeFormHelper
+          style={{ color: "var(--vscode-errorForeground)", marginTop: "4px" }}
+        >
+          {debouncedError}
+        </VscodeFormHelper>
+      )}
+    </div>
+  );
+};
 
 // ===== TextAreaField Component =====
 interface TextAreaFieldProps {
@@ -69,20 +107,33 @@ export const TextAreaField: FC<TextAreaFieldProps> = ({
   placeholder,
   disabled,
   rows = 3,
-}) => (
-  <div className={styles.field}>
-    <VscodeLabel>{label}</VscodeLabel>
-    {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
-    <VscodeTextarea
-      value={value ?? ""}
-      disabled={disabled}
-      onInput={(e) => onChange(getInputValue(e) || null)}
-      placeholder={placeholder}
-      rows={rows}
-      spellCheck={false}
-    />
-  </div>
-);
+}) => {
+  const setSpellcheck = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.setAttribute("spellcheck", "false");
+    const shadowTextarea = el.shadowRoot?.querySelector("textarea");
+    if (shadowTextarea) {
+      shadowTextarea.setAttribute("spellcheck", "false");
+    }
+  };
+
+  return (
+    <div className={styles.field}>
+      <VscodeLabel>{label}</VscodeLabel>
+      {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
+      <VscodeTextarea
+        ref={setSpellcheck}
+        value={value ?? ""}
+        disabled={disabled}
+        onInput={(e) => onChange(getInputValue(e) || null)}
+        placeholder={placeholder}
+        rows={rows}
+        spellCheck={false}
+        autocomplete="off"
+      />
+    </div>
+  );
+};
 
 // ===== KeyValueField Component =====
 // Handles key=value pairs (one per line) or plain string values
@@ -102,10 +153,11 @@ export function objectToKeyValueLines(
 
 /**
  * Parse key=value lines into an object, or return as string if it looks like a path.
+ * Numeric values are preserved as numbers.
  */
 export function parseKeyValueLines(
   text: string | null
-): Record<string, string> | string | null {
+): Record<string, string | number> | string | null {
   if (!text?.trim()) return null;
 
   // If it looks like a file path, return as string
@@ -120,7 +172,7 @@ export function parseKeyValueLines(
   }
 
   // Parse as key=value pairs
-  const result: Record<string, string> = {};
+  const result: Record<string, string | number> = {};
   for (const line of text.split("\n")) {
     const lineTrimmed = line.trim();
     if (!lineTrimmed) continue;
@@ -129,7 +181,13 @@ export function parseKeyValueLines(
       const key = lineTrimmed.slice(0, eqIndex).trim();
       const val = lineTrimmed.slice(eqIndex + 1).trim();
       if (key) {
-        result[key] = val;
+        // Try to parse as number if it looks numeric
+        const num = Number(val);
+        if (val !== "" && !isNaN(num)) {
+          result[key] = num;
+        } else {
+          result[key] = val;
+        }
       }
     }
   }
@@ -141,7 +199,7 @@ interface KeyValueFieldProps {
   label: string;
   helper?: ReactNode;
   value: Record<string, unknown> | string | null | undefined;
-  onChange: (value: Record<string, string> | string | null) => void;
+  onChange: (value: Record<string, string | number> | string | null) => void;
   placeholder?: string;
   disabled?: boolean;
   rows?: number;
@@ -156,10 +214,33 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
   disabled,
   rows = 3,
 }) => {
-  const displayValue = objectToKeyValueLines(value);
+  // Use local state to allow free typing without losing input
+  const [text, setText] = useState(() => objectToKeyValueLines(value));
 
-  const handleChange = (text: string | null) => {
-    onChange(parseKeyValueLines(text));
+  const setSpellcheck = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.setAttribute("spellcheck", "false");
+    const shadowTextarea = el.shadowRoot?.querySelector("textarea");
+    if (shadowTextarea) {
+      shadowTextarea.setAttribute("spellcheck", "false");
+    }
+  };
+
+  // Sync local state when value changes externally (e.g., after save)
+  useEffect(() => {
+    const configText = objectToKeyValueLines(value);
+    // Only sync if parsed values differ (avoids cursor jump while typing)
+    const currentParsed = parseKeyValueLines(text);
+    const valueParsed = parseKeyValueLines(configText);
+    if (JSON.stringify(currentParsed) !== JSON.stringify(valueParsed)) {
+      setText(configText);
+    }
+  }, [value]);
+
+  const handleInput = (newText: string) => {
+    setText(newText);
+    // Also update config immediately so Ctrl+S works
+    onChange(parseKeyValueLines(newText));
   };
 
   return (
@@ -167,12 +248,14 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeTextarea
-        value={displayValue}
+        ref={setSpellcheck}
+        value={text}
         disabled={disabled}
-        onInput={(e) => handleChange(getInputValue(e) || null)}
+        onInput={(e) => handleInput(getInputValue(e))}
         placeholder={placeholder}
         rows={rows}
         spellCheck={false}
+        autocomplete="off"
       />
     </div>
   );
@@ -216,6 +299,7 @@ export const NumberField: FC<NumberFieldProps> = ({
         onInput={handleInput}
         placeholder={placeholder}
         spellCheck={false}
+        autocomplete="off"
       />
     </div>
   );

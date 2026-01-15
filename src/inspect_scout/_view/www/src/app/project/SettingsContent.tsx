@@ -4,7 +4,7 @@ import {
   VscodeLabel,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useEffect, useState } from "react";
 
 import {
   BatchConfig,
@@ -51,6 +51,15 @@ const REASONING_SUMMARY_OPTIONS = [
   "auto",
 ] as const;
 const REASONING_HISTORY_OPTIONS = ["none", "all", "last", "auto"] as const;
+
+// Cache expiry validation: must be a number followed by M, H, D, or W
+const CACHE_EXPIRY_PATTERN = /^\d+[MHDWmhdw]$/;
+
+function validateCacheExpiry(value: string | null): string | null {
+  if (!value) return null; // Empty is valid (will use default)
+  if (CACHE_EXPIRY_PATTERN.test(value)) return null;
+  return "Invalid format. Use a number followed by M, H, D, or W (e.g., 30M, 24H, 7D, 1W)";
+}
 
 export interface SettingsContentProps {
   config: Partial<ProjectConfigInput>;
@@ -112,22 +121,43 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   );
 
   // ===== General Section Helpers =====
-  const tagsValue = Array.isArray(config.tags)
-    ? config.tags.join(", ")
-    : (config.tags ?? "");
 
-  const shuffleEnabled =
-    config.shuffle !== null && config.shuffle !== undefined;
-  const shuffleSeed =
-    typeof config.shuffle === "number" ? config.shuffle : null;
+  // Tags field - use local state to allow typing commas/spaces freely
+  // but also update config on input so Ctrl+S saves correctly
+  const [tagsText, setTagsText] = useState(() =>
+    Array.isArray(config.tags) ? config.tags.join(", ") : (config.tags ?? "")
+  );
 
-  const handleTagsChange = (value: string) => {
+  // Sync local state when config changes externally (e.g., after save)
+  useEffect(() => {
+    const configValue = Array.isArray(config.tags)
+      ? config.tags.join(", ")
+      : (config.tags ?? "");
+    // Only sync if the parsed values differ (avoids cursor jump while typing)
+    const currentParsed = tagsText
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    const configParsed = Array.isArray(config.tags) ? config.tags : [];
+    if (JSON.stringify(currentParsed) !== JSON.stringify(configParsed)) {
+      setTagsText(configValue);
+    }
+  }, [config.tags]);
+
+  const handleTagsInput = (value: string) => {
+    setTagsText(value);
+    // Also update config immediately so Ctrl+S works
     const tags = value
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
     onChange({ tags: tags.length > 0 ? tags : null });
   };
+
+  const shuffleEnabled =
+    config.shuffle !== null && config.shuffle !== undefined;
+  const shuffleSeed =
+    typeof config.shuffle === "number" ? config.shuffle : null;
 
   const handleShuffleToggle = (enabled: boolean) => {
     onChange({ shuffle: enabled ? true : null });
@@ -183,6 +213,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             }
             placeholder="Filter expression"
             spellCheck={false}
+            autocomplete="off"
           />
         </div>
 
@@ -218,6 +249,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
                 placeholder="Seed (optional)"
                 style={{ width: "120px" }}
                 spellCheck={false}
+                autocomplete="off"
               />
             )}
           </div>
@@ -255,12 +287,13 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             One or more tags to apply to scans (comma-separated)
           </VscodeFormHelper>
           <VscodeTextfield
-            value={tagsValue}
+            value={tagsText}
             onInput={(e) =>
-              handleTagsChange((e.target as HTMLInputElement).value)
+              handleTagsInput((e.target as HTMLInputElement).value)
             }
             placeholder="tag1, tag2, tag3"
             spellCheck={false}
+            autocomplete="off"
           />
         </div>
 
@@ -298,7 +331,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           helper="Default model for LLM scanning (scanners can override as required)"
           value={config.model}
           onChange={(v) => onChange({ model: v })}
-          placeholder="e.g., openai/gpt-4o"
+          placeholder="e.g., openai/gpt-5"
         />
 
         <TextField
@@ -493,11 +526,12 @@ export const SettingsContent: FC<SettingsContentProps> = ({
 
         <TextField
           label="Expiry"
-          helper='Cache expiration duration (e.g., "1W" for one week, "1D" for one day)'
-          value={cache.config.expiry ?? "1W"}
+          helper="Cache expiration. Use a number followed by: M (minutes), H (hours), D (days), or W (weeks)."
+          value={cache.config.expiry}
           onChange={(v) => cache.updateConfig({ expiry: v })}
-          placeholder="1W"
+          placeholder="1W (default)"
           disabled={!cache.enabled}
+          validate={validateCacheExpiry}
         />
 
         <div className={styles.field}>

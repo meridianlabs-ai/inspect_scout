@@ -8398,9 +8398,19 @@
         "description": "Description of tool parameters object in JSON Schema format.",
         "properties": {
           "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JSONSchema"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "title": "Additionalproperties",
-            "type": "boolean"
+            "title": "Additionalproperties"
           },
           "properties": {
             "additionalProperties": {
@@ -8426,8 +8436,7 @@
         "required": [
           "type",
           "properties",
-          "required",
-          "additionalProperties"
+          "required"
         ],
         "title": "ToolParams",
         "type": "object"

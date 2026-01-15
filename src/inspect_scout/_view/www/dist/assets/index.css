@@ -4584,28 +4584,28 @@ so disabling selection can break that functionality */
 ._selected_1sw8v_41 {
   font-weight: 600;
 }
-._container_1szjw_1 {
+._container_1xqd6_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
 }
 
-._filterBar_1szjw_11 {
+._filterBar_1xqd6_11 {
   margin: 1px 0;
 }
 
-._filterLabel_1szjw_15 {
+._filterLabel_1xqd6_15 {
   margin-right: 0.3rem;
 }
 
-._filterNone_1szjw_19 {
+._filterNone_1xqd6_19 {
 }
 
-._actionButtons_1szjw_22 {
+._actionButtons_1xqd6_22 {
   margin-left: auto;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
@@ -4616,25 +4616,25 @@ so disabling selection can break that functionality */
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_1szjw_22 {
+._actionButton_1xqd6_22 {
   padding: 0.1rem 0.4rem;
-  margin: 0rem 0rem;
+  margin: 1px 0rem;
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButtonDropDown_1szjw_39 {
+._actionButtonDropDown_1xqd6_39 {
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_1szjw_22._chipButton_1szjw_43 {
+._actionButton_1xqd6_22._chipButton_1xqd6_43 {
   background-color: unset;
   margin-left: 0.3rem;
 }
 
-._sep_1szjw_48 {
+._sep_1xqd6_48 {
   width: 1px;
   height: calc(100% - 4px);
-  margin: 0 0.3rem;
+  margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);

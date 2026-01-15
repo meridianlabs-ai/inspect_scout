@@ -4,7 +4,7 @@
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
 }
 
@@ -32,7 +32,7 @@
 
 .actionButton {
   padding: 0.1rem 0.4rem;
-  margin: 0rem 0rem;
+  margin: 1px 0rem;
   font-size: var(--inspect-font-size-smallestest);
 }
 
@@ -48,7 +48,7 @@
 .sep {
   width: 1px;
   height: calc(100% - 4px);
-  margin: 0 0.3rem;
+  margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);

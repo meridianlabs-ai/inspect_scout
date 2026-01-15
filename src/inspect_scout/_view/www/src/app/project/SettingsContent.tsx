@@ -178,7 +178,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             }
             onInput={(e) =>
               onChange({
-                filter: (e.target as HTMLInputElement).value || "",
+                filter: (e.target as HTMLInputElement).value || undefined,
               })
             }
             placeholder="Filter expression"

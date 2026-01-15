@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { ChangeEvent, FC, KeyboardEvent, useCallback } from "react";
 
+import { ScalarValue } from "../../../api/api";
+import { AutocompleteInput } from "../../../components/AutocompleteInput";
 import type { OperatorModel } from "../../../query";
 import type { FilterType } from "../../../state/store";
 
@@ -19,6 +21,7 @@ export interface ColumnFilterEditorProps {
   onValueChange: (value: string) => void;
   onCommit?: () => void;
   onCancel?: () => void;
+  suggestions?: ScalarValue[];
 }
 
 export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
@@ -34,6 +37,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
   onValueChange,
   onCommit,
   onCancel,
+  suggestions = [],
 }) => {
   const handleOperatorChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
@@ -102,6 +106,19 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
+        ) : filterType === "string" || filterType === "unknown" ? (
+          <AutocompleteInput
+            id={`${columnId}-val`}
+            value={rawValue}
+            onChange={onValueChange}
+            onCommit={onCommit}
+            onCancel={onCancel}
+            inputRef={valueInputRef}
+            disabled={isValueDisabled}
+            placeholder="Filter"
+            suggestions={suggestions}
+            className={styles.filterInput}
+          />
         ) : (
           <input
             id={`${columnId}-val`}
@@ -111,9 +128,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
                 ? "number"
                 : filterType === "date"
                   ? "date"
-                  : filterType === "datetime"
-                    ? "datetime-local"
-                    : "text"
+                  : "datetime-local"
             }
             spellCheck="false"
             value={rawValue}

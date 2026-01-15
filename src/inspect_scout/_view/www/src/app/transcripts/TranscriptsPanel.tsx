@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
@@ -11,6 +11,7 @@ import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useCode } from "../server/useCode";
 import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
+import { useTranscriptsColumnValues } from "../server/useTranscriptsColumnValues";
 
 import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "./constants";
 import { TranscriptFilterBar } from "./TranscriptFilterBar";
@@ -30,6 +31,10 @@ export const TranscriptsPanel: FC = () => {
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const condition = useFilterConditions();
 
+  // Filter for autocomplete: exclude the column being edited
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const otherColumnsFilter = useFilterConditions(editingColumnId ?? undefined);
+
   // Clear detail state
   const clearTranscriptState = useStore((state) => state.clearTranscriptState);
   useEffect(() => {
@@ -41,6 +46,17 @@ export const TranscriptsPanel: FC = () => {
     error: _codeError,
     loading: _codeLoading,
   } = useCode(condition);
+
+  // Fetch column values for autocomplete suggestions (scoped to other column filters)
+  const {
+    data: filterBarSuggestions,
+    loading: _suggestionsLoading,
+    error: _suggestionsError,
+  } = useTranscriptsColumnValues(
+    editingColumnId ? (resolvedTranscriptDir ?? undefined) : undefined,
+    editingColumnId ?? undefined,
+    otherColumnsFilter
+  );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
@@ -83,7 +99,11 @@ export const TranscriptsPanel: FC = () => {
       )}
       {!error && (
         <>
-          <TranscriptFilterBar filterCodeValues={filterCodeValues} />
+          <TranscriptFilterBar
+            filterCodeValues={filterCodeValues}
+            filterSuggestions={filterBarSuggestions ?? []}
+            onFilterColumnChange={setEditingColumnId}
+          />
           <TranscriptsGrid
             transcripts={transcripts}
             transcriptsDir={resolvedTranscriptDir}
@@ -91,6 +111,8 @@ export const TranscriptsPanel: FC = () => {
             onScrollNearEnd={handleScrollNearEnd}
             hasMore={hasNextPage}
             fetchThreshold={TRANSCRIPTS_INFINITE_SCROLL_CONFIG.threshold}
+            filterSuggestions={filterBarSuggestions ?? []}
+            onFilterColumnChange={setEditingColumnId}
           />
         </>
       )}

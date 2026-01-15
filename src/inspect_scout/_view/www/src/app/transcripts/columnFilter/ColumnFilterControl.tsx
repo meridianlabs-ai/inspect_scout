@@ -1,5 +1,6 @@
 import { FC, useCallback, useRef } from "react";
 
+import { ScalarValue } from "../../../api/api";
 import { PopOver } from "../../../components/PopOver";
 import type { SimpleCondition } from "../../../query/types";
 import type { FilterType } from "../../../state/store";
@@ -14,6 +15,10 @@ interface ColumnFilterControlProps {
   filterType: FilterType;
   condition: SimpleCondition | null;
   onChange: (condition: SimpleCondition | null) => void;
+  /** Autocomplete suggestions for the filter value */
+  suggestions?: ScalarValue[];
+  /** Called when the popover opens/closes (for fetching suggestions) */
+  onOpenChange?: (columnId: string | null) => void;
 }
 
 export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
@@ -21,6 +26,8 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
   filterType,
   condition,
   onChange,
+  suggestions = [],
+  onOpenChange,
 }) => {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -47,8 +54,9 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
   const handlePopoverOpenChange = useCallback(
     (nextOpen: boolean) => {
       setIsOpen(nextOpen);
+      onOpenChange?.(nextOpen ? columnId : null);
     },
-    [setIsOpen]
+    [setIsOpen, onOpenChange, columnId]
   );
 
   return (
@@ -90,6 +98,7 @@ export const ColumnFilterControl: FC<ColumnFilterControlProps> = ({
           onValueChange={setRawValue}
           onCommit={commitAndClose}
           onCancel={cancelAndClose}
+          suggestions={suggestions}
         />
       </PopOver>
     </div>

@@ -21,6 +21,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
@@ -69,6 +70,10 @@ interface TranscriptGridProps {
   /** Distance from bottom (in px) at which to trigger callback. */
   fetchThreshold: number;
   loading?: boolean;
+  /** Autocomplete suggestions for the currently editing filter column */
+  filterSuggestions?: ScalarValue[];
+  /** Called when a filter column starts/stops being edited */
+  onFilterColumnChange?: (columnId: string | null) => void;
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
@@ -79,6 +84,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   hasMore,
   fetchThreshold,
   loading,
+  filterSuggestions = [],
+  onFilterColumnChange,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -702,6 +709,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                             condition
                           )
                         }
+                        suggestions={filterSuggestions}
+                        onOpenChange={onFilterColumnChange}
                       />
                     ) : null}
                     <div

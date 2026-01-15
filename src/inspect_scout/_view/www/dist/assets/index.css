@@ -4245,6 +4245,53 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
+._container_15g4u_1 {
+  position: relative;
+  width: 100%;
+}
+
+._input_15g4u_6 {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+._input_15g4u_6:disabled {
+  background: var(--bs-light);
+  color: var(--bs-secondary);
+}
+
+._suggestionsList_15g4u_21 {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10000;
+}
+
+._suggestionItem_15g4u_34 {
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._suggestionItem_15g4u_34:hover,
+._suggestionItem_15g4u_34._highlighted_15g4u_44 {
+  background: var(--bs-primary);
+  color: white;
+}
 ._filterContent_1udn5_1 {
   display: flex;
   flex-direction: column;

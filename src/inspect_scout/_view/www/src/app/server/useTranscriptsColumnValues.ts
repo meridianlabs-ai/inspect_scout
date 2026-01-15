@@ -5,15 +5,17 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 export const useTranscriptsColumnValues = (
-  transcriptsDir: string,
-  column: string,
+  location: string | undefined,
+  column: string | undefined,
   filter: Condition | undefined
 ): AsyncData<ScalarValue[]> => {
   const api = useApi();
+
   return useAsyncDataFromQuery({
-    queryKey: ["transcriptsColumnValues", transcriptsDir, column, filter],
+    queryKey: ["transcriptsColumnValues", location, column, filter],
     queryFn: () =>
-      api.getTranscriptsColumnValues(transcriptsDir, column, filter),
+      api.getTranscriptsColumnValues(location ?? "", column ?? "", filter),
     staleTime: 10 * 60 * 1000, // We can be pretty liberal here
+    enabled: !!location && !!column,
   });
 };

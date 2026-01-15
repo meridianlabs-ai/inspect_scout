@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
 import { FC } from "react";
 
@@ -30,7 +31,11 @@ export const TranscriptPanel: FC = () => {
     loading,
     data: transcript,
     error,
-  } = useTranscript(config.transcripts_dir, transcriptId);
+  } = useTranscript(
+    config.transcripts_dir
+      ? { location: config.transcripts_dir, id: transcriptId }
+      : skipToken
+  );
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);

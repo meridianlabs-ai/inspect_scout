@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { useStore } from "../../state/store";
@@ -20,5 +21,5 @@ export const useSelectedScan = (): AsyncData<Status> => {
     }
   }, [scanPath, setSelectedScanLocation]);
 
-  return useScan(location);
+  return useScan(location ?? skipToken);
 };

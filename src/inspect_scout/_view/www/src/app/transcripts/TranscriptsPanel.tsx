@@ -55,7 +55,11 @@ export const TranscriptsPanel: FC = () => {
     error: _suggestionsError,
   } = useTranscriptsColumnValues(
     editingColumnId && resolvedTranscriptDir
-      ? { location: resolvedTranscriptDir, column: editingColumnId, filter: otherColumnsFilter }
+      ? {
+          location: resolvedTranscriptDir,
+          column: editingColumnId,
+          filter: otherColumnsFilter,
+        }
       : skipToken
   );
 

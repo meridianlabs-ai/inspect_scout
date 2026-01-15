@@ -22,12 +22,11 @@ export interface AutocompleteInputProps {
   disabled?: boolean;
   placeholder?: string;
   suggestions: Array<string | number | boolean | null>;
-  className?: string;
   autoFocus?: boolean;
+  maxSuggestions?: number;
+  charactersBeforeSuggesting?: number;
+  className?: string;
 }
-
-const MAX_VISIBLE_SUGGESTIONS = 10;
-const MIN_CHARS_FOR_SUGGESTIONS = 3;
 
 export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   id,
@@ -36,10 +35,12 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   onCommit,
   onCancel,
   disabled,
-  placeholder = "Filter",
   suggestions,
-  className,
+  placeholder = "Filter",
+  maxSuggestions = 10,
+  charactersBeforeSuggesting = 1,
   autoFocus,
+  className,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -52,20 +53,25 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   } | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Track whether user has typed in the input (to avoid showing suggestions on initial focus)
+  const hasTypedRef = useRef(false);
 
   // Filter suggestions based on current input (only when 3+ chars typed)
   const filteredSuggestions = useMemo(() => {
-    if (value.length < MIN_CHARS_FOR_SUGGESTIONS) {
+    if (value.length < charactersBeforeSuggesting) {
       return [];
     }
     const lowerValue = value.toLowerCase();
     return suggestions
       .filter((s) => {
         if (s === null) return false;
-        return String(s).toLowerCase().includes(lowerValue);
+        const strValue = String(s).toLowerCase();
+        // Exclude exact matches - no point suggesting what's already there
+        if (strValue === lowerValue) return false;
+        return strValue.includes(lowerValue);
       })
-      .slice(0, MAX_VISIBLE_SUGGESTIONS);
-  }, [suggestions, value]);
+      .slice(0, maxSuggestions);
+  }, [suggestions, value, maxSuggestions, charactersBeforeSuggesting]);
 
   // Determine if dropdown should be shown
   const showDropdown = isOpen && filteredSuggestions.length > 0;
@@ -88,9 +94,9 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
     setHighlightedIndex(-1);
   }, [filteredSuggestions]);
 
-  // Show dropdown when input is focused and has suggestions
+  // Show dropdown when input is focused and has suggestions (only if user has typed)
   const handleFocus = useCallback(() => {
-    if (filteredSuggestions.length > 0) {
+    if (hasTypedRef.current && filteredSuggestions.length > 0) {
       setIsOpen(true);
     }
   }, [filteredSuggestions.length]);
@@ -111,6 +117,7 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
 
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
+      hasTypedRef.current = true;
       onChange(e.target.value);
       setIsOpen(true);
     },

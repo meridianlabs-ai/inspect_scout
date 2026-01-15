@@ -126,13 +126,19 @@ export function useColumnFilter({
   const valueSelectRef = useRef<HTMLSelectElement | null>(null);
   const valueInputRef = useRef<HTMLInputElement | null>(null);
 
-  // keep state in sync with props when closed
+  // Track the previous columnId to detect when we switch to a different filter
+  const prevColumnIdRef = useRef(columnId);
+
+  // Sync state when closed OR when switching to a different column while opening
   useEffect(() => {
-    if (!isOpen) {
+    const columnChanged = prevColumnIdRef.current !== columnId;
+    prevColumnIdRef.current = columnId;
+
+    if (!isOpen || columnChanged) {
       setOperator(condition?.operator ?? defaultOperator);
       setValue(formatFilterValue(condition?.right, filterType));
     }
-  }, [condition, defaultOperator, filterType, isOpen, setValue]);
+  }, [condition, defaultOperator, filterType, isOpen, columnId, setValue]);
 
   // auto-focus value input when opened
   useEffect(() => {

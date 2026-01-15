@@ -6,7 +6,7 @@ import { useApi } from "../../state/store";
 import { data, loading } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
-import { useServerActiveScans } from "./useServerActiveScans";
+import { useActiveScans } from "./useActiveScans";
 
 vi.mock("../../state/store", () => ({
   useApi: vi.fn(),
@@ -28,7 +28,7 @@ describe("useServerActiveScans", () => {
   it("returns loading state when query is pending", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
-    const { result } = renderHook(() => useServerActiveScans());
+    const { result } = renderHook(() => useActiveScans());
 
     expect(result.current).toEqual(loading);
   });
@@ -48,7 +48,7 @@ describe("useServerActiveScans", () => {
 
     mockUseAsyncDataFromQuery.mockReturnValue(data(mockActiveScans));
 
-    const { result } = renderHook(() => useServerActiveScans());
+    const { result } = renderHook(() => useActiveScans());
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual(mockActiveScans);
@@ -57,7 +57,7 @@ describe("useServerActiveScans", () => {
   it("returns empty object when no active scans", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(data({}));
 
-    const { result } = renderHook(() => useServerActiveScans());
+    const { result } = renderHook(() => useActiveScans());
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual({});
@@ -67,7 +67,7 @@ describe("useServerActiveScans", () => {
     const error = new Error("Network error");
     mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
 
-    const { result } = renderHook(() => useServerActiveScans());
+    const { result } = renderHook(() => useActiveScans());
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(error);
@@ -80,7 +80,7 @@ describe("useServerActiveScans", () => {
     mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
-    renderHook(() => useServerActiveScans());
+    renderHook(() => useActiveScans());
 
     expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith({
       queryKey: ["active-scans"],
@@ -97,7 +97,7 @@ describe("useServerActiveScans", () => {
     mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
-    renderHook(() => useServerActiveScans());
+    renderHook(() => useActiveScans());
 
     const callArgs = mockUseAsyncDataFromQuery.mock.calls[0]?.[0];
     expect(callArgs).toBeDefined();

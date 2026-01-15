@@ -14,7 +14,7 @@ import { ScansResponse } from "../../types/api-types";
 
 import { CursorType, sortingStateToOrderBy } from ".";
 
-export const useServerScansInfinite = (
+export const useScansInfinite = (
   pageSize: number = 50,
   filter?: Condition,
   sorting?: SortingState

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useStore } from "../../state/store";
 import { Status } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
-import { useServerScan } from "../server/useServerScan";
+import { useScan } from "../server/useScan";
 
 import { useScanRoute } from "./useScanRoute";
 
@@ -20,5 +20,5 @@ export const useSelectedScan = (): AsyncData<Status> => {
     }
   }, [scanPath, setSelectedScanLocation]);
 
-  return useServerScan(location);
+  return useScan(location);
 };

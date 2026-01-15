@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { data, loading } from "../../utils/asyncData";
 
 import { useActiveScan } from "./useActiveScan";
-import { useServerScans } from "./useServerScans";
+import { useScans } from "./useScans";
 
-vi.mock("./useServerScans", () => ({
-  useServerScans: vi.fn(),
+vi.mock("./useScans", () => ({
+  useScans: vi.fn(),
 }));
 
-const mockUseServerScans = vi.mocked(useServerScans);
+const mockUseScans = vi.mocked(useScans);
 
 const createMockScan = (
   scanId: string,
@@ -31,7 +31,7 @@ describe("useActiveScan", () => {
   });
 
   it("returns loading state when scans are loading", () => {
-    mockUseServerScans.mockReturnValue(loading);
+    mockUseScans.mockReturnValue(loading);
 
     const { result } = renderHook(() => useActiveScan("scan-123"));
 
@@ -39,9 +39,7 @@ describe("useActiveScan", () => {
   });
 
   it("returns null when scan is not found", () => {
-    mockUseServerScans.mockReturnValue(
-      data([createMockScan("other-scan")] as never)
-    );
+    mockUseScans.mockReturnValue(data([createMockScan("other-scan")] as never));
 
     const { result } = renderHook(() => useActiveScan("scan-123"));
 
@@ -50,7 +48,7 @@ describe("useActiveScan", () => {
   });
 
   it("returns null when scan has no active_scan_info", () => {
-    mockUseServerScans.mockReturnValue(
+    mockUseScans.mockReturnValue(
       data([createMockScan("scan-123", null)] as never)
     );
 
@@ -62,7 +60,7 @@ describe("useActiveScan", () => {
 
   it("returns active_scan_info when scan is active", () => {
     const activeScanInfo = { scan_id: "scan-123", total_scans: 10 };
-    mockUseServerScans.mockReturnValue(
+    mockUseScans.mockReturnValue(
       data([createMockScan("scan-123", activeScanInfo as never)] as never)
     );
 
@@ -73,9 +71,7 @@ describe("useActiveScan", () => {
   });
 
   it("returns null when scanId is undefined", () => {
-    mockUseServerScans.mockReturnValue(
-      data([createMockScan("scan-123")] as never)
-    );
+    mockUseScans.mockReturnValue(data([createMockScan("scan-123")] as never));
 
     const { result } = renderHook(() => useActiveScan(undefined));
 
@@ -85,7 +81,7 @@ describe("useActiveScan", () => {
 
   it("returns error when scans fetch fails", () => {
     const error = new Error("Network error");
-    mockUseServerScans.mockReturnValue({ loading: false, error });
+    mockUseScans.mockReturnValue({ loading: false, error });
 
     const { result } = renderHook(() => useActiveScan("scan-123"));
 

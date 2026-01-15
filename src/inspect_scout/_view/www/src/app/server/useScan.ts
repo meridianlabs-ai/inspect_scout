@@ -4,9 +4,7 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 // Fetches scan status from the server by location
-export const useServerScan = (
-  location: string | undefined
-): AsyncData<Status> => {
+export const useScan = (location: string | undefined): AsyncData<Status> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({

@@ -9,7 +9,7 @@ import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useConfig } from "../server/useConfig";
-import { useServerScans } from "../server/useServerScans";
+import { useScans } from "../server/useScans";
 
 import styles from "./ScanPanel.module.css";
 import { ScanPanelBody } from "./ScanPanelBody";
@@ -17,7 +17,7 @@ import { ScanPanelTitle } from "./ScanPanelTitle";
 
 export const ScanPanel: React.FC = () => {
   // Load server data
-  const { loading: scansLoading } = useServerScans();
+  const { loading: scansLoading } = useScans();
   const config = useConfig();
   const scansDir = config.scans_dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();

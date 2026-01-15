@@ -76,11 +76,8 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   }, []);
 
   // Ctrl/Cmd+S keyboard shortcut to save
-  // Use capture phase to intercept before web components handle the event
+  // Always handle since project panel is the only active UI when visible
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
@@ -88,9 +85,8 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       }
     };
 
-    container.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () =>
-      container.removeEventListener("keydown", handleKeyDown, { capture: true });
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Scroll to section - only scrolls within the scrollContent container

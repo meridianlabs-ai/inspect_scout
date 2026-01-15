@@ -23,7 +23,20 @@ export function isEmpty(value: unknown): boolean {
 }
 
 /**
+ * Filter out null and undefined values from an object.
+ */
+export function filterNullValues<T extends Record<string, unknown>>(
+  obj: T
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== null && v !== undefined)
+  ) as Partial<T>;
+}
+
+/**
  * Deep copy an object using JSON serialization.
+ * Note: Only works for JSON-serializable types (objects, arrays, primitives).
+ * Loses functions, Symbols, undefined values. Circular references will throw.
  */
 export function deepCopy<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -82,8 +95,7 @@ function cleanNestedConfig(
  */
 function cleanGenerateConfig(
   edited: Record<string, unknown> | null | undefined,
-  original: Record<string, unknown> | null | undefined,
-  _server: Record<string, unknown> | null | undefined
+  original: Record<string, unknown> | null | undefined
 ): Record<string, unknown> | null | undefined {
   // Handle empty edited config
   if (
@@ -173,14 +185,12 @@ export function computeConfigToSave(
   for (const key of allKeys) {
     const editedValue = edited[key as keyof ProjectConfigInput];
     const originalValue = original[key as keyof ProjectConfigInput];
-    const serverValue = serverConfig[key as keyof ProjectConfigInput];
 
     // Handle generate_config specially
     if (key === "generate_config") {
       const cleanedGenConfig = cleanGenerateConfig(
         editedValue as Record<string, unknown> | null | undefined,
-        originalValue as Record<string, unknown> | null | undefined,
-        serverValue as Record<string, unknown> | null | undefined
+        originalValue as Record<string, unknown> | null | undefined
       );
       if (cleanedGenConfig !== undefined) {
         result[key] = cleanedGenConfig;

@@ -19,6 +19,7 @@ import {
   SelectField,
   TextField,
 } from "./components/FormFields";
+import { filterNullValues } from "./configUtils";
 import { useBatchConfig, useNestedConfig } from "./hooks/useNestedConfig";
 import styles from "./ProjectPanel.module.css";
 
@@ -64,15 +65,6 @@ function validateCacheExpiry(value: string | null): string | null {
 export interface SettingsContentProps {
   config: Partial<ProjectConfigInput>;
   onChange: (updates: Partial<ProjectConfigInput>) => void;
-}
-
-// Filter out null/undefined values from an object
-function filterNullValues<T extends Record<string, unknown>>(
-  obj: T
-): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v !== null && v !== undefined)
-  ) as Partial<T>;
 }
 
 export const SettingsContent: FC<SettingsContentProps> = ({
@@ -124,32 +116,39 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   const cacheOptionsRef = useRef<HTMLDivElement>(null);
   const batchOptionsRef = useRef<HTMLDivElement>(null);
 
-  // Helper to scroll parent container to bottom
-  const scrollToBottom = (element: HTMLElement | null) => {
+  // Helper to scroll parent container to bottom by finding scrollable ancestor
+  const scrollToBottom = useCallback((element: HTMLElement | null) => {
     if (!element) return;
-    // Find the scrollable parent container
-    const scrollContainer = element.closest('[class*="scrollContent"]') as HTMLElement;
-    if (scrollContainer) {
-      scrollContainer.scrollTo({
-        top: scrollContainer.scrollHeight,
-        behavior: "smooth",
-      });
+    // Find scrollable parent by checking overflow property
+    let scrollContainer = element.parentElement;
+    while (scrollContainer) {
+      const overflow = getComputedStyle(scrollContainer).overflowY;
+      if (overflow === "auto" || overflow === "scroll") {
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior: "smooth",
+        });
+        return;
+      }
+      scrollContainer = scrollContainer.parentElement;
     }
-  };
+  }, []);
 
-  // Scroll to bottom when cache is enabled
-  useEffect(() => {
-    if (cache.enabled) {
-      requestAnimationFrame(() => scrollToBottom(cacheOptionsRef.current));
-    }
-  }, [cache.enabled]);
+  // Handle scroll after cache is enabled (called from checkbox handler)
+  const handleCacheEnabled = useCallback(() => {
+    // Delay scroll to not interfere with focus
+    setTimeout(() => {
+      scrollToBottom(cacheOptionsRef.current);
+    }, 150);
+  }, [scrollToBottom]);
 
-  // Scroll to bottom when batch is enabled
-  useEffect(() => {
-    if (batch.enabled) {
-      requestAnimationFrame(() => scrollToBottom(batchOptionsRef.current));
-    }
-  }, [batch.enabled]);
+  // Handle scroll after batch is enabled (called from checkbox handler)
+  const handleBatchEnabled = useCallback(() => {
+    // Delay scroll to not interfere with focus
+    setTimeout(() => {
+      scrollToBottom(batchOptionsRef.current);
+    }, 150);
+  }, [scrollToBottom]);
 
   // ===== General Section Helpers =====
 
@@ -206,6 +205,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.sectionHeader}>Locations</div>
 
         <TextField
+          id="field-transcripts"
           label="Transcripts"
           helper="Transcripts to scan (filesystem, S3 bucket, etc.)"
           value={config.transcripts}
@@ -214,6 +214,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <TextField
+          id="field-scans"
           label="Scans"
           helper="Location to write scan results (filesystem, S3 bucket, etc.)"
           value={config.scans}
@@ -232,6 +233,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             SQL WHERE clause(s) for filtering transcripts
           </VscodeFormHelper>
           <VscodeTextfield
+            id="field-filter"
             value={
               Array.isArray(config.filter)
                 ? config.filter.join("; ")
@@ -249,6 +251,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         </div>
 
         <NumberField
+          id="field-limit"
           label="Limit"
           helper="Limit the number of transcripts processed per scanner"
           value={config.limit}
@@ -263,6 +266,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
           </VscodeFormHelper>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <VscodeCheckbox
+              id="field-shuffle"
               checked={shuffleEnabled}
               onChange={(e) =>
                 handleShuffleToggle((e.target as HTMLInputElement).checked)
@@ -272,6 +276,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             </VscodeCheckbox>
             {shuffleEnabled && (
               <VscodeTextfield
+                id="field-shuffle-seed"
                 type="number"
                 value={shuffleSeed?.toString() ?? ""}
                 onInput={(e) =>
@@ -292,6 +297,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.sectionHeader}>Concurrency</div>
 
         <NumberField
+          id="field-max-transcripts"
           label="Max Transcripts"
           helper="Maximum number of transcripts to process concurrently (default: 25)"
           value={config.max_transcripts}
@@ -300,6 +306,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-max-processes"
           label="Max Processes"
           helper="Maximum number of concurrent processes for multiprocessing (default: 4)"
           value={config.max_processes}
@@ -318,6 +325,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             One or more tags to apply to scans (comma-separated)
           </VscodeFormHelper>
           <VscodeTextfield
+            id="field-tags"
             value={tagsText}
             onInput={(e) =>
               handleTagsInput((e.target as HTMLInputElement).value)
@@ -329,6 +337,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         </div>
 
         <KeyValueField
+          id="field-metadata"
           label="Metadata"
           helper="Key/value pairs to apply to scans (one per line)"
           value={config.metadata}
@@ -339,6 +348,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <SelectField
+          id="field-log-level"
           label="Log Level"
           helper="Level for logging to the console (default: warning)"
           value={config.log_level}
@@ -358,6 +368,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         </VscodeFormHelper>
 
         <TextField
+          id="field-model"
           label="Model"
           helper="Default model for LLM scanning (scanners can override as required)"
           value={config.model}
@@ -366,6 +377,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <TextField
+          id="field-model-base-url"
           label="Model Base URL"
           helper="Base URL for communicating with the model API"
           value={config.model_base_url}
@@ -374,6 +386,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <KeyValueField
+          id="field-model-args"
           label="Model Args"
           helper="Model creation args (key=value per line, or path to config file)"
           value={config.model_args}
@@ -387,6 +400,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.sectionHeader}>Connection</div>
 
         <NumberField
+          id="field-max-connections"
           label="Max Connections"
           helper="Maximum concurrent connections to Model API (defaults to max_transcripts)"
           value={generateConfig.max_connections}
@@ -395,6 +409,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-max-retries"
           label="Max Retries"
           helper="Maximum number of times to retry request (defaults to unlimited)"
           value={generateConfig.max_retries}
@@ -403,6 +418,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-timeout"
           label="Timeout"
           helper="Timeout (seconds) for entire request including retries"
           value={generateConfig.timeout}
@@ -411,6 +427,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-attempt-timeout"
           label="Attempt Timeout"
           helper="Timeout (seconds) for any given attempt before retrying"
           value={generateConfig.attempt_timeout}
@@ -424,6 +441,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.sectionHeader}>Generation</div>
 
         <NumberField
+          id="field-max-tokens"
           label="Max Tokens"
           helper="Maximum tokens that can be generated in the completion"
           value={generateConfig.max_tokens}
@@ -432,6 +450,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-temperature"
           label="Temperature"
           helper="Sampling temperature (0-2). Higher = more random"
           value={generateConfig.temperature}
@@ -441,6 +460,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-top-p"
           label="Top P"
           helper="Nucleus sampling probability mass"
           value={generateConfig.top_p}
@@ -450,6 +470,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-top-k"
           label="Top K"
           helper="Sample from top K most likely next tokens"
           value={generateConfig.top_k}
@@ -458,6 +479,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-frequency-penalty"
           label="Frequency Penalty"
           helper="Penalize tokens based on frequency (-2 to 2)"
           value={generateConfig.frequency_penalty}
@@ -467,6 +489,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-presence-penalty"
           label="Presence Penalty"
           helper="Penalize new tokens based on presence (-2 to 2)"
           value={generateConfig.presence_penalty}
@@ -476,6 +499,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-seed"
           label="Seed"
           helper="Random seed for reproducibility"
           value={generateConfig.seed}
@@ -484,6 +508,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <SelectField
+          id="field-verbosity"
           label="Verbosity"
           helper="Response verbosity (GPT 5.x models only)"
           value={generateConfig.verbosity}
@@ -492,6 +517,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <SelectField
+          id="field-effort"
           label="Effort"
           helper="Response thoroughness (Claude Opus 4.5 only)"
           value={generateConfig.effort}
@@ -505,6 +531,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.sectionHeader}>Reasoning</div>
 
         <SelectField
+          id="field-reasoning-effort"
           label="Reasoning Effort"
           helper="Constrains effort on reasoning (varies by provider/model)"
           value={generateConfig.reasoning_effort}
@@ -513,6 +540,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <NumberField
+          id="field-reasoning-tokens"
           label="Reasoning Tokens"
           helper="Maximum tokens for reasoning (Anthropic/Google only)"
           value={generateConfig.reasoning_tokens}
@@ -521,6 +549,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <SelectField
+          id="field-reasoning-summary"
           label="Reasoning Summary"
           helper="Summary of reasoning steps (OpenAI reasoning models only)"
           value={generateConfig.reasoning_summary}
@@ -529,6 +558,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         />
 
         <SelectField
+          id="field-reasoning-history"
           label="Reasoning History"
           helper="Include reasoning in chat message history"
           value={generateConfig.reasoning_history}
@@ -543,10 +573,13 @@ export const SettingsContent: FC<SettingsContentProps> = ({
 
         <div className={styles.field}>
           <VscodeCheckbox
+            id="field-cache-enabled"
             checked={cache.enabled}
-            onChange={(e) =>
-              cache.setEnabled((e.target as HTMLInputElement).checked)
-            }
+            onChange={(e) => {
+              const checked = (e.target as HTMLInputElement).checked;
+              cache.setEnabled(checked);
+              if (checked) handleCacheEnabled();
+            }}
           >
             Enable Caching
           </VscodeCheckbox>
@@ -558,6 +591,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         {cache.enabled && (
           <div ref={cacheOptionsRef}>
             <TextField
+              id="field-cache-expiry"
               label="Expiry"
               helper="Cache expiration. Use a number followed by: M (minutes), H (hours), D (days), or W (weeks)."
               value={cache.config.expiry}
@@ -572,6 +606,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
                 Maintain separate cache entries per epoch
               </VscodeFormHelper>
               <VscodeCheckbox
+                id="field-cache-per-epoch"
                 checked={cache.config.per_epoch ?? true}
                 onChange={(e) =>
                   cache.updateConfig({
@@ -592,10 +627,13 @@ export const SettingsContent: FC<SettingsContentProps> = ({
 
         <div className={styles.field}>
           <VscodeCheckbox
+            id="field-batch-enabled"
             checked={batch.enabled}
-            onChange={(e) =>
-              batch.setEnabled((e.target as HTMLInputElement).checked)
-            }
+            onChange={(e) => {
+              const checked = (e.target as HTMLInputElement).checked;
+              batch.setEnabled(checked);
+              if (checked) handleBatchEnabled();
+            }}
           >
             Enable Batch Processing
           </VscodeCheckbox>
@@ -607,6 +645,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         {batch.enabled && (
           <div ref={batchOptionsRef}>
             <NumberField
+              id="field-batch-size"
               label="Batch Size"
               helper="Number of requests per batch"
               value={batch.currentBatchSize}
@@ -615,6 +654,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             />
 
             <NumberField
+              id="field-batch-max-size"
               label="Max Size"
               helper="Maximum batch size allowed"
               value={batch.config.max_size}
@@ -623,6 +663,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             />
 
             <NumberField
+              id="field-batch-max-batches"
               label="Max Batches"
               helper="Maximum number of batches to process"
               value={batch.config.max_batches}
@@ -631,6 +672,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             />
 
             <NumberField
+              id="field-batch-send-delay"
               label="Send Delay"
               helper="Delay (seconds) before sending batch"
               value={batch.config.send_delay}
@@ -640,6 +682,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             />
 
             <NumberField
+              id="field-batch-tick"
               label="Tick"
               helper="Tick interval (seconds) for batch processing"
               value={batch.config.tick}
@@ -649,6 +692,7 @@ export const SettingsContent: FC<SettingsContentProps> = ({
             />
 
             <NumberField
+              id="field-batch-max-check-failures"
               label="Max Check Failures"
               helper="Maximum consecutive check failures before abort"
               value={batch.config.max_consecutive_check_failures}

@@ -65,28 +65,20 @@ const NAV_SECTIONS: NavSection[] = [
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContentRef = useRef<HTMLDivElement>(null);
-  const focusedBeforeSaveRef = useRef<Element | null>(null);
+  const focusedFieldIdRef = useRef<string | null>(null);
   const saveRef = useRef<() => void>(() => {});
   // Track the etag from our own saves to skip re-initialization
   const lastSavedEtagRef = useRef<string | null>(null);
 
-  // Capture focused element on mousedown (before click moves focus to button)
+  // Capture focused element ID on mousedown (before click moves focus to button)
+  // We store the ID since React may recreate the DOM element
   const handleSaveMouseDown = useCallback(() => {
-    focusedBeforeSaveRef.current = document.activeElement;
-  }, []);
-
-  // Ctrl/Cmd+S keyboard shortcut to save
-  // Always handle since project panel is the only active UI when visible
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        saveRef.current();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const el = document.activeElement as HTMLElement;
+    if (el && el !== document.body && el.id) {
+      focusedFieldIdRef.current = el.id;
+    } else {
+      focusedFieldIdRef.current = null;
+    }
   }, []);
 
   // Scroll to section - only scrolls within the scrollContent container
@@ -105,6 +97,30 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const queryClient = useQueryClient();
   const { loading, error, data } = useProjectConfig();
   const mutation = useUpdateProjectConfig();
+
+  // Ctrl/Cmd+S keyboard shortcut to save
+  // Always handle since project panel is the only active UI when visible
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        // Guard against double-save during pending mutation
+        if (!mutation.isPending) {
+          // Capture focused element ID for restoration after save
+          const el = document.activeElement as HTMLElement;
+          if (el && el !== document.body && el.id) {
+            focusedFieldIdRef.current = el.id;
+          } else {
+            focusedFieldIdRef.current = null;
+          }
+          saveRef.current();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mutation.isPending]);
 
   const [editedConfig, setEditedConfig] =
     useState<Partial<ProjectConfigInput> | null>(null);
@@ -178,10 +194,18 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
         {
           onSuccess: (responseData) => {
             setConflictError(false);
-            // Mark this etag as expected so the init effect skips re-init
             lastSavedEtagRef.current = responseData.etag;
-            // Update originalConfig to match what we saved, so hasChanges becomes false
             setOriginalConfig(deepCopy(editedConfig));
+            // Restore focus after save completes (delay to let React finish rendering)
+            const fieldId = focusedFieldIdRef.current;
+            setTimeout(() => {
+              if (fieldId) {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                  field.focus();
+                }
+              }
+            }, 100);
           },
           onError: (err) => {
             if (err instanceof ApiError && err.status === 412) {
@@ -202,9 +226,6 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
   const handleSaveWithFocusRestore = (force = false) => {
     if (!data || !editedConfig || !originalConfig) return;
 
-    // Use the element that was focused before mousedown on save button
-    const focusedElement = focusedBeforeSaveRef.current as HTMLElement | null;
-
     const updatedConfig = computeConfigToSave(
       editedConfig,
       originalConfig,
@@ -216,14 +237,18 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       {
         onSuccess: (responseData) => {
           setConflictError(false);
-          // Mark this etag as expected so the init effect skips re-init
           lastSavedEtagRef.current = responseData.etag;
-          // Update originalConfig to match what we saved, so hasChanges becomes false
           setOriginalConfig(deepCopy(editedConfig));
-          // Restore focus after the click event fully completes
-          requestAnimationFrame(() => {
-            focusedElement?.focus?.();
-          });
+          // Restore focus after the click event fully completes (delay to let React finish rendering)
+          const fieldId = focusedFieldIdRef.current;
+          setTimeout(() => {
+            if (fieldId) {
+              const field = document.getElementById(fieldId);
+              if (field) {
+                field.focus();
+              }
+            }
+          }, 100);
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 412) {
@@ -251,9 +276,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       {
         onSuccess: (responseData) => {
           setConflictError(false);
-          // Mark this etag as expected so the init effect skips re-init
           lastSavedEtagRef.current = responseData.etag;
-          // Update originalConfig to match what we saved, so hasChanges becomes false
           setOriginalConfig(deepCopy(editedConfig));
           blocker.proceed?.();
         },

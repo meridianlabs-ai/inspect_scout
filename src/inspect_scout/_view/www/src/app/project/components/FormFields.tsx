@@ -19,8 +19,21 @@ function getSelectValue(e: Event): string {
   return (e.target as HTMLSelectElement).value;
 }
 
+// Helper to disable spellcheck on web component shadow DOM elements
+function createSpellcheckRef(selector: "input" | "textarea") {
+  return (el: HTMLElement | null) => {
+    if (!el) return;
+    el.setAttribute("spellcheck", "false");
+    const shadowEl = el.shadowRoot?.querySelector(selector);
+    if (shadowEl) {
+      shadowEl.setAttribute("spellcheck", "false");
+    }
+  };
+}
+
 // ===== TextField Component =====
 interface TextFieldProps {
+  id?: string;
   label: string;
   helper?: ReactNode;
   value: string | null | undefined;
@@ -32,6 +45,7 @@ interface TextFieldProps {
 }
 
 export const TextField: FC<TextFieldProps> = ({
+  id,
   label,
   helper,
   value,
@@ -40,16 +54,6 @@ export const TextField: FC<TextFieldProps> = ({
   disabled,
   validate,
 }) => {
-  // Disable spellcheck on the shadow DOM input element
-  const setSpellcheck = (el: HTMLElement | null) => {
-    if (!el) return;
-    el.setAttribute("spellcheck", "false");
-    const shadowInput = el.shadowRoot?.querySelector("input");
-    if (shadowInput) {
-      shadowInput.setAttribute("spellcheck", "false");
-    }
-  };
-
   // Debounce validation errors to avoid flashing during typing
   const [debouncedError, setDebouncedError] = useState<string | null>(null);
   const errorMessage = validate && !disabled ? validate(value ?? null) : null;
@@ -69,7 +73,8 @@ export const TextField: FC<TextFieldProps> = ({
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeTextfield
-        ref={setSpellcheck}
+        id={id}
+        ref={createSpellcheckRef("input")}
         value={value ?? ""}
         disabled={disabled}
         onInput={(e) => onChange(getInputValue(e) || null)}
@@ -90,6 +95,7 @@ export const TextField: FC<TextFieldProps> = ({
 
 // ===== TextAreaField Component =====
 interface TextAreaFieldProps {
+  id?: string;
   label: string;
   helper?: ReactNode;
   value: string | null | undefined;
@@ -100,6 +106,7 @@ interface TextAreaFieldProps {
 }
 
 export const TextAreaField: FC<TextAreaFieldProps> = ({
+  id,
   label,
   helper,
   value,
@@ -108,21 +115,13 @@ export const TextAreaField: FC<TextAreaFieldProps> = ({
   disabled,
   rows = 3,
 }) => {
-  const setSpellcheck = (el: HTMLElement | null) => {
-    if (!el) return;
-    el.setAttribute("spellcheck", "false");
-    const shadowTextarea = el.shadowRoot?.querySelector("textarea");
-    if (shadowTextarea) {
-      shadowTextarea.setAttribute("spellcheck", "false");
-    }
-  };
-
   return (
     <div className={styles.field}>
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeTextarea
-        ref={setSpellcheck}
+        id={id}
+        ref={createSpellcheckRef("textarea")}
         value={value ?? ""}
         disabled={disabled}
         onInput={(e) => onChange(getInputValue(e) || null)}
@@ -196,6 +195,7 @@ export function parseKeyValueLines(
 }
 
 interface KeyValueFieldProps {
+  id?: string;
   label: string;
   helper?: ReactNode;
   value: Record<string, unknown> | string | null | undefined;
@@ -206,6 +206,7 @@ interface KeyValueFieldProps {
 }
 
 export const KeyValueField: FC<KeyValueFieldProps> = ({
+  id,
   label,
   helper,
   value,
@@ -216,15 +217,6 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
 }) => {
   // Use local state to allow free typing without losing input
   const [text, setText] = useState(() => objectToKeyValueLines(value));
-
-  const setSpellcheck = (el: HTMLElement | null) => {
-    if (!el) return;
-    el.setAttribute("spellcheck", "false");
-    const shadowTextarea = el.shadowRoot?.querySelector("textarea");
-    if (shadowTextarea) {
-      shadowTextarea.setAttribute("spellcheck", "false");
-    }
-  };
 
   // Sync local state when value changes externally (e.g., after save)
   useEffect(() => {
@@ -248,7 +240,8 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeTextarea
-        ref={setSpellcheck}
+        id={id}
+        ref={createSpellcheckRef("textarea")}
         value={text}
         disabled={disabled}
         onInput={(e) => handleInput(getInputValue(e))}
@@ -263,6 +256,7 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
 
 // ===== NumberField Component =====
 interface NumberFieldProps {
+  id?: string;
   label: string;
   helper?: ReactNode;
   value: number | null | undefined;
@@ -273,6 +267,7 @@ interface NumberFieldProps {
 }
 
 export const NumberField: FC<NumberFieldProps> = ({
+  id,
   label,
   helper,
   value,
@@ -292,6 +287,7 @@ export const NumberField: FC<NumberFieldProps> = ({
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeTextfield
+        id={id}
         type="number"
         step={step}
         value={value?.toString() ?? ""}
@@ -307,6 +303,7 @@ export const NumberField: FC<NumberFieldProps> = ({
 
 // ===== SelectField Component =====
 interface SelectFieldProps<T extends string> {
+  id?: string;
   label: string;
   helper?: ReactNode;
   value: T | null | undefined;
@@ -317,6 +314,7 @@ interface SelectFieldProps<T extends string> {
 }
 
 export function SelectField<T extends string>({
+  id,
   label,
   helper,
   value,
@@ -330,6 +328,7 @@ export function SelectField<T extends string>({
       <VscodeLabel>{label}</VscodeLabel>
       {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
       <VscodeSingleSelect
+        id={id}
         value={value ?? ""}
         disabled={disabled}
         onChange={(e) => {

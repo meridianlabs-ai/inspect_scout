@@ -1,15 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-/**
- * Filter out null/undefined values from an object.
- */
-function filterNullValues<T extends Record<string, unknown>>(
-  obj: T
-): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v !== null && v !== undefined)
-  ) as Partial<T>;
-}
+import { filterNullValues } from "../configUtils";
 
 /**
  * Hook for managing nested config sections like cache and batch.
@@ -31,7 +22,7 @@ export function useNestedConfig<T extends Record<string, unknown>>(
 
   const config: Partial<T> = useMemo(() => {
     if (typeof configValue === "object" && configValue !== null) {
-      return configValue;
+      return { ...configValue }; // Shallow copy to prevent mutation issues
     }
     return {} as Partial<T>;
   }, [configValue]);

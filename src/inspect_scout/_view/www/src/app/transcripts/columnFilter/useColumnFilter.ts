@@ -95,12 +95,10 @@ export interface UseColumnFilterParams {
 export interface UseColumnFilterReturn {
   operator: OperatorModel;
   setOperator: (operator: OperatorModel) => void;
-  rawValue: string;
-  setRawValue: (value: string) => void;
   operatorOptions: OperatorModel[];
-  isValueDisabled: boolean;
-  valueSelectRef: React.RefObject<HTMLSelectElement | null>;
-  valueInputRef: React.RefObject<HTMLInputElement | null>;
+  value: string;
+  setValue: (value: string) => void;
+  usesValue: boolean;
   buildCondition: (
     operator: OperatorModel,
     value: string
@@ -121,20 +119,26 @@ export function useColumnFilter({
   );
 
   // value
-  const [rawValue, setRawValue] = useState<string>(
+  const [value, setValue] = useState<string>(
     formatFilterValue(condition?.right, filterType)
   );
   const isValueDisabled = OPERATORS_WITHOUT_VALUE.has(operator);
   const valueSelectRef = useRef<HTMLSelectElement | null>(null);
   const valueInputRef = useRef<HTMLInputElement | null>(null);
 
-  // keep state in sync with props when closed
+  // Track the previous columnId to detect when we switch to a different filter
+  const prevColumnIdRef = useRef(columnId);
+
+  // Sync state when closed OR when switching to a different column while opening
   useEffect(() => {
-    if (!isOpen) {
+    const columnChanged = prevColumnIdRef.current !== columnId;
+    prevColumnIdRef.current = columnId;
+
+    if (!isOpen || columnChanged) {
       setOperator(condition?.operator ?? defaultOperator);
-      setRawValue(formatFilterValue(condition?.right, filterType));
+      setValue(formatFilterValue(condition?.right, filterType));
     }
-  }, [condition, defaultOperator, filterType, isOpen]);
+  }, [condition, defaultOperator, filterType, isOpen, columnId, setValue]);
 
   // auto-focus value input when opened
   useEffect(() => {
@@ -186,12 +190,10 @@ export function useColumnFilter({
   return {
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
+    value,
+    setValue,
     operatorOptions,
-    isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
+    usesValue: isValueDisabled,
     buildCondition,
   };
 }

@@ -20,12 +20,12 @@ export interface UseColumnFilterPopoverReturn {
   // Filter state from useColumnFilter
   operator: ReturnType<typeof useColumnFilter>["operator"];
   setOperator: ReturnType<typeof useColumnFilter>["setOperator"];
-  rawValue: ReturnType<typeof useColumnFilter>["rawValue"];
-  setRawValue: ReturnType<typeof useColumnFilter>["setRawValue"];
   operatorOptions: ReturnType<typeof useColumnFilter>["operatorOptions"];
-  isValueDisabled: ReturnType<typeof useColumnFilter>["isValueDisabled"];
-  valueSelectRef: ReturnType<typeof useColumnFilter>["valueSelectRef"];
-  valueInputRef: ReturnType<typeof useColumnFilter>["valueInputRef"];
+
+  // Value
+  value: ReturnType<typeof useColumnFilter>["value"];
+  setValue: ReturnType<typeof useColumnFilter>["setValue"];
+  isValueDisabled: ReturnType<typeof useColumnFilter>["usesValue"];
 
   // Actions
   commitAndClose: () => void;
@@ -45,12 +45,10 @@ export function useColumnFilterPopover({
   const {
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
+    value,
+    setValue,
     operatorOptions,
-    isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
+    usesValue: isValueDisabled,
     buildCondition,
   } = useColumnFilter({
     columnId,
@@ -65,12 +63,12 @@ export function useColumnFilterPopover({
   }, []);
 
   const commitAndClose = useCallback(() => {
-    const nextCondition = buildCondition(operator, rawValue);
+    const nextCondition = buildCondition(operator, value);
     if (nextCondition === undefined) {
       return;
     }
     setIsOpen(false);
-  }, [buildCondition, operator, rawValue]);
+  }, [buildCondition, operator, value]);
 
   // commit changes when popover closes (unless cancelled)
   useEffect(() => {
@@ -78,26 +76,24 @@ export function useColumnFilterPopover({
       if (cancelRef.current) {
         cancelRef.current = false;
       } else {
-        const nextCondition = buildCondition(operator, rawValue);
+        const nextCondition = buildCondition(operator, value);
         if (nextCondition !== undefined) {
           onChange(nextCondition);
         }
       }
     }
     prevOpenRef.current = isOpen;
-  }, [buildCondition, isOpen, onChange, operator, rawValue]);
+  }, [buildCondition, isOpen, onChange, operator, value]);
 
   return {
     isOpen,
     setIsOpen,
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
+    value,
+    setValue,
     operatorOptions,
     isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
     commitAndClose,
     cancelAndClose,
   };

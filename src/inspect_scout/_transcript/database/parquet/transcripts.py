@@ -29,6 +29,8 @@ from inspect_scout._transcript.util import LazyJSONDict
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
+from ...._query.condition import Condition, ScalarValue
+from ...._query.condition_sql import condition_as_sql
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
@@ -361,6 +363,21 @@ class ParquetTranscriptsDB(TranscriptsDB):
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
+
+    @override
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        assert self._conn is not None
+        col_name = column
+        if condition is not None:
+            where_sql, params = condition_as_sql(condition, "duckdb")
+            sql = f'SELECT DISTINCT "{col_name}" FROM transcripts WHERE {where_sql} ORDER BY "{col_name}" ASC'
+        else:
+            params = []
+            sql = f'SELECT DISTINCT "{col_name}" FROM transcripts ORDER BY "{col_name}" ASC'
+        result = self._conn.execute(sql, params).fetchall()
+        return [row[0] for row in result]
 
     @override
     async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:

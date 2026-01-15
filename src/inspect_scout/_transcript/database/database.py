@@ -8,6 +8,7 @@ from typing_extensions import Self
 from inspect_scout._transcript.transcripts import Transcripts
 
 from ..._query import Query
+from ..._query.condition import Condition, ScalarValue
 from ..types import (
     Transcript,
     TranscriptContent,
@@ -92,6 +93,21 @@ class TranscriptsView(abc.ABC):
             t: Transcript to read.
             content: Content to read (messages, events, etc.)
             max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
+        """
+        ...
+
+    @abc.abstractmethod
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        """Get distinct values of a column, sorted ascending.
+
+        Args:
+            column: Column to get distinct values for.
+            condition: Filter condition, or None for no filter.
+
+        Returns:
+            Distinct values, sorted by column ascending.
         """
         ...
 

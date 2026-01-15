@@ -47,7 +47,8 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
-from inspect_scout._query.condition_sql import conditions_as_filter
+from inspect_scout._query.condition import Condition, ScalarValue
+from inspect_scout._query.condition_sql import condition_as_sql, conditions_as_filter
 from inspect_scout._transcript.database.schema import reserved_columns
 from inspect_scout._util.async_zip import AsyncZipReader
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
@@ -349,6 +350,21 @@ class EvalLogTranscriptsView(TranscriptsView):
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
+
+    @override
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        assert self._conn is not None
+        col_name = column
+        if condition is not None:
+            where_sql, params = condition_as_sql(condition, "sqlite")
+            sql = f'SELECT DISTINCT "{col_name}" FROM {TRANSCRIPTS} WHERE {where_sql} ORDER BY "{col_name}" ASC'
+        else:
+            params = []
+            sql = f'SELECT DISTINCT "{col_name}" FROM {TRANSCRIPTS} ORDER BY "{col_name}" ASC'
+        result = self._conn.execute(sql, params).fetchall()
+        return [row[0] for row in result]
 
     @override
     async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:

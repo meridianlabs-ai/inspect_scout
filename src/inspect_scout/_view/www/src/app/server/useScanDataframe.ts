@@ -1,0 +1,34 @@
+import { skipToken } from "@tanstack/react-query";
+import { ColumnTable } from "arquero";
+
+import { useApi } from "../../state/store";
+import { decodeArrowBytes } from "../../utils/arrow";
+import { AsyncData } from "../../utils/asyncData";
+import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
+import { expandResultsetRows } from "../utils/arrow";
+
+type ScanDataframeParams = {
+  location: string;
+  scanner: string;
+};
+
+// Fetches scanner dataframe from the server by location and scanner
+export const useScanDataframe = (
+  params: ScanDataframeParams | typeof skipToken
+): AsyncData<ColumnTable> => {
+  const api = useApi();
+
+  return useAsyncDataFromQuery({
+    queryKey: ["scanDataframe", params],
+    queryFn:
+      params === skipToken
+        ? skipToken
+        : async () =>
+            expandResultsetRows(
+              decodeArrowBytes(
+                await api.getScannerDataframe(params.location, params.scanner)
+              )
+            ),
+    staleTime: Infinity,
+  });
+};

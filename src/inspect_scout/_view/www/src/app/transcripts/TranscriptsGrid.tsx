@@ -1,5 +1,4 @@
 import {
-  ColumnSizingState,
   flexRender,
   getCoreRowModel,
   OnChangeFn,
@@ -22,6 +21,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
@@ -35,7 +35,21 @@ import {
   getCellTitleValue,
   DEFAULT_COLUMN_ORDER,
 } from "./columns";
+import { useColumnSizing } from "./columnSizing";
 import styles from "./TranscriptsGrid.module.css";
+
+// Default visible columns (stable reference)
+const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
+  "success",
+  "date",
+  "task_set",
+  "task_id",
+  "task_repeat",
+  "model",
+  "score",
+  "total_time",
+  "total_tokens",
+];
 
 // Generate a stable key for a transcript item
 function transcriptItemKey(index: number, item?: TranscriptInfo): string {
@@ -56,6 +70,10 @@ interface TranscriptGridProps {
   /** Distance from bottom (in px) at which to trigger callback. */
   fetchThreshold: number;
   loading?: boolean;
+  /** Autocomplete suggestions for the currently editing filter column */
+  filterSuggestions?: ScalarValue[];
+  /** Called when a filter column starts/stops being edited */
+  onFilterColumnChange?: (columnId: string | null) => void;
 }
 
 export const TranscriptsGrid: FC<TranscriptGridProps> = ({
@@ -66,15 +84,16 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   hasMore,
   fetchThreshold,
   loading,
+  filterSuggestions = [],
+  onFilterColumnChange,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
+  // Table ref for DOM measurement (used by column sizing)
+  const tableRef = useRef<HTMLTableElement>(null);
   const navigate = useNavigate();
 
   // Table state
-  const columnSizing = useStore(
-    (state) => state.transcriptsTableState.columnSizing
-  );
   const columnOrder = useStore(
     (state) => state.transcriptsTableState.columnOrder
   );
@@ -87,20 +106,53 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const focusedRowId = useStore(
     (state) => state.transcriptsTableState.focusedRowId
   );
-  const visibleColumns = useStore(
-    (state) => state.transcriptsTableState.visibleColumns
-  ) ?? [
-    "success",
-    "date",
-    "task_set",
-    "task_id",
-    "task_repeat",
-    "model",
-    "score",
-    "total_time",
-    "total_tokens",
-  ];
+  const visibleColumns =
+    useStore((state) => state.transcriptsTableState.visibleColumns) ??
+    DEFAULT_VISIBLE_COLUMNS;
   const setTableState = useStore((state) => state.setTranscriptsTableState);
+
+  // Define table columns based on visible columns from store
+  const columns = useMemo<TranscriptColumn[]>(
+    () => getTranscriptColumns(visibleColumns),
+    [visibleColumns]
+  );
+
+  // Column sizing with min/max constraints and auto-sizing
+  const {
+    columnSizing,
+    handleColumnSizingChange,
+    applyAutoSizing,
+    resetColumnSize,
+  } = useColumnSizing({
+    columns,
+    tableRef,
+    data: transcripts,
+  });
+
+  // Track if we've done initial auto-sizing
+  const hasInitializedRef = useRef(false);
+
+  // Track previous visible columns to detect changes
+  const previousVisibleColumnsRef = useRef<typeof visibleColumns | null>(null);
+
+  // Auto-size columns on initial load when data is available
+  useEffect(() => {
+    if (!hasInitializedRef.current && transcripts.length > 0) {
+      hasInitializedRef.current = true;
+      applyAutoSizing();
+    }
+  }, [transcripts.length, applyAutoSizing]);
+
+  // Auto-size when visible columns change
+  // (applyAutoSizing preserves manually resized columns)
+  useEffect(() => {
+    const previousVisibleColumns = previousVisibleColumnsRef.current;
+    previousVisibleColumnsRef.current = visibleColumns;
+
+    if (previousVisibleColumns && previousVisibleColumns !== visibleColumns) {
+      applyAutoSizing();
+    }
+  }, [visibleColumns, applyAutoSizing]);
 
   // Compute effective column order: use explicit order if set, otherwise derive from DEFAULT_COLUMN_ORDER
   const effectiveColumnOrder = useMemo(() => {
@@ -142,18 +194,6 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       });
     },
     [setTableState]
-  );
-
-  // Column sizing
-  const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = useCallback(
-    (updaterOrValue) => {
-      const newValue =
-        typeof updaterOrValue === "function"
-          ? updaterOrValue(columnSizing)
-          : updaterOrValue;
-      setTableState((prev) => ({ ...prev, columnSizing: newValue }));
-    },
-    [columnSizing, setTableState]
   );
 
   // Column ordering
@@ -199,6 +239,12 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
     null
   );
 
+  const resetDragState = useCallback(() => {
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+    setDropPosition(null);
+  }, []);
+
   const handleDragStart = useCallback(
     (e: DragEvent<HTMLElement>, columnId: string) => {
       setDraggedColumn(columnId);
@@ -238,9 +284,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       e.preventDefault();
 
       if (!draggedColumn || draggedColumn === targetColumnId) {
-        setDraggedColumn(null);
-        setDragOverColumn(null);
-        setDropPosition(null);
+        resetDragState();
         return;
       }
 
@@ -248,9 +292,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       const targetIndex = effectiveColumnOrder.indexOf(targetColumnId);
 
       if (draggedIndex === -1 || targetIndex === -1) {
-        setDraggedColumn(null);
-        setDragOverColumn(null);
-        setDropPosition(null);
+        resetDragState();
         return;
       }
 
@@ -260,24 +302,14 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       newOrder.splice(targetIndex, 0, draggedColumn);
 
       setTableState((prev) => ({ ...prev, columnOrder: newOrder }));
-      setDraggedColumn(null);
-      setDragOverColumn(null);
-      setDropPosition(null);
+      resetDragState();
     },
-    [draggedColumn, effectiveColumnOrder, setTableState]
+    [draggedColumn, effectiveColumnOrder, setTableState, resetDragState]
   );
 
   const handleDragEnd = useCallback(() => {
-    setDraggedColumn(null);
-    setDragOverColumn(null);
-    setDropPosition(null);
-  }, []);
-
-  // Define table columns based on visible columns from store
-  const columns = useMemo<TranscriptColumn[]>(
-    () => getTranscriptColumns(visibleColumns),
-    [visibleColumns]
-  );
+    resetDragState();
+  }, [resetDragState]);
 
   // Create table instance
   const table = useReactTable({
@@ -594,7 +626,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       onKeyDown={handleKeyDown}
       onScroll={onScroll}
     >
-      <table className={styles.table}>
+      <table ref={tableRef} className={styles.table}>
         <thead className={styles.thead}>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className={styles.headerRow}>
@@ -677,6 +709,8 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                             condition
                           )
                         }
+                        suggestions={filterSuggestions}
+                        onOpenChange={onFilterColumnChange}
                       />
                     ) : null}
                     <div
@@ -686,7 +720,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                       )}
                       onMouseDown={header.getResizeHandler()}
                       onTouchStart={header.getResizeHandler()}
-                      onDoubleClick={() => header.column.resetSize()}
+                      onDoubleClick={() => resetColumnSize(header.column.id)}
                     />
                   </th>
                 );

@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { ChangeEvent, FC, KeyboardEvent, useCallback } from "react";
 
+import { ScalarValue } from "../../../api/api";
+import { AutocompleteInput } from "../../../components/AutocompleteInput";
 import type { OperatorModel } from "../../../query";
 import type { FilterType } from "../../../state/store";
 
@@ -13,12 +15,11 @@ export interface ColumnFilterEditorProps {
   operatorOptions: OperatorModel[];
   rawValue: string;
   isValueDisabled: boolean;
-  valueSelectRef: React.RefObject<HTMLSelectElement | null>;
-  valueInputRef: React.RefObject<HTMLInputElement | null>;
   onOperatorChange: (operator: OperatorModel) => void;
   onValueChange: (value: string) => void;
   onCommit?: () => void;
   onCancel?: () => void;
+  suggestions?: ScalarValue[];
 }
 
 export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
@@ -28,12 +29,11 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
   operatorOptions,
   rawValue,
   isValueDisabled,
-  valueSelectRef,
-  valueInputRef,
   onOperatorChange,
   onValueChange,
   onCommit,
   onCancel,
+  suggestions = [],
 }) => {
   const handleOperatorChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
@@ -53,14 +53,15 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      // Prevent parent bubbling
+      event.stopPropagation();
+
       if (event.key === "Escape") {
         event.preventDefault();
-        event.stopPropagation();
         onCancel?.();
       }
       if (event.key === "Enter") {
         event.preventDefault();
-        event.stopPropagation();
         onCommit?.();
       }
     },
@@ -96,12 +97,25 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             value={rawValue}
             onChange={handleValueChange}
             disabled={isValueDisabled}
-            ref={valueSelectRef}
+            autoFocus={true}
           >
             <option value="">(clear)</option>
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
+        ) : filterType === "string" || filterType === "unknown" ? (
+          <AutocompleteInput
+            id={`${columnId}-val`}
+            value={rawValue}
+            onChange={onValueChange}
+            onCommit={onCommit}
+            onCancel={onCancel}
+            disabled={isValueDisabled}
+            placeholder="Filter"
+            suggestions={suggestions}
+            className={styles.filterInput}
+            autoFocus={true}
+          />
         ) : (
           <input
             id={`${columnId}-val`}
@@ -111,9 +125,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
                 ? "number"
                 : filterType === "date"
                   ? "date"
-                  : filterType === "datetime"
-                    ? "datetime-local"
-                    : "text"
+                  : "datetime-local"
             }
             spellCheck="false"
             value={rawValue}
@@ -121,7 +133,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             placeholder="Filter"
             disabled={isValueDisabled}
             step={filterType === "number" ? "any" : undefined}
-            ref={valueInputRef}
+            autoFocus={true}
           />
         )}
       </div>

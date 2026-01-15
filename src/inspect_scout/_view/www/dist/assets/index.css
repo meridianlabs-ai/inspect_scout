@@ -2302,8 +2302,9 @@ pre[class*="language-"] {
   --vscode-contrastBorder: transparent;
 
   /* Font settings */
-  --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  --vscode-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   --vscode-font-size: 13px;
   --vscode-font-weight: normal;
   --vscode-editor-font-family: Menlo, Monaco, "Courier New", monospace;
@@ -4394,6 +4395,53 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
+._container_15g4u_1 {
+  position: relative;
+  width: 100%;
+}
+
+._input_15g4u_6 {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+._input_15g4u_6:disabled {
+  background: var(--bs-light);
+  color: var(--bs-secondary);
+}
+
+._suggestionsList_15g4u_21 {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10000;
+}
+
+._suggestionItem_15g4u_34 {
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._suggestionItem_15g4u_34:hover,
+._suggestionItem_15g4u_34._highlighted_15g4u_44 {
+  background: var(--bs-primary);
+  color: white;
+}
 ._filterContent_1udn5_1 {
   display: flex;
   flex-direction: column;
@@ -4686,28 +4734,28 @@ so disabling selection can break that functionality */
 ._selected_1sw8v_41 {
   font-weight: 600;
 }
-._container_1szjw_1 {
+._container_1xqd6_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
   border-bottom: solid var(--bs-border-color) 1px;
   padding: 0rem 0.5rem;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
 }
 
-._filterBar_1szjw_11 {
+._filterBar_1xqd6_11 {
   margin: 1px 0;
 }
 
-._filterLabel_1szjw_15 {
+._filterLabel_1xqd6_15 {
   margin-right: 0.3rem;
 }
 
-._filterNone_1szjw_19 {
+._filterNone_1xqd6_19 {
 }
 
-._actionButtons_1szjw_22 {
+._actionButtons_1xqd6_22 {
   margin-left: auto;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
@@ -4718,25 +4766,25 @@ so disabling selection can break that functionality */
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_1szjw_22 {
+._actionButton_1xqd6_22 {
   padding: 0.1rem 0.4rem;
-  margin: 0rem 0rem;
+  margin: 1px 0rem;
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButtonDropDown_1szjw_39 {
+._actionButtonDropDown_1xqd6_39 {
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_1szjw_22._chipButton_1szjw_43 {
+._actionButton_1xqd6_22._chipButton_1xqd6_43 {
   background-color: unset;
   margin-left: 0.3rem;
 }
 
-._sep_1szjw_48 {
+._sep_1xqd6_48 {
   width: 1px;
   height: calc(100% - 4px);
-  margin: 0 0.3rem;
+  margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);
@@ -4908,7 +4956,7 @@ so disabling selection can break that functionality */
 ._navButton_cmger_54:focus-visible {
   background-color: var(--bs-secondary-bg-subtle);
 }
-._backdrop_1cw9v_1 {
+._backdrop_wrdr6_1 {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.36);
@@ -4919,9 +4967,10 @@ so disabling selection can break that functionality */
   z-index: 1000;
 }
 
-._modal_1cw9v_12 {
+._modal_wrdr6_12 {
   background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-border));
+  border: 1px solid
+    var(--vscode-widget-border, var(--vscode-editorWidget-border));
   border-radius: 4px;
   box-shadow: 0 4px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
   max-width: 450px;
@@ -4931,7 +4980,7 @@ so disabling selection can break that functionality */
   flex-direction: column;
 }
 
-._header_1cw9v_24 {
+._header_wrdr6_25 {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4940,14 +4989,14 @@ so disabling selection can break that functionality */
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
 
-._title_1cw9v_33 {
+._title_wrdr6_34 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--vscode-foreground);
 }
 
-._closeButton_1cw9v_40 {
+._closeButton_wrdr6_41 {
   background: none;
   border: none;
   color: var(--vscode-foreground);
@@ -4958,19 +5007,19 @@ so disabling selection can break that functionality */
   justify-content: center;
 }
 
-._closeButton_1cw9v_40:hover {
+._closeButton_wrdr6_41:hover {
   background: var(--vscode-toolbar-hoverBackground);
   border-radius: 4px;
 }
 
-._body_1cw9v_56 {
+._body_wrdr6_57 {
   padding: 16px;
   color: var(--vscode-foreground);
   font-size: 13px;
   overflow-y: auto;
 }
 
-._footer_1cw9v_63 {
+._footer_wrdr6_64 {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -8324,7 +8373,7 @@ span.ap-marker-container:hover span.ap-marker {
 ._sixCol_1eu50_32 {
   grid-template-columns: auto auto auto auto auto auto;
 }
-._resultNav_oszqi_1 {
+._container_1i4o7_1 {
   display: grid;
   grid-template-columns: max-content auto max-content;
   align-items: center;
@@ -8332,13 +8381,17 @@ span.ap-marker-container:hover span.ap-marker {
   margin-right: 1em;
 }
 
-._nav_oszqi_9:hover:not(._disabled_oszqi_9) {
+._nav_1i4o7_9:hover:not(._disabled_1i4o7_9) {
   cursor: pointer;
 }
 
-._disabled_oszqi_9 {
+._disabled_1i4o7_9 {
   opacity: 0.5;
   pointer-events: none;
+}
+
+._center_1i4o7_18 {
+  text-align: center;
 }
 ._root_1ewhq_1 {
   height: 100vh;

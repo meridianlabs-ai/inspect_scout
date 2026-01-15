@@ -14,7 +14,7 @@ import {
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { NoPersistence, ScanApi } from "./api";
+import { NoPersistence, ScanApi, ScalarValue } from "./api";
 import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -65,6 +65,19 @@ export const apiScoutServer = (
         `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
       );
       return asyncJsonParse<Transcript>(result.raw);
+    },
+    getTranscriptsColumnValues: async (
+      transcriptsDir: string,
+      column: string,
+      filter: Condition
+    ): Promise<ScalarValue[]> => {
+      const result = await requestApi.fetchString(
+        "POST",
+        `/transcripts/${encodeBase64Url(transcriptsDir)}/distinct`,
+        {},
+        JSON.stringify({ column, filter: filter ?? null })
+      );
+      return asyncJsonParse<ScalarValue[]>(result.raw);
     },
     getScan: async (scanLocation: string): Promise<Status> => {
       const result = await requestApi.fetchString(

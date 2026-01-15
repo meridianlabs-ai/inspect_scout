@@ -16,7 +16,14 @@ export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
     filterable?: boolean;
     filterType?: FilterType;
   };
-  titleValue?: (value: any) => string;
+  /** Returns string for tooltip display */
+  titleValue?: (value: unknown) => string;
+  /** Returns string representation for column width measurement. Return null to skip content measurement. */
+  textValue?: (value: unknown) => string | null;
+  /** Minimum column width in pixels */
+  minSize?: number;
+  /** Maximum column width in pixels */
+  maxSize?: number;
 };
 
 // Helper to create strongly-typed columns
@@ -24,6 +31,8 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   accessorKey: K;
   header: string;
   size?: number;
+  minSize?: number;
+  maxSize?: number;
   meta?: {
     align?: "left" | "center" | "right";
     filterable?: boolean;
@@ -31,13 +40,27 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   };
   cell?: (value: TranscriptInfo[K]) => React.ReactNode;
   titleValue?: (value: TranscriptInfo[K]) => string;
+  textValue?: (value: TranscriptInfo[K]) => string | null;
 }): TranscriptColumn {
+  // Default textValue: convert to string
+  const defaultTextValue = (value: unknown): string => {
+    if (value === undefined || value === null) {
+      return "-";
+    }
+    return String(value);
+  };
+
   return {
     accessorKey: config.accessorKey as string,
     header: config.header,
     size: config.size,
+    minSize: config.minSize,
+    maxSize: config.maxSize,
     meta: config.meta,
-    titleValue: config.titleValue,
+    titleValue: config.titleValue as ((value: unknown) => string) | undefined,
+    textValue: config.textValue
+      ? (config.textValue as (value: unknown) => string | null)
+      : defaultTextValue,
     cell: (info) => {
       const value = info.getValue() as TranscriptInfo[K];
       if (config.cell) {
@@ -56,6 +79,8 @@ function createObjectColumn<K extends keyof TranscriptInfo>(config: {
   accessorKey: K;
   header: string;
   size?: number;
+  minSize?: number;
+  maxSize?: number;
   meta?: {
     align?: "left" | "center" | "right";
     filterable?: boolean;
@@ -65,24 +90,29 @@ function createObjectColumn<K extends keyof TranscriptInfo>(config: {
 }): TranscriptColumn {
   const maxLength = config.maxDisplayLength ?? 1000;
 
+  const formatObjectValue = (value: TranscriptInfo[K]): string => {
+    if (!value) {
+      return "-";
+    }
+    try {
+      if (typeof value === "object") {
+        return printObject(value, maxLength);
+      }
+      return String(value);
+    } catch {
+      return String(value);
+    }
+  };
+
   return createColumn({
     accessorKey: config.accessorKey,
     header: config.header,
     size: config.size,
+    minSize: config.minSize,
+    maxSize: config.maxSize,
     meta: config.meta,
-    cell: (value) => {
-      if (!value) {
-        return "-";
-      }
-      try {
-        if (typeof value === "object") {
-          return printObject(value, maxLength);
-        }
-        return String(value);
-      } catch {
-        return String(value);
-      }
-    },
+    cell: formatObjectValue,
+    textValue: formatObjectValue,
     titleValue: (value) => {
       if (!value) {
         return "";
@@ -101,6 +131,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "success",
     header: "✓",
     size: 44,
+    minSize: 40,
+    maxSize: 60,
     meta: {
       align: "center",
       filterable: true,
@@ -116,11 +148,14 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
 
       return <i className={clsx(icon, colorCls)} />;
     },
+    textValue: () => null,
   }),
   date: createColumn({
     accessorKey: "date",
     header: "Date",
     size: 180,
+    minSize: 120,
+    maxSize: 300,
     meta: {
       filterable: true,
       filterType: "date",
@@ -132,11 +167,20 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       const date = new Date(value);
       return date.toLocaleString();
     },
+    textValue: (value) => {
+      if (!value) {
+        return "-";
+      }
+      const date = new Date(value as string | number);
+      return date.toLocaleString();
+    },
   }),
   transcript_id: createColumn({
     accessorKey: "transcript_id",
     header: "Transcript ID",
     size: 150,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -149,6 +193,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "task_set",
     header: "Task Set",
     size: 150,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -158,6 +204,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "task_id",
     header: "Task ID",
     size: 150,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -167,6 +215,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "task_repeat",
     header: "#",
     size: 50,
+    minSize: 40,
+    maxSize: 100,
     meta: {
       filterable: true,
       filterType: "number",
@@ -176,6 +226,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "model",
     header: "Model",
     size: 200,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -185,6 +237,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "model_options",
     header: "Model Options",
     size: 200,
+    minSize: 80,
+    maxSize: 500,
     meta: {
       filterable: true,
       filterType: "string",
@@ -194,6 +248,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "agent",
     header: "Agent",
     size: 150,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -206,6 +262,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "agent_args",
     header: "Agent Args",
     size: 200,
+    minSize: 80,
+    maxSize: 500,
     meta: {
       filterable: true,
       filterType: "string",
@@ -215,6 +273,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "score",
     header: "Score",
     size: 100,
+    minSize: 60,
+    maxSize: 300,
     meta: {
       filterable: true,
       filterType: "string",
@@ -228,6 +288,20 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
         return printArray(value, 1000);
       } else if (typeof value === "object") {
         return printObject(value, 1000);
+      } else if (typeof value === "number") {
+        return formatPrettyDecimal(value);
+      } else {
+        return String(value);
+      }
+    },
+    textValue: (value) => {
+      if (!value) {
+        return "-";
+      }
+      if (Array.isArray(value)) {
+        return printArray(value, 1000);
+      } else if (typeof value === "object") {
+        return printObject(value as Record<string, unknown>, 1000);
       } else if (typeof value === "number") {
         return formatPrettyDecimal(value);
       } else {
@@ -248,6 +322,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "metadata",
     header: "Metadata",
     size: 200,
+    minSize: 80,
+    maxSize: 500,
     meta: {
       filterable: true,
       filterType: "string",
@@ -257,6 +333,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "source_id",
     header: "Source ID",
     size: 150,
+    minSize: 80,
+    maxSize: 400,
     meta: {
       filterable: true,
       filterType: "string",
@@ -269,6 +347,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "source_type",
     header: "Source Type",
     size: 150,
+    minSize: 80,
+    maxSize: 300,
     meta: {
       filterable: true,
       filterType: "string",
@@ -281,6 +361,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "source_uri",
     header: "Source URI",
     size: 300,
+    minSize: 100,
+    maxSize: 600,
     meta: {
       filterable: true,
       filterType: "string",
@@ -293,6 +375,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "total_tokens",
     header: "Tokens",
     size: 120,
+    minSize: 60,
+    maxSize: 200,
     meta: {
       filterable: true,
       filterType: "number",
@@ -303,11 +387,19 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       }
       return formatNumber(value);
     },
+    textValue: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatNumber(value);
+    },
   }),
   total_time: createColumn({
     accessorKey: "total_time",
     header: "Time",
     size: 120,
+    minSize: 60,
+    maxSize: 200,
     meta: {
       filterable: true,
       filterType: "number",
@@ -318,11 +410,19 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       }
       return formatPrettyDecimal(value, 0);
     },
+    textValue: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatPrettyDecimal(value, 0);
+    },
   }),
   limit: createColumn({
     accessorKey: "limit",
     header: "Limit",
     size: 100,
+    minSize: 60,
+    maxSize: 200,
     meta: {
       filterable: true,
       filterType: "string",
@@ -335,6 +435,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     accessorKey: "error",
     header: "Error",
     size: 200,
+    minSize: 80,
+    maxSize: 500,
     meta: {
       filterable: true,
       filterType: "string",

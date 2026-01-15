@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
 import { FC } from "react";
 
@@ -7,11 +8,15 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useFilterConditions } from "../hooks/useFilterConditions";
+import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { appAliasedPath, useConfig } from "../server/useConfig";
-import { useServerTranscript } from "../server/useServerTranscript";
+import { useTranscript } from "../server/useTranscript";
+import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
 import { useTranscriptDirParams } from "../utils/router";
 
 import { TranscriptBody } from "./TranscriptBody";
+import { TranscriptNav } from "./TranscriptNav";
 import styles from "./TranscriptPanel.module.css";
 import { TranscriptTitle } from "./TranscriptTitle";
 
@@ -26,24 +31,48 @@ export const TranscriptPanel: FC = () => {
     loading,
     data: transcript,
     error,
-  } = useServerTranscript(config.transcripts_dir, transcriptId);
+  } = useTranscript(
+    config.transcripts_dir
+      ? { location: config.transcripts_dir, id: transcriptId }
+      : skipToken
+  );
 
   // User transcripts directory
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(
     (state) => state.setUserTranscriptsDir
   );
-  const resolvedTranscriptsDir = appAliasedPath(
-    config,
-    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || null
+  const transcriptsDir =
+    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || "";
+  const displayTranscriptsDir = appAliasedPath(config, transcriptsDir || null);
+
+  // Get sorting/filter from store
+  const sorting = useStore((state) => state.transcriptsTableState.sorting);
+  const condition = useFilterConditions();
+
+  // Get adjacent transcript IDs
+  const adjacentIds = useAdjacentTranscriptIds(
+    transcriptId,
+    transcriptsDir,
+    TRANSCRIPTS_INFINITE_SCROLL_CONFIG.pageSize,
+    condition,
+    sorting
   );
+  const [prevId, nextId] = adjacentIds.data ?? [undefined, undefined];
 
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
-        transcriptsDir={resolvedTranscriptsDir || ""}
+        transcriptsDir={displayTranscriptsDir || ""}
         setTranscriptsDir={setUserTranscriptsDir}
-      />
+      >
+        <TranscriptNav
+          transcriptsDir={transcriptsDir}
+          transcript={transcript}
+          nextId={nextId}
+          prevId={prevId}
+        />
+      </TranscriptsNavbar>
       <LoadingBar loading={loading} />
 
       {!error && transcript && (

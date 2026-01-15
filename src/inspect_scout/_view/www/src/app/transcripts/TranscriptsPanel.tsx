@@ -1,17 +1,20 @@
+import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
-import { Condition, SimpleCondition } from "../../query/types";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useCode } from "../server/useCode";
 import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
+import { useTranscriptsColumnValues } from "../server/useTranscriptsColumnValues";
 
+import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "./constants";
 import { TranscriptFilterBar } from "./TranscriptFilterBar";
 import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
@@ -26,19 +29,12 @@ export const TranscriptsPanel: FC = () => {
   const resolvedTranscriptDir =
     userTranscriptsDir || config.transcripts_dir || null;
 
-  // Filtering
-  const columnFilters =
-    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
-  const filterConditions = Object.values(columnFilters)
-    .map((filter) => filter.condition)
-    .filter((condition): condition is SimpleCondition => Boolean(condition));
-
-  // Sorting
-  const condition = filterConditions.reduce<Condition | undefined>(
-    (acc, condition) => (acc ? acc.and(condition) : condition),
-    undefined
-  );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
+  const condition = useFilterConditions();
+
+  // Filter for autocomplete: exclude the column being edited
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const otherColumnsFilter = useFilterConditions(editingColumnId ?? undefined);
 
   // Clear detail state
   const clearTranscriptState = useStore((state) => state.clearTranscriptState);
@@ -50,14 +46,33 @@ export const TranscriptsPanel: FC = () => {
     data: filterCodeValues,
     error: _codeError,
     loading: _codeLoading,
-  } = useCode(condition);
+  } = useCode(condition ?? skipToken);
+
+  // Fetch column values for autocomplete suggestions (scoped to other column filters)
+  const {
+    data: filterBarSuggestions,
+    loading: _suggestionsLoading,
+    error: _suggestionsError,
+  } = useTranscriptsColumnValues(
+    editingColumnId && resolvedTranscriptDir
+      ? {
+          location: resolvedTranscriptDir,
+          column: editingColumnId,
+          filter: otherColumnsFilter,
+        }
+      : skipToken
+  );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
-      resolvedTranscriptDir,
-      infiniteScrollConfig.pageSize,
-      condition,
-      sorting
+      resolvedTranscriptDir
+        ? {
+            location: resolvedTranscriptDir,
+            pageSize: TRANSCRIPTS_INFINITE_SCROLL_CONFIG.pageSize,
+            filter: condition,
+            sorting,
+          }
+        : skipToken
     );
 
   const transcripts: TranscriptInfo[] = useMemo(
@@ -93,14 +108,20 @@ export const TranscriptsPanel: FC = () => {
       )}
       {!error && (
         <>
-          <TranscriptFilterBar filterCodeValues={filterCodeValues} />
+          <TranscriptFilterBar
+            filterCodeValues={filterCodeValues}
+            filterSuggestions={filterBarSuggestions ?? []}
+            onFilterColumnChange={setEditingColumnId}
+          />
           <TranscriptsGrid
             transcripts={transcripts}
             transcriptsDir={resolvedTranscriptDir}
             loading={isFetching && transcripts.length === 0}
             onScrollNearEnd={handleScrollNearEnd}
             hasMore={hasNextPage}
-            fetchThreshold={infiniteScrollConfig.threshold}
+            fetchThreshold={TRANSCRIPTS_INFINITE_SCROLL_CONFIG.threshold}
+            filterSuggestions={filterBarSuggestions ?? []}
+            onFilterColumnChange={setEditingColumnId}
           />
         </>
       )}
@@ -111,40 +132,4 @@ export const TranscriptsPanel: FC = () => {
       />
     </div>
   );
-};
-
-/**
- * Infinite Scroll Tuning
- *
- * Goal: user never hits bottom while waiting for next page.
- *
- * Formula: threshold >= scroll_speed × fetch_duration
- *
- * Assumptions:
- *   row_height = 29px
- *   fetch_duration = 300-1000ms (variable with fixed overhead)
- *   max_scroll_speed = 1500px/s (typical fast scroller)
- *
- * Check at typical speed (1500px/s):
- *   runway_time = 2000px / 1500px/s = 1333ms
- *   worst_case_fetch = 1000ms
- *   margin = 333ms ✓
- *
- * Check at extreme speed (5000px/s):
- *   runway_time = 2000px / 5000px/s = 400ms
- *   median_fetch = ~350ms
- *   margin = 50ms (tight but ok) ✓
- *
- * Why large pageSize? Fetch duration is mostly fixed overhead, so larger
- * pages = fewer fetches = fewer stall opportunities. 500 rows gives ~9.7s
- * of scrolling per page at 1500px/s.
- *
- * Note: If threshold > pageSize_px, the next page is prefetched immediately
- * after the current page loads. This is fine for maximum smoothness.
- */
-const infiniteScrollConfig = {
-  /** Number of rows to fetch per page (500 rows = 14,500px at 29px/row) */
-  pageSize: 500,
-  /** Distance from bottom (in px) at which to trigger fetch (~69 rows) */
-  threshold: 2000,
 };

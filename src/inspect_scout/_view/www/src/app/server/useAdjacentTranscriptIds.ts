@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { useEffect, useMemo } from "react";
 
@@ -29,7 +30,9 @@ export const useAdjacentTranscriptIds = (
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useServerTranscriptsInfinite(location, pageSize, filter, sorting);
+  } = useServerTranscriptsInfinite(
+    location ? { location, pageSize, filter, sorting } : skipToken
+  );
 
   const pages = queryData?.pages;
   const position = useMemo(

@@ -16,6 +16,8 @@ import {
 
 export type ClientStorage = StateStorage;
 
+export type ScalarValue = string | number | boolean | null;
+
 export interface ScanApi {
   getConfig(): Promise<AppConfig>;
   getTranscripts(
@@ -25,6 +27,11 @@ export interface ScanApi {
     pagination?: Pagination
   ): Promise<TranscriptsResponse>;
   getTranscript(transcriptsDir: string, id: string): Promise<Transcript>;
+  getTranscriptsColumnValues(
+    transcriptsDir: string,
+    column: string,
+    filter: Condition | undefined
+  ): Promise<ScalarValue[]>;
   getScans(
     filter?: Condition,
     orderBy?: OrderByModel | OrderByModel[],

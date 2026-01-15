@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { FC, useCallback, useRef, useState } from "react";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
@@ -22,7 +23,9 @@ const kCopyCodeDescriptors = [
 
 export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
-}> = ({ filterCodeValues }) => {
+  filterSuggestions?: ScalarValue[];
+  onFilterColumnChange?: (columnId: string | null) => void;
+}> = ({ filterCodeValues, filterSuggestions = [], onFilterColumnChange }) => {
   // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
@@ -86,12 +89,10 @@ export const TranscriptFilterBar: FC<{
     setIsOpen: setIsEditorOpen,
     operator,
     setOperator,
-    rawValue,
-    setRawValue,
     operatorOptions,
+    value: rawValue,
+    setValue: setRawValue,
     isValueDisabled,
-    valueSelectRef,
-    valueInputRef,
     commitAndClose,
     cancelAndClose,
   } = useColumnFilterPopover({
@@ -105,8 +106,20 @@ export const TranscriptFilterBar: FC<{
     (columnId: string) => () => {
       setEditingColumnId(columnId);
       setIsEditorOpen(true);
+      onFilterColumnChange?.(columnId);
     },
-    [setIsEditorOpen]
+    [setIsEditorOpen, onFilterColumnChange]
+  );
+
+  // Notify parent when editor closes
+  const handleEditorOpenChange = useCallback(
+    (open: boolean) => {
+      setIsEditorOpen(open);
+      if (!open) {
+        onFilterColumnChange?.(null);
+      }
+    },
+    [setIsEditorOpen, onFilterColumnChange]
   );
 
   const filterEntries = Object.values(filters);
@@ -164,7 +177,7 @@ export const TranscriptFilterBar: FC<{
         <PopOver
           id={`transcript-filter-editor-${editingColumnId}`}
           isOpen={isEditorOpen}
-          setIsOpen={setIsEditorOpen}
+          setIsOpen={handleEditorOpenChange}
           positionEl={chipRefs.current[editingColumnId] ?? null}
           placement="bottom-start"
           showArrow={true}
@@ -182,12 +195,11 @@ export const TranscriptFilterBar: FC<{
             operatorOptions={operatorOptions}
             rawValue={rawValue}
             isValueDisabled={isValueDisabled}
-            valueSelectRef={valueSelectRef}
-            valueInputRef={valueInputRef}
             onOperatorChange={setOperator}
             onValueChange={setRawValue}
             onCommit={commitAndClose}
             onCancel={cancelAndClose}
+            suggestions={filterSuggestions}
           />
         </PopOver>
       )}

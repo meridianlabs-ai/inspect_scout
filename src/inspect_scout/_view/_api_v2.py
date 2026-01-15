@@ -40,7 +40,7 @@ from inspect_scout._project._project import (
 
 from .._llm_scanner.params import LlmScannerParams
 from .._project.types import ProjectConfig
-from .._query import Column, Condition, Query, condition_as_sql
+from .._query import Column, Condition, Query, ScalarValue, condition_as_sql
 from .._recorder.active_scans_store import active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._recorder.recorder import Status as RecorderStatus
@@ -65,6 +65,7 @@ from ._api_v2_helpers import (
 from ._api_v2_types import (
     ActiveScansResponse,
     AppConfig,
+    DistinctRequest,
     ScansRequest,
     ScansResponse,
     ScanStatus,
@@ -373,6 +374,22 @@ def v2_api_app(
                     status_code=HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
                 ) from None
+
+    @app.post(
+        "/transcripts/{dir}/distinct",
+        summary="Get distinct column values",
+        description="Returns distinct values for a column, optionally filtered.",
+    )
+    async def transcripts_distinct(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        body: DistinctRequest | None = None,
+    ) -> list[ScalarValue]:
+        """Get distinct values for a column."""
+        transcripts_dir = decode_base64url(dir)
+        if body is None:
+            return []
+        async with transcripts_view(transcripts_dir) as view:
+            return await view.distinct(body.column, body.filter)
 
     @app.post(
         "/scans",

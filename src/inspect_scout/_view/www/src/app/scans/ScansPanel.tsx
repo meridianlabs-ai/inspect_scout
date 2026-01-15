@@ -10,14 +10,14 @@ import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { appAliasedPath, useConfig } from "../server/useConfig";
-import { useServerScans } from "../server/useServerScans";
+import { useScans } from "../server/useScans";
 
 import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
   // Load scans data
-  const { loading, error, data: scans } = useServerScans();
+  const { loading, error, data: scans } = useScans();
   const config = useConfig();
   const scanDir = config.scans_dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);

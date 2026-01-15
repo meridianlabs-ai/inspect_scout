@@ -217,6 +217,15 @@ async def _parse_and_filter(
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
+        # Early exit: messages-only with no attachment refs
+        if (
+            events_coro is None
+            and prefix == "messages"
+            and event == "end_array"
+            and not state.attachment_refs
+        ):
+            break
+
         # Inline prefix classification for performance (56M+ calls in hot path)
         if prefix != last_prefix:
             last_prefix = prefix

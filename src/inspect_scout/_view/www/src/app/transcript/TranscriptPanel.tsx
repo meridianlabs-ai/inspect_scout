@@ -7,8 +7,11 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useFilterConditions } from "../hooks/useFilterConditions";
+import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscript } from "../server/useServerTranscript";
+import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
 import { useTranscriptDirParams } from "../utils/router";
 
 import { TranscriptBody } from "./TranscriptBody";
@@ -38,6 +41,20 @@ export const TranscriptPanel: FC = () => {
     routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || "";
   const displayTranscriptsDir = appAliasedPath(config, transcriptsDir || null);
 
+  // Get sorting/filter from store
+  const sorting = useStore((state) => state.transcriptsTableState.sorting);
+  const condition = useFilterConditions();
+
+  // Get adjacent transcript IDs
+  const adjacentIds = useAdjacentTranscriptIds(
+    transcriptId,
+    transcriptsDir,
+    TRANSCRIPTS_INFINITE_SCROLL_CONFIG.pageSize,
+    condition,
+    sorting
+  );
+  const [prevId, nextId] = adjacentIds.data ?? [undefined, undefined];
+
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -45,9 +62,10 @@ export const TranscriptPanel: FC = () => {
         setTranscriptsDir={setUserTranscriptsDir}
       >
         <TranscriptNav
-          transcriptId={transcriptId}
           transcriptsDir={transcriptsDir}
           transcript={transcript}
+          nextId={nextId}
+          prevId={prevId}
         />
       </TranscriptsNavbar>
       <LoadingBar loading={loading} />

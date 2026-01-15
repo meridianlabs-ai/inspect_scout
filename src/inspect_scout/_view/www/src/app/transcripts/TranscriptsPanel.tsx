@@ -8,6 +8,7 @@ import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useCode } from "../server/useCode";
 import { appAliasedPath, useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
@@ -27,19 +28,8 @@ export const TranscriptsPanel: FC = () => {
   const resolvedTranscriptDir =
     userTranscriptsDir || config.transcripts_dir || null;
 
-  // Filtering
-  const columnFilters =
-    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
-  const filterConditions = Object.values(columnFilters)
-    .map((filter) => filter.condition)
-    .filter((condition): condition is SimpleCondition => Boolean(condition));
-
-  // Sorting
-  const condition = filterConditions.reduce<Condition | undefined>(
-    (acc, condition) => (acc ? acc.and(condition) : condition),
-    undefined
-  );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
+  const condition = useFilterConditions();
 
   // Clear detail state
   const clearTranscriptState = useStore((state) => state.clearTranscriptState);

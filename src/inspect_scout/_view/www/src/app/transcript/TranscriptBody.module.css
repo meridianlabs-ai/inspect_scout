@@ -45,17 +45,23 @@
 
 .eventsList {
   padding-bottom: 1rem;
+  border-left: solid 1px var(--bs-border-color);
 }
 
 .eventsContainer {
   display: grid;
   width: 100%;
-  grid-template-columns: 1fr;
+  grid-template-columns: 200px 1fr;
   min-height: 100vh;
   transition: grid-template-columns 0.3s ease;
-  padding-bottom: 50px;
+  padding-bottom: 44px;
 }
 
 .eventsTab {
   display: flex;
+}
+
+.eventsOutline {
+  padding-left: 0.5rem;
+  padding-top: 0.8rem;
 }

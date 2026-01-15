@@ -5,9 +5,12 @@ import { useSearchParams } from "react-router-dom";
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { ApplicationIcons } from "../../components/icons";
+import { StickyScroll } from "../../components/StickyScroll";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
-import { TranscriptView } from "../../components/transcript/TranscriptView";
+import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
+import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
+import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
@@ -44,6 +47,12 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     setSelectedTranscriptTab(tabId);
     setSearchParams({ tab: tabId });
   };
+
+  // Transcript event data
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(
+    transcript.events || [],
+    false
+  );
 
   const tabTools = [<CopyToolbarButton transcript={transcript} />];
 
@@ -84,9 +93,21 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         scrollable={false}
       >
         <div className={styles.eventsContainer}>
-          <TranscriptView
+          <StickyScroll
+            scrollRef={scrollRef}
+            className={styles.eventsOutline}
+            offsetTop={50}
+          >
+            <TranscriptOutline
+              eventNodes={eventNodes}
+              defaultCollapsedIds={defaultCollapsedIds}
+              scrollRef={scrollRef}
+            />
+          </StickyScroll>
+          <TranscriptViewNodes
             id={"transcript-events-list"}
-            events={transcript.events || []}
+            eventNodes={eventNodes}
+            defaultCollapsedIds={defaultCollapsedIds}
             className={styles.eventsList}
             scrollRef={scrollRef}
           />

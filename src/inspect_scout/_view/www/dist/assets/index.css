@@ -8430,13 +8430,68 @@ span.ap-marker-container:hover span.ap-marker {
   width: 100%;
   height: 100%;
 }
-._tabContainer_x470g_1 {
+._eventRow_1j0jk_1 {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  column-gap: 3px;
+  cursor: pointer;
+}
+
+._eventRow_1j0jk_1._selected_1j0jk_8 {
+  font-weight: 800;
+}
+
+._eventRow_1j0jk_1 ._toggle_1j0jk_12 {
+  font-size: 0.7em;
+  margin-top: 4px;
+}
+
+._eventLink_1j0jk_17 {
+  color: var(--bs-body-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+._eventLink_1j0jk_17:hover {
+  text-decoration: underline;
+  color: var(--bs-link-hover-color);
+}
+
+._label_1j0jk_28 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._icon_1j0jk_34 {
+  margin-right: 3px;
+}
+
+._progress_1j0jk_38 {
+  margin-left: 0.3em !important;
+}
+
+._popover_1j0jk_42 {
+  min-width: 300px;
+  max-width: 80%;
+}
+._node_1d5c2_1 {
+  display: grid;
+  column-gap: 0.3em;
+  grid-template-columns: max-content 1fr;
+}
+
+._panel_1d5c2_7 {
+  margin-top: 0.65rem;
+  overflow: visible;
+}
+._tabContainer_150et_1 {
   display: grid;
   grid-template-rows: max-content minmax(0, 1fr);
   height: 100%;
 }
 
-.nav._tabs_x470g_7 {
+.nav._tabs_150et_7 {
   border-bottom: solid 1px var(--bs-border-color);
   padding-bottom: 0.5rem;
   padding-top: 0.5rem;
@@ -8448,48 +8503,54 @@ span.ap-marker-container:hover span.ap-marker {
   background-color: var(--bs-body-bg);
 }
 
-.nav._tabs_x470g_7 .nav-link {
+.nav._tabs_150et_7 .nav-link {
   padding: 0.3rem 0.5rem;
   font-size: var(--inspect-font-size-smallest) !important;
 }
 
-._tabSet_x470g_24 {
+._tabSet_150et_24 {
 }
 
-._chatTab_x470g_27 > * > * {
+._chatTab_150et_27 > * > * {
   padding: 0.5rem;
 }
 
-._chatTab_x470g_27 {
+._chatTab_150et_27 {
   padding-bottom: 50px;
 }
 
-._metadata_x470g_35 {
+._metadata_150et_35 {
   padding: 0.5rem;
   padding-bottom: 50px;
 }
 
-._scrollable_x470g_40 {
+._scrollable_150et_40 {
   overflow-y: auto;
   min-height: 0;
   height: 100%;
 }
 
-._eventsList_x470g_46 {
+._eventsList_150et_46 {
   padding-bottom: 1rem;
+  border-left: solid 1px var(--bs-border-color);
 }
 
-._eventsContainer_x470g_50 {
+._eventsContainer_150et_51 {
   display: grid;
   width: 100%;
-  grid-template-columns: 1fr;
+  grid-template-columns: 200px 1fr;
   min-height: 100vh;
   transition: grid-template-columns 0.3s ease;
-  padding-bottom: 50px;
+  padding-bottom: 44px;
 }
 
-._eventsTab_x470g_59 {
+._eventsTab_150et_60 {
   display: flex;
+}
+
+._eventsOutline_150et_64 {
+  padding-left: 0.5rem;
+  padding-top: 0.8rem;
 }
 ._container_godvv_1 {
   display: grid;

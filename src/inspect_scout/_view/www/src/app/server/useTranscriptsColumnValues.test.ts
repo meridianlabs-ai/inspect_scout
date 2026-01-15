@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { skipToken } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -29,7 +30,11 @@ describe("useTranscriptsColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(loading);
 
     const { result } = renderHook(() =>
-      useTranscriptsColumnValues("/transcripts", "model", undefined)
+      useTranscriptsColumnValues({
+        location: "/transcripts",
+        column: "model",
+        filter: undefined,
+      })
     );
 
     expect(result.current).toEqual(loading);
@@ -40,7 +45,11 @@ describe("useTranscriptsColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue(data(mockValues));
 
     const { result } = renderHook(() =>
-      useTranscriptsColumnValues("/transcripts", "model", undefined)
+      useTranscriptsColumnValues({
+        location: "/transcripts",
+        column: "model",
+        filter: undefined,
+      })
     );
 
     expect(result.current.loading).toBe(false);
@@ -52,10 +61,27 @@ describe("useTranscriptsColumnValues", () => {
     mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
 
     const { result } = renderHook(() =>
-      useTranscriptsColumnValues("/transcripts", "model", undefined)
+      useTranscriptsColumnValues({
+        location: "/transcripts",
+        column: "model",
+        filter: undefined,
+      })
     );
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(error);
+  });
+
+  it("passes skipToken to disable query", () => {
+    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+
+    renderHook(() => useTranscriptsColumnValues(skipToken));
+
+    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["transcriptsColumnValues", skipToken],
+        queryFn: skipToken,
+      })
+    );
   });
 });

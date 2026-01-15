@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -53,9 +54,9 @@ export const TranscriptsPanel: FC = () => {
     loading: _suggestionsLoading,
     error: _suggestionsError,
   } = useTranscriptsColumnValues(
-    editingColumnId ? (resolvedTranscriptDir ?? undefined) : undefined,
-    editingColumnId ?? undefined,
-    otherColumnsFilter
+    editingColumnId && resolvedTranscriptDir
+      ? { location: resolvedTranscriptDir, column: editingColumnId, filter: otherColumnsFilter }
+      : skipToken
   );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching } =

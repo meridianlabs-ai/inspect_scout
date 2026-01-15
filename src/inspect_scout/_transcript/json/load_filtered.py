@@ -218,7 +218,6 @@ async def _parse_and_filter(
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
         # Early exit: messages-only with no attachment refs
-        # See docstring for metadata ordering assumption
         if (
             events_coro is None
             and prefix == "messages"

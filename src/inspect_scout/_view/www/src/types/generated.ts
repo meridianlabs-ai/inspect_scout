@@ -44,6 +44,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/project/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get project configuration
+         * @description Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.
+         */
+        get: operations["get_project_config_project_config_get"];
+        /**
+         * Update project configuration
+         * @description Updates the project configuration in scout.yaml while preserving comments and formatting. Optionally include If-Match header with current ETag for optimistic concurrency control. Omit If-Match to force save.
+         */
+        put: operations["put_project_config_project_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/runllmscanner": {
         parameters: {
             query?: never;
@@ -1838,6 +1862,122 @@ export interface components {
             limit: number;
         };
         /**
+         * ProjectConfig
+         * @description Scout project configuration from scout.yaml.
+         *
+         *     Extends ScanJobConfig to represent project-level defaults. All fields
+         *     from ScanJobConfig are available as project defaults.
+         */
+        "ProjectConfig-Input": {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Input"] | string;
+            } | null;
+            /** Name */
+            name?: string | null;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Input"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
+        };
+        /**
+         * ProjectConfig
+         * @description Scout project configuration from scout.yaml.
+         *
+         *     Extends ScanJobConfig to represent project-level defaults. All fields
+         *     from ScanJobConfig are available as project defaults.
+         */
+        "ProjectConfig-Output": {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Output"] | null;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Output"] | string;
+            } | null;
+            /** Name */
+            name?: string | null;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            /** Scans */
+            scans?: string | null;
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Transcripts */
+            transcripts?: string | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Output"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
+        };
+        /**
          * ProvenanceData
          * @description Metadata about who made an edit and why.
          */
@@ -2169,11 +2309,8 @@ export interface components {
             model_roles?: {
                 [key: string]: components["schemas"]["ModelConfig-Input"] | string;
             } | null;
-            /**
-             * Name
-             * @default job
-             */
-            name: string;
+            /** Name */
+            name?: string | null;
             /** Results */
             results?: string | null;
             /** Scanners */
@@ -3466,6 +3603,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppConfig"];
+                };
+            };
+        };
+    };
+    get_project_config_project_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectConfig-Output"];
+                };
+            };
+        };
+    };
+    put_project_config_project_config_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description ETag from GET request (optional, omit to force save) */
+                "if-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectConfig-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectConfig-Output"];
                 };
             };
         };

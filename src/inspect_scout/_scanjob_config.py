@@ -11,8 +11,8 @@ from inspect_scout._validation.types import ValidationSet
 class ScanJobConfig(BaseModel):
     """Scan job configuration."""
 
-    name: str = Field(default="job")
-    """Name of scan job (defaults to "job")."""
+    name: str | None = Field(default=None)
+    """Name of scan job."""
 
     transcripts: str | None = Field(default=None)
     """Trasnscripts to scan."""

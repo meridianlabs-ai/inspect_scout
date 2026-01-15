@@ -4,6 +4,8 @@ import {
   ActiveScansResponse,
   AppConfig,
   Pagination,
+  ProjectConfig,
+  ProjectConfigInput,
   ScansResponse,
   Status,
   Transcript,
@@ -155,6 +157,36 @@ export const apiScoutServer = (
           )
         ).raw
       ),
+    getProjectConfig: async (): Promise<{
+      config: ProjectConfig;
+      etag: string;
+    }> => {
+      const response = await requestApi.fetchType<ProjectConfig>(
+        "GET",
+        `/project/config`
+      );
+      const etag = response.headers.get("ETag")?.replace(/"/g, "") ?? "";
+      return { config: response.parsed, etag };
+    },
+    updateProjectConfig: async (
+      config: ProjectConfigInput,
+      etag: string | null
+    ): Promise<{ config: ProjectConfig; etag: string }> => {
+      const headers: Record<string, string> = {};
+      if (etag) {
+        headers["If-Match"] = `"${etag}"`;
+      }
+      const response = await requestApi.fetchType<ProjectConfig>(
+        "PUT",
+        `/project/config`,
+        {
+          headers,
+          body: JSON.stringify(config),
+        }
+      );
+      const newEtag = response.headers.get("ETag")?.replace(/"/g, "") ?? "";
+      return { config: response.parsed, etag: newEtag };
+    },
     storage: NoPersistence,
   };
 };

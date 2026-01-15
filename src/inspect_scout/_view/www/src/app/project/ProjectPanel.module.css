@@ -1,16 +1,176 @@
 .container {
   height: 100%;
   display: grid;
-  grid-template-rows: max-content max-content 1fr;
-  padding: 0.75rem 1rem;
+  grid-template-rows: max-content auto 1fr;
+}
+
+.container > .headerRow {
+  grid-row: 1;
+}
+
+.container > .conflictBanner {
+  grid-row: 2;
+}
+
+.container > .loading,
+.container > .error {
+  grid-row: 3;
+}
+
+.container > .splitLayout {
+  grid-row: 3;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--vscode-widget-border);
 }
 
 .header {
-  font-size: var(--inspect-font-size-large);
+  font-size: 16px;
   font-weight: 600;
+  color: var(--vscode-foreground);
 }
 
 .detail {
-  font-size: var(--inspect-font-size-small);
-  color: var(--bs-secondary);
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.conflictBanner {
+  background: var(--vscode-inputValidation-warningBackground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  padding: 8px 12px;
+  margin: 0.5rem 1rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--vscode-foreground);
+}
+
+.conflictActions {
+  display: flex;
+  gap: 8px;
+}
+
+.splitLayout {
+  display: flex;
+  min-height: 0;
+  gap: 1rem;
+  padding-left: 1rem;
+  padding-top: 1rem;
+}
+
+.treeNav {
+  width: 160px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navListItem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navGroup {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  padding: 6px 8px 4px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.navGroup:not(:first-child) {
+  margin-top: 0.75rem;
+}
+
+.navItem {
+  display: block;
+  width: 100%;
+  padding: 4px 8px 4px 16px;
+  font-size: 13px;
+  color: var(--vscode-foreground);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.navItem:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.navItem:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.scrollContent {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+/* Make text fields wider */
+.field :global(vscode-textfield) {
+  width: 400px !important;
+}
+
+.field :global(vscode-textfield[type="number"]) {
+  width: 250px !important;
+}
+
+.field :global(vscode-textarea) {
+  width: 400px !important;
+}
+
+.field :global(vscode-single-select) {
+  width: 250px !important;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  padding: 0.35rem 0.75rem 0.35rem 1rem;
+  margin-left: -0.75rem;
+  background: var(--vscode-sideBarSectionHeader-background);
+  border-radius: 3px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.loading,
+.error {
+  font-size: 13px;
+  color: var(--vscode-foreground);
+}
+
+.error {
+  color: var(--vscode-errorForeground);
 }

@@ -37,12 +37,162 @@
   /* Inspect Glass */
   --inspect-glass-color: #000000;
   --inspect-glass-opacity: 0.3;
+
+  /* VS Code Light Modern theme defaults (for non-VS Code context) */
+  /* Complete set of variables used by @vscode-elements/elements */
+  /* These are overridden by actual VS Code theme variables when running in VS Code */
+
+  /* Core colors */
+  --vscode-foreground: #3b3b3b;
+  --vscode-descriptionForeground: #717171;
+  --vscode-errorForeground: #f14c4c;
+  --vscode-icon-foreground: #424242;
+  --vscode-focusBorder: #0090f1;
+  --vscode-contrastBorder: transparent;
+
+  /* Font settings */
+  --vscode-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --vscode-font-size: 13px;
+  --vscode-font-weight: normal;
+  --vscode-editor-font-family: Menlo, Monaco, "Courier New", monospace;
+  --vscode-editor-font-size: 12px;
+  --vscode-editor-font-weight: normal;
+
+  /* Editor colors */
+  --vscode-editor-background: #ffffff;
+  --vscode-editor-foreground: #3b3b3b;
+  --vscode-editor-inlineValuesForeground: rgba(0, 0, 0, 0.5);
+  --vscode-editorGroup-border: #e7e7e7;
+  --vscode-editorWidget-border: #d4d4d4;
+
+  /* Input colors */
+  --vscode-input-background: #ffffff;
+  --vscode-input-foreground: #3b3b3b;
+  --vscode-input-border: #cecece;
+  --vscode-input-placeholderForeground: #767676;
+  --vscode-inputOption-activeBackground: rgba(0, 144, 241, 0.2);
+  --vscode-inputOption-activeBorder: #0090f1;
+  --vscode-inputOption-activeForeground: #000000;
+
+  /* Input validation */
+  --vscode-inputValidation-warningBackground: #f2dede;
+  --vscode-inputValidation-warningBorder: #be8800;
+  --vscode-inputValidation-errorBackground: #f2dede;
+  --vscode-inputValidation-errorBorder: #be1100;
+
+  /* Settings controls (used by vscode-elements textfield, checkbox, dropdown) */
+  --vscode-settings-textInputBackground: #ffffff;
+  --vscode-settings-textInputForeground: #3b3b3b;
+  --vscode-settings-textInputBorder: #cecece;
+  --vscode-settings-checkboxBackground: #ffffff;
+  --vscode-settings-checkboxForeground: #3b3b3b;
+  --vscode-settings-checkboxBorder: #919191;
+  --vscode-settings-dropdownBackground: #ffffff;
+  --vscode-settings-dropdownForeground: #3b3b3b;
+  --vscode-settings-dropdownBorder: #cecece;
+  --vscode-settings-dropdownListBorder: #c8c8c8;
+  --vscode-settings-headerBorder: rgba(128, 128, 128, 0.35);
+
+  /* Checkbox colors */
+  --vscode-checkbox-background: #ffffff;
+  --vscode-checkbox-foreground: #3b3b3b;
+  --vscode-checkbox-border: #919191;
+
+  /* Button colors */
+  --vscode-button-background: #007acc;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #0062a3;
+  --vscode-button-border: transparent;
+  --vscode-button-separator: rgba(255, 255, 255, 0.4);
+  --vscode-button-secondaryBackground: #5f6a79;
+  --vscode-button-secondaryForeground: #ffffff;
+  --vscode-button-secondaryHoverBackground: #4c5561;
+
+  /* Widget/shadow colors */
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.16);
+  --vscode-widget-border: #d4d4d4;
+
+  /* Toolbar */
+  --vscode-toolbar-hoverBackground: rgba(184, 184, 184, 0.31);
+  --vscode-toolbar-activeBackground: rgba(166, 166, 166, 0.31);
+  --vscode-toolbar-hoverOutline: transparent;
+
+  /* List colors (used by select/dropdown components) */
+  --vscode-list-hoverBackground: #e8e8e8;
+  --vscode-list-hoverForeground: #3b3b3b;
+  --vscode-list-activeSelectionBackground: #0060c0;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-list-activeSelectionIconForeground: #ffffff;
+  --vscode-list-inactiveSelectionBackground: #e4e6f1;
+  --vscode-list-focusOutline: #0090f1;
+  --vscode-list-focusAndSelectionOutline: #0090f1;
+  --vscode-list-focusHighlightForeground: #0066bf;
+  --vscode-list-highlightForeground: #0066bf;
+
+  /* Menu colors */
+  --vscode-menu-background: #ffffff;
+  --vscode-menu-foreground: #3b3b3b;
+  --vscode-menu-border: #d4d4d4;
+  --vscode-menu-selectionBackground: #0060c0;
+  --vscode-menu-selectionForeground: #ffffff;
+  --vscode-menu-selectionBorder: transparent;
+  --vscode-menu-separatorBackground: #d4d4d4;
+
+  /* Badge colors */
+  --vscode-badge-background: #007acc;
+  --vscode-badge-foreground: #ffffff;
+  --vscode-activityBarBadge-background: #007acc;
+  --vscode-activityBarBadge-foreground: #ffffff;
+
+  /* Panel colors */
+  --vscode-panel-background: #ffffff;
+  --vscode-panelTitle-activeBorder: #007acc;
+  --vscode-panelTitle-activeForeground: #3b3b3b;
+  --vscode-panelTitle-inactiveForeground: #717171;
+
+  /* Sidebar colors */
+  --vscode-sideBar-background: #f3f3f3;
+  --vscode-sideBarSectionHeader-background: #f3f3f3;
+  --vscode-sideBarTitle-foreground: #3b3b3b;
+
+  /* Progress bar */
+  --vscode-progressBar-background: #007acc;
+
+  /* Scrollbar colors */
+  --vscode-scrollbar-shadow: rgba(0, 0, 0, 0.16);
+  --vscode-scrollbarSlider-background: rgba(100, 100, 100, 0.4);
+  --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+  --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, 0.6);
+
+  /* Sash (resizable borders) */
+  --vscode-sash-hoverBorder: #0090f1;
+
+  /* Tree colors */
+  --vscode-tree-indentGuidesStroke: #d4d4d4;
+  --vscode-tree-inactiveIndentGuidesStroke: rgba(212, 212, 212, 0.5);
+
+  /* Keybinding table */
+  --vscode-keybindingTable-headerBackground: rgba(128, 128, 128, 0.1);
+  --vscode-keybindingTable-rowsBackground: rgba(128, 128, 128, 0.04);
 }
 
 body:not([class^="vscode-"]) button {
   --bs-nav-pills-link-active-bg: #e3eaf1;
   --bs-nav-pills-link-active-color: black;
   --bs-nav-link-color: black;
+}
+
+/* vscode-elements form component adjustments */
+vscode-label {
+  margin-bottom: 0;
+}
+
+vscode-form-helper {
+  font-size: 12px;
+  margin-top: 0;
+  margin-bottom: 6px;
 }
 
 /* AG Grid Theming */

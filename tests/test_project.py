@@ -334,17 +334,3 @@ transcripts: ./logs
 
         assert config.name == "my-project"
         assert config.transcripts == "./logs"
-
-    def test_default_name_applied_after_merge(self, tmp_path: Path) -> None:
-        """Default name should use directory name after merging."""
-        project_dir = tmp_path / "my-cool-project"
-        project_dir.mkdir()
-        project_file = project_dir / "scout.yaml"
-        local_file = project_dir / "scout.local.yaml"
-
-        project_file.write_text("transcripts: ./logs")
-        local_file.write_text("log_level: debug")
-
-        config = load_project_config(project_file)
-
-        assert config.name == "my-cool-project"

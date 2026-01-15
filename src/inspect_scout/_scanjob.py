@@ -182,14 +182,14 @@ class ScanJob:
         return ScanJob(**kwargs)
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         """Name of scan job (defaults to @scanjob function name)."""
         if self._name is not None:
             return self._name
         elif is_registry_object(self):
             return registry_info(self).name
         else:
-            return "scan"
+            return None
 
     @property
     def transcripts(self) -> Transcripts | None:
@@ -527,6 +527,7 @@ def merge_project_into_scanjob(proj: "ProjectConfig", scanjob: ScanJob) -> None:
         scanjob: The ScanJob to merge into (modified in place).
     """
     _apply_simple_fallbacks(proj, scanjob)
+    _merge_name(proj, scanjob)
     _merge_transcripts(proj, scanjob)
     _merge_worklist(proj, scanjob)
     _merge_scanners(proj, scanjob)
@@ -534,6 +535,11 @@ def merge_project_into_scanjob(proj: "ProjectConfig", scanjob: ScanJob) -> None:
     _merge_model(proj, scanjob)
     _merge_tags(proj, scanjob)
     _merge_metadata(proj, scanjob)
+
+
+def _merge_name(proj: "ProjectConfig", scanjob: ScanJob) -> None:
+    if scanjob.name is None:
+        scanjob._name = proj.name or Path.cwd().name
 
 
 def _merge_model(proj: "ProjectConfig", scanjob: ScanJob) -> None:

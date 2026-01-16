@@ -407,6 +407,7 @@ const CopyToolbarButton: FC<{
       label="Copy"
       icon={icon}
       className={clsx(className)}
+      dropdownClassName={"text-size-smallest"}
       subtle={true}
       items={{
         UUID: () => {

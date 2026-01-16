@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.7 (16 January 2026)
 
 - Scout View: Editing UI for project settings.
 - Scanning: Apply model config when resuming scans.

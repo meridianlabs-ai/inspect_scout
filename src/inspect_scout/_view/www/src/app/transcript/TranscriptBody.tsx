@@ -30,13 +30,13 @@ import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
 
+import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
 import styles from "./TranscriptBody.module.css";
 import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
-import { useTranscriptColumnFilter } from "./useTranscriptColumnFilter";
 
-const kTranscriptMessagesTabId = "transcript-messages";
-const kTranscriptEventsTabId = "transcript-events";
-const kTranscriptMetadataTabId = "transcript-metadata";
+export const kTranscriptMessagesTabId = "transcript-messages";
+export const kTranscriptEventsTabId = "transcript-events";
+export const kTranscriptMetadataTabId = "transcript-metadata";
 
 /**
  * Recursively collects all collapsible event IDs from the event tree.
@@ -71,6 +71,10 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
 
+  // Get event or message ID from query params for deep linking
+  const eventParam = searchParams.get("event");
+  const messageParam = searchParams.get("message");
+
   // Selected tab
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab
@@ -81,11 +85,34 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const resolvedSelectedTranscriptTab =
     tabParam || selectedTranscriptTab || kTranscriptMessagesTabId;
 
-  const handleTabChange = (tabId: string) => {
-    //  update both store and URL
-    setSelectedTranscriptTab(tabId);
-    setSearchParams({ tab: tabId });
-  };
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      //  update both store and URL
+      setSelectedTranscriptTab(tabId);
+      setSearchParams({ tab: tabId });
+    },
+    [setSelectedTranscriptTab, setSearchParams]
+  );
+
+  // Auto-switch tab based on deep link params
+  useEffect(() => {
+    if (
+      eventParam &&
+      resolvedSelectedTranscriptTab !== kTranscriptEventsTabId
+    ) {
+      handleTabChange(kTranscriptEventsTabId);
+    } else if (
+      messageParam &&
+      resolvedSelectedTranscriptTab !== kTranscriptMessagesTabId
+    ) {
+      handleTabChange(kTranscriptMessagesTabId);
+    }
+  }, [
+    eventParam,
+    messageParam,
+    resolvedSelectedTranscriptTab,
+    handleTabChange,
+  ]);
 
   // Transcript Filtering
   const transcriptFilterButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -218,6 +245,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       <ChatViewVirtualList
         id={"transcript-id"}
         messages={transcript.messages || []}
+        initialMessageId={messageParam}
         toolCallStyle={"complete"}
         indented={false}
         className={styles.chatList}
@@ -269,6 +297,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
             id={"transcript-events-list"}
             eventNodes={eventNodes}
             defaultCollapsedIds={defaultCollapsedIds}
+            initialEventId={eventParam}
             className={styles.eventsList}
             scrollRef={scrollRef}
           />

@@ -3,8 +3,8 @@ import { FC } from "react";
 
 import { PopOver } from "../../components/PopOver";
 
+import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
 import styles from "./TranscriptFilterPopover.module.css";
-import { useTranscriptColumnFilter } from "./useTranscriptColumnFilter";
 
 export interface TranscriptFilterProps {
   showing: boolean;

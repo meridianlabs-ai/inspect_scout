@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
+import { useTranscriptNavigation } from "../../../app/transcript/hooks/useTranscriptNavigation";
 import { useScrollTrack, useVirtuosoState } from "../../../state/scrolling";
 import { useStore } from "../../../state/store";
 import { kSandboxSignalName } from "../transform/fixups";
@@ -70,6 +71,9 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   // The virtual list handle and state
   const listHandle = useRef<VirtuosoHandle | null>(null);
   const { getRestoreState } = useVirtuosoState(listHandle, id);
+
+  // Get URL generator for deep linking to events
+  const { getEventUrl } = useTranscriptNavigation();
 
   // Collapse state
   // The list of events that have been collapsed
@@ -230,11 +234,12 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
             selected={
               selectedOutlineId ? selectedOutlineId === node.id : index === 0
             }
+            getEventUrl={getEventUrl}
           />
         );
       }
     },
-    [outlineNodeList, running, selectedOutlineId]
+    [outlineNodeList, running, selectedOutlineId, getEventUrl]
   );
 
   return (

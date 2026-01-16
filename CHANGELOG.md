@@ -1,6 +1,7 @@
 ## Unreleased
 
-= Scout View: Editing UI for project settings.
+- Scout View: Editing UI for project settings.
+- Scanning: Apply model config when resuming scans.
 - Transcript DB: Warn when there is no index or the index is out of date.
 - Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
 - CLI: Add `scout --version` to print current scout version.

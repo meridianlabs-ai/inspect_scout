@@ -14,9 +14,11 @@
 
 .filterLabel {
   margin-right: 0.3rem;
+  margin-top: 3px;
 }
 
 .filterNone {
+  margin-top: 2px;
 }
 
 .actionButtons {

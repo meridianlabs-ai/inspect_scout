@@ -8,8 +8,6 @@ import { printArray } from "../../utils/array";
 import { formatNumber, formatPrettyDecimal } from "../../utils/format";
 import { printObject } from "../../utils/object";
 
-import styles from "./TranscriptsGrid.module.css";
-
 export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   meta?: {
     align?: "left" | "center" | "right";
@@ -130,7 +128,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   success: createColumn({
     accessorKey: "success",
     header: "✓",
-    size: 44,
+    size: 40,
     minSize: 40,
     maxSize: 60,
     meta: {
@@ -143,10 +141,11 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
         return "-";
       }
 
-      const icon = value ? ApplicationIcons.success : ApplicationIcons.error;
-      const colorCls = value ? styles.green : styles.red;
+      const icon = value
+        ? ApplicationIcons.checkbox.checked
+        : ApplicationIcons.checkbox.unchecked;
 
-      return <i className={clsx(icon, colorCls)} />;
+      return <i className={clsx(icon, "text-secondary")} />;
     },
     textValue: () => null,
   }),

@@ -8,8 +8,10 @@ transcripts. Scout has the following core features:
 
 1.  Scan full transcripts or individual messages or events.
 2.  High performance parallel processing of transcript content.
-3.  Resume scans that are stopped due to errors or interruptions.
-4.  Scout View for rich visualization of scan results.
+3.  Scout View for rich visualization of transcripts and scan results.
+4.  Resume scans that are stopped due to errors or interruptions.
+5.  Use caching and batch processing to optimize LLM performance and
+    costs.
 
 Scout can process input either from a [transcript
 database](transcripts.qmd#transcripts-database) (which can be populated
@@ -17,7 +19,7 @@ from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
-Install the `inspect_scout` package from GitHub with:
+Install the `inspect_scout` package from PyPI with:
 
 ``` bash
 pip install inspect-scout
@@ -199,6 +201,36 @@ AI, you can use a [.env
 file](https://inspect.aisi.org.uk/options.html#env-files) for providing
 API keys.
 
+### Viewing Scans
+
+Scout includes a viewer application for looking at scan results in
+depth. Run the viewer with:
+
+``` bash
+scout view
+```
+
+![](images/scout-view.png)
+
+By default this will view the scan results in the `./scans` directory of
+the current working directory. Specify an alternate results location
+with:
+
+``` bash
+scout view --scans s3://my-scan-results
+```
+
+You can also list recent scans with the `scout scan list` command:
+
+``` bash
+scout scan list
+```
+
+Scans will be listed from most to least recent. If you are running
+within VS Code you can click the scans in the list to view them in a VS
+Code editor. The VS Code Scout activity bar also includes a scans pane
+that lists recent scans.
+
 ### Projects
 
 In some cases you’ll prefer to define your transcript source, scanning
@@ -218,6 +250,10 @@ Then we can run our scan with simply:
 ``` bash
 scout scan scanner.py 
 ```
+
+Use Scout View to explore and manage project settings:
+
+![](images/project.png)
 
 See the [Projects](projects.qmd) article for more details on managing
 configuration with projects.
@@ -253,37 +289,6 @@ scanners using the same `scout scan scanner.py` command,
 See the [Scanners](scanners.qmd) article for more details on creating
 scanners, including how to write scanners that accept a variety of
 inputs and how to use scanners directly as Inspect scorers.
-
-## Viewing Scans
-
-Scout includes a viewer application for looking at scan results in
-depth. Run the viewer with:
-
-``` bash
-scout view
-```
-
-![](images/scout-view.png)
-
-By default this will view the scan results in the `./scans` directory of
-the current working directory (or the location pointed to by the
-`SCOUT_SCAN_SCANS` environment variable). Specify an alternate results
-location with:
-
-``` bash
-scout view --scans s3://my-scan-results
-```
-
-You can also list recent scans with the `scout scan list` command:
-
-``` bash
-scout scan list
-```
-
-Scans will be listed from most to least recent. If you are running
-within VS Code you can click the scans in the list to view them in a VS
-Code editor. The VS Code Scout activity bar also includes a scans pane
-that lists recent scans.
 
 ## Scan Jobs
 
@@ -453,7 +458,7 @@ status = scan(
 )
 ```
 
-The `metadata` object (aliased to `m`) provides a convenient way to
+The `columns` object (aliased to `c`) provides a convenient way to
 specify `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()`
@@ -974,6 +979,11 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts_from("s3://weave-rollouts/")
 ```
 
+Creating a dedicated database for an analysis project is generally a
+good practice as it ensure that your dataset is stable for the lifetime
+of the analysis and that you can easily [publish](db_publishing.qmd)
+your dataset to others.
+
 ### Filtering Transcripts
 
 In some cases there may be many more transcripts in storage than you
@@ -1014,11 +1024,6 @@ point at the local `./transcripts` directory:
 scout scan scanner.py -T ./transcripts --model openai/gpt-5
 ```
 
-Creating a dedicated database for an analysis project is generally a
-good practice as it ensure that your dataset is stable for the lifetime
-of the analysis and that you can easily [publish](db_publishing.qmd)
-your dataset to others.
-
 ## Creating a Project
 
 Above we described how to specify transcripts, filters, and a scanning
@@ -1047,8 +1052,14 @@ scout scan scanner.py
 ```
 
 All configuration within the project file will be automatically applied
-to the `scout scan`. See the article on [Projects](projects.qmd) to
-learn more about using projects.
+to the `scout scan`.
+
+Use Scout View to explore and manage project settings:
+
+![](images/project.png)
+
+See the article on [Projects](projects.qmd) to learn more about using
+projects.
 
 ## Initial Exploration
 
@@ -1056,21 +1067,32 @@ Before doing any automated scanning it’s important to gain some
 intuitions about the nature of your transcripts and what sort of
 questions you want to pose.
 
-If you are working with Inspect logs, then [Inspect
-View](https://inspect.aisi.org.uk/log-viewer.html) is a great way to
-review transcripts. You can use the Samples view to query for samples
-based on models, scores, error conditions, limits, etc.:
+### Transcript Viewer
 
-![](images/view-samples.png)
+You can use Scout View to view and filter transcripts:
+
+![](images/transcripts-list.png)
+
+If you filter down into a set of transcripts that you want to analyze,
+use the **Copy** button to copy the code required to apply the filter:
+
+![](images/transcripts-copy.png)
+
+If you drill into a transcript you can see its messages, events, and
+other details:
+
+![](images/transcripts-detail.png)
 
 Read a selection of individual transcripts to get a flavor for model
 problem solving approaches and difficulties encountered.
 
-You should also try to leverage language models for this work—when
-viewing a transcript there is a **Copy -\> Transcript** command you can
-use to copy the full transcript to the clipboard:
+### Querying Transcripts
 
-![](images/view-copy-transcript.png)
+You should also try to leverage language models to understand
+transcripts—when viewing a transcript there is a **Copy -\> Transcript**
+command you can use to copy the full transcript to the clipboard:
+
+![](images/transcript-messages-copy.png)
 
 You can then paste this transcript into a chat conversation and ask
 questions about what happened, why the agent failed, or what patterns
@@ -1688,6 +1710,15 @@ version control so do not contain secrets. See the section below on
 using [environment files](#environment-files) for details on handling
 secrets.
 
+## Scout View
+
+When you run `scout view` from a project directory it uses the project
+settings to initialize the **Transcripts** and **Results** panes. You
+can also edit the project settings by clicking on the **Project** button
+at the top right:
+
+![](images/project.png)
+
 ## Project Settings
 
 Project files support all of the same options available to [scan
@@ -1887,17 +1918,6 @@ transcripts = (
 See the `Columns` documentation for additional details on supported
 filtering operations.
 
-``` python
-from inspect_scout import transcripts_from, log_columns as c
-
-transcripts = (
-    transcripts_from("./logs")
-    .where(c.)
-    .where(c.task_set == "cybench")
-    .where(c.model.like("openai/%"))
-)
-```
-
 You can also limit the total number of transcripts as well as shuffle
 the order of transcripts read (both are useful during scanner
 development when you don’t want to process all transcripts). For
@@ -1912,6 +1932,22 @@ transcripts = (
     .shuffle(42)
 )
 ```
+
+## Viewing Transcripts
+
+You can use Scout View to view and filter transcripts:
+
+![](images/transcripts-list.png)
+
+If you filter down into a set of transcripts that you want to analyze,
+use the **Copy** button to copy the code required to apply the filter:
+
+![](images/transcripts-copy.png)
+
+If you drill into a transcript you can see its messages, events, and
+other details:
+
+![](images/transcripts-detail.png)
 
 ## Transcript Fields
 

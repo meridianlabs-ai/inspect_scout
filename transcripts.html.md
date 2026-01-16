@@ -54,17 +54,6 @@ transcripts = (
 See the `Columns` documentation for additional details on supported
 filtering operations.
 
-``` python
-from inspect_scout import transcripts_from, log_columns as c
-
-transcripts = (
-    transcripts_from("./logs")
-    .where(c.)
-    .where(c.task_set == "cybench")
-    .where(c.model.like("openai/%"))
-)
-```
-
 You can also limit the total number of transcripts as well as shuffle
 the order of transcripts read (both are useful during scanner
 development when you don’t want to process all transcripts). For
@@ -79,6 +68,22 @@ transcripts = (
     .shuffle(42)
 )
 ```
+
+## Viewing Transcripts
+
+You can use Scout View to view and filter transcripts:
+
+![](images/transcripts-list.png)
+
+If you filter down into a set of transcripts that you want to analyze,
+use the **Copy** button to copy the code required to apply the filter:
+
+![](images/transcripts-copy.png)
+
+If you drill into a transcript you can see its messages, events, and
+other details:
+
+![](images/transcripts-detail.png)
 
 ## Transcript Fields
 

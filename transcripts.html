@@ -109,10 +109,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript Analysis for AI Agents">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/transcripts-list.png">
 <meta property="og:site_name" content="Inspect Scout">
+<meta property="og:image:height" content="976">
+<meta property="og:image:width" content="1740">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/transcripts-list.png">
+<meta name="twitter:image-height" content="976">
+<meta name="twitter:image-width" content="1740">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-sidebar docked nav-fixed quarto-light">
@@ -382,6 +388,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
   <li><a href="#reading-transcripts" id="toc-reading-transcripts" class="nav-link" data-scroll-target="#reading-transcripts">Reading Transcripts</a></li>
   <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
+  <li><a href="#viewing-transcripts" id="toc-viewing-transcripts" class="nav-link" data-scroll-target="#viewing-transcripts">Viewing Transcripts</a></li>
   <li><a href="#transcript-fields" id="toc-transcript-fields" class="nav-link" data-scroll-target="#transcript-fields">Transcript Fields</a></li>
   <li><a href="#scanning-transcripts" id="toc-scanning-transcripts" class="nav-link" data-scroll-target="#scanning-transcripts">Scanning Transcripts</a></li>
   <li><a href="#inspect-eval-logs" id="toc-inspect-eval-logs" class="nav-link" data-scroll-target="#inspect-eval-logs">Inspect Eval Logs</a></li>
@@ -443,22 +450,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    .where(c.model.like(<span class="st">"openai/%"</span>))</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#columns">Columns</a></span> documentation for additional details on supported filtering operations.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from, log_columns <span class="im">as</span> c</span>
+<p>You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don’t want to process all transcripts). For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> (</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    .where(c.)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    .where(c.task_set <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    .where(c.model.like(<span class="st">"openai/%"</span>))</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don’t want to process all transcripts). For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> (</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    .limit(<span class="dv">10</span>)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    .shuffle(<span class="dv">42</span>)</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    .limit(<span class="dv">10</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    .shuffle(<span class="dv">42</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="viewing-transcripts" class="level2">
+<h2 class="anchored" data-anchor-id="viewing-transcripts">Viewing Transcripts</h2>
+<p>You can use Scout View to view and filter transcripts:</p>
+<p><img src="images/transcripts-list.png" class="border img-fluid"></p>
+<p>If you filter down into a set of transcripts that you want to analyze, use the <strong>Copy</strong> button to copy the code required to apply the filter:</p>
+<p><img src="images/transcripts-copy.png" class="border img-fluid"></p>
+<p>If you drill into a transcript you can see its messages, events, and other details:</p>
+<p><img src="images/transcripts-detail.png" class="border img-fluid"></p>
 </section>
 <section id="transcript-fields" class="level2">
 <h2 class="anchored" data-anchor-id="transcript-fields">Transcript Fields</h2>
@@ -588,76 +596,76 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="scanning-transcripts" class="level2">
 <h2 class="anchored" data-anchor-id="scanning-transcripts">Scanning Transcripts</h2>
 <p>Once you have established your list of transcripts to scan, just pass them to the <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> function:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> ctf_environment, java_tool_calls</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>scan(</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), java_tool_calls()],</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> ctf_environment, java_tool_calls</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>scan(</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    scanners <span class="op">=</span> [ctf_environment(), java_tool_calls()],</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you want to do transcript filtering and then invoke your scan from the CLI using <code>scout scan</code>, then perform the filtering inside a <code>@scanjob</code>. For example:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>cybench_scan.py</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from, columns <span class="im">as</span> c</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(c.task_set <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="cybench_scan.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout (</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">import</span> ScanJob, scanjob, transcripts_from, columns <span class="im">as</span> c</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> deception, tool_errors</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cybench_job(logs: <span class="bu">str</span> <span class="op">=</span> <span class="st">"./logs"</span>) <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts_from(logs)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> transcripts.where(c.task_set <span class="op">==</span> <span class="st">"cybench"</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>        scanners <span class="op">=</span> [deception(), java_tool_usages()],</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        transcripts <span class="op">=</span> transcripts</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Then from the CLI:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench.py <span class="at">-S</span> logs=./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The <code>-S</code> argument enables you to pass arguments to the <code>@scanjob</code> function (in this case determining what directory to read logs from).</p>
 </section>
 <section id="inspect-eval-logs" class="level2">
 <h2 class="anchored" data-anchor-id="inspect-eval-logs">Inspect Eval Logs</h2>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_from">transcripts_from()</a></span> function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a log directory</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># read multiple log directories</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from([<span class="st">"./logs"</span>, <span class="st">"./logs2"</span>])</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># read from one or more log files</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"logs/cybench.eval"</span>, <span class="st">"logs/swebench.eval"</span>]</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a log directory</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># read multiple log directories</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from([<span class="st">"./logs"</span>, <span class="st">"./logs2"</span>])</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># read from one or more log files</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"logs/cybench.eval"</span>, <span class="st">"logs/swebench.eval"</span>]</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For Inspect logs, the <code>metadata</code> field within <code>TranscriptInfo</code> includes fields from eval sample metadata. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_id"</span>]        <span class="co"># sample uuid </span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"id"</span>]               <span class="co"># dataset sample id </span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"epoch"</span>]            <span class="co"># sample epoch</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"eval_metadata"</span>]    <span class="co"># eval metadata</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_metadata"</span>]  <span class="co"># sample metadata</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"score_&lt;scorer&gt;"</span>]   <span class="co"># named sample scores</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_id"</span>]        <span class="co"># sample uuid </span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"id"</span>]               <span class="co"># dataset sample id </span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"epoch"</span>]            <span class="co"># sample epoch</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"eval_metadata"</span>]    <span class="co"># eval metadata</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"sample_metadata"</span>]  <span class="co"># sample metadata</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>transcript.metadata[<span class="st">"score_&lt;scorer&gt;"</span>]   <span class="co"># named sample scores</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#logcolumns">LogColumns</a></span> class for details on all of the fields included in <code>transcript.metadata</code>. Use <code>log_columns</code> (aliased to <code>c</code> below) to do typesafe filtering for Inspect logs:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from, log_columns <span class="im">as</span> c</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> (</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    .where(c.sample_metadata.category <span class="op">==</span> <span class="st">"accounting"</span>)</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from, log_columns <span class="im">as</span> c</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> (</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    transcripts_from(<span class="st">"./logs"</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    .where(c.sample_metadata.category <span class="op">==</span> <span class="st">"accounting"</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="transcripts-database" class="level2">
 <h2 class="anchored" data-anchor-id="transcripts-database">Transcripts Database</h2>
 <p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
 <p>You can read from a transcript database using the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_from">transcripts_from()</a></span> function. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a transcript database on S3</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"s3://weave-rollouts/cybench"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a transcript database on S3</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"s3://weave-rollouts/cybench"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="./db_overview.html">Transcripts Database</a> documentation for additional details on creating, managing, and publishing transcript databases.</p>
 
 

@@ -109,10 +109,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript Analysis for AI Agents">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
 <meta property="og:site_name" content="Inspect Scout">
+<meta property="og:image:height" content="1232">
+<meta property="og:image:width" content="1654">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
+<meta name="twitter:image-height" content="1232">
+<meta name="twitter:image-width" content="1654">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-sidebar docked nav-fixed quarto-light">
@@ -380,6 +386,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#scout-view" id="toc-scout-view" class="nav-link" data-scroll-target="#scout-view">Scout View</a></li>
   <li><a href="#project-settings" id="toc-project-settings" class="nav-link" data-scroll-target="#project-settings">Project Settings</a>
   <ul class="collapse">
   <li><a href="#local-config" id="toc-local-config" class="nav-link" data-scroll-target="#local-config">Local Config</a></li>
@@ -449,6 +456,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="fu">tags</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">ctf</span><span class="kw">,</span><span class="at"> cybench</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Note that <code>scout.yaml</code> project files are intended to be checked in to version control so do not contain secrets. See the section below on using <a href="#environment-files">environment files</a> for details on handling secrets.</p>
+</section>
+<section id="scout-view" class="level2">
+<h2 class="anchored" data-anchor-id="scout-view">Scout View</h2>
+<p>When you run <code>scout view</code> from a project directory it uses the project settings to initialize the <strong>Transcripts</strong> and <strong>Results</strong> panes. You can also edit the project settings by clicking on the <strong>Project</strong> button at the top right:</p>
+<p><img src="images/project.png" class="border img-fluid"></p>
 </section>
 <section id="project-settings" class="level2">
 <h2 class="anchored" data-anchor-id="project-settings">Project Settings</h2>

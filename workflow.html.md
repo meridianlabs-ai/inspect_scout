@@ -43,6 +43,11 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts_from("s3://weave-rollouts/")
 ```
 
+Creating a dedicated database for an analysis project is generally a
+good practice as it ensure that your dataset is stable for the lifetime
+of the analysis and that you can easily [publish](db_publishing.qmd)
+your dataset to others.
+
 ### Filtering Transcripts
 
 In some cases there may be many more transcripts in storage than you
@@ -83,11 +88,6 @@ point at the local `./transcripts` directory:
 scout scan scanner.py -T ./transcripts --model openai/gpt-5
 ```
 
-Creating a dedicated database for an analysis project is generally a
-good practice as it ensure that your dataset is stable for the lifetime
-of the analysis and that you can easily [publish](db_publishing.qmd)
-your dataset to others.
-
 ## Creating a Project
 
 Above we described how to specify transcripts, filters, and a scanning
@@ -116,8 +116,14 @@ scout scan scanner.py
 ```
 
 All configuration within the project file will be automatically applied
-to the `scout scan`. See the article on [Projects](projects.qmd) to
-learn more about using projects.
+to the `scout scan`.
+
+Use Scout View to explore and manage project settings:
+
+![](images/project.png)
+
+See the article on [Projects](projects.qmd) to learn more about using
+projects.
 
 ## Initial Exploration
 
@@ -125,21 +131,32 @@ Before doing any automated scanning it’s important to gain some
 intuitions about the nature of your transcripts and what sort of
 questions you want to pose.
 
-If you are working with Inspect logs, then [Inspect
-View](https://inspect.aisi.org.uk/log-viewer.html) is a great way to
-review transcripts. You can use the Samples view to query for samples
-based on models, scores, error conditions, limits, etc.:
+### Transcript Viewer
 
-![](images/view-samples.png)
+You can use Scout View to view and filter transcripts:
+
+![](images/transcripts-list.png)
+
+If you filter down into a set of transcripts that you want to analyze,
+use the **Copy** button to copy the code required to apply the filter:
+
+![](images/transcripts-copy.png)
+
+If you drill into a transcript you can see its messages, events, and
+other details:
+
+![](images/transcripts-detail.png)
 
 Read a selection of individual transcripts to get a flavor for model
 problem solving approaches and difficulties encountered.
 
-You should also try to leverage language models for this work—when
-viewing a transcript there is a **Copy -\> Transcript** command you can
-use to copy the full transcript to the clipboard:
+### Querying Transcripts
 
-![](images/view-copy-transcript.png)
+You should also try to leverage language models to understand
+transcripts—when viewing a transcript there is a **Copy -\> Transcript**
+command you can use to copy the full transcript to the clipboard:
+
+![](images/transcript-messages-copy.png)
 
 You can then paste this transcript into a chat conversation and ask
 questions about what happened, why the agent failed, or what patterns

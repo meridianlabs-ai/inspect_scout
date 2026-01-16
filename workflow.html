@@ -109,15 +109,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <meta property="og:title" content="Inspect Scout">
 <meta property="og:description" content="Transcript Analysis for AI Agents">
-<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/view-samples.png">
+<meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
 <meta property="og:site_name" content="Inspect Scout">
-<meta property="og:image:height" content="970">
-<meta property="og:image:width" content="1982">
+<meta property="og:image:height" content="1232">
+<meta property="og:image:width" content="1654">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
-<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/view-samples.png">
-<meta name="twitter:image-height" content="970">
-<meta name="twitter:image-width" content="1982">
+<meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
+<meta name="twitter:image-height" content="1232">
+<meta name="twitter:image-width" content="1654">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -391,7 +391,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#filtering-transcripts" id="toc-filtering-transcripts" class="nav-link" data-scroll-target="#filtering-transcripts">Filtering Transcripts</a></li>
   </ul></li>
   <li><a href="#creating-a-project" id="toc-creating-a-project" class="nav-link" data-scroll-target="#creating-a-project">Creating a Project</a></li>
-  <li><a href="#initial-exploration" id="toc-initial-exploration" class="nav-link" data-scroll-target="#initial-exploration">Initial Exploration</a></li>
+  <li><a href="#initial-exploration" id="toc-initial-exploration" class="nav-link" data-scroll-target="#initial-exploration">Initial Exploration</a>
+  <ul class="collapse">
+  <li><a href="#transcript-viewer" id="toc-transcript-viewer" class="nav-link" data-scroll-target="#transcript-viewer">Transcript Viewer</a></li>
+  <li><a href="#querying-transcripts" id="toc-querying-transcripts" class="nav-link" data-scroll-target="#querying-transcripts">Querying Transcripts</a></li>
+  </ul></li>
   <li><a href="#building-a-scanner" id="toc-building-a-scanner" class="nav-link" data-scroll-target="#building-a-scanner">Building a Scanner</a>
   <ul class="collapse">
   <li><a href="#analyzing-a-subset" id="toc-analyzing-a-subset" class="nav-link" data-scroll-target="#analyzing-a-subset">Analyzing a Subset</a></li>
@@ -494,6 +498,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># read from a transcript database on S3</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"s3://weave-rollouts/"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily <a href="./db_publishing.html">publish</a> your dataset to others.</p>
 <section id="filtering-transcripts" class="level3">
 <h3 class="anchored" data-anchor-id="filtering-transcripts">Filtering Transcripts</h3>
 <p>In some cases there may be many more transcripts in storage than you want to analyze. Further, the organization of transcripts in storage may not provide the partitioning you need for analysis.</p>
@@ -516,7 +521,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Now, when we want to use these transcripts in a <code>scout scan</code> we can point at the local <code>./transcripts</code> directory:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./transcripts <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily <a href="./db_publishing.html">publish</a> your dataset to others.</p>
 </section>
 </section>
 <section id="creating-a-project" class="level2">
@@ -538,17 +542,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>Then we can run a scan with simply:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>All configuration within the project file will be automatically applied to the <code>scout scan</code>. See the article on <a href="./projects.html">Projects</a> to learn more about using projects.</p>
+<p>All configuration within the project file will be automatically applied to the <code>scout scan</code>.</p>
+<p>Use Scout View to explore and manage project settings:</p>
+<p><img src="images/project.png" class="border img-fluid"></p>
+<p>See the article on <a href="./projects.html">Projects</a> to learn more about using projects.</p>
 </section>
 <section id="initial-exploration" class="level2">
 <h2 class="anchored" data-anchor-id="initial-exploration">Initial Exploration</h2>
 <p>Before doing any automated scanning it’s important to gain some intuitions about the nature of your transcripts and what sort of questions you want to pose.</p>
-<p>If you are working with Inspect logs, then <a href="https://inspect.aisi.org.uk/log-viewer.html">Inspect View</a> is a great way to review transcripts. You can use the Samples view to query for samples based on models, scores, error conditions, limits, etc.:</p>
-<p><img src="images/view-samples.png" class="border img-fluid"></p>
+<section id="transcript-viewer" class="level3">
+<h3 class="anchored" data-anchor-id="transcript-viewer">Transcript Viewer</h3>
+<p>You can use Scout View to view and filter transcripts:</p>
+<p><img src="images/transcripts-list.png" class="border img-fluid"></p>
+<p>If you filter down into a set of transcripts that you want to analyze, use the <strong>Copy</strong> button to copy the code required to apply the filter:</p>
+<p><img src="images/transcripts-copy.png" class="border img-fluid"></p>
+<p>If you drill into a transcript you can see its messages, events, and other details:</p>
+<p><img src="images/transcripts-detail.png" class="border img-fluid"></p>
 <p>Read a selection of individual transcripts to get a flavor for model problem solving approaches and difficulties encountered.</p>
-<p>You should also try to leverage language models for this work—when viewing a transcript there is a <strong>Copy -&gt; Transcript</strong> command you can use to copy the full transcript to the clipboard:</p>
-<p><img src="images/view-copy-transcript.png" class="border img-fluid"></p>
+</section>
+<section id="querying-transcripts" class="level3">
+<h3 class="anchored" data-anchor-id="querying-transcripts">Querying Transcripts</h3>
+<p>You should also try to leverage language models to understand transcripts—when viewing a transcript there is a <strong>Copy -&gt; Transcript</strong> command you can use to copy the full transcript to the clipboard:</p>
+<p><img src="images/transcript-messages-copy.png" class="border img-fluid"></p>
 <p>You can then paste this transcript into a chat conversation and ask questions about what happened, why the agent failed, or what patterns are present. This helps develop intuitions about specific cases and generate hypothesis.</p>
+</section>
 </section>
 <section id="building-a-scanner" class="level2">
 <h2 class="anchored" data-anchor-id="building-a-scanner">Building a Scanner</h2>

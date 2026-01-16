@@ -8,8 +8,10 @@ transcripts. Scout has the following core features:
 
 1.  Scan full transcripts or individual messages or events.
 2.  High performance parallel processing of transcript content.
-3.  Resume scans that are stopped due to errors or interruptions.
-4.  Scout View for rich visualization of scan results.
+3.  Scout View for rich visualization of transcripts and scan results.
+4.  Resume scans that are stopped due to errors or interruptions.
+5.  Use caching and batch processing to optimize LLM performance and
+    costs.
 
 Scout can process input either from a [transcript
 database](transcripts.qmd#transcripts-database) (which can be populated
@@ -17,7 +19,7 @@ from any source) or by directly reading Inspect AI eval logs.
 
 ### Installation
 
-Install the `inspect_scout` package from GitHub with:
+Install the `inspect_scout` package from PyPI with:
 
 ``` bash
 pip install inspect-scout
@@ -199,6 +201,36 @@ AI, you can use a [.env
 file](https://inspect.aisi.org.uk/options.html#env-files) for providing
 API keys.
 
+### Viewing Scans
+
+Scout includes a viewer application for looking at scan results in
+depth. Run the viewer with:
+
+``` bash
+scout view
+```
+
+![](images/scout-view.png)
+
+By default this will view the scan results in the `./scans` directory of
+the current working directory. Specify an alternate results location
+with:
+
+``` bash
+scout view --scans s3://my-scan-results
+```
+
+You can also list recent scans with the `scout scan list` command:
+
+``` bash
+scout scan list
+```
+
+Scans will be listed from most to least recent. If you are running
+within VS Code you can click the scans in the list to view them in a VS
+Code editor. The VS Code Scout activity bar also includes a scans pane
+that lists recent scans.
+
 ### Projects
 
 In some cases you’ll prefer to define your transcript source, scanning
@@ -218,6 +250,10 @@ Then we can run our scan with simply:
 ``` bash
 scout scan scanner.py 
 ```
+
+Use Scout View to explore and manage project settings:
+
+![](images/project.png)
 
 See the [Projects](projects.qmd) article for more details on managing
 configuration with projects.
@@ -253,37 +289,6 @@ scanners using the same `scout scan scanner.py` command,
 See the [Scanners](scanners.qmd) article for more details on creating
 scanners, including how to write scanners that accept a variety of
 inputs and how to use scanners directly as Inspect scorers.
-
-## Viewing Scans
-
-Scout includes a viewer application for looking at scan results in
-depth. Run the viewer with:
-
-``` bash
-scout view
-```
-
-![](images/scout-view.png)
-
-By default this will view the scan results in the `./scans` directory of
-the current working directory (or the location pointed to by the
-`SCOUT_SCAN_SCANS` environment variable). Specify an alternate results
-location with:
-
-``` bash
-scout view --scans s3://my-scan-results
-```
-
-You can also list recent scans with the `scout scan list` command:
-
-``` bash
-scout scan list
-```
-
-Scans will be listed from most to least recent. If you are running
-within VS Code you can click the scans in the list to view them in a VS
-Code editor. The VS Code Scout activity bar also includes a scans pane
-that lists recent scans.
 
 ## Scan Jobs
 
@@ -453,7 +458,7 @@ status = scan(
 )
 ```
 
-The `metadata` object (aliased to `m`) provides a convenient way to
+The `columns` object (aliased to `c`) provides a convenient way to
 specify `where()` clauses for filtering transcripts.
 
 Note that doing this query required us to switch to the Python `scan()`

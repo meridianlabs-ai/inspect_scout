@@ -433,6 +433,8 @@ def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[
 def scanner_create(name: str, params: dict[str, Any]) -> Scanner[Any]:
     obj = registry_lookup("scanner", name)
     if not callable(obj):
-        raise ValueError(f"Scanner '{name}' not found. Ensure the scanner module is imported or registered as an entry point.")
+        raise ValueError(
+            f"Scanner '{name}' not found. Ensure the scanner module is imported or registered as an entry point."
+        )
     kwargs = registry_kwargs(**params)
     return cast(Scanner[Any], obj(**kwargs))

@@ -56,6 +56,7 @@ interface TranscriptsTableState {
 interface TranscriptState {
   excludedTypes?: string[];
   collapsed?: boolean;
+  outlineCollapsed?: boolean;
 }
 
 interface StoreState {

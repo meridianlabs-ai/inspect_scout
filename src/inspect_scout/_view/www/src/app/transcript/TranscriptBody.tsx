@@ -113,19 +113,33 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   // Transcript collapse
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
-  const setEventsCollapsed = useStore((state) => state.setTranscriptState);
+  const setTranscriptState = useStore((state) => state.setTranscriptState);
   const collapseEvents = useCallback(
     (collapsed: boolean) => {
-      setEventsCollapsed((prev) => ({
+      setTranscriptState((prev) => ({
         ...prev,
         collapsed,
       }));
     },
-    [setEventsCollapsed]
+    [setTranscriptState]
   );
 
   const setCollapsedEvents = useStore(
     (state) => state.setTranscriptCollapsedEvents
+  );
+
+  // Outline toggle
+  const outlineCollapsed = useStore(
+    (state) => state.transcriptState.outlineCollapsed
+  );
+  const toggleOutline = useCallback(
+    (collapsed: boolean) => {
+      setTranscriptState((prev) => ({
+        ...prev,
+        outlineCollapsed: collapsed,
+      }));
+    },
+    [setTranscriptState]
   );
 
   useEffect(() => {
@@ -225,17 +239,30 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
         scrollable={false}
       >
-        <div className={styles.eventsContainer}>
+        <div
+          className={clsx(
+            styles.eventsContainer,
+            outlineCollapsed ? styles.outlineCollapsed : undefined
+          )}
+        >
           <StickyScroll
             scrollRef={scrollRef}
             className={styles.eventsOutline}
-            offsetTop={50}
+            offsetTop={40}
           >
-            <TranscriptOutline
-              eventNodes={eventNodes}
-              defaultCollapsedIds={defaultCollapsedIds}
-              scrollRef={scrollRef}
-            />
+            {!outlineCollapsed && (
+              <TranscriptOutline
+                eventNodes={eventNodes}
+                defaultCollapsedIds={defaultCollapsedIds}
+                scrollRef={scrollRef}
+              />
+            )}
+            <div
+              className={styles.outlineToggle}
+              onClick={() => toggleOutline(!outlineCollapsed)}
+            >
+              <i className={ApplicationIcons.sidebar} />
+            </div>
           </StickyScroll>
           <div className={styles.eventsSeparator} />
           <TranscriptViewNodes

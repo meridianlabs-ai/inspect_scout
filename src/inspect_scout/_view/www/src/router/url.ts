@@ -203,3 +203,11 @@ export const getScannerParam = (
 ): string | undefined => {
   return searchParams.get(kScannerQueryParam) || undefined;
 };
+
+export const isHostedEnvironment = () => {
+  return (
+    location.hostname !== "localhost" &&
+    location.hostname !== "127.0.0.1" &&
+    location.protocol !== "vscode-webview:"
+  );
+};

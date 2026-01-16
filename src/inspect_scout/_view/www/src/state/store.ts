@@ -53,6 +53,12 @@ interface TranscriptsTableState {
   manuallyResizedColumns: string[];
 }
 
+interface TranscriptState {
+  excludedTypes?: string[];
+  collapsed?: boolean;
+  outlineCollapsed?: boolean;
+}
+
 interface StoreState {
   // App status
   singleFileMode?: boolean;
@@ -111,6 +117,9 @@ interface StoreState {
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
   transcriptsTableState: TranscriptsTableState;
+
+  // Transcript Detail Data
+  transcriptState: TranscriptState;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -206,6 +215,9 @@ interface StoreState {
       | TranscriptsTableState
       | ((prev: TranscriptsTableState) => TranscriptsTableState)
   ) => void;
+  setTranscriptState: (
+    updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
+  ) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -261,6 +273,7 @@ export const createStore = (api: ScanApi) =>
             sizingStrategy: "fit-content",
             manuallyResizedColumns: [],
           },
+          transcriptState: {},
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -603,6 +616,14 @@ export const createStore = (api: ScanApi) =>
               state.transcriptsTableState =
                 typeof updater === "function"
                   ? updater(state.transcriptsTableState)
+                  : updater;
+            });
+          },
+          setTranscriptState(updater) {
+            set((state) => {
+              state.transcriptState =
+                typeof updater === "function"
+                  ? updater(state.transcriptState)
                   : updater;
             });
           },

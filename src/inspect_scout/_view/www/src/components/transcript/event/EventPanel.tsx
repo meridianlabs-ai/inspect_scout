@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { useTranscriptNavigation } from "../../../app/transcript/hooks/useTranscriptNavigation";
+import { isHostedEnvironment } from "../../../router/url";
 import { useProperty } from "../../../state/hooks/useProperty";
 import { CopyButton } from "../../CopyButton";
 import { ApplicationIcons } from "../../icons";
@@ -58,10 +60,9 @@ export const EventPanel: FC<EventPanelProps> = ({
   const isCollapsible = (childIds || []).length > 0 || collapsibleContent;
   const useBottomDongle = isCollapsible && collapseControl === "bottom";
 
-  const url = undefined;
-  // const sampleEventUrl = useSampleEventUrl(eventNodeId);
-  // const url =
-  //   supportsLinking() && sampleEventUrl ? toFullUrl(sampleEventUrl) : undefined;
+  // Generate full URL for deep linking to this event
+  const { getFullEventUrl } = useTranscriptNavigation();
+  const url = isHostedEnvironment() ? getFullEventUrl(eventNodeId) : undefined;
 
   const pillId = (index: number) => {
     return `${eventNodeId}-nav-pill-${index}`;

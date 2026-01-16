@@ -1,6 +1,8 @@
 import clsx from "clsx";
-import { FC, memo, useCallback, useState } from "react";
+import { FC, memo, useState } from "react";
 
+import { useTranscriptNavigation } from "../../app/transcript/hooks/useTranscriptNavigation";
+import { isHostedEnvironment } from "../../router/url";
 import {
   ChatMessageAssistant,
   ChatMessageSystem,
@@ -32,14 +34,11 @@ interface ChatMessageProps {
 
 export const ChatMessage: FC<ChatMessageProps> = memo(
   ({ id, message, indented, allowLinking = true }) => {
-    const messageUrl = undefined; //useSampleMessageUrl(message.id);
-    const supportsLinking = useCallback(() => {
-      return false;
-    }, []);
-
-    const toFullUrl = useCallback((url: string) => {
-      return url;
-    }, []);
+    // Generate full URL for deep linking to this message
+    const { getFullMessageUrl } = useTranscriptNavigation();
+    const messageUrl = isHostedEnvironment()
+      ? getFullMessageUrl(message.id || "")
+      : undefined;
 
     const collapse = message.role === "system" || message.role === "user";
 
@@ -67,10 +66,10 @@ export const ChatMessage: FC<ChatMessageProps> = memo(
         >
           {message.role}
           {message.role === "tool" ? `: ${message.function}` : ""}
-          {supportsLinking() && messageUrl && allowLinking ? (
+          {messageUrl && allowLinking ? (
             <CopyButton
               icon={ApplicationIcons.link}
-              value={toFullUrl(messageUrl)}
+              value={messageUrl}
               className={clsx(styles.copyLink)}
             />
           ) : (

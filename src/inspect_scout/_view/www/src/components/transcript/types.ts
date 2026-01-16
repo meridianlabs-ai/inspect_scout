@@ -59,6 +59,30 @@ export type EventType =
   | SpanBeginEvent
   | SpanEndEvent;
 
+// Define the runtime array of all event type values
+export const eventTypeValues = [
+  "sample_init",
+  "sample_limit",
+  "state",
+  "store",
+  "model",
+  "logger",
+  "info",
+  "step",
+  "subtask",
+  "score",
+  "score_edit",
+  "tool",
+  "input",
+  "error",
+  "approval",
+  "sandbox",
+  "span_begin",
+  "span_end",
+] as const;
+
+// Derive the type from the array (replaces the indexed access approach)
+export type EventTypeValue = (typeof eventTypeValues)[number];
 export class EventNode<T extends EventType = EventType> {
   id: string;
   event: T;

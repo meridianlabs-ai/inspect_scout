@@ -41,7 +41,7 @@ export const ScannerResultsGroup: FC<ScannerResultsGroupProps> = ({
       <span
         className={clsx(
           "sort-filter-label",
-          "text-size-smaller",
+          "text-size-smallest",
           "text-style-label",
           "text-style-secondary",
           styles.label
@@ -51,7 +51,7 @@ export const ScannerResultsGroup: FC<ScannerResultsGroupProps> = ({
       </span>
       <select
         id={"scan-result-filter"}
-        className={clsx("form-select", "form-select-sm", "text-size-smaller")}
+        className={clsx("form-select", "form-select-sm", "text-size-smallest")}
         aria-label=".sort-filter-label"
         value={groupResultsBy || "none"}
         onChange={handleChange}

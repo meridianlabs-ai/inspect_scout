@@ -44,3 +44,17 @@
   padding-left: 0.7em;
   padding-right: 0.7em;
 }
+
+.tabTools > * {
+  flex: 0 1 auto;
+  margin-left: 0.5rem;
+}
+
+.tabTools input {
+  font-size: var(--inspect-font-size-smallest);
+}
+
+.tabTools :global(.btn) {
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0.1em 0.5em;
+}

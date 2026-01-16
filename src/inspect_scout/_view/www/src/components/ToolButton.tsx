@@ -8,10 +8,11 @@ interface ToolButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   classes?: string;
   icon?: string;
   latched?: boolean;
+  subtle?: boolean;
 }
 
 export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
-  ({ label, classes = "", icon, className, latched, ...rest }, ref) => {
+  ({ label, classes = "", icon, className, latched, subtle, ...rest }, ref) => {
     // Combine class names, ensuring default classes are applied first
 
     return (
@@ -24,7 +25,8 @@ export const ToolButton = forwardRef<HTMLButtonElement, ToolButtonProps>(
           styles.toolButton,
           classes,
           className,
-          latched ? styles.latched : undefined
+          latched ? styles.latched : undefined,
+          subtle ? styles.subtle : undefined
         )}
         {...rest}
       >

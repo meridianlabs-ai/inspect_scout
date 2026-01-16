@@ -284,6 +284,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         indented={false}
         className={styles.chatList}
         scrollRef={scrollRef}
+        showLabels={true}
       />
     </TabPanel>,
   ];

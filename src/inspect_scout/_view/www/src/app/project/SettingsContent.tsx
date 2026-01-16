@@ -224,8 +224,8 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       </div>
 
       {/* ===== FILTERING SECTION ===== */}
-      <div id="filtering" className={styles.section}>
-        <div className={styles.sectionHeader}>Filtering</div>
+      <div id="scanning" className={styles.section}>
+        <div className={styles.sectionHeader}>Scanning</div>
 
         <div className={styles.field}>
           <VscodeLabel>Filter</VscodeLabel>

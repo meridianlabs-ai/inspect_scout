@@ -44,7 +44,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: "General",
     items: [
       { id: "locations", label: "Locations" },
-      { id: "filtering", label: "Filtering" },
+      { id: "scanning", label: "Scanning" },
       { id: "concurrency", label: "Concurrency" },
       { id: "miscellaneous", label: "Miscellaneous" },
     ],

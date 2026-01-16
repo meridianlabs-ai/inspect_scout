@@ -44,6 +44,12 @@ tags: [ctf, cybench]
 
 Note that `scout.yaml` project files are intended to be checked in to version control so do not contain secrets. See the section below on using [environment files](#environment-files) for details on handling secrets.
 
+## Scout View
+
+When you run `scout view` from a project directory it uses the project settings to initialize the **Transcripts** and **Results** panes. You can also edit the project settings by clicking on the **Project** button at the top right:
+
+![](images/project.png){.border}
+
 ## Project Settings
 
 Project files support all of the same options available to [scan jobs](#scan-jobs). The table below describes the available configuration fields:

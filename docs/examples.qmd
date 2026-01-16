@@ -6,7 +6,7 @@ title: "Examples"
 
 Below are several examples which illustrate commonly used scanner features and techniques:
 
-- [Refusal](#refusal) --- Scanner which looks for model refusals. Demonstrates use of `llm_scanner()` with structured output.
+- [Refusal](#refusal) --- Scanner which looks for model refusals. Scanning for refusals with and without an LLM classifer are demonstrated.
 
 - [Eval Awareness](#eval-awareness) -- Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates `llm_scanner()` with a custom template.
 
@@ -15,21 +15,56 @@ Below are several examples which illustrate commonly used scanner features and t
 
 ## Refusal
 
-The `refusal()` scanner is useful for determining whether an agent failed because of a content filter as opposed to inability to complete the task. 
+Refusal scanners iare useful for determining whether an agent failed because of a content filter as opposed to inability to complete the task. Below we demonstrate several variations of refusal scanner.
 
-This scanner demonstrates basic usage of an LLM Scanner with structured output. A `Refusal` Pydantic model is defined which defines the fields the model responds with.
+### LLM Scanner
 
-```{.python filename="refusal.py"}
-{{< include ../examples/docs/refusal.py >}}
+This scanner demonstrates basic usage of an LLM Scanner with structured output. A `Refusal` Pydantic model is declared which defines the fields the model should respond with.
+
+```{.python filename="refusal_classifier.py"}
+{{< include ../examples/docs/refusal_classifier.py >}}
 ```
 
 There are a few things worth highlighting about this implementation:
 
-1. The main value returned is the `refused` boolean field. The field is mapped to the result `value` via the `alias="value"` statement. Using a boolean as the main return value enables tools and queries to exclude transcripts that had no refusals from the default dispaly.
+1. The main value returned is the `refusal_exists` boolean field. The field is mapped to the result `value` via the `alias="value"` statement. Using a boolean as the main return value enables tools and queries to exclude transcripts that had no refusals from the default dispaly.
 
 2. The `type` field provides additional context on the refusal type. The field is mapped to the result `label` via the `alias="label"` statement. Designating a label enables you to filter results by that label and is also shown by default alongside the value in scout view.
 
 3. An `explanation` field is also automatically added by `llm_scanner()`, and the model uses this field to describe its rationale for the classification.
+
+### Grep Scanner
+
+If you don't want to use an LLM for scanning you can also look for one or more key phrases using a grep scanner. Here's an example of a scanner that looks for several phrases associated with refusals:
+
+```python
+from inspect_scout import (
+    Scanner, Transcript, grep_scanner, scanner
+)
+
+@scanner(messages=["assistant"])                                                      
+  def refusal_keywords() -> Scanner[Transcript]:                                        
+      return grep_scanner([                                                             
+          "too dangerous",                                                              
+          "cannot",                                                                     
+          "I'm not able to",                                                            
+          "I can't"                                                                     
+      ])      
+```
+
+This type of scanning will produce more false positives than an LLM based scanner but it will also be dramatically cheaper to run. In some workflows you might choose to run a cheaper keyword scanner first, and then feed its results into an LLM scanner.
+
+### Custom Scanner
+
+Grep scanner provides a high level interface to pattern based scanning. You might however want to do something more custom. Here's an example of a custom scanner with roughly the same behavior as our grep scanner:
+
+```{.python filename="refusal_keywords.py"}
+{{< include ../examples/docs/refusal_keywords.py >}}
+```
+
+Note that we create `Reference` objects to enable linking from message references in the results viewer (the grep scanner does the same).
+
+
 
 ## Eval Awareness
 

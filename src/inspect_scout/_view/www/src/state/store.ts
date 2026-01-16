@@ -57,6 +57,7 @@ interface TranscriptState {
   excludedTypes?: string[];
   collapsed?: boolean;
   outlineCollapsed?: boolean;
+  displayMode?: "rendered" | "raw";
 }
 
 interface StoreState {

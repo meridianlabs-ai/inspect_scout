@@ -12,6 +12,7 @@ import {
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
+import { DisplayModeContext } from "../../components/content/DisplayModeContext";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { ApplicationIcons } from "../../components/icons";
 import { StickyScroll } from "../../components/StickyScroll";
@@ -169,6 +170,23 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setTranscriptState]
   );
 
+  // Display mode for raw/rendered text
+  const displayMode = useStore(
+    (state) => state.transcriptState.displayMode ?? "rendered"
+  );
+
+  const toggleDisplayMode = useCallback(() => {
+    setTranscriptState((prev) => ({
+      ...prev,
+      displayMode: prev.displayMode === "raw" ? "rendered" : "raw",
+    }));
+  }, [setTranscriptState]);
+
+  const displayModeContextValue = useMemo(
+    () => ({ displayMode }),
+    [displayMode]
+  );
+
   useEffect(() => {
     if (transcript.events.length <= 0 || eventsCollapsed === undefined) {
       return;
@@ -225,6 +243,22 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       />
     );
   }
+
+  tabTools.push(
+    <ToolButton
+      key="display-mode-toggle"
+      label={displayMode === "rendered" ? "Raw" : "Rendered"}
+      icon={ApplicationIcons.display}
+      onClick={toggleDisplayMode}
+      className={styles.tabTool}
+      subtle={true}
+      title={
+        displayMode === "rendered"
+          ? "Show raw text without markdown rendering"
+          : "Show rendered markdown"
+      }
+    />
+  );
 
   tabTools.push(
     <CopyToolbarButton transcript={transcript} className={styles.tabTool} />
@@ -336,16 +370,18 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   }
 
   return (
-    <TabSet
-      id={"transcript-body"}
-      type="pills"
-      tabPanelsClassName={clsx(styles.tabSet)}
-      tabControlsClassName={clsx(styles.tabControl)}
-      className={clsx(styles.tabs)}
-      tools={tabTools}
-    >
-      {tabPanels}
-    </TabSet>
+    <DisplayModeContext.Provider value={displayModeContextValue}>
+      <TabSet
+        id={"transcript-body"}
+        type="pills"
+        tabPanelsClassName={clsx(styles.tabSet)}
+        tabControlsClassName={clsx(styles.tabControl)}
+        className={clsx(styles.tabs)}
+        tools={tabTools}
+      >
+        {tabPanels}
+      </TabSet>
+    </DisplayModeContext.Provider>
   );
 };
 

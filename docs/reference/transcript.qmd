@@ -24,6 +24,7 @@ reference: "inspect_scout"
 ### columns
 ### LogColumns
 ### log_columns
+### LogMetadata
 
 ## Observe
 

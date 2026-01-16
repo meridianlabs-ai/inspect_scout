@@ -109,6 +109,8 @@ website:
           href: reference/transcript.qmd#observeprovider
         - text: ObserveEmit
           href: reference/transcript.qmd#observeemit
+        - text: LogMetadata
+          href: reference/transcript.qmd#logmetadata
       - section: scanner
         href: reference/scanner.qmd
         contents:

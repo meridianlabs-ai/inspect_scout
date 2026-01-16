@@ -50,6 +50,7 @@ from ._transcript.database.factory import transcripts_db
 from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
+from ._transcript.log_metadata import LogMetadata
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
@@ -118,6 +119,7 @@ __all__ = [
     "columns",
     "LogColumns",
     "log_columns",
+    "LogMetadata",
     # scanner
     "Error",
     "Scanner",
@@ -180,13 +182,6 @@ relocated_module_attribute(
 relocated_module_attribute(
     "metadata",
     "inspect_scout.columns",
-    _DEPRECATED_VERSION_4_2,
-    _REMOVED_IN,
-)
-
-relocated_module_attribute(
-    "LogMetadata",
-    "inspect_scout.LogColumns",
     _DEPRECATED_VERSION_4_2,
     _REMOVED_IN,
 )

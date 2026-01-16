@@ -6,7 +6,7 @@
 
 :global(.nav).tabs {
   border-bottom: solid 1px var(--bs-border-color);
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
   padding-top: 0.5rem;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
@@ -19,9 +19,6 @@
 :global(.nav).tabs :global(.nav-link) {
   padding: 0.3rem 0.5rem;
   font-size: var(--inspect-font-size-smallest) !important;
-}
-
-.tabSet {
 }
 
 .chatTab > * > * {
@@ -43,15 +40,18 @@
   height: 100%;
 }
 
+.eventsSeparator {
+  background-color: var(--bs-border-color);
+}
+
 .eventsList {
   padding-bottom: 1rem;
-  border-left: solid 1px var(--bs-border-color);
 }
 
 .eventsContainer {
   display: grid;
   width: 100%;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 180px 1px 1fr;
   min-height: 100vh;
   transition: grid-template-columns 0.3s ease;
   padding-bottom: 44px;
@@ -64,4 +64,9 @@
 .eventsOutline {
   padding-left: 0.5rem;
   padding-top: 0.8rem;
+}
+
+.tabTool {
+  font-size: var(--inspect-font-size-smallestest) !important;
+  padding: 0.1rem 0.4rem !important;
 }

@@ -924,25 +924,6 @@ table.table.table-sm td {
   font-size: 0.8em;
 }
 
-.tab-tools > * {
-  flex: 0 1 auto;
-  height: 1.5rem;
-  margin-left: 0.5rem;
-}
-
-.tab-tools > input {
-  font-size: 0.7rem;
-}
-
-.tab-tools .btn {
-  font-size: 0.7rem;
-  padding: 0.2em 0.8em;
-}
-
-.tab-tools {
-  font-size: 0.7rem;
-}
-
 .do-not-collapse-self {
   display: block;
   height: auto !important;

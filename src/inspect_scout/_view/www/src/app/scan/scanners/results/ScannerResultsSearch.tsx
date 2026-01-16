@@ -4,6 +4,8 @@ import { ApplicationIcons } from "../../../../components/icons";
 import { TextInput } from "../../../../components/TextInput";
 import { useStore } from "../../../../state/store";
 
+import styles from "./ScannerResultsSearch.module.css";
+
 export const ScannerResultsSearch: FC = () => {
   const scansSearchText = useStore((state) => state.scansSearchText);
   const setScansSearchText = useStore((state) => state.setScansSearchText);
@@ -18,6 +20,7 @@ export const ScannerResultsSearch: FC = () => {
       value={scansSearchText}
       onChange={handleChange}
       placeholder={"Search"}
+      className={styles.searchBox}
     />
   );
 };

@@ -1,10 +1,10 @@
-"""Tests for LogMetadata typed accessor for Inspect eval log transcripts."""
+"""Tests for EvalLogMetadata typed accessor for Inspect eval log transcripts."""
 
 from typing import Any
 
 import pytest
 from inspect_ai.scorer._metric import Score
-from inspect_scout import LogMetadata, Transcript
+from inspect_scout import EvalLogMetadata, Transcript
 from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
 
 
@@ -37,17 +37,17 @@ def get_property_doc(prop: Any) -> str:
 
 
 def test_eval_log_source() -> None:
-    """Test that LogMetadata accepts transcripts from eval logs."""
+    """Test that EvalLogMetadata accepts transcripts from eval logs."""
     transcript = create_test_transcript(source_type=EVAL_LOG_SOURCE_TYPE)
-    metadata = LogMetadata(transcript)
+    metadata = EvalLogMetadata(transcript)
     assert metadata is not None
 
 
 def test_non_eval_log_raises() -> None:
-    """Test that LogMetadata rejects transcripts from other sources."""
+    """Test that EvalLogMetadata rejects transcripts from other sources."""
     transcript = create_test_transcript(source_type="weave")
     with pytest.raises(ValueError, match="source_type='eval_log'"):
-        LogMetadata(transcript)
+        EvalLogMetadata(transcript)
 
 
 # ============================================================================
@@ -78,7 +78,7 @@ def test_typed_properties_exist() -> None:
             "solver_args": {"depth": 3},
         }
     )
-    metadata = LogMetadata(transcript)
+    metadata = EvalLogMetadata(transcript)
 
     # Eval info properties
     assert metadata.eval_id == "eval-abc-123"
@@ -113,7 +113,7 @@ def test_typed_properties_exist() -> None:
 def test_empty_metadata_defaults() -> None:
     """Test that properties return appropriate defaults when metadata is empty."""
     transcript = create_test_transcript(metadata={})
-    metadata = LogMetadata(transcript)
+    metadata = EvalLogMetadata(transcript)
 
     # Optional fields return None
     assert metadata.eval_id is None
@@ -139,10 +139,10 @@ def test_empty_metadata_defaults() -> None:
 
 def test_typed_properties_have_docstrings() -> None:
     """Test that typed properties have meaningful docstrings."""
-    assert "eval" in get_property_doc(LogMetadata.eval_id).lower()
-    assert "log" in get_property_doc(LogMetadata.log).lower()
-    assert "status" in get_property_doc(LogMetadata.eval_status).lower()
-    assert "tag" in get_property_doc(LogMetadata.eval_tags).lower()
-    assert "id" in get_property_doc(LogMetadata.id).lower()
-    assert "epoch" in get_property_doc(LogMetadata.epoch).lower()
-    assert "score" in get_property_doc(LogMetadata.scores).lower()
+    assert "eval" in get_property_doc(EvalLogMetadata.eval_id).lower()
+    assert "log" in get_property_doc(EvalLogMetadata.log).lower()
+    assert "status" in get_property_doc(EvalLogMetadata.eval_status).lower()
+    assert "tag" in get_property_doc(EvalLogMetadata.eval_tags).lower()
+    assert "id" in get_property_doc(EvalLogMetadata.id).lower()
+    assert "epoch" in get_property_doc(EvalLogMetadata.epoch).lower()
+    assert "score" in get_property_doc(EvalLogMetadata.scores).lower()

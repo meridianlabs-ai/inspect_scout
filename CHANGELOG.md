@@ -1,6 +1,6 @@
 ## Unreleased
 
-- Transcripts: Add `LogMetadata` class for typed access to Inspect eval log metadata fields (scores, eval_metadata, sample_metadata, etc.).
+- Transcripts: Add `EvalLogMetadata` class for typed access to Inspect eval log metadata fields (scores, eval_metadata, sample_metadata, etc.).
 - Scout View: Editing UI for project settings.
 - Transcript DB: Warn when there is no index or the index is out of date.
 - Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.

@@ -12,7 +12,7 @@ from .eval_log import EVAL_LOG_SOURCE_TYPE
 from .types import Transcript
 
 
-class LogMetadata:
+class EvalLogMetadata:
     """Typed accessor for Inspect eval log metadata fields.
 
     Provides typed properties for accessing metadata fields specific to
@@ -20,17 +20,17 @@ class LogMetadata:
     Raises an error if the transcript is not from an Inspect eval log.
 
     Usage:
-        from inspect_scout import LogMetadata, Transcript, scanner
+        from inspect_scout import EvalLogMetadata, Transcript, scanner
 
         @scanner(messages="all")
         def my_scanner(transcript: Transcript) -> ...:
-            metadata = LogMetadata(transcript)
+            metadata = EvalLogMetadata(transcript)
             print(metadata.eval_status)
             print(metadata.scores)
     """
 
     def __init__(self, transcript: Transcript) -> None:
-        """Initialize LogMetadata wrapper.
+        """Initialize EvalLogMetadata wrapper.
 
         Args:
             transcript: A Transcript from an Inspect eval log.
@@ -40,7 +40,7 @@ class LogMetadata:
         """
         if transcript.source_type != EVAL_LOG_SOURCE_TYPE:
             raise ValueError(
-                f"LogMetadata requires an Inspect eval log transcript "
+                f"EvalLogMetadata requires an Inspect eval log transcript "
                 f"(source_type='{EVAL_LOG_SOURCE_TYPE}'), "
                 f"but got source_type='{transcript.source_type}'"
             )

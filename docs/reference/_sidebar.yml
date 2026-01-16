@@ -97,8 +97,8 @@ website:
           href: reference/transcript.qmd#logcolumns
         - text: log_columns
           href: reference/transcript.qmd#log_columns
-        - text: LogMetadata
-          href: reference/transcript.qmd#logmetadata
+        - text: EvalLogMetadata
+          href: reference/transcript.qmd#evallogmetadata
       - section: scanner
         href: reference/scanner.qmd
         contents:

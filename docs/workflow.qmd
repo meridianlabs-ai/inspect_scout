@@ -37,6 +37,9 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts_from("s3://weave-rollouts/")
 ```
 
+Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily [publish](db_publishing.qmd) your dataset to others.
+
+
 ### Filtering Transcripts
 
 In some cases there may be many more transcripts in storage than you want to analyze. Further, the organization of transcripts in storage may not provide the partitioning you need for analysis.
@@ -68,8 +71,6 @@ Now, when we want to use these transcripts in a `scout scan` we can point at the
 scout scan scanner.py -T ./transcripts --model openai/gpt-5
 ```
 
-Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily [publish](db_publishing.qmd) your dataset to others.
-
 ## Creating a Project
 
 Above we described how to specify transcripts, filters, and a scanning model directly on the command line. You might however prefer to set all of this up in a `scout.yaml` project file. For example, if we have this project file in our working directory:
@@ -92,22 +93,34 @@ Then we can run a scan with simply:
 scout scan scanner.py 
 ```
 
-All configuration within the project file will be automatically applied to the `scout scan`. See the article on [Projects](projects.qmd) to learn more about using projects.
+All configuration within the project file will be automatically applied to the `scout scan`. 
+
+Use Scout View to explore and manage project settings:
+
+![](images/project.png){.border}
+
+See the article on [Projects](projects.qmd) to learn more about using projects.
 
 
 ## Initial Exploration {#initial-exploration}
 
 Before doing any automated scanning it's important to gain some intuitions about the nature of your transcripts and what sort of questions you want to pose.
 
-If you are working with Inspect logs, then [Inspect View](https://inspect.aisi.org.uk/log-viewer.html) is a great way to review transcripts. You can use the Samples view to query for samples based on models, scores, error conditions, limits, etc.:
+### Transcript Viewer
 
-![](images/view-samples.png){.border}
+{{< include _transcript_filtering.md >}}
+
+If you drill into a transcript you can see its messages, events, and other details:
+
+![](images/transcripts-detail.png){.border}
 
 Read a selection of individual transcripts to get a flavor for model problem solving approaches and difficulties encountered.
 
-You should also try to leverage language models for this work—when viewing a transcript there is a **Copy -\> Transcript** command you can use to copy the full transcript to the clipboard:
+### Querying Transcripts 
 
-![](images/view-copy-transcript.png){.border}
+You should also try to leverage language models to understand transcripts—when viewing a transcript there is a **Copy -\> Transcript** command you can use to copy the full transcript to the clipboard:
+
+![](images/transcript-messages-copy.png){.border}
 
 You can then paste this transcript into a chat conversation and ask questions about what happened, why the agent failed, or what patterns are present. This helps develop intuitions about specific cases and generate hypothesis.
 

@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
@@ -219,7 +220,8 @@ async def _parse_and_filter(
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
         # Early exit: messages-only with no attachment refs
         if (
-            events_coro is None
+            os.environ.get("SCOUT_EARLY_PARSE_EXIT")
+            and events_coro is None
             and prefix == "messages"
             and event == "end_array"
             and not state.attachment_refs

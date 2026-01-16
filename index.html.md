@@ -129,15 +129,14 @@ behavior. For example, we could re-write our scanner above as follows:
 **scanner.py**
 
 ``` python
-from inspect_scout import Transcript, llm_scanner, scanner
+from inspect_scout import Scanner, Transcript, llm_scanner, scanner
 
 @scanner(messages="all")
 def ctf_environment() -> Scanner[Transcript]:
-    
     return llm_scanner(
-        question = "In the transcript above do you detect any " +
-            "instances of environment misconfiguration " +
-            "preventing the agent from completing it's task?"
+        question="In the transcript above do you detect any "
+        "instances of environment misconfiguration "
+        "preventing the agent from completing it's task?",
         answer="boolean"
     )
 ```

@@ -62,7 +62,7 @@ field before proceeding to read the results. For example:
 
 ``` python
 from inspect_scout import (
-    scan, scan_results, transcripts_from
+    scan, scan_results_df, transcripts_from
 )
 
 from .scanners import ctf_environment, java_tool_calls

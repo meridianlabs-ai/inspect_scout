@@ -55,7 +55,7 @@ version control so do not contain secrets. See the section below on
 using [environment files](#environment-files) for details on handling
 secrets.
 
-## Project Config
+## Project Settings
 
 Project files support all of the same options available to [scan
 jobs](#scan-jobs). The table below describes the available configuration
@@ -185,19 +185,11 @@ The effective configuration will use `transcripts` and `model` from the
 project, `scanners` from the scan job, and the merged tags
 `[production, safety-audit]`.
 
-## Project Discovery
+## Default Project
 
 When you run `scout scan` or other Scout commands, the system
-automatically searches for a `scout.yaml` project file using the
-following algorithm:
-
-1.  Start in the current working directory
-2.  Look for a `scout.yaml` file
-3.  If not found, move to the parent directory and repeat
-4.  Stop searching when either:
-    - A `scout.yaml` file is found
-    - The git repository root is reached (if in a git repo)
-    - The filesystem root is reached
+automatically searches for a `scout.yaml` project file wihtin the
+current working directory.
 
 If no project file is found, Scout uses the following defaults:
 
@@ -205,7 +197,3 @@ If no project file is found, Scout uses the following defaults:
 - `transcripts`: `./transcripts` (if that directory exists) or `./logs`
   (if that directory exists)
 - `scans`: `./scans`
-
-This discovery mechanism allows you to place a `scout.yaml` file at the
-root of your project and have it automatically apply to all scans run
-from any subdirectory.

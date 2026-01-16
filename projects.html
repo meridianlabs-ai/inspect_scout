@@ -380,13 +380,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#project-config" id="toc-project-config" class="nav-link" data-scroll-target="#project-config">Project Config</a>
+  <li><a href="#project-settings" id="toc-project-settings" class="nav-link" data-scroll-target="#project-settings">Project Settings</a>
   <ul class="collapse">
   <li><a href="#local-config" id="toc-local-config" class="nav-link" data-scroll-target="#local-config">Local Config</a></li>
   </ul></li>
   <li><a href="#environment-files" id="toc-environment-files" class="nav-link" data-scroll-target="#environment-files">Environment (.env)</a></li>
   <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
-  <li><a href="#project-discovery" id="toc-project-discovery" class="nav-link" data-scroll-target="#project-discovery">Project Discovery</a></li>
+  <li><a href="#default-project" id="toc-default-project" class="nav-link" data-scroll-target="#default-project">Default Project</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -450,8 +450,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>Note that <code>scout.yaml</code> project files are intended to be checked in to version control so do not contain secrets. See the section below on using <a href="#environment-files">environment files</a> for details on handling secrets.</p>
 </section>
-<section id="project-config" class="level2">
-<h2 class="anchored" data-anchor-id="project-config">Project Config</h2>
+<section id="project-settings" class="level2">
+<h2 class="anchored" data-anchor-id="project-settings">Project Settings</h2>
 <p>Project files support all of the same options available to <a href="#scan-jobs">scan jobs</a>. The table below describes the available configuration fields:</p>
 <table class="caption-top table">
 <colgroup>
@@ -631,27 +631,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>The effective configuration will use <code>transcripts</code> and <code>model</code> from the project, <code>scanners</code> from the scan job, and the merged tags <code>[production, safety-audit]</code>.</p>
 </section>
-<section id="project-discovery" class="level2">
-<h2 class="anchored" data-anchor-id="project-discovery">Project Discovery</h2>
-<p>When you run <code>scout scan</code> or other Scout commands, the system automatically searches for a <code>scout.yaml</code> project file using the following algorithm:</p>
-<ol type="1">
-<li>Start in the current working directory</li>
-<li>Look for a <code>scout.yaml</code> file</li>
-<li>If not found, move to the parent directory and repeat</li>
-<li>Stop searching when either:
-<ul>
-<li>A <code>scout.yaml</code> file is found</li>
-<li>The git repository root is reached (if in a git repo)</li>
-<li>The filesystem root is reached</li>
-</ul></li>
-</ol>
+<section id="default-project" class="level2">
+<h2 class="anchored" data-anchor-id="default-project">Default Project</h2>
+<p>When you run <code>scout scan</code> or other Scout commands, the system automatically searches for a <code>scout.yaml</code> project file wihtin the current working directory.</p>
 <p>If no project file is found, Scout uses the following defaults:</p>
 <ul>
 <li><code>name</code>: Project directory name</li>
 <li><code>transcripts</code>: <code>./transcripts</code> (if that directory exists) or <code>./logs</code> (if that directory exists)</li>
 <li><code>scans</code>: <code>./scans</code></li>
 </ul>
-<p>This discovery mechanism allows you to place a <code>scout.yaml</code> file at the root of your project and have it automatically apply to all scans run from any subdirectory.</p>
 
 
 </section>

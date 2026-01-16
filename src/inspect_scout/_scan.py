@@ -394,6 +394,7 @@ async def scan_resume_async(
     # create/initialize models then call init runtime context
     init_scan_model_context(
         model=model,
+        model_config=scan.spec.model.config if scan.spec.model else None,
         model_roles=model_roles_config_to_model_roles(scan.spec.model_roles),
     )
 

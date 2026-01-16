@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
@@ -223,6 +224,7 @@ async def _parse_and_filter(
             and prefix == "messages"
             and event == "end_array"
             and not state.attachment_refs
+            and os.environ.get("SCOUT_EARLY_PARSE_EXIT")
         ):
             break
 

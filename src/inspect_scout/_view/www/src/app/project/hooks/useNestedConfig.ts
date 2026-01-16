@@ -23,7 +23,7 @@ export function useNestedConfig<T extends Record<string, unknown>>(
 
   const config: Partial<T> = useMemo(() => {
     if (typeof configValue === "object" && configValue !== null) {
-      return { ...configValue }; // Shallow copy to prevent mutation issues
+      return { ...configValue }; // Shallow copy
     }
     return {} as Partial<T>;
   }, [configValue]);

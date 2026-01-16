@@ -3,6 +3,7 @@ import {
   FilterChangedEvent,
   FirstDataRenderedEvent,
   GridApi,
+  GridReadyEvent,
   ModuleRegistry,
   themeBalham,
   type ColDef,
@@ -12,6 +13,7 @@ import { AgGridReact } from "ag-grid-react";
 import { ColumnTable } from "arquero";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 
+import { useSetDataframeGridApi } from "../app/scan/scanners/dataframe/DataframeGridApiContext";
 import { useStore } from "../state/store";
 import { centerTruncate } from "../utils/format";
 
@@ -54,6 +56,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
 
   const setGridState = useStore((state) => state.setGridState);
   const gridState = useStore((state) => state.gridStates[GRID_STATE_NAME]);
+  const setDataframeGridApi = useSetDataframeGridApi();
 
   const { columnDefs, rowData } = useMemo(() => {
     const columnNames = sortedColumns || columnTable?.columnNames() || [];
@@ -277,6 +280,21 @@ export const DataframeView: FC<DataframeViewProps> = ({
     [onVisibleRowCountChanged]
   );
 
+  // Store the grid API in the global store when ready
+  const handleGridReady = useCallback(
+    (e: GridReadyEvent) => {
+      setDataframeGridApi(e.api);
+    },
+    [setDataframeGridApi]
+  );
+
+  // Clean up the grid API when unmounting
+  useEffect(() => {
+    return () => {
+      setDataframeGridApi(null);
+    };
+  }, [setDataframeGridApi]);
+
   return (
     <div className={styles.gridWrapper}>
       <AgGridReact<object>
@@ -299,6 +317,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
         theme={themeBalham}
         enableCellTextSelection={true}
         initialState={gridState}
+        onGridReady={handleGridReady}
         onFirstDataRendered={(e: FirstDataRenderedEvent) => {
           // Resize the columns
           e.api.sizeColumnsToFit();

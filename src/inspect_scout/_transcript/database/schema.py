@@ -123,6 +123,12 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         description="Boolean reduction of `score` to succeeded/failed.",
     ),
     SchemaField(
+        name="message_count",
+        pyarrow_type=pa.int64(),
+        required=False,
+        description="Total messages in conversation.",
+    ),
+    SchemaField(
         name="total_time",
         pyarrow_type=pa.float64(),
         required=False,

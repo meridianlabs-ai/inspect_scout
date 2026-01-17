@@ -8596,6 +8596,17 @@
             ],
             "title": "Limit"
           },
+          "message_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Count"
+          },
           "messages": {
             "items": {
               "anyOf": [
@@ -8849,6 +8860,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "message_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Count"
           },
           "metadata": {
             "additionalProperties": true,

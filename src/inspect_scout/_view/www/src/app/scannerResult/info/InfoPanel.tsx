@@ -117,6 +117,7 @@ export const TranscriptInfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
           success: resultData?.transcriptSuccess,
           limit: resultData?.transcriptLimit,
           error: resultData?.transcriptError,
+          message_count: resultData?.transcriptMessageCount,
           total_time: resultData?.transcriptTotalTime,
           total_tokens: resultData?.transcriptTotalTokens,
         }}

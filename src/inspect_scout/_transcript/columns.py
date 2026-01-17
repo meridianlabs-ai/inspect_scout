@@ -126,6 +126,11 @@ class Columns:
         return Column("success")
 
     @property
+    def message_count(self) -> Column:
+        """Messages in conversation."""
+        return Column("message_count")
+
+    @property
     def total_time(self) -> Column:
         """Total execution time."""
         return Column("total_time")

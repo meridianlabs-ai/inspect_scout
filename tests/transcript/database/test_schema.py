@@ -50,6 +50,7 @@ class TestTranscriptSchemaFields:
             "model_options",
             "score",
             "success",
+            "message_count",
             "total_time",
             "total_tokens",
             "error",
@@ -101,6 +102,7 @@ class TestTranscriptSchemaFields:
         # Integer fields
         assert field_map["task_repeat"].pyarrow_type == pa.int64()
         assert field_map["total_tokens"].pyarrow_type == pa.int64()
+        assert field_map["message_count"].pyarrow_type == pa.int64()
 
         # Float fields
         assert field_map["total_time"].pyarrow_type == pa.float64()
@@ -116,7 +118,7 @@ class TestTranscriptsDbSchema:
         """transcripts_db_schema('pyarrow') returns valid PyArrow Schema."""
         schema = transcripts_db_schema(format="pyarrow")
         assert isinstance(schema, pa.Schema)
-        assert len(schema) == 20
+        assert len(schema) == 21
         assert "transcript_id" in schema.names
 
     def test_pyarrow_field_types(self) -> None:
@@ -134,7 +136,7 @@ class TestTranscriptsDbSchema:
         assert schema["type"] == "record"
         assert schema["name"] == "Transcript"
         assert "fields" in schema
-        assert len(schema["fields"]) == 20
+        assert len(schema["fields"]) == 21
 
     def test_avro_field_structure(self) -> None:
         """Avro schema fields have correct structure."""
@@ -188,7 +190,7 @@ class TestTranscriptsDbSchema:
         df = transcripts_db_schema(format="pandas")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
-        assert len(df.columns) == 20
+        assert len(df.columns) == 21
 
     def test_pandas_column_dtypes(self) -> None:
         """Pandas DataFrame has correct column dtypes."""
@@ -224,9 +226,9 @@ class TestReservedColumns:
         assert "filename" in reserved
 
     def test_count(self) -> None:
-        """Should have correct count (20 schema fields + filename)."""
+        """Should have correct count (21 schema fields + filename)."""
         reserved = reserved_columns()
-        assert len(reserved) == 21
+        assert len(reserved) == 22
 
 
 class TestValidateTranscriptSchema:

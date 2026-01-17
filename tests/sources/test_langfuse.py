@@ -645,6 +645,7 @@ class TestSessionToTranscript:
         assert transcript.model == "gpt-4"
         assert transcript.total_tokens == 15
         assert transcript.total_time == 1.0
+        assert transcript.message_count == 2
 
         # Check messages derived from final ModelEvent
         assert len(transcript.messages) == 2

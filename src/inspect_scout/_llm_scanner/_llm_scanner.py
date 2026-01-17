@@ -226,6 +226,7 @@ async def render_scanner_prompt(
             model_options=transcript.model_options,
             score=transcript.score,
             success=transcript.success,
+            message_count=transcript.message_count,
             total_time=transcript.total_time,
             total_tokens=transcript.total_tokens,
             error=transcript.error,

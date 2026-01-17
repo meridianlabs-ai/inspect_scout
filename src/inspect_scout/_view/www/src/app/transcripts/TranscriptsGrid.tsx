@@ -47,6 +47,7 @@ const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
   "task_repeat",
   "model",
   "score",
+  "message_count",
   "total_time",
   "total_tokens",
 ];

@@ -279,6 +279,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             transcript_model_options = row_dict.get("generate_config", None)
             transcript_score = row_dict.get("score", None)
             transcript_success = row_dict.get("success", None)
+            transcript_message_count = row_dict.get("message_count", None)
             transcript_total_time = row_dict.get("total_time", None)
             transcript_total_tokens = row_dict.get("total_tokens", None)
             transcript_error = row_dict.get("error", None)
@@ -330,6 +331,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 model_options=transcript_model_options,
                 score=transcript_score,
                 success=transcript_success,
+                message_count=transcript_message_count,
                 total_time=transcript_total_time,
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
@@ -640,8 +642,9 @@ TranscriptColumns: list[Column] = (
         SampleColumn("success", path=sample_success),
         SampleColumn("score_*", path="scores", value=score_values),
         SampleColumn("total_tokens", path=sample_total_tokens),
+        SampleColumn("message_count", path="message_count", default=None),
         SampleColumn("total_time", path="total_time"),
-        SampleColumn("working_time", path="total_time"),
+        SampleColumn("working_time", path="working_time"),
         SampleColumn("error", path="error", default=""),
         SampleColumn("limit", path="limit", default=""),
     ]

@@ -96,7 +96,9 @@ async def test_async_iterator_reader(
         (b"test", 1, 2),  # Small chunks, partial read
     ],
 )
-async def test_aclose_is_idempotent(data: bytes, chunk_size: int, read_size: int) -> None:
+async def test_aclose_is_idempotent(
+    data: bytes, chunk_size: int, read_size: int
+) -> None:
     """Test that aclose() can be called multiple times without error."""
     reader = adapt_to_reader(bytes_iterator(data, chunk_size))
     await reader.read(read_size)

@@ -131,9 +131,8 @@ async def _load_with_json5_fallback(
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
         io_source: IO[bytes] = io.BytesIO()
-        async with adapt_to_reader(sample_bytes) as reader:
-            while chunk := await reader.read(8192):
-                io_source.write(chunk)
+        async for chunk in sample_bytes:
+            io_source.write(chunk)
     else:
         io_source = sample_bytes
     io_source.seek(0)

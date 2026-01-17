@@ -4380,12 +4380,12 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
-._container_15g4u_1 {
+._container_et6si_1 {
   position: relative;
   width: 100%;
 }
 
-._input_15g4u_6 {
+._input_et6si_6 {
   width: 100%;
   font-size: 12px;
   padding: 4px 6px;
@@ -4395,12 +4395,41 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._input_15g4u_6:disabled {
+._input_et6si_6:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
 
-._suggestionsList_15g4u_21 {
+._inputWithToggle_et6si_21 {
+  padding-right: 24px;
+}
+
+._toggleButton_et6si_25 {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--bs-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+._toggleButton_et6si_25:hover:not(:disabled) {
+  color: var(--bs-body-color);
+}
+
+._toggleButton_et6si_25:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+._suggestionsList_et6si_50 {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4413,7 +4442,7 @@ so disabling selection can break that functionality */
   z-index: 10000;
 }
 
-._suggestionItem_15g4u_34 {
+._suggestionItem_et6si_63 {
   padding: 6px 8px;
   font-size: 12px;
   cursor: pointer;
@@ -4422,8 +4451,8 @@ so disabling selection can break that functionality */
   text-overflow: ellipsis;
 }
 
-._suggestionItem_15g4u_34:hover,
-._suggestionItem_15g4u_34._highlighted_15g4u_44 {
+._suggestionItem_et6si_63:hover,
+._suggestionItem_et6si_63._highlighted_et6si_73 {
   background: var(--bs-primary);
   color: white;
 }

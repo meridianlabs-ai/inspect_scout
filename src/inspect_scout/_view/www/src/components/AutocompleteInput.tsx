@@ -27,6 +27,8 @@ export interface AutocompleteInputProps {
   charactersBeforeSuggesting?: number;
   maxSuggestionWidth?: number;
   className?: string;
+  /** When true, shows a dropdown toggle icon to browse all options */
+  allowBrowse?: boolean;
 }
 
 export const AutocompleteInput: FC<AutocompleteInputProps> = ({
@@ -43,11 +45,14 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   maxSuggestionWidth = 300,
   autoFocus,
   className,
+  allowBrowse = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   // Start with no selection (-1) so Enter submits the typed value, not a suggestion
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  // Track whether dropdown was opened via browse icon (shows all options)
+  const [isBrowseMode, setIsBrowseMode] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{
     top: number;
     left: number;
@@ -58,8 +63,13 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   // Track whether user has typed in the input (to avoid showing suggestions on initial focus)
   const hasTypedRef = useRef(false);
 
-  // Filter suggestions based on current input (only when 3+ chars typed)
+  // Filter suggestions based on current input (or show all in browse mode)
   const filteredSuggestions = useMemo(() => {
+    // In browse mode, show all non-null suggestions (no limit)
+    if (isBrowseMode) {
+      return suggestions.filter((s) => s !== null);
+    }
+    // Normal mode: require minimum characters before showing suggestions
     if (value.length < charactersBeforeSuggesting) {
       return [];
     }
@@ -73,7 +83,13 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
         return strValue.includes(lowerValue);
       })
       .slice(0, maxSuggestions);
-  }, [suggestions, value, maxSuggestions, charactersBeforeSuggesting]);
+  }, [
+    suggestions,
+    value,
+    maxSuggestions,
+    charactersBeforeSuggesting,
+    isBrowseMode,
+  ]);
 
   // Determine if dropdown should be shown
   const showDropdown = isOpen && filteredSuggestions.length > 0;
@@ -128,16 +144,31 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       hasTypedRef.current = true;
+      setIsBrowseMode(false); // Exit browse mode when user types
       onChange(e.target.value);
       setIsOpen(true);
     },
     [onChange]
   );
 
+  const handleToggleBrowse = useCallback(() => {
+    if (isOpen && isBrowseMode) {
+      // If already open in browse mode, close it
+      setIsOpen(false);
+      setIsBrowseMode(false);
+    } else {
+      // Open in browse mode
+      setIsBrowseMode(true);
+      setIsOpen(true);
+    }
+    inputRef.current?.focus();
+  }, [isOpen, isBrowseMode]);
+
   const selectSuggestion = useCallback(
     (suggestion: string | number | boolean | null) => {
       onChange(String(suggestion ?? ""));
       setIsOpen(false);
+      setIsBrowseMode(false);
       inputRef.current?.focus();
     },
     [onChange, inputRef]
@@ -233,7 +264,11 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
         id={id}
         ref={inputRef}
         type="text"
-        className={clsx(styles.input, className)}
+        className={clsx(
+          styles.input,
+          allowBrowse && styles.inputWithToggle,
+          className
+        )}
         value={value}
         onChange={handleInputChange}
         onFocus={handleFocus}
@@ -253,6 +288,23 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
         }
         autoFocus={autoFocus}
       />
+      {allowBrowse && suggestions.length > 0 && (
+        <button
+          type="button"
+          className={styles.toggleButton}
+          onClick={handleToggleBrowse}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-label="Show all options"
+        >
+          <i
+            className={clsx(
+              "bi",
+              isOpen && isBrowseMode ? "bi-chevron-up" : "bi-chevron-down"
+            )}
+          />
+        </button>
+      )}
 
       {showDropdown &&
         dropdownPosition &&

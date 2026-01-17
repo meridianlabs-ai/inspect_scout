@@ -116,6 +116,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             suggestions={suggestions}
             className={styles.filterInput}
             autoFocus={true}
+            allowBrowse={true}
           />
         ) : filterType === "duration" ? (
           <DurationInput

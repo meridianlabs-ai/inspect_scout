@@ -405,7 +405,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     maxSize: 200,
     meta: {
       filterable: true,
-      filterType: "number",
+      filterType: "duration",
     },
     cell: (value) => {
       if (value == null) {

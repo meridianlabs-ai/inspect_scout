@@ -29,6 +29,7 @@ export type FilterType =
   | "boolean"
   | "date"
   | "datetime"
+  | "duration"
   | "unknown";
 
 // Column filter with metadata

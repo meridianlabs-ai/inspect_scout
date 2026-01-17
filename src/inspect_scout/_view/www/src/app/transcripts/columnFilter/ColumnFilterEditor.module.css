@@ -37,3 +37,16 @@
   width: 100%;
   padding: 0.2rem;
 }
+
+.durationInputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.durationHelper {
+  font-size: 11px;
+  color: var(--bs-secondary);
+  padding-left: 2px;
+}

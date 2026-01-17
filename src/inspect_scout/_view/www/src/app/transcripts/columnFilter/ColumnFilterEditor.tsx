@@ -7,6 +7,7 @@ import type { OperatorModel } from "../../../query";
 import type { FilterType } from "../../../state/store";
 
 import styles from "./ColumnFilterEditor.module.css";
+import { DurationInput } from "./DurationInput";
 
 export interface ColumnFilterEditorProps {
   columnId: string;
@@ -114,6 +115,14 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             placeholder="Filter"
             suggestions={suggestions}
             className={styles.filterInput}
+            autoFocus={true}
+          />
+        ) : filterType === "duration" ? (
+          <DurationInput
+            id={`${columnId}-val`}
+            value={rawValue}
+            onChange={handleValueChange}
+            disabled={isValueDisabled}
             autoFocus={true}
           />
         ) : (

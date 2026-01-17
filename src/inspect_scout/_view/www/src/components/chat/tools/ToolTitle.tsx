@@ -13,8 +13,12 @@ interface ToolTitleProps {
 export const ToolTitle: FC<ToolTitleProps> = ({ title, description }) => {
   return (
     <Fragment>
-      <i className={clsx("bi", "bi-tools", styles.image)} />
-      <code className={clsx("text-size-small", styles.toolTitle)}>{title}</code>
+      <i
+        className={clsx("bi", "bi-tools", styles.image, "text-size-smaller")}
+      />
+      <code className={clsx("text-size-smaller", styles.toolTitle)}>
+        {title}
+      </code>
       {description ? (
         <span className={clsx(styles.description, "text-size-smallest")}>
           - {description}

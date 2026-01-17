@@ -104,7 +104,6 @@ export const MarkdownDivWithReferences = forwardRef<
         ref={ref}
         markdown={markdown}
         postProcess={postProcess}
-        className={className}
         style={style}
         omitMedia={omitMedia}
         onClick={handleLinkClick}

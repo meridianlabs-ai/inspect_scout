@@ -5830,24 +5830,24 @@ a._citationLink_1ggvf_9:hover {
 ._toolPanel_1792k_40 {
   display: contents;
 }
-._toolImage_1wvgr_1 {
+._toolImage_qu6a9_1 {
   max-width: 800px;
   border: solid var(--bs-border-color) 1px;
 }
 
-._output_1wvgr_6 {
+._output_qu6a9_6 {
   display: grid;
 }
 
-._textOutput_1wvgr_10 {
+._textOutput_qu6a9_10 {
   padding-left: 2px;
   padding: 0.5em 0.5em 0.5em 0.5em;
   white-space: pre-wrap;
   margin-bottom: 0;
-  font-size: 0.9em !important;
+  font-size: var(--inspect-font-size-smallest) !important;
 }
 
-._textCode_1wvgr_18 {
+._textCode_qu6a9_18 {
   word-wrap: anywhere;
 }
 ._grid_17ltx_1 {
@@ -5931,21 +5931,22 @@ a._citationLink_1ggvf_9:hover {
 ._inProgress_1t8rx_9 {
   font-weight: bold;
 }
-._outputPre_1jznn_1 {
+._outputPre_fhwyo_1 {
   padding: 0.5em;
   margin-top: 0.25em;
   margin-bottom: 0;
 }
 
-._toolView_1jznn_7 {
+._toolView_fhwyo_7 {
   margin-top: 0.25em;
-}
-
-._toolView_1jznn_7 {
   padding: 0.5em !important;
 }
 
-._outputCode_1jznn_15 {
+._toolView_fhwyo_7 pre {
+  margin-bottom: 0;
+}
+
+._outputCode_fhwyo_16 {
   font-size: 0.8rem !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;

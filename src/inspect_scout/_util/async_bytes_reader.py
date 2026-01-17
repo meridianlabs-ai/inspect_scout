@@ -33,7 +33,7 @@ def _is_async_iterable(
 
 
 def adapt_to_reader(io_or_iter: IO[bytes] | AsyncIterable[bytes]) -> AsyncBytesReader:
-    """Adapt a byte source to an async file-like reader (e.g. for ijson).
+    """Adapt a byte source to an async file-like interface (e.g. for ijson).
 
     Use as async context manager to ensure cleanup of underlying async iterators.
     """

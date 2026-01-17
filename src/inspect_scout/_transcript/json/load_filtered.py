@@ -115,8 +115,8 @@ async def load_filtered_transcript(
             transcript, attachment_refs = await _parse_and_filter(
                 reader, t, messages, events
             )
-            # Phase 2: Resolve attachment references
-            return _resolve_attachments(transcript, attachment_refs)
+        # Phase 2: Resolve attachment references
+        return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
         # Fallback to json5 for JSON5 features (NaN, Inf, etc.)
         return await _load_with_json5_fallback(sample_bytes, t, messages, events)

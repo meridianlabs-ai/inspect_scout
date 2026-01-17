@@ -5,7 +5,11 @@ import { ApplicationIcons } from "../../components/icons";
 import { FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { printArray } from "../../utils/array";
-import { formatNumber, formatPrettyDecimal } from "../../utils/format";
+import {
+  formatNumber,
+  formatPrettyDecimal,
+  formatTime,
+} from "../../utils/format";
 import { printObject } from "../../utils/object";
 
 export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
@@ -407,13 +411,13 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       if (value == null) {
         return "-";
       }
-      return formatPrettyDecimal(value, 0);
+      return formatTime(value);
     },
     textValue: (value) => {
       if (value == null) {
         return "-";
       }
-      return formatPrettyDecimal(value, 0);
+      return formatTime(value);
     },
   }),
   limit: createColumn({

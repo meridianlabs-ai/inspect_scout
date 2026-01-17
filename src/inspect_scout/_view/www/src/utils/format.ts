@@ -32,7 +32,7 @@ export const formatDataset = (
  */
 export const formatTime = (seconds: number): string => {
   if (seconds < 60) {
-    return `${formatPrettyDecimal(seconds, 1)} sec`;
+    return `${formatPrettyDecimal(seconds, 0)} sec`;
   } else if (seconds < 60 * 60) {
     return `${Math.floor(seconds / 60)} min ${Math.floor(seconds % 60)} sec`;
   } else if (seconds < 60 * 60 * 24) {

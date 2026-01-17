@@ -40,11 +40,10 @@ async def test_io_bytes_reader(
 ) -> None:
     """Test adapt_to_reader with IO[bytes] input."""
     io = BytesIO(data)
-    reader = adapt_to_reader(io)
-
-    for size, expected in zip(read_sizes, expected_results, strict=True):
-        result = await reader.read(size)
-        assert result == expected
+    async with adapt_to_reader(io) as reader:
+        for size, expected in zip(read_sizes, expected_results, strict=True):
+            result = await reader.read(size)
+            assert result == expected
 
 
 @pytest.mark.asyncio
@@ -82,8 +81,7 @@ async def test_async_iterator_reader(
 ) -> None:
     """Test adapt_to_reader with AsyncIterator[bytes] input."""
     async_iter = bytes_iterator(data, chunk_size)
-    reader = adapt_to_reader(async_iter)
-
-    for size, expected in zip(read_sizes, expected_results, strict=True):
-        result = await reader.read(size)
-        assert result == expected
+    async with adapt_to_reader(async_iter) as reader:
+        for size, expected in zip(read_sizes, expected_results, strict=True):
+            result = await reader.read(size)
+            assert result == expected

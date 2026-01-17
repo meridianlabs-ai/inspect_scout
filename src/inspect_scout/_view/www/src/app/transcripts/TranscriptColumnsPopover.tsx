@@ -22,6 +22,7 @@ const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
   "task_repeat",
   "model",
   "score",
+  "message_count",
   "total_time",
   "total_tokens",
 ];
@@ -45,6 +46,7 @@ const COLUMN_LABELS: Record<keyof TranscriptInfo, string> = {
   source_uri: "Source URI",
   total_tokens: "Total Tokens",
   total_time: "Total Time",
+  message_count: "Messages",
   limit: "Limit",
   error: "Error",
 };

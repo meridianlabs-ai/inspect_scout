@@ -101,6 +101,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ model_options }}}` | dict | Generation options for main model. |
 | `{{{ score }}}` | JsonValue | Value indicating score on task. |
 | `{{{ success }}}` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `{{{ message_count }}}` | number | Total messages in conversation. |
 | `{{{ total_time }}}` | number | Time required to execute task (seconds) |
 | `{{{ total_tokens }}}` | number | Tokens spent in execution of task. |
 | `{{{ error }}}` | str | Error message that terminated the task. |

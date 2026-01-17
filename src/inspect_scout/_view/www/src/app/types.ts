@@ -91,6 +91,7 @@ export interface ScanResultData extends ScanResultSummary {
   transcriptAgentArgs?: Record<string, unknown>;
   transcriptScore?: JsonValue;
   transcriptSuccess?: boolean;
+  transcriptMessageCount?: number;
   transcriptTotalTime?: number;
   transcriptTotalTokens?: number;
   transcriptError?: string;

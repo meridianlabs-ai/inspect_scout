@@ -232,6 +232,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         model_options=transcript.model_options,
         score=transcript.score,
         success=transcript.success,
+        message_count=transcript.message_count,
         total_time=transcript.total_time,
         total_tokens=transcript.total_tokens,
         error=transcript.error,

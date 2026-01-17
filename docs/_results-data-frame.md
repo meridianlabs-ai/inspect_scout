@@ -45,6 +45,7 @@ The data frame includes the following fields (note that some fields included emb
 | `transcript_model_options` | JsonValue<br/><small>JSON</small> | Generation options for main model. |
 | `transcript_score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
 | `transcript_success` | bool |  Boolean reduction of `score` to succeeded/failed. |
+| `transcript_message_count` | number | Total messages in conversation | 
 | `transcript_total_time` | number | Time required to execute task (seconds) |
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |

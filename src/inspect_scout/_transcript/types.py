@@ -95,6 +95,9 @@ class TranscriptInfo(BaseModel):
     success: bool | None = Field(default=None)
     """Boolean reduction of score to succeeded/failed."""
 
+    message_count: int | None = Field(default=None)
+    """Total messages in conversation."""
+
     total_time: float | None = Field(default=None)
     """Time required to execute task (seconds)."""
 

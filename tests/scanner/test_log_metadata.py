@@ -85,6 +85,7 @@ def test_typed_properties_exist() -> None:
     assert lc.score.name == "score"
     assert lc.total_tokens.name == "total_tokens"
     assert lc.total_time.name == "total_time"
+    assert lc.message_count.name == "message_count"
     assert lc.working_time.name == "working_time"
     assert lc.limit.name == "limit"
 

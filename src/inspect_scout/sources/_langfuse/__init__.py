@@ -276,6 +276,7 @@ async def _session_to_transcript(
         model_options=model_options,
         score=score,
         success=success,
+        message_count=len(messages),
         total_tokens=sum_tokens(generations),
         total_time=sum_latency(all_observations),
         error=error,

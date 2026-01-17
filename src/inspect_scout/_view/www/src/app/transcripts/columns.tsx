@@ -420,6 +420,29 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
       return formatTime(value);
     },
   }),
+  message_count: createColumn({
+    accessorKey: "message_count",
+    header: "Messages",
+    size: 120,
+    minSize: 60,
+    maxSize: 200,
+    meta: {
+      filterable: true,
+      filterType: "number",
+    },
+    cell: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatNumber(value);
+    },
+    textValue: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatNumber(value);
+    },
+  }),
   limit: createColumn({
     accessorKey: "limit",
     header: "Limit",
@@ -469,6 +492,7 @@ export const DEFAULT_COLUMN_ORDER: Array<keyof TranscriptInfo> = [
   "source_uri",
   "total_tokens",
   "total_time",
+  "message_count",
   "limit",
   "error",
 ];
@@ -482,6 +506,7 @@ export const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
   "task_repeat",
   "model",
   "score",
+  "message_count",
   "total_time",
   "total_tokens",
 ];

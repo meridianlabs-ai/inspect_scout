@@ -16,6 +16,7 @@ Here are the available `Transcript` fields:
 | `model_options` | dict </br><small>JSON</small> | Generation options for main model.  |
 | `score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
 | `success` | bool |  Boolean reduction of `score` to succeeded/failed. |
+| `message_count` | int | Total messages in conversation. |
 | `total_time` | number | Time required to execute task (seconds) |
 | `total_tokens` | number | Tokens spent in execution of task. |
 | `error` | str | Error message that terminated the task. |

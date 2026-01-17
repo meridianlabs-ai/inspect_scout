@@ -23,6 +23,7 @@ export class TranscriptColumns {
   readonly score = new Column("score");
   readonly success = new Column("success");
   readonly total_time = new Column("total_time");
+  readonly message_count = new Column("message_count");
   readonly error = new Column("error");
   readonly limit = new Column("limit");
 

@@ -6,6 +6,8 @@ import {
 } from "../../components/MarkdownDivWithReferences";
 import { Preformatted } from "../../components/Preformatted";
 
+import { useDisplayMode } from "./DisplayModeContext";
+
 interface RenderedTextProps {
   markdown: string;
   references?: MarkdownReference[];
@@ -26,7 +28,7 @@ export const RenderedText = forwardRef<
     { markdown, references, style, className, forceRender, omitMedia, options },
     ref
   ) => {
-    const displayMode = "rendered";
+    const displayMode = useDisplayMode();
     if (forceRender || displayMode === "rendered") {
       return (
         <MarkdownDivWithReferences

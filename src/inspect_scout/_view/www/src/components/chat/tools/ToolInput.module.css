@@ -6,10 +6,11 @@
 
 .toolView {
   margin-top: 0.25em;
+  padding: 0.5em !important;
 }
 
-.toolView {
-  padding: 0.5em !important;
+.toolView pre {
+  margin-bottom: 0;
 }
 
 .outputCode {

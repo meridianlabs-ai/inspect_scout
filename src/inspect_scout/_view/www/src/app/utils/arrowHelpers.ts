@@ -128,6 +128,10 @@ export const parseScanResultData = async (
     filtered,
     "transcript_total_tokens"
   );
+  const transcriptMessageCount = getOptionalColumn<number>(
+    filtered,
+    "transcript_message_count"
+  );
   const transcriptError = getOptionalColumn<string>(
     filtered,
     "transcript_error"
@@ -175,6 +179,7 @@ export const parseScanResultData = async (
     transcriptSuccess,
     transcriptTotalTime,
     transcriptTotalTokens,
+    transcriptMessageCount,
     transcriptError,
     transcriptLimit,
     validationResult,

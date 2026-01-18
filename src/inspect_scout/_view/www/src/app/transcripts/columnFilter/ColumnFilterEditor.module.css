@@ -28,12 +28,28 @@
 }
 
 .columnId {
-  margin-left: 0.5rem;
   font-weight: 600;
   font-family: var(--bs-monospace);
+}
+
+.columnIdText {
+  margin-left: 0.5rem;
 }
 
 :global(.btn).filterButton {
   width: 100%;
   padding: 0.2rem;
+}
+
+.durationInputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.durationHelper {
+  font-size: 11px;
+  color: var(--bs-secondary);
+  padding-left: 2px;
 }

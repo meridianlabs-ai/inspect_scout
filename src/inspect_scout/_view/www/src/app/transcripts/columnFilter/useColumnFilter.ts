@@ -25,6 +25,7 @@ const OPERATORS_BY_TYPE: Record<FilterType, OperatorModel[]> = {
   boolean: ["=", "!=", "IS NULL", "IS NOT NULL"],
   date: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
   datetime: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
+  duration: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
   unknown: [
     "=",
     "!=",
@@ -67,7 +68,8 @@ const parseFilterValue = (
   rawValue: string
 ): ScalarValue | undefined => {
   switch (filterType) {
-    case "number": {
+    case "number":
+    case "duration": {
       const parsed = Number(rawValue);
       return Number.isFinite(parsed) ? parsed : undefined;
     }

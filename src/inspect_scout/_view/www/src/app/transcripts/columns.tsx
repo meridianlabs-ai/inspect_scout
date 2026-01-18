@@ -5,10 +5,36 @@ import { ApplicationIcons } from "../../components/icons";
 import { FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { printArray } from "../../utils/array";
-import { formatNumber, formatPrettyDecimal } from "../../utils/format";
+import {
+  formatNumber,
+  formatPrettyDecimal,
+  formatTime,
+} from "../../utils/format";
 import { printObject } from "../../utils/object";
 
-import styles from "./TranscriptsGrid.module.css";
+// Column headers for display (used in column picker and add filter dropdown)
+export const COLUMN_LABELS: Record<keyof TranscriptInfo, string> = {
+  success: "Success",
+  date: "Date",
+  transcript_id: "Transcript ID",
+  task_set: "Task Set",
+  task_id: "Task ID",
+  task_repeat: "Repeat",
+  model: "Model",
+  model_options: "Model Options",
+  agent: "Agent",
+  agent_args: "Agent Args",
+  score: "Score",
+  metadata: "Metadata",
+  source_id: "Source ID",
+  source_type: "Source Type",
+  source_uri: "Source URI",
+  total_tokens: "Total Tokens",
+  total_time: "Total Time",
+  message_count: "Messages",
+  limit: "Limit",
+  error: "Error",
+};
 
 export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   meta?: {
@@ -130,7 +156,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   success: createColumn({
     accessorKey: "success",
     header: "✓",
-    size: 44,
+    size: 40,
     minSize: 40,
     maxSize: 60,
     meta: {
@@ -143,10 +169,11 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
         return "-";
       }
 
-      const icon = value ? ApplicationIcons.success : ApplicationIcons.error;
-      const colorCls = value ? styles.green : styles.red;
+      const icon = value
+        ? ApplicationIcons.checkbox.checked
+        : ApplicationIcons.checkbox.unchecked;
 
-      return <i className={clsx(icon, colorCls)} />;
+      return <i className={clsx(icon, "text-secondary")} />;
     },
     textValue: () => null,
   }),
@@ -402,19 +429,42 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
     maxSize: 200,
     meta: {
       filterable: true,
+      filterType: "duration",
+    },
+    cell: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatTime(value);
+    },
+    textValue: (value) => {
+      if (value == null) {
+        return "-";
+      }
+      return formatTime(value);
+    },
+  }),
+  message_count: createColumn({
+    accessorKey: "message_count",
+    header: "Messages",
+    size: 120,
+    minSize: 60,
+    maxSize: 200,
+    meta: {
+      filterable: true,
       filterType: "number",
     },
     cell: (value) => {
       if (value == null) {
         return "-";
       }
-      return formatPrettyDecimal(value, 0);
+      return formatNumber(value);
     },
     textValue: (value) => {
       if (value == null) {
         return "-";
       }
-      return formatPrettyDecimal(value, 0);
+      return formatNumber(value);
     },
   }),
   limit: createColumn({
@@ -466,6 +516,7 @@ export const DEFAULT_COLUMN_ORDER: Array<keyof TranscriptInfo> = [
   "source_uri",
   "total_tokens",
   "total_time",
+  "message_count",
   "limit",
   "error",
 ];
@@ -479,6 +530,7 @@ export const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
   "task_repeat",
   "model",
   "score",
+  "message_count",
   "total_time",
   "total_tokens",
 ];
@@ -520,4 +572,14 @@ export function getCellTitleValue(
     return JSON.stringify(value, null, 2);
   }
   return String(value);
+}
+
+/**
+ * Get the filter type for a given column ID.
+ * @param columnId - The column ID to look up
+ * @returns The filter type for the column, or "string" as default
+ */
+export function getFilterTypeForColumn(columnId: string): FilterType {
+  const column = ALL_COLUMNS[columnId as keyof TranscriptInfo];
+  return column?.meta?.filterType ?? "string";
 }

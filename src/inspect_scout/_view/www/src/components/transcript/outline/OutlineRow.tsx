@@ -18,6 +18,7 @@ export interface OutlineRowProps {
   collapseScope: string;
   running?: boolean;
   selected?: boolean;
+  getEventUrl?: (eventId: string) => string | undefined;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -25,6 +26,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   collapseScope,
   running,
   selected,
+  getEventUrl,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -35,8 +37,8 @@ export const OutlineRow: FC<OutlineRowProps> = ({
 
   const ref = useRef(null);
 
-  // Get all URL parameters at component level
-  const sampleEventUrl = undefined;
+  // Generate URL for deep linking to this event
+  const eventUrl = getEventUrl?.(node.id);
 
   return (
     <>
@@ -59,12 +61,8 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         </div>
         <div className={clsx(styles.label)} data-depth={node.depth}>
           {icon ? <i className={clsx(icon, styles.icon)} /> : undefined}
-          {sampleEventUrl ? (
-            <Link
-              to={sampleEventUrl}
-              className={clsx(styles.eventLink)}
-              ref={ref}
-            >
+          {eventUrl ? (
+            <Link to={eventUrl} className={clsx(styles.eventLink)} ref={ref}>
               {parsePackageName(labelForNode(node)).module}
             </Link>
           ) : (

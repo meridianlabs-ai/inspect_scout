@@ -1,25 +1,64 @@
 import clsx from "clsx";
-import { FC, RefObject, useState } from "react";
+import {
+  FC,
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
+import { DisplayModeContext } from "../../components/content/DisplayModeContext";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { ApplicationIcons } from "../../components/icons";
 import { StickyScroll } from "../../components/StickyScroll";
 import { TabPanel, TabSet } from "../../components/TabSet";
+import { ToolButton } from "../../components/ToolButton";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
+import {
+  EventNode,
+  kCollapsibleEventTypes,
+  kTranscriptCollapseScope,
+} from "../../components/transcript/types";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
 
+import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
 import styles from "./TranscriptBody.module.css";
+import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
 
-const kTranscriptMessagesTabId = "transcript-messages";
-const kTranscriptEventsTabId = "transcript-events";
-const kTranscriptMetadataTabId = "transcript-metadata";
+export const kTranscriptMessagesTabId = "transcript-messages";
+export const kTranscriptEventsTabId = "transcript-events";
+export const kTranscriptMetadataTabId = "transcript-metadata";
+
+/**
+ * Recursively collects all collapsible event IDs from the event tree.
+ */
+const collectAllCollapsibleIds = (
+  nodes: EventNode[]
+): Record<string, boolean> => {
+  const result: Record<string, boolean> = {};
+  const traverse = (nodeList: EventNode[]) => {
+    for (const node of nodeList) {
+      if (kCollapsibleEventTypes.includes(node.event.event)) {
+        result[node.id] = true;
+      }
+      if (node.children.length > 0) {
+        traverse(node.children);
+      }
+    }
+  };
+  traverse(nodes);
+  return result;
+};
 
 interface TranscriptBodyProps {
   transcript: Transcript;
@@ -31,30 +70,199 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   scrollRef,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
 
+  // Get event or message ID from query params for deep linking
+  const eventParam = searchParams.get("event");
+  const messageParam = searchParams.get("message");
+
+  // Selected tab
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab
   );
   const setSelectedTranscriptTab = useStore(
     (state) => state.setSelectedTranscriptTab
   );
-  const tabParam = searchParams.get("tab");
   const resolvedSelectedTranscriptTab =
     tabParam || selectedTranscriptTab || kTranscriptMessagesTabId;
 
-  // Helper function to update both store and URL
-  const handleTabChange = (tabId: string) => {
-    setSelectedTranscriptTab(tabId);
-    setSearchParams({ tab: tabId });
-  };
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      //  update both store and URL
+      setSelectedTranscriptTab(tabId);
+      setSearchParams({ tab: tabId });
+    },
+    [setSelectedTranscriptTab, setSearchParams]
+  );
+
+  // Auto-switch tab based on deep link params
+  useEffect(() => {
+    if (
+      eventParam &&
+      resolvedSelectedTranscriptTab !== kTranscriptEventsTabId
+    ) {
+      handleTabChange(kTranscriptEventsTabId);
+    } else if (
+      messageParam &&
+      resolvedSelectedTranscriptTab !== kTranscriptMessagesTabId
+    ) {
+      handleTabChange(kTranscriptMessagesTabId);
+    }
+  }, [
+    eventParam,
+    messageParam,
+    resolvedSelectedTranscriptTab,
+    handleTabChange,
+  ]);
+
+  // Transcript Filtering
+  const transcriptFilterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [transcriptFilterShowing, setTranscriptFilterShowing] = useState(false);
+  const toggleTranscriptFilterShowing = useCallback(() => {
+    setTranscriptFilterShowing((prev) => !prev);
+  }, []);
+  const { excludedEventTypes, isDebugFilter, isDefaultFilter } =
+    useTranscriptColumnFilter();
+
+  const filteredEvents = useMemo(() => {
+    if (excludedEventTypes.length === 0) {
+      return transcript.events;
+    }
+    return transcript.events.filter((event) => {
+      return !excludedEventTypes.includes(event.event);
+    });
+  }, [transcript.events, excludedEventTypes]);
 
   // Transcript event data
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
-    transcript.events || [],
+    filteredEvents,
     false
   );
 
-  const tabTools = [<CopyToolbarButton transcript={transcript} />];
+  // Transcript collapse
+  const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
+  const setTranscriptState = useStore((state) => state.setTranscriptState);
+  const collapseEvents = useCallback(
+    (collapsed: boolean) => {
+      setTranscriptState((prev) => ({
+        ...prev,
+        collapsed,
+      }));
+    },
+    [setTranscriptState]
+  );
+
+  const setCollapsedEvents = useStore(
+    (state) => state.setTranscriptCollapsedEvents
+  );
+
+  // Outline toggle
+  const outlineCollapsed = useStore(
+    (state) => state.transcriptState.outlineCollapsed
+  );
+  const toggleOutline = useCallback(
+    (collapsed: boolean) => {
+      setTranscriptState((prev) => ({
+        ...prev,
+        outlineCollapsed: collapsed,
+      }));
+    },
+    [setTranscriptState]
+  );
+
+  // Display mode for raw/rendered text
+  const displayMode = useStore(
+    (state) => state.transcriptState.displayMode ?? "rendered"
+  );
+
+  const toggleDisplayMode = useCallback(() => {
+    setTranscriptState((prev) => ({
+      ...prev,
+      displayMode: prev.displayMode === "raw" ? "rendered" : "raw",
+    }));
+  }, [setTranscriptState]);
+
+  const displayModeContextValue = useMemo(
+    () => ({ displayMode }),
+    [displayMode]
+  );
+
+  useEffect(() => {
+    if (transcript.events.length <= 0 || eventsCollapsed === undefined) {
+      return;
+    }
+
+    if (!eventsCollapsed && Object.keys(defaultCollapsedIds).length > 0) {
+      setCollapsedEvents(kTranscriptCollapseScope, defaultCollapsedIds);
+    } else if (eventsCollapsed) {
+      const allCollapsibleIds = collectAllCollapsibleIds(eventNodes);
+      setCollapsedEvents(kTranscriptCollapseScope, allCollapsibleIds);
+    }
+  }, [
+    defaultCollapsedIds,
+    eventNodes,
+    eventsCollapsed,
+    setCollapsedEvents,
+    transcript.events.length,
+  ]);
+
+  const tabTools: ReactNode[] = [];
+
+  if (resolvedSelectedTranscriptTab === kTranscriptEventsTabId) {
+    const label = isDebugFilter
+      ? "Debug"
+      : isDefaultFilter
+        ? "Default"
+        : "Custom";
+
+    tabTools.push(
+      <ToolButton
+        key="events-filter-transcript"
+        label={`Events: ${label}`}
+        icon={ApplicationIcons.filter}
+        onClick={toggleTranscriptFilterShowing}
+        className={styles.tabTool}
+        subtle={true}
+        ref={transcriptFilterButtonRef}
+      />
+    );
+
+    tabTools.push(
+      <ToolButton
+        key="event-collapse-transcript"
+        label={eventsCollapsed ? "Expand" : "Collapse"}
+        icon={
+          eventsCollapsed
+            ? ApplicationIcons.expand.all
+            : ApplicationIcons.collapse.all
+        }
+        onClick={() => {
+          collapseEvents(!eventsCollapsed);
+        }}
+        subtle={true}
+      />
+    );
+  }
+
+  tabTools.push(
+    <ToolButton
+      key="display-mode-toggle"
+      label={displayMode === "rendered" ? "Raw" : "Rendered"}
+      icon={ApplicationIcons.display}
+      onClick={toggleDisplayMode}
+      className={styles.tabTool}
+      subtle={true}
+      title={
+        displayMode === "rendered"
+          ? "Show raw text without markdown rendering"
+          : "Show rendered markdown"
+      }
+    />
+  );
+
+  tabTools.push(
+    <CopyToolbarButton transcript={transcript} className={styles.tabTool} />
+  );
 
   const tabPanels = [
     <TabPanel
@@ -71,10 +279,12 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       <ChatViewVirtualList
         id={"transcript-id"}
         messages={transcript.messages || []}
+        initialMessageId={messageParam}
         toolCallStyle={"complete"}
         indented={false}
         className={styles.chatList}
         scrollRef={scrollRef}
+        showLabels={true}
       />
     </TabPanel>,
   ];
@@ -92,26 +302,46 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
         scrollable={false}
       >
-        <div className={styles.eventsContainer}>
+        <div
+          className={clsx(
+            styles.eventsContainer,
+            outlineCollapsed ? styles.outlineCollapsed : undefined
+          )}
+        >
           <StickyScroll
             scrollRef={scrollRef}
             className={styles.eventsOutline}
-            offsetTop={50}
+            offsetTop={40}
           >
-            <TranscriptOutline
-              eventNodes={eventNodes}
-              defaultCollapsedIds={defaultCollapsedIds}
-              scrollRef={scrollRef}
-            />
+            {!outlineCollapsed && (
+              <TranscriptOutline
+                eventNodes={eventNodes}
+                defaultCollapsedIds={defaultCollapsedIds}
+                scrollRef={scrollRef}
+              />
+            )}
+            <div
+              className={styles.outlineToggle}
+              onClick={() => toggleOutline(!outlineCollapsed)}
+            >
+              <i className={ApplicationIcons.sidebar} />
+            </div>
           </StickyScroll>
+          <div className={styles.eventsSeparator} />
           <TranscriptViewNodes
             id={"transcript-events-list"}
             eventNodes={eventNodes}
             defaultCollapsedIds={defaultCollapsedIds}
+            initialEventId={eventParam}
             className={styles.eventsList}
             scrollRef={scrollRef}
           />
         </div>
+        <TranscriptFilterPopover
+          showing={transcriptFilterShowing}
+          setShowing={setTranscriptFilterShowing}
+          positionEl={transcriptFilterButtonRef.current}
+        />
       </TabPanel>
     );
   }
@@ -141,21 +371,31 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   }
 
   return (
-    <TabSet
-      id={"transcript-body"}
-      type="pills"
-      tabPanelsClassName={clsx(styles.tabSet)}
-      tabControlsClassName={clsx(styles.tabControl)}
-      className={clsx(styles.tabs)}
-      tools={tabTools}
-    >
-      {tabPanels}
-    </TabSet>
+    <DisplayModeContext.Provider value={displayModeContextValue}>
+      <TabSet
+        id={"transcript-body"}
+        type="pills"
+        tabPanelsClassName={clsx(styles.tabSet)}
+        tabControlsClassName={clsx(styles.tabControl)}
+        className={clsx(styles.tabs)}
+        tools={tabTools}
+      >
+        {tabPanels}
+      </TabSet>
+    </DisplayModeContext.Provider>
   );
 };
 
-const CopyToolbarButton: FC<{ transcript: Transcript }> = ({ transcript }) => {
+const CopyToolbarButton: FC<{
+  transcript: Transcript;
+  className?: string | string[];
+}> = ({ transcript, className }) => {
   const [icon, setIcon] = useState<string>(ApplicationIcons.copy);
+
+  const showCopyConfirmation = useCallback(() => {
+    setIcon(ApplicationIcons.confirm);
+    setTimeout(() => setIcon(ApplicationIcons.copy), 1250);
+  }, []);
 
   if (!transcript) {
     return undefined;
@@ -166,16 +406,14 @@ const CopyToolbarButton: FC<{ transcript: Transcript }> = ({ transcript }) => {
       key="sample-copy"
       label="Copy"
       icon={icon}
-      className="text-size-smallestest"
+      className={clsx(className)}
+      dropdownClassName={"text-size-smallest"}
       subtle={true}
       items={{
         UUID: () => {
           if (transcript.transcript_id) {
             void navigator.clipboard.writeText(transcript.transcript_id);
-            setIcon(ApplicationIcons.confirm);
-            setTimeout(() => {
-              setIcon(ApplicationIcons.copy);
-            }, 1250);
+            showCopyConfirmation();
           }
         },
         Transcript: () => {
@@ -183,10 +421,7 @@ const CopyToolbarButton: FC<{ transcript: Transcript }> = ({ transcript }) => {
             void navigator.clipboard.writeText(
               messagesToStr(transcript.messages)
             );
-            setIcon(ApplicationIcons.confirm);
-            setTimeout(() => {
-              setIcon(ApplicationIcons.copy);
-            }, 1250);
+            showCopyConfirmation();
           }
         },
       }}

@@ -23,6 +23,7 @@ const createMockTranscript = (id: string) => ({
   model: "model-1",
   score: null,
   success: true,
+  message_count: 10,
   total_time: 100,
   total_tokens: 500,
   date: "2024-01-01",

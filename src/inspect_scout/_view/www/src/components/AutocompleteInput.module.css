@@ -18,6 +18,35 @@
   color: var(--bs-secondary);
 }
 
+.inputWithToggle {
+  padding-right: 24px;
+}
+
+.toggleButton {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--bs-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.toggleButton:hover:not(:disabled) {
+  color: var(--bs-body-color);
+}
+
+.toggleButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .suggestionsList {
   margin: 0;
   padding: 0;

@@ -29,6 +29,7 @@ export type FilterType =
   | "boolean"
   | "date"
   | "datetime"
+  | "duration"
   | "unknown";
 
 // Column filter with metadata
@@ -51,6 +52,13 @@ interface TranscriptsTableState {
   sizingStrategy: ColumnSizingStrategyKey;
   /** Column IDs that have been manually resized by the user */
   manuallyResizedColumns: string[];
+}
+
+interface TranscriptState {
+  excludedTypes?: string[];
+  collapsed?: boolean;
+  outlineCollapsed?: boolean;
+  displayMode?: "rendered" | "raw";
 }
 
 interface StoreState {
@@ -110,6 +118,9 @@ interface StoreState {
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
   transcriptsTableState: TranscriptsTableState;
+
+  // Transcript Detail Data
+  transcriptState: TranscriptState;
 
   // App initialization
   setSingleFileMode: (enabled: boolean) => void;
@@ -204,6 +215,9 @@ interface StoreState {
       | TranscriptsTableState
       | ((prev: TranscriptsTableState) => TranscriptsTableState)
   ) => void;
+  setTranscriptState: (
+    updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
+  ) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -259,6 +273,7 @@ export const createStore = (api: ScanApi) =>
             sizingStrategy: "fit-content",
             manuallyResizedColumns: [],
           },
+          transcriptState: {},
 
           // Actions
           setSingleFileMode: (enabled: boolean) => {
@@ -596,6 +611,14 @@ export const createStore = (api: ScanApi) =>
               state.transcriptsTableState =
                 typeof updater === "function"
                   ? updater(state.transcriptsTableState)
+                  : updater;
+            });
+          },
+          setTranscriptState(updater) {
+            set((state) => {
+              state.transcriptState =
+                typeof updater === "function"
+                  ? updater(state.transcriptState)
                   : updater;
             });
           },

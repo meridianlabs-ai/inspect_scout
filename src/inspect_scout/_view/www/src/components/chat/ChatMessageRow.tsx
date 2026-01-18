@@ -43,7 +43,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
 }) => {
   const views: ReactNode[] = [];
   const viewLabels: Array<string | undefined> = [];
-  const useLabels = showLabels && Object.keys(labels || {}).length > 0;
+  const useLabels = showLabels || Object.keys(labels || {}).length > 0;
 
   if (useLabels) {
     // The chat message and label

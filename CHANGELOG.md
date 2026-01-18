@@ -1,3 +1,8 @@
+## Unreleased
+
+- Add `message_count` as standard transcript metadata field.
+- Bugfix: Correct async generator cleanup in AsyncBytesReader.
+
 ## 0.4.7 (16 January 2026)
 
 - Scout View: Editing UI for project settings.

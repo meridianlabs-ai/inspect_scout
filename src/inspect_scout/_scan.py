@@ -1017,6 +1017,7 @@ def _reports_for_parse_error(
         model_options=job.transcript_info.model_options,
         score=job.transcript_info.score,
         success=job.transcript_info.success,
+        message_count=job.transcript_info.message_count,
         total_time=job.transcript_info.total_time,
         total_tokens=job.transcript_info.total_tokens,
         error=job.transcript_info.error,

@@ -75,6 +75,13 @@ export const TranscriptTitle: FC<TranscriptTitleProps> = ({ transcript }) => {
     });
   }
 
+  if (transcript.message_count) {
+    cols.push({
+      label: "Messages",
+      value: transcript.message_count.toString(),
+    });
+  }
+
   return (
     <HeadingGrid
       headings={cols}

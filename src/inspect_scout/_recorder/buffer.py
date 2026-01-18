@@ -96,6 +96,9 @@ class RecorderBuffer:
         transcript_success = resolve_success_value(
             transcript.success, cast(JsonValue | None, transcript_score)
         )
+        transcript_message_count = resolve_metadata_var(
+            transcript.message_count, "message_count", m
+        )
         transcript_total_time = resolve_metadata_var(
             transcript.total_time, "total_time", m
         )
@@ -123,6 +126,7 @@ class RecorderBuffer:
                     "transcript_model_options": transcript_model_options,
                     "transcript_score": transcript_score,
                     "transcript_success": transcript_success,
+                    "transcript_message_count": transcript_message_count,
                     "transcript_total_time": transcript_total_time,
                     "transcript_total_tokens": transcript_total_tokens,
                     "transcript_error": transcript_error,

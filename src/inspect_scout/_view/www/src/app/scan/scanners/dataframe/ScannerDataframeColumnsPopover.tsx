@@ -27,6 +27,7 @@ const columnsGroups = {
     "transcript_model",
     "transcript_score",
     "transcript_success",
+    "transcript_message_count",
     "transcript_total_time",
     "transcript_total_tokens",
     "transcript_error",

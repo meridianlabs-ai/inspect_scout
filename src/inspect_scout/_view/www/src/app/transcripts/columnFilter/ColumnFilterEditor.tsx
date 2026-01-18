@@ -20,9 +20,15 @@ export interface ColumnFilterEditorProps {
   operator: OperatorModel;
   operatorOptions: OperatorModel[];
   rawValue: string;
+  /** Second value for BETWEEN/NOT BETWEEN operators */
+  rawValue2?: string;
   isValueDisabled: boolean;
+  /** True if operator expects a range with two values (BETWEEN, NOT BETWEEN) */
+  isRangeOperator?: boolean;
   onOperatorChange: (operator: OperatorModel) => void;
   onValueChange: (value: string) => void;
+  /** Handler for second value changes (BETWEEN operators) */
+  onValue2Change?: (value: string) => void;
   onCommit?: () => void;
   onCancel?: () => void;
   suggestions?: ScalarValue[];
@@ -38,9 +44,12 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
   operator,
   operatorOptions,
   rawValue,
+  rawValue2 = "",
   isValueDisabled,
+  isRangeOperator = false,
   onOperatorChange,
   onValueChange,
+  onValue2Change,
   onCommit,
   onCancel,
   suggestions = [],
@@ -78,6 +87,14 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
       onValueChange(value);
     },
     [onValueChange]
+  );
+
+  const handleValue2Change = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      onValue2Change?.(value);
+    },
+    [onValue2Change]
   );
 
   const handleKeyDown = useCallback(
@@ -145,6 +162,9 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
               ))}
             </select>
           </div>
+          {isRangeOperator && (
+            <span className={styles.rangeLabel}>Start</span>
+          )}
           <div className={styles.filterRow}>
             {filterType === "boolean" ? (
               <select
@@ -202,6 +222,40 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
               />
             )}
           </div>
+          {/* Second input for BETWEEN/NOT BETWEEN operators */}
+          {isRangeOperator && (
+            <>
+              <span className={styles.rangeLabel}>End</span>
+              <div className={styles.filterRow}>
+                {filterType === "duration" ? (
+                  <DurationInput
+                    id={`${columnId}-val2`}
+                    value={rawValue2}
+                    onChange={handleValue2Change}
+                    disabled={isValueDisabled}
+                  />
+                ) : (
+                  <input
+                    id={`${columnId}-val2`}
+                    className={styles.filterInput}
+                    type={
+                      filterType === "number"
+                        ? "number"
+                        : filterType === "date"
+                          ? "date"
+                          : "datetime-local"
+                    }
+                    spellCheck="false"
+                    value={rawValue2}
+                    onChange={handleValue2Change}
+                    placeholder="Filter"
+                    disabled={isValueDisabled}
+                    step={filterType === "number" ? "any" : undefined}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
 

@@ -111,7 +111,10 @@ export const TranscriptFilterBar: FC<{
     operatorOptions: addFilterOperatorOptions,
     value: addFilterValue,
     setValue: setAddFilterValue,
+    value2: addFilterValue2,
+    setValue2: setAddFilterValue2,
     isValueDisabled: isAddFilterValueDisabled,
+    isRangeOperator: isAddFilterRangeOperator,
     commitAndClose: commitAddFilterAndClose,
     cancelAndClose: cancelAddFilterAndClose,
     handleColumnChange: handleAddFilterColumnChange,
@@ -160,7 +163,10 @@ export const TranscriptFilterBar: FC<{
     operatorOptions,
     value: rawValue,
     setValue: setRawValue,
+    value2: rawValue2,
+    setValue2: setRawValue2,
     isValueDisabled,
+    isRangeOperator,
     commitAndClose,
     cancelAndClose,
   } = useColumnFilterPopover({
@@ -217,7 +223,7 @@ export const TranscriptFilterBar: FC<{
                     chipRefs.current[filter.columnId] = el;
                   }}
                   label={filter.columnId}
-                  value={`${filter.condition.operator} ${formatRepresentativeType(filter.condition.right)}`}
+                  value={formatFilterCondition(filter.condition)}
                   title={`Edit ${filter.columnId} filter`}
                   closeTitle="Remove filter"
                   className={clsx(styles.filterChip, "text-size-smallestest")}
@@ -268,9 +274,12 @@ export const TranscriptFilterBar: FC<{
             operator={operator}
             operatorOptions={operatorOptions}
             rawValue={rawValue}
+            rawValue2={rawValue2}
             isValueDisabled={isValueDisabled}
+            isRangeOperator={isRangeOperator}
             onOperatorChange={setOperator}
             onValueChange={setRawValue}
+            onValue2Change={setRawValue2}
             onCommit={commitAndClose}
             onCancel={cancelAndClose}
             suggestions={filterSuggestions}
@@ -300,9 +309,12 @@ export const TranscriptFilterBar: FC<{
           operator={addFilterOperator}
           operatorOptions={addFilterOperatorOptions}
           rawValue={addFilterValue}
+          rawValue2={addFilterValue2}
           isValueDisabled={isAddFilterValueDisabled}
+          isRangeOperator={isAddFilterRangeOperator}
           onOperatorChange={setAddFilterOperator}
           onValueChange={setAddFilterValue}
+          onValue2Change={setAddFilterValue2}
           onCommit={commitAddFilterAndClose}
           onCancel={cancelAddFilterAndClose}
           suggestions={filterSuggestions}
@@ -377,4 +389,40 @@ const formatRepresentativeType = (value: unknown): string => {
   } else {
     return String(value);
   }
+};
+
+/**
+ * Formats a filter condition for display in a chip.
+ * Handles special formatting for BETWEEN, IN, and other operators.
+ */
+const formatFilterCondition = (condition: SimpleCondition): string => {
+  const { operator, right } = condition;
+
+  // BETWEEN / NOT BETWEEN: show as "BETWEEN value1 AND value2"
+  if (
+    (operator === "BETWEEN" || operator === "NOT BETWEEN") &&
+    Array.isArray(right) &&
+    right.length === 2
+  ) {
+    const v1 = formatRepresentativeType(right[0]);
+    const v2 = formatRepresentativeType(right[1]);
+    return `${operator} ${v1} AND ${v2}`;
+  }
+
+  // IN / NOT IN: show as "IN (value1, value2, ...)"
+  if (
+    (operator === "IN" || operator === "NOT IN") &&
+    Array.isArray(right)
+  ) {
+    const values = right.map((v) => formatRepresentativeType(v)).join(", ");
+    return `${operator} (${values})`;
+  }
+
+  // IS NULL / IS NOT NULL: no value needed
+  if (operator === "IS NULL" || operator === "IS NOT NULL") {
+    return operator;
+  }
+
+  // Default: "operator value"
+  return `${operator} ${formatRepresentativeType(right)}`;
 };

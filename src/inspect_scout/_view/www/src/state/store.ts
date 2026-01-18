@@ -67,6 +67,7 @@ interface StoreState {
   hasInitializedEmbeddedData?: boolean;
   hasInitializedRouting?: boolean;
   scopedErrors: Record<ErrorScope, string | undefined>;
+  showFind?: boolean;
 
   // Scans
   visibleScanJobCount?: number;
@@ -123,6 +124,7 @@ interface StoreState {
   transcriptState: TranscriptState;
 
   // App initialization
+  setShowFind: (show: boolean) => void;
   setSingleFileMode: (enabled: boolean) => void;
   setHasInitializedEmbeddedData: (initialized: boolean) => void;
   setHasInitializedRouting: (initialized: boolean) => void;
@@ -276,6 +278,11 @@ export const createStore = (api: ScanApi) =>
           transcriptState: {},
 
           // Actions
+          setShowFind(show: boolean) {
+            set((state) => {
+              state.showFind = show;
+            });
+          },
           setSingleFileMode: (enabled: boolean) => {
             set((state) => {
               state.singleFileMode = enabled;

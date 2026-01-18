@@ -6,12 +6,15 @@ import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import type { SimpleCondition } from "../../query/types";
-import { useStore } from "../../state/store";
+import { ColumnFilter, useStore } from "../../state/store";
+import type { TranscriptInfo } from "../../types/api-types";
 import { Chip } from "../components/Chip";
 import { ChipGroup } from "../components/ChipGroup";
 
 import { ColumnFilterEditor } from "./columnFilter/ColumnFilterEditor";
+import { useAddFilterPopover } from "./columnFilter/useAddFilterPopover";
 import { useColumnFilterPopover } from "./columnFilter/useColumnFilterPopover";
+import { DEFAULT_VISIBLE_COLUMNS, getFilterTypeForColumn } from "./columns";
 import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
 import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
 import styles from "./TranscriptFilterBar.module.css";
@@ -55,8 +58,73 @@ export const TranscriptFilterBar: FC<{
   // Filter editing state
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const chipRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const addFilterChipRef = useRef<HTMLDivElement | null>(null);
 
   const editingFilter = editingColumnId ? filters[editingColumnId] : null;
+
+  // Add filter handler - also ensures the filtered column is visible
+  const handleAddFilter = useCallback(
+    (filter: ColumnFilter) => {
+      setTranscriptsTableState((prevState) => {
+        const columnKey = filter.columnId as keyof TranscriptInfo;
+
+        // Use default visible columns if not set in state
+        const currentVisibleColumns =
+          prevState.visibleColumns ?? DEFAULT_VISIBLE_COLUMNS;
+
+        // Check if we need to add this column to visible columns
+        const needsColumnVisible = !currentVisibleColumns.includes(columnKey);
+
+        // Check if we need to add this column to column order
+        const needsColumnOrder =
+          prevState.columnOrder.length > 0 &&
+          !prevState.columnOrder.includes(columnKey);
+
+        return {
+          ...prevState,
+          columnFilters: {
+            ...prevState.columnFilters,
+            [filter.columnId]: filter,
+          },
+          // Add the column to visible columns if it's not already there
+          ...(needsColumnVisible && {
+            visibleColumns: [...currentVisibleColumns, columnKey],
+          }),
+          // Add the column to column order if it's not already there
+          ...(needsColumnOrder && {
+            columnOrder: [...prevState.columnOrder, columnKey],
+          }),
+        };
+      });
+    },
+    [setTranscriptsTableState]
+  );
+
+  // Add filter popover
+  const {
+    isOpen: isAddFilterOpen,
+    setIsOpen: setIsAddFilterOpen,
+    selectedColumnId: addFilterColumnId,
+    availableColumns,
+    operator: addFilterOperator,
+    setOperator: setAddFilterOperator,
+    operatorOptions: addFilterOperatorOptions,
+    value: addFilterValue,
+    setValue: setAddFilterValue,
+    isValueDisabled: isAddFilterValueDisabled,
+    commitAndClose: commitAddFilterAndClose,
+    cancelAndClose: cancelAddFilterAndClose,
+    handleColumnChange: handleAddFilterColumnChange,
+  } = useAddFilterPopover({
+    filters,
+    onAddFilter: handleAddFilter,
+    onFilterColumnChange,
+  });
+
+  // Get filter type for add filter mode
+  const addFilterType = addFilterColumnId
+    ? getFilterTypeForColumn(addFilterColumnId)
+    : "string";
 
   const handleFilterChange = useCallback(
     (condition: SimpleCondition | null) => {
@@ -137,34 +205,39 @@ export const TranscriptFilterBar: FC<{
         Filter:
       </div>
       <ChipGroup className={styles.filterBar}>
-        {filterEntries.length > 0 ? (
-          filterEntries.map((filter) => {
-            if (!filter || !filter.condition) {
-              return null;
-            }
-            return (
-              <Chip
-                key={filter.columnId}
-                ref={(el) => {
-                  chipRefs.current[filter.columnId] = el;
-                }}
-                label={filter.columnId}
-                value={`${filter.condition.operator} ${formatRepresentativeType(filter.condition.right)}`}
-                title={`Edit ${filter.columnId} filter`}
-                closeTitle="Remove filter"
-                className={clsx(styles.filterChip, "text-size-smallestest")}
-                onClose={() => {
-                  removeFilter(filter.columnId);
-                }}
-                onClick={editFilter(filter.columnId)}
-              />
-            );
-          })
-        ) : (
-          <div className={clsx("text-size-smallest", styles.filterNone)}>
-            None
-          </div>
-        )}
+        {filterEntries.length > 0
+          ? filterEntries.map((filter) => {
+              if (!filter || !filter.condition) {
+                return null;
+              }
+              return (
+                <Chip
+                  key={filter.columnId}
+                  ref={(el) => {
+                    chipRefs.current[filter.columnId] = el;
+                  }}
+                  label={filter.columnId}
+                  value={`${filter.condition.operator} ${formatRepresentativeType(filter.condition.right)}`}
+                  title={`Edit ${filter.columnId} filter`}
+                  closeTitle="Remove filter"
+                  className={clsx(styles.filterChip, "text-size-smallestest")}
+                  onClose={() => {
+                    removeFilter(filter.columnId);
+                  }}
+                  onClick={editFilter(filter.columnId)}
+                />
+              );
+            })
+          : null}
+        {/* Add Filter chip */}
+        <Chip
+          ref={addFilterChipRef}
+          icon={ApplicationIcons.changes.add}
+          value="Add"
+          title="Add a new filter"
+          className={clsx(styles.filterChip, "text-size-smallestest")}
+          onClick={() => setIsAddFilterOpen(true)}
+        />
       </ChipGroup>
       {filterEntries.length > 0 && (
         <>
@@ -173,6 +246,7 @@ export const TranscriptFilterBar: FC<{
         </>
       )}
 
+      {/* Edit filter popover */}
       {editingColumnId && editingFilter && (
         <PopOver
           id={`transcript-filter-editor-${editingColumnId}`}
@@ -203,6 +277,39 @@ export const TranscriptFilterBar: FC<{
           />
         </PopOver>
       )}
+
+      {/* Add filter popover */}
+      <PopOver
+        id="transcript-add-filter-editor"
+        isOpen={isAddFilterOpen}
+        setIsOpen={setIsAddFilterOpen}
+        positionEl={addFilterChipRef.current}
+        placement="bottom-start"
+        showArrow={true}
+        hoverDelay={-1}
+        closeOnMouseLeave={false}
+        styles={{
+          padding: "0.4rem",
+          backgroundColor: "var(--bs-light)",
+        }}
+      >
+        <ColumnFilterEditor
+          mode="add"
+          columnId={addFilterColumnId ?? ""}
+          filterType={addFilterType}
+          operator={addFilterOperator}
+          operatorOptions={addFilterOperatorOptions}
+          rawValue={addFilterValue}
+          isValueDisabled={isAddFilterValueDisabled}
+          onOperatorChange={setAddFilterOperator}
+          onValueChange={setAddFilterValue}
+          onCommit={commitAddFilterAndClose}
+          onCancel={cancelAddFilterAndClose}
+          suggestions={filterSuggestions}
+          availableColumns={availableColumns}
+          onColumnChange={handleAddFilterColumnChange}
+        />
+      </PopOver>
       <div className={clsx(styles.actionButtons)}>
         <TranscriptColumnsButton
           ref={columnButtonRef}

@@ -28,9 +28,12 @@
 }
 
 .columnId {
-  margin-left: 0.5rem;
   font-weight: 600;
   font-family: var(--bs-monospace);
+}
+
+.columnIdText {
+  margin-left: 0.5rem;
 }
 
 :global(.btn).filterButton {

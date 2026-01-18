@@ -4456,20 +4456,20 @@ so disabling selection can break that functionality */
   background: var(--bs-primary);
   color: white;
 }
-._filterContent_1q7mh_1 {
+._filterContent_84s10_1 {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-._filterRow_1q7mh_7 {
+._filterRow_84s10_7 {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-._filterSelect_1q7mh_13,
-._filterInput_1q7mh_14 {
+._filterSelect_84s10_13,
+._filterInput_84s10_14 {
   flex: 1;
   font-size: 12px;
   padding: 4px 6px;
@@ -4479,31 +4479,34 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._filterInput_1q7mh_14:disabled,
-._filterSelect_1q7mh_13:disabled {
+._filterInput_84s10_14:disabled,
+._filterSelect_84s10_13:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
 
-._columnId_1q7mh_30 {
-  margin-left: 0.5rem;
+._columnId_84s10_30 {
   font-weight: 600;
   font-family: var(--bs-monospace);
 }
 
-.btn._filterButton_1q7mh_36 {
+._columnIdText_84s10_35 {
+  margin-left: 0.5rem;
+}
+
+.btn._filterButton_84s10_39 {
   width: 100%;
   padding: 0.2rem;
 }
 
-._durationInputWrapper_1q7mh_41 {
+._durationInputWrapper_84s10_44 {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
 }
 
-._durationHelper_1q7mh_48 {
+._durationHelper_84s10_51 {
   font-size: 11px;
   color: var(--bs-secondary);
   padding-left: 2px;

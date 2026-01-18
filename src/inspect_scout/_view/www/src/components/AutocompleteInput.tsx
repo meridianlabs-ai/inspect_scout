@@ -333,8 +333,9 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
                 role="option"
                 aria-selected={index === highlightedIndex}
                 onMouseDown={(e) => {
-                  // Prevent mousedown from triggering outside click handler
+                  // Prevent mousedown from triggering outside click handlers (including PopOver)
                   e.preventDefault();
+                  e.stopPropagation();
                   selectSuggestion(suggestion);
                 }}
                 onMouseEnter={() => setHighlightedIndex(index)}

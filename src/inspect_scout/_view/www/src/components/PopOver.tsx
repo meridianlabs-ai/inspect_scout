@@ -114,19 +114,31 @@ export const PopOver: React.FC<PopOverProps> = ({
 
     if (!isOpen || hoverDelay <= 0) {
       setShouldShowPopover(isOpen);
-      const listener = (event: MouseEvent) => {
-        // Only close if clicking outside the popover content
-        if (
-          popperRef.current &&
-          !popperRef.current.contains(event.target as Node)
-        ) {
+
+      // Track whether mousedown originated inside popover content.
+      // We use capture phase to detect this BEFORE the event bubbles to portaled children.
+      let mouseDownInsidePopover = false;
+
+      const captureListener = (event: MouseEvent) => {
+        mouseDownInsidePopover =
+          popperRef.current?.contains(event.target as Node) ?? false;
+      };
+
+      const bubbleListener = () => {
+        // Only close if mousedown didn't start inside the popover
+        if (popperRef.current && !mouseDownInsidePopover) {
           setIsOpen(false);
         }
       };
-      document.addEventListener("mousedown", listener);
+
+      // Capture phase fires first, before any children (including portaled ones)
+      document.addEventListener("mousedown", captureListener, true);
+      // Bubble phase fires after - by then we know if it started inside
+      document.addEventListener("mousedown", bubbleListener);
 
       return () => {
-        document.removeEventListener("mousedown", listener);
+        document.removeEventListener("mousedown", captureListener, true);
+        document.removeEventListener("mousedown", bubbleListener);
       };
     }
 

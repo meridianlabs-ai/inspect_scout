@@ -5,7 +5,7 @@ import { PopOver } from "../../components/PopOver";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 
-import { DEFAULT_COLUMN_ORDER } from "./columns";
+import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER } from "./columns";
 import styles from "./TranscriptColumnsPopover.module.css";
 
 export interface TranscriptColumnsPopoverProps {
@@ -26,30 +26,6 @@ const DEFAULT_VISIBLE_COLUMNS: Array<keyof TranscriptInfo> = [
   "total_time",
   "total_tokens",
 ];
-
-// Column headers for display
-const COLUMN_LABELS: Record<keyof TranscriptInfo, string> = {
-  success: "Success",
-  date: "Date",
-  transcript_id: "Transcript ID",
-  task_set: "Task Set",
-  task_id: "Task ID",
-  task_repeat: "Repeat",
-  model: "Model",
-  model_options: "Model Options",
-  agent: "Agent",
-  agent_args: "Agent Args",
-  score: "Score",
-  metadata: "Metadata",
-  source_id: "Source ID",
-  source_type: "Source Type",
-  source_uri: "Source URI",
-  total_tokens: "Total Tokens",
-  total_time: "Total Time",
-  message_count: "Messages",
-  limit: "Limit",
-  error: "Error",
-};
 
 const useTranscriptColumns = () => {
   const visibleColumns =

@@ -2,6 +2,7 @@ from collections.abc import AsyncIterable, AsyncIterator
 from typing import IO, Protocol, TypeGuard, cast
 
 import anyio
+from typing_extensions import Self
 
 
 class AsyncBytesReader(Protocol):
@@ -14,9 +15,15 @@ class AsyncBytesReader(Protocol):
 
     This protocol captures that minimal requirement without requiring the full BinaryIO
     interface that includes methods like seek(), tell(), close(), etc.
+
+    Also supports async context manager protocol for usage ensuring proper resource
+    cleanup.
     """
 
     async def read(self, size: int) -> bytes: ...
+    async def aclose(self) -> None: ...
+    async def __aenter__(self) -> Self: ...
+    async def __aexit__(self, *args: object) -> None: ...
 
 
 def _is_async_iterable(
@@ -26,6 +33,10 @@ def _is_async_iterable(
 
 
 def adapt_to_reader(io_or_iter: IO[bytes] | AsyncIterable[bytes]) -> AsyncBytesReader:
+    """Adapt a byte source to an async file-like interface (e.g. for ijson).
+
+    Use as async context manager to ensure cleanup of underlying async iterators.
+    """
     return (
         _BytesIterableReader(io_or_iter)
         if _is_async_iterable(io_or_iter)
@@ -51,6 +62,15 @@ class _BytesIOReader(AsyncBytesReader):
     async def read(self, size: int) -> bytes:
         async with self._lock:
             return await anyio.to_thread.run_sync(self._sync_io.read, size)
+
+    async def aclose(self) -> None:
+        pass  # caller owns the IO[bytes]
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        await self.aclose()
 
 
 class _BytesIterableReader(AsyncBytesReader):
@@ -89,3 +109,13 @@ class _BytesIterableReader(AsyncBytesReader):
                     break  # No more data
 
         return b"".join(chunks_to_return)
+
+    async def aclose(self) -> None:
+        if hasattr(self._async_iter, "aclose"):
+            await self._async_iter.aclose()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        await self.aclose()

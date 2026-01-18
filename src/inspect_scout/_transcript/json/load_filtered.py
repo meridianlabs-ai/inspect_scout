@@ -111,9 +111,10 @@ async def load_filtered_transcript(
     """
     try:
         # Phase 1: Parse, filter, and collect attachment references
-        transcript, attachment_refs = await _parse_and_filter(
-            adapt_to_reader(sample_bytes), t, messages, events
-        )
+        async with adapt_to_reader(sample_bytes) as reader:
+            transcript, attachment_refs = await _parse_and_filter(
+                reader, t, messages, events
+            )
         # Phase 2: Resolve attachment references
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:

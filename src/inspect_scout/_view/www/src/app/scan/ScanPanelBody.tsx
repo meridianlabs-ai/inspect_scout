@@ -15,6 +15,8 @@ import { resultIdentifierStr, resultLog } from "../utils/results";
 import { ScanInfo } from "./info/ScanInfo";
 import { ScannerDataframeClearFiltersButton } from "./scanners/dataframe/ScannerDataframeClearFiltersButton";
 import { ScannerDataframeColumnsPopover } from "./scanners/dataframe/ScannerDataframeColumnsPopover";
+import { ScannerDataframeCopyCSVButton } from "./scanners/dataframe/ScannerDataframeCopyCSVButton";
+import { ScannerDataframeDownloadCSVButton } from "./scanners/dataframe/ScannerDataframeDownloadCSVButton";
 import { ScannerDataframeFilterColumnsButton } from "./scanners/dataframe/ScannerDataframeFilterColumnsButton";
 import { ScannerDataframeWrapTextButton } from "./scanners/dataframe/ScannerDataframeWrapTextButton";
 import { ScannerResultsFilter } from "./scanners/results/ScannerResultsFilter";
@@ -149,6 +151,12 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
     }
 
     if (selectedResultsView === kSegmentDataframe) {
+      tools.push(
+        <ScannerDataframeCopyCSVButton key="scan-dataframe-copy-csv" />
+      );
+      tools.push(
+        <ScannerDataframeDownloadCSVButton key="scan-dataframe-download-csv" />
+      );
       tools.push(
         <ScannerDataframeWrapTextButton key="scan-dataframe-wrap-text" />
       );

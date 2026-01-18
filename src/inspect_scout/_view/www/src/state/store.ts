@@ -3,7 +3,7 @@ import {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { GridState } from "ag-grid-community";
+import { GridApi, GridState } from "ag-grid-community";
 import { createContext, useContext } from "react";
 import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";
@@ -102,6 +102,7 @@ interface StoreState {
   dataframeWrapText?: boolean;
   dataframeShowFilterColumns?: boolean;
   dataframeFilterColumns?: string[];
+  dataframeGridApi?: GridApi | null;
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -205,6 +206,7 @@ interface StoreState {
   setDataframeWrapText: (wrap: boolean) => void;
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
+  setDataframeGridApi: (api: GridApi | null) => void;
 
   setUserScansDir: (path: string) => void;
   setUserTranscriptsDir: (path: string) => void;
@@ -586,6 +588,11 @@ export const createStore = (api: ScanApi) =>
               state.dataframeShowFilterColumns = show;
             });
           },
+          setDataframeGridApi: (api: GridApi | null) => {
+            set((state) => {
+              state.dataframeGridApi = api;
+            });
+          },
           setUserScansDir: (path: string) => {
             set((state) => {
               state.userScansDir = path;
@@ -633,6 +640,7 @@ export const createStore = (api: ScanApi) =>
             const {
               hasInitializedRouting,
               visibleScannerResults,
+              dataframeGridApi,
               ...persistedState
             } = state;
             return persistedState;

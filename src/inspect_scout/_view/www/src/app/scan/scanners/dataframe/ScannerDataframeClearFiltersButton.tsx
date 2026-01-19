@@ -19,6 +19,7 @@ export const ScannerDataframeClearFiltersButton: FC = () => {
       icon={ApplicationIcons.filter}
       label="Clear Filters"
       onClick={clearState}
+      subtle={true}
     />
   );
 };

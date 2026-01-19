@@ -13,8 +13,13 @@ import { ResultGroup } from "../types";
 import { resultIdentifierStr, resultLog } from "../utils/results";
 
 import { ScanInfo } from "./info/ScanInfo";
+import { DataframeGridApiProvider } from "./scanners/dataframe/DataframeGridApiContext";
 import { ScannerDataframeClearFiltersButton } from "./scanners/dataframe/ScannerDataframeClearFiltersButton";
 import { ScannerDataframeColumnsPopover } from "./scanners/dataframe/ScannerDataframeColumnsPopover";
+import {
+  ScannerDataframeCopyCSVButton,
+  ScannerDataframeDownloadCSVButton,
+} from "./scanners/dataframe/ScannerDataframeCSVButtons";
 import { ScannerDataframeFilterColumnsButton } from "./scanners/dataframe/ScannerDataframeFilterColumnsButton";
 import { ScannerDataframeWrapTextButton } from "./scanners/dataframe/ScannerDataframeWrapTextButton";
 import { ScannerResultsFilter } from "./scanners/results/ScannerResultsFilter";
@@ -150,6 +155,12 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
 
     if (selectedResultsView === kSegmentDataframe) {
       tools.push(
+        <ScannerDataframeCopyCSVButton key="scan-dataframe-copy-csv" />
+      );
+      tools.push(
+        <ScannerDataframeDownloadCSVButton key="scan-dataframe-download-csv" />
+      );
+      tools.push(
         <ScannerDataframeWrapTextButton key="scan-dataframe-wrap-text" />
       );
     }
@@ -200,7 +211,7 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
   }
 
   return (
-    <>
+    <DataframeGridApiProvider>
       <TabSet
         id={"scan-detail-tabs"}
         type="pills"
@@ -249,6 +260,6 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
       {selectedResultsView === kSegmentDataframe && buttonElement && (
         <ScannerDataframeColumnsPopover positionEl={buttonElement} />
       )}
-    </>
+    </DataframeGridApiProvider>
   );
 };

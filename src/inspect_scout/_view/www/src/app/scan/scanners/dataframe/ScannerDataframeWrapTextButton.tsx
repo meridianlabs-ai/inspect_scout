@@ -18,6 +18,7 @@ export const ScannerDataframeWrapTextButton: FC = () => {
       label="Wrap Text"
       onClick={toggleWrapText}
       latched={wrapText}
+      subtle={true}
     />
   );
 };

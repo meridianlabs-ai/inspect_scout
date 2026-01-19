@@ -1,10 +1,9 @@
 import clsx from "clsx";
 import { FC, Fragment } from "react";
 
+import { ScoreValue } from "../../app/components/ScoreValue";
 import { ScoreEvent } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
-import { isRecord } from "../../utils/type";
-import { MetaDataGrid } from "../content/MetaDataGrid";
 import { RecordTree } from "../content/RecordTree";
 import { RenderedText } from "../content/RenderedText";
 import { ApplicationIcons } from "../icons";
@@ -68,7 +67,7 @@ export const ScoreEventView: FC<ScoreEventViewProps> = ({
         </div>
         <div className={clsx(styles.separator)}></div>
         <div className={"text-style-label"}>Score</div>
-        <div>{renderScore(event.score.value)}</div>
+        <ScoreValue score={event.score.value} />
         <div className={clsx(styles.separator)}></div>
       </div>
       {event.score.metadata ? (
@@ -83,14 +82,4 @@ export const ScoreEventView: FC<ScoreEventViewProps> = ({
       ) : undefined}
     </EventPanel>
   );
-};
-
-export const renderScore = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.join(" ");
-  } else if (isRecord(value) && typeof value === "object") {
-    return <MetaDataGrid entries={value} />;
-  } else {
-    return String(value);
-  }
 };

@@ -509,7 +509,12 @@ def _create_expanded_view_sql(
     # 1. Label-based validation can't create synthetic rows in SQL (too complex)
     # 2. Without synthetic rows, validation results would be incomplete/misleading
     # 3. Users should use Pandas (rows="results") for full validation support
-    validation_fields = {"validation_target", "validation_result"}
+    validation_fields = {
+        "validation_target",
+        "validation_result",
+        "validation_predicate",
+        "validation_split",
+    }
 
     # Build the non-resultset rows query with explicit column selection
     non_resultset_cols = ", ".join(all_columns)

@@ -302,6 +302,8 @@ def _handle_label_validation(
 
         # Set validation result for this synthetic row
         template_row["validation_result"] = parsed_results.get(label, None)
+        # Note: validation_target, validation_predicate, validation_split are
+        # preserved from template_row (same for all results from the same case)
 
         template_row["scan_error"] = None
         template_row["scan_error_traceback"] = None

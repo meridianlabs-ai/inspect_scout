@@ -1129,6 +1129,13 @@ async def _validate_scan(
 
     # if so then perform the validation and return it
     if v_case:
+        # Determine effective predicate (per-case overrides global, default to "eq")
+        effective_predicate = v_case.predicate or validation_set.predicate or "eq"
+        # Convert to string for storage (None if callable)
+        predicate_str = (
+            effective_predicate if isinstance(effective_predicate, str) else None
+        )
+
         async with span("validation"):
             # Handle label-based validation for resultsets
             if v_case.labels is not None:
@@ -1136,16 +1143,28 @@ async def _validate_scan(
                     validation_set,
                     scan_result,
                     labels=v_case.labels,
+                    predicate_override=v_case.predicate,
                 )
-                return ResultValidation(target=v_case.labels, valid=valid)
+                return ResultValidation(
+                    target=v_case.labels,
+                    valid=valid,
+                    predicate=predicate_str,
+                    split=v_case.split,
+                )
             # Handle regular target-based validation
             else:
                 valid = await validate(
                     validation_set,
                     scan_result,
                     target=v_case.target,
+                    predicate_override=v_case.predicate,
                 )
-                return ResultValidation(target=v_case.target, valid=valid)
+                return ResultValidation(
+                    target=v_case.target,
+                    valid=valid,
+                    predicate=predicate_str,
+                    split=v_case.split,
+                )
     else:
         return None
 

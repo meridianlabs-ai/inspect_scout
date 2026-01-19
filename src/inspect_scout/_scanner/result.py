@@ -82,6 +82,10 @@ class Error(BaseModel):
 class ResultValidation(BaseModel):
     target: JsonValue
     valid: bool | dict[str, bool]
+    predicate: str | None = Field(default=None)
+    """The predicate used for validation (e.g., 'eq', 'gte', 'contains')."""
+    split: str | None = Field(default=None)
+    """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
 class ResultReport(BaseModel):
@@ -174,6 +178,8 @@ class ResultReport(BaseModel):
         if self.validation is not None:
             columns["validation_target"] = to_json_str_safe(self.validation.target)
             columns["validation_result"] = to_json_str_safe(self.validation.valid)
+            columns["validation_predicate"] = self.validation.predicate
+            columns["validation_split"] = self.validation.split
             if isinstance(self.validation.valid, dict):
                 for k, v in self.validation.valid.items():
                     columns[f"validation_result_{k}"] = v
@@ -181,6 +187,8 @@ class ResultReport(BaseModel):
         else:
             columns["validation_target"] = None
             columns["validation_result"] = None
+            columns["validation_predicate"] = None
+            columns["validation_split"] = None
 
         # report tokens
         total_tokens = 0

@@ -19,6 +19,8 @@ reference: inspect_scout
 ### validation_set
 ### ValidationSet
 ### ValidationCase
+### PredicateType
+### PredicateFn
 ### ValidationPredicate
 
 

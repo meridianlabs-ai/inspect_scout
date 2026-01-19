@@ -1,12 +1,12 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import yaml
 
-from .predicates import ValidationPredicate
+from .predicates import PREDICATES, PredicateType, ValidationPredicate
 from .types import ValidationCase, ValidationSet
 
 logger = logging.getLogger(__name__)
@@ -334,6 +334,22 @@ def _get_split_value(row: pd.Series, df: pd.DataFrame) -> str | None:
     return str(split_val)
 
 
+def _get_predicate_value(row: pd.Series, df: pd.DataFrame) -> PredicateType | None:
+    """Extract predicate value from a row, handling NaN and validating."""
+    if "predicate" not in df.columns:
+        return None
+    pred_val = row["predicate"]
+    if pd.isna(pred_val):
+        return None
+    pred_str = str(pred_val)
+    if pred_str not in PREDICATES:
+        raise ValueError(
+            f"Unknown predicate '{pred_str}' for case id '{row['id']}'. "
+            f"Valid predicates: {', '.join(sorted(PREDICATES.keys()))}"
+        )
+    return cast(PredicateType, pred_str)
+
+
 def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
     """Create ValidationCase objects with a single target column."""
     cases = []
@@ -341,6 +357,7 @@ def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
         case = ValidationCase(
             id=row["id"],
             target=row["target"],
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)
@@ -362,6 +379,7 @@ def _create_cases_with_dict_target(
         case = ValidationCase(
             id=row["id"],
             target=target_dict,
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)
@@ -383,6 +401,7 @@ def _create_cases_with_labels(
         case = ValidationCase(
             id=row["id"],
             labels=labels_dict,
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)

@@ -101,14 +101,6 @@ Label-based validation uses "at least one" logic: if any result with a given lab
 
 Missing labels are treated as negative/absent values. If your validation set expects `label_phishing: false` but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
 
-### Comparison Predicates
-
-The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. "gt", "gte", "contains") or with a custom function. Specify the `ValidationPredicate` as a parameter to the `validation_set()` function:
-
-``` python
-validation_set(cases="validation.csv", predicate="gte")
-```
-
 ### Value Dictionary
 
 If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce `target_*` column names as follows:
@@ -118,6 +110,66 @@ id, target_deception, target_backtracks
 Fg3KBpgFr6RSsEWmHBUqeo, true, 2
 VFkCH7gXWpJYUYonvfHxrG, false, 0
 ```
+
+## Comparison Predicates
+
+By default, validation compares scanner results to targets using equality (`eq`). You can specify different comparison predicates either per-case or as a default for all cases.
+
+### Per-Case Predicates
+
+Add a `predicate` column to specify comparison logic for individual cases:
+
+``` {.default filename="validation.csv"}
+id,target,predicate
+SiEXpECj7U9nNAvM3H7JqB,true,eq
+VFkCH7gXWpJYUYonvfHxrG,hello,contains
+Fg3KBpgFr6RSsEWmHBUqeo,5,gte
+```
+
+In this example:
+
+- First case passes if scanner result equals `true`
+- Second case passes if scanner result contains "hello"
+- Third case passes if scanner result is ≥ 5
+
+### Available Predicates
+
+| Predicate | Description |
+|-----------|-------------|
+| `eq` | Equal (default) |
+| `ne` | Not equal |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `contains` | String contains substring |
+| `startswith` | String starts with prefix |
+| `endswith` | String ends with suffix |
+| `icontains` | Case-insensitive contains |
+| `iequals` | Case-insensitive equals |
+
+### Default Predicate
+
+You can also set a default predicate for all cases using the `predicate` parameter:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
+When both are specified, per-case predicates take precedence over the default. This allows you to set a common predicate while overriding it for specific cases:
+
+``` {.default filename="validation.csv"}
+id,target,predicate
+Fg3KBpgFr6RSsEWmHBUqeo,5,
+VFkCH7gXWpJYUYonvfHxrG,3,lt
+SiEXpECj7U9nNAvM3H7JqB,10,
+```
+
+``` python
+# Default is "gte", but second case uses "lt"
+validation_set(cases="validation.csv", predicate="gte")
+```
+
 
 ## File Formats {#validation-files}
 

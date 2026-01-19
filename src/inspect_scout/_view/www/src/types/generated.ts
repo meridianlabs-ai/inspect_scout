@@ -3512,6 +3512,11 @@ export interface components {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
             /**
+             * Predicate
+             * @default null
+             */
+            predicate: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
+            /**
              * Split
              * @default null
              */

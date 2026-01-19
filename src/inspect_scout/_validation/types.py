@@ -4,7 +4,7 @@ from typing import Any
 import dill  # type: ignore
 from pydantic import BaseModel, Field, JsonValue, field_serializer, field_validator
 
-from .predicates import PREDICATES, ValidationPredicate
+from .predicates import PREDICATES, PredicateType, ValidationPredicate
 
 
 class ValidationCase(BaseModel):
@@ -31,6 +31,12 @@ class ValidationCase(BaseModel):
 
     Maps result labels to their expected values. Used when validating
     scanners that return multiple labeled results per transcript.
+    """
+
+    predicate: PredicateType | None = Field(default=None)
+    """Predicate for comparing scanner result to target (e.g., 'eq', 'gte', 'contains').
+
+    When set, this per-case predicate overrides the global predicate on ValidationSet.
     """
 
     split: str | None = Field(default=None)

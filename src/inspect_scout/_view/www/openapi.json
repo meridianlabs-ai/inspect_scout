@@ -9197,6 +9197,31 @@
             "default": null,
             "title": "Labels"
           },
+          "predicate": {
+            "anyOf": [
+              {
+                "enum": [
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "eq",
+                  "ne",
+                  "contains",
+                  "startswith",
+                  "endswith",
+                  "icontains",
+                  "iequals"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Predicate"
+          },
           "split": {
             "anyOf": [
               {

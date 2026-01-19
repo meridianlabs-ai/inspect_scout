@@ -3511,6 +3511,11 @@ export interface components {
             labels: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
+            /**
+             * Split
+             * @default null
+             */
+            split: string | null;
             /** @default null */
             target: components["schemas"]["JsonValue"] | null;
         };
@@ -3535,6 +3540,8 @@ export interface components {
              * @default eq
              */
             predicate: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
+            /** Split */
+            split?: string | string[] | null;
         };
         /**
          * ValidationSet
@@ -3545,6 +3552,8 @@ export interface components {
             cases: components["schemas"]["ValidationCase"][];
             /** Predicate */
             predicate: string | null;
+            /** Split */
+            split?: string | string[] | null;
         };
         /**
          * Worklist

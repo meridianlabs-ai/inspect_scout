@@ -9197,6 +9197,18 @@
             "default": null,
             "title": "Labels"
           },
+          "split": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Split"
+          },
           "target": {
             "anyOf": [
               {
@@ -9282,6 +9294,23 @@
             ],
             "default": "eq",
             "title": "Predicate"
+          },
+          "split": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split"
           }
         },
         "required": [
@@ -9311,6 +9340,23 @@
               }
             ],
             "title": "Predicate"
+          },
+          "split": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split"
           }
         },
         "required": [

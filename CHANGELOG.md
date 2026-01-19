@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Validation: Add support for defining and using named splits (e.g. 'dev', 'test') for validation data.
 - Add `message_count` as standard transcript metadata field.
 - Bugfix: Correct async generator cleanup in AsyncBytesReader.
 

@@ -641,3 +641,325 @@ def test_id_parsing_variations(id_input: Any, expected_output: Any) -> None:
 
     result = _parse_id(id_input)
     assert result == expected_output
+
+
+# Split Tests
+
+
+def test_csv_with_split_column(tmp_path: Path) -> None:
+    """Test CSV with split column."""
+    csv_content = """id,target,split
+test1,true,dev
+test2,false,test
+test3,true,dev"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].id == "test2"
+    assert validation.cases[1].split == "test"
+    assert validation.cases[2].id == "test3"
+    assert validation.cases[2].split == "dev"
+
+
+def test_csv_with_split_filter_single(tmp_path: Path) -> None:
+    """Test filtering by single split."""
+    csv_content = """id,target,split
+test1,true,dev
+test2,false,test
+test3,true,dev"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file, split="dev")
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[1].id == "test3"
+    assert validation.split == "dev"
+
+
+def test_csv_with_split_filter_multiple(tmp_path: Path) -> None:
+    """Test filtering by multiple splits."""
+    csv_content = """id,target,split
+test1,true,dev
+test2,false,test
+test3,true,train
+test4,false,dev"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file, split=["dev", "test"])
+
+    assert len(validation.cases) == 3
+    assert {c.id for c in validation.cases} == {"test1", "test2", "test4"}
+    assert validation.split == ["dev", "test"]
+
+
+def test_yaml_nested_split_format(tmp_path: Path) -> None:
+    """Test nested YAML format with splits."""
+    yaml_content = """- split: dev
+  cases:
+    - id: test1
+      target: true
+    - id: test2
+      target: false
+- split: test
+  cases:
+    - id: test3
+      target: true"""
+
+    yaml_file = tmp_path / "test.yaml"
+    yaml_file.write_text(yaml_content)
+
+    validation = validation_from(yaml_file)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].id == "test2"
+    assert validation.cases[1].split == "dev"
+    assert validation.cases[2].id == "test3"
+    assert validation.cases[2].split == "test"
+
+
+def test_yaml_nested_split_with_filter(tmp_path: Path) -> None:
+    """Test nested YAML format with split filtering."""
+    yaml_content = """- split: dev
+  cases:
+    - id: test1
+      target: true
+    - id: test2
+      target: false
+- split: test
+  cases:
+    - id: test3
+      target: true"""
+
+    yaml_file = tmp_path / "test.yaml"
+    yaml_file.write_text(yaml_content)
+
+    validation = validation_from(yaml_file, split="dev")
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[1].id == "test2"
+
+
+def test_yaml_flat_split_field(tmp_path: Path) -> None:
+    """Test flat YAML format with split field."""
+    yaml_content = """- id: test1
+  target: true
+  split: dev
+- id: test2
+  target: false
+  split: test"""
+
+    yaml_file = tmp_path / "test.yaml"
+    yaml_file.write_text(yaml_content)
+
+    validation = validation_from(yaml_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].split == "test"
+
+
+def test_json_with_split_field(tmp_path: Path) -> None:
+    """Test JSON with split field."""
+    json_content = [
+        {"id": "test1", "target": True, "split": "dev"},
+        {"id": "test2", "target": False, "split": "test"},
+    ]
+
+    json_file = tmp_path / "test.json"
+    json_file.write_text(json.dumps(json_content))
+
+    validation = validation_from(json_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].split == "test"
+
+
+def test_jsonl_with_split_field(tmp_path: Path) -> None:
+    """Test JSONL with split field."""
+    jsonl_content = """{"id": "test1", "target": true, "split": "dev"}
+{"id": "test2", "target": false, "split": "test"}"""
+
+    jsonl_file = tmp_path / "test.jsonl"
+    jsonl_file.write_text(jsonl_content)
+
+    validation = validation_from(jsonl_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].split == "test"
+
+
+def test_cases_without_split_excluded_when_filtering(tmp_path: Path) -> None:
+    """Test that cases without split are excluded when filtering."""
+    csv_content = """id,target,split
+test1,true,dev
+test2,false,
+test3,true,dev"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file, split="dev")
+
+    # Only cases with split="dev" should be included
+    assert len(validation.cases) == 2
+    assert {c.id for c in validation.cases} == {"test1", "test3"}
+
+
+def test_unknown_split_warns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test warning when filtering by unknown split name."""
+    csv_content = """id,target,split
+test1,true,dev
+test2,false,test"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    warnings_logged: list[str] = []
+    import inspect_scout._validation.validation as validation_module
+
+    monkeypatch.setattr(
+        validation_module.logger,
+        "warning",
+        lambda msg: warnings_logged.append(msg),
+    )
+
+    validation = validation_from(csv_file, split="nonexistent")
+
+    assert len(validation.cases) == 0
+    assert len(warnings_logged) == 1
+    assert "nonexistent" in warnings_logged[0]
+    assert "dev" in warnings_logged[0]
+    assert "test" in warnings_logged[0]
+
+
+def test_validation_set_stores_active_split() -> None:
+    """Test that ValidationSet stores the active split filter."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2"],
+            "target": [True, False],
+            "split": ["dev", "test"],
+        }
+    )
+
+    validation = validation_from(df, split="dev")
+
+    assert validation.split == "dev"
+
+
+def test_validation_set_stores_multiple_splits() -> None:
+    """Test that ValidationSet stores multiple split filters."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2", "test3"],
+            "target": [True, False, True],
+            "split": ["dev", "test", "train"],
+        }
+    )
+
+    validation = validation_from(df, split=["dev", "test"])
+
+    assert validation.split == ["dev", "test"]
+
+
+def test_no_split_filter_returns_all() -> None:
+    """Test that no split filter returns all cases."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2", "test3"],
+            "target": [True, False, True],
+            "split": ["dev", "test", None],
+        }
+    )
+
+    validation = validation_from(df)
+
+    assert len(validation.cases) == 3
+    assert validation.split is None
+
+
+def test_dataframe_with_split_column() -> None:
+    """Test DataFrame input with split column."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2", "test3"],
+            "target": [True, False, True],
+            "split": ["dev", "test", "dev"],
+        }
+    )
+
+    validation = validation_from(df, split="test")
+
+    assert len(validation.cases) == 1
+    assert validation.cases[0].id == "test2"
+    assert validation.cases[0].split == "test"
+
+
+def test_json_nested_split_format(tmp_path: Path) -> None:
+    """Test nested JSON format with splits."""
+    json_content = [
+        {
+            "split": "dev",
+            "cases": [
+                {"id": "test1", "target": True},
+                {"id": "test2", "target": False},
+            ],
+        },
+        {
+            "split": "test",
+            "cases": [{"id": "test3", "target": True}],
+        },
+    ]
+
+    json_file = tmp_path / "test.json"
+    json_file.write_text(json.dumps(json_content))
+
+    validation = validation_from(json_file)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].split == "dev"
+    assert validation.cases[2].split == "test"
+
+
+def test_warn_no_splits_defined(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test warning when filtering but no cases have splits defined."""
+    csv_content = """id,target
+test1,true
+test2,false"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    warnings_logged: list[str] = []
+    import inspect_scout._validation.validation as validation_module
+
+    monkeypatch.setattr(
+        validation_module.logger,
+        "warning",
+        lambda msg: warnings_logged.append(msg),
+    )
+
+    validation = validation_from(csv_file, split="dev")
+
+    assert len(validation.cases) == 0
+    assert len(warnings_logged) == 1
+    assert "No cases have split values defined" in warnings_logged[0]

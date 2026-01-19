@@ -24,6 +24,7 @@ export const ScannerDataframeFilterColumnsButton = forwardRef<
       onClick={toggleShowFilter}
       latched={showFilter}
       ref={ref}
+      subtle={true}
     />
   );
 });

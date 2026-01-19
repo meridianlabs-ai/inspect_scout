@@ -87,6 +87,7 @@ export const ScannerDataframeCopyCSVButton: FC = () => {
       onClick={handleCopy}
       disabled={!gridApi}
       title="Copy filtered data as CSV to clipboard"
+      subtle={true}
     />
   );
 };
@@ -119,6 +120,7 @@ export const ScannerDataframeDownloadCSVButton: FC = () => {
       onClick={handleDownload}
       disabled={!gridApi}
       title="Download filtered data as CSV file"
+      subtle={true}
     />
   );
 };

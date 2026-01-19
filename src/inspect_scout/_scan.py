@@ -97,7 +97,7 @@ def scan(
     transcripts: Transcripts | None = None,
     scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
-    validation: ValidationSet | dict[str, ValidationSet] | None = None,
+    validation: str | ValidationSet | Mapping[str, str | ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -128,7 +128,9 @@ def scan(
         transcripts: Transcripts to scan.
         scans: Location to write scan results (filesystem or S3 bucket). Defaults to "./scans".
         worklist: Transcripts too process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file with same.
-        validation: Validation cases to evaluate for scanners.
+        validation: Validation cases to evaluate for scanners. Can be a file path
+            (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
+            names to file paths or ValidationSets.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -189,7 +191,7 @@ async def scan_async(
     transcripts: Transcripts | None = None,
     scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
-    validation: ValidationSet | dict[str, ValidationSet] | None = None,
+    validation: str | ValidationSet | Mapping[str, str | ValidationSet] | None = None,
     model: str | Model | None = None,
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
@@ -219,7 +221,9 @@ async def scan_async(
         transcripts: Transcripts to scan.
         scans: Location to write results (filesystem or S3 bucket). Defaults to "./scans".
         worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
-        validation: Validation cases to apply for scanners.
+        validation: Validation cases to apply for scanners. Can be a file path
+            (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
+            names to file paths or ValidationSets.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
         model_config: `GenerationConfig` for calls to the model.
@@ -1091,26 +1095,35 @@ async def _resolve_worklist(
 
 
 def _resolve_validation(
-    validation: ValidationSet | dict[str, ValidationSet],
+    validation: str | ValidationSet | Mapping[str, str | ValidationSet],
     scanjob: ScanJob,
 ) -> dict[str, ValidationSet]:
-    if isinstance(validation, dict):
-        # confirm all keys correspond to scanners
+    from inspect_scout._validation.validation import validation_set as vs_from_file
+
+    # Handle string path -> convert to ValidationSet
+    if isinstance(validation, str):
+        validation = vs_from_file(validation)
+
+    if isinstance(validation, ValidationSet):
+        # single validation set - confirm single scanner
+        if len(scanjob.scanners) > 1:
+            raise ValueError(
+                "Validation sets must be specified as a dict of scanner:validation "
+                "when there is more than one scanner."
+            )
+        return {next(iter(scanjob.scanners)): validation}
+    else:
+        # dict/Mapping - validate keys and convert any string values
         for s in validation.keys():
             if s not in scanjob.scanners:
                 raise ValueError(
-                    f"Validation referended scanner '{s}' however there is no scanner of that name passed to the scan."
+                    f"Validation referenced scanner '{s}' however there is no "
+                    "scanner of that name passed to the scan."
                 )
-
-        return validation
-    else:
-        # if a  single validation set was passed then confirm
-        # that there is only a single scanner
-        if len(scanjob.scanners) > 1:
-            raise ValueError(
-                "Validation sets must be specified as a dict of scanner:validation when there is more than one scanner."
-            )
-        return {next(iter(scanjob.scanners)): validation}
+        return {
+            k: v if isinstance(v, ValidationSet) else vs_from_file(v)
+            for k, v in validation.items()
+        }
 
 
 async def _validate_scan(

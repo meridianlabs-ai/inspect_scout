@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC, Fragment } from "react";
 
+import { ScoreValue } from "../../app/components/ScoreValue";
 import { ScoreEditEvent } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { RecordTree } from "../content/RecordTree";
@@ -9,7 +10,6 @@ import { ApplicationIcons } from "../icons";
 
 import { EventPanel } from "./event/EventPanel";
 import styles from "./ScoreEditEventView.module.css";
-import { renderScore } from "./ScoreEventView";
 import { EventNode } from "./types";
 
 interface ScoreEditEventViewProps {
@@ -56,7 +56,7 @@ export const ScoreEditEventView: FC<ScoreEditEventViewProps> = ({
             <Fragment>
               <div className={clsx(styles.separator)}></div>
               <div className={"text-style-label"}>Value</div>
-              <div>{renderScore(event.edit.value)}</div>
+              <ScoreValue score={event.edit.value} />
             </Fragment>
           ) : (
             ""

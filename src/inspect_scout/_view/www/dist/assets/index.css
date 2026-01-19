@@ -4594,7 +4594,7 @@ so disabling selection can break that functionality */
 ._selected_1sw8v_41 {
   font-weight: 600;
 }
-._container_1fic7_1 {
+._container_z2s7f_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
@@ -4604,20 +4604,20 @@ so disabling selection can break that functionality */
   width: 100%;
 }
 
-._filterBar_1fic7_11 {
+._filterBar_z2s7f_11 {
   margin: 1px 0;
 }
 
-._filterLabel_1fic7_15 {
+._filterLabel_z2s7f_15 {
   margin-right: 0.3rem;
   margin-top: 3px;
 }
 
-._filterNone_1fic7_20 {
+._filterNone_z2s7f_20 {
   margin-top: 2px;
 }
 
-._actionButtons_1fic7_24 {
+._actionButtons_z2s7f_24 {
   margin-left: auto;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
@@ -4626,26 +4626,27 @@ so disabling selection can break that functionality */
   align-items: center;
   flex-direction: row;
   font-size: var(--inspect-font-size-smallestest);
+  height: calc(100% - 4px);
 }
 
-._actionButton_1fic7_24 {
+._actionButton_z2s7f_24 {
   padding: 0.1rem 0.4rem;
   margin: 1px 0rem;
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButtonDropDown_1fic7_41 {
+._actionButtonDropDown_z2s7f_42 {
   font-size: var(--inspect-font-size-smallestest);
 }
 
-._actionButton_1fic7_24._chipButton_1fic7_45 {
+._actionButton_z2s7f_24._chipButton_z2s7f_46 {
   background-color: unset;
   margin-left: 0.3rem;
 }
 
-._sep_1fic7_50 {
+._sep_z2s7f_51 {
   width: 1px;
-  height: calc(100% - 4px);
+  height: 100%;
   margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);

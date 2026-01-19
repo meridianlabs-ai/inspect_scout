@@ -30,6 +30,7 @@
   align-items: center;
   flex-direction: row;
   font-size: var(--inspect-font-size-smallestest);
+  height: calc(100% - 4px);
 }
 
 .actionButton {
@@ -49,7 +50,7 @@
 
 .sep {
   width: 1px;
-  height: calc(100% - 4px);
+  height: 100%;
   margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);

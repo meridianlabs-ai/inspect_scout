@@ -248,7 +248,6 @@ export const TranscriptFilterBar: FC<{
       {filterEntries.length > 0 && (
         <>
           <CopyQueryButton itemValues={filterCodeValues} />
-          <div className={styles.sep}></div>
         </>
       )}
 
@@ -323,6 +322,7 @@ export const TranscriptFilterBar: FC<{
         />
       </PopOver>
       <div className={clsx(styles.actionButtons)}>
+        <div className={styles.sep}></div>
         <TranscriptColumnsButton
           ref={columnButtonRef}
           isOpen={showColumnPicker}

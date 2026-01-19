@@ -70,7 +70,7 @@ class Condition(BaseModel):
         if self.operator in (Operator.IN, Operator.NOT_IN):
             return list(self.right) if isinstance(self.right, list) else []
         if self.operator in (Operator.BETWEEN, Operator.NOT_BETWEEN):
-            if isinstance(self.right, tuple) and len(self.right) >= 2:
+            if isinstance(self.right, (tuple, list)) and len(self.right) >= 2:
                 return [self.right[0], self.right[1]]
             return []
         if self.right is not None and not isinstance(

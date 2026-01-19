@@ -63,6 +63,7 @@ export const TranscriptsPanel: FC = () => {
       : skipToken
   );
 
+  console.log({ condition });
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
       resolvedTranscriptDir

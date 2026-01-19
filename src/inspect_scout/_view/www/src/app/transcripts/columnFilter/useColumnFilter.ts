@@ -18,14 +18,62 @@ const OPERATORS_BY_TYPE: Record<FilterType, OperatorModel[]> = {
     "NOT LIKE",
     "ILIKE",
     "NOT ILIKE",
+    "IN",
+    "NOT IN",
     "IS NULL",
     "IS NOT NULL",
   ],
-  number: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
+  number: [
+    "=",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "IN",
+    "NOT IN",
+    "BETWEEN",
+    "NOT BETWEEN",
+    "IS NULL",
+    "IS NOT NULL",
+  ],
   boolean: ["=", "!=", "IS NULL", "IS NOT NULL"],
-  date: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
-  datetime: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
-  duration: ["=", "!=", "<", "<=", ">", ">=", "IS NULL", "IS NOT NULL"],
+  date: [
+    "=",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "BETWEEN",
+    "NOT BETWEEN",
+    "IS NULL",
+    "IS NOT NULL",
+  ],
+  datetime: [
+    "=",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "BETWEEN",
+    "NOT BETWEEN",
+    "IS NULL",
+    "IS NOT NULL",
+  ],
+  duration: [
+    "=",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "BETWEEN",
+    "NOT BETWEEN",
+    "IS NULL",
+    "IS NOT NULL",
+  ],
   unknown: [
     "=",
     "!=",
@@ -33,6 +81,8 @@ const OPERATORS_BY_TYPE: Record<FilterType, OperatorModel[]> = {
     "NOT LIKE",
     "ILIKE",
     "NOT ILIKE",
+    "IN",
+    "NOT IN",
     "IS NULL",
     "IS NOT NULL",
   ],
@@ -43,15 +93,22 @@ const OPERATORS_WITHOUT_VALUE = new Set<OperatorModel>([
   "IS NOT NULL",
 ]);
 
-const formatFilterValue = (
-  value: SimpleCondition["right"] | undefined,
+const OPERATORS_WITH_LIST_VALUE = new Set<OperatorModel>(["IN", "NOT IN"]);
+
+const OPERATORS_WITH_RANGE_VALUE = new Set<OperatorModel>([
+  "BETWEEN",
+  "NOT BETWEEN",
+]);
+
+/**
+ * Formats a single scalar value for display in an input field.
+ */
+const formatScalarValue = (
+  value: ScalarValue,
   filterType?: FilterType
 ): string => {
   if (value === null || value === undefined) {
     return "";
-  }
-  if (Array.isArray(value)) {
-    return value.join(", ");
   }
   // For date/datetime types, ensure ISO format for native inputs
   if (filterType === "date" && typeof value !== "boolean") {
@@ -61,6 +118,47 @@ const formatFilterValue = (
     return formatDateTimeForInput(value);
   }
   return String(value);
+};
+
+/**
+ * Formats a filter value (single, array, or tuple) for the primary input field.
+ * For BETWEEN operators, this returns only the first value.
+ */
+const formatFilterValue = (
+  value: SimpleCondition["right"] | undefined,
+  filterType?: FilterType
+): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  // For arrays (IN/NOT IN or BETWEEN tuple), join with comma for IN/NOT IN
+  // or return first value for BETWEEN
+  if (Array.isArray(value)) {
+    // Tuple for BETWEEN - return first value only
+    if (value.length === 2) {
+      return formatScalarValue(value[0], filterType);
+    }
+    // Array for IN/NOT IN - join with comma
+    return value.map((v) => formatScalarValue(v, filterType)).join(", ");
+  }
+  return formatScalarValue(value, filterType);
+};
+
+/**
+ * Formats the second value for BETWEEN operators.
+ */
+const formatFilterValue2 = (
+  value: SimpleCondition["right"] | undefined,
+  filterType?: FilterType
+): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  // For BETWEEN tuple, return second value
+  if (Array.isArray(value) && value.length === 2) {
+    return formatScalarValue(value[1], filterType);
+  }
+  return "";
 };
 
 const parseFilterValue = (
@@ -87,6 +185,47 @@ const parseFilterValue = (
   }
 };
 
+/**
+ * Parses a comma-separated string into an array of scalar values for IN/NOT IN operators.
+ */
+const parseListValue = (
+  filterType: FilterType,
+  rawValue: string
+): ScalarValue[] | undefined => {
+  const parts = rawValue
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+  if (parts.length === 0) {
+    return undefined;
+  }
+  const parsed: ScalarValue[] = [];
+  for (const part of parts) {
+    const value = parseFilterValue(filterType, part);
+    if (value === undefined) {
+      return undefined;
+    }
+    parsed.push(value);
+  }
+  return parsed;
+};
+
+/**
+ * Parses two values into a tuple for BETWEEN/NOT BETWEEN operators.
+ */
+const parseRangeValue = (
+  filterType: FilterType,
+  rawValue1: string,
+  rawValue2: string
+): [ScalarValue, ScalarValue] | undefined => {
+  const parsed1 = parseFilterValue(filterType, rawValue1);
+  const parsed2 = parseFilterValue(filterType, rawValue2);
+  if (parsed1 === undefined || parsed2 === undefined) {
+    return undefined;
+  }
+  return [parsed1, parsed2];
+};
+
 export interface UseColumnFilterParams {
   columnId: string;
   filterType: FilterType;
@@ -100,10 +239,19 @@ export interface UseColumnFilterReturn {
   operatorOptions: OperatorModel[];
   value: string;
   setValue: (value: string) => void;
+  /** Second value for BETWEEN/NOT BETWEEN operators */
+  value2: string;
+  setValue2: (value: string) => void;
+  /** True if operator requires no value (IS NULL, IS NOT NULL) */
   usesValue: boolean;
+  /** True if operator expects a list of values (IN, NOT IN) */
+  usesListValue: boolean;
+  /** True if operator expects a range with two values (BETWEEN, NOT BETWEEN) */
+  usesRangeValue: boolean;
   buildCondition: (
     operator: OperatorModel,
-    value: string
+    value: string,
+    value2?: string
   ) => SimpleCondition | null | undefined;
 }
 
@@ -120,11 +268,19 @@ export function useColumnFilter({
     condition?.operator ?? defaultOperator
   );
 
-  // value
+  // value (primary)
   const [value, setValue] = useState<string>(
     formatFilterValue(condition?.right, filterType)
   );
+  // value2 (secondary for BETWEEN operators)
+  const [value2, setValue2] = useState<string>(
+    formatFilterValue2(condition?.right, filterType)
+  );
+
   const isValueDisabled = OPERATORS_WITHOUT_VALUE.has(operator);
+  const usesListValue = OPERATORS_WITH_LIST_VALUE.has(operator);
+  const usesRangeValue = OPERATORS_WITH_RANGE_VALUE.has(operator);
+
   const valueSelectRef = useRef<HTMLSelectElement | null>(null);
   const valueInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -139,6 +295,7 @@ export function useColumnFilter({
     if (!isOpen || columnChanged) {
       setOperator(condition?.operator ?? defaultOperator);
       setValue(formatFilterValue(condition?.right, filterType));
+      setValue2(formatFilterValue2(condition?.right, filterType));
     }
   }, [condition, defaultOperator, filterType, isOpen, columnId, setValue]);
 
@@ -158,13 +315,35 @@ export function useColumnFilter({
   }, [filterType, isOpen, isValueDisabled]);
 
   const buildCondition = useCallback(
-    (operator: OperatorModel, value: string) => {
+    (operator: OperatorModel, value: string, value2?: string) => {
       if (OPERATORS_WITHOUT_VALUE.has(operator)) {
         return ConditionBuilder.simple(columnId, operator, null);
       }
       if (value.trim() === "") {
         return null;
       }
+
+      // Handle list operators (IN, NOT IN)
+      if (OPERATORS_WITH_LIST_VALUE.has(operator)) {
+        const parsed = parseListValue(filterType, value);
+        if (parsed === undefined) {
+          return undefined;
+        }
+        return ConditionBuilder.simple(columnId, operator, parsed);
+      }
+
+      // Handle range operators (BETWEEN, NOT BETWEEN)
+      if (OPERATORS_WITH_RANGE_VALUE.has(operator)) {
+        if (!value2 || value2.trim() === "") {
+          return null;
+        }
+        const parsed = parseRangeValue(filterType, value, value2);
+        if (parsed === undefined) {
+          return undefined;
+        }
+        return ConditionBuilder.simple(columnId, operator, parsed);
+      }
+
       const parsed = parseFilterValue(filterType, value);
       if (parsed === undefined) {
         return undefined;
@@ -194,8 +373,12 @@ export function useColumnFilter({
     setOperator,
     value,
     setValue,
+    value2,
+    setValue2,
     operatorOptions,
     usesValue: isValueDisabled,
+    usesListValue,
+    usesRangeValue,
     buildCondition,
   };
 }

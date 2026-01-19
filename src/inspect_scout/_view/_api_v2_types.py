@@ -1,5 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
+
+from pydantic import JsonValue
 
 from inspect_scout._query.order_by import OrderBy
 
@@ -146,3 +148,34 @@ class AppConfig:
     project_dir: str
     transcripts_dir: str | None
     scans_dir: str
+
+
+@dataclass
+class ValidationCaseRequest:
+    """Request body for creating or updating a validation case."""
+
+    id: str | list[str] | None = None
+    """Case ID (required for create, optional for upsert where ID comes from URL path)."""
+
+    target: JsonValue | None = None
+    """Target value for the case (mutually exclusive with labels)."""
+
+    labels: dict[str, JsonValue] | None = None
+    """Label-specific targets for resultset validation (mutually exclusive with target)."""
+
+    split: str | None = None
+    """Optional split name for organizing cases."""
+
+    predicate: str | None = None
+    """Optional predicate for comparing scanner result to target."""
+
+
+@dataclass
+class CreateValidationSetRequest:
+    """Request body for POST /validations endpoint."""
+
+    path: str
+    """Absolute URI for the new file (e.g., 'file:///Users/.../my_set.csv')."""
+
+    cases: list[ValidationCaseRequest] = field(default_factory=list)
+    """Initial cases to add to the validation set."""

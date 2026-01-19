@@ -1525,6 +1525,27 @@
         "title": "ContentVideo",
         "type": "object"
       },
+      "CreateValidationSetRequest": {
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationCaseRequest"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "cases"
+        ],
+        "title": "CreateValidationSetRequest",
+        "type": "object"
+      },
       "DistinctRequest": {
         "properties": {
           "column": {
@@ -9252,6 +9273,75 @@
         "title": "ValidationCase",
         "type": "object"
       },
+      "ValidationCaseRequest": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "predicate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicate"
+          },
+          "split": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ValidationCaseRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -9926,6 +10016,271 @@
           }
         },
         "summary": "Get transcript"
+      }
+    },
+    "/validations": {
+      "get": {
+        "description": "Scans the project directory for validation files (.csv, .yaml, .json, .jsonl) and returns their URIs.",
+        "operationId": "list_validations_validations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Validations Validations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List validation files"
+      },
+      "post": {
+        "description": "Creates a new validation file at the specified path with optional initial cases. Returns the URI of the created file.",
+        "operationId": "create_validation_validations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateValidationSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Validation Validations Post",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create a validation file"
+      }
+    },
+    "/validations/{uri}": {
+      "delete": {
+        "description": "Deletes a validation file from the project.",
+        "operationId": "delete_validation_validations__uri__delete",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Validation Validations  Uri  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a validation file"
+      },
+      "get": {
+        "description": "Returns all cases from a validation file.",
+        "operationId": "get_validation_cases_validations__uri__get",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Validation Cases Validations  Uri  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get validation cases"
+      }
+    },
+    "/validations/{uri}/{case_id}": {
+      "delete": {
+        "description": "Deletes a case from a validation file.",
+        "operationId": "delete_validation_case_validations__uri___case_id__delete",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Case ID (base64url-encoded)",
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "description": "Case ID (base64url-encoded)",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Validation Case Validations  Uri   Case Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a case"
+      },
+      "get": {
+        "description": "Returns a specific case from a validation file by ID.",
+        "operationId": "get_validation_case_validations__uri___case_id__get",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Case ID (base64url-encoded)",
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "description": "Case ID (base64url-encoded)",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Validation Case Validations  Uri   Case Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get a specific case"
+      },
+      "post": {
+        "description": "Creates or updates a case in a validation file. If the case ID exists, it will be updated; otherwise, a new case will be created.",
+        "operationId": "upsert_validation_case_validations__uri___case_id__post",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Case ID (base64url-encoded)",
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "description": "Case ID (base64url-encoded)",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationCaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Upsert Validation Case Validations  Uri   Case Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create or update a case"
       }
     }
   }

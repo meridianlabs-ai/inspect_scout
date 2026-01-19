@@ -248,6 +248,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List validation files
+         * @description Scans the project directory for validation files (.csv, .yaml, .json, .jsonl) and returns their URIs.
+         */
+        get: operations["list_validations_validations_get"];
+        put?: never;
+        /**
+         * Create a validation file
+         * @description Creates a new validation file at the specified path with optional initial cases. Returns the URI of the created file.
+         */
+        post: operations["create_validation_validations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/validations/{uri}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get validation cases
+         * @description Returns all cases from a validation file.
+         */
+        get: operations["get_validation_cases_validations__uri__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a validation file
+         * @description Deletes a validation file from the project.
+         */
+        delete: operations["delete_validation_validations__uri__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/validations/{uri}/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a specific case
+         * @description Returns a specific case from a validation file by ID.
+         */
+        get: operations["get_validation_case_validations__uri___case_id__get"];
+        put?: never;
+        /**
+         * Create or update a case
+         * @description Creates or updates a case in a validation file. If the case ID exists, it will be updated; otherwise, a new case will be created.
+         */
+        post: operations["upsert_validation_case_validations__uri___case_id__post"];
+        /**
+         * Delete a case
+         * @description Deletes a case from a validation file.
+         */
+        delete: operations["delete_validation_case_validations__uri___case_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -817,6 +893,13 @@ export interface components {
             type: "video";
             /** Video */
             video: string;
+        };
+        /** CreateValidationSetRequest */
+        CreateValidationSetRequest: {
+            /** Cases */
+            cases: components["schemas"]["ValidationCaseRequest"][];
+            /** Path */
+            path: string;
         };
         /** DistinctRequest */
         DistinctRequest: {
@@ -3524,6 +3607,20 @@ export interface components {
             /** @default null */
             target: components["schemas"]["JsonValue"] | null;
         };
+        /** ValidationCaseRequest */
+        ValidationCaseRequest: {
+            /** Id */
+            id?: string | string[] | null;
+            /** Labels */
+            labels?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Predicate */
+            predicate?: string | null;
+            /** Split */
+            split?: string | null;
+            target?: components["schemas"]["JsonValue"] | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3890,6 +3987,185 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Transcript"];
+                };
+            };
+        };
+    };
+    list_validations_validations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    create_validation_validations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateValidationSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    get_validation_cases_validations__uri__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    delete_validation_validations__uri__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    get_validation_case_validations__uri___case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+                /** @description Case ID (base64url-encoded) */
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    upsert_validation_case_validations__uri___case_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+                /** @description Case ID (base64url-encoded) */
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    delete_validation_case_validations__uri___case_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+                /** @description Case ID (base64url-encoded) */
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
         };

@@ -77,6 +77,7 @@ from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
 )
+from ._validation_api import create_validation_router
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -173,6 +174,9 @@ def v2_api_app(
 
             app.openapi_schema = openapi_schema
         return app.openapi_schema
+
+    # Include validation router
+    app.include_router(create_validation_router(PathlibPath.cwd(), access_policy))
 
     app.openapi = custom_openapi  # type: ignore[method-assign]
 

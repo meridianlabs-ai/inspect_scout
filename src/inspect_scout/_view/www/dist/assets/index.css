@@ -8355,47 +8355,45 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: hidden;
   height: 100%;
 }
-._sidebar_ruino_1 {
+._sidebar_uz8wg_1 {
   border-right: solid 1px var(--bs-border-color);
   padding: 1rem;
   overflow-y: auto;
 }
 
-._container_ruino_7 {
-  display: inline-grid;
-  grid-template-columns: 1fr 2fr;
+._container_uz8wg_7 {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-self: start;
-  row-gap: 0.5rem;
+  gap: 0.5rem;
 }
 
-._colspan_ruino_14 {
+._colspan_uz8wg_14 {
   grid-column: span 2;
 }
 
-._explanation_ruino_18 {
+._explanation_uz8wg_18 {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 1rem;
   row-gap: 0.75rem;
 }
 
-._scanValue_ruino_25 {
+._scanValue_uz8wg_25 {
   padding-right: 0.5rem;
 }
 
-._values_ruino_29 {
-  display: grid;
-  grid-template-columns: max-content auto;
-  column-gap: 0.5rem;
+._values_uz8wg_29 {
+  display: block;
 }
 
-._validation_ruino_35 {
+._validation_uz8wg_33 {
   margin-left: 1rem;
   display: grid;
   grid-template-columns: max-content max-content;
 }
 
-._validationLabel_ruino_41 {
+._validationLabel_uz8wg_39 {
   padding-right: 0.5rem;
   margin-top: 2px;
 }

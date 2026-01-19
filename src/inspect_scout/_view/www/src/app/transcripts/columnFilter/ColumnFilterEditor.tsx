@@ -162,9 +162,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
               ))}
             </select>
           </div>
-          {isRangeOperator && (
-            <span className={styles.rangeLabel}>Start</span>
-          )}
+          {isRangeOperator && <span className={styles.rangeLabel}>Start</span>}
           <div className={styles.filterRow}>
             {filterType === "boolean" ? (
               <select

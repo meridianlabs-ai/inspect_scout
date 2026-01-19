@@ -410,10 +410,7 @@ const formatFilterCondition = (condition: SimpleCondition): string => {
   }
 
   // IN / NOT IN: show as "IN (value1, value2, ...)"
-  if (
-    (operator === "IN" || operator === "NOT IN") &&
-    Array.isArray(right)
-  ) {
+  if ((operator === "IN" || operator === "NOT IN") && Array.isArray(right)) {
     const values = right.map((v) => formatRepresentativeType(v)).join(", ");
     return `${operator} (${values})`;
   }

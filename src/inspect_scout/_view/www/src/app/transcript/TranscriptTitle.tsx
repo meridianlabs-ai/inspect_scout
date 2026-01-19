@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { Transcript } from "../../types/api-types";
-import { formatDateTime, formatTime } from "../../utils/format";
+import { formatDateTime, formatNumber, formatTime } from "../../utils/format";
 import { HeadingGrid, HeadingValue } from "../components/HeadingGrid";
 import { TaskName } from "../components/TaskName";
 
@@ -64,7 +64,7 @@ export const TranscriptTitle: FC<TranscriptTitleProps> = ({ transcript }) => {
   if (transcript.total_tokens) {
     cols.push({
       label: "Tokens",
-      value: transcript.total_tokens.toString(),
+      value: formatNumber(transcript.total_tokens),
     });
   }
 

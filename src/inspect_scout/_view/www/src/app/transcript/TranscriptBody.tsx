@@ -38,6 +38,7 @@ import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
 export const kTranscriptMessagesTabId = "transcript-messages";
 export const kTranscriptEventsTabId = "transcript-events";
 export const kTranscriptMetadataTabId = "transcript-metadata";
+export const kTranscriptInfoTabId = "transcript-info";
 
 /**
  * Recursively collects all collapsible event IDs from the event tree.
@@ -369,6 +370,29 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       </TabPanel>
     );
   }
+
+  const { events, messages, metadata, ...infoData } = transcript;
+  tabPanels.push(
+    <TabPanel
+      key="transcript-info"
+      id={kTranscriptInfoTabId}
+      className={clsx(styles.infoTab)}
+      title="Info"
+      onSelected={() => {
+        handleTabChange(kTranscriptInfoTabId);
+      }}
+      selected={resolvedSelectedTranscriptTab === kTranscriptInfoTabId}
+      scrollable={false}
+    >
+      <div className={styles.scrollable}>
+        <MetaDataGrid
+          id="transcript-info-grid"
+          entries={infoData}
+          className={clsx(styles.metadata)}
+        />
+      </div>
+    </TabPanel>
+  );
 
   return (
     <DisplayModeContext.Provider value={displayModeContextValue}>

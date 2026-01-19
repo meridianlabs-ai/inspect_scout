@@ -1,12 +1,12 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import yaml
 
-from .predicates import ValidationPredicate
+from .predicates import PREDICATES, PredicateType, ValidationPredicate
 from .types import ValidationCase, ValidationSet
 
 logger = logging.getLogger(__name__)
@@ -334,14 +334,20 @@ def _get_split_value(row: pd.Series, df: pd.DataFrame) -> str | None:
     return str(split_val)
 
 
-def _get_predicate_value(row: pd.Series, df: pd.DataFrame) -> str | None:
-    """Extract predicate value from a row, handling NaN."""
+def _get_predicate_value(row: pd.Series, df: pd.DataFrame) -> PredicateType | None:
+    """Extract predicate value from a row, handling NaN and validating."""
     if "predicate" not in df.columns:
         return None
     pred_val = row["predicate"]
     if pd.isna(pred_val):
         return None
-    return str(pred_val)
+    pred_str = str(pred_val)
+    if pred_str not in PREDICATES:
+        raise ValueError(
+            f"Unknown predicate '{pred_str}' for case id '{row['id']}'. "
+            f"Valid predicates: {', '.join(sorted(PREDICATES.keys()))}"
+        )
+    return cast(PredicateType, pred_str)
 
 
 def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:

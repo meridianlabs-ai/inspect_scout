@@ -6,7 +6,10 @@ from pydantic import JsonValue
 from inspect_scout._scanner.result import Result
 
 # Predicate function signatures
-PredicateFn = Callable[[Result, JsonValue], Awaitable[bool | dict[str, bool]]]
+PredicateFn: TypeAlias = Callable[
+    [Result, JsonValue], Awaitable[bool | dict[str, bool]]
+]
+"""Function that implements a validation predicate."""
 
 # String name of a built-in validation predicate
 PredicateType: TypeAlias = Literal[

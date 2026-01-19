@@ -1131,3 +1131,16 @@ def test_cases_without_predicate_have_none() -> None:
     assert len(validation.cases) == 2
     assert validation.cases[0].predicate is None
     assert validation.cases[1].predicate is None
+
+
+def test_invalid_predicate_in_file_raises_error(tmp_path: Path) -> None:
+    """Test that invalid predicate values in data files raise a helpful error."""
+    csv_content = """id,target,predicate
+test1,100,foo
+test2,200,eq"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    with pytest.raises(ValueError, match="Unknown predicate 'foo' for case id 'test1'"):
+        validation_from(csv_file)

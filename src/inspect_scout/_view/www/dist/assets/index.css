@@ -4456,20 +4456,20 @@ so disabling selection can break that functionality */
   background: var(--bs-primary);
   color: white;
 }
-._filterContent_84s10_1 {
+._filterContent_1e9kw_1 {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-._filterRow_84s10_7 {
+._filterRow_1e9kw_7 {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-._filterSelect_84s10_13,
-._filterInput_84s10_14 {
+._filterSelect_1e9kw_13,
+._filterInput_1e9kw_14 {
   flex: 1;
   font-size: 12px;
   padding: 4px 6px;
@@ -4479,34 +4479,40 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._filterInput_84s10_14:disabled,
-._filterSelect_84s10_13:disabled {
+._filterInput_1e9kw_14:disabled,
+._filterSelect_1e9kw_13:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
 
-._columnId_84s10_30 {
+._columnId_1e9kw_30 {
   font-weight: 600;
   font-family: var(--bs-monospace);
 }
 
-._columnIdText_84s10_35 {
+._columnIdText_1e9kw_35 {
   margin-left: 0.5rem;
 }
 
-.btn._filterButton_84s10_39 {
+.btn._filterButton_1e9kw_39 {
   width: 100%;
   padding: 0.2rem;
 }
 
-._durationInputWrapper_84s10_44 {
+._durationInputWrapper_1e9kw_44 {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
 }
 
-._durationHelper_84s10_51 {
+._durationHelper_1e9kw_51 {
+  font-size: 11px;
+  color: var(--bs-secondary);
+  padding-left: 2px;
+}
+
+._rangeLabel_1e9kw_57 {
   font-size: 11px;
   color: var(--bs-secondary);
   padding-left: 2px;
@@ -8716,4 +8722,53 @@ span.ap-marker-container:hover span.ap-marker {
   margin-right: 0.5rem;
   margin-top: 0.5rem;
   margin-bottom: 1rem;
+}
+.findBand {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-right: 20%;
+  z-index: 1060;
+  color: var(--inspect-find-foreground);
+  background-color: var(--inspect-find-background);
+  font-size: 0.9rem;
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  column-gap: 0.2em;
+  padding: 0.2rem;
+  border-bottom: solid 1px var(--bs-light-border-subtle);
+  border-left: solid 1px var(--bs-light-border-subtle);
+  border-right: solid 1px var(--bs-light-border-subtle);
+  box-shadow: var(--bs-box-shadow);
+}
+
+.findBand input {
+  height: 2em;
+  font-size: 0.9em;
+  margin: 0.1rem;
+  outline: none;
+  border: solid 1px var(--inspect-input-border);
+  color: var(--inspect-input-foreground);
+  background: var(--inspect-input-background);
+}
+
+#inspect-find-no-results {
+  font-size: 0.9em;
+  opacity: 0;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-right: 0.5em;
+}
+
+.findBand .btn.next,
+.findBand .btn.prev {
+  padding: 0;
+  font-size: var(--inspect-fond-size-larger);
+}
+
+.findBand .btn.close {
+  padding: 0;
+  font-size: var(--inspect-font-size-title-secondary);
+  margin-top: -0.1rem;
+  margin-bottom: -0.1rem;
 }

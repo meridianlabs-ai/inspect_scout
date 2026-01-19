@@ -1,12 +1,12 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import yaml
 
-from .predicates import ValidationPredicate
+from .predicates import PREDICATES, PredicateType, ValidationPredicate
 from .types import ValidationCase, ValidationSet
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def validation_set(
     cases: str | Path | pd.DataFrame,
     predicate: ValidationPredicate | None = "eq",
+    split: str | list[str] | None = None,
 ) -> ValidationSet:
     """Create a validation set by reading cases from a file or data frame.
 
@@ -24,6 +25,9 @@ def validation_set(
             For single-value targets, compares value to target directly.
             For dict targets, string/single-value predicates are applied to each key,
             while multi-value predicates receive the full dicts.
+        split: Optional split name(s) to filter cases by. Only cases with matching
+            split values will be included. Can be a single split name or a list of
+            split names. Cases without a split field are excluded when filtering.
     """
     # Load data into DataFrame if not already one
     if isinstance(cases, pd.DataFrame):
@@ -70,7 +74,28 @@ def validation_set(
             f"  - 'label_*' columns (e.g., label_deception) for resultset validation"
         )
 
-    return ValidationSet(cases=validate_cases, predicate=predicate)
+    # Filter by split if specified
+    if split is not None:
+        split_set = {split} if isinstance(split, str) else set(split)
+        filtered_cases = [c for c in validate_cases if c.split in split_set]
+
+        # Warn if filtered result is empty and requested splits don't exist
+        if not filtered_cases and validate_cases:
+            available_splits = {c.split for c in validate_cases if c.split is not None}
+            if available_splits:
+                logger.warning(
+                    f"No cases found for split(s) {sorted(split_set)}. "
+                    f"Available splits: {sorted(available_splits)}"
+                )
+            else:
+                logger.warning(
+                    f"No cases found for split(s) {sorted(split_set)}. "
+                    f"No cases have split values defined."
+                )
+
+        validate_cases = filtered_cases
+
+    return ValidationSet(cases=validate_cases, predicate=predicate, split=split)
 
 
 def _load_file(file: str | Path) -> pd.DataFrame:
@@ -113,7 +138,8 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         try:
             with open(path, "r") as f:
                 data = json.load(f)
-            # Preprocess to flatten labels: {...} into label_* columns
+            # Preprocess to flatten nested splits, then labels
+            data = _flatten_splits_in_data(data)
             data = _flatten_labels_in_data(data)
             return pd.DataFrame(data)
         except Exception:
@@ -123,13 +149,15 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         # Read JSONL manually to preserve types better
         with open(path, "r") as f:
             data = [json.loads(line) for line in f if line.strip()]
-        # Preprocess to flatten labels: {...} into label_* columns
+        # Preprocess to flatten nested splits, then labels
+        data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
         return pd.DataFrame(data)
     elif suffix in [".yaml", ".yml"]:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
-        # Preprocess to flatten labels: {...} into label_* columns
+        # Preprocess to flatten nested splits, then labels
+        data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
         return pd.DataFrame(data)
     else:
@@ -246,6 +274,82 @@ def _flatten_labels_in_data(data: Any) -> Any:
     return flattened
 
 
+def _flatten_splits_in_data(data: Any) -> Any:
+    """Flatten nested split structure into flat cases with split field.
+
+    Transforms:
+        [{"split": "dev", "cases": [{"id": "123", "target": true}]}]
+    Into:
+        [{"id": "123", "target": true, "split": "dev"}]
+
+    Auto-detects nested format by checking for "split" + "cases" keys without "id".
+    """
+    if not isinstance(data, list):
+        return data
+
+    # Check if any item has the nested split structure
+    has_nested_splits = any(
+        isinstance(item, dict)
+        and "split" in item
+        and "cases" in item
+        and "id" not in item
+        for item in data
+    )
+
+    if not has_nested_splits:
+        return data
+
+    flattened = []
+    for item in data:
+        if not isinstance(item, dict):
+            flattened.append(item)
+            continue
+
+        # Check if this item has the nested split structure
+        if "split" in item and "cases" in item and "id" not in item:
+            split_name = item["split"]
+            cases = item["cases"]
+            if isinstance(cases, list):
+                for case in cases:
+                    if isinstance(case, dict):
+                        # Add split field to the case
+                        new_case = {**case, "split": split_name}
+                        flattened.append(new_case)
+                    else:
+                        flattened.append(case)
+        else:
+            # Regular case (not nested), pass through
+            flattened.append(item)
+
+    return flattened
+
+
+def _get_split_value(row: pd.Series, df: pd.DataFrame) -> str | None:
+    """Extract split value from a row, handling NaN."""
+    if "split" not in df.columns:
+        return None
+    split_val = row["split"]
+    if pd.isna(split_val):
+        return None
+    return str(split_val)
+
+
+def _get_predicate_value(row: pd.Series, df: pd.DataFrame) -> PredicateType | None:
+    """Extract predicate value from a row, handling NaN and validating."""
+    if "predicate" not in df.columns:
+        return None
+    pred_val = row["predicate"]
+    if pd.isna(pred_val):
+        return None
+    pred_str = str(pred_val)
+    if pred_str not in PREDICATES:
+        raise ValueError(
+            f"Unknown predicate '{pred_str}' for case id '{row['id']}'. "
+            f"Valid predicates: {', '.join(sorted(PREDICATES.keys()))}"
+        )
+    return cast(PredicateType, pred_str)
+
+
 def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
     """Create ValidationCase objects with a single target column."""
     cases = []
@@ -253,6 +357,8 @@ def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
         case = ValidationCase(
             id=row["id"],
             target=row["target"],
+            predicate=_get_predicate_value(row, df),
+            split=_get_split_value(row, df),
         )
         cases.append(case)
     return cases
@@ -273,6 +379,8 @@ def _create_cases_with_dict_target(
         case = ValidationCase(
             id=row["id"],
             target=target_dict,
+            predicate=_get_predicate_value(row, df),
+            split=_get_split_value(row, df),
         )
         cases.append(case)
     return cases
@@ -293,6 +401,8 @@ def _create_cases_with_labels(
         case = ValidationCase(
             id=row["id"],
             labels=labels_dict,
+            predicate=_get_predicate_value(row, df),
+            split=_get_split_value(row, df),
         )
         cases.append(case)
     return cases

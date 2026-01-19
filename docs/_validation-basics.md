@@ -10,11 +10,11 @@ Note that values can be of any type returned by a scanner, and it is also possib
 
 #### Development
 
-How would you develop a validation set like this? Typically, you will review some of your existing transcripts using Inspect View, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.
+How would you develop a validation set like this? Typically, you will review some of your existing transcripts using **Scout View**, decide which ones are good validation examples, copy their transcript id (which is the same as the sample UUID), then record the appropriate entry in a text file or spreadsheet.
 
 Use the **Copy** button to copy the UUID for the transcript you are reviewing:
 
-![](images/sample-uuid.png){.border width="720" width="720"}
+![](images/transcript-uuid-copy.png){.border}
 
 As you review transcript and find good examples, build up a list of transcript IDs and expected values. For example, here is a CSV file of that form:
 
@@ -30,14 +30,24 @@ SiEXpECj7U9nNAvM3H7JqB,true
 You'll typically create a distinct validation set for each scanner, and then pass the validation sets to `scan()` as a dict mapping scanner to set:
 
 ``` {.python filename="scanning.py"}
-from inspect_scout import scan, transcripts_from, validation_set
+from inspect_scout import scan, transcripts_from
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts=transcripts_from("./logs"),
     validation={
-        "ctf_environment": validation_set("ctf-validation.csv")
+        "ctf_environment": "ctf-validation.csv"
     }
+)
+```
+
+If you have only only a single scanner you can pass the validation set without the mapping:
+
+``` {.python filename="scanning.py"}
+scan(
+    scanners=[ctf_environment()],
+    transcripts=transcripts_from("./logs"),
+    validation="ctf-validation.csv"
 )
 ```
 

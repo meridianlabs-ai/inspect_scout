@@ -16,6 +16,34 @@ title: "Validation"
 {{< include _validation-filtering.md >}}
 
 
+## Validation Splits
+
+Validation cases can be organized into named groups called "splits" (e.g., "dev", "test", "train"). This allows you to maintain a single validation file while selecting different subsets of cases for different purposes.
+
+To use splits, add a `split` column to your validation file:
+
+``` {.default filename="validation.csv"}
+id,target,split
+Fg3KBpgFr6RSsEWmHBUqeo,true,dev
+VFkCH7gXWpJYUYonvfHxrG,false,dev
+SiEXpECj7U9nNAvM3H7JqB,true,test
+```
+
+Then use the `validation_set()` function to filter by split when creating your validation set:
+
+``` python
+from inspect_scout import validation_set
+
+# Use only dev cases
+validation = validation_set("validation.csv", split="dev")
+
+# Use multiple splits
+validation = validation_set("validation.csv", split=["dev", "test"])
+```
+
+When filtering by split, only cases with matching split values are included. Cases without a split value are excluded when a split filter is applied.
+
+
 ## IDs and Targets {#ids-and-targets}
 
 In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.qmd#loader)). You can also use any valid JSON value as the `target`
@@ -73,14 +101,6 @@ Label-based validation uses "at least one" logic: if any result with a given lab
 
 Missing labels are treated as negative/absent values. If your validation set expects `label_phishing: false` but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
 
-### Comparison Predicates
-
-The examples above all use straight equality checks as their predicate. You can provide an alternate predicate either by name (e.g. "gt", "gte", "contains") or with a custom function. Specify the `ValidationPredicate` as a parameter to the `validation_set()` function:
-
-``` python
-validation_set(cases="validation.csv", predicate="gte")
-```
-
 ### Value Dictionary
 
 If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce `target_*` column names as follows:
@@ -90,6 +110,66 @@ id, target_deception, target_backtracks
 Fg3KBpgFr6RSsEWmHBUqeo, true, 2
 VFkCH7gXWpJYUYonvfHxrG, false, 0
 ```
+
+## Comparison Predicates
+
+By default, validation compares scanner results to targets using equality (`eq`). You can specify different comparison predicates either per-case or as a default for all cases.
+
+### Per-Case Predicates
+
+Add a `predicate` column to specify comparison logic for individual cases:
+
+``` {.default filename="validation.csv"}
+id,target,predicate
+SiEXpECj7U9nNAvM3H7JqB,true,eq
+VFkCH7gXWpJYUYonvfHxrG,hello,contains
+Fg3KBpgFr6RSsEWmHBUqeo,5,gte
+```
+
+In this example:
+
+- First case passes if scanner result equals `true`
+- Second case passes if scanner result contains "hello"
+- Third case passes if scanner result is ≥ 5
+
+### Available Predicates
+
+| Predicate | Description |
+|-----------|-------------|
+| `eq` | Equal (default) |
+| `ne` | Not equal |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `contains` | String contains substring |
+| `startswith` | String starts with prefix |
+| `endswith` | String ends with suffix |
+| `icontains` | Case-insensitive contains |
+| `iequals` | Case-insensitive equals |
+
+### Default Predicate
+
+You can also set a default predicate for all cases using the `predicate` parameter of `validation_set()`:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
+When both are specified, per-case predicates take precedence over the default. This allows you to set a common predicate while overriding it for specific cases:
+
+``` {.default filename="validation.csv"}
+id,target,predicate
+Fg3KBpgFr6RSsEWmHBUqeo,5,
+VFkCH7gXWpJYUYonvfHxrG,3,lt
+SiEXpECj7U9nNAvM3H7JqB,10,
+```
+
+``` python
+# Default is "gte", but second case uses "lt"
+validation_set(cases="validation.csv", predicate="gte")
+```
+
 
 ## File Formats {#validation-files}
 
@@ -104,6 +184,7 @@ Here are the various ways you can structure a validation CSV for different scena
 | Single target | `id,target` | `id,target`<br>`abc123,true` |
 | Dict targets | `id,target_*,...` | `id,target_foo,target_bar`<br>`abc123,true,42` |
 | Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak`<br>`abc123,true,false` |
+| With splits | `id,target,split` | `id,target,split`<br>`abc123,true,dev` |
 
 ### YAML
 
@@ -145,6 +226,34 @@ Here is a YAML file for label-based validation (resultsets):
      deception: false
      jailbreak: true
      misconfig: false
+```
+
+Here is a YAML file with splits using the flat format (split field on each case):
+
+``` {.yaml filename="validation.yaml"}
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target: true
+  split: dev
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target: false
+  split: test
+```
+
+You can also use a nested format that groups cases by split:
+
+``` {.yaml filename="validation.yaml"}
+- split: dev
+  cases:
+    - id: Fg3KBpgFr6RSsEWmHBUqeo
+      target: true
+    - id: VFkCH7gXWpJYUYonvfHxrG
+      target: false
+
+- split: test
+  cases:
+    - id: SiEXpECj7U9nNAvM3H7JqB
+      target: true
 ```
 
 

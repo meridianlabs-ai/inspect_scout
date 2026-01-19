@@ -58,6 +58,8 @@ from ._transcript.types import (
 )
 from ._util.refusal import RefusalError
 from ._validation import (
+    PredicateFn,
+    PredicateType,
     ValidationCase,
     ValidationPredicate,
     ValidationSet,
@@ -135,6 +137,8 @@ __all__ = [
     "ValidationSet",
     "ValidationCase",
     "ValidationPredicate",
+    "PredicateType",
+    "PredicateFn",
     "validation_set",
     # version
     "__version__",

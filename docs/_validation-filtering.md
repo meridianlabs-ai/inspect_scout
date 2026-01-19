@@ -4,7 +4,7 @@ Your validation set will typically be only a subset of all of the transcripts yo
 from inspect_scout import scan, transcripts_from, validation_set
 
 validation = {
-    "ctf_environment": validation_set("ctf-validation.csv")
+    "ctf_environment": "ctf-validation.csv"
 }
 
 transcripts = transcripts_from("./logs")

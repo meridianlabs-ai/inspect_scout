@@ -16,7 +16,7 @@ import { ScansPanel } from "./app/scans/ScansPanel";
 import { useConfig } from "./app/server/useConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
-import { AppErrorBoundary } from "./AppErrorBoundary";
+import { FindBand } from "./components/FindBand";
 import {
   kScansRootRouteUrlPattern,
   kScansRouteUrlPattern,
@@ -44,6 +44,10 @@ export interface AppRouterConfig {
 const createAppLayout = (routerConfig: AppRouterConfig) => {
   const AppLayout = () => {
     const navigate = useNavigate();
+
+    const showFind = useStore((state) => state.showFind);
+    const setShowFind = useStore((state) => state.setShowFind);
+
     const selectedScanner = useStore((state) => state.selectedScanner);
     const setSingleFileMode = useStore((state) => state.setSingleFileMode);
     const singleFileMode = useStore((state) => state.singleFileMode);
@@ -69,6 +73,21 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     );
 
     const hasRestoredState = selectedScanner !== undefined;
+
+    // Global keyboard shortcut to open FindBand
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+          e.preventDefault();
+          setShowFind(true);
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }, [setShowFind]);
 
     useEffect(() => {
       if (hasInitializedEmbeddedData) {
@@ -149,13 +168,21 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
 
     const content = <Outlet />;
     return (
-      <AppErrorBoundary>
+      <>
+        {showFind && (
+          <FindBand
+            onClose={() => {
+              setShowFind(false);
+            }}
+          />
+        )}
+
         {routerConfig.mode === "workbench" && !singleFileMode ? (
           <ActivityBarLayout config={config}>{content}</ActivityBarLayout>
         ) : (
           content
         )}
-      </AppErrorBoundary>
+      </>
     );
   };
 

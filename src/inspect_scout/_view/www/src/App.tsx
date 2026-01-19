@@ -10,7 +10,9 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import "./app/App.css";
 import { useConfigAsync } from "./app/server/useConfig";
+import { AppErrorBoundary } from "./AppErrorBoundary";
 import { createAppRouter } from "./AppRouter";
+import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 
 export interface AppProps {
   mode?: "scans" | "workbench";
@@ -26,8 +28,12 @@ export const App: FC<AppProps> = ({ mode = "scans" }) => {
   );
 
   return config && router ? (
-    <AppModeContext.Provider value={mode}>
-      <RouterProvider router={router} />
-    </AppModeContext.Provider>
+    <AppErrorBoundary>
+      <AppModeContext.Provider value={mode}>
+        <ExtendedFindProvider>
+          <RouterProvider router={router} />
+        </ExtendedFindProvider>
+      </AppModeContext.Provider>
+    </AppErrorBoundary>
   ) : null;
 };

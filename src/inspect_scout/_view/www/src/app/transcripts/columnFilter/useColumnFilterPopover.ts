@@ -25,7 +25,10 @@ export interface UseColumnFilterPopoverReturn {
   // Value
   value: ReturnType<typeof useColumnFilter>["value"];
   setValue: ReturnType<typeof useColumnFilter>["setValue"];
+  value2: ReturnType<typeof useColumnFilter>["value2"];
+  setValue2: ReturnType<typeof useColumnFilter>["setValue2"];
   isValueDisabled: ReturnType<typeof useColumnFilter>["usesValue"];
+  isRangeOperator: ReturnType<typeof useColumnFilter>["usesRangeValue"];
 
   // Actions
   commitAndClose: () => void;
@@ -47,8 +50,11 @@ export function useColumnFilterPopover({
     setOperator,
     value,
     setValue,
+    value2,
+    setValue2,
     operatorOptions,
     usesValue: isValueDisabled,
+    usesRangeValue: isRangeOperator,
     buildCondition,
   } = useColumnFilter({
     columnId,
@@ -63,12 +69,12 @@ export function useColumnFilterPopover({
   }, []);
 
   const commitAndClose = useCallback(() => {
-    const nextCondition = buildCondition(operator, value);
+    const nextCondition = buildCondition(operator, value, value2);
     if (nextCondition === undefined) {
       return;
     }
     setIsOpen(false);
-  }, [buildCondition, operator, value]);
+  }, [buildCondition, operator, value, value2]);
 
   // commit changes when popover closes (unless cancelled)
   useEffect(() => {
@@ -76,14 +82,14 @@ export function useColumnFilterPopover({
       if (cancelRef.current) {
         cancelRef.current = false;
       } else {
-        const nextCondition = buildCondition(operator, value);
+        const nextCondition = buildCondition(operator, value, value2);
         if (nextCondition !== undefined) {
           onChange(nextCondition);
         }
       }
     }
     prevOpenRef.current = isOpen;
-  }, [buildCondition, isOpen, onChange, operator, value]);
+  }, [buildCondition, isOpen, onChange, operator, value, value2]);
 
   return {
     isOpen,
@@ -92,8 +98,11 @@ export function useColumnFilterPopover({
     setOperator,
     value,
     setValue,
+    value2,
+    setValue2,
     operatorOptions,
     isValueDisabled,
+    isRangeOperator,
     commitAndClose,
     cancelAndClose,
   };

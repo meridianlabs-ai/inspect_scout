@@ -54,8 +54,11 @@ export function useAddFilterPopover({
     setOperator,
     value,
     setValue,
+    value2,
+    setValue2,
     operatorOptions,
     usesValue: isValueDisabled,
+    usesRangeValue: isRangeOperator,
     buildCondition,
   } = useColumnFilter({
     columnId: selectedColumnId ?? "",
@@ -92,7 +95,7 @@ export function useAddFilterPopover({
   const commitAndClose = useCallback(() => {
     if (!selectedColumnId) return;
 
-    const condition = buildCondition(operator, value);
+    const condition = buildCondition(operator, value, value2);
     if (condition === undefined) return;
 
     onAddFilter({ columnId: selectedColumnId, filterType, condition });
@@ -102,6 +105,7 @@ export function useAddFilterPopover({
     buildCondition,
     operator,
     value,
+    value2,
     onAddFilter,
     filterType,
   ]);
@@ -118,7 +122,10 @@ export function useAddFilterPopover({
     operatorOptions,
     value,
     setValue,
+    value2,
+    setValue2,
     isValueDisabled,
+    isRangeOperator,
     handleColumnChange,
     commitAndClose,
     cancelAndClose,

@@ -66,6 +66,10 @@ website:
           href: reference/results.qmd#validationset
         - text: ValidationCase
           href: reference/results.qmd#validationcase
+        - text: PredicateType
+          href: reference/results.qmd#predicatetype
+        - text: PredicateFn
+          href: reference/results.qmd#predicatefn
         - text: ValidationPredicate
           href: reference/results.qmd#validationpredicate
       - section: transcript

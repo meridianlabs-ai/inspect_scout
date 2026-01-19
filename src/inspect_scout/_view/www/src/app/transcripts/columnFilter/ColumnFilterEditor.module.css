@@ -53,3 +53,9 @@
   color: var(--bs-secondary);
   padding-left: 2px;
 }
+
+.rangeLabel {
+  font-size: 11px;
+  color: var(--bs-secondary);
+  padding-left: 2px;
+}

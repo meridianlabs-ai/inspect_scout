@@ -155,7 +155,7 @@ def test_resolve_validation_dict_invalid_scanner_name_raises() -> None:
 
     with pytest.raises(
         ValueError,
-        match="Validation referended scanner 'invalid_scanner' however there is no scanner of that name",
+        match="Validation referenced scanner 'invalid_scanner' however there is no scanner of that name",
     ):
         _resolve_validation(validation_dict, scanjob)
 
@@ -170,7 +170,7 @@ def test_resolve_validation_dict_multiple_invalid_names_raises_for_first() -> No
     scanjob = ScanJob(scanners=[("scanner1", system_scanner())])
 
     # Should raise for one of the invalid names (dict order may vary)
-    with pytest.raises(ValueError, match="Validation referended scanner"):
+    with pytest.raises(ValueError, match="Validation referenced scanner"):
         _resolve_validation(validation_dict, scanjob)
 
 
@@ -185,7 +185,7 @@ def test_resolve_validation_dict_partial_invalid_names_raises() -> None:
 
     scanjob = ScanJob(scanners=[("scanner1", system_scanner())])
 
-    with pytest.raises(ValueError, match="Validation referended scanner"):
+    with pytest.raises(ValueError, match="Validation referenced scanner"):
         _resolve_validation(validation_dict, scanjob)
 
 

@@ -1,7 +1,7 @@
 import abc
 from copy import deepcopy
 from types import TracebackType
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator, Literal, Mapping
 
 from .._query import Query
 from .._query.condition import Condition
@@ -89,25 +89,35 @@ class Transcripts(abc.ABC):
         return transcripts
 
     def for_validation(
-        self, validation: ValidationSet | dict[str, ValidationSet]
+        self, validation: str | ValidationSet | Mapping[str, str | ValidationSet]
     ) -> "Transcripts":
         """Filter transcripts to only those with IDs matching validation cases.
 
         Args:
-            validation: Validation object containing cases with target IDs.
+            validation: Validation cases to filter by. Can be a file path
+                (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
+                names to file paths or ValidationSets.
 
         Returns:
             Transcripts: Filtered transcripts collection.
         """
+        from inspect_scout._validation.validation import validation_set as vs_from_file
+
         transcripts = deepcopy(self)
+
+        # Handle string path -> convert to ValidationSet
+        if isinstance(validation, str):
+            validation = vs_from_file(validation)
 
         # merge all cases
         cases: list[ValidationCase] = []
-        if isinstance(validation, dict):
-            for set in validation.values():
-                cases.extend(set.cases)
-        else:
+        if isinstance(validation, ValidationSet):
             cases = validation.cases
+        else:
+            # dict/Mapping - convert any string values to ValidationSet
+            for v in validation.values():
+                vs = v if isinstance(v, ValidationSet) else vs_from_file(v)
+                cases.extend(vs.cases)
 
         # Extract all IDs from validation cases
         all_ids: list[str] = []

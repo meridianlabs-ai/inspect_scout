@@ -30,14 +30,24 @@ SiEXpECj7U9nNAvM3H7JqB,true
 You'll typically create a distinct validation set for each scanner, and then pass the validation sets to `scan()` as a dict mapping scanner to set:
 
 ``` {.python filename="scanning.py"}
-from inspect_scout import scan, transcripts_from, validation_set
+from inspect_scout import scan, transcripts_from
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts=transcripts_from("./logs"),
     validation={
-        "ctf_environment": validation_set("ctf-validation.csv")
+        "ctf_environment": "ctf-validation.csv"
     }
+)
+```
+
+If you have only only a single scanner you can pass the validation set without the mapping:
+
+``` {.python filename="scanning.py"}
+scan(
+    scanners=[ctf_environment()],
+    transcripts=transcripts_from("./logs"),
+    validation="ctf-validation.csv"
 )
 ```
 

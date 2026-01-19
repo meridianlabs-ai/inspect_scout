@@ -29,7 +29,7 @@ VFkCH7gXWpJYUYonvfHxrG,false,dev
 SiEXpECj7U9nNAvM3H7JqB,true,test
 ```
 
-Then filter by split when creating your validation set:
+Then use the `validation_set()` function to filter by split when creating your validation set:
 
 ``` python
 from inspect_scout import validation_set
@@ -150,7 +150,7 @@ In this example:
 
 ### Default Predicate
 
-You can also set a default predicate for all cases using the `predicate` parameter:
+You can also set a default predicate for all cases using the `predicate` parameter of `validation_set()`:
 
 ``` python
 validation_set(cases="validation.csv", predicate="gte")

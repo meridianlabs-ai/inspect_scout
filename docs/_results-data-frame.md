@@ -76,7 +76,9 @@ The data frame includes the following fields (note that some fields included emb
 | `message_references` | list\[Reference\]<br/><small>JSON</small> | Messages referenced by scanner. |
 | `event_references` | list\[Reference\]<br/><small>JSON</small> | Events referenced by scanner. |
 | `validation_target` | JsonValue<br/><small>JSON</small> | Target value from validation set. |
-| `validation_result` | JsonValue<br/><small>JSON</small> | Result returned from comparing `validation_target` to `value`. |
+| `validation_predicate` | str | Predicate used for comparison (e.g. "eq", "gt", etc.). |
+| `validation_result` | JsonValue<br/><small>JSON</small> | Result returned from comparing `validation_target` to `value` using `validation_predicate`. |
+| `validation_split` | str | Validation split the case was drawn from (if any). |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_error_type` | str | Error type (either "refusal" for refusals or null for other errors). |

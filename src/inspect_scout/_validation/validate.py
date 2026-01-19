@@ -2,7 +2,7 @@ from pydantic import JsonValue
 
 from inspect_scout._scanner.result import Result
 
-from .predicates import resolve_predicate
+from .predicates import ValidationPredicate, resolve_predicate
 from .types import ValidationSet
 
 
@@ -11,6 +11,7 @@ async def validate(
     result: Result,
     target: JsonValue | None = None,
     labels: dict[str, JsonValue] | None = None,
+    predicate_override: ValidationPredicate | None = None,
 ) -> bool | dict[str, bool]:
     """Validate a result against a target or labels using the validation set's predicate.
 
@@ -19,6 +20,7 @@ async def validate(
         result: The result to validate
         target: The expected target value (can be single value or dict) - for regular validation
         labels: Label-specific target values - for resultset validation
+        predicate_override: Optional predicate to override the validation set's predicate
 
     Returns:
         bool if target is a single value
@@ -32,22 +34,27 @@ async def validate(
     if (target is None) == (labels is None):
         raise ValueError("Exactly one of 'target' or 'labels' must be provided")
 
+    # Determine effective predicate (override takes precedence)
+    effective_predicate = (
+        predicate_override if predicate_override is not None else validation.predicate
+    )
+
     # Label-based validation for resultsets
     if labels is not None:
-        return await _validate_labels(validation, result, labels)
+        return await _validate_labels(validation, result, labels, effective_predicate)
     # Regular target-based validation
     elif isinstance(target, dict):
-        return await _validate_dict(validation, result, target)
+        return await _validate_dict(validation, result, target, effective_predicate)
     else:
-        return await _validate_single(validation, result, target)
+        return await _validate_single(result, target, effective_predicate)
 
 
 async def _validate_single(
-    validation: ValidationSet,
     result: Result,
     target: list[JsonValue] | str | bool | int | float | None,
+    predicate: ValidationPredicate | None,
 ) -> bool:
-    predicate_fn = resolve_predicate(validation.predicate)
+    predicate_fn = resolve_predicate(predicate)
     valid = await predicate_fn(result, target)
     if not isinstance(valid, bool):
         raise RuntimeError(
@@ -60,6 +67,7 @@ async def _validate_dict(
     validation: ValidationSet,
     result: Result,
     target: dict[str, JsonValue],
+    predicate: ValidationPredicate | None,
 ) -> dict[str, bool]:
     # Validate that value is also a dict
     if not isinstance(result.value, dict):
@@ -68,10 +76,10 @@ async def _validate_dict(
         )
 
     # resolve predicate
-    predicate_fn = resolve_predicate(validation.predicate)
+    predicate_fn = resolve_predicate(predicate)
 
     # if its a callable then we pass the entire dict
-    if callable(validation.predicate):
+    if callable(predicate):
         valid = await predicate_fn(result, target)
         if not isinstance(valid, dict):
             raise RuntimeError(
@@ -91,6 +99,7 @@ async def _validate_labels(
     validation: ValidationSet,
     result: Result,
     labels: dict[str, JsonValue],
+    predicate: ValidationPredicate | None,
 ) -> dict[str, bool]:
     """Validate a resultset against label-specific expected values.
 
@@ -102,6 +111,7 @@ async def _validate_labels(
         validation: ValidationSet containing the predicate
         result: The result to validate (should be a resultset)
         labels: Dict mapping label names to expected values
+        predicate: The predicate to use for validation
 
     Returns:
         Dict mapping each label to its validation result (bool)
@@ -134,7 +144,7 @@ async def _validate_labels(
             results_by_label[label].append(item)
 
     # Validate each label
-    predicate_fn = resolve_predicate(validation.predicate)
+    predicate_fn = resolve_predicate(predicate)
     validation_results: dict[str, bool] = {}
 
     for label, expected_value in labels.items():

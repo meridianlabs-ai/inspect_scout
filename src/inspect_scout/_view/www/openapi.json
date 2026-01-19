@@ -10038,7 +10038,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List validation files"
+        "summary": "List validation files",
+        "tags": [
+          "validations"
+        ]
       },
       "post": {
         "description": "Creates a new validation file at the specified path with optional initial cases. Returns the URI of the created file.",
@@ -10066,7 +10069,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Create a validation file"
+        "summary": "Create a validation file",
+        "tags": [
+          "validations"
+        ]
       }
     },
     "/validations/{uri}": {
@@ -10102,7 +10108,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Delete a validation file"
+        "summary": "Delete a validation file",
+        "tags": [
+          "validations"
+        ]
       },
       "get": {
         "description": "Returns all cases from a validation file.",
@@ -10137,7 +10146,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get validation cases"
+        "summary": "Get validation cases",
+        "tags": [
+          "validations"
+        ]
       }
     },
     "/validations/{uri}/{case_id}": {
@@ -10184,7 +10196,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Delete a case"
+        "summary": "Delete a case",
+        "tags": [
+          "validations"
+        ]
       },
       "get": {
         "description": "Returns a specific case from a validation file by ID.",
@@ -10227,7 +10242,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get a specific case"
+        "summary": "Get a specific case",
+        "tags": [
+          "validations"
+        ]
       },
       "post": {
         "description": "Creates or updates a case in a validation file. If the case ID exists, it will be updated; otherwise, a new case will be created.",
@@ -10280,7 +10298,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Create or update a case"
+        "summary": "Create or update a case",
+        "tags": [
+          "validations"
+        ]
       }
     }
   }

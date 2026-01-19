@@ -73,9 +73,17 @@ class DisplayRich(Display):
         summary: Summary,
         total: int,
         skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> Iterator[ScanDisplay]:
         with ScanDisplayRich(
-            scan, scan_location, summary, total, skipped
+            scan,
+            scan_location,
+            summary,
+            total,
+            skipped,
+            per_scanner_total,
+            per_scanner_skipped,
         ) as scan_display:
             yield scan_display
 
@@ -124,6 +132,8 @@ class ScanDisplayRich(
         summary: Summary,
         total: int,
         skipped: int,
+        per_scanner_total: dict[str, int] | None = None,
+        per_scanner_skipped: dict[str, int] | None = None,
     ) -> None:
         self._scan = scan
         self._scan_location = scan_location
@@ -132,6 +142,9 @@ class ScanDisplayRich(
         self._completed_scans = self._skipped_scans
         self._metrics: ScanMetrics | None = None
         self._scan_summary = summary
+        self._per_scanner_total: dict[str, int] = per_scanner_total or {}
+        self._per_scanner_skipped: dict[str, int] = per_scanner_skipped or {}
+        self._per_scanner_completed: dict[str, int] = dict(self._per_scanner_skipped)
         self._live = Live(
             None,
             console=rich.get_console(),
@@ -172,6 +185,9 @@ class ScanDisplayRich(
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         self._scan_summary._report(transcript, scanner, results, metrics)
+        self._per_scanner_completed[scanner] = (
+            self._per_scanner_completed.get(scanner, 0) + 1
+        )
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:

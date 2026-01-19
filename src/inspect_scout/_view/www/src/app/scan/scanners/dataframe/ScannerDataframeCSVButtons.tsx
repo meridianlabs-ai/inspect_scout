@@ -85,7 +85,6 @@ export const ScannerDataframeCopyCSVButton: FC = () => {
       icon={icon}
       label={label}
       onClick={handleCopy}
-      disabled={!gridApi}
       title="Copy filtered data as CSV to clipboard"
       subtle={true}
     />
@@ -118,7 +117,6 @@ export const ScannerDataframeDownloadCSVButton: FC = () => {
       icon={ApplicationIcons.download}
       label="Download CSV"
       onClick={handleDownload}
-      disabled={!gridApi}
       title="Download filtered data as CSV file"
       subtle={true}
     />

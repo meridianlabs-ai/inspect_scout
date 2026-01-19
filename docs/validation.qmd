@@ -16,6 +16,34 @@ title: "Validation"
 {{< include _validation-filtering.md >}}
 
 
+## Validation Splits
+
+Validation cases can be organized into named groups called "splits" (e.g., "dev", "test", "train"). This allows you to maintain a single validation file while selecting different subsets of cases for different purposes.
+
+To use splits, add a `split` column to your validation file:
+
+``` {.default filename="validation.csv"}
+id,target,split
+Fg3KBpgFr6RSsEWmHBUqeo,true,dev
+VFkCH7gXWpJYUYonvfHxrG,false,dev
+SiEXpECj7U9nNAvM3H7JqB,true,test
+```
+
+Then filter by split when creating your validation set:
+
+``` python
+from inspect_scout import validation_set
+
+# Use only dev cases
+validation = validation_set("validation.csv", split="dev")
+
+# Use multiple splits
+validation = validation_set("validation.csv", split=["dev", "test"])
+```
+
+When filtering by split, only cases with matching split values are included. Cases without a split value are excluded when a split filter is applied.
+
+
 ## IDs and Targets {#ids-and-targets}
 
 In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.qmd#loader)). You can also use any valid JSON value as the `target`
@@ -104,6 +132,7 @@ Here are the various ways you can structure a validation CSV for different scena
 | Single target | `id,target` | `id,target`<br>`abc123,true` |
 | Dict targets | `id,target_*,...` | `id,target_foo,target_bar`<br>`abc123,true,42` |
 | Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak`<br>`abc123,true,false` |
+| With splits | `id,target,split` | `id,target,split`<br>`abc123,true,dev` |
 
 ### YAML
 
@@ -145,6 +174,34 @@ Here is a YAML file for label-based validation (resultsets):
      deception: false
      jailbreak: true
      misconfig: false
+```
+
+Here is a YAML file with splits using the flat format (split field on each case):
+
+``` {.yaml filename="validation.yaml"}
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target: true
+  split: dev
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target: false
+  split: test
+```
+
+You can also use a nested format that groups cases by split:
+
+``` {.yaml filename="validation.yaml"}
+- split: dev
+  cases:
+    - id: Fg3KBpgFr6RSsEWmHBUqeo
+      target: true
+    - id: VFkCH7gXWpJYUYonvfHxrG
+      target: false
+
+- split: test
+  cases:
+    - id: SiEXpECj7U9nNAvM3H7JqB
+      target: true
 ```
 
 

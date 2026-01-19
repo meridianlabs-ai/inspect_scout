@@ -33,6 +33,9 @@ class ValidationCase(BaseModel):
     scanners that return multiple labeled results per transcript.
     """
 
+    split: str | None = Field(default=None)
+    """Optional split name for organizing cases (e.g., 'dev', 'test', 'train')."""
+
     def model_post_init(self, __context: Any) -> None:
         """Validate that exactly one of target or labels is set."""
         if (self.target is None) == (self.labels is None):
@@ -56,6 +59,9 @@ class ValidationSet(BaseModel):
     For dict targets, string/single-value predicates are applied to each key,
     while multi-value predicates receive the full dicts.
     """
+
+    split: str | list[str] | None = Field(default=None)
+    """Active split filter applied to this validation set (informational)."""
 
     @field_serializer("predicate")
     def serialize_predicate(

@@ -198,6 +198,10 @@ def include_function(function: Function) -> bool:
     if function.name.startswith("_") and not function.name.startswith("__init__"):
         return False
 
+    # skip pydantic model_post_init
+    if function.name == "model_post_init":
+        return False
+
     # skip pydantic validators
     if "classmethod" in function.labels:
         if any(["model_" in str(dec.value) for dec in function.decorators]):

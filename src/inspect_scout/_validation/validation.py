@@ -334,6 +334,16 @@ def _get_split_value(row: pd.Series, df: pd.DataFrame) -> str | None:
     return str(split_val)
 
 
+def _get_predicate_value(row: pd.Series, df: pd.DataFrame) -> str | None:
+    """Extract predicate value from a row, handling NaN."""
+    if "predicate" not in df.columns:
+        return None
+    pred_val = row["predicate"]
+    if pd.isna(pred_val):
+        return None
+    return str(pred_val)
+
+
 def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
     """Create ValidationCase objects with a single target column."""
     cases = []
@@ -341,6 +351,7 @@ def _create_cases_with_single_target(df: pd.DataFrame) -> list[ValidationCase]:
         case = ValidationCase(
             id=row["id"],
             target=row["target"],
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)
@@ -362,6 +373,7 @@ def _create_cases_with_dict_target(
         case = ValidationCase(
             id=row["id"],
             target=target_dict,
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)
@@ -383,6 +395,7 @@ def _create_cases_with_labels(
         case = ValidationCase(
             id=row["id"],
             labels=labels_dict,
+            predicate=_get_predicate_value(row, df),
             split=_get_split_value(row, df),
         )
         cases.append(case)

@@ -963,3 +963,171 @@ test2,false"""
     assert len(validation.cases) == 0
     assert len(warnings_logged) == 1
     assert "No cases have split values defined" in warnings_logged[0]
+
+
+# Per-Case Predicate Tests
+
+
+def test_csv_with_predicate_column(tmp_path: Path) -> None:
+    """Test CSV with predicate column."""
+    csv_content = """id,target,predicate
+test1,5,gte
+test2,hello,contains
+test3,true,eq"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[0].predicate == "gte"
+    assert validation.cases[1].id == "test2"
+    assert validation.cases[1].predicate == "contains"
+    assert validation.cases[2].id == "test3"
+    assert validation.cases[2].predicate == "eq"
+
+
+def test_yaml_with_per_case_predicate(tmp_path: Path) -> None:
+    """Test YAML with per-case predicates."""
+    yaml_content = """- id: test1
+  target: 10
+  predicate: gte
+- id: test2
+  target: hello
+  predicate: contains
+- id: test3
+  target: true"""
+
+    yaml_file = tmp_path / "test.yaml"
+    yaml_file.write_text(yaml_content)
+
+    validation = validation_from(yaml_file)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].predicate == "gte"
+    assert validation.cases[1].predicate == "contains"
+    assert validation.cases[2].predicate is None  # No predicate specified
+
+
+def test_json_with_per_case_predicate(tmp_path: Path) -> None:
+    """Test JSON with per-case predicates."""
+    json_content = [
+        {"id": "test1", "target": 5, "predicate": "lte"},
+        {"id": "test2", "target": "world"},  # No predicate
+    ]
+
+    json_file = tmp_path / "test.json"
+    json_file.write_text(json.dumps(json_content))
+
+    validation = validation_from(json_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].predicate == "lte"
+    assert validation.cases[1].predicate is None
+
+
+def test_jsonl_with_per_case_predicate(tmp_path: Path) -> None:
+    """Test JSONL with per-case predicates."""
+    jsonl_content = """{"id": "test1", "target": 100, "predicate": "gt"}
+{"id": "test2", "target": "foo"}"""
+
+    jsonl_file = tmp_path / "test.jsonl"
+    jsonl_file.write_text(jsonl_content)
+
+    validation = validation_from(jsonl_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].predicate == "gt"
+    assert validation.cases[1].predicate is None
+
+
+def test_dataframe_with_predicate_column() -> None:
+    """Test DataFrame input with predicate column."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2", "test3"],
+            "target": [10, 20, 30],
+            "predicate": ["gte", "lte", None],
+        }
+    )
+
+    validation = validation_from(df)
+
+    assert len(validation.cases) == 3
+    assert validation.cases[0].predicate == "gte"
+    assert validation.cases[1].predicate == "lte"
+    assert validation.cases[2].predicate is None
+
+
+def test_csv_with_predicate_and_split(tmp_path: Path) -> None:
+    """Test CSV with both predicate and split columns."""
+    csv_content = """id,target,predicate,split
+test1,5,gte,dev
+test2,hello,contains,test
+test3,true,eq,dev"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file, split="dev")
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].id == "test1"
+    assert validation.cases[0].predicate == "gte"
+    assert validation.cases[0].split == "dev"
+    assert validation.cases[1].id == "test3"
+    assert validation.cases[1].predicate == "eq"
+
+
+def test_dict_target_with_predicate(tmp_path: Path) -> None:
+    """Test that predicate works with dict targets (target_* columns)."""
+    csv_content = """id,target_foo,target_bar,predicate
+test1,true,10,eq
+test2,false,20,gte"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].target == {"foo": True, "bar": 10}
+    assert validation.cases[0].predicate == "eq"
+    assert validation.cases[1].target == {"foo": False, "bar": 20}
+    assert validation.cases[1].predicate == "gte"
+
+
+def test_labels_with_predicate(tmp_path: Path) -> None:
+    """Test that predicate works with labels (label_* columns)."""
+    csv_content = """id,label_deception,label_jailbreak,predicate
+test1,true,false,eq
+test2,false,true,contains"""
+
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text(csv_content)
+
+    validation = validation_from(csv_file)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].labels == {"deception": True, "jailbreak": False}
+    assert validation.cases[0].predicate == "eq"
+    assert validation.cases[1].labels == {"deception": False, "jailbreak": True}
+    assert validation.cases[1].predicate == "contains"
+
+
+def test_cases_without_predicate_have_none() -> None:
+    """Test that cases without predicate have None (allows global default)."""
+    df = pd.DataFrame(
+        {
+            "id": ["test1", "test2"],
+            "target": [True, False],
+        }
+    )
+
+    validation = validation_from(df)
+
+    assert len(validation.cases) == 2
+    assert validation.cases[0].predicate is None
+    assert validation.cases[1].predicate is None

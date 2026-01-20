@@ -1,3 +1,7 @@
+## Unreleased
+
+- Bugfix: Correctly normalize relative database file paths.
+
 ## 0.4.8 (18 January 2026)
 
 - Validation: Add support for defining and using named splits (e.g. 'dev', 'test') for validation data.

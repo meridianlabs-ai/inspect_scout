@@ -1764,7 +1764,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._location is None:
             return absolute_path
 
-        location_prefix = self._location.rstrip("/") + "/"
+        location_prefix = str(UPath(self._location)) + "/"
         if absolute_path.startswith(location_prefix):
             return absolute_path[len(location_prefix) :]
 

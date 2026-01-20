@@ -1,5 +1,6 @@
-## Unreleased
+## 0.4.9 (20 January 2026)
 
+- Bugfix: Don't check index coverage when running with an active limit or other query filter.
 - Bugfix: Correctly normalize relative database file paths.
 
 ## 0.4.8 (18 January 2026)

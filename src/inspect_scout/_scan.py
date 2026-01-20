@@ -132,7 +132,7 @@ def scan(
             (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
             names to file paths or ValidationSets.
         model: Model to use for scanning by default (individual scanners can always
-            call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+            call `get_model()` to us arbitrary models). If not specified use the model specified in the scout project config (if any).
         model_config: `GenerationConfig` for calls to the model.
         model_base_url: Base URL for communicating with the model API.
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
@@ -225,7 +225,7 @@ async def scan_async(
             (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
             names to file paths or ValidationSets.
         model: Model to use for scanning by default (individual scanners can always
-            call `get_model()` to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.
+            call `get_model()` to us arbitrary models). If not specified use the model specified in the scout project config (if any).
         model_config: `GenerationConfig` for calls to the model.
         model_base_url: Base URL for communicating with the model API.
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).

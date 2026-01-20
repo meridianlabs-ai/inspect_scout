@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scan config: Set 'model' to `None` if no model is specified.
+- Scan config: Deprecate use of environment variables for config (in favor of project config).
 - Scout View: Move 'Project' UI button to main activity bar.
 
 ## 0.4.9 (20 January 2026)

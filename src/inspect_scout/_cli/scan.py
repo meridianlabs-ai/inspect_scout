@@ -751,6 +751,9 @@ def resolve_scan_option(
     option_value: T | None,
     scan_job_value: T | None,
 ) -> T | None:
+    if ctx.get_parameter_source(option) == ParameterSource.ENVIRONMENT:
+        _scan_environment_variable_warning(option)
+
     if scan_job_value is not None:
         if ctx.get_parameter_source(option) != ParameterSource.COMMANDLINE:
             return scan_job_value
@@ -765,6 +768,12 @@ def resolve_scan_option_multi(
     scan_job_value: T | None,
 ) -> T | None:
     """Resolve option when value is derived from multiple CLI options."""
+    if (
+        len(options) > 0
+        and ctx.get_parameter_source(options[0]) == ParameterSource.ENVIRONMENT
+    ):
+        _scan_environment_variable_warning(options[0])
+
     if scan_job_value is not None:
         if not any(
             ctx.get_parameter_source(opt) == ParameterSource.COMMANDLINE
@@ -772,3 +781,11 @@ def resolve_scan_option_multi(
         ):
             return scan_job_value
     return option_value
+
+
+def _scan_environment_variable_warning(option: str) -> None:
+    env_var = f"SCOUT_SCAN_{option.upper()}"
+    warn_once(
+        logger,
+        f"\nWARNING: Option '{option}' defined in environment variable {env_var}.\nUse of environment variables for global options is deprecated, please use scout project files instead:\nhttps://meridianlabs-ai.github.io/inspect_scout/projects.html\n",
+    )

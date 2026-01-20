@@ -6,8 +6,9 @@
 Below are several examples which illustrate commonly used scanner
 features and techniques:
 
-- [Refusal](#refusal) — Scanner which looks for model refusals. Scanning
-  for refusals with and without an LLM classifer are demonstrated.
+- [Refusal Scanners](#refusal-scanners) — Scanners which look for model
+  refusals (scanning for refusals with and without an LLM classifer are
+  demonstrated).
 
 - [Eval Awareness](#eval-awareness) – Scanner which detects whether
   models sense that they are in evaluation scaffold. Demonstrates
@@ -17,9 +18,9 @@ features and techniques:
   found’ errors in tool invocations. Demonstrates scanning with regex
   (as opposed to a model) and creating message references.
 
-## Refusal
+## Refusal Scanners
 
-Refusal scanners iare useful for determining whether an agent failed
+Refusal scanners are useful for determining whether an agent failed
 because of a content filter as opposed to inability to complete the
 task. Below we demonstrate several variations of refusal scanner.
 

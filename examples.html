@@ -380,7 +380,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#refusal" id="toc-refusal" class="nav-link" data-scroll-target="#refusal">Refusal</a>
+  <li><a href="#refusal-scanners" id="toc-refusal-scanners" class="nav-link" data-scroll-target="#refusal-scanners">Refusal Scanners</a>
   <ul class="collapse">
   <li><a href="#llm-scanner" id="toc-llm-scanner" class="nav-link" data-scroll-target="#llm-scanner">LLM Scanner</a></li>
   <li><a href="#grep-scanner" id="toc-grep-scanner" class="nav-link" data-scroll-target="#grep-scanner">Grep Scanner</a></li>
@@ -417,14 +417,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <p>Below are several examples which illustrate commonly used scanner features and techniques:</p>
 <ul>
-<li><p><a href="#refusal">Refusal</a> — Scanner which looks for model refusals. Scanning for refusals with and without an LLM classifer are demonstrated.</p></li>
+<li><p><a href="#refusal-scanners">Refusal Scanners</a> — Scanners which look for model refusals (scanning for refusals with and without an LLM classifer are demonstrated).</p></li>
 <li><p><a href="#eval-awareness">Eval Awareness</a> – Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> with a custom template.</p></li>
 <li><p><a href="#command-error">Command Error</a> — Scanner which looks for ‘command not found’ errors in tool invocations. Demonstrates scanning with regex (as opposed to a model) and creating message references.</p></li>
 </ul>
 </section>
-<section id="refusal" class="level2">
-<h2 class="anchored" data-anchor-id="refusal">Refusal</h2>
-<p>Refusal scanners iare useful for determining whether an agent failed because of a content filter as opposed to inability to complete the task. Below we demonstrate several variations of refusal scanner.</p>
+<section id="refusal-scanners" class="level2">
+<h2 class="anchored" data-anchor-id="refusal-scanners">Refusal Scanners</h2>
+<p>Refusal scanners are useful for determining whether an agent failed because of a content filter as opposed to inability to complete the task. Below we demonstrate several variations of refusal scanner.</p>
 <section id="llm-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="llm-scanner">LLM Scanner</h3>
 <p>This scanner demonstrates basic usage of an LLM Scanner with structured output. A <code>Refusal</code> Pydantic model is declared which defines the fields the model should respond with.</p>

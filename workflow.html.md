@@ -135,6 +135,10 @@ questions you want to pose.
 
 You can use Scout View to view and filter transcripts:
 
+``` python
+scout view
+```
+
 ![](images/transcripts-list.png)
 
 If you filter down into a set of transcripts that you want to analyze,
@@ -325,7 +329,7 @@ predicates.
 #### Development
 
 How would you develop a validation set like this? Typically, you will
-review some of your existing transcripts using Inspect View, decide
+review some of your existing transcripts using **Scout View**, decide
 which ones are good validation examples, copy their transcript id (which
 is the same as the sample UUID), then record the appropriate entry in a
 text file or spreadsheet.
@@ -333,7 +337,7 @@ text file or spreadsheet.
 Use the **Copy** button to copy the UUID for the transcript you are
 reviewing:
 
-![](images/sample-uuid.png)
+![](images/transcript-uuid-copy.png)
 
 As you review transcript and find good examples, build up a list of
 transcript IDs and expected values. For example, here is a CSV file of
@@ -357,14 +361,27 @@ set:
 **scanning.py**
 
 ``` python
-from inspect_scout import scan, transcripts_from, validation_set
+from inspect_scout import scan, transcripts_from
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts=transcripts_from("./logs"),
     validation={
-        "ctf_environment": validation_set("ctf-validation.csv")
+        "ctf_environment": "ctf-validation.csv"
     }
+)
+```
+
+If you have only only a single scanner you can pass the validation set
+without the mapping:
+
+**scanning.py**
+
+``` python
+scan(
+    scanners=[ctf_environment()],
+    transcripts=transcripts_from("./logs"),
+    validation="ctf-validation.csv"
 )
 ```
 
@@ -415,7 +432,7 @@ do this. For example:
 from inspect_scout import scan, transcripts_from, validation_set
 
 validation = {
-    "ctf_environment": validation_set("ctf-validation.csv")
+    "ctf_environment": "ctf-validation.csv"
 }
 
 transcripts = transcripts_from("./logs")
@@ -519,6 +536,7 @@ included embedded JSON data, these are all noted below):
 | `transcript_model_options` | JsonValueJSON | Generation options for main model. |
 | `transcript_score` | JsonValueJSON | Value indicating score on task. |
 | `transcript_success` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `transcript_message_count` | number | Total messages in conversation |
 | `transcript_total_time` | number | Time required to execute task (seconds) |
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |
@@ -549,7 +567,9 @@ included embedded JSON data, these are all noted below):
 | `message_references` | list\[Reference\]JSON | Messages referenced by scanner. |
 | `event_references` | list\[Reference\]JSON | Events referenced by scanner. |
 | `validation_target` | JsonValueJSON | Target value from validation set. |
-| `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value`. |
+| `validation_predicate` | str | Predicate used for comparison (e.g. “eq”, “gt”, etc.). |
+| `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value` using `validation_predicate`. |
+| `validation_split` | str | Validation split the case was drawn from (if any). |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_error_type` | str | Error type (either “refusal” for refusals or null for other errors). |

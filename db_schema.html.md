@@ -80,16 +80,6 @@ converting raw model API payloads to `ChatMessage`.
 
 ## Schema in Code
 
-> [!NOTE]
->
-> Note that the programmatic access to schema described below is
-> available only in the development version of Inspect Scout. Install
-> the development version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 If you are creating transcript databases outside of the Python
 `TranscriptsDB.insert()` API, you can access the schema programmatically
 or via the CLI.

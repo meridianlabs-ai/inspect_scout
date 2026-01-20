@@ -143,6 +143,7 @@ included embedded JSON data, these are all noted below):
 | `transcript_model_options` | JsonValueJSON | Generation options for main model. |
 | `transcript_score` | JsonValueJSON | Value indicating score on task. |
 | `transcript_success` | bool | Boolean reduction of `score` to succeeded/failed. |
+| `transcript_message_count` | number | Total messages in conversation |
 | `transcript_total_time` | number | Time required to execute task (seconds) |
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |
@@ -173,7 +174,9 @@ included embedded JSON data, these are all noted below):
 | `message_references` | list\[Reference\]JSON | Messages referenced by scanner. |
 | `event_references` | list\[Reference\]JSON | Events referenced by scanner. |
 | `validation_target` | JsonValueJSON | Target value from validation set. |
-| `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value`. |
+| `validation_predicate` | str | Predicate used for comparison (e.g. “eq”, “gt”, etc.). |
+| `validation_result` | JsonValueJSON | Result returned from comparing `validation_target` to `value` using `validation_predicate`. |
+| `validation_split` | str | Validation split the case was drawn from (if any). |
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_error_type` | str | Error type (either “refusal” for refusals or null for other errors). |

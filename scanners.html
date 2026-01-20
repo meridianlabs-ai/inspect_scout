@@ -606,36 +606,41 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Boolean reduction of <code>score</code> to succeeded/failed.</td>
 </tr>
 <tr class="odd">
+<td><code>message_count</code></td>
+<td>int</td>
+<td>Total messages in conversation.</td>
+</tr>
+<tr class="even">
 <td><code>total_time</code></td>
 <td>number</td>
 <td>Time required to execute task (seconds)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>total_tokens</code></td>
 <td>number</td>
 <td>Tokens spent in execution of task.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>error</code></td>
 <td>str</td>
 <td>Error message that terminated the task.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>limit</code></td>
 <td>str</td>
 <td>Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>metadata</code></td>
 <td>dict[str, JsonValue]</td>
 <td>Transcript source specific metadata (e.g.&nbsp;model, task name, errors, epoch, dataset sample id, limits, etc.).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>messages</code></td>
 <td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">list[ChatMessage]</a></td>
 <td>Message history.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>events</code></td>
 <td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html">list[Event]</a></td>
 <td>Event history (e.g.&nbsp;model events, tool events, etc.)</td>

@@ -35,7 +35,7 @@ predicates.
 #### Development
 
 How would you develop a validation set like this? Typically, you will
-review some of your existing transcripts using Inspect View, decide
+review some of your existing transcripts using **Scout View**, decide
 which ones are good validation examples, copy their transcript id (which
 is the same as the sample UUID), then record the appropriate entry in a
 text file or spreadsheet.
@@ -43,7 +43,7 @@ text file or spreadsheet.
 Use the **Copy** button to copy the UUID for the transcript you are
 reviewing:
 
-![](images/sample-uuid.png)
+![](images/transcript-uuid-copy.png)
 
 As you review transcript and find good examples, build up a list of
 transcript IDs and expected values. For example, here is a CSV file of
@@ -67,14 +67,27 @@ set:
 **scanning.py**
 
 ``` python
-from inspect_scout import scan, transcripts_from, validation_set
+from inspect_scout import scan, transcripts_from
 
 scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts=transcripts_from("./logs"),
     validation={
-        "ctf_environment": validation_set("ctf-validation.csv")
+        "ctf_environment": "ctf-validation.csv"
     }
+)
+```
+
+If you have only only a single scanner you can pass the validation set
+without the mapping:
+
+**scanning.py**
+
+``` python
+scan(
+    scanners=[ctf_environment()],
+    transcripts=transcripts_from("./logs"),
+    validation="ctf-validation.csv"
 )
 ```
 
@@ -125,7 +138,7 @@ do this. For example:
 from inspect_scout import scan, transcripts_from, validation_set
 
 validation = {
-    "ctf_environment": validation_set("ctf-validation.csv")
+    "ctf_environment": "ctf-validation.csv"
 }
 
 transcripts = transcripts_from("./logs")
@@ -137,6 +150,41 @@ scan(
     validation=validation
 )
 ```
+
+## Validation Splits
+
+Validation cases can be organized into named groups called “splits”
+(e.g., “dev”, “test”, “train”). This allows you to maintain a single
+validation file while selecting different subsets of cases for different
+purposes.
+
+To use splits, add a `split` column to your validation file:
+
+**validation.csv**
+
+``` default
+id,target,split
+Fg3KBpgFr6RSsEWmHBUqeo,true,dev
+VFkCH7gXWpJYUYonvfHxrG,false,dev
+SiEXpECj7U9nNAvM3H7JqB,true,test
+```
+
+Then use the `validation_set()` function to filter by split when
+creating your validation set:
+
+``` python
+from inspect_scout import validation_set
+
+# Use only dev cases
+validation = validation_set("validation.csv", split="dev")
+
+# Use multiple splits
+validation = validation_set("validation.csv", split=["dev", "test"])
+```
+
+When filtering by split, only cases with matching split values are
+included. Cases without a split value are excluded when a split filter
+is applied.
 
 ## IDs and Targets
 
@@ -221,17 +269,6 @@ set expects `label_phishing: false` but the scanner returns no results
 with `label=="phishing"`, the validation passes because the absence is
 treated as False.
 
-### Comparison Predicates
-
-The examples above all use straight equality checks as their predicate.
-You can provide an alternate predicate either by name (e.g. “gt”, “gte”,
-“contains”) or with a custom function. Specify the `ValidationPredicate`
-as a parameter to the `validation_set()` function:
-
-``` python
-validation_set(cases="validation.csv", predicate="gte")
-```
-
 ### Value Dictionary
 
 If our scanner produces a `dict` of values, we can also build a
@@ -245,6 +282,75 @@ follows:
 id, target_deception, target_backtracks
 Fg3KBpgFr6RSsEWmHBUqeo, true, 2
 VFkCH7gXWpJYUYonvfHxrG, false, 0
+```
+
+## Comparison Predicates
+
+By default, validation compares scanner results to targets using
+equality (`eq`). You can specify different comparison predicates either
+per-case or as a default for all cases.
+
+### Per-Case Predicates
+
+Add a `predicate` column to specify comparison logic for individual
+cases:
+
+**validation.csv**
+
+``` default
+id,target,predicate
+SiEXpECj7U9nNAvM3H7JqB,true,eq
+VFkCH7gXWpJYUYonvfHxrG,hello,contains
+Fg3KBpgFr6RSsEWmHBUqeo,5,gte
+```
+
+In this example:
+
+- First case passes if scanner result equals `true`
+- Second case passes if scanner result contains “hello”
+- Third case passes if scanner result is ≥ 5
+
+### Available Predicates
+
+| Predicate    | Description               |
+|--------------|---------------------------|
+| `eq`         | Equal (default)           |
+| `ne`         | Not equal                 |
+| `gt`         | Greater than              |
+| `gte`        | Greater than or equal     |
+| `lt`         | Less than                 |
+| `lte`        | Less than or equal        |
+| `contains`   | String contains substring |
+| `startswith` | String starts with prefix |
+| `endswith`   | String ends with suffix   |
+| `icontains`  | Case-insensitive contains |
+| `iequals`    | Case-insensitive equals   |
+
+### Default Predicate
+
+You can also set a default predicate for all cases using the `predicate`
+parameter of `validation_set()`:
+
+``` python
+validation_set(cases="validation.csv", predicate="gte")
+```
+
+When both are specified, per-case predicates take precedence over the
+default. This allows you to set a common predicate while overriding it
+for specific cases:
+
+**validation.csv**
+
+``` default
+id,target,predicate
+Fg3KBpgFr6RSsEWmHBUqeo,5,
+VFkCH7gXWpJYUYonvfHxrG,3,lt
+SiEXpECj7U9nNAvM3H7JqB,10,
+```
+
+``` python
+# Default is "gte", but second case uses "lt"
+validation_set(cases="validation.csv", predicate="gte")
 ```
 
 ## File Formats
@@ -262,6 +368,7 @@ different scenarios:
 | Single target | `id,target` | `id,target``abc123,true` |
 | Dict targets | `id,target_*,...` | `id,target_foo,target_bar``abc123,true,42` |
 | Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak``abc123,true,false` |
+| With splits | `id,target,split` | `id,target,split``abc123,true,dev` |
 
 ### YAML
 
@@ -309,4 +416,37 @@ Here is a YAML file for label-based validation (resultsets):
      deception: false
      jailbreak: true
      misconfig: false
+```
+
+Here is a YAML file with splits using the flat format (split field on
+each case):
+
+**validation.yaml**
+
+``` yaml
+- id: Fg3KBpgFr6RSsEWmHBUqeo
+  target: true
+  split: dev
+
+- id: VFkCH7gXWpJYUYonvfHxrG
+  target: false
+  split: test
+```
+
+You can also use a nested format that groups cases by split:
+
+**validation.yaml**
+
+``` yaml
+- split: dev
+  cases:
+    - id: Fg3KBpgFr6RSsEWmHBUqeo
+      target: true
+    - id: VFkCH7gXWpJYUYonvfHxrG
+      target: false
+
+- split: test
+  cases:
+    - id: SiEXpECj7U9nNAvM3H7JqB
+      target: true
 ```

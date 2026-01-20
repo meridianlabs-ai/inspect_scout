@@ -395,7 +395,7 @@ scan(
     scanners=[ctf_environment(), java_tool_usages()],
     transcripts="./logs",
     validation={
-        "ctf_environment": validation_set("ctf-validation.csv")
+        "ctf_environment": "ctf-validation.csv"
     }
 )
 ```

@@ -85,6 +85,7 @@ class ScanJob:
         results_deprecated = deprecated.get("results", None)
         if results_deprecated is not None:
             if scans is not None:
+                print(f"At 1 {results_deprecated=} {scans=}")
                 raise_results_error()
 
             show_results_warning()
@@ -163,11 +164,11 @@ class ScanJob:
         # realize transcripts
         if config.transcripts is not None:
             transcripts = transcripts_from(config.transcripts)
-        for filter in (
-            config.filter if isinstance(config.filter, list) else [config.filter]
-        ):
-            transcripts = transcripts.where(filter)
-        kwargs["transcripts"] = transcripts
+            for filter in (
+                config.filter if isinstance(config.filter, list) else [config.filter]
+            ):
+                transcripts = transcripts.where(filter)
+            kwargs["transcripts"] = transcripts
 
         # realize validation
         if config.validation is not None:

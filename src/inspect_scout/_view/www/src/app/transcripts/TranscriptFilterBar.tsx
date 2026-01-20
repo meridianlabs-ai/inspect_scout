@@ -24,11 +24,26 @@ const kCopyCodeDescriptors = [
   { label: "Filter (SQL)", value: "filter" },
 ];
 
-export const TranscriptFilterBar: FC<{
+/**
+ * Props for the TranscriptFilterBar component.
+ */
+interface TranscriptFilterBarProps {
+  /** Code representations of current filters for copy functionality (e.g., Python, SQL). */
   filterCodeValues?: Record<string, string>;
+  /** Autocomplete suggestions shown in the filter value input. */
   filterSuggestions?: ScalarValue[];
+  /** Callback when filter column selection changes; receives columnId or null when closed. */
   onFilterColumnChange?: (columnId: string | null) => void;
-}> = ({ filterCodeValues, filterSuggestions = [], onFilterColumnChange }) => {
+  /** Whether to show the column visibility picker button. Defaults to true. */
+  includeColumnPicker?: boolean;
+}
+
+export const TranscriptFilterBar: FC<TranscriptFilterBarProps> = ({
+  filterCodeValues,
+  filterSuggestions = [],
+  onFilterColumnChange,
+  includeColumnPicker = true,
+}) => {
   // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
@@ -246,9 +261,7 @@ export const TranscriptFilterBar: FC<{
         />
       </ChipGroup>
       {filterEntries.length > 0 && (
-        <>
-          <CopyQueryButton itemValues={filterCodeValues} />
-        </>
+        <CopyQueryButton itemValues={filterCodeValues} />
       )}
 
       {/* Edit filter popover */}
@@ -321,19 +334,21 @@ export const TranscriptFilterBar: FC<{
           onColumnChange={handleAddFilterColumnChange}
         />
       </PopOver>
-      <div className={clsx(styles.actionButtons)}>
-        <div className={styles.sep}></div>
-        <TranscriptColumnsButton
-          ref={columnButtonRef}
-          isOpen={showColumnPicker}
-          onClick={() => setShowColumnPicker(!showColumnPicker)}
-        />
-        <TranscriptColumnsPopover
-          positionEl={columnButtonRef.current}
-          isOpen={showColumnPicker}
-          setIsOpen={setShowColumnPicker}
-        />
-      </div>
+      {includeColumnPicker && (
+        <div className={clsx(styles.actionButtons)}>
+          <div className={styles.sep}></div>
+          <TranscriptColumnsButton
+            ref={columnButtonRef}
+            isOpen={showColumnPicker}
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+          />
+          <TranscriptColumnsPopover
+            positionEl={columnButtonRef.current}
+            isOpen={showColumnPicker}
+            setIsOpen={setShowColumnPicker}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -88,6 +88,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scanners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List available scanners
+         * @description Returns info about all registered scanners.
+         */
+        get: operations["scanners_scanners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans": {
         parameters: {
             query?: never;
@@ -334,6 +354,8 @@ export interface components {
             config: string;
             /** Last Updated */
             last_updated: number;
+            /** Location */
+            location: string;
             metrics: components["schemas"]["ScanMetrics"];
             /** Scan Id */
             scan_id: string;
@@ -2594,6 +2616,30 @@ export interface components {
              */
             type: "eval_log" | "database";
         };
+        /** ScannerInfo */
+        ScannerInfo: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** Params */
+            params: components["schemas"]["ScannerParam"][];
+            /** Version */
+            version: number;
+        };
+        /** ScannerParam */
+        ScannerParam: {
+            /** Default */
+            default?: unknown | null;
+            /** Name */
+            name: string;
+            /** Required */
+            required: boolean;
+            /** Schema */
+            schema: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * ScannerSpec
          * @description Scanner used by scan.
@@ -2654,6 +2700,11 @@ export interface components {
             validations: (boolean | {
                 [key: string]: boolean;
             })[];
+        };
+        /** ScannersResponse */
+        ScannersResponse: {
+            /** Items */
+            items: components["schemas"]["ScannerInfo"][];
         };
         /** ScansRequest */
         ScansRequest: {
@@ -3381,7 +3432,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
+            additionalProperties: boolean;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];
@@ -3790,6 +3841,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    scanners_scanners_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScannersResponse"];
                 };
             };
         };

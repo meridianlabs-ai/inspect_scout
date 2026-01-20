@@ -35,70 +35,34 @@
   gap: 0.25rem;
 }
 
-.label {
-  font-size: 0.875rem;
+.scannerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scannerDescription {
+  flex: 2;
+  font-size: 0.75rem;
   color: var(--bs-secondary);
 }
 
-.select {
-  padding: 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
+.paramsPlaceholder {
+  padding: 1rem;
+  color: var(--bs-secondary);
   font-size: 0.875rem;
 }
 
-.textarea {
-  padding: 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-  resize: vertical;
+.runScanRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
 }
 
 .checkboxGroup {
   display: flex;
   gap: 1.5rem;
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  cursor: default;
-}
-
-.runScanButton {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-secondary-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-  cursor: pointer;
-  width: fit-content;
-}
-
-.runScanButton:hover:not(:disabled) {
-  background-color: var(--bs-tertiary-bg);
-}
-
-.runScanButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.runScanButton i {
-  color: var(--bs-success);
-  font-size: 1.75rem;
-  line-height: 0;
 }
 
 .scansList {

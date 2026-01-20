@@ -49,7 +49,7 @@ def test_put_and_read_all() -> None:
         scan_id = "test-scan-123"
 
         with active_scans_store() as store:
-            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100, location="")
             store.put_metrics(scan_id, metrics)
             result = store.read_all()
 
@@ -69,7 +69,7 @@ def test_delete_current() -> None:
         scan_id = "delete-test"
 
         with active_scans_store() as store:
-            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100, location="")
             store.put_metrics(scan_id, metrics)
             assert len(store.read_all()) == 1
             store.delete_current()
@@ -83,9 +83,13 @@ def test_multiple_scans_same_process() -> None:
         scan_id_2 = "scan-2"
 
         with active_scans_store() as store:
-            store.put_spec(scan_id_1, _make_spec(scan_id_1), total_scans=100)
+            store.put_spec(
+                scan_id_1, _make_spec(scan_id_1), total_scans=100, location=""
+            )
             store.put_metrics(scan_id_1, ScanMetrics(completed_scans=1))
-            store.put_spec(scan_id_2, _make_spec(scan_id_2), total_scans=100)
+            store.put_spec(
+                scan_id_2, _make_spec(scan_id_2), total_scans=100, location=""
+            )
             store.put_metrics(scan_id_2, ScanMetrics(completed_scans=2))
             result = store.read_all()
 
@@ -101,7 +105,7 @@ def test_overwrite_updates_metrics_and_timestamp() -> None:
         scan_id = "update-test"
 
         with active_scans_store() as store:
-            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100)
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100, location="")
             store.put_metrics(scan_id, ScanMetrics(completed_scans=5))
             first_result = store.read_all()[scan_id]
             first_timestamp = first_result.last_updated
@@ -173,6 +177,7 @@ def test_active_scan_info_dataclass() -> None:
         total_scans=5,
         start_time=100.0,
         scanner_names=["scanner1"],
+        location="",
     )
 
     assert info.scan_id == "test"

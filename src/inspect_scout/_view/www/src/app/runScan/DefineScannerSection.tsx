@@ -1,49 +1,77 @@
+import {
+  VscodeButton,
+  VscodeLabel,
+  VscodeOption,
+  VscodeSingleSelect,
+} from "@vscode-elements/react-elements";
 import { FC, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
+import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { useFilterBarProps } from "../hooks/useFilterBarProps";
+import { useScanners } from "../server/useScanners";
 import { useStartScan } from "../server/useStartScan";
+import { TranscriptFilterBar } from "../transcripts/TranscriptFilterBar";
+import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 
+import { LlmScannerParams, LlmScannerParamsValue } from "./LlmScannerParams";
 import styles from "./RunScanPanel.module.css";
+import { ScannerParamsPlaceholder } from "./ScannerParamsPlaceholder";
+
+function getSelectValue(e: Event): string {
+  return (e.target as HTMLSelectElement).value;
+}
 
 interface Props {
   onScanStarted: (scanId: string) => void;
 }
 
+const defaultLlmParams: LlmScannerParamsValue = {
+  question: "",
+  answerType: "boolean",
+  excludeSystem: true,
+  excludeReasoning: false,
+  excludeToolUsage: false,
+};
+
 export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
-  const [question, setQuestion] = useState("");
-  const [answerType, setAnswerType] = useState<
-    "boolean" | "numeric" | "string"
-  >("boolean");
-  const [excludeSystem, setExcludeSystem] = useState(true);
-  const [excludeReasoning, setExcludeReasoning] = useState(false);
-  const [excludeToolUsage, setExcludeToolUsage] = useState(false);
+  const [selectedScanner, setSelectedScanner] = useState<string | null>(null);
+  const [llmParams, setLlmParams] = useState(defaultLlmParams);
+  const { loading, data: scanners } = useScanners();
   const mutation = useStartScan();
 
-  const canRunScan = question.trim().length > 0 && !mutation.isPending;
+  const { displayTranscriptsDir, resolvedTranscriptsDir, setTranscriptsDir } =
+    useTranscriptsDir(true);
 
-  const placeholderByAnswerType = {
-    boolean: "Enter a yes/no question to ask about each transcript...",
-    numeric:
-      "Enter a question that yields a numeric answer for each transcript...",
-    string: "Enter a question to ask about each transcript...",
-  } as const;
+  const { filterCodeValues, filterSuggestions, onFilterColumnChange } =
+    useFilterBarProps(resolvedTranscriptsDir);
+
+  const effectiveScanner = selectedScanner ?? scanners?.[0]?.name;
+  const selectedScannerInfo = scanners?.find(
+    (s) => s.name === effectiveScanner
+  );
+  const canRunScan =
+    effectiveScanner === "inspect_scout/llm_scanner" &&
+    llmParams.question.trim().length > 0 &&
+    !mutation.isPending;
 
   const handleRunScan = () => {
     mutation.mutate(
       {
-        name: "llm_scanner",
+        name: "inspect_scout/llm_scanner",
         filter: [],
+        limit: 100,
         scanners: [
           {
-            name: "llm_scanner",
+            name: "inspect_scout/llm_scanner",
             version: 0,
             params: {
-              question,
-              answer: answerType,
+              question: llmParams.question,
+              answer: llmParams.answerType,
               preprocessor: {
-                exclude_system: excludeSystem,
-                exclude_reasoning: excludeReasoning,
-                exclude_tool_usage: excludeToolUsage,
+                exclude_system: llmParams.excludeSystem,
+                exclude_reasoning: llmParams.excludeReasoning,
+                exclude_tool_usage: llmParams.excludeToolUsage,
               },
             },
           },
@@ -54,86 +82,62 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
   };
 
   return (
-    <div className={styles.defineScannerSection}>
-      <h2 className={styles.sectionTitle}>Define Scanner</h2>
-      <div className={styles.formRow}>
-        <div className={styles.formColumn}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Type</label>
-            <select className={styles.select} disabled>
-              <option>llm_scanner</option>
-            </select>
+    <>
+      <TranscriptsNavbar
+        transcriptsDir={displayTranscriptsDir}
+        setTranscriptsDir={setTranscriptsDir}
+      />
+      <TranscriptFilterBar
+        filterCodeValues={filterCodeValues}
+        filterSuggestions={filterSuggestions}
+        onFilterColumnChange={onFilterColumnChange}
+        includeColumnPicker={false}
+      />
+
+      <div className={styles.defineScannerSection}>
+        <h2 className={styles.sectionTitle}>Define Scanner</h2>
+
+        {/* Scanner Selection */}
+        <div className={styles.formGroup}>
+          <VscodeLabel>Type</VscodeLabel>
+          <div className={styles.scannerRow}>
+            <VscodeSingleSelect
+              value={effectiveScanner ?? ""}
+              onChange={(e) => setSelectedScanner(getSelectValue(e))}
+              disabled={loading}
+            >
+              {scanners?.map((s) => (
+                <VscodeOption key={s.name} value={s.name}>
+                  {s.name}
+                </VscodeOption>
+              ))}
+            </VscodeSingleSelect>
+            {selectedScannerInfo?.description && (
+              <div className={styles.scannerDescription}>
+                {selectedScannerInfo.description}
+              </div>
+            )}
           </div>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Question</label>
-            <textarea
-              className={styles.textarea}
-              rows={4}
-              placeholder={placeholderByAnswerType[answerType]}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-            />
-          </div>
-          <button
-            className={styles.runScanButton}
-            disabled={!canRunScan}
-            onClick={handleRunScan}
-          >
+        </div>
+
+        {/* Scanner Params */}
+        {effectiveScanner === "inspect_scout/llm_scanner" ? (
+          <LlmScannerParams value={llmParams} onChange={setLlmParams} />
+        ) : effectiveScanner ? (
+          <ScannerParamsPlaceholder scannerName={effectiveScanner} />
+        ) : null}
+
+        {/* Run Button */}
+        <div className={styles.runScanRow}>
+          <VscodeButton disabled={!canRunScan} onClick={handleRunScan}>
             <i className={ApplicationIcons.play} />
             Run Scan
-          </button>
+          </VscodeButton>
           <div className={styles.mutationStatus}>
             start scan status: {mutation.status}
           </div>
         </div>
-        <div className={styles.formColumn}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Answer type</label>
-            <select
-              className={styles.select}
-              value={answerType}
-              onChange={(e) =>
-                setAnswerType(
-                  e.target.value as "boolean" | "numeric" | "string"
-                )
-              }
-            >
-              <option value="boolean">Boolean</option>
-              <option value="numeric">Numeric</option>
-              <option value="string">String</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Message filter</label>
-            <div className={styles.checkboxGroup}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={excludeSystem}
-                  onChange={(e) => setExcludeSystem(e.target.checked)}
-                />
-                Exclude system messages
-              </label>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={excludeReasoning}
-                  onChange={(e) => setExcludeReasoning(e.target.checked)}
-                />
-                Exclude reasoning content
-              </label>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={excludeToolUsage}
-                  onChange={(e) => setExcludeToolUsage(e.target.checked)}
-                />
-                Exclude tool usage
-              </label>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
+    </>
   );
 };

@@ -93,6 +93,7 @@ class ScanJobConfig(BaseModel):
         if "results" in values:
             # There cannot be a scans property too
             if "scans" in values:
+                print(f"At 3 {values=}")
                 raise_results_error()
 
             # show warning

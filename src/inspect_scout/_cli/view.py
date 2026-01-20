@@ -45,7 +45,6 @@ def view_command(
     transcripts: str | None,
     scans: str | None,
     mode: Literal["default", "scans"],
-    results: str | None,
     host: str,
     port: int,
     browser: bool | None,

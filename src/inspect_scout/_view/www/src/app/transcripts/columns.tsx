@@ -12,6 +12,8 @@ import {
 } from "../../utils/format";
 import { printObject } from "../../utils/object";
 
+import styles from "./columns.module.css";
+
 // Column headers for display (used in column picker and add filter dropdown)
 export const COLUMN_LABELS: Record<keyof TranscriptInfo, string> = {
   success: "Success",
@@ -173,7 +175,15 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
         ? ApplicationIcons.checkbox.checked
         : ApplicationIcons.checkbox.unchecked;
 
-      return <i className={clsx(icon, "text-secondary")} />;
+      return (
+        <i
+          className={clsx(
+            icon,
+            "text-secondary",
+            value ? styles.success : styles.unsuccess
+          )}
+        />
+      );
     },
     textValue: () => null,
   }),

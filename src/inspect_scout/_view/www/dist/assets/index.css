@@ -4362,6 +4362,13 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   padding-left: 2px;
 }
+._success_oz87e_1 {
+  color: var(--bs-success) !important;
+}
+
+._unsuccess_oz87e_5 {
+  opacity: 0.3 !important;
+}
 .btn._toolButton_wcmr6_1 {
   background-color: var(--bs-light-border-subtle);
   white-space: nowrap;

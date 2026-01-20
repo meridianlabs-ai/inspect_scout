@@ -1,6 +1,5 @@
 import io
 import json
-import os
 import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass

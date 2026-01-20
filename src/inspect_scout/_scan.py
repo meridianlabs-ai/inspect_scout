@@ -324,7 +324,9 @@ async def scan_async(
         model_args=model_args or scanjob._model_args,
         model_roles=model_roles or scanjob._model_roles,
     )
-    scanjob._model = resolved_model
+    # only set the scanjob model if we have one
+    if str(resolved_model) != "none/none":
+        scanjob._model = resolved_model
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
 

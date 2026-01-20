@@ -58,7 +58,7 @@ def view_server(
 ) -> None:
     # get filesystem and resolve scan_dir to full path
     config = config or ViewConfig()
-    scans = config.scans or config.project.scans or DEFAULT_SCANS_DIR
+    scans = config.scans_cli or config.project.scans or DEFAULT_SCANS_DIR
     fs = filesystem(scans, fs_options=fs_options or {})
     if not fs.exists(scans):
         fs.mkdir(scans, True)

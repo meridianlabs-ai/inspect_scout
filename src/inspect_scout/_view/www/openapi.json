@@ -85,6 +85,17 @@
             "title": "Scans Dir",
             "type": "string"
           },
+          "scans_dir_cli": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scans Dir Cli"
+          },
           "transcripts_dir": {
             "anyOf": [
               {
@@ -95,6 +106,17 @@
               }
             ],
             "title": "Transcripts Dir"
+          },
+          "transcripts_dir_cli": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcripts Dir Cli"
           }
         },
         "required": [

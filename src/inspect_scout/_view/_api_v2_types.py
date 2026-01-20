@@ -149,6 +149,10 @@ class AppConfig:
     transcripts_dir: str | None
     scans_dir: str
 
+    # cli overrides for dirs
+    transcripts_dir_cli: str | None
+    scans_dir_cli: str | None
+
 
 @dataclass
 class ValidationCaseRequest:

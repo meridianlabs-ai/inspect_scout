@@ -223,8 +223,8 @@ def v2_api_app(
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
         project = read_project()
-        transcripts = view_config.transcripts or project.transcripts
-        scans = view_config.scans or project.scans or DEFAULT_SCANS_DIR
+        transcripts = view_config.transcripts_cli or project.transcripts
+        scans = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR
         return AppConfig(
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
@@ -232,6 +232,8 @@ def v2_api_app(
             if transcripts is not None
             else None,
             scans_dir=UPath(scans).resolve().as_uri(),
+            transcripts_dir_cli=view_config.transcripts_cli,
+            scans_dir_cli=view_config.scans_cli,
         )
 
     @app.get(

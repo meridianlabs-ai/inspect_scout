@@ -362,8 +362,12 @@ export interface components {
             project_dir: string;
             /** Scans Dir */
             scans_dir: string;
+            /** Scans Dir Cli */
+            scans_dir_cli?: string | null;
             /** Transcripts Dir */
             transcripts_dir?: string | null;
+            /** Transcripts Dir Cli */
+            transcripts_dir_cli?: string | null;
         };
         /**
          * ApprovalEvent
@@ -3381,7 +3385,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: boolean;
+            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];

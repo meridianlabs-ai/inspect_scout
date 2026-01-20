@@ -768,7 +768,10 @@ def resolve_scan_option_multi(
     scan_job_value: T | None,
 ) -> T | None:
     """Resolve option when value is derived from multiple CLI options."""
-    if ctx.get_parameter_source(options[0]) == ParameterSource.ENVIRONMENT:
+    if (
+        len(options) > 0
+        and ctx.get_parameter_source(options[0]) == ParameterSource.ENVIRONMENT
+    ):
         _scan_environment_variable_warning(options[0])
 
     if scan_job_value is not None:

@@ -227,7 +227,6 @@ async def _parse_and_filter(
             and prefix == "messages"
             and event == "end_array"
             and not state.attachment_refs
-            and os.environ.get("SCOUT_EARLY_PARSE_EXIT")
         ):
             break
 

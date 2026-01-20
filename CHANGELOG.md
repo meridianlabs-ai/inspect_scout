@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.
+
 ## 0.4.8 (18 January 2026)
 
 - Validation: Add support for defining and using named splits (e.g. 'dev', 'test') for validation data.

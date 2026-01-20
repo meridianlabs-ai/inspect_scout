@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scout View: Move 'Project' UI button to main activity bar.
+
 ## 0.4.9 (20 January 2026)
 
 - Bugfix: Don't check index coverage when running with an active limit or other query filter.

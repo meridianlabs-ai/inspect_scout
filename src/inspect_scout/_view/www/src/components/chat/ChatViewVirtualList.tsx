@@ -17,6 +17,7 @@ import { LiveVirtualList } from "../LiveVirtualList";
 import { ChatMessageRow } from "./ChatMessageRow";
 import styles from "./ChatViewVirtualList.module.css";
 import { ResolvedMessage, resolveMessages } from "./messages";
+import { messageSearchText } from "./messageSearchText";
 import { ChatViewToolCallStyle } from "./types";
 
 interface ChatViewVirtualListProps {
@@ -224,6 +225,7 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
           showProgress={running}
           components={{ Item }}
           animation={false}
+          itemSearchText={messageSearchText}
         />
       );
     }

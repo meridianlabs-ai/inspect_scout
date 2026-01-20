@@ -4,6 +4,7 @@ import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../LiveVirtualList";
 
+import { eventSearchText } from "./eventSearchText";
 import { RenderedEventNode } from "./TranscriptVirtualList";
 import styles from "./TranscriptVirtualListComponent.module.css";
 import { EventNode } from "./types";
@@ -146,6 +147,7 @@ export const TranscriptVirtualListComponent: FC<
       renderRow={renderRow}
       live={running}
       animation={running}
+      itemSearchText={eventSearchText}
     />
   );
 };

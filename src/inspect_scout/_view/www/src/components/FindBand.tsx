@@ -1,8 +1,6 @@
 import clsx from "clsx";
 import { FC, KeyboardEvent, useCallback, useEffect, useRef } from "react";
 
-import { useStore } from "../state/store";
-
 import { useExtendedFind } from "./ExtendedFindContext";
 import "./FindBand.css";
 import { ApplicationIcons } from "./icons";

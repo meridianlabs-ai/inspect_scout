@@ -668,6 +668,7 @@ export interface components {
                 string | number | boolean | null
             ] | string | number | boolean | null;
         };
+        Content: components["schemas"]["ContentText"] | components["schemas"]["ContentReasoning"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentData"] | components["schemas"]["ContentToolUse"] | components["schemas"]["ContentDocument"];
         /**
          * ContentAudio
          * @description Audio content.
@@ -3380,7 +3381,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
+            additionalProperties: boolean;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];

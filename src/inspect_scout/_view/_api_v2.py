@@ -20,7 +20,7 @@ from inspect_ai._util.file import FileSystem
 from inspect_ai._util.json import JsonChange
 from inspect_ai._view.fastapi_server import AccessPolicy
 from inspect_ai.event._event import Event
-from inspect_ai.model import ChatMessage
+from inspect_ai.model import ChatMessage, Content
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
@@ -134,6 +134,7 @@ def v2_api_app(
             #   don't preserve their name at runtime, so we must provide it explicitly.
             # - For Pydantic models: creates a schema with the given name.
             extra_schemas = [
+                ("Content", Content),
                 ("ChatMessage", ChatMessage),
                 ("ValidationCase", ValidationCase),
                 ("Event", Event),

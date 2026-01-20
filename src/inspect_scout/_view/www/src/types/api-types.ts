@@ -60,6 +60,7 @@ export type ToolInfo = components["schemas"]["ToolInfo"];
 export type ToolCallContent = components["schemas"]["ToolCallContent"];
 export type ToolCallView = components["schemas"]["ToolCallView"];
 
+export type Content = components["schemas"]["Content"];
 export type ContentAudio = components["schemas"]["ContentAudio"];
 export type ContentData = components["schemas"]["ContentData"];
 export type ContentDocument = components["schemas"]["ContentDocument"];

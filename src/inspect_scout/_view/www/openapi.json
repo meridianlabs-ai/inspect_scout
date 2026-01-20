@@ -1039,6 +1039,34 @@
         "title": "Condition",
         "type": "object"
       },
+      "Content": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ContentText"
+          },
+          {
+            "$ref": "#/components/schemas/ContentReasoning"
+          },
+          {
+            "$ref": "#/components/schemas/ContentImage"
+          },
+          {
+            "$ref": "#/components/schemas/ContentAudio"
+          },
+          {
+            "$ref": "#/components/schemas/ContentVideo"
+          },
+          {
+            "$ref": "#/components/schemas/ContentData"
+          },
+          {
+            "$ref": "#/components/schemas/ContentToolUse"
+          },
+          {
+            "$ref": "#/components/schemas/ContentDocument"
+          }
+        ]
+      },
       "ContentAudio": {
         "description": "Audio content.",
         "properties": {
@@ -8419,19 +8447,9 @@
         "description": "Description of tool parameters object in JSON Schema format.",
         "properties": {
           "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": false,
-            "title": "Additionalproperties"
+            "title": "Additionalproperties",
+            "type": "boolean"
           },
           "properties": {
             "additionalProperties": {
@@ -8457,7 +8475,8 @@
         "required": [
           "type",
           "properties",
-          "required"
+          "required",
+          "additionalProperties"
         ],
         "title": "ToolParams",
         "type": "object"

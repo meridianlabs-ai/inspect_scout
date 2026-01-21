@@ -8,6 +8,8 @@ import {
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
+  ScanJobConfig,
+  ScannersResponse,
   ScansResponse,
   Status,
   Transcript,
@@ -19,6 +21,7 @@ export type ClientStorage = StateStorage;
 export type ScalarValue = string | number | boolean | null;
 
 export interface ScanApi {
+  getConfigVersion(): Promise<string>;
   getConfig(): Promise<AppConfig>;
   getTranscripts(
     transcriptsDir: string,
@@ -54,6 +57,8 @@ export interface ScanApi {
     config: ProjectConfigInput,
     etag: string | null
   ): Promise<{ config: ProjectConfig; etag: string }>;
+  startScan(config: ScanJobConfig): Promise<Status>;
+  getScanners(): Promise<ScannersResponse>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

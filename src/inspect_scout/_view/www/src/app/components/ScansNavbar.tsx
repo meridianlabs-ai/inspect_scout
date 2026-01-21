@@ -14,6 +14,7 @@ import { NavButton } from "./NavButtons";
 
 interface ScansNavbarProps {
   scansDir: string | null;
+  scansDirSource?: "route" | "user" | "project" | "cli";
   setScansDir: (path: string) => void;
   children?: ReactNode;
   bordered?: boolean;
@@ -21,6 +22,7 @@ interface ScansNavbarProps {
 
 export const ScansNavbar: FC<ScansNavbarProps> = ({
   scansDir,
+  scansDirSource,
   setScansDir,
   bordered = true,
   children,
@@ -80,7 +82,14 @@ export const ScansNavbar: FC<ScansNavbarProps> = ({
           <EditablePath
             path={scansDir}
             label="Scans"
-            icon={ApplicationIcons.scanner}
+            icon={
+              scansDirSource === "cli" ? ApplicationIcons.terminal : undefined
+            }
+            title={
+              scansDirSource === "cli"
+                ? "Scans directory set via command line"
+                : undefined
+            }
             onPathChanged={setScansDir}
             placeholder="Select Scans Folder"
             className="text-size-smallest"

@@ -52,7 +52,7 @@ export const ScansGrid: FC<{
     if (!savedState?.sort) {
       return {
         sort: {
-          sortModel: [{ colId: "spec.timestamp", sort: "desc" as const }],
+          sortModel: [{ colId: "timestamp", sort: "desc" as const }],
         },
       };
     }

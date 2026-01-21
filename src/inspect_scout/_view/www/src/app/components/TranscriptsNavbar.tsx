@@ -12,6 +12,7 @@ import { NavButton } from "./NavButtons";
 
 interface TranscriptsNavbarProps {
   transcriptsDir?: string | null;
+  transcriptsDirSource?: "route" | "user" | "project" | "cli" | "unknown";
   setTranscriptsDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;
@@ -19,6 +20,7 @@ interface TranscriptsNavbarProps {
 
 export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   transcriptsDir,
+  transcriptsDirSource,
   setTranscriptsDir,
   bordered = true,
   children,
@@ -68,7 +70,16 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
         <EditablePath
           path={transcriptsDir}
           label="Transcripts"
-          icon={ApplicationIcons.transcript}
+          icon={
+            transcriptsDirSource === "cli"
+              ? ApplicationIcons.terminal
+              : undefined
+          }
+          title={
+            transcriptsDirSource === "cli"
+              ? "Using transcripts directory from command line."
+              : undefined
+          }
           onPathChanged={setTranscriptsDir}
           placeholder={
             editable

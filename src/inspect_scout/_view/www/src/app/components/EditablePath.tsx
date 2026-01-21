@@ -11,6 +11,8 @@ interface EditablePathProps {
   mru?: string[];
 
   label?: string;
+  title?: string;
+
   icon?: string;
   placeholder?: string;
 
@@ -24,6 +26,7 @@ export const EditablePath: FC<EditablePathProps> = ({
   onPathChanged,
   mru,
   label,
+  title,
   icon,
   placeholder,
   editable = true,
@@ -47,6 +50,7 @@ export const EditablePath: FC<EditablePathProps> = ({
       onValueChanged={onValueChanged}
       mru={mru}
       label={label}
+      title={title}
       icon={icon}
       placeholder={placeholder}
       className={className}

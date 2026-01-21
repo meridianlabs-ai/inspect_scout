@@ -1155,15 +1155,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
             has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
 
             if idx_files:
-                await self._init_from_index()
-                # Check for unindexed parquet files (skip for worker processes)
-                if not has_snapshot:
-                    await self._check_index_coverage()
+                await self._init_from_index(check_coverage=not has_snapshot)
             else:
                 # Initialize from parquet files (warning is issued inside if files exist)
                 await self._init_from_parquet(warn_missing_index=not has_snapshot)
 
-    async def _init_from_index(self) -> None:
+    async def _init_from_index(self, check_coverage: bool = False) -> None:
         """Initialize from index files (fast path).
 
         Creates:
@@ -1172,6 +1169,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         This is the fast path used when index files exist. All metadata is loaded
         into memory for fast queries.
+
+        Args:
+            check_coverage: Whether to check for unindexed parquet files.
         """
         assert self._conn is not None
         assert self._index_storage is not None
@@ -1193,6 +1193,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._conn.execute("""
             CREATE TABLE transcripts AS SELECT * FROM transcript_index
         """)
+
+        # Check for unindexed parquet files BEFORE applying query filter
+        # (must compare against full index, not filtered subset)
+        if check_coverage:
+            await self._check_index_coverage()
 
         # Apply pre-filter query if provided (rare case)
         if self._query and (
@@ -1764,7 +1769,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._location is None:
             return absolute_path
 
-        location_prefix = self._location.rstrip("/") + "/"
+        location_prefix = str(UPath(self._location)) + "/"
         if absolute_path.startswith(location_prefix):
             return absolute_path[len(location_prefix) :]
 

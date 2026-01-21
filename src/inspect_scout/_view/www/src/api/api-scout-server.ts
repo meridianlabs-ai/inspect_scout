@@ -6,6 +6,8 @@ import {
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
+  ScanJobConfig,
+  ScannersResponse,
   ScansResponse,
   Status,
   Transcript,
@@ -30,6 +32,10 @@ export const apiScoutServer = (
 
   return {
     capability: "workbench",
+    getConfigVersion: async (): Promise<string> => {
+      const result = await requestApi.fetchString("GET", `/config-version`);
+      return result.raw;
+    },
     getConfig: async (): Promise<AppConfig> => {
       const result = await requestApi.fetchString("GET", `/config`);
       return asyncJsonParse<AppConfig>(result.raw);
@@ -186,6 +192,21 @@ export const apiScoutServer = (
       );
       const newEtag = response.headers.get("ETag")?.replace(/"/g, "") ?? "";
       return { config: response.parsed, etag: newEtag };
+    },
+    startScan: async (config: ScanJobConfig): Promise<Status> =>
+      asyncJsonParse<Status>(
+        (
+          await requestApi.fetchString(
+            "POST",
+            `/startscan`,
+            {},
+            JSON.stringify(config)
+          )
+        ).raw
+      ),
+    getScanners: async (): Promise<ScannersResponse> => {
+      const result = await requestApi.fetchString("GET", `/scanners`);
+      return asyncJsonParse<ScannersResponse>(result.raw);
     },
     storage: NoPersistence,
   };

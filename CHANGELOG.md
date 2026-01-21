@@ -1,6 +1,14 @@
 ## Unreleased
 
 - Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.
+- Scan config: Set 'model' to `None` if no model is specified.
+- Scan config: Deprecate use of environment variables for config (in favor of project config).
+- Scout View: Move 'Project' UI button to main activity bar.
+
+## 0.4.9 (20 January 2026)
+
+- Bugfix: Don't check index coverage when running with an active limit or other query filter.
+- Bugfix: Correctly normalize relative database file paths.
 
 ## 0.4.8 (18 January 2026)
 

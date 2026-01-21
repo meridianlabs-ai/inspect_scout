@@ -43,8 +43,8 @@ def view(
         view_server(
             config=ViewConfig(
                 project=project,
-                transcripts=transcripts,
-                scans=scans,
+                transcripts_cli=transcripts,
+                scans_cli=scans,
             ),
             host=host,
             port=port,

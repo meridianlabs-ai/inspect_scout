@@ -60,6 +60,7 @@ class TestActiveScansEndpoint:
             total_scans=100,
             start_time=1704067100.0,
             scanner_names=["scanner1", "scanner2"],
+            location="",
         )
 
         with _mock_active_scans_store({"scan-abc-123": scan_info}):
@@ -91,6 +92,7 @@ class TestActiveScansEndpoint:
             total_scans=100,
             start_time=900.0,
             scanner_names=["s1"],
+            location="",
         )
         scan2 = ActiveScanInfo(
             scan_id="scan-2",
@@ -102,6 +104,7 @@ class TestActiveScansEndpoint:
             total_scans=100,
             start_time=1900.0,
             scanner_names=["s1"],
+            location="",
         )
         scan3 = ActiveScanInfo(
             scan_id="scan-3",
@@ -113,6 +116,7 @@ class TestActiveScansEndpoint:
             total_scans=100,
             start_time=2900.0,
             scanner_names=["s1"],
+            location="",
         )
 
         store_data = {
@@ -160,6 +164,7 @@ class TestActiveScansEndpoint:
             total_scans=1000,
             start_time=1704000000.0,
             scanner_names=["scanner1"],
+            location="",
         )
 
         with _mock_active_scans_store({"full-metrics-scan": scan_info}):

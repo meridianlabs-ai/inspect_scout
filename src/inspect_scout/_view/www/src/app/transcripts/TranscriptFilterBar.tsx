@@ -28,7 +28,13 @@ export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
   filterSuggestions?: ScalarValue[];
   onFilterColumnChange?: (columnId: string | null) => void;
-}> = ({ filterCodeValues, filterSuggestions = [], onFilterColumnChange }) => {
+  includeColumnPicker?: boolean;
+}> = ({
+  filterCodeValues,
+  filterSuggestions = [],
+  onFilterColumnChange,
+  includeColumnPicker = true,
+}) => {
   // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
@@ -226,7 +232,7 @@ export const TranscriptFilterBar: FC<{
                   value={formatFilterCondition(filter.condition)}
                   title={`Edit ${filter.columnId} filter`}
                   closeTitle="Remove filter"
-                  className={clsx(styles.filterChip, "text-size-smallestest")}
+                  className={clsx(styles.filterChip, "text-size-smallest")}
                   onClose={() => {
                     removeFilter(filter.columnId);
                   }}
@@ -238,18 +244,13 @@ export const TranscriptFilterBar: FC<{
         {/* Add Filter chip */}
         <Chip
           ref={addFilterChipRef}
-          icon={ApplicationIcons.changes.add}
+          icon={ApplicationIcons.add}
           value="Add"
           title="Add a new filter"
-          className={clsx(styles.filterChip, "text-size-smallestest")}
+          className={clsx(styles.filterChip, "text-size-smallest")}
           onClick={() => setIsAddFilterOpen(true)}
         />
       </ChipGroup>
-      {filterEntries.length > 0 && (
-        <>
-          <CopyQueryButton itemValues={filterCodeValues} />
-        </>
-      )}
 
       {/* Edit filter popover */}
       {editingColumnId && editingFilter && (
@@ -322,17 +323,26 @@ export const TranscriptFilterBar: FC<{
         />
       </PopOver>
       <div className={clsx(styles.actionButtons)}>
-        <div className={styles.sep}></div>
-        <TranscriptColumnsButton
-          ref={columnButtonRef}
-          isOpen={showColumnPicker}
-          onClick={() => setShowColumnPicker(!showColumnPicker)}
-        />
-        <TranscriptColumnsPopover
-          positionEl={columnButtonRef.current}
-          isOpen={showColumnPicker}
-          setIsOpen={setShowColumnPicker}
-        />
+        {filterEntries.length > 0 && (
+          <>
+            <CopyQueryButton itemValues={filterCodeValues} />
+          </>
+        )}
+        {includeColumnPicker && (
+          <>
+            <div className={styles.sep}></div>
+            <TranscriptColumnsButton
+              ref={columnButtonRef}
+              isOpen={showColumnPicker}
+              onClick={() => setShowColumnPicker(!showColumnPicker)}
+            />
+            <TranscriptColumnsPopover
+              positionEl={columnButtonRef.current}
+              isOpen={showColumnPicker}
+              setIsOpen={setShowColumnPicker}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -368,7 +378,7 @@ const CopyQueryButton: FC<{ itemValues?: Record<string, string> }> = ({
       label="Copy"
       icon={icon}
       title="Copy Filter"
-      className={clsx(styles.actionButton, styles.chipButton)}
+      className={clsx(styles.actionButton, styles.chipButton, styles.right)}
       disabled={Object.keys(itemValues || []).length === 0}
       dropdownAlign="right"
       dropdownClassName={"text-size-smallest"}

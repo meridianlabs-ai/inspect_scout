@@ -9,8 +9,9 @@ import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { appAliasedPath, useConfig } from "../server/useConfig";
+import { useConfig } from "../server/useConfig";
 import { useScans } from "../server/useScans";
+import { useScansDir } from "../utils/useScansDir";
 
 import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
@@ -19,10 +20,10 @@ export const ScansPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useScans();
   const config = useConfig();
-  const scanDir = config.scans_dir;
+  const scanDir = config.scans_dir.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
-  const userScansDir = useStore((state) => state.userScansDir);
-  const setScanDir = useStore((state) => state.setUserScansDir);
+  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+    useScansDir();
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -33,8 +34,9 @@ export const ScansPanel: FC = () => {
   return (
     <div className={clsx(styles.container)}>
       <ScansNavbar
-        scansDir={appAliasedPath(config, userScansDir || scanDir)}
-        setScansDir={setScanDir}
+        scansDir={displayScansDir}
+        scansDirSource={resolvedScansDirSource}
+        setScansDir={setScansDir}
         bordered={false}
       />
       <LoadingBar loading={!!loading} />

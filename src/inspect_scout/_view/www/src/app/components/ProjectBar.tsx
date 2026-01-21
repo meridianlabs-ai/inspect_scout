@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { ApplicationIcons } from "../../components/icons";
 import { getActivityByRoute } from "../../router/activities";
-import { projectRoute } from "../../router/url";
 import { AppConfig } from "../../types/api-types";
 import { appAliasedPath } from "../server/useConfig";
 
@@ -58,16 +57,7 @@ export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
         <span className={styles.center}>
           {appAliasedPath(config, config.project_dir)}
         </span>
-        <div className={styles.right}>
-          <button
-            type="button"
-            className={styles.navButton}
-            onClick={() => void navigate(projectRoute())}
-          >
-            <i className={ApplicationIcons.config} />
-            &nbsp;Project
-          </button>
-        </div>
+        <div className={styles.right}></div>
       </div>
     </div>
   );

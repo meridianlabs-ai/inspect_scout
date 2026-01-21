@@ -3,6 +3,7 @@ import {
   ActiveScansResponse,
   ProjectConfig,
   ProjectConfigInput,
+  ScannersResponse,
   ScansResponse,
   Status,
   TranscriptsResponse,
@@ -52,12 +53,15 @@ export const apiScoutServerV1 = (
 
   return {
     capability: "scans",
+    getConfigVersion: (): Promise<string> => {
+      throw new Error("Not Yet Implemented");
+    },
     getConfig: async () => {
       const data = await readScans();
       return {
         home_dir: "",
         project_dir: ".",
-        scans_dir: data.results_dir,
+        scans_dir: { dir: data.results_dir, source: "project" },
         transcripts_dir: null,
       };
     },
@@ -147,6 +151,14 @@ export const apiScoutServerV1 = (
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     postCode: async (): Promise<Record<string, string>> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    startScan: async (): Promise<never> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
     },
     storage: NoPersistence,

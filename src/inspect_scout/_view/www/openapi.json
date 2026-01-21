@@ -11,6 +11,10 @@
             "title": "Last Updated",
             "type": "number"
           },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/ScanMetrics"
           },
@@ -50,7 +54,8 @@
           "config",
           "total_scans",
           "start_time",
-          "scanner_names"
+          "scanner_names",
+          "location"
         ],
         "title": "ActiveScanInfo",
         "type": "object"
@@ -82,19 +87,17 @@
             "type": "string"
           },
           "scans_dir": {
-            "title": "Scans Dir",
-            "type": "string"
+            "$ref": "#/components/schemas/AppDir"
           },
           "transcripts_dir": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/AppDir"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Transcripts Dir"
+            ]
           }
         },
         "required": [
@@ -103,6 +106,28 @@
           "scans_dir"
         ],
         "title": "AppConfig",
+        "type": "object"
+      },
+      "AppDir": {
+        "properties": {
+          "dir": {
+            "title": "Dir",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "project",
+              "cli"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dir",
+          "source"
+        ],
+        "title": "AppDir",
         "type": "object"
       },
       "ApprovalEvent": {
@@ -1038,6 +1063,34 @@
         ],
         "title": "Condition",
         "type": "object"
+      },
+      "Content": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ContentText"
+          },
+          {
+            "$ref": "#/components/schemas/ContentReasoning"
+          },
+          {
+            "$ref": "#/components/schemas/ContentImage"
+          },
+          {
+            "$ref": "#/components/schemas/ContentAudio"
+          },
+          {
+            "$ref": "#/components/schemas/ContentVideo"
+          },
+          {
+            "$ref": "#/components/schemas/ContentData"
+          },
+          {
+            "$ref": "#/components/schemas/ContentToolUse"
+          },
+          {
+            "$ref": "#/components/schemas/ContentDocument"
+          }
+        ]
       },
       "ContentAudio": {
         "description": "Audio content.",
@@ -6668,6 +6721,76 @@
         "title": "ScanTranscripts",
         "type": "object"
       },
+      "ScannerInfo": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerParam"
+            },
+            "title": "Params",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "params"
+        ],
+        "title": "ScannerInfo",
+        "type": "object"
+      },
+      "ScannerParam": {
+        "properties": {
+          "default": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "schema": {
+            "additionalProperties": true,
+            "title": "Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "schema",
+          "required"
+        ],
+        "title": "ScannerParam",
+        "type": "object"
+      },
       "ScannerSpec": {
         "description": "Scanner used by scan.",
         "properties": {
@@ -6790,6 +6913,22 @@
           "model_usage"
         ],
         "title": "ScannerSummary",
+        "type": "object"
+      },
+      "ScannersResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerInfo"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ScannersResponse",
         "type": "object"
       },
       "ScansRequest": {
@@ -9574,6 +9713,35 @@
         "summary": "Get application configuration"
       }
     },
+    "/config-version": {
+      "get": {
+        "description": "Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.",
+        "operationId": "config_version_config_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get config version"
+      }
+    },
+    "/config-version/stream": {
+      "get": {
+        "description": "SSE endpoint that pushes when config version changes.",
+        "operationId": "config_version_stream_config_version_stream_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stream config version changes"
+      }
+    },
     "/project/config": {
       "get": {
         "description": "Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.",
@@ -9640,33 +9808,23 @@
         "summary": "Update project configuration"
       }
     },
-    "/runllmscanner": {
-      "post": {
-        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
-        "operationId": "run_llm_scanner_runllmscanner_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScanJobConfig"
-              }
-            }
-          },
-          "required": true
-        },
+    "/scanners": {
+      "get": {
+        "description": "Returns info about all registered scanners.",
+        "operationId": "scanners_scanners_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Status"
+                  "$ref": "#/components/schemas/ScannersResponse"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Run llm_scanner"
+        "summary": "List available scanners"
       }
     },
     "/scans": {
@@ -9847,6 +10005,35 @@
           }
         },
         "summary": "Get scanner input for a specific transcript"
+      }
+    },
+    "/startscan": {
+      "post": {
+        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
+        "operationId": "run_llm_scanner_startscan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanJobConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run llm_scanner"
       }
     },
     "/transcripts/{dir}": {

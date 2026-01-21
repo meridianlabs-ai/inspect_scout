@@ -19,6 +19,15 @@ export interface ActivityConfig {
 
 const allActivities: ActivityConfig[] = [
   {
+    id: "project",
+    label: "Project",
+    icon: ApplicationIcons.config,
+    route: "/project",
+    routePatterns: ["/project"],
+    description: "Project settings",
+    element: <></>,
+  },
+  {
     id: "transcripts",
     label: "Transcripts",
     icon: ApplicationIcons.transcript,

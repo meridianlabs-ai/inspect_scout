@@ -1,10 +1,11 @@
-import os
 import shlex
 
 import click
 from inspect_ai._util.path import pretty_path
 from rich.table import Column, Table
 from typing_extensions import Unpack
+
+from inspect_scout._project._project import read_project
 
 from .._display import display
 from .._scanlist import scan_list
@@ -13,7 +14,7 @@ from .scan import scan_command
 
 
 @scan_command.command("list")
-@click.argument("scans_dir", default=os.getenv("SCOUT_SCAN_RESULTS", "./scans"))
+@click.argument("scans_dir", default="")
 @common_options
 def scan_list_command(
     scans_dir: str,
@@ -23,6 +24,11 @@ def scan_list_command(
     # Process common options
     process_common_options(common)
 
+    # if there is no scans dir then get it from the project
+    if len(scans_dir) == 0:
+        scans_dir = read_project().scans or "./scans"
+
+    # list the scans
     scans = scan_list(scans_dir)
 
     scans = sorted(

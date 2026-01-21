@@ -34,7 +34,7 @@ scout.add_command(db_command)
 def main() -> None:
     init_environment()
     set_exception_hook()
-    scout(auto_envvar_prefix="SCOUT")  # pylint: disable=no-value-for-parameter
+    scout()  # pylint: disable=no-value-for-parameter
 
 
 if __name__ == "__main__":

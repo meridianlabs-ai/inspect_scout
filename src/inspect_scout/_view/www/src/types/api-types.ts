@@ -19,6 +19,9 @@ export type Transcript = components["schemas"]["Transcript"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
 export type ScansResponse = components["schemas"]["ScansResponse"];
+export type AppDir = components["schemas"]["AppDir"];
+export type ScannerInfo = components["schemas"]["ScannerInfo"];
+export type ScannersResponse = components["schemas"]["ScannersResponse"];
 export type AppConfig = components["schemas"]["AppConfig"];
 export type ProjectConfig = components["schemas"]["ProjectConfig-Output"];
 export type ProjectConfigInput = components["schemas"]["ProjectConfig-Input"];
@@ -60,6 +63,7 @@ export type ToolInfo = components["schemas"]["ToolInfo"];
 export type ToolCallContent = components["schemas"]["ToolCallContent"];
 export type ToolCallView = components["schemas"]["ToolCallView"];
 
+export type Content = components["schemas"]["Content"];
 export type ContentAudio = components["schemas"]["ContentAudio"];
 export type ContentData = components["schemas"]["ContentData"];
 export type ContentDocument = components["schemas"]["ContentDocument"];

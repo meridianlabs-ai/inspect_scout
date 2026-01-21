@@ -432,6 +432,7 @@ const CopyToolbarButton: FC<{
       icon={icon}
       className={clsx(className)}
       dropdownClassName={"text-size-smallest"}
+      dropdownAlign="right"
       subtle={true}
       items={{
         UUID: () => {

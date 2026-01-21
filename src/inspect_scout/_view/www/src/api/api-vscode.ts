@@ -6,6 +6,7 @@ import {
   ActiveScansResponse,
   ProjectConfig,
   ProjectConfigInput,
+  ScannersResponse,
   ScansResponse,
   Status,
   TranscriptsResponse,
@@ -53,12 +54,16 @@ export const apiVscode = (
 
   return {
     capability: "scans",
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getConfigVersion: async (): Promise<string> => {
+      throw new Error("Not Yet Implemented");
+    },
     getConfig: async () => {
       const data = await fetchScansData();
       return {
         home_dir: "",
         project_dir: ".",
-        scans_dir: data.results_dir,
+        scans_dir: { dir: data.results_dir, source: "project" },
         transcripts_dir: null,
       };
     },
@@ -166,6 +171,14 @@ export const apiVscode = (
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     postCode: async (): Promise<Record<string, string>> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    startScan: async (): Promise<never> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
     },
     storage: createVSCodeStore(vscodeApi),

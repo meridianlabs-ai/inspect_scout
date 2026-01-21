@@ -1,12 +1,22 @@
 import asyncio
+import inspect
 import io
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from collections.abc import AsyncGenerator
 from functools import reduce
 from pathlib import Path as PathlibPath
 from typing import (
     Any,
+    Callable,
     Iterable,
     TypeVar,
     Union,
+    cast,
     get_args,
     get_origin,
 )
@@ -18,9 +28,11 @@ from fastapi.responses import StreamingResponse
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import FileSystem
 from inspect_ai._util.json import JsonChange
+from inspect_ai._util.registry import registry_find, registry_info
 from inspect_ai._view.fastapi_server import AccessPolicy
 from inspect_ai.event._event import Event
-from inspect_ai.model import ChatMessage
+from inspect_ai.model import ChatMessage, Content
+from inspect_ai.util import json_schema
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
@@ -31,21 +43,18 @@ from starlette.status import (
 )
 from upath import UPath
 
-from inspect_scout._project._project import (
+from .._llm_scanner.params import LlmScannerParams
+from .._project._project import (
     EtagMismatchError,
     read_project,
     read_project_config_with_etag,
     write_project_config,
 )
-
-from .._llm_scanner.params import LlmScannerParams
 from .._project.types import ProjectConfig
 from .._query import Column, Condition, Query, ScalarValue, condition_as_sql
-from .._recorder.active_scans_store import active_scans_store
+from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._recorder.recorder import Status as RecorderStatus
-from .._scancontext import create_scan
-from .._scanjob import ScanJob
 from .._scanjob_config import ScanJobConfig
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import (
@@ -65,7 +74,11 @@ from ._api_v2_helpers import (
 from ._api_v2_types import (
     ActiveScansResponse,
     AppConfig,
+    AppDir,
     DistinctRequest,
+    ScannerInfo,
+    ScannerParam,
+    ScannersResponse,
     ScansRequest,
     ScansResponse,
     ScanStatus,
@@ -78,6 +91,7 @@ from ._server_common import (
     decode_base64url,
 )
 from ._validation_api import create_validation_router
+from .config_version import bump_config_version, get_condition, get_config_version
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -134,6 +148,7 @@ def v2_api_app(
             #   don't preserve their name at runtime, so we must provide it explicitly.
             # - For Pydantic models: creates a schema with the given name.
             extra_schemas = [
+                ("Content", Content),
                 ("ChatMessage", ChatMessage),
                 ("ValidationCase", ValidationCase),
                 ("Event", Event),
@@ -222,16 +237,94 @@ def v2_api_app(
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
         project = read_project()
-        transcripts = view_config.transcripts or project.transcripts
-        scans = view_config.scans or project.scans or DEFAULT_SCANS_DIR
+        transcripts = view_config.transcripts_cli or project.transcripts
+        scans = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR
         return AppConfig(
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-            transcripts_dir=UPath(transcripts).resolve().as_uri()
+            transcripts_dir=AppDir(
+                dir=UPath(transcripts).resolve().as_uri(),
+                source="cli" if view_config.transcripts_cli else "project",
+            )
             if transcripts is not None
             else None,
-            scans_dir=UPath(scans).resolve().as_uri(),
+            scans_dir=AppDir(
+                dir=UPath(scans).resolve().as_uri(),
+                source="cli" if view_config.scans_cli else "project",
+            ),
         )
+
+    @app.get(
+        "/config-version",
+        response_class=Response,
+        summary="Get config version",
+        description="Returns an opaque version string that changes when server restarts "
+        "or project config is modified. Used for cache invalidation.",
+    )
+    async def config_version() -> Response:
+        """Return config version for cache invalidation."""
+        return Response(content=get_config_version(), media_type="text/plain")
+
+    @app.get(
+        "/config-version/stream",
+        summary="Stream config version changes",
+        description="SSE endpoint that pushes when config version changes.",
+    )
+    async def config_version_stream() -> StreamingResponse:
+        """Stream config version updates via SSE."""
+
+        async def event_generator() -> AsyncGenerator[str, None]:
+            yield f"data: {get_config_version()}\n\n"
+            condition = get_condition()
+            while True:
+                async with condition:
+                    await condition.wait()
+                yield f"data: {get_config_version()}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+
+    @app.get(
+        "/scanners",
+        response_model=ScannersResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="List available scanners",
+        description="Returns info about all registered scanners.",
+    )
+    async def scanners() -> ScannersResponse:
+        """Return info about all registered scanner factories."""
+
+        def param_schema(p: inspect.Parameter) -> dict[str, Any]:
+            if p.annotation == inspect.Parameter.empty:
+                return {"type": "any"}
+            return json_schema(p.annotation).model_dump(exclude_none=True)
+
+        scanner_objs = registry_find(lambda info: info.type == "scanner")
+        items = [
+            ScannerInfo(
+                name=registry_info(s).name,
+                version=registry_info(s).metadata.get("scanner_version", 0),
+                description=s.__doc__.split("\n")[0] if s.__doc__ else None,
+                params=[
+                    ScannerParam(
+                        name=p.name,
+                        schema=param_schema(p),
+                        required=p.default == inspect.Parameter.empty,
+                        default=(
+                            p.default if p.default != inspect.Parameter.empty else None
+                        ),
+                    )
+                    for p in inspect.signature(
+                        cast(Callable[..., Any], s)
+                    ).parameters.values()
+                ],
+            )
+            for s in scanner_objs
+        ]
+        return ScannersResponse(items=items)
 
     @app.get(
         "/project/config",
@@ -287,6 +380,8 @@ def v2_api_app(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=str(e),
             ) from None
+
+        await bump_config_version()
 
         return InspectPydanticJSONResponse(
             content=updated_config,
@@ -497,32 +592,47 @@ def v2_api_app(
         }
 
     @app.post(
-        "/runllmscanner",
+        "/startscan",
         response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Run llm_scanner",
         description="Runs a scan using llm_scanner with the provided ScanJobConfig.",
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
-        """Run an llm_scanner scan.
+        """Run an llm_scanner scan via subprocess."""
+        # Spawn subprocess with unadulterated config
+        proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
+        pid = proc.pid
 
-        NOTE: Currently runs in-process. Future goal is to spawn via CLI subprocess,
-        but that requires solving scan_id propagation (pre-generating scan_id and
-        passing it through ScanJobConfig -> ScanJob -> ScanSpec).
-        """
-        scan_config = body
-        scan_job = ScanJob.from_config(scan_config)
-        scan_context = await create_scan(scan_job)
-        results_dir = body.scans or "wtf"
-        recorder = scan_recorder_for_location(results_dir)
-        await recorder.init(scan_context.spec, results_dir)
-        location = await recorder.location()
+        # Wait for scan to register in active_scans_store
+        active_info = await _wait_for_active_scan(pid)
 
-        # Obviously, this isn't how we want to do it for real
-        asyncio.create_task(_run_scan_background(scan_config, location))
+        # Clean up temp file - subprocess has read it if registered
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
 
-        # Return initial status
-        return await recorder.status(location)
+        if active_info is None:
+            exit_code = proc.poll()
+            if exit_code is not None:
+                # Give threads a moment to finish reading
+                proc.wait(timeout=1)
+                stderr = b"".join(stderr_lines)
+                error_msg = stderr.decode() if stderr else "Unknown error"
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Scan subprocess exited with code {exit_code}: {error_msg}",
+                )
+            else:
+                proc.terminate()
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Scan subprocess failed to register within timeout",
+                )
+
+        # Get status from recorder using location from active_info
+        return await scan_recorder_for_location(active_info.location).status(
+            active_info.location
+        )
 
     @app.get(
         "/scans/{scan}",
@@ -671,6 +781,89 @@ def v2_api_app(
         )
 
     return app
+
+
+# JUST FOR TESTING
+def _tee_pipe(
+    pipe: io.BufferedReader, dest: io.TextIOWrapper, accumulator: list[bytes]
+) -> None:
+    """Read from pipe, write to dest, and accumulate."""
+    for line in pipe:
+        dest.buffer.write(line)
+        dest.buffer.flush()
+        accumulator.append(line)
+    pipe.close()
+
+
+def _spawn_scan_subprocess(
+    config: ScanJobConfig,
+) -> tuple[subprocess.Popen[bytes], str, list[bytes], list[bytes]]:
+    """Spawn a subprocess to run the scan.
+
+    Args:
+        config: The scan job configuration
+
+    Returns:
+        Tuple of (Popen object, temp config file path, stdout_lines, stderr_lines)
+        stdout_lines and stderr_lines accumulate as subprocess runs.
+    """
+    fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="scout_scan_config_")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(config.model_dump_json(exclude_none=True))
+    except Exception:
+        os.close(fd)
+        os.unlink(temp_path)
+        raise
+
+    proc = subprocess.Popen(
+        ["scout", "scan", temp_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+
+    stdout_lines: list[bytes] = []
+    stderr_lines: list[bytes] = []
+
+    assert proc.stdout is not None
+    assert proc.stderr is not None
+
+    threading.Thread(
+        target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
+    ).start()
+    threading.Thread(
+        target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
+    ).start()
+
+    return proc, temp_path, stdout_lines, stderr_lines
+
+
+async def _wait_for_active_scan(
+    pid: int,
+    timeout_seconds: float = 10.0,
+    poll_interval: float = 0.5,
+) -> ActiveScanInfo | None:
+    """Wait for an active scan to appear for the given PID.
+
+    Args:
+        pid: The subprocess PID to monitor
+        timeout_seconds: Max time to wait
+        poll_interval: Time between polls
+
+    Returns:
+        ActiveScanInfo if found, None on timeout
+    """
+    start = time.time()
+
+    while time.time() - start < timeout_seconds:
+        with active_scans_store() as store:
+            info = store.read_by_pid(pid)
+            if info is not None:
+                return info
+        await asyncio.sleep(poll_interval)
+
+    return None
 
 
 async def _run_scan_background(config: ScanJobConfig, location: str) -> None:

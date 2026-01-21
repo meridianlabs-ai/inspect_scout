@@ -1,0 +1,7 @@
+.success {
+  color: var(--bs-success) !important;
+}
+
+.unsuccess {
+  opacity: 0.5 !important;
+}

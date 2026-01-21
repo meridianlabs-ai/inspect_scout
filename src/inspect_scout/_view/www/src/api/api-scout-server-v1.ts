@@ -53,6 +53,9 @@ export const apiScoutServerV1 = (
 
   return {
     capability: "scans",
+    getConfigVersion: (): Promise<string> => {
+      throw new Error("Not Yet Implemented");
+    },
     getConfig: async () => {
       const data = await readScans();
       return {

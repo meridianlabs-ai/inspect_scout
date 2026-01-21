@@ -179,3 +179,44 @@ class CreateValidationSetRequest:
 
     cases: list[ValidationCaseRequest] = field(default_factory=list)
     """Initial cases to add to the validation set."""
+
+
+@dataclass
+class ScannerParam:
+    """Parameter definition for a scanner factory."""
+
+    name: str
+    """Parameter name."""
+
+    schema: dict[str, Any]
+    """JSON Schema for the parameter type."""
+
+    required: bool
+    """Whether the parameter is required."""
+
+    default: Any | None = None
+    """Default value if not required."""
+
+
+@dataclass
+class ScannerInfo:
+    """Info about a registered scanner factory."""
+
+    name: str
+    """Scanner name."""
+
+    version: int
+    """Scanner version."""
+
+    description: str | None
+    """First line of scanner docstring."""
+
+    params: list[ScannerParam]
+    """Scanner parameters."""
+
+
+@dataclass
+class ScannersResponse:
+    """Response body for GET /scanners endpoint."""
+
+    items: list[ScannerInfo]

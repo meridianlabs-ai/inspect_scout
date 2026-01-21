@@ -596,8 +596,8 @@ def test_sql_string_filter_accepted_by_where() -> None:
 async def test_scan_with_between_filter() -> None:
     """Integration test: scan with BETWEEN filter."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create transcripts with BETWEEN filter on score
-        transcripts = transcripts_from(LOGS_DIR).where(c.score.between(0.0, 1.0))
+        # Create transcripts with BETWEEN filter on total_time
+        transcripts = transcripts_from(LOGS_DIR).where(c.total_time.between(1.0, 25.0))
 
         status = scan(
             scanners=[where_test_scanner_factory()],
@@ -744,7 +744,7 @@ async def test_scan_with_is_null_filter() -> None:
     """Integration test: scan with IS NULL filter."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create transcripts with IS NULL filter
-        transcripts = transcripts_from(LOGS_DIR).where(c.error.is_null())
+        transcripts = transcripts_from(LOGS_DIR).where(c.score_match.is_null())
 
         status = scan(
             scanners=[where_test_scanner_factory()],

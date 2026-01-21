@@ -28,7 +28,13 @@ export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
   filterSuggestions?: ScalarValue[];
   onFilterColumnChange?: (columnId: string | null) => void;
-}> = ({ filterCodeValues, filterSuggestions = [], onFilterColumnChange }) => {
+  includeColumnPicker?: boolean;
+}> = ({
+  filterCodeValues,
+  filterSuggestions = [],
+  onFilterColumnChange,
+  includeColumnPicker = true,
+}) => {
   // Transcript Filter State
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
@@ -246,9 +252,7 @@ export const TranscriptFilterBar: FC<{
         />
       </ChipGroup>
       {filterEntries.length > 0 && (
-        <>
-          <CopyQueryButton itemValues={filterCodeValues} />
-        </>
+        <CopyQueryButton itemValues={filterCodeValues} />
       )}
 
       {/* Edit filter popover */}
@@ -321,19 +325,21 @@ export const TranscriptFilterBar: FC<{
           onColumnChange={handleAddFilterColumnChange}
         />
       </PopOver>
-      <div className={clsx(styles.actionButtons)}>
-        <div className={styles.sep}></div>
-        <TranscriptColumnsButton
-          ref={columnButtonRef}
-          isOpen={showColumnPicker}
-          onClick={() => setShowColumnPicker(!showColumnPicker)}
-        />
-        <TranscriptColumnsPopover
-          positionEl={columnButtonRef.current}
-          isOpen={showColumnPicker}
-          setIsOpen={setShowColumnPicker}
-        />
-      </div>
+      {includeColumnPicker && (
+        <div className={clsx(styles.actionButtons)}>
+          <div className={styles.sep}></div>
+          <TranscriptColumnsButton
+            ref={columnButtonRef}
+            isOpen={showColumnPicker}
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+          />
+          <TranscriptColumnsPopover
+            positionEl={columnButtonRef.current}
+            isOpen={showColumnPicker}
+            setIsOpen={setShowColumnPicker}
+          />
+        </div>
+      )}
     </div>
   );
 };

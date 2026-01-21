@@ -163,11 +163,11 @@ class ScanJob:
         # realize transcripts
         if config.transcripts is not None:
             transcripts = transcripts_from(config.transcripts)
-        for filter in (
-            config.filter if isinstance(config.filter, list) else [config.filter]
-        ):
-            transcripts = transcripts.where(filter)
-        kwargs["transcripts"] = transcripts
+            for filter in (
+                config.filter if isinstance(config.filter, list) else [config.filter]
+            ):
+                transcripts = transcripts.where(filter)
+            kwargs["transcripts"] = transcripts
 
         # realize validation
         if config.validation is not None:

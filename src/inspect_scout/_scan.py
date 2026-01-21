@@ -549,6 +549,8 @@ async def _scan_async_inner(
 
             # Count already-completed scans to initialize progress
             scanner_names_list = list(scan.scanners.keys())
+            if not scanner_names_list:
+                raise PrerequisiteError("No scanners provided")
             total_scans = 0
             skipped_scans = 0
             for transcript_id in snapshot.transcript_ids.keys():
@@ -560,6 +562,9 @@ async def _scan_async_inner(
             # override total scans if there is a worklist
             if scan.worklist is not None:
                 total_scans = sum(len(work.transcripts) for work in scan.worklist)
+
+            if total_scans == 0:
+                raise PrerequisiteError("No transcripts")
 
             # start scan
             with display().scan_display(
@@ -761,8 +766,11 @@ async def _scan_async_inner(
                     else:
                         return None
 
+                scan_location = await recorder.location()
                 with active_scans_store() as active_store:
-                    active_store.put_spec(scan.spec.scan_id, scan.spec, total_scans)
+                    active_store.put_spec(
+                        scan.spec.scan_id, scan.spec, total_scans, scan_location
+                    )
 
                     async def record_results(
                         transcript: TranscriptInfo,

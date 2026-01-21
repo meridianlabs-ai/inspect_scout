@@ -11,6 +11,10 @@
             "title": "Last Updated",
             "type": "number"
           },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/ScanMetrics"
           },
@@ -50,7 +54,8 @@
           "config",
           "total_scans",
           "start_time",
-          "scanner_names"
+          "scanner_names",
+          "location"
         ],
         "title": "ActiveScanInfo",
         "type": "object"
@@ -6696,6 +6701,76 @@
         "title": "ScanTranscripts",
         "type": "object"
       },
+      "ScannerInfo": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerParam"
+            },
+            "title": "Params",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "params"
+        ],
+        "title": "ScannerInfo",
+        "type": "object"
+      },
+      "ScannerParam": {
+        "properties": {
+          "default": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "schema": {
+            "additionalProperties": true,
+            "title": "Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "schema",
+          "required"
+        ],
+        "title": "ScannerParam",
+        "type": "object"
+      },
       "ScannerSpec": {
         "description": "Scanner used by scan.",
         "properties": {
@@ -6818,6 +6893,22 @@
           "model_usage"
         ],
         "title": "ScannerSummary",
+        "type": "object"
+      },
+      "ScannersResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerInfo"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ScannersResponse",
         "type": "object"
       },
       "ScansRequest": {
@@ -9668,33 +9759,23 @@
         "summary": "Update project configuration"
       }
     },
-    "/runllmscanner": {
-      "post": {
-        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
-        "operationId": "run_llm_scanner_runllmscanner_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScanJobConfig"
-              }
-            }
-          },
-          "required": true
-        },
+    "/scanners": {
+      "get": {
+        "description": "Returns info about all registered scanners.",
+        "operationId": "scanners_scanners_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Status"
+                  "$ref": "#/components/schemas/ScannersResponse"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Run llm_scanner"
+        "summary": "List available scanners"
       }
     },
     "/scans": {
@@ -9875,6 +9956,35 @@
           }
         },
         "summary": "Get scanner input for a specific transcript"
+      }
+    },
+    "/startscan": {
+      "post": {
+        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
+        "operationId": "run_llm_scanner_startscan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanJobConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run llm_scanner"
       }
     },
     "/transcripts/{dir}": {

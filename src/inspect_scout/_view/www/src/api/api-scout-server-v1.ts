@@ -58,7 +58,7 @@ export const apiScoutServerV1 = (
       return {
         home_dir: "",
         project_dir: ".",
-        scans_dir: data.results_dir,
+        scans_dir: { dir: data.results_dir, source: "project" },
         transcripts_dir: null,
       };
     },

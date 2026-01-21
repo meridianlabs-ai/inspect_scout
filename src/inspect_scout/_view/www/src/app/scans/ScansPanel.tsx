@@ -20,7 +20,7 @@ export const ScansPanel: FC = () => {
   // Load scans data
   const { loading, error, data: scans } = useScans();
   const config = useConfig();
-  const scanDir = config.scans_dir;
+  const scanDir = config.scans_dir.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const { displayScansDir, setScansDir } = useScansDir();
 

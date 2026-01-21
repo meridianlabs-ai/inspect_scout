@@ -19,7 +19,7 @@ export const ScanPanel: React.FC = () => {
   // Load server data
   const { loading: scansLoading } = useScans();
   const config = useConfig();
-  const scansDir = config.scans_dir;
+  const scansDir = config.scans_dir.dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   const userScansDir = useStore((state) => state.userScansDir);

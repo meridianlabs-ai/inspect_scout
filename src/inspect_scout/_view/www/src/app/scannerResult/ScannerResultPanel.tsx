@@ -42,7 +42,7 @@ export const ScannerResultPanel: FC = () => {
 
   // Required server data
   const config = useConfig();
-  const scansDir = config.scans_dir;
+  const scansDir = config.scans_dir.dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);

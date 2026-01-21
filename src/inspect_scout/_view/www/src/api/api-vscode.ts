@@ -59,7 +59,7 @@ export const apiVscode = (
       return {
         home_dir: "",
         project_dir: ".",
-        scans_dir: data.results_dir,
+        scans_dir: { dir: data.results_dir, source: "project" },
         transcripts_dir: null,
       };
     },

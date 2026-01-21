@@ -39,7 +39,7 @@ export const TranscriptPanel: FC = () => {
     error,
   } = useTranscript(
     config.transcripts_dir
-      ? { location: config.transcripts_dir, id: transcriptId }
+      ? { location: config.transcripts_dir.dir, id: transcriptId }
       : skipToken
   );
 

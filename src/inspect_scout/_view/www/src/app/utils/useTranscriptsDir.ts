@@ -23,7 +23,7 @@ export function useTranscriptsDir(
   const resolvedPath =
     (useRouteParam ? routeTranscriptsDir : null) ||
     userTranscriptsDir ||
-    config.transcripts_dir ||
+    config.transcripts_dir?.dir ||
     "";
   const displayPath = appAliasedPath(config, resolvedPath) || "";
 

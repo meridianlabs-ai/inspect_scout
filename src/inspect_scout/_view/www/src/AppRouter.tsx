@@ -63,7 +63,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     );
     const userScansDir = useStore((state) => state.userScansDir);
     const config = useConfig();
-    const serverScansDir = config.scans_dir;
+    const serverScansDir = config.scans_dir.dir;
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData

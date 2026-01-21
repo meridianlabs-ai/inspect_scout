@@ -382,10 +382,18 @@ export interface components {
             home_dir: string;
             /** Project Dir */
             project_dir: string;
-            /** Scans Dir */
-            scans_dir: string;
-            /** Transcripts Dir */
-            transcripts_dir?: string | null;
+            scans_dir: components["schemas"]["AppDir"];
+            transcripts_dir?: components["schemas"]["AppDir"] | null;
+        };
+        /** AppDir */
+        AppDir: {
+            /** Dir */
+            dir: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "project" | "cli";
         };
         /**
          * ApprovalEvent

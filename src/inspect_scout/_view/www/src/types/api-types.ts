@@ -19,6 +19,7 @@ export type Transcript = components["schemas"]["Transcript"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
 export type ScansResponse = components["schemas"]["ScansResponse"];
+export type AppDir = components["schemas"]["AppDir"];
 export type ScannerInfo = components["schemas"]["ScannerInfo"];
 export type ScannersResponse = components["schemas"]["ScannersResponse"];
 export type AppConfig = components["schemas"]["AppConfig"];

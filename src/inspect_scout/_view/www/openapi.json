@@ -11,6 +11,10 @@
             "title": "Last Updated",
             "type": "number"
           },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/ScanMetrics"
           },
@@ -50,7 +54,8 @@
           "config",
           "total_scans",
           "start_time",
-          "scanner_names"
+          "scanner_names",
+          "location"
         ],
         "title": "ActiveScanInfo",
         "type": "object"
@@ -6696,6 +6701,76 @@
         "title": "ScanTranscripts",
         "type": "object"
       },
+      "ScannerInfo": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerParam"
+            },
+            "title": "Params",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "params"
+        ],
+        "title": "ScannerInfo",
+        "type": "object"
+      },
+      "ScannerParam": {
+        "properties": {
+          "default": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "schema": {
+            "additionalProperties": true,
+            "title": "Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "schema",
+          "required"
+        ],
+        "title": "ScannerParam",
+        "type": "object"
+      },
       "ScannerSpec": {
         "description": "Scanner used by scan.",
         "properties": {
@@ -6818,6 +6893,22 @@
           "model_usage"
         ],
         "title": "ScannerSummary",
+        "type": "object"
+      },
+      "ScannersResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerInfo"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ScannersResponse",
         "type": "object"
       },
       "ScansRequest": {
@@ -8447,19 +8538,9 @@
         "description": "Description of tool parameters object in JSON Schema format.",
         "properties": {
           "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": false,
-            "title": "Additionalproperties"
+            "title": "Additionalproperties",
+            "type": "boolean"
           },
           "properties": {
             "additionalProperties": {
@@ -8485,7 +8566,8 @@
         "required": [
           "type",
           "properties",
-          "required"
+          "required",
+          "additionalProperties"
         ],
         "title": "ToolParams",
         "type": "object"
@@ -9695,6 +9777,25 @@
           }
         },
         "summary": "Run llm_scanner"
+      }
+    },
+    "/scanners": {
+      "get": {
+        "description": "Returns info about all registered scanners.",
+        "operationId": "scanners_scanners_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List available scanners"
       }
     },
     "/scans": {

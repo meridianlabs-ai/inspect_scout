@@ -1,6 +1,5 @@
 """Tests for the active scans KV store."""
 
-import os
 import secrets
 import time
 from contextlib import contextmanager
@@ -11,8 +10,6 @@ from unittest.mock import patch
 from inspect_ai._util.kvstore import inspect_kvstore
 from inspect_scout._concurrency.common import ScanMetrics
 from inspect_scout._recorder.active_scans_store import (
-    _STORE_VERSION,
-    _VERSION_KEY,
     ActiveScanInfo,
     active_scans_store,
 )
@@ -62,18 +59,49 @@ def test_put_and_read_all() -> None:
         assert info.last_updated > 0
 
 
-def test_delete_current() -> None:
-    """Store metrics, delete, verify empty."""
+def test_mark_completed() -> None:
+    """Store metrics, mark completed, verify running becomes False."""
     with _temp_store_name():
         metrics = ScanMetrics(completed_scans=5)
-        scan_id = "delete-test"
+        scan_id = "mark-test"
 
         with active_scans_store() as store:
             store.put_spec(scan_id, _make_spec(scan_id), total_scans=100, location="")
             store.put_metrics(scan_id, metrics)
-            assert len(store.read_all()) == 1
-            store.delete_current()
-            assert store.read_all() == {}
+            info = store.read_all()[scan_id]
+            assert info.running is True
+            store.mark_completed()
+            info = store.read_all()[scan_id]
+            assert info.running is False
+            assert info.error_message is None
+
+
+def test_mark_interrupted() -> None:
+    """Store metrics, mark interrupted, verify running=False and error_message."""
+    with _temp_store_name():
+        scan_id = "interrupt-test"
+
+        with active_scans_store() as store:
+            store.put_spec(scan_id, _make_spec(scan_id), total_scans=100, location="")
+            store.mark_interrupted(scan_id, "Test error message")
+            info = store.read_all()[scan_id]
+            assert info.running is False
+            assert info.error_message == "Test error message"
+
+
+def test_mark_interrupted_without_put_spec() -> None:
+    """mark_interrupted creates minimal entry if called before put_spec."""
+    with _temp_store_name():
+        scan_id = "prereq-error-test"
+
+        with active_scans_store() as store:
+            store.mark_interrupted(scan_id, "No transcripts")
+            info = store.read_all()[scan_id]
+            assert info.scan_id == scan_id
+            assert info.running is False
+            assert info.error_message == "No transcripts"
+            assert info.title == ""
+            assert info.total_scans == 0
 
 
 def test_multiple_scans_same_process() -> None:
@@ -118,41 +146,25 @@ def test_overwrite_updates_metrics_and_timestamp() -> None:
         assert second_result.last_updated > first_timestamp
 
 
-def test_stale_pid_cleanup() -> None:
-    """Dead PIDs get cleaned on store access."""
+def test_entries_persist_after_process_exit() -> None:
+    """Entries persist even if process no longer exists (cleared on server restart)."""
     with _temp_store_name() as name:
         # Manually insert entry with fake dead PID
         fake_pid = 99999999  # Unlikely to exist
         with inspect_kvstore(name) as kvstore:
-            kvstore.put(_VERSION_KEY, str(_STORE_VERSION))
             kvstore.put(
                 str(fake_pid),
-                '{"scan_id": "stale", "metrics": {}, "last_updated": 0}',
+                '{"scan_id": "persisted", "metrics": {}, "last_updated": 0, '
+                '"summary": {}, "title": "", "config": "", "total_scans": 0, '
+                '"start_time": 0, "scanner_names": [], "location": "", '
+                '"running": false, "error_message": null}',
             )
 
-        # Opening store should clean stale entry
+        # Opening store should NOT clean the entry (entries persist until server restart)
         with active_scans_store() as store:
             result = store.read_all()
 
-        assert "stale" not in result
-
-
-def test_version_migration_clears_store() -> None:
-    """Store clears when version mismatches."""
-    with _temp_store_name() as name:
-        # Pre-populate with old version
-        with inspect_kvstore(name) as kvstore:
-            kvstore.put(_VERSION_KEY, "0")  # Old version
-            kvstore.put(
-                str(os.getpid()),
-                '{"scan_id": "old", "metrics": {}, "last_updated": 0}',
-            )
-
-        # Opening store should clear due to version mismatch
-        with active_scans_store() as store:
-            result = store.read_all()
-
-        assert result == {}
+        assert "persisted" in result
 
 
 def test_read_all_returns_empty_when_no_entries() -> None:
@@ -178,8 +190,11 @@ def test_active_scan_info_dataclass() -> None:
         start_time=100.0,
         scanner_names=["scanner1"],
         location="",
+        running=True,
     )
 
     assert info.scan_id == "test"
     assert info.metrics.memory_usage == 1024
     assert info.last_updated == 123.456
+    assert info.running is True
+    assert info.error_message is None

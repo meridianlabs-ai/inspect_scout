@@ -21,6 +21,7 @@ from inspect_scout._util.constants import (
 from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
+from .._recorder.active_scans_store import clear_active_scans
 from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
 
@@ -56,6 +57,9 @@ def view_server(
     authorization: str | None = None,
     fs_options: dict[str, Any] | None = None,
 ) -> None:
+    # Clear stale active scan entries from previous server runs
+    clear_active_scans()
+
     # get filesystem and resolve scan_dir to full path
     config = config or ViewConfig()
     scans = config.scans_cli or config.project.scans or DEFAULT_SCANS_DIR

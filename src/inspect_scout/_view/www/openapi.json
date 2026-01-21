@@ -82,41 +82,17 @@
             "type": "string"
           },
           "scans_dir": {
-            "title": "Scans Dir",
-            "type": "string"
-          },
-          "scans_dir_cli": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scans Dir Cli"
+            "$ref": "#/components/schemas/AppDir"
           },
           "transcripts_dir": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/AppDir"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Transcripts Dir"
-          },
-          "transcripts_dir_cli": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Transcripts Dir Cli"
+            ]
           }
         },
         "required": [
@@ -125,6 +101,28 @@
           "scans_dir"
         ],
         "title": "AppConfig",
+        "type": "object"
+      },
+      "AppDir": {
+        "properties": {
+          "dir": {
+            "title": "Dir",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "project",
+              "cli"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dir",
+          "source"
+        ],
+        "title": "AppDir",
         "type": "object"
       },
       "ApprovalEvent": {

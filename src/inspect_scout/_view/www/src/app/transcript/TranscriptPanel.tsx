@@ -36,7 +36,7 @@ export const TranscriptPanel: FC = () => {
     error,
   } = useTranscript(
     config.transcripts_dir
-      ? { location: config.transcripts_dir, id: transcriptId }
+      ? { location: config.transcripts_dir.dir, id: transcriptId }
       : skipToken
   );
 
@@ -46,7 +46,10 @@ export const TranscriptPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const transcriptsDir =
-    routeTranscriptsDir || userTranscriptsDir || config.transcripts_dir || "";
+    routeTranscriptsDir ||
+    userTranscriptsDir ||
+    config.transcripts_dir?.dir ||
+    "";
   const displayTranscriptsDir = appAliasedPath(config, transcriptsDir || null);
 
   // Get sorting/filter from store

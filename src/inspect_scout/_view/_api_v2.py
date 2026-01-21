@@ -65,6 +65,7 @@ from ._api_v2_helpers import (
 from ._api_v2_types import (
     ActiveScansResponse,
     AppConfig,
+    AppDir,
     DistinctRequest,
     ScansRequest,
     ScansResponse,
@@ -228,12 +229,16 @@ def v2_api_app(
         return AppConfig(
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-            transcripts_dir=UPath(transcripts).resolve().as_uri()
+            transcripts_dir=AppDir(
+                dir=UPath(transcripts).resolve().as_uri(),
+                source="cli" if view_config.transcripts_cli else "project",
+            )
             if transcripts is not None
             else None,
-            scans_dir=UPath(scans).resolve().as_uri(),
-            transcripts_dir_cli=view_config.transcripts_cli,
-            scans_dir_cli=view_config.scans_cli,
+            scans_dir=AppDir(
+                dir=UPath(scans).resolve().as_uri(),
+                source="cli" if view_config.scans_cli else "project",
+            ),
         )
 
     @app.get(

@@ -27,7 +27,7 @@ export const TranscriptsPanel: FC = () => {
     (state) => state.setUserTranscriptsDir
   );
   const resolvedTranscriptDir =
-    userTranscriptsDir || config.transcripts_dir || null;
+    userTranscriptsDir || config.transcripts_dir?.dir || null;
 
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const condition = useFilterConditions();

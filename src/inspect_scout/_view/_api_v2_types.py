@@ -141,17 +141,19 @@ class ActiveScansResponse:
 
 
 @dataclass
+class AppDir:
+    dir: str
+    source: Literal["project", "cli"]
+
+
+@dataclass
 class AppConfig:
     """Application configuration returned by GET /config."""
 
     home_dir: str
     project_dir: str
-    transcripts_dir: str | None
-    scans_dir: str
-
-    # cli overrides for dirs
-    transcripts_dir_cli: str | None
-    scans_dir_cli: str | None
+    transcripts_dir: AppDir | None
+    scans_dir: AppDir
 
 
 @dataclass

@@ -6,6 +6,7 @@ import { useTranscriptDirParams } from "./router";
 interface UseTranscriptsDirResult {
   displayTranscriptsDir: string;
   resolvedTranscriptsDir: string;
+  resolvedTranscriptsDirSource: "route" | "user" | "project" | "cli";
   setTranscriptsDir: (path: string) => void;
 }
 
@@ -25,11 +26,22 @@ export function useTranscriptsDir(
     userTranscriptsDir ||
     config.transcripts_dir?.dir ||
     "";
+
+  const resolvedSource =
+    useRouteParam && routeTranscriptsDir
+      ? "route"
+      : userTranscriptsDir
+        ? "user"
+        : config.transcripts_dir && config.transcripts_dir?.source === "cli"
+          ? "cli"
+          : "project";
+
   const displayPath = appAliasedPath(config, resolvedPath) || "";
 
   return {
     displayTranscriptsDir: displayPath,
     resolvedTranscriptsDir: resolvedPath,
+    resolvedTranscriptsDirSource: resolvedSource,
     setTranscriptsDir: setUserTranscriptsDir,
   };
 }

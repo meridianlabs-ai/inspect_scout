@@ -42,9 +42,14 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
   const { loading, data: scanners } = useScanners();
   const mutation = useStartScan();
 
-  const { displayTranscriptsDir, resolvedTranscriptsDir, setTranscriptsDir } =
-    useTranscriptsDir(true);
-  const { displayScansDir, setScansDir } = useScansDir(true);
+  const {
+    displayTranscriptsDir,
+    resolvedTranscriptsDir,
+    resolvedTranscriptsDirSource,
+    setTranscriptsDir,
+  } = useTranscriptsDir(true);
+  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+    useScansDir(true);
 
   const { filterCodeValues, filterSuggestions, onFilterColumnChange } =
     useFilterBarProps(resolvedTranscriptsDir);
@@ -88,6 +93,7 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
     <>
       <TranscriptsNavbar
         transcriptsDir={displayTranscriptsDir}
+        transcriptsDirSource={resolvedTranscriptsDirSource}
         setTranscriptsDir={setTranscriptsDir}
       />
       <TranscriptFilterBar
@@ -96,7 +102,11 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
         onFilterColumnChange={onFilterColumnChange}
         includeColumnPicker={false}
       />
-      <ScansNavbar scansDir={displayScansDir} setScansDir={setScansDir} />
+      <ScansNavbar
+        scansDir={displayScansDir}
+        setScansDir={setScansDir}
+        scansDirSource={resolvedScansDirSource}
+      />
 
       <div className={styles.defineScannerSection}>
         <h2 className={styles.sectionTitle}>Define Scanner</h2>

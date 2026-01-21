@@ -22,7 +22,8 @@ export const ScansPanel: FC = () => {
   const config = useConfig();
   const scanDir = config.scans_dir.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
-  const { displayScansDir, setScansDir } = useScansDir();
+  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+    useScansDir();
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
@@ -34,6 +35,7 @@ export const ScansPanel: FC = () => {
     <div className={clsx(styles.container)}>
       <ScansNavbar
         scansDir={displayScansDir}
+        scansDirSource={resolvedScansDirSource}
         setScansDir={setScansDir}
         bordered={false}
       />

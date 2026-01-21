@@ -19,8 +19,12 @@ import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
   // Resolve the active transcripts directory
-  const { displayTranscriptsDir, resolvedTranscriptsDir, setTranscriptsDir } =
-    useTranscriptsDir();
+  const {
+    displayTranscriptsDir,
+    resolvedTranscriptsDir,
+    resolvedTranscriptsDirSource,
+    setTranscriptsDir,
+  } = useTranscriptsDir();
 
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
 
@@ -68,6 +72,7 @@ export const TranscriptsPanel: FC = () => {
       <TranscriptsNavbar
         bordered={true}
         transcriptsDir={displayTranscriptsDir}
+        transcriptsDirSource={resolvedTranscriptsDirSource}
         setTranscriptsDir={setTranscriptsDir}
       />
       <LoadingBar loading={isFetching} />

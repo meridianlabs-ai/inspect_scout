@@ -28,8 +28,12 @@ export const TranscriptPanel: FC = () => {
   const { transcriptId } = useRequiredParams("transcriptId");
 
   // Transcripts directory (resolved from route, user preference, or config)
-  const { displayTranscriptsDir, resolvedTranscriptsDir, setTranscriptsDir } =
-    useTranscriptsDir(true);
+  const {
+    displayTranscriptsDir,
+    resolvedTranscriptsDir,
+    resolvedTranscriptsDirSource,
+    setTranscriptsDir,
+  } = useTranscriptsDir(true);
 
   // Server transcripts directory
   const config = useConfig();
@@ -61,6 +65,7 @@ export const TranscriptPanel: FC = () => {
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
         transcriptsDir={displayTranscriptsDir || ""}
+        transcriptsDirSource={resolvedTranscriptsDirSource}
         setTranscriptsDir={setTranscriptsDir}
       >
         <TranscriptNav

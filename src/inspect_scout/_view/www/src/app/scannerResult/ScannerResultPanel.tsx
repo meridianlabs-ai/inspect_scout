@@ -16,7 +16,7 @@ import { useScanRoute } from "../hooks/useScanRoute";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
-import { useConfig } from "../server/useConfig";
+import { useScansDir } from "../utils/useScansDir";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -41,11 +41,9 @@ export const ScannerResultPanel: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Required server data
-  const config = useConfig();
-  const scansDir = config.scans_dir.dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
-  const userScansDir = useStore((state) => state.userScansDir);
-  const setUserScansDir = useStore((state) => state.setUserScansDir);
+  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+    useScansDir(true);
 
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
@@ -138,8 +136,9 @@ export const ScannerResultPanel: FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <ScansNavbar
-        scansDir={userScansDir || scansDir}
-        setScansDir={setUserScansDir}
+        scansDir={displayScansDir}
+        scansDirSource={resolvedScansDirSource}
+        setScansDir={setScansDir}
       >
         {visibleScannerResults.length > 0 && <ScannerResultNav />}
       </ScansNavbar>

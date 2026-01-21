@@ -3944,7 +3944,7 @@ so disabling selection can break that functionality */
   font-size: 0.7rem;
   color: var(--bs-secondary);
 }
-._container_xrb1f_1 {
+._container_1x11x_1 {
   display: grid;
   grid-template-columns: max-content 1fr;
   align-items: center;
@@ -3953,21 +3953,25 @@ so disabling selection can break that functionality */
   width: 100%;
 }
 
-._labelContainer_xrb1f_10 {
+._labelContainer_1x11x_10 {
   border-right: solid 1px var(--bs-border-color);
-  padding: 0 0.25rem;
+  padding: 0 0.45rem;
   height: 100%;
   display: flex;
   align-items: center;
 }
 
-._icon_xrb1f_18 {
+._labelAdornmentIcon_1x11x_18 {
+  margin-left: 0.5rem;
+}
+
+._icon_1x11x_22 {
   color: var(--bs-body-color);
   opacity: 0.7;
   margin-right: 0.35rem;
 }
 
-._text_xrb1f_24 {
+._text_1x11x_28 {
   color: var(--bs-body-color);
   white-space: nowrap;
   cursor: text;
@@ -3980,39 +3984,39 @@ so disabling selection can break that functionality */
   background-color: var(--bs-body-bg);
 }
 
-._text_xrb1f_24._readOnly_xrb1f_37 {
+._text_1x11x_28._readOnly_1x11x_41 {
   background-color: var(--bs-light);
 }
 
-._text_xrb1f_24:hover {
+._text_1x11x_28:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-._text_xrb1f_24:focus {
+._text_1x11x_28:focus {
   outline: 1px solid var(--bs-primary);
   outline-offset: 0;
   background-color: var(--bs-body-bg);
 }
 
-._text_xrb1f_24._placeholder_xrb1f_51 {
+._text_1x11x_28._placeholder_1x11x_55 {
   color: var(--bs-secondary-color);
   opacity: 0.6;
 }
 
-._mruPopover_xrb1f_56 {
+._mruPopover_1x11x_60 {
   padding: 0 !important;
   max-height: 300px;
   overflow-y: auto;
   width: 80%;
 }
 
-._mruList_xrb1f_63 {
+._mruList_1x11x_67 {
   display: flex;
   flex-direction: column;
   min-width: 150px;
 }
 
-._mruItem_xrb1f_69 {
+._mruItem_1x11x_73 {
   padding: 0.3rem 0.5rem;
   cursor: pointer;
   white-space: nowrap;
@@ -4022,21 +4026,21 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._mruItem_xrb1f_69:hover,
-._mruItemSelected_xrb1f_80 {
+._mruItem_1x11x_73:hover,
+._mruItemSelected_1x11x_84 {
   background-color: var(--bs-secondary-bg);
 }
 
-._mruItem_xrb1f_69:active {
+._mruItem_1x11x_73:active {
   background-color: var(--bs-tertiary-bg);
 }
 
-._mruItem_xrb1f_69:first-child {
+._mruItem_1x11x_73:first-child {
   border-top-left-radius: var(--bs-border-radius);
   border-top-right-radius: var(--bs-border-radius);
 }
 
-._mruItem_xrb1f_69:last-child {
+._mruItem_1x11x_73:last-child {
   border-bottom-left-radius: var(--bs-border-radius);
   border-bottom-right-radius: var(--bs-border-radius);
 }

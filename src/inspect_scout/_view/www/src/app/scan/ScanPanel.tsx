@@ -10,6 +10,7 @@ import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useConfig } from "../server/useConfig";
 import { useScans } from "../server/useScans";
+import { useScansDir } from "../utils/useScansDir";
 
 import styles from "./ScanPanel.module.css";
 import { ScanPanelBody } from "./ScanPanelBody";
@@ -22,8 +23,8 @@ export const ScanPanel: React.FC = () => {
   const scansDir = config.scans_dir.dir;
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
-  const userScansDir = useStore((state) => state.userScansDir);
-  const setUserScansDir = useStore((state) => state.setUserScansDir);
+  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+    useScansDir(true);
 
   const loading = scansLoading || scanLoading;
 
@@ -45,8 +46,9 @@ export const ScanPanel: React.FC = () => {
   return (
     <div className={clsx(styles.root)}>
       <ScansNavbar
-        scansDir={userScansDir || scansDir}
-        setScansDir={setUserScansDir}
+        scansDir={displayScansDir}
+        scansDirSource={resolvedScansDirSource}
+        setScansDir={setScansDir}
       />
       <LoadingBar loading={!!loading} />
       {selectedScan && (

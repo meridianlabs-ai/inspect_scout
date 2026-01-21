@@ -5,6 +5,7 @@ import { appAliasedPath, useConfig } from "../server/useConfig";
 interface UseScansDirResult {
   displayScansDir: string;
   resolvedScansDir: string;
+  resolvedScansDirSource: "route" | "user" | "project" | "cli";
   setScansDir: (path: string) => void;
 }
 
@@ -20,11 +21,22 @@ export function useScansDir(useRouteParam = false): UseScansDirResult {
     userScansDir ||
     config.scans_dir.dir ||
     "";
+
+  const scanDirSource =
+    useRouteParam && routeScansDir
+      ? "route"
+      : userScansDir
+        ? "user"
+        : config.scans_dir.source === "cli"
+          ? "cli"
+          : "project";
+
   const displayPath = appAliasedPath(config, resolvedPath) || "";
 
   return {
     displayScansDir: displayPath,
     resolvedScansDir: resolvedPath,
+    resolvedScansDirSource: scanDirSource,
     setScansDir: setUserScansDir,
   };
 }

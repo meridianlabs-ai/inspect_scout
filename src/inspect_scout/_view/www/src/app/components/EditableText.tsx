@@ -13,6 +13,8 @@ interface EditableTextProps {
   mruMaxItems?: number;
 
   label?: string;
+  title?: string;
+
   icon?: string;
   placeholder?: string;
 
@@ -26,8 +28,9 @@ export const EditableText: FC<EditableTextProps> = ({
   onValueChanged,
   mru,
   mruMaxItems = 10,
-  label,
   icon,
+  label,
+  title,
   placeholder,
   editable = true,
   className,
@@ -198,7 +201,7 @@ export const EditableText: FC<EditableTextProps> = ({
   return (
     <>
       <div ref={containerRef} className={clsx(styles.container, className)}>
-        <div className={clsx(styles.labelContainer)}>
+        <div className={clsx(styles.labelContainer)} title={title}>
           {icon && <i className={`${icon} ${styles.icon}`} />}
           {label && <span className={styles.label}>{label}</span>}
         </div>

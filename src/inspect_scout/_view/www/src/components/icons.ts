@@ -151,6 +151,7 @@ export const ApplicationIcons = {
   subtask: "bi bi-subtract",
   success: "bi bi-check-circle-fill",
   successSubtle: "bi bi-check-circle",
+  terminal: "bi bi-terminal",
   threeDots: "bi bi-three-dots",
   transcript: "bi bi-list-columns-reverse",
   tree: {

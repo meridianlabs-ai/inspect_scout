@@ -654,6 +654,12 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
                     onDragOver={(e) => handleDragOver(e, header.column.id)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, header.column.id)}
+                    title={[
+                      header.column.id,
+                      (header.column.columnDef as TranscriptColumn).headerTitle,
+                    ]
+                      .filter(Boolean)
+                      .join("\n")}
                   >
                     <div
                       className={clsx(

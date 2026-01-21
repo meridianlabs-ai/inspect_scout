@@ -18,10 +18,11 @@ export const TranscriptColumnsButton = forwardRef<
   return (
     <ToolButton
       title="Choose columns"
-      icon={ApplicationIcons.threeDots}
+      label="Choose columns"
+      icon={ApplicationIcons.checkbox.checked}
       onClick={onClick}
       latched={isOpen}
-      className={clsx("text-size-smallestest", styles.button)}
+      className={clsx("text-size-smallest", styles.button)}
       ref={ref}
     />
   );

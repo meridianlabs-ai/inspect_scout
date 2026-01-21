@@ -31,7 +31,7 @@
   border: none;
   padding: 2px 4px;
   cursor: pointer;
-  color: var(--bs-secondary);
+  color: var(--bs-body-color);
   display: flex;
   align-items: center;
   justify-content: center;

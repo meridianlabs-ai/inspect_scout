@@ -38,6 +38,36 @@ export const COLUMN_LABELS: Record<keyof TranscriptInfo, string> = {
   error: "Error",
 };
 
+// Column header tooltips (matches headerTitle in column definitions)
+export const COLUMN_HEADER_TITLES: Record<keyof TranscriptInfo, string> = {
+  success: "Boolean reduction of score to succeeded/failed.",
+  date: "The date and time when the transcript was created.",
+  transcript_id:
+    "Globally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).",
+  task_set:
+    "Set from which transcript task was drawn (e.g. Inspect task name or benchmark name)",
+  task_id: "Identifier for task (e.g. dataset sample id).",
+  task_repeat: "Repeat for a given task id within a task set (e.g. epoch).",
+  model: "Main model used by agent.",
+  model_options: "Generation options for main model.",
+  agent: "Agent used to to execute task.",
+  agent_args: "Arguments passed to create agent.",
+  score: "Value indicating score on task.",
+  metadata:
+    "Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).",
+  source_id:
+    "Globally unique identifier for a transcript source (maps to eval_id in Inspect logs)",
+  source_type: 'Type of transcript source (e.g. "eval_log", "weave", etc.).',
+  source_uri:
+    "Globally unique identifier for a transcript source (maps to eval_id in Inspect logs)",
+  total_tokens: "Tokens spent in execution of task.",
+  total_time: "Time required to execute task (seconds).",
+  message_count: "Total messages in conversation.",
+  limit:
+    'Limit that caused the task to exit (e.g. "tokens", "messages", etc.).',
+  error: "Error message that terminated the task.",
+};
+
 export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   meta?: {
     align?: "left" | "center" | "right";
@@ -52,12 +82,15 @@ export type TranscriptColumn = ColumnDef<TranscriptInfo> & {
   minSize?: number;
   /** Maximum column width in pixels */
   maxSize?: number;
+  /** Tooltip text for the column header */
+  headerTitle?: string;
 };
 
 // Helper to create strongly-typed columns
 function createColumn<K extends keyof TranscriptInfo>(config: {
   accessorKey: K;
   header: string;
+  headerTitle?: string;
   size?: number;
   minSize?: number;
   maxSize?: number;
@@ -81,6 +114,7 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
   return {
     accessorKey: config.accessorKey as string,
     header: config.header,
+    headerTitle: config.headerTitle,
     size: config.size,
     minSize: config.minSize,
     maxSize: config.maxSize,
@@ -106,6 +140,7 @@ function createColumn<K extends keyof TranscriptInfo>(config: {
 function createObjectColumn<K extends keyof TranscriptInfo>(config: {
   accessorKey: K;
   header: string;
+  headerTitle?: string;
   size?: number;
   minSize?: number;
   maxSize?: number;
@@ -135,6 +170,7 @@ function createObjectColumn<K extends keyof TranscriptInfo>(config: {
   return createColumn({
     accessorKey: config.accessorKey,
     header: config.header,
+    headerTitle: config.headerTitle,
     size: config.size,
     minSize: config.minSize,
     maxSize: config.maxSize,
@@ -158,6 +194,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   success: createColumn({
     accessorKey: "success",
     header: "✓",
+    headerTitle: "Boolean reduction of score to succeeded/failed.",
     size: 40,
     minSize: 40,
     maxSize: 60,
@@ -190,6 +227,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   date: createColumn({
     accessorKey: "date",
     header: "Date",
+    headerTitle: "The date and time when the transcript was created.",
     size: 180,
     minSize: 120,
     maxSize: 300,
@@ -215,6 +253,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   transcript_id: createColumn({
     accessorKey: "transcript_id",
     header: "Transcript ID",
+    headerTitle:
+      "Globally unique identifier for a transcript (maps to EvalSample.uuid in Inspect logs).",
     size: 150,
     minSize: 80,
     maxSize: 400,
@@ -229,6 +269,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   task_set: createColumn({
     accessorKey: "task_set",
     header: "Task Set",
+    headerTitle:
+      "Set from which transcript task was drawn (e.g. Inspect task name or benchmark name)",
     size: 150,
     minSize: 80,
     maxSize: 400,
@@ -240,6 +282,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   task_id: createColumn({
     accessorKey: "task_id",
     header: "Task ID",
+    headerTitle: "Identifier for task (e.g. dataset sample id).",
     size: 150,
     minSize: 80,
     maxSize: 400,
@@ -251,6 +294,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   task_repeat: createColumn({
     accessorKey: "task_repeat",
     header: "#",
+    headerTitle: "Repeat for a given task id within a task set (e.g. epoch).",
     size: 50,
     minSize: 40,
     maxSize: 100,
@@ -262,6 +306,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   model: createColumn({
     accessorKey: "model",
     header: "Model",
+    headerTitle: "Main model used by agent.",
     size: 200,
     minSize: 80,
     maxSize: 400,
@@ -273,6 +318,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   model_options: createObjectColumn({
     accessorKey: "model_options",
     header: "Model Options",
+    headerTitle: "Generation options for main model.",
     size: 200,
     minSize: 80,
     maxSize: 500,
@@ -284,6 +330,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   agent: createColumn({
     accessorKey: "agent",
     header: "Agent",
+    headerTitle: "Agent used to to execute task.",
     size: 150,
     minSize: 80,
     maxSize: 400,
@@ -298,6 +345,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   agent_args: createObjectColumn({
     accessorKey: "agent_args",
     header: "Agent Args",
+    headerTitle: "Arguments passed to create agent.",
     size: 200,
     minSize: 80,
     maxSize: 500,
@@ -309,6 +357,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   score: createColumn({
     accessorKey: "score",
     header: "Score",
+    headerTitle: "Value indicating score on task.",
     size: 100,
     minSize: 60,
     maxSize: 300,
@@ -358,6 +407,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   metadata: createObjectColumn({
     accessorKey: "metadata",
     header: "Metadata",
+    headerTitle:
+      "Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.).",
     size: 200,
     minSize: 80,
     maxSize: 500,
@@ -369,6 +420,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   source_id: createColumn({
     accessorKey: "source_id",
     header: "Source ID",
+    headerTitle:
+      "Globally unique identifier for a transcript source (maps to eval_id in Inspect logs)",
     size: 150,
     minSize: 80,
     maxSize: 400,
@@ -383,6 +436,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   source_type: createColumn({
     accessorKey: "source_type",
     header: "Source Type",
+    headerTitle: "Type of transcript source (e.g. “eval_log”, “weave”, etc.).",
     size: 150,
     minSize: 80,
     maxSize: 300,
@@ -397,6 +451,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   source_uri: createColumn({
     accessorKey: "source_uri",
     header: "Source URI",
+    headerTitle:
+      "Globally unique identifier for a transcript source (maps to eval_id in Inspect logs)",
     size: 300,
     minSize: 100,
     maxSize: 600,
@@ -411,6 +467,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   total_tokens: createColumn({
     accessorKey: "total_tokens",
     header: "Tokens",
+    headerTitle: "Tokens spent in execution of task.",
     size: 120,
     minSize: 60,
     maxSize: 200,
@@ -434,6 +491,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   total_time: createColumn({
     accessorKey: "total_time",
     header: "Time",
+    headerTitle: "Time required to execute task (seconds).",
     size: 120,
     minSize: 60,
     maxSize: 200,
@@ -457,6 +515,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   message_count: createColumn({
     accessorKey: "message_count",
     header: "Messages",
+    headerTitle: "Total messages in conversation.",
     size: 120,
     minSize: 60,
     maxSize: 200,
@@ -480,6 +539,8 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   limit: createColumn({
     accessorKey: "limit",
     header: "Limit",
+    headerTitle:
+      "Limit that caused the task to exit (e.g. “tokens”, “messages, etc.).",
     size: 100,
     minSize: 60,
     maxSize: 200,
@@ -494,6 +555,7 @@ const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   error: createColumn({
     accessorKey: "error",
     header: "Error",
+    headerTitle: "Error message that terminated the task.",
     size: 200,
     minSize: 80,
     maxSize: 500,

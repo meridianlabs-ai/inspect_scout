@@ -1,7 +1,7 @@
 .columnList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15em;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15em 1em;
   max-height: 400px;
   overflow-y: auto;
 }

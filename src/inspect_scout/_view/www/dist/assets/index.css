@@ -3748,110 +3748,74 @@ so disabling selection can break that functionality */
   grid-template-columns: max-content max-content;
   column-gap: 0.3em;
 }
-._container_1g8hw_1 {
+._container_1g7rb_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-._defineScannerSection_1g8hw_8 {
+._defineScannerSection_1g7rb_8 {
   padding: 1rem;
   border-bottom: 1px solid var(--bs-border-color);
   flex-shrink: 0;
 }
 
-._sectionTitle_1g8hw_14 {
+._sectionTitle_1g7rb_14 {
   font-size: 1rem;
   font-weight: 600;
   margin: 0 0 1rem 0;
 }
 
-._formRow_1g8hw_20 {
+._formRow_1g7rb_20 {
   display: flex;
   gap: 2rem;
 }
 
-._formColumn_1g8hw_25 {
+._formColumn_1g7rb_25 {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
 }
 
-._formGroup_1g8hw_32 {
+._formGroup_1g7rb_32 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-._label_1g8hw_38 {
-  font-size: 0.875rem;
+._scannerRow_1g7rb_38 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+._scannerDescription_1g7rb_44 {
+  flex: 2;
+  font-size: 0.75rem;
   color: var(--bs-secondary);
 }
 
-._select_1g8hw_43 {
-  padding: 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
+._paramsPlaceholder_1g7rb_50 {
+  padding: 1rem;
+  color: var(--bs-secondary);
   font-size: 0.875rem;
 }
 
-._textarea_1g8hw_52 {
-  padding: 0.5rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-body-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-  resize: vertical;
+._runScanRow_1g7rb_56 {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
 }
 
-._checkboxGroup_1g8hw_62 {
+._checkboxGroup_1g7rb_63 {
   display: flex;
   gap: 1.5rem;
 }
 
-._checkboxLabel_1g8hw_67 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  cursor: default;
-}
-
-._runScanButton_1g8hw_75 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  background-color: var(--bs-secondary-bg);
-  color: var(--bs-body-color);
-  font-size: 0.875rem;
-  cursor: pointer;
-  width: fit-content;
-}
-
-._runScanButton_1g8hw_75:hover:not(:disabled) {
-  background-color: var(--bs-tertiary-bg);
-}
-
-._runScanButton_1g8hw_75:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-._runScanButton_1g8hw_75 i {
-  color: var(--bs-success);
-  font-size: 1.75rem;
-  line-height: 0;
-}
-
-._scansList_1g8hw_104 {
+._scansList_1g7rb_68 {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -3860,49 +3824,49 @@ so disabling selection can break that functionality */
   overflow: auto;
 }
 
-._card_1g8hw_113 {
+._card_1g7rb_77 {
   border: 1px solid var(--bs-border-color);
   border-radius: 0.375rem;
   padding: 1rem;
   background-color: var(--bs-body-bg);
 }
 
-._header_1g8hw_120 {
+._header_1g7rb_84 {
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--bs-border-color);
 }
 
-._scanId_1g8hw_126 {
+._scanId_1g7rb_90 {
   font-weight: 600;
   font-family: monospace;
 }
 
-._configLine_1g8hw_131 {
+._configLine_1g7rb_95 {
   color: var(--bs-secondary);
   font-size: 0.75rem;
   font-family: monospace;
   margin-top: 0.25rem;
 }
 
-._progressSection_1g8hw_138 {
+._progressSection_1g7rb_102 {
   margin-bottom: 0.75rem;
 }
 
-._progressBar_1g8hw_142 {
+._progressBar_1g7rb_106 {
   height: 4px;
   background-color: var(--bs-secondary-bg);
   border-radius: 2px;
   overflow: hidden;
 }
 
-._progressFill_1g8hw_149 {
+._progressFill_1g7rb_113 {
   height: 100%;
   background-color: var(--bs-success);
   transition: width 0.3s ease;
 }
 
-._progressStats_1g8hw_155 {
+._progressStats_1g7rb_119 {
   display: flex;
   gap: 1.5rem;
   margin-top: 0.25rem;
@@ -3911,38 +3875,38 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
 }
 
-._content_1g8hw_164 {
+._content_1g7rb_128 {
   display: flex;
   gap: 2rem;
 }
 
-._mainSection_1g8hw_169 {
+._mainSection_1g7rb_133 {
   flex: 1;
 }
 
-._table_1g8hw_173 {
+._table_1g7rb_137 {
   width: 100%;
   border-collapse: collapse;
   font-family: monospace;
   font-size: 0.875rem;
 }
 
-._table_1g8hw_173 th,
-._table_1g8hw_173 td {
+._table_1g7rb_137 th,
+._table_1g7rb_137 td {
   padding: 0.25rem 0.75rem;
   text-align: left;
 }
 
-._table_1g8hw_173 th {
+._table_1g7rb_137 th {
   font-weight: 600;
   color: var(--bs-secondary);
 }
 
-._numeric_1g8hw_191 {
+._numeric_1g7rb_155 {
   text-align: right;
 }
 
-._sidebar_1g8hw_195 {
+._sidebar_1g7rb_159 {
   min-width: 150px;
   border-left: 1px solid var(--bs-border-color);
   padding-left: 1rem;
@@ -3951,118 +3915,34 @@ so disabling selection can break that functionality */
   gap: 1rem;
 }
 
-._sidebarSection_1g8hw_204 {
+._sidebarSection_1g7rb_168 {
   font-family: monospace;
   font-size: 0.875rem;
 }
 
-._sidebarTitle_1g8hw_209 {
+._sidebarTitle_1g7rb_173 {
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
-._stat_1g8hw_214 {
+._stat_1g7rb_178 {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
 }
 
-._stat_1g8hw_214 span:first-child {
+._stat_1g7rb_178 span:first-child {
   color: var(--bs-secondary);
 }
 
-._error_1g8hw_224 {
+._error_1g7rb_188 {
   color: var(--bs-danger);
   font-weight: 600;
 }
 
-._mutationStatus_1g8hw_229 {
+._mutationStatus_1g7rb_193 {
   font-size: 0.7rem;
   color: var(--bs-secondary);
-}
-._footer_1ykeg_1 {
-  border-top: solid var(--bs-light-border-subtle) 1px;
-  background: var(--bs-light-bg-subtle);
-  display: grid;
-  grid-template-columns: max-content 1fr max-content;
-  justify-content: space-between;
-
-  padding: 0.2em 1em;
-}
-
-._spinnerContainer_1ykeg_11 {
-  display: grid;
-  grid-template-columns: max-content max-content;
-  column-gap: 0.3em;
-  padding-top: 0.2em;
-}
-
-._spinner_1ykeg_11 {
-  height: 11px !important;
-  width: 11px !important;
-  color: var(--bs-secondary) !important;
-  border-width: 1px !important;
-}
-
-._label_1ykeg_25 {
-  margin-left: 0.1em;
-  margin-top: -3px;
-}
-
-._right_1ykeg_30 {
-  display: grid;
-  grid-auto-columns: max-content;
-  grid-auto-flow: column;
-  justify-content: end;
-  align-items: center;
-  column-gap: 0.5em;
-}
-
-._left_1ykeg_39 {
-  display: grid;
-  grid-auto-columns: max-content;
-  grid-auto-flow: column;
-  justify-content: start;
-  align-items: center;
-  column-gap: 0.5em;
-}
-
-._center_1ykeg_48 {
-  display: grid;
-  grid-auto-columns: max-content;
-  grid-auto-flow: column;
-  justify-content: center;
-  align-items: center;
-  column-gap: 0.5em;
-}
-._pager_jzegk_1 {
-  --bs-pagination-padding-x: 0.5em;
-  --bs-pagination-padding-y: 0.15em;
-  --bs-pagination-font-size: 0.8rem;
-  --bs-pagination-padding-x: 0.5em;
-  --bs-pagination-padding-y: 0;
-  --bs-pagination-border-radius: var(--bs-border-radius);
-  margin-bottom: 0;
-}
-
-._item_jzegk_11:not(.disabled) {
-  cursor: pointer;
-}
-
-._item_jzegk_11 {
-  margin-left: 0.2em;
-  margin-right: 0.2em;
-}
-
-._item_jzegk_11:first-child,
-._item_jzegk_11:last-child {
-  --bs-pagination-padding-x: 0.3em;
-}
-
-._item_jzegk_11:first-child .ii:before,
-._item_jzegk_11:last-child .ii:before {
-  margin-top: -2px;
-  font-size: 0.8em;
 }
 ._container_xrb1f_1 {
   display: grid;
@@ -4218,41 +4098,6 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   cursor: default;
 }
-._gridWrapper_10nnn_1 {
-  height: 100%;
-  border-top: solid 1px var(--bs-border-color);
-}
-
-/* Hide sort index numbers in multi-column sort */
-._gridWrapper_10nnn_1 .ag-header-cell .ag-sort-order {
-  display: none;
-}
-
-._row_10nnn_11 {
-  cursor: pointer;
-}
-
-._green_10nnn_15 {
-  color: var(--bs-success);
-}
-
-._red_10nnn_19 {
-  color: var(--bs-danger);
-}
-
-._yellow_10nnn_23 {
-  color: var(--bs-warning);
-}
-
-._blue_10nnn_27 {
-  color: var(--bs-primary);
-}
-._container_18ufx_1 {
-  display: grid;
-  grid-template-rows: max-content max-content 1fr max-content;
-  height: 100%;
-  row-gap: 0;
-}
 ._dropdownContainer_1yyrd_1 {
   position: relative;
   display: inline-flex;
@@ -4341,36 +4186,33 @@ so disabling selection can break that functionality */
 ._dropdownItem_1yyrd_69:active {
   background-color: var(--bs-secondary-bg);
 }
-._chip_15up4_1 {
+._chip_4n1t8_1 {
   display: inline-flex;
   flex-direction: row;
   margin: 0rem 0;
-  padding: 0.1rem 0.4rem;
+  padding: 2px 6px;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  align-items: center;
+  align-items: baseline;
   white-space: nowrap;
 }
 
-._label_15up4_12 {
+._label_4n1t8_12 {
   font-weight: 600;
   margin-right: 0.5em;
 }
 
-._value_15up4_17 {
-}
-
-._icon_15up4_20 {
+._icon_4n1t8_17 {
   margin-right: 0.2rem;
-  font-size: 0.8em;
+  font-size: 0.9em;
 }
 
-._closeIcon_15up4_25 {
+._closeIcon_4n1t8_22 {
   margin-left: 0.3rem;
-  font-size: 0.8em;
+  font-size: 0.9em;
 }
 
-._clickable_15up4_30 {
+._clickable_4n1t8_27 {
   cursor: pointer;
 }
 ._chipGroup_1de1s_1 {
@@ -4380,12 +4222,12 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
-._container_et6si_1 {
+._container_1qaxn_1 {
   position: relative;
   width: 100%;
 }
 
-._input_et6si_6 {
+._input_1qaxn_6 {
   width: 100%;
   font-size: 12px;
   padding: 4px 6px;
@@ -4395,16 +4237,16 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._input_et6si_6:disabled {
+._input_1qaxn_6:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
 
-._inputWithToggle_et6si_21 {
+._inputWithToggle_1qaxn_21 {
   padding-right: 24px;
 }
 
-._toggleButton_et6si_25 {
+._toggleButton_1qaxn_25 {
   position: absolute;
   right: 2px;
   top: 50%;
@@ -4413,23 +4255,23 @@ so disabling selection can break that functionality */
   border: none;
   padding: 2px 4px;
   cursor: pointer;
-  color: var(--bs-secondary);
+  color: var(--bs-body-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
 }
 
-._toggleButton_et6si_25:hover:not(:disabled) {
+._toggleButton_1qaxn_25:hover:not(:disabled) {
   color: var(--bs-body-color);
 }
 
-._toggleButton_et6si_25:disabled {
+._toggleButton_1qaxn_25:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-._suggestionsList_et6si_50 {
+._suggestionsList_1qaxn_50 {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4442,7 +4284,7 @@ so disabling selection can break that functionality */
   z-index: 10000;
 }
 
-._suggestionItem_et6si_63 {
+._suggestionItem_1qaxn_63 {
   padding: 6px 8px;
   font-size: 12px;
   cursor: pointer;
@@ -4451,8 +4293,8 @@ so disabling selection can break that functionality */
   text-overflow: ellipsis;
 }
 
-._suggestionItem_et6si_63:hover,
-._suggestionItem_et6si_63._highlighted_et6si_73 {
+._suggestionItem_1qaxn_63:hover,
+._suggestionItem_1qaxn_63._highlighted_1qaxn_73 {
   background: var(--bs-primary);
   color: white;
 }
@@ -4517,6 +4359,13 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   padding-left: 2px;
 }
+._success_1mf4d_1 {
+  color: var(--bs-success) !important;
+}
+
+._unsuccess_1mf4d_5 {
+  opacity: 0.5 !important;
+}
 .btn._toolButton_wcmr6_1 {
   background-color: var(--bs-light-border-subtle);
   white-space: nowrap;
@@ -4551,15 +4400,15 @@ so disabling selection can break that functionality */
 .btn._button_wkaow_1 {
   background-color: transparent;
 }
-._columnList_1sw8v_1 {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15em;
+._columnList_1wz3s_1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15em 1em;
   max-height: 400px;
   overflow-y: auto;
 }
 
-._row_1sw8v_9 {
+._row_1wz3s_9 {
   display: flex;
   align-items: center;
   gap: 0.5em;
@@ -4569,11 +4418,11 @@ so disabling selection can break that functionality */
   margin: 0 -0.4em;
 }
 
-._row_1sw8v_9:hover {
+._row_1wz3s_9:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-._links_1sw8v_23 {
+._links_1wz3s_23 {
   display: flex;
   padding-bottom: 0.2em;
   margin-bottom: 0.4em;
@@ -4581,20 +4430,20 @@ so disabling selection can break that functionality */
   border-bottom: solid 1px var(--bs-border-color);
 }
 
-._links_1sw8v_23 a {
+._links_1wz3s_23 a {
   cursor: pointer;
   text-decoration: none;
   color: var(--bs-link-color);
 }
 
-._links_1sw8v_23 a:hover {
+._links_1wz3s_23 a:hover {
   color: var(--bs-link-hover-color);
 }
 
-._selected_1sw8v_41 {
+._selected_1wz3s_41 {
   font-weight: 600;
 }
-._container_z2s7f_1 {
+._container_13hb2_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
@@ -4604,53 +4453,172 @@ so disabling selection can break that functionality */
   width: 100%;
 }
 
-._filterBar_z2s7f_11 {
+._filterBar_13hb2_11 {
   margin: 1px 0;
 }
 
-._filterLabel_z2s7f_15 {
+._filterLabel_13hb2_15 {
   margin-right: 0.3rem;
   margin-top: 3px;
 }
 
-._filterNone_z2s7f_20 {
+._filterNone_13hb2_20 {
   margin-top: 2px;
 }
 
-._actionButtons_z2s7f_24 {
+._actionButtons_13hb2_24 {
   margin-left: auto;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
   display: flex;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   flex-direction: row;
-  font-size: var(--inspect-font-size-smallestest);
+  font-size: var(--inspect-font-size-smallest);
   height: calc(100% - 4px);
 }
 
-._actionButton_z2s7f_24 {
+._actionButton_13hb2_24 {
   padding: 0.1rem 0.4rem;
-  margin: 1px 0rem;
-  font-size: var(--inspect-font-size-smallestest);
+  margin: 0;
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._actionButtonDropDown_z2s7f_42 {
-  font-size: var(--inspect-font-size-smallestest);
+._actionButtonDropDown_13hb2_42 {
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._actionButton_z2s7f_24._chipButton_z2s7f_46 {
+._actionButton_13hb2_24._chipButton_13hb2_46 {
   background-color: unset;
   margin-left: 0.3rem;
 }
 
-._sep_z2s7f_51 {
+._sep_13hb2_51 {
   width: 1px;
-  height: 100%;
+  height: calc(100% - 2px);
   margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);
+}
+._footer_1ykeg_1 {
+  border-top: solid var(--bs-light-border-subtle) 1px;
+  background: var(--bs-light-bg-subtle);
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  justify-content: space-between;
+
+  padding: 0.2em 1em;
+}
+
+._spinnerContainer_1ykeg_11 {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 0.3em;
+  padding-top: 0.2em;
+}
+
+._spinner_1ykeg_11 {
+  height: 11px !important;
+  width: 11px !important;
+  color: var(--bs-secondary) !important;
+  border-width: 1px !important;
+}
+
+._label_1ykeg_25 {
+  margin-left: 0.1em;
+  margin-top: -3px;
+}
+
+._right_1ykeg_30 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: end;
+  align-items: center;
+  column-gap: 0.5em;
+}
+
+._left_1ykeg_39 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  column-gap: 0.5em;
+}
+
+._center_1ykeg_48 {
+  display: grid;
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  justify-content: center;
+  align-items: center;
+  column-gap: 0.5em;
+}
+._pager_jzegk_1 {
+  --bs-pagination-padding-x: 0.5em;
+  --bs-pagination-padding-y: 0.15em;
+  --bs-pagination-font-size: 0.8rem;
+  --bs-pagination-padding-x: 0.5em;
+  --bs-pagination-padding-y: 0;
+  --bs-pagination-border-radius: var(--bs-border-radius);
+  margin-bottom: 0;
+}
+
+._item_jzegk_11:not(.disabled) {
+  cursor: pointer;
+}
+
+._item_jzegk_11 {
+  margin-left: 0.2em;
+  margin-right: 0.2em;
+}
+
+._item_jzegk_11:first-child,
+._item_jzegk_11:last-child {
+  --bs-pagination-padding-x: 0.3em;
+}
+
+._item_jzegk_11:first-child .ii:before,
+._item_jzegk_11:last-child .ii:before {
+  margin-top: -2px;
+  font-size: 0.8em;
+}
+._gridWrapper_10nnn_1 {
+  height: 100%;
+  border-top: solid 1px var(--bs-border-color);
+}
+
+/* Hide sort index numbers in multi-column sort */
+._gridWrapper_10nnn_1 .ag-header-cell .ag-sort-order {
+  display: none;
+}
+
+._row_10nnn_11 {
+  cursor: pointer;
+}
+
+._green_10nnn_15 {
+  color: var(--bs-success);
+}
+
+._red_10nnn_19 {
+  color: var(--bs-danger);
+}
+
+._yellow_10nnn_23 {
+  color: var(--bs-warning);
+}
+
+._blue_10nnn_27 {
+  color: var(--bs-primary);
+}
+._container_18ufx_1 {
+  display: grid;
+  grid-template-rows: max-content max-content 1fr max-content;
+  height: 100%;
+  row-gap: 0;
 }
 ._filterButton_fuk0s_1 {
   display: inline-flex;

@@ -173,7 +173,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
                 disabled={isValueDisabled}
                 autoFocus={!isAddMode}
               >
-                <option value="">(clear)</option>
+                <option value="">(not set)</option>
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>

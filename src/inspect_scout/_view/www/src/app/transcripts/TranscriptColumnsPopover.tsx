@@ -5,7 +5,11 @@ import { PopOver } from "../../components/PopOver";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 
-import { COLUMN_LABELS, DEFAULT_COLUMN_ORDER } from "./columns";
+import {
+  COLUMN_HEADER_TITLES,
+  COLUMN_LABELS,
+  DEFAULT_COLUMN_ORDER,
+} from "./columns";
 import styles from "./TranscriptColumnsPopover.module.css";
 
 export interface TranscriptColumnsPopoverProps {
@@ -140,6 +144,9 @@ export const TranscriptColumnsPopover: FC<TranscriptColumnsPopoverProps> = ({
           <div
             key={column}
             className={clsx(styles.row)}
+            title={[column, COLUMN_HEADER_TITLES[column]]
+              .filter(Boolean)
+              .join("\n")}
             onClick={() => {
               toggleColumn(column, !visibleColumns.includes(column));
             }}

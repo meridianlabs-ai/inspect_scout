@@ -19,6 +19,7 @@ export const iconForMimeType = (mimeType: string): string => {
 };
 
 export const ApplicationIcons = {
+  add: "bi bi-plus-lg",
   agent: "bi bi-grid", // bi bi-x-diamond
   approve: "bi bi-shield",
   approvals: {

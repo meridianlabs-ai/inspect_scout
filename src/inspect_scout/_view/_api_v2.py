@@ -556,38 +556,44 @@ def v2_api_app(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-        # Spawn subprocess with unadulterated config
         proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid
+        print(f"[startscan] spawned pid={pid}")  # TODO: remove
 
-        # Wait for scan to register in active_scans_store
-        active_info = await _wait_for_active_scan(pid)
+        active_info, exit_code, stderr = await _wait_for_active_scan(
+            pid, proc, stderr_lines
+        )
+        print(f"[startscan] wait result: active_info={active_info is not None}, exit_code={exit_code}, stderr_len={len(stderr)}")  # TODO: remove
 
-        # Clean up temp file - subprocess has read it if registered
         if os.path.exists(temp_path):
             os.unlink(temp_path)
 
-        if active_info is None:
-            exit_code = proc.poll()
-            if exit_code is not None:
-                # Give threads a moment to finish reading
-                proc.wait(timeout=1)
-                stderr = b"".join(stderr_lines)
-                error_msg = stderr.decode() if stderr else "Unknown error"
-                raise HTTPException(
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Scan subprocess exited with code {exit_code}: {error_msg}",
+        if active_info is not None:
+            print(f"[startscan] found entry running={active_info.running}, error={active_info.error_message}")  # TODO: remove
+            if active_info.error_message is None:
+                # running or completed successfully
+                return await scan_recorder_for_location(active_info.location).status(
+                    active_info.location
                 )
-            else:
-                proc.terminate()
-                raise HTTPException(
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Scan subprocess failed to register within timeout",
-                )
+            # failed with error
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=active_info.error_message,
+            )
 
-        # Get status from recorder using location from active_info
-        return await scan_recorder_for_location(active_info.location).status(
-            active_info.location
+        if exit_code is not None:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            print(f"[startscan] early exit path: code={exit_code}, msg={error_msg[:200]}")  # TODO: remove
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Scan subprocess exited with code {exit_code}: {error_msg}",
+            )
+
+        print("[startscan] timeout path")  # TODO: remove
+        proc.terminate()
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Scan subprocess failed to register within timeout",
         )
 
     @app.get(
@@ -772,12 +778,16 @@ def _spawn_scan_subprocess(
         os.unlink(temp_path)
         raise
 
-    proc = subprocess.Popen(
-        ["scout", "scan", temp_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
+    try:
+        proc = subprocess.Popen(
+            ["scout", "scan", temp_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except Exception:
+        os.unlink(temp_path)
+        raise
 
     stdout_lines: list[bytes] = []
     stderr_lines: list[bytes] = []
@@ -797,18 +807,24 @@ def _spawn_scan_subprocess(
 
 async def _wait_for_active_scan(
     pid: int,
+    proc: subprocess.Popen[bytes],
+    stderr_lines: list[bytes],
     timeout_seconds: float = 10.0,
     poll_interval: float = 0.5,
-) -> ActiveScanInfo | None:
-    """Wait for an active scan to appear for the given PID.
+) -> tuple[ActiveScanInfo | None, int | None, bytes]:
+    """Wait for an active scan to appear, checking for early process exit.
 
     Args:
         pid: The subprocess PID to monitor
+        proc: The subprocess Popen object
+        stderr_lines: Accumulator for stderr output
         timeout_seconds: Max time to wait
         poll_interval: Time between polls
 
     Returns:
-        ActiveScanInfo if found, None on timeout
+        (ActiveScanInfo, None, b"") if scan registered successfully
+        (None, exit_code, stderr) if process exited before registering
+        (None, None, b"") if timeout with process still running
     """
     start = time.time()
 
@@ -816,10 +832,21 @@ async def _wait_for_active_scan(
         with active_scans_store() as store:
             info = store.read_by_pid(pid)
             if info is not None:
-                return info
+                return (info, None, b"")
+
+        exit_code = proc.poll()
+        if exit_code is not None:
+            proc.wait(timeout=1)
+            return (None, exit_code, b"".join(stderr_lines))
+
         await asyncio.sleep(poll_interval)
 
-    return None
+    exit_code = proc.poll()
+    if exit_code is not None:
+        proc.wait(timeout=1)
+        return (None, exit_code, b"".join(stderr_lines))
+
+    return (None, None, b"")
 
 
 async def _run_scan_background(config: ScanJobConfig, location: str) -> None:

@@ -7,6 +7,17 @@
             "title": "Config",
             "type": "string"
           },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
           "last_updated": {
             "title": "Last Updated",
             "type": "number"
@@ -17,6 +28,10 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/ScanMetrics"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
           },
           "scan_id": {
             "title": "Scan Id",
@@ -55,7 +70,8 @@
           "total_scans",
           "start_time",
           "scanner_names",
-          "location"
+          "location",
+          "running"
         ],
         "title": "ActiveScanInfo",
         "type": "object"

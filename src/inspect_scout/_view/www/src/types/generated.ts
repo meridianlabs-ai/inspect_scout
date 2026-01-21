@@ -352,11 +352,15 @@ export interface components {
         ActiveScanInfo: {
             /** Config */
             config: string;
+            /** Error Message */
+            error_message?: string | null;
             /** Last Updated */
             last_updated: number;
             /** Location */
             location: string;
             metrics: components["schemas"]["ScanMetrics"];
+            /** Running */
+            running: boolean;
             /** Scan Id */
             scan_id: string;
             /** Scanner Names */

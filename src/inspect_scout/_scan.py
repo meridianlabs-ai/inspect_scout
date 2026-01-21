@@ -788,29 +788,27 @@ async def _scan_async_inner(
                         active_store.put_metrics(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
-                    try:
-                        await strategy(
-                            parse_jobs=_parse_jobs(scan, recorder, tr),
-                            parse_function=_parse_function,
-                            scan_function=_scan_function,
-                            record_results=record_results,
-                            update_metrics=update_metrics,
-                            completed=_strategy_completed,
+                    await strategy(
+                        parse_jobs=_parse_jobs(scan, recorder, tr),
+                        parse_function=_parse_function,
+                        scan_function=_scan_function,
+                        record_results=record_results,
+                        update_metrics=update_metrics,
+                        completed=_strategy_completed,
+                    )
+
+                    # we've been throttle metrics calculation, now report it all
+                    for scanner in metrics_accum:
+                        await recorder.record_metrics(
+                            scanner, metrics_accum[scanner].compute_metrics()
                         )
 
-                        # we've been throttle metrics calculation, now report it all
-                        for scanner in metrics_accum:
-                            await recorder.record_metrics(
-                                scanner, metrics_accum[scanner].compute_metrics()
-                            )
-
-                        # report status
-                        errors = await recorder.errors()
-                        scan_status = await recorder.sync(
-                            await recorder.location(), complete=len(errors) == 0
-                        )
-                    finally:
-                        active_store.delete_current()
+                    # report status
+                    errors = await recorder.errors()
+                    scan_status = await recorder.sync(
+                        await recorder.location(), complete=len(errors) == 0
+                    )
+                    active_store.mark_completed()
 
         # report scan complete
         display().scan_complete(scan_status)
@@ -896,6 +894,9 @@ def init_scan_model_context(
 async def handle_scan_interrupted(
     message_or_exc: str | Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
+    message = str(message_or_exc)
+    with active_scans_store() as store:
+        store.mark_interrupted(spec.scan_id, message)
     scan_status = await recorder.sync(await recorder.location(), complete=False)
     display().scan_interrupted(message_or_exc, scan_status)
     return scan_status

@@ -24,8 +24,6 @@ if TYPE_CHECKING:
     from .._scanspec import ScanSpec
 
 _STORE_NAME = "scout_active_scans"
-_STORE_VERSION = 4
-_VERSION_KEY = "__version__"
 
 
 @dataclass
@@ -42,6 +40,8 @@ class ActiveScanInfo:
     start_time: float
     scanner_names: list[str]
     location: str
+    running: bool
+    error_message: str | None = None
 
 
 class ActiveScansStore(Protocol):
@@ -63,8 +63,15 @@ class ActiveScansStore(Protocol):
         """Store scanner results, aggregating into Summary."""
         ...
 
-    def delete_current(self) -> None:
-        """Delete the current process's entry."""
+    def mark_completed(self) -> None:
+        """Mark the current process's scan as completed."""
+        ...
+
+    def mark_interrupted(self, scan_id: str, message: str) -> None:
+        """Mark the current process's scan as interrupted with error message.
+
+        Creates a minimal entry if none exists (e.g., for PrerequisiteError before put_spec).
+        """
         ...
 
     def read_all(self) -> dict[str, ActiveScanInfo]:
@@ -76,41 +83,24 @@ class ActiveScansStore(Protocol):
         ...
 
 
-def _pid_exists(pid: int) -> bool:
-    """Check if a process with the given PID exists."""
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+def clear_active_scans() -> None:
+    """Clear all entries from the active scans store. Call on server startup."""
+    with inspect_kvstore(_STORE_NAME) as kvstore:
+        kvstore.conn.execute("DELETE FROM kv_store")
+        kvstore.conn.commit()
 
 
 @contextmanager
 def active_scans_store() -> Generator[ActiveScansStore, None, None]:
     """Context manager yielding a ActiveScansStore interface.
 
-    Metrics are keyed by main process PID. Call delete_current() when
-    the scan completes to clean up the entry.
+    Metrics are keyed by main process PID.
 
     Yields:
-        ActiveScansStore interface with put, delete_current, and read_all methods.
+        ActiveScansStore interface with put and read methods.
     """
     pid_key = str(os.getpid())
     with inspect_kvstore(_STORE_NAME) as kvstore:
-        # Version management - clear store if version mismatch
-        stored_version = kvstore.get(_VERSION_KEY)
-        if stored_version != str(_STORE_VERSION):
-            kvstore.conn.execute("DELETE FROM kv_store")
-            kvstore.conn.commit()
-            kvstore.put(_VERSION_KEY, str(_STORE_VERSION))
-
-        # Cleanup stale entries from dead processes
-        cursor = kvstore.conn.execute(
-            "SELECT key FROM kv_store WHERE key != ?", (_VERSION_KEY,)
-        )
-        for (key,) in cursor.fetchall():
-            if not _pid_exists(int(key)):
-                kvstore.delete(key)
 
         class _Store:
             def put_spec(
@@ -130,6 +120,8 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                         "summary": Summary(scanners=scanner_names).model_dump(),
                         "metrics": asdict(ScanMetrics()),
                         "location": location,
+                        "running": True,
+                        "error_message": None,
                     }
                 )
                 kvstore.put(pid_key, json.dumps(existing))
@@ -163,14 +155,43 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 )
                 kvstore.put(pid_key, json.dumps(existing))
 
-            def delete_current(self) -> None:
-                kvstore.delete(pid_key)
+            def mark_completed(self) -> None:
+                existing = json.loads(kvstore.get(pid_key) or "{}")
+                existing.update({"running": False, "last_updated": time.time()})
+                kvstore.put(pid_key, json.dumps(existing))
+
+            def mark_interrupted(self, scan_id: str, message: str) -> None:
+                existing = kvstore.get(pid_key)
+                if existing:
+                    data = json.loads(existing)
+                    data.update(
+                        {
+                            "running": False,
+                            "error_message": message,
+                            "last_updated": time.time(),
+                        }
+                    )
+                else:
+                    # Create minimal entry for errors before put_spec (e.g., PrerequisiteError)
+                    data = {
+                        "scan_id": scan_id,
+                        "title": "",
+                        "config": "",
+                        "total_scans": 0,
+                        "start_time": time.time(),
+                        "last_updated": time.time(),
+                        "scanner_names": [],
+                        "summary": Summary(scanners=[]).model_dump(),
+                        "metrics": asdict(ScanMetrics()),
+                        "location": "",
+                        "running": False,
+                        "error_message": message,
+                    }
+                kvstore.put(pid_key, json.dumps(data))
 
             def read_all(self) -> dict[str, ActiveScanInfo]:
                 result: dict[str, ActiveScanInfo] = {}
-                cursor = kvstore.conn.execute(
-                    "SELECT key, value FROM kv_store WHERE key != ?", (_VERSION_KEY,)
-                )
+                cursor = kvstore.conn.execute("SELECT key, value FROM kv_store")
                 for _, value in cursor.fetchall():
                     data = json.loads(value)
                     info = _parse_active_scan_info(data)
@@ -199,4 +220,6 @@ def _parse_active_scan_info(data: dict[str, object]) -> ActiveScanInfo:
         start_time=float(str(data["start_time"])),
         scanner_names=list(data["scanner_names"]),  # type: ignore[call-overload]
         location=str(data["location"]),
+        running=bool(data.get("running", True)),
+        error_message=str(data["error_message"]) if data.get("error_message") else None,
     )

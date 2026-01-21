@@ -1,5 +1,6 @@
 ## 0.4.10 (21 January 2026)
 
+- Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.
 - Scan config: Set 'model' to `None` if no model is specified.
 - Scan config: Deprecate use of environment variables for config (in favor of project config).
 - Scout View: Move 'Project' UI button to main activity bar.

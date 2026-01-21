@@ -8317,11 +8317,12 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: auto;
   height: 100%;
 }
-._container_u4d55_1 {
+._container_jifsm_1 {
   display: grid;
   grid-template-columns: 1fr 2fr;
   overflow-y: hidden;
   height: 100%;
+  width: 100%;
 }
 ._sidebar_uz8wg_1 {
   border-right: solid 1px var(--bs-border-color);

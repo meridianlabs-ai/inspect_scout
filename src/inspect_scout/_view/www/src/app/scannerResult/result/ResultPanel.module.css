@@ -3,4 +3,5 @@
   grid-template-columns: 1fr 2fr;
   overflow-y: hidden;
   height: 100%;
+  width: 100%;
 }

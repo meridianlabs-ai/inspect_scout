@@ -77,19 +77,239 @@
         "type": "object"
       },
       "AppConfig": {
+        "additionalProperties": false,
+        "description": "Application configuration returned by GET /config.",
         "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Filter"
+          },
+          "generate_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateConfig-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "home_dir": {
             "title": "Home Dir",
             "type": "string"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "log_level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "http",
+                  "sandbox",
+                  "info",
+                  "warning",
+                  "error",
+                  "critical",
+                  "notset"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Level"
+          },
+          "max_processes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Processes"
+          },
+          "max_transcripts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transcripts"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Args"
+          },
+          "model_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Base Url"
+          },
+          "model_roles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelConfig-Output"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Roles"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "project_dir": {
             "title": "Project Dir",
             "type": "string"
           },
-          "scans_dir": {
+          "results": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          },
+          "scanners": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ScannerSpec"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanners"
+          },
+          "scans": {
             "$ref": "#/components/schemas/AppDir"
           },
-          "transcripts_dir": {
+          "shuffle": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shuffle"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "transcripts": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AppDir"
@@ -98,17 +318,54 @@
                 "type": "null"
               }
             ]
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationSet-Output"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation"
+          },
+          "worklist": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Worklist"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worklist"
           }
         },
         "required": [
+          "filter",
+          "scans",
           "home_dir",
-          "project_dir",
-          "scans_dir"
+          "project_dir"
         ],
         "title": "AppConfig",
         "type": "object"
       },
       "AppDir": {
+        "description": "Directory with source tracking.",
         "properties": {
           "dir": {
             "title": "Dir",

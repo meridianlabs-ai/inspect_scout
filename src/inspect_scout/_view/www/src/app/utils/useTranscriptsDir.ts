@@ -24,7 +24,7 @@ export function useTranscriptsDir(
   const resolvedPath =
     (useRouteParam ? routeTranscriptsDir : null) ||
     userTranscriptsDir ||
-    config.transcripts_dir?.dir ||
+    config.transcripts?.dir ||
     "";
 
   const resolvedSource =
@@ -32,7 +32,7 @@ export function useTranscriptsDir(
       ? "route"
       : userTranscriptsDir
         ? "user"
-        : config.transcripts_dir && config.transcripts_dir?.source === "cli"
+        : config.transcripts && config.transcripts?.source === "cli"
           ? "cli"
           : "project";
 

@@ -24,18 +24,12 @@ const kCopyCodeDescriptors = [
   { label: "Filter (SQL)", value: "filter" },
 ];
 
-interface TranscriptFilterBarProps {
-  /** Code representations of current filters for copy functionality (e.g., Python, SQL). */
+export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
-  /** Autocomplete suggestions shown in the filter value input. */
   filterSuggestions?: ScalarValue[];
-  /** Callback when filter column selection changes; receives columnId or null when closed. */
   onFilterColumnChange?: (columnId: string | null) => void;
-  /** Whether to show the column visibility picker button. Defaults to true. */
   includeColumnPicker?: boolean;
-}
-
-export const TranscriptFilterBar: FC<TranscriptFilterBarProps> = ({
+}> = ({
   filterCodeValues,
   filterSuggestions = [],
   onFilterColumnChange,

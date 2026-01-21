@@ -3432,7 +3432,7 @@ export interface components {
              * Additionalproperties
              * @default false
              */
-            additionalProperties: boolean;
+            additionalProperties: components["schemas"]["JSONSchema"] | boolean | null;
             /** Properties */
             properties: {
                 [key: string]: components["schemas"]["JSONSchema"];

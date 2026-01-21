@@ -556,7 +556,6 @@ def v2_api_app(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-
         # Spawn subprocess with unadulterated config
         proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid

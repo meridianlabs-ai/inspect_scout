@@ -4186,36 +4186,33 @@ so disabling selection can break that functionality */
 ._dropdownItem_1yyrd_69:active {
   background-color: var(--bs-secondary-bg);
 }
-._chip_15up4_1 {
+._chip_4n1t8_1 {
   display: inline-flex;
   flex-direction: row;
   margin: 0rem 0;
-  padding: 0.1rem 0.4rem;
+  padding: 2px 6px;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  align-items: center;
+  align-items: baseline;
   white-space: nowrap;
 }
 
-._label_15up4_12 {
+._label_4n1t8_12 {
   font-weight: 600;
   margin-right: 0.5em;
 }
 
-._value_15up4_17 {
-}
-
-._icon_15up4_20 {
+._icon_4n1t8_17 {
   margin-right: 0.2rem;
-  font-size: 0.8em;
+  font-size: 0.9em;
 }
 
-._closeIcon_15up4_25 {
+._closeIcon_4n1t8_22 {
   margin-left: 0.3rem;
-  font-size: 0.8em;
+  font-size: 0.9em;
 }
 
-._clickable_15up4_30 {
+._clickable_4n1t8_27 {
   cursor: pointer;
 }
 ._chipGroup_1de1s_1 {
@@ -4225,12 +4222,12 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
-._container_et6si_1 {
+._container_1qaxn_1 {
   position: relative;
   width: 100%;
 }
 
-._input_et6si_6 {
+._input_1qaxn_6 {
   width: 100%;
   font-size: 12px;
   padding: 4px 6px;
@@ -4240,16 +4237,16 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._input_et6si_6:disabled {
+._input_1qaxn_6:disabled {
   background: var(--bs-light);
   color: var(--bs-secondary);
 }
 
-._inputWithToggle_et6si_21 {
+._inputWithToggle_1qaxn_21 {
   padding-right: 24px;
 }
 
-._toggleButton_et6si_25 {
+._toggleButton_1qaxn_25 {
   position: absolute;
   right: 2px;
   top: 50%;
@@ -4258,23 +4255,23 @@ so disabling selection can break that functionality */
   border: none;
   padding: 2px 4px;
   cursor: pointer;
-  color: var(--bs-secondary);
+  color: var(--bs-body-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
 }
 
-._toggleButton_et6si_25:hover:not(:disabled) {
+._toggleButton_1qaxn_25:hover:not(:disabled) {
   color: var(--bs-body-color);
 }
 
-._toggleButton_et6si_25:disabled {
+._toggleButton_1qaxn_25:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-._suggestionsList_et6si_50 {
+._suggestionsList_1qaxn_50 {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4287,7 +4284,7 @@ so disabling selection can break that functionality */
   z-index: 10000;
 }
 
-._suggestionItem_et6si_63 {
+._suggestionItem_1qaxn_63 {
   padding: 6px 8px;
   font-size: 12px;
   cursor: pointer;
@@ -4296,8 +4293,8 @@ so disabling selection can break that functionality */
   text-overflow: ellipsis;
 }
 
-._suggestionItem_et6si_63:hover,
-._suggestionItem_et6si_63._highlighted_et6si_73 {
+._suggestionItem_1qaxn_63:hover,
+._suggestionItem_1qaxn_63._highlighted_1qaxn_73 {
   background: var(--bs-primary);
   color: white;
 }
@@ -4362,6 +4359,13 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   padding-left: 2px;
 }
+._success_1mf4d_1 {
+  color: var(--bs-success) !important;
+}
+
+._unsuccess_1mf4d_5 {
+  opacity: 0.5 !important;
+}
 .btn._toolButton_wcmr6_1 {
   background-color: var(--bs-light-border-subtle);
   white-space: nowrap;
@@ -4396,15 +4400,15 @@ so disabling selection can break that functionality */
 .btn._button_wkaow_1 {
   background-color: transparent;
 }
-._columnList_1sw8v_1 {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15em;
+._columnList_1wz3s_1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15em 1em;
   max-height: 400px;
   overflow-y: auto;
 }
 
-._row_1sw8v_9 {
+._row_1wz3s_9 {
   display: flex;
   align-items: center;
   gap: 0.5em;
@@ -4414,11 +4418,11 @@ so disabling selection can break that functionality */
   margin: 0 -0.4em;
 }
 
-._row_1sw8v_9:hover {
+._row_1wz3s_9:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-._links_1sw8v_23 {
+._links_1wz3s_23 {
   display: flex;
   padding-bottom: 0.2em;
   margin-bottom: 0.4em;
@@ -4426,20 +4430,20 @@ so disabling selection can break that functionality */
   border-bottom: solid 1px var(--bs-border-color);
 }
 
-._links_1sw8v_23 a {
+._links_1wz3s_23 a {
   cursor: pointer;
   text-decoration: none;
   color: var(--bs-link-color);
 }
 
-._links_1sw8v_23 a:hover {
+._links_1wz3s_23 a:hover {
   color: var(--bs-link-hover-color);
 }
 
-._selected_1sw8v_41 {
+._selected_1wz3s_41 {
   font-weight: 600;
 }
-._container_z2s7f_1 {
+._container_13hb2_1 {
   display: flex;
   flex-direction: row;
   background: var(--bs-light-bg-subtle);
@@ -4449,49 +4453,49 @@ so disabling selection can break that functionality */
   width: 100%;
 }
 
-._filterBar_z2s7f_11 {
+._filterBar_13hb2_11 {
   margin: 1px 0;
 }
 
-._filterLabel_z2s7f_15 {
+._filterLabel_13hb2_15 {
   margin-right: 0.3rem;
   margin-top: 3px;
 }
 
-._filterNone_z2s7f_20 {
+._filterNone_13hb2_20 {
   margin-top: 2px;
 }
 
-._actionButtons_z2s7f_24 {
+._actionButtons_13hb2_24 {
   margin-left: auto;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
   display: flex;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   flex-direction: row;
-  font-size: var(--inspect-font-size-smallestest);
+  font-size: var(--inspect-font-size-smallest);
   height: calc(100% - 4px);
 }
 
-._actionButton_z2s7f_24 {
+._actionButton_13hb2_24 {
   padding: 0.1rem 0.4rem;
-  margin: 1px 0rem;
-  font-size: var(--inspect-font-size-smallestest);
+  margin: 0;
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._actionButtonDropDown_z2s7f_42 {
-  font-size: var(--inspect-font-size-smallestest);
+._actionButtonDropDown_13hb2_42 {
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._actionButton_z2s7f_24._chipButton_z2s7f_46 {
+._actionButton_13hb2_24._chipButton_13hb2_46 {
   background-color: unset;
   margin-left: 0.3rem;
 }
 
-._sep_z2s7f_51 {
+._sep_13hb2_51 {
   width: 1px;
-  height: 100%;
+  height: calc(100% - 2px);
   margin: 2px 0.3rem;
 
   background-color: var(--bs-border-color);

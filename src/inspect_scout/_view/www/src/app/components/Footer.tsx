@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
+import { formatNumber } from "../../utils/format";
+
 import styles from "./Footer.module.css";
 import { Pager } from "./Pager";
 
@@ -106,9 +108,9 @@ export const Footer: FC<FooterProps> = ({
                 : `${startItem} - ${endItem} / ${effectiveItemCount}`}
           </div>
         ) : effectiveItemCount === 1 ? (
-          `${effectiveItemCount} ${labels.singular}`
+          `${formatNumber(effectiveItemCount)} ${labels.singular}`
         ) : (
-          `${effectiveItemCount} ${labels.plural}`
+          `${formatNumber(effectiveItemCount)} ${labels.plural}`
         )}
       </div>
     </div>

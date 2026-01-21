@@ -9,26 +9,38 @@
   grid-template-rows: max-content max-content;
 }
 
+.value {
+  word-wrap: break-all;
+  overflow-wrap: break-word;
+}
+
 .oneCol {
-  grid-template-columns: auto;
+  grid-template-columns: minmax(0, auto);
 }
 
 .twoCol {
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, auto) minmax(0, auto);
 }
 
 .threeCol {
-  grid-template-columns: auto auto auto;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, auto);
 }
 
 .fourCol {
-  grid-template-columns: auto auto auto auto;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(
+      0,
+      auto
+    );
 }
 
 .fiveCol {
-  grid-template-columns: auto auto auto auto auto;
+  grid-template-columns:
+    minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, auto)
+    minmax(0, auto);
 }
 
 .sixCol {
-  grid-template-columns: auto auto auto auto auto auto;
+  grid-template-columns:
+    minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, auto)
+    minmax(0, auto) minmax(0, auto);
 }

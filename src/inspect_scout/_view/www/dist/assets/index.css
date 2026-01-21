@@ -8366,7 +8366,7 @@ span.ap-marker-container:hover span.ap-marker {
   padding-right: 0.5rem;
   margin-top: 2px;
 }
-._header_1eu50_1 {
+._header_1m0jc_1 {
   padding-left: 1rem;
   padding-right: 1rem;
   display: grid;
@@ -8377,28 +8377,40 @@ span.ap-marker-container:hover span.ap-marker {
   grid-template-rows: max-content max-content;
 }
 
-._oneCol_1eu50_12 {
-  grid-template-columns: auto;
+._value_1m0jc_12 {
+  word-wrap: break-all;
+  overflow-wrap: break-word;
 }
 
-._twoCol_1eu50_16 {
-  grid-template-columns: auto auto;
+._oneCol_1m0jc_17 {
+  grid-template-columns: minmax(0, auto);
 }
 
-._threeCol_1eu50_20 {
-  grid-template-columns: auto auto auto;
+._twoCol_1m0jc_21 {
+  grid-template-columns: minmax(0, auto) minmax(0, auto);
 }
 
-._fourCol_1eu50_24 {
-  grid-template-columns: auto auto auto auto;
+._threeCol_1m0jc_25 {
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, auto);
 }
 
-._fiveCol_1eu50_28 {
-  grid-template-columns: auto auto auto auto auto;
+._fourCol_1m0jc_29 {
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(
+      0,
+      auto
+    );
 }
 
-._sixCol_1eu50_32 {
-  grid-template-columns: auto auto auto auto auto auto;
+._fiveCol_1m0jc_36 {
+  grid-template-columns:
+    minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, auto)
+    minmax(0, auto);
+}
+
+._sixCol_1m0jc_42 {
+  grid-template-columns:
+    minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, auto)
+    minmax(0, auto) minmax(0, auto);
 }
 ._container_1i4o7_1 {
   display: grid;

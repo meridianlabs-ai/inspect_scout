@@ -7,7 +7,6 @@ import sys
 import tempfile
 import threading
 import time
-from collections.abc import AsyncGenerator
 from functools import reduce
 from pathlib import Path as PathlibPath
 from typing import (
@@ -91,7 +90,7 @@ from ._server_common import (
     decode_base64url,
 )
 from ._validation_api import create_validation_router
-from .config_version import bump_config_version, get_condition, get_config_version
+from .config_version import bump_config_version, get_config_version
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -266,28 +265,6 @@ def v2_api_app(
         return Response(content=get_config_version(), media_type="text/plain")
 
     @app.get(
-        "/config-version/stream",
-        summary="Stream config version changes",
-        description="SSE endpoint that pushes when config version changes.",
-    )
-    async def config_version_stream() -> StreamingResponse:
-        """Stream config version updates via SSE."""
-
-        async def event_generator() -> AsyncGenerator[str, None]:
-            yield f"data: {get_config_version()}\n\n"
-            condition = get_condition()
-            while True:
-                async with condition:
-                    await condition.wait()
-                yield f"data: {get_config_version()}\n\n"
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-        )
-
-    @app.get(
         "/scanners",
         response_model=ScannersResponse,
         response_class=InspectPydanticJSONResponse,
@@ -381,7 +358,7 @@ def v2_api_app(
                 detail=str(e),
             ) from None
 
-        await bump_config_version()
+        bump_config_version()
 
         return InspectPydanticJSONResponse(
             content=updated_config,

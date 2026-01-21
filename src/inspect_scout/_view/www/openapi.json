@@ -9725,23 +9725,6 @@
         "summary": "Get config version"
       }
     },
-    "/config-version/stream": {
-      "get": {
-        "description": "SSE endpoint that pushes when config version changes.",
-        "operationId": "config_version_stream_config_version_stream_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Stream config version changes"
-      }
-    },
     "/project/config": {
       "get": {
         "description": "Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.",

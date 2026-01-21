@@ -19,7 +19,7 @@ export function useScansDir(useRouteParam = false): UseScansDirResult {
   const resolvedPath =
     (useRouteParam ? routeScansDir : null) ||
     userScansDir ||
-    config.scans_dir.dir ||
+    config.scans.dir ||
     "";
 
   const scanDirSource =
@@ -27,7 +27,7 @@ export function useScansDir(useRouteParam = false): UseScansDirResult {
       ? "route"
       : userScansDir
         ? "user"
-        : config.scans_dir.source === "cli"
+        : config.scans.source === "cli"
           ? "cli"
           : "project";
 

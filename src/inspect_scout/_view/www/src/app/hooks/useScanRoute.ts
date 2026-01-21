@@ -17,7 +17,7 @@ export const useScanRoute = (): {
   const params = useParams<{ scansDir?: string; "*": string }>();
   const setUserScansDir = useStore((state) => state.setUserScansDir);
   const config = useConfig();
-  const scansDir = config.scans_dir.dir;
+  const scansDir = config.scans.dir;
 
   const route = useMemo(() => parseScanParams(params), [params]);
   const resolvedScansDir = route.scansDir || scansDir;

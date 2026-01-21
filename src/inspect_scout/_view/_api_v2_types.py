@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
+from inspect_scout._project.types import ProjectConfig
 from inspect_scout._query.order_by import OrderBy
 
 from .._query.condition import Condition
@@ -140,20 +141,20 @@ class ActiveScansResponse:
     items: dict[str, ActiveScanInfo]
 
 
-@dataclass
-class AppDir:
+class AppDir(BaseModel):
+    """Directory with source tracking."""
+
     dir: str
     source: Literal["project", "cli"]
 
 
-@dataclass
-class AppConfig:
+class AppConfig(ProjectConfig):
     """Application configuration returned by GET /config."""
 
     home_dir: str
     project_dir: str
-    transcripts_dir: AppDir | None
-    scans_dir: AppDir
+    transcripts: AppDir | None  # type: ignore[assignment]
+    scans: AppDir  # type: ignore[assignment]
 
 
 @dataclass

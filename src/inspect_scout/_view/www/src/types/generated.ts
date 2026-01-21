@@ -416,16 +416,67 @@ export interface components {
                 [key: string]: components["schemas"]["ActiveScanInfo"];
             };
         };
-        /** AppConfig */
+        /**
+         * AppConfig
+         * @description Application configuration returned by GET /config.
+         */
         AppConfig: {
+            /** Filter */
+            filter: string | string[];
+            generate_config?: components["schemas"]["GenerateConfig-Output"] | null;
             /** Home Dir */
             home_dir: string;
+            /** Limit */
+            limit?: number | null;
+            /** Log Level */
+            log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
+            /** Max Processes */
+            max_processes?: number | null;
+            /** Max Transcripts */
+            max_transcripts?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Model Args */
+            model_args?: {
+                [key: string]: unknown;
+            } | string | null;
+            /** Model Base Url */
+            model_base_url?: string | null;
+            /** Model Roles */
+            model_roles?: {
+                [key: string]: components["schemas"]["ModelConfig-Output"] | string;
+            } | null;
+            /** Name */
+            name?: string | null;
             /** Project Dir */
             project_dir: string;
-            scans_dir: components["schemas"]["AppDir"];
-            transcripts_dir?: components["schemas"]["AppDir"] | null;
+            /** Results */
+            results?: string | null;
+            /** Scanners */
+            scanners?: components["schemas"]["ScannerSpec"][] | {
+                [key: string]: components["schemas"]["ScannerSpec"];
+            } | null;
+            scans: components["schemas"]["AppDir"];
+            /** Shuffle */
+            shuffle?: boolean | number | null;
+            /** Tags */
+            tags?: string[] | null;
+            transcripts?: components["schemas"]["AppDir"] | null;
+            /** Validation */
+            validation?: {
+                [key: string]: string | components["schemas"]["ValidationSet-Output"];
+            } | null;
+            /** Worklist */
+            worklist?: components["schemas"]["Worklist"][] | null;
         };
-        /** AppDir */
+        /**
+         * AppDir
+         * @description Directory with source tracking.
+         */
         AppDir: {
             /** Dir */
             dir: string;

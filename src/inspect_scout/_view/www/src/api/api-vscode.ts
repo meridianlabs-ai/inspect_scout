@@ -61,10 +61,11 @@ export const apiVscode = (
     getConfig: async () => {
       const data = await fetchScansData();
       return {
+        filter: [],
         home_dir: "",
         project_dir: ".",
-        scans_dir: { dir: data.results_dir, source: "project" },
-        transcripts_dir: null,
+        scans: { dir: data.results_dir, source: "project" },
+        transcripts: null,
       };
     },
     getProjectConfig(): Promise<{ config: ProjectConfig; etag: string }> {

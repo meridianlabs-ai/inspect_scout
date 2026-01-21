@@ -63,7 +63,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     );
     const userScansDir = useStore((state) => state.userScansDir);
     const config = useConfig();
-    const serverScansDir = config.scans_dir.dir;
+    const serverScansDir = config.scans.dir;
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
       (state) => state.setHasInitializedEmbeddedData
@@ -218,7 +218,7 @@ const ProjectPanelRoute = () => {
 
 export const createAppRouter = (config: AppRouterConfig) => {
   const AppLayout = createAppLayout(config);
-  const transcriptsDir = config.config.transcripts_dir;
+  const transcriptsDir = config.config.transcripts;
 
   return createHashRouter(
     [

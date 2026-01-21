@@ -1,10 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-import { useConfigVersion } from "./useConfigVersion";
+import { useConfigVersionStream } from "./useConfigVersionStream";
 
 /**
- * Monitors server config version and invalidates dependent queries on change.
+ * Monitors server config version via SSE and invalidates dependent queries on change.
  *
  * Detects when server restarts or project config is modified, then invalidates
  * all queries tagged with "serverConfig" in their query key.
@@ -13,7 +13,7 @@ import { useConfigVersion } from "./useConfigVersion";
  */
 export const useServerConfigInvalidation = (): void => {
   const queryClient = useQueryClient();
-  const { data: version } = useConfigVersion();
+  const version = useConfigVersionStream();
   const prevVersionRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {

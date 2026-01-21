@@ -7,11 +7,13 @@ import {
 import { FC, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
+import { ScansNavbar } from "../components/ScansNavbar";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterBarProps } from "../hooks/useFilterBarProps";
 import { useScanners } from "../server/useScanners";
 import { useStartScan } from "../server/useStartScan";
 import { TranscriptFilterBar } from "../transcripts/TranscriptFilterBar";
+import { useScansDir } from "../utils/useScansDir";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 
 import { LlmScannerParams, LlmScannerParamsValue } from "./LlmScannerParams";
@@ -42,6 +44,7 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
 
   const { displayTranscriptsDir, resolvedTranscriptsDir, setTranscriptsDir } =
     useTranscriptsDir(true);
+  const { displayScansDir, setScansDir } = useScansDir(true);
 
   const { filterCodeValues, filterSuggestions, onFilterColumnChange } =
     useFilterBarProps(resolvedTranscriptsDir);
@@ -93,6 +96,7 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
         onFilterColumnChange={onFilterColumnChange}
         includeColumnPicker={false}
       />
+      <ScansNavbar scansDir={displayScansDir} setScansDir={setScansDir} />
 
       <div className={styles.defineScannerSection}>
         <h2 className={styles.sectionTitle}>Define Scanner</h2>

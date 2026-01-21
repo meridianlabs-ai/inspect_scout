@@ -16,8 +16,7 @@ export const useConfigAsync = (): AsyncData<AppConfig> => {
   return useAsyncDataFromQuery({
     queryKey: ["config", "serverConfig"],
     queryFn: () => api.getConfig(),
-    staleTime: 5000,
-    refetchInterval: 5000,
+    staleTime: Infinity,
   });
 };
 

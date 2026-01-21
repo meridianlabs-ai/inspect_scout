@@ -1,13 +1,15 @@
-.container {
+.root {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  grid-template-rows: 1fr max-content;
+  grid-template-rows: max-content 1fr max-content;
   height: 100%;
   width: 100%;
 }
 
-.footer {
-  grid-column: 1 / -1;
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  height: 100%;
+  width: 100%;
 }
 
 .breadcrumbs {

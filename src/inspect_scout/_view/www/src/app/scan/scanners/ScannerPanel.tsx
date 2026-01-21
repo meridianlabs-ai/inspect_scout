@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { LoadingBar } from "../../../components/LoadingBar";
 import { useStore } from "../../../state/store";
 import { Status } from "../../../types/api-types";
 import { Footer } from "../../components/Footer";
@@ -31,18 +32,20 @@ export const ScannerPanel: FC<{ selectedScan: Status }> = ({
   };
 
   return (
-    <div className={clsx(styles.container)}>
-      <ScannerSidebar selectedScan={selectedScan} />
-      <ScannerResultsBody
-        // TODO: This is slightly bogus. It really needs to be a scannerid since
-        // nothing prevents two scanners from having the same name.
-        scannerId={selectedScanner.data ?? "unknown"}
-        selectedScan={selectedScan}
-        selectedScanner={selectedScannerInfo}
-      />
+    <div className={clsx(styles.root)}>
+      <LoadingBar loading={isLoading} />
+      <div className={clsx(styles.container)}>
+        <ScannerSidebar selectedScan={selectedScan} />
+        <ScannerResultsBody
+          // TODO: This is slightly bogus. It really needs to be a scannerid since
+          // nothing prevents two scanners from having the same name.
+          scannerId={selectedScanner.data ?? "unknown"}
+          selectedScan={selectedScan}
+          selectedScanner={selectedScannerInfo}
+        />
+      </div>
       <Footer
-        id={""}
-        className={styles.footer}
+        id={"scanner-panel-footer"}
         itemCount={visibleItemsCount}
         paginated={false}
         labels={{

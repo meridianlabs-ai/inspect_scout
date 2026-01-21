@@ -5217,8 +5217,8 @@ so disabling selection can break that functionality */
 ._error_1ch30_16 {
   color: var(--vscode-errorForeground);
 }
-._root_ke0e7_1 {
-  height: 100vh;
+._root_1swht_1 {
+  height: 100%;
   display: grid;
   grid-template-rows: max-content max-content max-content max-content 1fr;
 }
@@ -8128,19 +8128,21 @@ span.ap-marker-container:hover span.ap-marker {
 ._scrollContainer_94id2_15 {
   overflow-y: auto;
 }
-._container_gduid_1 {
+._root_1nj72_1 {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  grid-template-rows: 1fr max-content;
+  grid-template-rows: max-content 1fr max-content;
   height: 100%;
   width: 100%;
 }
 
-._footer_gduid_9 {
-  grid-column: 1 / -1;
+._container_1nj72_8 {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  height: 100%;
+  width: 100%;
 }
 
-._breadcrumbs_gduid_13 {
+._breadcrumbs_1nj72_15 {
   min-width: 600px !important;
 }
 ._container_1ov9x_1 {

@@ -9759,35 +9759,6 @@
         "summary": "Update project configuration"
       }
     },
-    "/runllmscanner": {
-      "post": {
-        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
-        "operationId": "run_llm_scanner_runllmscanner_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScanJobConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Status"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Run llm_scanner"
-      }
-    },
     "/scanners": {
       "get": {
         "description": "Returns info about all registered scanners.",
@@ -9985,6 +9956,35 @@
           }
         },
         "summary": "Get scanner input for a specific transcript"
+      }
+    },
+    "/startscan": {
+      "post": {
+        "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
+        "operationId": "run_llm_scanner_startscan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanJobConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run llm_scanner"
       }
     },
     "/transcripts/{dir}": {

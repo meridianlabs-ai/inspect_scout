@@ -85,7 +85,6 @@ class ScanJob:
         results_deprecated = deprecated.get("results", None)
         if results_deprecated is not None:
             if scans is not None:
-                print(f"At 1 {results_deprecated=} {scans=}")
                 raise_results_error()
 
             show_results_warning()

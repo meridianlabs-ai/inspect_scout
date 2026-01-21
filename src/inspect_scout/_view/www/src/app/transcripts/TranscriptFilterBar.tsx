@@ -24,9 +24,6 @@ const kCopyCodeDescriptors = [
   { label: "Filter (SQL)", value: "filter" },
 ];
 
-/**
- * Props for the TranscriptFilterBar component.
- */
 interface TranscriptFilterBarProps {
   /** Code representations of current filters for copy functionality (e.g., Python, SQL). */
   filterCodeValues?: Record<string, string>;

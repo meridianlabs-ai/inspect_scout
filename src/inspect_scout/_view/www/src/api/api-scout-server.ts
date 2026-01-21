@@ -194,7 +194,7 @@ export const apiScoutServer = (
         (
           await requestApi.fetchString(
             "POST",
-            `/runllmscanner`,
+            `/startscan`,
             {},
             JSON.stringify(config)
           )

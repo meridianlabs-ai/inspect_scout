@@ -548,7 +548,7 @@ def v2_api_app(
         }
 
     @app.post(
-        "/runllmscanner",
+        "/startscan",
         response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Run llm_scanner",
@@ -556,27 +556,20 @@ def v2_api_app(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-        print(f"[runllmscanner] body={body=}")
 
         # Spawn subprocess with unadulterated config
-        print("[runllmscanner] spawning subprocess...")
         proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid
-        print(f"[runllmscanner] spawned pid={pid}, temp_path={temp_path}")
 
         # Wait for scan to register in active_scans_store
-        print(f"[runllmscanner] waiting for pid={pid} to register...")
         active_info = await _wait_for_active_scan(pid)
-        print(f"[runllmscanner] active_info={active_info}")
 
         # Clean up temp file - subprocess has read it if registered
         if os.path.exists(temp_path):
-            print(f"[runllmscanner] deleting temp file {temp_path}")
             os.unlink(temp_path)
 
         if active_info is None:
             exit_code = proc.poll()
-            print(f"[runllmscanner] active_info is None, exit_code={exit_code}")
             if exit_code is not None:
                 # Give threads a moment to finish reading
                 proc.wait(timeout=1)
@@ -594,11 +587,9 @@ def v2_api_app(
                 )
 
         # Get status from recorder using location from active_info
-        print(f"[runllmscanner] location={active_info.location}")
-        recorder = scan_recorder_for_location(active_info.location)
-        status = await recorder.status(active_info.location)
-        print(f"[runllmscanner] returning status complete={status.complete}")
-        return status
+        return await scan_recorder_for_location(active_info.location).status(
+            active_info.location
+        )
 
     @app.get(
         "/scans/{scan}",
@@ -749,6 +740,7 @@ def v2_api_app(
     return app
 
 
+# JUST FOR TESTING
 def _tee_pipe(
     pipe: io.BufferedReader, dest: io.TextIOWrapper, accumulator: list[bytes]
 ) -> None:

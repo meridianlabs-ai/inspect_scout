@@ -19,7 +19,7 @@ export function useTranscriptsDir(
     (state) => state.setUserTranscriptsDir
   );
 
-  // TODO: "" fallbacks mask missing config; callers should handle null explicitly
+  // TODO: || "" is a smell. Fix them
   const resolvedPath =
     (useRouteParam ? routeTranscriptsDir : null) ||
     userTranscriptsDir ||

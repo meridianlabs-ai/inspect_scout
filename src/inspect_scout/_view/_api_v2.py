@@ -90,6 +90,7 @@ from ._server_common import (
     decode_base64url,
 )
 from ._validation_api import create_validation_router
+from .config_version import bump_config_version, get_config_version
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -253,6 +254,17 @@ def v2_api_app(
         )
 
     @app.get(
+        "/config-version",
+        response_class=Response,
+        summary="Get config version",
+        description="Returns an opaque version string that changes when server restarts "
+        "or project config is modified. Used for cache invalidation.",
+    )
+    async def config_version() -> Response:
+        """Return config version for cache invalidation."""
+        return Response(content=get_config_version(), media_type="text/plain")
+
+    @app.get(
         "/scanners",
         response_model=ScannersResponse,
         response_class=InspectPydanticJSONResponse,
@@ -345,6 +357,8 @@ def v2_api_app(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=str(e),
             ) from None
+
+        bump_config_version()
 
         return InspectPydanticJSONResponse(
             content=updated_config,

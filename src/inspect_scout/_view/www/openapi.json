@@ -9713,6 +9713,18 @@
         "summary": "Get application configuration"
       }
     },
+    "/config-version": {
+      "get": {
+        "description": "Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.",
+        "operationId": "config_version_config_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get config version"
+      }
+    },
     "/project/config": {
       "get": {
         "description": "Returns the project configuration from scout.yaml. The ETag header contains a hash of the file for conditional updates.",

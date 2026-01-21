@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/config-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get config version
+         * @description Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.
+         */
+        get: operations["config_version_config_version_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/project/config": {
         parameters: {
             query?: never;
@@ -3779,6 +3799,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AppConfig"];
                 };
+            };
+        };
+    };
+    config_version_config_version_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -1,12 +1,6 @@
-import asyncio
 import inspect
 import io
 import os
-import subprocess
-import sys
-import tempfile
-import threading
-import time
 from collections.abc import AsyncGenerator
 from functools import reduce
 from pathlib import Path as PathlibPath
@@ -52,7 +46,7 @@ from .._project._project import (
 )
 from .._project.types import ProjectConfig
 from .._query import Column, Condition, Query, ScalarValue, condition_as_sql
-from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
+from .._recorder.active_scans_store import active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._recorder.recorder import Status as RecorderStatus
 from .._scanjob_config import ScanJobConfig
@@ -86,11 +80,12 @@ from ._api_v2_types import (
     TranscriptsRequest,
     TranscriptsResponse,
 )
+from ._run_scan_helpers import spawn_scan_subprocess, wait_for_active_scan
 from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
 )
-from ._transcripts_helper import get_project_filters
+from ._transcripts_helpers import get_project_filters
 from ._validation_api import create_validation_router
 from .config_version import bump_config_version, get_condition, get_config_version
 
@@ -603,11 +598,11 @@ def v2_api_app(
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
         # Spawn subprocess with unadulterated config
-        proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
+        proc, temp_path, _stdout_lines, stderr_lines = spawn_scan_subprocess(body)
         pid = proc.pid
 
         # Wait for scan to register in active_scans_store
-        active_info = await _wait_for_active_scan(pid)
+        active_info = await wait_for_active_scan(pid)
 
         # Clean up temp file - subprocess has read it if registered
         if os.path.exists(temp_path):
@@ -783,99 +778,3 @@ def v2_api_app(
         )
 
     return app
-
-
-# JUST FOR TESTING
-def _tee_pipe(
-    pipe: io.BufferedReader, dest: io.TextIOWrapper, accumulator: list[bytes]
-) -> None:
-    """Read from pipe, write to dest, and accumulate."""
-    for line in pipe:
-        dest.buffer.write(line)
-        dest.buffer.flush()
-        accumulator.append(line)
-    pipe.close()
-
-
-def _spawn_scan_subprocess(
-    config: ScanJobConfig,
-) -> tuple[subprocess.Popen[bytes], str, list[bytes], list[bytes]]:
-    """Spawn a subprocess to run the scan.
-
-    Args:
-        config: The scan job configuration
-
-    Returns:
-        Tuple of (Popen object, temp config file path, stdout_lines, stderr_lines)
-        stdout_lines and stderr_lines accumulate as subprocess runs.
-    """
-    fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="scout_scan_config_")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(config.model_dump_json(exclude_none=True))
-    except Exception:
-        os.close(fd)
-        os.unlink(temp_path)
-        raise
-
-    proc = subprocess.Popen(
-        ["scout", "scan", temp_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
-
-    stdout_lines: list[bytes] = []
-    stderr_lines: list[bytes] = []
-
-    assert proc.stdout is not None
-    assert proc.stderr is not None
-
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
-    ).start()
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
-    ).start()
-
-    return proc, temp_path, stdout_lines, stderr_lines
-
-
-async def _wait_for_active_scan(
-    pid: int,
-    timeout_seconds: float = 10.0,
-    poll_interval: float = 0.5,
-) -> ActiveScanInfo | None:
-    """Wait for an active scan to appear for the given PID.
-
-    Args:
-        pid: The subprocess PID to monitor
-        timeout_seconds: Max time to wait
-        poll_interval: Time between polls
-
-    Returns:
-        ActiveScanInfo if found, None on timeout
-    """
-    start = time.time()
-
-    while time.time() - start < timeout_seconds:
-        with active_scans_store() as store:
-            info = store.read_by_pid(pid)
-            if info is not None:
-                return info
-        await asyncio.sleep(poll_interval)
-
-    return None
-
-
-async def _run_scan_background(config: ScanJobConfig, location: str) -> None:
-    # import inspect_scout._display._display as display_module
-    from inspect_scout._scan import scan_async
-
-    # original_display = display_module._display
-
-    await scan_async(scanners=config)
-    # try:
-    #     display_module._display = None
-    # finally:
-    #     display_module._display = original_display

@@ -18,7 +18,7 @@ export function useScansDir(useRouteParam = false): UseScansDirResult {
   const resolvedPath =
     (useRouteParam ? routeScansDir : null) ||
     userScansDir ||
-    config.scans_dir ||
+    config.scans_dir.dir ||
     "";
   const displayPath = appAliasedPath(config, resolvedPath) || "";
 

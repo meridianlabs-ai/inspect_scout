@@ -129,9 +129,10 @@ class PaginationContext:
 def build_pagination_context(
     body: PaginatedRequest | None,
     tiebreaker_col: str,
+    global_filters: list[Condition] | None = None,
 ) -> PaginationContext:
     """Build pagination context from request body."""
-    filter_conditions: list[Condition] = []
+    filter_conditions: list[Condition] = global_filters.copy() if global_filters else []
     if body and body.filter:
         filter_conditions.append(body.filter)
 

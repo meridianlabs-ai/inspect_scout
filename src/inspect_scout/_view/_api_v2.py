@@ -90,6 +90,7 @@ from ._server_common import (
     InspectPydanticJSONResponse,
     decode_base64url,
 )
+from ._transcripts_helper import get_project_filters
 from ._validation_api import create_validation_router
 from .config_version import bump_config_version, get_condition, get_config_version
 
@@ -404,7 +405,7 @@ def v2_api_app(
         transcripts_dir = decode_base64url(dir)
 
         try:
-            ctx = build_pagination_context(body, "transcript_id")
+            ctx = build_pagination_context(body, "transcript_id", get_project_filters())
 
             async with transcripts_view(transcripts_dir) as view:
                 count = await view.count(Query(where=ctx.filter_conditions or []))

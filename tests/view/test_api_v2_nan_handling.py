@@ -52,7 +52,7 @@ class TestNanHandling:
         async def select_with_nan(query: object = None) -> AsyncIterator[Status]:
             yield status_with_nan
 
-        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_factory:
+        with patch("inspect_scout._view._api_scans.scan_jobs_view") as mock_factory:
             mock_view = AsyncMock()
             mock_view.select = select_with_nan
             mock_view.count = AsyncMock(return_value=1)

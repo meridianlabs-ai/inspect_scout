@@ -5,6 +5,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
+  CreateValidationSetRequest,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -14,6 +15,8 @@ import {
   Status,
   Transcript,
   TranscriptsResponse,
+  ValidationCase,
+  ValidationCaseRequest,
 } from "../types/api-types";
 
 export type ClientStorage = StateStorage;
@@ -59,6 +62,18 @@ export interface ScanApi {
   ): Promise<{ config: ProjectConfig; etag: string }>;
   startScan(config: ScanJobConfig): Promise<Status>;
   getScanners(): Promise<ScannersResponse>;
+
+  // Validation API
+  getValidationSets(): Promise<string[]>;
+  getValidationCases(uri: string): Promise<ValidationCase[]>;
+  createValidationSet(request: CreateValidationSetRequest): Promise<string>;
+  upsertValidationCase(
+    uri: string,
+    caseId: string,
+    data: ValidationCaseRequest
+  ): Promise<ValidationCase>;
+  deleteValidationCase(uri: string, caseId: string): Promise<boolean>;
+  deleteValidationSet(uri: string): Promise<boolean>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

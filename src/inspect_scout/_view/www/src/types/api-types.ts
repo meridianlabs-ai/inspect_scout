@@ -75,6 +75,15 @@ export type ContentVideo = components["schemas"]["ContentVideo"];
 
 export type Score = components["schemas"]["Score"];
 
+// Validation types
+export type ValidationCase = components["schemas"]["ValidationCase"];
+export type ValidationCaseRequest =
+  components["schemas"]["ValidationCaseRequest"];
+export type ValidationSetInput = components["schemas"]["ValidationSet-Input"];
+export type ValidationSetOutput = components["schemas"]["ValidationSet-Output"];
+export type CreateValidationSetRequest =
+  components["schemas"]["CreateValidationSetRequest"];
+
 export type ContentCitation = components["schemas"]["ContentCitation"];
 export type DocumentCitation = components["schemas"]["DocumentCitation"];
 export type UrlCitation = components["schemas"]["UrlCitation"];

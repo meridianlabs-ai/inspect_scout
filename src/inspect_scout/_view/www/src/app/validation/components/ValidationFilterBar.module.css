@@ -1,0 +1,23 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.filterGroup {
+  flex-shrink: 0;
+}
+
+.splitSelect {
+  min-width: 150px;
+}
+
+.searchGroup {
+  flex: 1;
+  max-width: 300px;
+}
+
+.searchInput {
+  width: 100%;
+}

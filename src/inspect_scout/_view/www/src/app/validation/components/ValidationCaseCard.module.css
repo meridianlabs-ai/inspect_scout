@@ -1,0 +1,93 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--vscode-focusBorder);
+}
+
+.card.selected {
+  border-color: var(--vscode-inputOption-activeBorder);
+  background: var(--vscode-list-hoverBackground);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.checkbox {
+  flex-shrink: 0;
+}
+
+.idLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.idLink:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.idLink:disabled {
+  color: var(--vscode-disabledForeground);
+  cursor: default;
+}
+
+.splitBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 28px; /* Align with content after checkbox */
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.fieldLabel {
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.fieldValue {
+  color: var(--vscode-foreground);
+  word-break: break-word;
+}
+
+.fieldValue.clickable {
+  cursor: pointer;
+}
+
+.fieldValue.clickable:hover {
+  color: var(--vscode-textLink-foreground);
+}

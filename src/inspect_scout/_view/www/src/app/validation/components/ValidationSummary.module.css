@@ -1,0 +1,58 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.filename {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  font-size: 0.95rem;
+}
+
+.statsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.statValue {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.statLabel {
+  color: var(--vscode-descriptionForeground);
+}
+
+.separator {
+  color: var(--vscode-panel-border);
+}
+
+.splitsDetail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.splitBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  border-radius: 10px;
+  font-size: 0.8rem;
+}

@@ -162,6 +162,31 @@ export const apiScoutServerV1 = (
     getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
     },
+    // Validation API (not implemented in v1)
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationSets: async (): Promise<string[]> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationCases: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    createValidationSet: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    upsertValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteValidationSet: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
     storage: NoPersistence,
   };
 };

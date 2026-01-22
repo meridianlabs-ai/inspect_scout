@@ -9,7 +9,6 @@ from fastapi import Path as PathParam
 from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
@@ -42,21 +41,6 @@ def create_validation_router(
     router = APIRouter(prefix="/validations", tags=["validations"])
     project_dir = project_dir.resolve()
 
-    async def _validate_read(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_read(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
-    async def _validate_delete(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_delete(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
-    async def _validate_list(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_list(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
     @router.get(
         "",
         response_class=InspectPydanticJSONResponse,
@@ -66,8 +50,6 @@ def create_validation_router(
     )
     async def list_validations(request: Request) -> list[str]:
         """List all validation files in the project."""
-        await _validate_list(request, project_dir)
-
         paths: list[str] = []
 
         for file_path in scan_validation_files(project_dir):
@@ -148,8 +130,6 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        await _validate_read(request, file_path)
-
         try:
             writer = ValidationFileWriter(file_path)
             return writer.read_cases()
@@ -174,8 +154,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_delete(request, file_path)
 
         try:
             file_path.unlink()
@@ -204,8 +182,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_read(request, file_path)
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -291,8 +267,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_delete(request, file_path)
 
         try:
             writer = ValidationFileWriter(file_path)

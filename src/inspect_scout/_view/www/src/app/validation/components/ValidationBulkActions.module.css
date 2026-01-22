@@ -1,0 +1,40 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-inputOption-activeBorder);
+  border-radius: 4px;
+}
+
+.selectedCount {
+  font-weight: 500;
+  color: var(--vscode-foreground);
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+  color: var(--vscode-foreground);
+}
+
+.splitSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customInput {
+  margin-top: 4px;
+}
+
+.warning {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9em;
+}

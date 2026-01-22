@@ -13,6 +13,7 @@ import { NavButton } from "./NavButtons";
 interface TranscriptsNavbarProps {
   transcriptsDir?: string | null;
   transcriptsDirSource?: "route" | "user" | "project" | "cli" | "unknown";
+  filter?: string;
   setTranscriptsDir: (path: string) => void;
   bordered?: boolean;
   children?: React.ReactNode;
@@ -21,6 +22,7 @@ interface TranscriptsNavbarProps {
 export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   transcriptsDir,
   transcriptsDirSource,
+  filter,
   setTranscriptsDir,
   bordered = true,
   children,
@@ -61,6 +63,12 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
   }, [backUrl, singleFileMode]);
 
   const editable = false;
+  const filterText =
+    filter && !filter?.startsWith("(")
+      ? `(${filter})`
+      : filter
+        ? filter
+        : undefined;
 
   return (
     <Navbar
@@ -69,6 +77,7 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
       left={
         <EditablePath
           path={transcriptsDir}
+          secondaryText={filterText}
           label="Transcripts"
           icon={
             transcriptsDirSource === "cli"

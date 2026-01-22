@@ -10,6 +10,7 @@ import { ApplicationIcons } from "../../components/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterBarProps } from "../hooks/useFilterBarProps";
+import { useConfig } from "../server/useConfig";
 import { useScanners } from "../server/useScanners";
 import { useStartScan } from "../server/useStartScan";
 import { TranscriptFilterBar } from "../transcripts/TranscriptFilterBar";
@@ -41,6 +42,11 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
   const [llmParams, setLlmParams] = useState(defaultLlmParams);
   const { loading, data: scanners } = useScanners();
   const mutation = useStartScan();
+
+  const config = useConfig();
+  const filter = Array.isArray(config.filter)
+    ? config.filter.join(" ")
+    : config.filter;
 
   const {
     displayTranscriptsDir,
@@ -94,6 +100,7 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
       <TranscriptsNavbar
         transcriptsDir={displayTranscriptsDir}
         transcriptsDirSource={resolvedTranscriptsDirSource}
+        filter={filter}
         setTranscriptsDir={setTranscriptsDir}
       />
       <TranscriptFilterBar

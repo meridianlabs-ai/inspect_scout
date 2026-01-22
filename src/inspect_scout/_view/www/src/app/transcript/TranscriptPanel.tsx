@@ -46,6 +46,9 @@ export const TranscriptPanel: FC = () => {
       ? { location: config.transcripts.dir, id: transcriptId }
       : skipToken
   );
+  const filter = Array.isArray(config.filter)
+    ? config.filter.join(" ")
+    : config.filter;
 
   // Get sorting/filter from store
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
@@ -66,6 +69,7 @@ export const TranscriptPanel: FC = () => {
       <TranscriptsNavbar
         transcriptsDir={displayTranscriptsDir || ""}
         transcriptsDirSource={resolvedTranscriptsDirSource}
+        filter={filter}
         setTranscriptsDir={setTranscriptsDir}
       >
         <TranscriptNav

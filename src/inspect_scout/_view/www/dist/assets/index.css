@@ -3944,16 +3944,16 @@ so disabling selection can break that functionality */
   font-size: 0.7rem;
   color: var(--bs-secondary);
 }
-._container_1x11x_1 {
+._container_at9ra_1 {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content max-content minmax(0, max-content);
   align-items: center;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
   width: 100%;
 }
 
-._labelContainer_1x11x_10 {
+._labelContainer_at9ra_10 {
   border-right: solid 1px var(--bs-border-color);
   padding: 0 0.45rem;
   height: 100%;
@@ -3961,17 +3961,17 @@ so disabling selection can break that functionality */
   align-items: center;
 }
 
-._labelAdornmentIcon_1x11x_18 {
+._labelAdornmentIcon_at9ra_18 {
   margin-left: 0.5rem;
 }
 
-._icon_1x11x_22 {
+._icon_at9ra_22 {
   color: var(--bs-body-color);
   opacity: 0.7;
   margin-right: 0.35rem;
 }
 
-._text_1x11x_28 {
+._text_at9ra_28 {
   color: var(--bs-body-color);
   white-space: nowrap;
   cursor: text;
@@ -3984,39 +3984,45 @@ so disabling selection can break that functionality */
   background-color: var(--bs-body-bg);
 }
 
-._text_1x11x_28._readOnly_1x11x_41 {
+._text_at9ra_28._readOnly_at9ra_41 {
   background-color: var(--bs-light);
 }
 
-._text_1x11x_28:hover {
+._text_at9ra_28:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-._text_1x11x_28:focus {
+._text_at9ra_28:focus {
   outline: 1px solid var(--bs-primary);
   outline-offset: 0;
   background-color: var(--bs-body-bg);
 }
 
-._text_1x11x_28._placeholder_1x11x_55 {
+._text_at9ra_28._placeholder_at9ra_55 {
   color: var(--bs-secondary-color);
   opacity: 0.6;
 }
 
-._mruPopover_1x11x_60 {
+._text_at9ra_28._secondary_at9ra_60 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._mruPopover_at9ra_66 {
   padding: 0 !important;
   max-height: 300px;
   overflow-y: auto;
   width: 80%;
 }
 
-._mruList_1x11x_67 {
+._mruList_at9ra_73 {
   display: flex;
   flex-direction: column;
   min-width: 150px;
 }
 
-._mruItem_1x11x_73 {
+._mruItem_at9ra_79 {
   padding: 0.3rem 0.5rem;
   cursor: pointer;
   white-space: nowrap;
@@ -4026,21 +4032,21 @@ so disabling selection can break that functionality */
   color: var(--bs-body-color);
 }
 
-._mruItem_1x11x_73:hover,
-._mruItemSelected_1x11x_84 {
+._mruItem_at9ra_79:hover,
+._mruItemSelected_at9ra_90 {
   background-color: var(--bs-secondary-bg);
 }
 
-._mruItem_1x11x_73:active {
+._mruItem_at9ra_79:active {
   background-color: var(--bs-tertiary-bg);
 }
 
-._mruItem_1x11x_73:first-child {
+._mruItem_at9ra_79:first-child {
   border-top-left-radius: var(--bs-border-radius);
   border-top-right-radius: var(--bs-border-radius);
 }
 
-._mruItem_1x11x_73:last-child {
+._mruItem_at9ra_79:last-child {
   border-bottom-left-radius: var(--bs-border-radius);
   border-bottom-right-radius: var(--bs-border-radius);
 }

@@ -6,6 +6,7 @@ import { EditableText } from "./EditableText";
 
 interface EditablePathProps {
   path?: string | null;
+  secondaryText?: string | null;
   onPathChanged: (path: string) => void;
 
   mru?: string[];
@@ -23,6 +24,7 @@ interface EditablePathProps {
 
 export const EditablePath: FC<EditablePathProps> = ({
   path,
+  secondaryText,
   onPathChanged,
   mru,
   label,
@@ -47,6 +49,7 @@ export const EditablePath: FC<EditablePathProps> = ({
   return (
     <EditableText
       value={displayPath}
+      secondaryValue={secondaryText}
       onValueChanged={onValueChanged}
       mru={mru}
       label={label}

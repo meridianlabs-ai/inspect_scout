@@ -7,6 +7,7 @@ import styles from "./EditableText.module.css";
 
 interface EditableTextProps {
   value?: string;
+  secondaryValue?: string | null;
   onValueChanged: (value: string) => void;
 
   mru?: string[];
@@ -25,6 +26,7 @@ interface EditableTextProps {
 
 export const EditableText: FC<EditableTextProps> = ({
   value,
+  secondaryValue,
   onValueChanged,
   mru,
   mruMaxItems = 10,
@@ -221,6 +223,18 @@ export const EditableText: FC<EditableTextProps> = ({
         >
           {displayValue}
         </span>
+        {secondaryValue && (
+          <span
+            className={clsx(
+              styles.text,
+              styles.placeholder,
+              styles.secondary,
+              !editable ? styles.readOnly : ""
+            )}
+          >
+            {secondaryValue}
+          </span>
+        )}
       </div>
 
       {mru && mru.length > 0 && (

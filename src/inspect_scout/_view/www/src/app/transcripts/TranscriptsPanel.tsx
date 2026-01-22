@@ -9,6 +9,7 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterBarProps } from "../hooks/useFilterBarProps";
+import { useConfig } from "../server/useConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 
@@ -25,6 +26,10 @@ export const TranscriptsPanel: FC = () => {
     resolvedTranscriptsDirSource,
     setTranscriptsDir,
   } = useTranscriptsDir();
+  const config = useConfig();
+  const filter = Array.isArray(config.filter)
+    ? config.filter.join(" ")
+    : config.filter;
 
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
 
@@ -73,6 +78,7 @@ export const TranscriptsPanel: FC = () => {
         bordered={true}
         transcriptsDir={displayTranscriptsDir}
         transcriptsDirSource={resolvedTranscriptsDirSource}
+        filter={filter}
         setTranscriptsDir={setTranscriptsDir}
       />
       <LoadingBar loading={isFetching} />

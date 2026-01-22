@@ -1,6 +1,6 @@
 .container {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content max-content minmax(0, max-content);
   align-items: center;
   border: solid 1px var(--bs-border-color);
   border-radius: var(--bs-border-radius);
@@ -55,6 +55,12 @@
 .text.placeholder {
   color: var(--bs-secondary-color);
   opacity: 0.6;
+}
+
+.text.secondary {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mruPopover {

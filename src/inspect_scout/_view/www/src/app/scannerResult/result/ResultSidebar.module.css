@@ -27,7 +27,7 @@
 }
 
 .values {
-  display: block;
+  display: flex;
 }
 
 .validation {

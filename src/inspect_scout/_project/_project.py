@@ -29,11 +29,9 @@ LOCAL_PROJECT_FILENAME = "scout.local.yaml"
 
 
 def read_project() -> ProjectConfig:
+    # load project config
     project_file = Path.cwd() / "scout.yaml"
-    if project_file.exists():
-        project = load_project_config(project_file)
-    else:
-        project = create_default_project()
+    project = load_project_config(project_file)
 
     # provide default transcripts if we need to
     if project.transcripts is None:
@@ -47,7 +45,7 @@ def read_project() -> ProjectConfig:
 
 
 def find_local_project_file(project_file: Path) -> Path | None:
-    """Find scout.local.yaml in the same directory as scout.yaml.
+    """Find scout.local.yaml in the same directory as the base project file.
 
     Args:
         project_file: Path to the main scout.yaml file.
@@ -60,10 +58,9 @@ def find_local_project_file(project_file: Path) -> Path | None:
 
 
 def load_project_config(path: Path) -> ProjectConfig:
-    """Load and validate project configuration from a scout.yaml file.
+    """Load and validate project configuration.
 
-    If scout.local.yaml exists in the same directory, it is merged on top
-    of the base configuration.
+    If the scout.yaml file exists, it is loaded. Otherwise, a default configuration is created. In either case, if scout.local.yaml exists in the same directory, it is merged on top of the base configuration.
 
     Uses Draft7Validator for schema validation, following the same pattern
     as scanjob_from_config_file.
@@ -78,7 +75,10 @@ def load_project_config(path: Path) -> ProjectConfig:
         PrerequisiteError: If the configuration is invalid.
     """
     # Load base config
-    config = _load_single_config(path)
+    if path.exists():
+        config = _load_single_config(path)
+    else:
+        config = create_default_project()
 
     # Check for local override
     local_path = find_local_project_file(path)

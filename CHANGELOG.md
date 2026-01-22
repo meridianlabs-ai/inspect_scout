@@ -1,3 +1,7 @@
+## Unreleased
+
+- Always read `scout.local.yaml` even if there is no `scout.yaml` file.
+
 ## 0.4.10 (21 January 2026)
 
 - Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.

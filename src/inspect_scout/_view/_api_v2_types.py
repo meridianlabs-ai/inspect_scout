@@ -189,6 +189,14 @@ class CreateValidationSetRequest:
 
 
 @dataclass
+class RenameValidationSetRequest:
+    """Request body for PUT /validations/{uri}/rename endpoint."""
+
+    name: str
+    """New name for the validation set (without extension)."""
+
+
+@dataclass
 class ScannerParam:
     """Parameter definition for a scanner factory."""
 

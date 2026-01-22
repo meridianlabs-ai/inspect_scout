@@ -1,5 +1,4 @@
 import {
-  VscodeLabel,
   VscodeOption,
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
@@ -29,14 +28,13 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     onSelect(value || undefined);
   };
 
-  // Extract display name from URI (last part of path without extension)
+  // Extract display name from URI (last part of path with extension)
   const getDisplayName = (uri: string): string => {
-    return getFilenameFromUri(uri, true);
+    return getFilenameFromUri(uri);
   };
 
   return (
     <div className={styles.container}>
-      <VscodeLabel>Validation Set</VscodeLabel>
       <VscodeSingleSelect
         value={selectedUri ?? ""}
         onChange={handleChange}

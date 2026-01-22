@@ -19,6 +19,7 @@ from .._validation.types import ValidationCase
 from .._validation.writer import ValidationFileWriter
 from ._api_v2_types import (
     CreateValidationSetRequest,
+    RenameValidationSetRequest,
     ValidationCaseRequest,
 )
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
@@ -157,6 +158,68 @@ def create_validation_router(
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Validation file not found",
+            ) from None
+
+    @router.put(
+        "/{uri}/rename",
+        response_class=InspectPydanticJSONResponse,
+        summary="Rename a validation file",
+        description="Renames a validation file. Returns the new URI.",
+    )
+    async def rename_validation(
+        body: RenameValidationSetRequest,
+        uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
+    ) -> str:
+        """Rename a validation file."""
+        file_uri = decode_base64url(uri)
+        file_path = _uri_to_path(file_uri)
+
+        # Validate path is within project directory
+        _validate_path_within_project(file_path, project_dir)
+
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Validation file not found",
+            )
+
+        # Validate new name
+        new_name = body.name.strip()
+        if not new_name:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Name cannot be empty",
+            )
+
+        # Check for invalid characters in filename
+        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        if any(c in new_name for c in invalid_chars):
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Name contains invalid characters: {invalid_chars}",
+            )
+
+        # Construct new path with same extension
+        extension = file_path.suffix
+        new_path = file_path.parent / f"{new_name}{extension}"
+
+        # Validate new path is within project directory
+        _validate_path_within_project(new_path, project_dir)
+
+        # Check if target already exists
+        if new_path.exists():
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail=f"A file with the name '{new_name}{extension}' already exists",
+            )
+
+        try:
+            file_path.rename(new_path)
+            return UPath(new_path).resolve().as_uri()
+        except OSError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Failed to rename file: {e}",
             ) from None
 
     @router.get(

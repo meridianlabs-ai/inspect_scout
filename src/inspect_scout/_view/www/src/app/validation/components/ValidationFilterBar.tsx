@@ -44,6 +44,7 @@ export const ValidationFilterBar: FC<ValidationFilterBarProps> = ({
   return (
     <div className={styles.container}>
       <div className={styles.filterGroup}>
+        <span className={styles.filterLabel}>Filter</span>
         <VscodeSingleSelect
           value={splitFilter ?? ""}
           onChange={handleSplitChange}
@@ -58,14 +59,12 @@ export const ValidationFilterBar: FC<ValidationFilterBarProps> = ({
         </VscodeSingleSelect>
       </div>
 
-      <div className={styles.searchGroup}>
-        <VscodeTextfield
-          value={searchText ?? ""}
-          onInput={handleSearchInput}
-          placeholder="Search by ID..."
-          className={styles.searchInput}
-        />
-      </div>
+      <VscodeTextfield
+        value={searchText ?? ""}
+        onInput={handleSearchInput}
+        placeholder="Search by ID..."
+        className={styles.searchInput}
+      />
     </div>
   );
 };

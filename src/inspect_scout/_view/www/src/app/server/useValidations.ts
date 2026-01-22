@@ -136,3 +136,17 @@ export const useDeleteValidationSet = () => {
     },
   });
 };
+
+/**
+ * Hook to rename a validation set.
+ */
+export const useRenameValidationSet = () => {
+  const queryClient = useQueryClient();
+  const api = useApi();
+  return useMutation<string, Error, { uri: string; newName: string }>({
+    mutationFn: ({ uri, newName }) => api.renameValidationSet(uri, newName),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["validationSets"] });
+    },
+  });
+};

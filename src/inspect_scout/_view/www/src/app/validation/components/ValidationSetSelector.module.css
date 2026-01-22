@@ -1,11 +1,11 @@
 .container {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
 .select {
-  min-width: 200px;
+  min-width: 250px !important;
 }
 
 .loading {

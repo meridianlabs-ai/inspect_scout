@@ -1,7 +1,8 @@
 .card {
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 8px 12px;
+  gap: 2px;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 4px;
@@ -17,26 +18,37 @@
   background: var(--vscode-list-hoverBackground);
 }
 
-.cardHeader {
-  display: flex;
+/* First row: grid layout matching header */
+.row {
+  display: grid;
+  grid-template-columns: 27px 1fr auto 90px auto;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 16px;
 }
 
 .checkbox {
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transcriptCell {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .idLink {
   background: none;
   border: none;
   padding: 0;
-  color: var(--vscode-textLink-foreground);
+  color: #5a9bcf;
   cursor: pointer;
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .idLink:hover:not(:disabled) {
@@ -48,46 +60,112 @@
   cursor: default;
 }
 
-.splitBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
-  border-radius: 10px;
-  font-size: 0.75rem;
-  margin-left: auto;
+.targetCell {
+  text-align: right;
+  min-width: 100px;
+  padding-right: 16px;
 }
 
-.cardBody {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-left: 28px; /* Align with content after checkbox */
-}
-
-.field {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.target {
+  color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
-.fieldLabel {
+/* Subtle split selector */
+.splitSelect {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  --vscode-dropdown-border: transparent;
+  --vscode-dropdown-background: transparent;
+}
+
+.splitSelect:hover {
+  --vscode-dropdown-background: var(--vscode-list-hoverBackground);
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 56px;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
   color: var(--vscode-descriptionForeground);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.fieldValue {
-  color: var(--vscode-foreground);
-  word-break: break-word;
-}
-
-.fieldValue.clickable {
   cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
-.fieldValue.clickable:hover {
-  color: var(--vscode-textLink-foreground);
+.actionButton:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--vscode-list-hoverBackground);
+}
+
+.actionButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Second row: transcript details */
+.detailsRow {
+  padding-left: 43px; /* Align with transcript column (27px checkbox + 16px gap) */
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+/* Modal styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+}
+
+.warning {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9rem;
+}
+
+.modalButton {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalButton:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.modalButtonPrimary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.modalButtonPrimary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.modalButtonPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

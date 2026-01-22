@@ -74,6 +74,7 @@ export interface ScanApi {
   ): Promise<ValidationCase>;
   deleteValidationCase(uri: string, caseId: string): Promise<boolean>;
   deleteValidationSet(uri: string): Promise<boolean>;
+  renameValidationSet(uri: string, newName: string): Promise<string>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

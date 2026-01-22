@@ -3,7 +3,8 @@ import { FC, useMemo } from "react";
 
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
-import { getCaseKey, getIdText } from "../utils";
+import { useTranscriptsByIds } from "../hooks/useTranscriptsByIds";
+import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
 import { ValidationBulkActions } from "./ValidationBulkActions";
 import { ValidationCaseCard } from "./ValidationCaseCard";
@@ -15,6 +16,8 @@ interface ValidationCasesListProps {
   transcriptsDir: string | undefined;
   onBulkSplitChange?: (ids: string[], split: string | null) => void;
   onBulkDelete?: (ids: string[]) => void;
+  onSingleSplitChange?: (caseId: string, split: string | null) => void;
+  onSingleDelete?: (caseId: string) => void;
   isUpdating?: boolean;
   isDeleting?: boolean;
 }
@@ -28,6 +31,8 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   transcriptsDir,
   onBulkSplitChange,
   onBulkDelete,
+  onSingleSplitChange,
+  onSingleDelete,
   isUpdating,
   isDeleting,
 }) => {
@@ -42,7 +47,21 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   const searchText = useStore((state) => state.validationSearchText);
   const setSearchText = useStore((state) => state.setValidationSearchText);
 
-  // Filter cases based on split and search
+  // Extract all transcript IDs from cases (use first ID for composite IDs)
+  const transcriptIds = useMemo(() => {
+    return cases
+      .map((c) => (Array.isArray(c.id) ? c.id[0] : c.id))
+      .filter((id): id is string => id !== undefined);
+  }, [cases]);
+
+  // Extract unique splits from all cases
+  const existingSplits = useMemo(() => extractUniqueSplits(cases), [cases]);
+
+  // Fetch transcript data for all cases
+  const { data: transcriptMap, loading: transcriptsLoading } =
+    useTranscriptsByIds(transcriptsDir, transcriptIds);
+
+  // Filter cases based on split, search, and transcript availability
   const filteredCases = useMemo(() => {
     return cases.filter((c) => {
       // Split filter
@@ -56,9 +75,21 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           return false;
         }
       }
+      // Filter out cases without transcript data (once loaded)
+      if (transcriptMap) {
+        const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
+        if (!transcriptId || !transcriptMap.has(transcriptId)) {
+          return false;
+        }
+      }
       return true;
     });
-  }, [cases, splitFilter, searchText]);
+  }, [cases, splitFilter, searchText, transcriptMap]);
+
+  // Get filtered case keys for select all logic
+  const filteredCaseKeys = useMemo(() => {
+    return filteredCases.map((c) => getCaseKey(c.id));
+  }, [filteredCases]);
 
   // Get selected IDs
   const selectedIds = useMemo(() => {
@@ -67,24 +98,30 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       .map(([id]) => id);
   }, [selection]);
 
-  // Selection state
-  const selectedCount = selectedIds.length;
+  // Check if all filtered cases are selected
   const allSelected =
-    filteredCases.length > 0 &&
-    filteredCases.every((c) => selection[getCaseKey(c.id)]);
-  const someSelected = selectedCount > 0 && !allSelected;
+    filteredCaseKeys.length > 0 &&
+    filteredCaseKeys.every((key) => selection[key]);
 
-  // Toggle all selection
-  const handleSelectAll = () => {
+  // Check if some (but not all) filtered cases are selected
+  const someSelected =
+    filteredCaseKeys.some((key) => selection[key]) && !allSelected;
+
+  // Handle select all / deselect all
+  const handleSelectAllChange = () => {
     if (allSelected) {
-      // Deselect all
-      setSelection({});
+      // Deselect all filtered cases
+      const newSelection = { ...selection };
+      filteredCaseKeys.forEach((key) => {
+        delete newSelection[key];
+      });
+      setSelection(newSelection);
     } else {
       // Select all filtered cases
-      const newSelection: Record<string, boolean> = {};
-      for (const c of filteredCases) {
-        newSelection[getCaseKey(c.id)] = true;
-      }
+      const newSelection = { ...selection };
+      filteredCaseKeys.forEach((key) => {
+        newSelection[key] = true;
+      });
       setSelection(newSelection);
     }
   };
@@ -124,41 +161,67 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
         />
       )}
 
-      {/* Selection header */}
-      <div className={styles.selectionHeader}>
-        <VscodeCheckbox
-          checked={allSelected}
-          indeterminate={someSelected}
-          onChange={handleSelectAll}
-        >
-          {selectedCount > 0
-            ? `${selectedCount} selected`
-            : `${filteredCases.length} cases`}
-        </VscodeCheckbox>
-      </div>
-
-      {/* Cases list */}
-      <div className={styles.list}>
-        {filteredCases.length === 0 ? (
-          <div className={styles.emptyState}>
-            {cases.length === 0
-              ? "No validation cases in this set."
-              : "No cases match the current filters."}
+      {/* Grid container with sticky header */}
+      <div className={styles.gridContainer}>
+        {/* Header row */}
+        <div className={styles.header}>
+          <div className={styles.headerCheckbox}>
+            <VscodeCheckbox
+              checked={allSelected}
+              indeterminate={someSelected}
+              onChange={handleSelectAllChange}
+              title={allSelected ? "Deselect all" : "Select all"}
+            />
           </div>
-        ) : (
-          filteredCases.map((c) => {
-            const caseKey = getCaseKey(c.id);
-            return (
-              <ValidationCaseCard
-                key={caseKey}
-                validationCase={c}
-                transcriptsDir={transcriptsDir}
-                isSelected={selection[caseKey] ?? false}
-                onSelectionChange={() => toggleSelection(caseKey)}
-              />
-            );
-          })
-        )}
+          <div className={styles.headerTranscript}>Transcript</div>
+          <div className={styles.headerTarget}>Target</div>
+          <div className={styles.headerSplit}>Split</div>
+          <div className={styles.headerActions}>Actions</div>
+        </div>
+
+        {/* Scrollable list */}
+        <div className={styles.list}>
+          {transcriptsLoading ? (
+            <div className={styles.emptyState}>
+              Loading transcript details...
+            </div>
+          ) : filteredCases.length === 0 ? (
+            <div className={styles.emptyState}>
+              {cases.length === 0
+                ? "No validation cases in this set."
+                : "No cases match the current filters."}
+            </div>
+          ) : (
+            filteredCases.map((c) => {
+              const caseKey = getCaseKey(c.id);
+              const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
+              const transcript = transcriptId
+                ? transcriptMap?.get(transcriptId)
+                : undefined;
+              return (
+                <ValidationCaseCard
+                  key={caseKey}
+                  validationCase={c}
+                  transcript={transcript}
+                  transcriptsDir={transcriptsDir}
+                  isSelected={selection[caseKey] ?? false}
+                  onSelectionChange={() => toggleSelection(caseKey)}
+                  existingSplits={existingSplits}
+                  onSplitChange={
+                    onSingleSplitChange
+                      ? (split) => onSingleSplitChange(caseKey, split)
+                      : undefined
+                  }
+                  onDelete={
+                    onSingleDelete ? () => onSingleDelete(caseKey) : undefined
+                  }
+                  isUpdating={isUpdating}
+                  isDeleting={isDeleting}
+                />
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

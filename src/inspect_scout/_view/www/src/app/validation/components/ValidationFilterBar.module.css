@@ -1,23 +1,26 @@
 .container {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
 }
 
 .filterGroup {
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  color: var(--vscode-descriptionForeground);
+  font-size: 13px;
 }
 
 .splitSelect {
-  min-width: 150px;
-}
-
-.searchGroup {
-  flex: 1;
-  max-width: 300px;
+  min-width: 70px;
 }
 
 .searchInput {
-  width: 100%;
+  width: 200px;
 }

@@ -160,6 +160,8 @@ export const ApplicationIcons = {
   },
   turns: "bi bi-chat-left-text", // bi bi-repeat
   usage: "bi bi-stopwatch",
+  trash: "bi bi-trash",
+  rename: "bi bi-pencil-square",
   validation: "bi bi-patch-check",
   wrap: "bi bi-text-wrap",
   x: "bi bi-x",

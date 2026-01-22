@@ -6,6 +6,7 @@ import styles from "./Modal.module.css";
 interface ModalProps {
   show: boolean;
   onHide: () => void;
+  onSubmit?: () => void;
   title: string;
   children: ReactNode;
   footer?: ReactNode;
@@ -14,20 +15,27 @@ interface ModalProps {
 export const Modal: FC<ModalProps> = ({
   show,
   onHide,
+  onSubmit,
   title,
   children,
   footer,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Handle escape key
+  // Handle escape and enter keys
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && show) onHide();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!show) return;
+      if (e.key === "Escape") {
+        onHide();
+      } else if (e.key === "Enter" && onSubmit) {
+        e.preventDefault();
+        onSubmit();
+      }
     };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [show, onHide]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [show, onHide, onSubmit]);
 
   // Focus first element with autofocus attribute when modal opens
   useEffect(() => {

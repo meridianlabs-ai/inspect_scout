@@ -10105,10 +10105,45 @@
         ]
       }
     },
-    "/scans": {
+    "/scans/active": {
+      "get": {
+        "description": "Returns info on all currently running scans.",
+        "operationId": "active_scans_scans_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScansResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get active scans",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/scans/{dir}": {
       "post": {
-        "description": "Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
-        "operationId": "scans_scans_post",
+        "description": "Returns scans from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.",
+        "operationId": "scans_scans__dir__post",
+        "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -10144,33 +10179,22 @@
         ]
       }
     },
-    "/scans/active": {
-      "get": {
-        "description": "Returns info on all currently running scans.",
-        "operationId": "active_scans_scans_active_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActiveScansResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get active scans",
-        "tags": [
-          "scans"
-        ]
-      }
-    },
-    "/scans/{scan}": {
+    "/scans/{dir}/{scan}": {
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",
-        "operationId": "scan_scans__scan__get",
+        "operationId": "scan_scans__dir___scan__get",
         "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
           {
             "description": "Scan path (base64url-encoded)",
             "in": "path",
@@ -10201,11 +10225,22 @@
         ]
       }
     },
-    "/scans/{scan}/{scanner}": {
+    "/scans/{dir}/{scan}/{scanner}": {
       "get": {
         "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.",
-        "operationId": "scan_df_scans__scan___scanner__get",
+        "operationId": "scan_df_scans__dir___scan___scanner__get",
         "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
           {
             "description": "Scan path (base64url-encoded)",
             "in": "path",
@@ -10245,11 +10280,22 @@
         ]
       }
     },
-    "/scans/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
       "get": {
         "description": "Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.",
-        "operationId": "scanner_input_scans__scan___scanner___uuid__input_get",
+        "operationId": "scanner_input_scans__dir___scan___scanner___uuid__input_get",
         "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
           {
             "description": "Scan path (base64url-encoded)",
             "in": "path",

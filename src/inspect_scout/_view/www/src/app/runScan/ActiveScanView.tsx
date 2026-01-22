@@ -274,11 +274,12 @@ const ActiveScanCard: FC<{ info: ActiveScanInfo }> = ({ info }) => {
 };
 
 interface Props {
+  scansDir: string;
   scanId: string | undefined;
 }
 
-export const ActiveScanView: FC<Props> = ({ scanId }) => {
-  const { loading, error, data: scanInfo } = useActiveScan(scanId);
+export const ActiveScanView: FC<Props> = ({ scansDir, scanId }) => {
+  const { loading, error, data: scanInfo } = useActiveScan(scansDir, scanId);
 
   return (
     <div className={styles.scansList}>

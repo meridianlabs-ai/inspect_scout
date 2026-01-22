@@ -36,17 +36,20 @@ export interface ScanApi {
     filter: Condition | undefined
   ): Promise<ScalarValue[]>;
   getScans(
+    scansDir: string,
     filter?: Condition,
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
   ): Promise<ScansResponse>;
-  getScan(scanLocation: string): Promise<Status>;
+  getScan(scansDir: string, scanPath: string): Promise<Status>;
   getScannerDataframe(
-    scanLocation: string,
+    scansDir: string,
+    scanPath: string,
     scanner: string
   ): Promise<ArrayBuffer | Uint8Array>;
   getScannerDataframeInput(
-    scanLocation: string,
+    scansDir: string,
+    scanPath: string,
     scanner: string,
     uuid: string
   ): Promise<ScanResultInputData>;

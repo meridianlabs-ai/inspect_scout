@@ -88,7 +88,9 @@ export const apiScoutServerV1 = (
     getTranscriptsColumnValues: async (): Promise<never> => {
       throw new Error("Not implemented in API v1");
     },
-    getScan: async (scanLocation: string): Promise<Status> => {
+    getScan: async (scansDir: string, scanPath: string): Promise<Status> => {
+      // V1 API uses the full location path
+      const scanLocation = `${scansDir}/${scanPath}`;
       const result = await requestApi.fetchString(
         "GET",
         `/scan/${encodeURIComponent(scanLocation)}?status_only=true`
@@ -97,7 +99,7 @@ export const apiScoutServerV1 = (
       return asyncJsonParse<Status>(result.raw);
     },
 
-    getScans: async (): Promise<ScansResponse> => {
+    getScans: async (_scansDir: string): Promise<ScansResponse> => {
       const result = await readScans();
       return {
         items: result.scans,
@@ -106,9 +108,12 @@ export const apiScoutServerV1 = (
       };
     },
     getScannerDataframe: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string
     ): Promise<ArrayBuffer> => {
+      // V1 API uses the full location path
+      const scanLocation = `${scansDir}/${scanPath}`;
       return await requestApi.fetchBytes(
         "GET",
         `/scanner_df/${encodeURIComponent(
@@ -117,10 +122,13 @@ export const apiScoutServerV1 = (
       );
     },
     getScannerDataframeInput: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string,
       uuid: string
     ): Promise<ScanResultInputData> => {
+      // V1 API uses the full location path
+      const scanLocation = `${scansDir}/${scanPath}`;
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",

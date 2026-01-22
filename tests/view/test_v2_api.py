@@ -22,7 +22,6 @@ from inspect_scout._view.server import (
 )
 from starlette.status import (
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 
@@ -89,19 +88,16 @@ def sample_dataframe() -> pd.DataFrame:
 
 
 @pytest.fixture
-def app_with_results_dir(tmp_path: Path) -> TestClient:
-    """Create a test app with a temporary results directory."""
-    results_dir = str(tmp_path)
-    return TestClient(v2_api_app(results_dir=results_dir))
+def client() -> TestClient:
+    """Create a test app client."""
+    return TestClient(v2_api_app())
 
 
 class TestViewServerAppScansEndpoint:
     """Tests for the /scans endpoint."""
 
     @pytest.mark.asyncio
-    async def test_scans_endpoint_success(
-        self, app_with_results_dir: TestClient
-    ) -> None:
+    async def test_scans_endpoint_success(self, client: TestClient) -> None:
         """Test successful retrieval of scans list."""
         mock_view = AsyncMock()
         mock_view.count = AsyncMock(return_value=1)
@@ -121,27 +117,18 @@ class TestViewServerAppScansEndpoint:
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
-            response = app_with_results_dir.post("/scans", json={})
+            response = client.post(f"/scans/{base64url('/tmp')}", json={})
 
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
         assert len(data["items"]) == 1
 
-    @pytest.mark.asyncio
-    async def test_scans_endpoint_no_results_dir(self) -> None:
-        """Test scans endpoint without results_dir."""
-        client = TestClient(v2_api_app(results_dir=None))
-
-        response = client.post("/scans", json={})
-
-        assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-
-    def test_scans_endpoint_empty_directory(self, tmp_path: Path) -> None:
+    def test_scans_endpoint_empty_directory(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
         """Test scans endpoint with empty directory returns empty list."""
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
-
-        response = client.post("/scans", json={})
+        response = client.post(f"/scans/{base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -150,11 +137,11 @@ class TestViewServerAppScansEndpoint:
 
 
 class TestViewServerAppScanDfEndpoint:
-    """Tests for the /scans/{scan}/{scanner} endpoint."""
+    """Tests for the /scans/{dir}/{scan}/{scanner} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scanner_df_endpoint_success(
-        self, app_with_results_dir: TestClient, sample_dataframe: pd.DataFrame
+        self, client: TestClient, sample_dataframe: pd.DataFrame
     ) -> None:
         """Test successful retrieval of scanner dataframe."""
         # Create a mock ScanResultsArrow
@@ -175,8 +162,8 @@ class TestViewServerAppScanDfEndpoint:
             "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(
-                f"/scans/{base64url('test_scan')}/scanner1"
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1"
             )
 
         assert response.status_code == 200
@@ -187,7 +174,7 @@ class TestViewServerAppScanDfEndpoint:
 
     @pytest.mark.asyncio
     async def test_scanner_df_endpoint_scanner_not_found(
-        self, app_with_results_dir: TestClient
+        self, client: TestClient
     ) -> None:
         """Test scanner_df endpoint with non-existent scanner."""
         mock_results = MagicMock(spec=ScanResultsArrow)
@@ -197,19 +184,19 @@ class TestViewServerAppScanDfEndpoint:
             "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(
-                f"/scans/{base64url('test_scan')}/nonexistent"
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/nonexistent"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
 
 
 class TestViewServerAppScanEndpoint:
-    """Tests for the /scans/{scan} endpoint."""
+    """Tests for the /scans/{dir}/{scan} endpoint."""
 
     @pytest.mark.asyncio
     async def test_scan_endpoint_success(
-        self, app_with_results_dir: TestClient, sample_dataframe: pd.DataFrame
+        self, client: TestClient, sample_dataframe: pd.DataFrame
     ) -> None:
         """Test successful retrieval of scan results."""
         mock_results = ScanResultsDF(
@@ -225,7 +212,9 @@ class TestViewServerAppScanEndpoint:
             "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}"
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -240,13 +229,13 @@ class TestAuthorizationMiddleware:
         """Test successful authorization."""
         test_auth = "Bearer test-token"
 
-        v2_api = v2_api_app(results_dir="/test")
+        v2_api = v2_api_app()
         v2_api.add_middleware(AuthorizationMiddleware, authorization=test_auth)
 
         main_app = FastAPI()
         main_app.mount("/api/v2", v2_api)
 
-        client = TestClient(main_app)
+        test_client = TestClient(main_app)
 
         mock_view = AsyncMock()
         mock_view.count = AsyncMock(return_value=0)
@@ -261,8 +250,8 @@ class TestAuthorizationMiddleware:
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
-            response = client.post(
-                "/api/v2/scans",
+            response = test_client.post(
+                f"/api/v2/scans/{base64url('/test')}",
                 json={},
                 headers={"Authorization": test_auth},
             )
@@ -273,16 +262,16 @@ class TestAuthorizationMiddleware:
         """Test failed authorization."""
         test_auth = "Bearer test-token"
 
-        v2_api = v2_api_app(results_dir="/test")
+        v2_api = v2_api_app()
         v2_api.add_middleware(AuthorizationMiddleware, authorization=test_auth)
 
         main_app = FastAPI()
         main_app.mount("/api/v2", v2_api)
 
-        client = TestClient(main_app)
+        test_client = TestClient(main_app)
 
-        response = client.post(
-            "/api/v2/scans",
+        response = test_client.post(
+            f"/api/v2/scans/{base64url('/test')}",
             json={},
             headers={"Authorization": "Bearer wrong-token"},
         )
@@ -293,15 +282,15 @@ class TestAuthorizationMiddleware:
         """Test missing authorization header."""
         test_auth = "Bearer test-token"
 
-        v2_api = v2_api_app(results_dir="/test")
+        v2_api = v2_api_app()
         v2_api.add_middleware(AuthorizationMiddleware, authorization=test_auth)
 
         main_app = FastAPI()
         main_app.mount("/api/v2", v2_api)
 
-        client = TestClient(main_app)
+        test_client = TestClient(main_app)
 
-        response = client.post("/api/v2/scans", json={})
+        response = test_client.post(f"/api/v2/scans/{base64url('/test')}", json={})
 
         assert response.status_code == 401
 
@@ -310,10 +299,10 @@ class TestViewServerAppEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_relative_path_conversion(
-        self, app_with_results_dir: TestClient, sample_dataframe: pd.DataFrame
+    async def test_scan_path_construction(
+        self, client: TestClient, sample_dataframe: pd.DataFrame
     ) -> None:
-        """Test that relative paths are converted to absolute."""
+        """Test that dir and scan paths are correctly combined."""
         mock_results = ScanResultsDF(
             complete=True,
             spec=ScanSpec(scan_name="test_scan", scanners={}, transcripts=None),
@@ -327,15 +316,14 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
-            # Use relative path (base64url encoded)
-            response = app_with_results_dir.get(
-                f"/scans/{base64url('relative/path/scan')}"
+            response = client.get(
+                f"/scans/{base64url('/base/dir')}/{base64url('relative/path/scan')}"
             )
 
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_scan_with_errors(self, app_with_results_dir: TestClient) -> None:
+    async def test_scan_with_errors(self, client: TestClient) -> None:
         """Test scan results with errors."""
         mock_results = ScanResultsDF(
             complete=False,
@@ -358,7 +346,9 @@ class TestViewServerAppEdgeCases:
             "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
-            response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}"
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -405,10 +395,12 @@ class TestTranscriptsPagination:
     def test_transcripts_response_structure(self, tmp_path: Path) -> None:
         """Verify response has items, next_cursor, and count fields."""
         # Create test client
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        test_client = TestClient(v2_api_app())
 
         # Make request (empty dir)
-        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
+        response = test_client.post(
+            f"/transcripts/{_base64url(str(tmp_path))}", json={}
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -425,7 +417,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
         response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
@@ -439,7 +431,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
         # Filter to gpt-4 only (every other one = 5)
         response = client.post(
             f"/transcripts/{_base64url(str(tmp_path))}",
@@ -457,7 +449,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
         response = client.post(
             f"/transcripts/{_base64url(str(tmp_path))}",
             json={"pagination": {"limit": 3, "cursor": None, "direction": "forward"}},
@@ -476,7 +468,7 @@ class TestTranscriptsPagination:
         await _populate_transcripts(tmp_path, transcripts)
 
         # Make request without pagination
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
         response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
@@ -492,7 +484,7 @@ class TestTranscriptsPagination:
         await _populate_transcripts(tmp_path, transcripts)
 
         # Request first 3 items
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
         response = client.post(
             f"/transcripts/{_base64url(str(tmp_path))}",
             json={
@@ -517,7 +509,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Get first page
         response1 = client.post(
@@ -552,7 +544,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Get last 3 items (backward from end)
         response = client.post(
@@ -573,7 +565,7 @@ class TestTranscriptsPagination:
 
     def test_pagination_empty_results(self, tmp_path: Path) -> None:
         """Empty dataset."""
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         response = client.post(
             f"/transcripts/{_base64url(str(tmp_path))}",
@@ -592,7 +584,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Sort by model ASC, paginate
         response = client.post(
@@ -619,7 +611,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Sort by model ASC, then score DESC
         response = client.post(
@@ -650,7 +642,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Sort explicitly by transcript_id
         response = client.post(
@@ -678,7 +670,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Paginate without order_by
         response = client.post(
@@ -741,7 +733,7 @@ class TestTranscriptsPagination:
         ]
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Sort by score (None values treated as empty string)
         response = client.post(
@@ -767,7 +759,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(5)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Get first page of 3
         response1 = client.post(
@@ -801,7 +793,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(5)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Request 100 items when only 5 exist
         response = client.post(
@@ -823,7 +815,7 @@ class TestTranscriptsPagination:
         transcripts = _create_test_transcripts_for_api(10)
         await _populate_transcripts(tmp_path, transcripts)
 
-        client = TestClient(v2_api_app(results_dir=str(tmp_path)))
+        client = TestClient(v2_api_app())
 
         # Provide cursor with extra keys and missing expected keys
         fake_cursor = {"transcript_id": "t005", "extra_key": "ignored"}

@@ -30,7 +30,7 @@ def client(tmp_path: Path) -> Generator[TestClient, None, None]:
     original_cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        yield TestClient(v2_api_app(results_dir=str(tmp_path)))
+        yield TestClient(v2_api_app())
     finally:
         os.chdir(original_cwd)
 

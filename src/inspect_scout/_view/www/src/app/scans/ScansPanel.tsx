@@ -17,13 +17,13 @@ import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
-  // Load scans data
-  const { loading, error, data: scans } = useScans();
   const config = useConfig();
   const scanDir = config.scans.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
-  const { displayScansDir, resolvedScansDirSource, setScansDir } =
+  const { displayScansDir, resolvedScansDir, resolvedScansDirSource, setScansDir } =
     useScansDir();
+  // Load scans data
+  const { loading, error, data: scans } = useScans(resolvedScansDir);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);

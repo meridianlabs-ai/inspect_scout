@@ -33,7 +33,7 @@ describe("useActiveScan", () => {
   it("returns loading state when scans are loading", () => {
     mockUseScans.mockReturnValue(loading);
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
 
     expect(result.current).toBe(loading);
   });
@@ -41,7 +41,7 @@ describe("useActiveScan", () => {
   it("returns null when scan is not found", () => {
     mockUseScans.mockReturnValue(data([createMockScan("other-scan")] as never));
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -52,7 +52,7 @@ describe("useActiveScan", () => {
       data([createMockScan("scan-123", null)] as never)
     );
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -64,7 +64,7 @@ describe("useActiveScan", () => {
       data([createMockScan("scan-123", activeScanInfo as never)] as never)
     );
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual(activeScanInfo);
@@ -73,7 +73,7 @@ describe("useActiveScan", () => {
   it("returns null when scanId is undefined", () => {
     mockUseScans.mockReturnValue(data([createMockScan("scan-123")] as never));
 
-    const { result } = renderHook(() => useActiveScan(undefined));
+    const { result } = renderHook(() => useActiveScan("/scans", undefined));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -83,7 +83,7 @@ describe("useActiveScan", () => {
     const error = new Error("Network error");
     mockUseScans.mockReturnValue({ loading: false, error });
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(error);

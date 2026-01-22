@@ -9,7 +9,7 @@ import { useScan } from "../server/useScan";
 import { useScanRoute } from "./useScanRoute";
 
 export const useSelectedScan = (): AsyncData<Status> => {
-  const { location, scanPath } = useScanRoute();
+  const { resolvedScansDir, scanPath } = useScanRoute();
 
   // Set selectedScanLocation for nav restoration
   const setSelectedScanLocation = useStore(
@@ -21,5 +21,9 @@ export const useSelectedScan = (): AsyncData<Status> => {
     }
   }, [scanPath, setSelectedScanLocation]);
 
-  return useScan(location ?? skipToken);
+  return useScan(
+    resolvedScansDir && scanPath
+      ? { scansDir: resolvedScansDir, scanPath }
+      : skipToken
+  );
 };

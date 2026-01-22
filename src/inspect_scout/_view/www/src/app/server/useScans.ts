@@ -6,14 +6,14 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 // Lists the available scans from the server and stores in state
-export const useScans = (): AsyncData<ScanStatusWithActiveInfo[]> => {
+export const useScans = (scansDir: string): AsyncData<ScanStatusWithActiveInfo[]> => {
   const api = useApi();
   const queryClient = useQueryClient();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans"],
+    queryKey: ["scans", scansDir],
     queryFn: async () => {
-      const response = await api.getScans();
+      const response = await api.getScans(scansDir);
       for (const scan of response.items) {
         queryClient.setQueryData(["scan", scan.location], scan);
       }

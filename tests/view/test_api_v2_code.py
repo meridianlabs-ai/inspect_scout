@@ -6,9 +6,9 @@ from inspect_scout._view._api_v2 import v2_api_app
 
 
 @pytest.fixture
-def client(tmp_path: str) -> TestClient:
-    """Create test client with initialized project."""
-    return TestClient(v2_api_app(results_dir=str(tmp_path)))
+def client() -> TestClient:
+    """Create test client."""
+    return TestClient(v2_api_app())
 
 
 class TestCodeEndpoint:

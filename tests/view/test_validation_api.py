@@ -120,6 +120,7 @@ class TestListValidations:
         assert len(paths) == 1
         assert "valid.csv" in paths[0]
 
+
 class TestCreateValidation:
     """Tests for POST /validations endpoint."""
 

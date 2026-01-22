@@ -6,7 +6,9 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 // Lists the available scans from the server and stores in state
-export const useScans = (scansDir: string): AsyncData<ScanStatusWithActiveInfo[]> => {
+export const useScans = (
+  scansDir: string
+): AsyncData<ScanStatusWithActiveInfo[]> => {
   const api = useApi();
   const queryClient = useQueryClient();
 

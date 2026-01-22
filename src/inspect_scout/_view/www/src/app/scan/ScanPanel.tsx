@@ -19,8 +19,12 @@ import { ScanPanelTitle } from "./ScanPanelTitle";
 export const ScanPanel: React.FC = () => {
   const config = useConfig();
   const scansDir = config.scans.dir;
-  const { displayScansDir, resolvedScansDir, resolvedScansDirSource, setScansDir } =
-    useScansDir(true);
+  const {
+    displayScansDir,
+    resolvedScansDir,
+    resolvedScansDirSource,
+    setScansDir,
+  } = useScansDir(true);
   // Load server data
   const { loading: scansLoading } = useScans(resolvedScansDir);
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();

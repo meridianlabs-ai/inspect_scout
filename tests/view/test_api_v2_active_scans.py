@@ -32,7 +32,7 @@ class TestActiveScansEndpoint:
 
     def test_active_scans_empty(self) -> None:
         """No active scans returns empty items dict."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with _mock_active_scans_store({}):
             response = client.get("/scans/active")
@@ -43,7 +43,7 @@ class TestActiveScansEndpoint:
 
     def test_active_scans_with_single_scan(self) -> None:
         """Single active scan returned correctly."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
         metrics = ScanMetrics(
             process_count=4,
             task_count=8,
@@ -80,7 +80,7 @@ class TestActiveScansEndpoint:
 
     def test_active_scans_multiple(self) -> None:
         """Multiple active scans returned correctly."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         scan1 = ActiveScanInfo(
             scan_id="scan-1",
@@ -139,7 +139,7 @@ class TestActiveScansEndpoint:
 
     def test_active_scans_all_metrics_fields(self) -> None:
         """All ScanMetrics fields serialized correctly."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         metrics = ScanMetrics(
             process_count=2,

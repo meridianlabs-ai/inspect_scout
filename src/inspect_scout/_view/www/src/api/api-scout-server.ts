@@ -85,23 +85,24 @@ export const apiScoutServer = (
       );
       return asyncJsonParse<ScalarValue[]>(result.raw);
     },
-    getScan: async (scanLocation: string): Promise<Status> => {
+    getScan: async (scansDir: string, scanPath: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
     },
 
     getScans: async (
+      scansDir: string,
       filter?: Condition,
       orderBy?: OrderByModel | OrderByModel[],
       pagination?: Pagination
     ): Promise<ScansResponse> => {
       const result = await requestApi.fetchString(
         "POST",
-        `/scans`,
+        `/scans/${encodeBase64Url(scansDir)}`,
         {},
         JSON.stringify({
           filter: filter ?? null,
@@ -112,23 +113,25 @@ export const apiScoutServer = (
       return asyncJsonParse<ScansResponse>(result.raw);
     },
     getScannerDataframe: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string,
       uuid: string
     ): Promise<ScanResultInputData> => {
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 

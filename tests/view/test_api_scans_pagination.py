@@ -1,5 +1,6 @@
 """Tests for /scans endpoint pagination support."""
 
+import base64
 from datetime import datetime
 from typing import AsyncIterator
 from unittest.mock import AsyncMock, patch
@@ -12,6 +13,11 @@ from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._view._api_v2 import v2_api_app
+
+
+def _base64url(s: str) -> str:
+    """Encode string as base64url (URL-safe base64 without padding)."""
+    return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
 
 
 def _create_test_status(
@@ -81,7 +87,7 @@ class TestScansEndpointPagination:
 
     def test_scans_post_returns_response_structure(self, tmp_path: str) -> None:
         """Verify POST /scans returns items, total_count, next_cursor."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         async def empty_select(query: object = None) -> AsyncIterator[Status]:
             return
@@ -98,7 +104,7 @@ class TestScansEndpointPagination:
             mock_view.__aexit__ = AsyncMock(return_value=None)
             mock_factory.return_value = mock_view
 
-            response = client.post("/scans", json={})
+            response = client.post(f"/scans/{_base64url('/tmp')}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -114,13 +120,13 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Returns all scans when no pagination specified."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
-            response = client.post("/scans", json={})
+            response = client.post(f"/scans/{_base64url('/tmp')}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -133,14 +139,14 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Filter reduces results."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={"filter": {"left": "complete", "operator": "=", "right": True}},
             )
 
@@ -155,14 +161,14 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Results are sorted by specified column."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={"order_by": {"column": "timestamp", "direction": "DESC"}},
             )
 
@@ -179,14 +185,14 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Pagination limit restricts returned items."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={
                     "pagination": {"limit": 3, "cursor": None, "direction": "forward"}
                 },
@@ -203,7 +209,7 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Next cursor allows fetching next page."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
@@ -211,7 +217,7 @@ class TestScansEndpointPagination:
         ):
             # First page
             response1 = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={
                     "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
                     "order_by": {"column": "scan_id", "direction": "ASC"},
@@ -226,7 +232,7 @@ class TestScansEndpointPagination:
 
             # Second page using cursor
             response2 = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={
                     "pagination": {
                         "limit": 3,
@@ -251,14 +257,14 @@ class TestScansEndpointPagination:
         self, mock_scan_jobs_view: DuckDBScanJobsView
     ) -> None:
         """Filter and pagination work together."""
-        client = TestClient(v2_api_app(results_dir="/tmp"))
+        client = TestClient(v2_api_app())
 
         with patch(
             "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
-                "/scans",
+                f"/scans/{_base64url('/tmp')}",
                 json={
                     "filter": {"left": "complete", "operator": "=", "right": True},
                     "pagination": {"limit": 2, "cursor": None, "direction": "forward"},

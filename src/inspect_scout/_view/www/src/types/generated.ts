@@ -128,26 +128,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * List scans
-         * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
-         */
-        post: operations["scans_scans_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/scans/active": {
         parameters: {
             query?: never;
@@ -168,7 +148,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}": {
+    "/scans/{dir}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List scans
+         * @description Returns scans from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
+         */
+        post: operations["scans_scans__dir__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{dir}/{scan}": {
         parameters: {
             query?: never;
             header?: never;
@@ -179,7 +179,7 @@ export interface paths {
          * Get scan status
          * @description Returns detailed status and metadata for a single scan.
          */
-        get: operations["scan_scans__scan__get"];
+        get: operations["scan_scans__dir___scan__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -188,7 +188,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}": {
+    "/scans/{dir}/{scan}/{scanner}": {
         parameters: {
             query?: never;
             header?: never;
@@ -199,7 +199,7 @@ export interface paths {
          * Get scanner dataframe containing results for all transcripts
          * @description Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.
          */
-        get: operations["scan_df_scans__scan___scanner__get"];
+        get: operations["scan_df_scans__dir___scan___scanner__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -208,7 +208,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
         parameters: {
             query?: never;
             header?: never;
@@ -219,7 +219,7 @@ export interface paths {
          * Get scanner input for a specific transcript
          * @description Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.
          */
-        get: operations["scanner_input_scans__scan___scanner___uuid__input_get"];
+        get: operations["scanner_input_scans__dir___scan___scanner___uuid__input_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3978,30 +3978,6 @@ export interface operations {
             };
         };
     };
-    scans_scans_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ScansRequest"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScansResponse"];
-                };
-            };
-        };
-    };
     active_scans_scans_active_get: {
         parameters: {
             query?: never;
@@ -4022,11 +3998,40 @@ export interface operations {
             };
         };
     };
-    scan_scans__scan__get: {
+    scans_scans__dir__post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScansRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScansResponse"];
+                };
+            };
+        };
+    };
+    scan_scans__dir___scan__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
             };
@@ -4045,11 +4050,13 @@ export interface operations {
             };
         };
     };
-    scan_df_scans__scan___scanner__get: {
+    scan_df_scans__dir___scan___scanner__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
                 /** @description Scanner name */
@@ -4070,11 +4077,13 @@ export interface operations {
             };
         };
     };
-    scanner_input_scans__scan___scanner___uuid__input_get: {
+    scanner_input_scans__dir___scan___scanner___uuid__input_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
                 /** @description Scanner name */

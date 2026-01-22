@@ -4,7 +4,6 @@ from pathlib import Path as PathlibPath
 from typing import Any, Union, get_args, get_origin
 
 from fastapi import FastAPI
-from inspect_ai._util.file import FileSystem
 from inspect_ai._util.json import JsonChange
 from inspect_ai.event._event import Event
 from inspect_ai.model import ChatMessage, Content
@@ -24,8 +23,6 @@ API_VERSION = "2.0.0-alpha"
 
 def v2_api_app(
     view_config: ViewConfig | None = None,
-    results_dir: str | None = None,
-    fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
 ) -> FastAPI:
     """Create V2 API FastAPI app.
@@ -113,13 +110,7 @@ def v2_api_app(
     # Include all routers
     app.include_router(create_config_router(view_config=view_config))
     app.include_router(create_transcripts_router())
-    app.include_router(
-        create_scans_router(
-            results_dir=results_dir,
-            fs=fs,
-            streaming_batch_size=streaming_batch_size,
-        )
-    )
+    app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
 

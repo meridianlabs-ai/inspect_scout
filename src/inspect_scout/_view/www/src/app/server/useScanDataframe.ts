@@ -8,7 +8,8 @@ import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { expandResultsetRows } from "../utils/arrow";
 
 type ScanDataframeParams = {
-  location: string;
+  scansDir: string;
+  scanPath: string;
   scanner: string;
 };
 
@@ -26,7 +27,11 @@ export const useScanDataframe = (
         : async () =>
             expandResultsetRows(
               decodeArrowBytes(
-                await api.getScannerDataframe(params.location, params.scanner)
+                await api.getScannerDataframe(
+                  params.scansDir,
+                  params.scanPath,
+                  params.scanner
+                )
               )
             ),
     staleTime: Infinity,

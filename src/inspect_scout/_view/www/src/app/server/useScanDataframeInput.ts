@@ -6,7 +6,8 @@ import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 import { ScanResultInputData } from "../types";
 
 type ScanDataframeInputParams = {
-  location: string;
+  scansDir: string;
+  scanPath: string;
   scanner: string;
   uuid: string;
 };
@@ -23,7 +24,8 @@ export const useScanDataframeInput = (
         ? skipToken
         : () =>
             api.getScannerDataframeInput(
-              params.location,
+              params.scansDir,
+              params.scanPath,
               params.scanner,
               params.uuid
             ),

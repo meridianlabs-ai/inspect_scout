@@ -12,11 +12,11 @@ from inspect_ai.model import ChatMessage, Content
 
 from .._llm_scanner.params import LlmScannerParams
 from .._validation.types import ValidationCase
-from ._api_config import create_config_router
-from ._api_scanners import create_scanners_router
-from ._api_scans import create_scans_router
-from ._api_transcripts import create_transcripts_router
-from ._api_validations import create_validation_router
+from ._api_v2_config import create_config_router
+from ._api_v2_scanners import create_scanners_router
+from ._api_v2_scans import create_scans_router
+from ._api_v2_transcripts import create_transcripts_router
+from ._api_v2_validations import create_validation_router
 from ._server_common import CustomJsonSchemaGenerator
 from .types import ViewConfig
 

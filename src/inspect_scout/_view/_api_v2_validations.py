@@ -4,12 +4,10 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi import Path as PathParam
-from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
@@ -28,34 +26,17 @@ from ._server_common import InspectPydanticJSONResponse, decode_base64url
 
 def create_validation_router(
     project_dir: Path,
-    access_policy: AccessPolicy | None = None,
 ) -> APIRouter:
     """Create a validation API router.
 
     Args:
         project_dir: The project directory for scanning and path validation.
-        access_policy: Optional access policy for read/list/delete operations.
 
     Returns:
         Configured APIRouter with validation endpoints.
     """
     router = APIRouter(prefix="/validations", tags=["validations"])
     project_dir = project_dir.resolve()
-
-    async def _validate_read(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_read(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
-    async def _validate_delete(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_delete(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
-    async def _validate_list(request: Request, file: str | Path) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_list(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
     @router.get(
         "",
@@ -64,10 +45,8 @@ def create_validation_router(
         description="Scans the project directory for validation files (.csv, .yaml, .json, .jsonl) "
         "and returns their URIs.",
     )
-    async def list_validations(request: Request) -> list[str]:
+    async def list_validations() -> list[str]:
         """List all validation files in the project."""
-        await _validate_list(request, project_dir)
-
         paths: list[str] = []
 
         for file_path in scan_validation_files(project_dir):
@@ -138,7 +117,6 @@ def create_validation_router(
         description="Returns all cases from a validation file.",
     )
     async def get_validation_cases(
-        request: Request,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
     ) -> list[dict[str, Any]]:
         """Get all cases from a validation file."""
@@ -147,8 +125,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_read(request, file_path)
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -165,7 +141,6 @@ def create_validation_router(
         description="Deletes a validation file from the project.",
     )
     async def delete_validation(
-        request: Request,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
     ) -> dict[str, bool]:
         """Delete a validation file."""
@@ -174,8 +149,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_delete(request, file_path)
 
         try:
             file_path.unlink()
@@ -193,7 +166,6 @@ def create_validation_router(
         description="Returns a specific case from a validation file by ID.",
     )
     async def get_validation_case(
-        request: Request,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
     ) -> dict[str, Any]:
@@ -204,8 +176,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_read(request, file_path)
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -280,7 +250,6 @@ def create_validation_router(
         description="Deletes a case from a validation file.",
     )
     async def delete_validation_case(
-        request: Request,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
     ) -> dict[str, bool]:
@@ -291,8 +260,6 @@ def create_validation_router(
 
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
-
-        await _validate_delete(request, file_path)
 
         try:
             writer = ValidationFileWriter(file_path)

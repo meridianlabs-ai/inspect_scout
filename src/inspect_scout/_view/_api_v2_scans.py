@@ -13,12 +13,10 @@ from typing import Any, Iterable, Literal, TypeVar
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
-from fastapi import APIRouter, HTTPException, Path, Request, Response
+from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import FileSystem
-from inspect_ai._view.fastapi_server import AccessPolicy
 from starlette.status import (
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -298,7 +296,6 @@ T = TypeVar("T")
 
 
 def create_scans_router(
-    access_policy: AccessPolicy | None = None,
     results_dir: str | None = None,
     fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
@@ -306,7 +303,6 @@ def create_scans_router(
     """Create scans API router.
 
     Args:
-        access_policy: Optional access policy for read/list/delete operations.
         results_dir: Directory containing scan results.
         fs: FileSystem instance for file operations.
         streaming_batch_size: Batch size for Arrow IPC streaming.
@@ -315,16 +311,6 @@ def create_scans_router(
         Configured APIRouter with scans endpoints.
     """
     router = APIRouter(tags=["scans"])
-
-    async def _validate_read(request: Request, file: str | UPath) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_read(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-
-    async def _validate_list(request: Request, file: str | UPath) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_list(request, str(file)):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
     def _ensure_not_none(
         value: T | None, error_message: str = "Required value is None"
@@ -336,11 +322,6 @@ def create_scans_router(
             )
         return value
 
-    async def _to_rest_scan(
-        request: Request, scan: RecorderStatus, running_scans: set[str]
-    ) -> ScanStatus:
-        return scan
-
     @router.post(
         "/scans",
         response_class=InspectPydanticJSONResponse,
@@ -350,12 +331,10 @@ def create_scans_router(
         "Optional pagination for cursor-based pagination.",
     )
     async def scans(
-        request: Request,
         body: ScansRequest | None = None,
     ) -> ScansResponse:
         """Filter scan jobs from the results directory."""
         validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
-        await _validate_list(request, validated_results_dir)
 
         ctx = _build_pagination_context(body, "scan_id")
 
@@ -469,7 +448,6 @@ def create_scans_router(
         description="Returns detailed status and metadata for a single scan.",
     )
     async def scan(
-        request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> ScanStatus:
         """Get detailed status for a single scan."""
@@ -480,8 +458,6 @@ def create_scans_router(
             )
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
-
-        await _validate_read(request, scan_path)
 
         recorder_status_with_df = await scan_results_df_async(
             str(scan_path), rows="transcripts"
@@ -494,7 +470,7 @@ def create_scans_router(
                 )
             )
 
-        return await _to_rest_scan(request, recorder_status_with_df, _running_scans)
+        return recorder_status_with_df
 
     @router.get(
         "/scans/{scan}/{scanner}",
@@ -503,7 +479,6 @@ def create_scans_router(
         "Excludes input column for efficiency; use the input endpoint for input text.",
     )
     async def scan_df(
-        request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
     ) -> Response:
@@ -515,8 +490,6 @@ def create_scans_router(
             )
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
-
-        await _validate_read(request, scan_path)
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:
@@ -563,7 +536,6 @@ def create_scans_router(
         "The input type is returned in the X-Input-Type response header.",
     )
     async def scanner_input(
-        request: Request,
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
@@ -576,8 +548,6 @@ def create_scans_router(
             )
             results_path = UPath(validated_results_dir)
             scan_path = results_path / scan_path
-
-        await _validate_read(request, scan_path)
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:

@@ -3,10 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Path, Request
-from inspect_ai._view.fastapi_server import AccessPolicy
+from fastapi import APIRouter, HTTPException, Path
 from starlette.status import (
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_413_CONTENT_TOO_LARGE,
 )
@@ -208,23 +206,13 @@ def _get_project_filters() -> list[ConditionType]:
 # --- Router factory ---
 
 
-def create_transcripts_router(
-    access_policy: AccessPolicy | None = None,
-) -> APIRouter:
+def create_transcripts_router() -> APIRouter:
     """Create transcripts API router.
-
-    Args:
-        access_policy: Optional access policy for read/list/delete operations.
 
     Returns:
         Configured APIRouter with transcripts endpoints.
     """
     router = APIRouter(tags=["transcripts"])
-
-    async def _validate_read(request: Request, file: str) -> None:
-        if access_policy is not None:
-            if not await access_policy.can_read(request, file):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
 
     @router.post(
         "/transcripts/{dir}",

@@ -6,14 +6,12 @@ import base64
 import json
 from collections.abc import Generator
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 from inspect_scout._view._api_v2 import v2_api_app
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
@@ -121,27 +119,6 @@ class TestListValidations:
         # Only valid file should be listed
         assert len(paths) == 1
         assert "valid.csv" in paths[0]
-
-    @pytest.mark.asyncio
-    async def test_list_validations_access_policy(self, tmp_path: Path) -> None:
-        """Test that access policy is enforced."""
-        import os
-
-        original_cwd = os.getcwd()
-        os.chdir(tmp_path)
-        try:
-            mock_access_policy = MagicMock()
-            mock_access_policy.can_list = AsyncMock(return_value=False)
-
-            client = TestClient(
-                v2_api_app(access_policy=mock_access_policy, results_dir=str(tmp_path))
-            )
-
-            response = client.get("/validations")
-            assert response.status_code == HTTP_403_FORBIDDEN
-        finally:
-            os.chdir(original_cwd)
-
 
 class TestCreateValidation:
     """Tests for POST /validations endpoint."""

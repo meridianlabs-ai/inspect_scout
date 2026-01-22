@@ -7,9 +7,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import filesystem
-from inspect_ai._view.fastapi_server import (
-    OnlyDirAccessPolicy,
-)
+from inspect_ai._view.fastapi_server import OnlyDirAccessPolicy
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import Scope
 
@@ -74,7 +72,6 @@ def view_server(
 
     v2_api = v2_api_app(
         view_config=config,
-        access_policy=access_policy,
         results_dir=scans,
         fs=fs,
     )

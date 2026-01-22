@@ -85,7 +85,7 @@ def create_config_router(
         summary="Stream config version changes",
         description="SSE endpoint that pushes when config version changes.",
     )
-    async def config_version_stream(request: Request) -> EventSourceResponse:
+    async def config_version_stream() -> EventSourceResponse:
         """Stream config version updates via SSE."""
 
         async def event_generator() -> AsyncGenerator[dict[str, str], None]:

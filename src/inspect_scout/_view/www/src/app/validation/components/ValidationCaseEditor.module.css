@@ -1,0 +1,35 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background-color: var(--bs-light);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--inspect-font-size-smaller);
+  color: var(--bs-body-color);
+}
+
+.content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.placeholder {
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+  text-align: center;
+  margin-top: 2rem;
+}

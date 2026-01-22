@@ -13,8 +13,6 @@ interface ValidationSetSelectorProps {
   validationSets: string[];
   selectedUri: string | undefined;
   onSelect: (uri: string | undefined) => void;
-  loading?: boolean;
-  error?: Error | null;
 }
 
 /**
@@ -25,8 +23,6 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   validationSets,
   selectedUri,
   onSelect,
-  loading,
-  error,
 }) => {
   const handleChange = (e: Event) => {
     const value = (e.target as HTMLSelectElement).value;
@@ -37,24 +33,6 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   const getDisplayName = (uri: string): string => {
     return getFilenameFromUri(uri, true);
   };
-
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <VscodeLabel>Validation Set</VscodeLabel>
-        <div className={styles.loading}>Loading validation sets...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.container}>
-        <VscodeLabel>Validation Set</VscodeLabel>
-        <div className={styles.error}>Error: {error.message}</div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>

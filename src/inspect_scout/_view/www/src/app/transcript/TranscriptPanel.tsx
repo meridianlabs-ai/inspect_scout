@@ -2,20 +2,22 @@ import { skipToken } from "@tanstack/react-query";
 import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import { FC, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
+import { getValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { ValidationCaseEditor } from "../components/ValidationCaseEditor";
 import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { useConfig } from "../server/useConfig";
 import { useTranscript } from "../server/useTranscript";
 import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
+import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { TranscriptBody } from "./TranscriptBody";
 import { TranscriptNav } from "./TranscriptNav";
@@ -56,10 +58,9 @@ export const TranscriptPanel: FC = () => {
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const condition = useFilterConditions();
 
-  // Validation sidebar state
-  const validationSidebarCollapsed = useStore(
-    (state) => state.transcriptState.validationSidebarCollapsed ?? true
-  );
+  // Validation sidebar state - URL is the source of truth
+  const [searchParams] = useSearchParams();
+  const validationSidebarCollapsed = !getValidationParam(searchParams);
 
   // Get adjacent transcript IDs
   const adjacentIds = useAdjacentTranscriptIds(
@@ -100,7 +101,11 @@ export const TranscriptPanel: FC = () => {
           fixedPane="end"
           initialHandlePosition="70%"
         >
-          <div slot="start" className={styles.transcriptContainer} ref={scrollRef}>
+          <div
+            slot="start"
+            className={styles.transcriptContainer}
+            ref={scrollRef}
+          >
             <TranscriptTitle transcript={transcript} />
             <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
           </div>

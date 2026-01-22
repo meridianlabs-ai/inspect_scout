@@ -27,6 +27,7 @@ import {
   kCollapsibleEventTypes,
   kTranscriptCollapseScope,
 } from "../../components/transcript/types";
+import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
@@ -91,7 +92,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     (tabId: string) => {
       //  update both store and URL
       setSelectedTranscriptTab(tabId);
-      setSearchParams({ tab: tabId });
+      setSearchParams((prevParams) => {
+        const newParams = new URLSearchParams(prevParams);
+        newParams.set("tab", tabId);
+        return newParams;
+      });
     },
     [setSelectedTranscriptTab, setSearchParams]
   );
@@ -171,16 +176,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setTranscriptState]
   );
 
-  // Validation sidebar toggle
-  const validationSidebarCollapsed = useStore(
-    (state) => state.transcriptState.validationSidebarCollapsed ?? true
-  );
+  // Validation sidebar - URL is the source of truth
+  const validationSidebarCollapsed = !getValidationParam(searchParams);
+
   const toggleValidationSidebar = useCallback(() => {
-    setTranscriptState((prev) => ({
-      ...prev,
-      validationSidebarCollapsed: !(prev.validationSidebarCollapsed ?? true),
-    }));
-  }, [setTranscriptState]);
+    setSearchParams((prevParams) => {
+      const isCurrentlyOpen = getValidationParam(prevParams);
+      return updateValidationParam(prevParams, !isCurrentlyOpen);
+    });
+  }, [setSearchParams]);
 
   // Display mode for raw/rendered text
   const displayMode = useStore(

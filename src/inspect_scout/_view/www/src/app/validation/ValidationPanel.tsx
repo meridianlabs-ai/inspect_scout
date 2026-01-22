@@ -99,13 +99,19 @@ export const ValidationPanel: FC = () => {
 
       {/* Selector */}
       <div className={styles.selectorSection}>
-        <ValidationSetSelector
-          validationSets={validationSets ?? []}
-          selectedUri={selectedUri}
-          onSelect={handleSelectSet}
-          loading={setsLoading}
-          error={setsError}
-        />
+        {setsLoading ? (
+          <div className={styles.loading}>Loading sets...</div>
+        ) : setsError ? (
+          <div className={styles.error}>
+            Error loading validation sets: {setsError.message}
+          </div>
+        ) : (
+          <ValidationSetSelector
+            validationSets={validationSets ?? []}
+            selectedUri={selectedUri}
+            onSelect={handleSelectSet}
+          />
+        )}
       </div>
 
       {/* Content */}

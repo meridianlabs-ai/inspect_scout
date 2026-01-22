@@ -19,6 +19,7 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 
 // Query parameter constants
 export const kScannerQueryParam = "scanner";
+export const kValidationQueryParam = "validation";
 
 // Helper functions to generate routes
 export const scanRoute = (
@@ -205,6 +206,25 @@ export const getScannerParam = (
   searchParams: URLSearchParams
 ): string | undefined => {
   return searchParams.get(kScannerQueryParam) || undefined;
+};
+
+// Updates the validation sidebar parameter in URL search params.
+export const updateValidationParam = (
+  searchParams: URLSearchParams,
+  isOpen: boolean
+): URLSearchParams => {
+  const newParams = new URLSearchParams(searchParams);
+  if (isOpen) {
+    newParams.set(kValidationQueryParam, "1");
+  } else {
+    newParams.delete(kValidationQueryParam);
+  }
+  return newParams;
+};
+
+// Retrieves the validation sidebar parameter from URL search params.
+export const getValidationParam = (searchParams: URLSearchParams): boolean => {
+  return searchParams.get(kValidationQueryParam) === "1";
 };
 
 export const isHostedEnvironment = () => {

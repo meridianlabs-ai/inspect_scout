@@ -4,8 +4,8 @@ from collections.abc import AsyncGenerator
 from pathlib import Path as PathlibPath
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response
-from fastapi.responses import StreamingResponse
 from inspect_ai._util.error import PrerequisiteError
+from sse_starlette.sse import EventSourceResponse
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -85,22 +85,18 @@ def create_config_router(
         summary="Stream config version changes",
         description="SSE endpoint that pushes when config version changes.",
     )
-    async def config_version_stream() -> StreamingResponse:
+    async def config_version_stream(request: Request) -> EventSourceResponse:
         """Stream config version updates via SSE."""
 
-        async def event_generator() -> AsyncGenerator[str, None]:
-            yield f"data: {get_config_version()}\n\n"
+        async def event_generator() -> AsyncGenerator[dict[str, str], None]:
+            yield {"data": get_config_version()}
             condition = get_condition()
             while True:
                 async with condition:
                     await condition.wait()
-                yield f"data: {get_config_version()}\n\n"
+                yield {"data": get_config_version()}
 
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-        )
+        return EventSourceResponse(event_generator())
 
     @router.get(
         "/project/config",

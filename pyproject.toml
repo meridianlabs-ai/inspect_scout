@@ -33,6 +33,7 @@ dependencies = [
     "rich>=13.3.3,!=14.0.0",
     "ruamel.yaml>=0.18.0",
     "shortuuid",
+    "sse-starlette>=2.0.0",
     "typing_extensions>=4.9.0",
     "universal-pathlib>=0.2.6",
     "uvicorn"
@@ -49,6 +50,7 @@ scout = "inspect_scout._cli.main:main"
 dev = [
     "ruff",
     "pytest",
+    "pytest-xdist",
     "anthropic",
     "huggingface_hub",
     "langfuse",
@@ -76,6 +78,7 @@ dist = ["twine", "build"]
 dev = [
     "ruff",
     "pytest",
+    "pytest-xdist",
     "anthropic",
     "huggingface_hub",
     "langfuse",
@@ -142,6 +145,7 @@ convention = "google"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "-n auto"
 
 [tool.mypy]
 strict = true

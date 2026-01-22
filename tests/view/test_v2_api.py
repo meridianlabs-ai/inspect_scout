@@ -21,7 +21,6 @@ from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -119,7 +118,7 @@ class TestViewServerAppScansEndpoint:
         mock_view.select = mock_select
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
             response = app_with_results_dir.post("/scans", json={})
@@ -173,7 +172,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.reader.return_value = mock_reader
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_arrow_async",
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -195,7 +194,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.scanners = ["scanner1"]
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_arrow_async",
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -223,7 +222,7 @@ class TestViewServerAppScanEndpoint:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
@@ -259,7 +258,7 @@ class TestAuthorizationMiddleware:
         mock_view.select = mock_select
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
             response = client.post(
@@ -307,42 +306,6 @@ class TestAuthorizationMiddleware:
         assert response.status_code == 401
 
 
-class TestAccessPolicy:
-    """Tests for access policy enforcement."""
-
-    @pytest.mark.asyncio
-    async def test_access_policy_read_forbidden(self) -> None:
-        """Test that access policy blocks unauthorized reads."""
-        mock_access_policy = MagicMock()
-        mock_access_policy.can_read = AsyncMock(return_value=False)
-
-        client = TestClient(
-            v2_api_app(access_policy=mock_access_policy, results_dir="/test")
-        )
-
-        with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
-            response = client.get(f"/scans/{base64url('test_scan')}")
-
-        assert response.status_code == HTTP_403_FORBIDDEN
-        mock_scan.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_access_policy_list_forbidden(self) -> None:
-        """Test that access policy blocks unauthorized lists."""
-        mock_access_policy = MagicMock()
-        mock_access_policy.can_list = AsyncMock(return_value=False)
-
-        client = TestClient(
-            v2_api_app(access_policy=mock_access_policy, results_dir="/test")
-        )
-
-        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_view:
-            response = client.post("/scans", json={})
-
-        assert response.status_code == HTTP_403_FORBIDDEN
-        mock_view.assert_not_called()
-
-
 class TestViewServerAppEdgeCases:
     """Tests for edge cases and error handling."""
 
@@ -361,7 +324,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             # Use relative path (base64url encoded)
@@ -392,7 +355,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_v2_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")

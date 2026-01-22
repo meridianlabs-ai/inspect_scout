@@ -87,7 +87,7 @@ class TestScansEndpointPagination:
             return
             yield  # makes this an async generator
 
-        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_factory:
+        with patch("inspect_scout._view._api_v2_scans.scan_jobs_view") as mock_factory:
             # Create mock view
             mock_view = AsyncMock()
             mock_view.connect = AsyncMock()
@@ -117,7 +117,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post("/scans", json={})
@@ -136,7 +136,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
@@ -158,7 +158,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
@@ -182,7 +182,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(
@@ -206,7 +206,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             # First page
@@ -254,7 +254,7 @@ class TestScansEndpointPagination:
         client = TestClient(v2_api_app(results_dir="/tmp"))
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_v2_scans.scan_jobs_view",
             return_value=mock_scan_jobs_view,
         ):
             response = client.post(

@@ -23,7 +23,7 @@ def _mock_active_scans_store(
     def mock_cm() -> Iterator[ActiveScansStore]:
         yield mock_store
 
-    with patch("inspect_scout._view._api_v2.active_scans_store", mock_cm):
+    with patch("inspect_scout._view._api_v2_scans.active_scans_store", mock_cm):
         yield
 
 

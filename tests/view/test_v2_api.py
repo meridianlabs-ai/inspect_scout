@@ -119,7 +119,7 @@ class TestViewServerAppScansEndpoint:
         mock_view.select = mock_select
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
             response = app_with_results_dir.post("/scans", json={})
@@ -173,7 +173,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.reader.return_value = mock_reader
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_arrow_async",
+            "inspect_scout._view._api_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -195,7 +195,7 @@ class TestViewServerAppScanDfEndpoint:
         mock_results.scanners = ["scanner1"]
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_arrow_async",
+            "inspect_scout._view._api_scans.scan_results_arrow_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(
@@ -223,7 +223,7 @@ class TestViewServerAppScanEndpoint:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")
@@ -259,7 +259,7 @@ class TestAuthorizationMiddleware:
         mock_view.select = mock_select
 
         with patch(
-            "inspect_scout._view._api_v2.scan_jobs_view",
+            "inspect_scout._view._api_scans.scan_jobs_view",
             return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_view)),
         ):
             response = client.post(
@@ -320,7 +320,7 @@ class TestAccessPolicy:
             v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         )
 
-        with patch("inspect_scout._view._api_v2.scan_results_df_async") as mock_scan:
+        with patch("inspect_scout._view._api_scans.scan_results_df_async") as mock_scan:
             response = client.get(f"/scans/{base64url('test_scan')}")
 
         assert response.status_code == HTTP_403_FORBIDDEN
@@ -336,7 +336,7 @@ class TestAccessPolicy:
             v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         )
 
-        with patch("inspect_scout._view._api_v2.scan_jobs_view") as mock_view:
+        with patch("inspect_scout._view._api_scans.scan_jobs_view") as mock_view:
             response = client.post("/scans", json={})
 
         assert response.status_code == HTTP_403_FORBIDDEN
@@ -361,7 +361,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             # Use relative path (base64url encoded)
@@ -392,7 +392,7 @@ class TestViewServerAppEdgeCases:
         )
 
         with patch(
-            "inspect_scout._view._api_v2.scan_results_df_async",
+            "inspect_scout._view._api_scans.scan_results_df_async",
             return_value=mock_results,
         ):
             response = app_with_results_dir.get(f"/scans/{base64url('test_scan')}")

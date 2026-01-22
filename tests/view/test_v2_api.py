@@ -320,7 +320,9 @@ class TestAccessPolicy:
             v2_api_app(access_policy=mock_access_policy, results_dir="/test")
         )
 
-        with patch("inspect_scout._view._api_v2_scans.scan_results_df_async") as mock_scan:
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_df_async"
+        ) as mock_scan:
             response = client.get(f"/scans/{base64url('test_scan')}")
 
         assert response.status_code == HTTP_403_FORBIDDEN

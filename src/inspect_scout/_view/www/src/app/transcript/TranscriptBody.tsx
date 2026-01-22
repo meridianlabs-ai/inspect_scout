@@ -171,6 +171,17 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setTranscriptState]
   );
 
+  // Validation sidebar toggle
+  const validationSidebarCollapsed = useStore(
+    (state) => state.transcriptState.validationSidebarCollapsed ?? true
+  );
+  const toggleValidationSidebar = useCallback(() => {
+    setTranscriptState((prev) => ({
+      ...prev,
+      validationSidebarCollapsed: !(prev.validationSidebarCollapsed ?? true),
+    }));
+  }, [setTranscriptState]);
+
   // Display mode for raw/rendered text
   const displayMode = useStore(
     (state) => state.transcriptState.displayMode ?? "rendered"
@@ -263,6 +274,22 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   tabTools.push(
     <CopyToolbarButton transcript={transcript} className={styles.tabTool} />
+  );
+
+  tabTools.push(
+    <ToolButton
+      key="validation-sidebar-toggle"
+      label="Validation"
+      icon={ApplicationIcons.edit}
+      onClick={toggleValidationSidebar}
+      className={styles.tabTool}
+      subtle={true}
+      title={
+        validationSidebarCollapsed
+          ? "Show validation editor"
+          : "Hide validation editor"
+      }
+    />
   );
 
   const tabPanels = [

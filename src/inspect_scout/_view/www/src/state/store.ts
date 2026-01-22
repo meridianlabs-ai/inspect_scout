@@ -59,6 +59,7 @@ interface TranscriptState {
   collapsed?: boolean;
   outlineCollapsed?: boolean;
   displayMode?: "rendered" | "raw";
+  validationSidebarCollapsed?: boolean;
 }
 
 interface StoreState {

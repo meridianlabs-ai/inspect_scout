@@ -1,4 +1,5 @@
 import { skipToken } from "@tanstack/react-query";
+import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import { FC, useRef } from "react";
 
@@ -8,6 +9,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
+import { ValidationCaseEditor } from "../components/ValidationCaseEditor";
 import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { useConfig } from "../server/useConfig";
@@ -54,6 +56,11 @@ export const TranscriptPanel: FC = () => {
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
   const condition = useFilterConditions();
 
+  // Validation sidebar state
+  const validationSidebarCollapsed = useStore(
+    (state) => state.transcriptState.validationSidebarCollapsed ?? true
+  );
+
   // Get adjacent transcript IDs
   const adjacentIds = useAdjacentTranscriptIds(
     transcriptId,
@@ -81,11 +88,26 @@ export const TranscriptPanel: FC = () => {
       </TranscriptsNavbar>
       <LoadingBar loading={loading} />
 
-      {!error && transcript && (
+      {!error && transcript && validationSidebarCollapsed && (
         <div className={styles.transcriptContainer} ref={scrollRef}>
           <TranscriptTitle transcript={transcript} />
           <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
         </div>
+      )}
+      {!error && transcript && !validationSidebarCollapsed && (
+        <VscodeSplitLayout
+          className={styles.splitLayout}
+          fixedPane="end"
+          initialHandlePosition="70%"
+        >
+          <div slot="start" className={styles.transcriptContainer} ref={scrollRef}>
+            <TranscriptTitle transcript={transcript} />
+            <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
+          </div>
+          <div slot="end" className={styles.validationSidebar}>
+            <ValidationCaseEditor />
+          </div>
+        </VscodeSplitLayout>
       )}
       {error && (
         <ErrorPanel

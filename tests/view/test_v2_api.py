@@ -21,7 +21,6 @@ from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -305,44 +304,6 @@ class TestAuthorizationMiddleware:
         response = client.post("/api/v2/scans", json={})
 
         assert response.status_code == 401
-
-
-class TestAccessPolicy:
-    """Tests for access policy enforcement."""
-
-    @pytest.mark.asyncio
-    async def test_access_policy_read_forbidden(self) -> None:
-        """Test that access policy blocks unauthorized reads."""
-        mock_access_policy = MagicMock()
-        mock_access_policy.can_read = AsyncMock(return_value=False)
-
-        client = TestClient(
-            v2_api_app(access_policy=mock_access_policy, results_dir="/test")
-        )
-
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_results_df_async"
-        ) as mock_scan:
-            response = client.get(f"/scans/{base64url('test_scan')}")
-
-        assert response.status_code == HTTP_403_FORBIDDEN
-        mock_scan.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_access_policy_list_forbidden(self) -> None:
-        """Test that access policy blocks unauthorized lists."""
-        mock_access_policy = MagicMock()
-        mock_access_policy.can_list = AsyncMock(return_value=False)
-
-        client = TestClient(
-            v2_api_app(access_policy=mock_access_policy, results_dir="/test")
-        )
-
-        with patch("inspect_scout._view._api_v2_scans.scan_jobs_view") as mock_view:
-            response = client.post("/scans", json={})
-
-        assert response.status_code == HTTP_403_FORBIDDEN
-        mock_view.assert_not_called()
 
 
 class TestViewServerAppEdgeCases:

@@ -230,7 +230,9 @@ export const SettingsContent: FC<SettingsContentProps> = ({
         <div className={styles.field}>
           <VscodeLabel>Filter</VscodeLabel>
           <VscodeFormHelper>
-            SQL WHERE clause(s) for filtering transcripts
+            SQL WHERE clause(s) for filtering transcripts. This will constrain
+            any scan done within the project (i.e. filters applied to individual
+            scans will be AND combined with this filter).
           </VscodeFormHelper>
           <VscodeTextfield
             id="field-filter"

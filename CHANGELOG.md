@@ -1,6 +1,7 @@
 ## Unreleased
 
-- Always read `scout.local.yaml` even if there is no `scout.yaml` file.
+- Projects: Always read `scout.local.yaml` even if there is no `scout.yaml` file.
+- Projects: Always apply project level `filter` to scans (AND combine with scan filters).
 
 ## 0.4.10 (21 January 2026)
 

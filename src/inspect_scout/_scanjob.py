@@ -590,6 +590,9 @@ def _merge_transcripts(proj: "ProjectConfig", scanjob: ScanJob) -> None:
     # Transcripts - convert string to Transcripts object and apply filter
     if scanjob._transcripts is None and proj.transcripts is not None:
         scanjob._transcripts = transcripts_from(proj.transcripts)
+
+    # always apply project filter
+    if scanjob._transcripts is not None:
         for filter in proj.filter if isinstance(proj.filter, list) else [proj.filter]:
             scanjob._transcripts = scanjob._transcripts.where(filter)
 

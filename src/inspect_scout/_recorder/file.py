@@ -310,6 +310,7 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
+        exclude_columns: list[str] | None = None,
     ) -> ScanResultsDF:
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
@@ -323,7 +324,9 @@ class FileRecorder(ScanRecorder):
         # Create lazy mapping with a loader that reads DataFrames on demand
         scanners = LazyScannerMapping(
             scanner_names=scanner_names,
-            loader=lambda name: _load_scanner_df(scan_dir, name),
+            loader=lambda name: _load_scanner_df(
+                scan_dir, name, exclude_columns=exclude_columns
+            ),
         )
 
         return ScanResultsDF(
@@ -665,12 +668,19 @@ def _cast_value_sql(value_type: str) -> str:
         return "value"
 
 
-def _load_scanner_df(scan_dir: UPath, scanner_name: str) -> pd.DataFrame:
+def _load_scanner_df(
+    scan_dir: UPath,
+    scanner_name: str,
+    *,
+    exclude_columns: list[str] | None = None,
+) -> pd.DataFrame:
     """Load a scanner's DataFrame from a parquet file.
 
     Args:
         scan_dir: Directory containing the scan parquet files.
         scanner_name: Name of the scanner (without .parquet extension).
+        exclude_columns: List of column names to exclude when reading.
+            Non-existent columns are silently ignored.
 
     Returns:
         DataFrame with the scanner results, value column cast appropriately.
@@ -679,7 +689,15 @@ def _load_scanner_df(scan_dir: UPath, scanner_name: str) -> pd.DataFrame:
     # Use file() from inspect_ai to match original AsyncFilesystem behavior
     with file(parquet_file.as_posix(), "rb") as f:
         file_bytes = f.read()
-    table = pq.read_table(io.BytesIO(file_bytes))
+
+    # Determine columns to read (exclude specified columns if they exist)
+    columns: list[str] | None = None
+    if exclude_columns:
+        parquet_schema = pq.read_schema(io.BytesIO(file_bytes))
+        all_columns = set(parquet_schema.names)
+        columns = [col for col in all_columns if col not in exclude_columns]
+
+    table = pq.read_table(io.BytesIO(file_bytes), columns=columns)
     df = table.to_pandas(types_mapper=pd.ArrowDtype)
     return _cast_value_column(df)
 

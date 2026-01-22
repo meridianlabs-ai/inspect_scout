@@ -231,3 +231,7 @@ scout.local.yaml
 
 # test data
 /examples/test-db
+
+# dev scratch area
+/.dev
+

@@ -334,7 +334,10 @@ def _validate_path_within_project(path: Path, project_dir: Path) -> None:
 
 def _uri_to_path(uri: str) -> Path:
     """Convert a file URI to a Path object."""
-    if uri.startswith("file://"):
+    from urllib.parse import unquote
+
+    unquoted = unquote(uri)
+    if unquoted.startswith("file://"):
         # Handle file:// URIs
-        return Path(UPath(uri).path)
-    return Path(uri)
+        return Path(UPath(unquoted).path)
+    return Path(unquoted)

@@ -2,8 +2,8 @@ import { VscodeCheckbox } from "@vscode-elements/react-elements";
 import { FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { transcriptRoute } from "../../../router/url";
 import { ValidationCase } from "../../../types/api-types";
-import { encodeBase64Url } from "../../../utils/base64url";
 import { getIdText } from "../utils";
 
 import styles from "./ValidationCaseCard.module.css";
@@ -58,10 +58,7 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
   const handleIdClick = () => {
     const singleId = Array.isArray(id) ? id[0] : id;
     if (transcriptsDir && singleId) {
-      // Navigate to the transcript detail view using base64url encoding
-      void navigate(
-        `/transcripts/${encodeBase64Url(transcriptsDir)}/${singleId}`
-      );
+      void navigate(transcriptRoute(transcriptsDir, singleId));
     }
   };
 

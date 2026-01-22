@@ -9948,7 +9948,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Code endpoint"
+        "summary": "Code endpoint",
+        "tags": [
+          "scanners"
+        ]
       }
     },
     "/config": {
@@ -9967,7 +9970,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get application configuration"
+        "summary": "Get application configuration",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config-version": {
@@ -9979,7 +9985,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get config version"
+        "summary": "Get config version",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config-version/stream": {
@@ -9996,7 +10005,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Stream config version changes"
+        "summary": "Stream config version changes",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/project/config": {
@@ -10015,7 +10027,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get project configuration"
+        "summary": "Get project configuration",
+        "tags": [
+          "config"
+        ]
       },
       "put": {
         "description": "Updates the project configuration in scout.yaml while preserving comments and formatting. Optionally include If-Match header with current ETag for optimistic concurrency control. Omit If-Match to force save.",
@@ -10062,7 +10077,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Update project configuration"
+        "summary": "Update project configuration",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/scanners": {
@@ -10081,7 +10099,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List available scanners"
+        "summary": "List available scanners",
+        "tags": [
+          "scanners"
+        ]
       }
     },
     "/scans": {
@@ -10117,7 +10138,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List scans"
+        "summary": "List scans",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/scans/active": {
@@ -10136,7 +10160,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get active scans"
+        "summary": "Get active scans",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/scans/{scan}": {
@@ -10168,7 +10195,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get scan status"
+        "summary": "Get scan status",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/scans/{scan}/{scanner}": {
@@ -10209,7 +10239,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get scanner dataframe containing results for all transcripts"
+        "summary": "Get scanner dataframe containing results for all transcripts",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/scans/{scan}/{scanner}/{uuid}/input": {
@@ -10261,7 +10294,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get scanner input for a specific transcript"
+        "summary": "Get scanner input for a specific transcript",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/startscan": {
@@ -10290,7 +10326,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Run llm_scanner"
+        "summary": "Run llm_scanner",
+        "tags": [
+          "scans"
+        ]
       }
     },
     "/transcripts/{dir}": {
@@ -10339,7 +10378,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List transcripts"
+        "summary": "List transcripts",
+        "tags": [
+          "transcripts"
+        ]
       }
     },
     "/transcripts/{dir}/distinct": {
@@ -10416,7 +10458,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get distinct column values"
+        "summary": "Get distinct column values",
+        "tags": [
+          "transcripts"
+        ]
       }
     },
     "/transcripts/{dir}/{id}": {
@@ -10459,7 +10504,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get transcript"
+        "summary": "Get transcript",
+        "tags": [
+          "transcripts"
+        ]
       }
     },
     "/validations": {

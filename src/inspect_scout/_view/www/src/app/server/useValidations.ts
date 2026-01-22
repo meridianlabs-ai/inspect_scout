@@ -1,9 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  skipToken,
-} from "@tanstack/react-query";
+import { skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "../../state/store";
 import {
@@ -11,28 +6,32 @@ import {
   ValidationCase,
   ValidationCaseRequest,
 } from "../../types/api-types";
+import { AsyncData } from "../../utils/asyncData";
+import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 /**
  * Hook to fetch all validation set URIs in the project.
  */
-export const useValidationSets = () => {
+export const useValidationSets = (): AsyncData<string[]> => {
   const api = useApi();
-  return useQuery<string[], Error>({
+  return useAsyncDataFromQuery({
     queryKey: ["validationSets"],
     queryFn: () => api.getValidationSets(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 };
 
 /**
  * Hook to fetch validation cases for a specific validation set.
  */
-export const useValidationCases = (uri: string | typeof skipToken) => {
+export const useValidationCases = (
+  uri: string | typeof skipToken
+): AsyncData<ValidationCase[]> => {
   const api = useApi();
-  return useQuery<ValidationCase[], Error>({
+  return useAsyncDataFromQuery({
     queryKey: ["validationCases", uri],
     queryFn: uri === skipToken ? skipToken : () => api.getValidationCases(uri),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     enabled: uri !== skipToken,
   });
 };

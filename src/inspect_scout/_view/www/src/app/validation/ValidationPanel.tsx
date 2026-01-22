@@ -29,13 +29,13 @@ export const ValidationPanel: FC = () => {
   // Data fetching
   const {
     data: validationSets,
-    isLoading: setsLoading,
+    loading: setsLoading,
     error: setsError,
   } = useValidationSets();
 
   const {
     data: cases,
-    isLoading: casesLoading,
+    loading: casesLoading,
     error: casesError,
   } = useValidationCases(selectedUri ?? skipToken);
 

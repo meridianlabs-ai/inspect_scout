@@ -1,16 +1,16 @@
 import { skipToken } from "@tanstack/react-query";
-import {
-  VscodeCollapsible,
-  VscodeLabel,
-  VscodeTextfield,
-} from "@vscode-elements/react-elements";
+import { VscodeCollapsible } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { FC, useEffect } from "react";
+import { FC, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ErrorPanel } from "../../../components/ErrorPanel";
+import { ApplicationIcons } from "../../../components/icons";
 import { LoadingBar } from "../../../components/LoadingBar";
+import { getValidationParam, updateValidationParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
+import { Field } from "../../project/components/FormFields";
 import {
   useValidationCase,
   useValidationCases,
@@ -19,6 +19,7 @@ import {
 import { extractUniqueSplits } from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
+import { ValidationCaseTargetEditor } from "./ValidationCaseTargetEditor";
 import { ValidationSetSelector } from "./ValidationSetSelector";
 import { ValidationSplitSelector } from "./ValidationSplitSelector";
 
@@ -128,50 +129,55 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     // This is a placeholder; actual implementation may vary
     console.log("Selected split:", newSplit);
   };
+  const [_, setSearchParams] = useSearchParams();
+
+  const closeValidationSidebar = useCallback(() => {
+    setSearchParams((prevParams) => {
+      const isCurrentlyOpen = getValidationParam(prevParams);
+      return updateValidationParam(prevParams, !isCurrentlyOpen);
+    });
+  }, [setSearchParams]);
 
   return (
     <div className={clsx(styles.container, className)}>
-      <SidebarHeader title="Validation" secondary={transcriptId} />
+      <SidebarHeader title="Validation" onClose={closeValidationSidebar} />
       <div className={styles.content}>
         <VscodeCollapsible heading="Validation Set" open>
           <SidebarPanel>
-            <div>
-              <VscodeLabel>Validation Set</VscodeLabel>
+            <Field label="Validation Set">
               <ValidationSetSelector
                 validationSets={validationSets || []}
                 selectedUri={editorValidationSetUri}
                 onSelect={setEditorSelectedValidationSetUri}
               />
-            </div>
-            <div>
-              <VscodeLabel>Split</VscodeLabel>
+            </Field>
+            <Field label="Split">
               <ValidationSplitSelector
                 value={validationCase?.split || null}
                 existingSplits={extractUniqueSplits(validationCases || [])}
                 onChange={onSplitChange}
                 disabled={!validationCase}
               />
-            </div>
+            </Field>
           </SidebarPanel>
         </VscodeCollapsible>
 
         {editorValidationSetUri && (
           <VscodeCollapsible heading="Validation Case" open>
             <SidebarPanel>
-              <VscodeLabel>Predicate</VscodeLabel>
-              {validationCase?.predicate || "eq"}
+              <SecondaryDisplayValue label="ID" value={transcriptId} />
+              <Field label="Target">
+                <ValidationCaseTargetEditor
+                  target="true"
+                  onChange={(target) => {
+                    console.log("NEW TARGET:" + target);
+                  }}
+                />
+              </Field>
 
-              <VscodeLabel>Target</VscodeLabel>
-              <VscodeTextfield
-                id="field-target"
-                value={String(validationCase?.target)}
-                placeholder="Target"
-                spellCheck={false}
-                autocomplete="off"
-              ></VscodeTextfield>
-
-              <VscodeLabel>Split</VscodeLabel>
-              {validationCase?.split || "N/A"}
+              <Field label="Predicate">
+                {validationCase?.predicate || "eq"}
+              </Field>
             </SidebarPanel>
           </VscodeCollapsible>
         )}
@@ -190,13 +196,42 @@ export const SidebarPanel: FC<SidebarPanelProps> = ({ children }) => {
 interface SidebarHeaderProps {
   title?: string;
   secondary?: string;
+  onClose?: () => void;
 }
 
-export const SidebarHeader: FC<SidebarHeaderProps> = ({ title, secondary }) => {
+export const SidebarHeader: FC<SidebarHeaderProps> = ({
+  title,
+  secondary,
+  onClose,
+}) => {
   return (
     <div className={styles.header}>
       <h3 className={styles.headerTitle}>{title}</h3>
       {secondary && <div className={styles.headerSecondary}>{secondary}</div>}
+      {onClose && (
+        <i
+          className={clsx(ApplicationIcons.close, styles.clickable)}
+          onClick={onClose}
+        />
+      )}
+    </div>
+  );
+};
+
+export const SecondaryDisplayValue: FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => {
+  return (
+    <div
+      className={clsx(
+        styles.idField,
+        "text-size-smaller",
+        "text-style-secondary"
+      )}
+    >
+      <span className={styles.idLabel}>{label}:</span>
+      <span className={styles.idValue}>{value}</span>
     </div>
   );
 };

@@ -9018,14 +9018,14 @@ span.ap-marker-container:hover span.ap-marker {
   width: 100%;
   height: 100%;
 }
-._container_k3k1e_1 {
+._container_ncxp5_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 0;
 }
 
-._header_k3k1e_8 {
+._header_ncxp5_8 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9033,7 +9033,7 @@ span.ap-marker-container:hover span.ap-marker {
   flex-shrink: 0;
 }
 
-._headerTitle_k3k1e_16 {
+._headerTitle_ncxp5_16 {
   margin: 0;
   font-size: var(--inspect-font-size-smaller);
   color: var(--bs-body-color);
@@ -9041,30 +9041,33 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerSecondary_k3k1e_24 {
+._headerSecondary_ncxp5_24 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_k3k1e_29 {
+._content_ncxp5_29 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_k3k1e_34 {
+._placeholder_ncxp5_34 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_k3k1e_41 {
+._textValue_ncxp5_41 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_k3k1e_46 {
+._panel_ncxp5_46 {
   background-color: var(--bs-body-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0.5rem 0.5rem 1.5rem 0.5rem;
 }
 /* Modal styles for the "New Split" dialog */

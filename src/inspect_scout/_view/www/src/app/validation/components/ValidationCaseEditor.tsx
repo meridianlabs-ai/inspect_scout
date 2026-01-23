@@ -135,19 +135,23 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       <div className={styles.content}>
         <VscodeCollapsible heading="Validation Set" open>
           <SidebarPanel>
-            <VscodeLabel>Validation Set</VscodeLabel>
-            <ValidationSetSelector
-              validationSets={validationSets || []}
-              selectedUri={editorValidationSetUri}
-              onSelect={setEditorSelectedValidationSetUri}
-            />
-            <VscodeLabel>Split</VscodeLabel>
-            <ValidationSplitSelector
-              value={validationCase?.split || null}
-              existingSplits={extractUniqueSplits(validationCases || [])}
-              onChange={onSplitChange}
-              disabled={!validationCase}
-            />
+            <div>
+              <VscodeLabel>Validation Set</VscodeLabel>
+              <ValidationSetSelector
+                validationSets={validationSets || []}
+                selectedUri={editorValidationSetUri}
+                onSelect={setEditorSelectedValidationSetUri}
+              />
+            </div>
+            <div>
+              <VscodeLabel>Split</VscodeLabel>
+              <ValidationSplitSelector
+                value={validationCase?.split || null}
+                existingSplits={extractUniqueSplits(validationCases || [])}
+                onChange={onSplitChange}
+                disabled={!validationCase}
+              />
+            </div>
           </SidebarPanel>
         </VscodeCollapsible>
 

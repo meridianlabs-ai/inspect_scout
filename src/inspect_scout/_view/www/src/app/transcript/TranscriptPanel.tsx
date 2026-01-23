@@ -99,7 +99,7 @@ export const TranscriptPanel: FC = () => {
         <VscodeSplitLayout
           className={styles.splitLayout}
           fixedPane="end"
-          initialHandlePosition="70%"
+          initialHandlePosition="80%"
         >
           <div
             slot="start"

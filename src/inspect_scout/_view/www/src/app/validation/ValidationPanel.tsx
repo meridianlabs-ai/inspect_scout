@@ -205,6 +205,20 @@ export const ValidationPanel: FC = () => {
   // Extract unique splits for filter dropdown
   const splits = useMemo(() => extractUniqueSplits(cases ?? []), [cases]);
 
+  // Check for empty state (no validation sets available)
+  const hasNoValidationSets =
+    !setsLoading && !setsError && validationSets?.length === 0;
+
+  if (hasNoValidationSets) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.noSetsState}>
+          <span className={styles.noSetsTitle}>Validation</span>
+        </div>
+      </div>
+    );
+  }
+
   // Filter handlers
   const handleSplitFilterChange = (e: Event) => {
     const value = (e.target as HTMLSelectElement).value;

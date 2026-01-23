@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as PathParam
+from send2trash import send2trash
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -151,14 +152,14 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        try:
-            file_path.unlink()
-            return {"deleted": True}
-        except FileNotFoundError:
+        if not file_path.exists():
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Validation file not found",
-            ) from None
+            )
+
+        send2trash(str(file_path))
+        return {"deleted": True}
 
     @router.put(
         "/{uri}/rename",

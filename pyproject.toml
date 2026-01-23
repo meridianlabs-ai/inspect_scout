@@ -34,6 +34,7 @@ dependencies = [
     "ruamel.yaml>=0.18.0",
     "shortuuid",
     "sse-starlette>=2.0.0",
+    "send2trash>=1.8.0",
     "typing_extensions>=4.9.0",
     "universal-pathlib>=0.2.6",
     "uvicorn"
@@ -62,7 +63,8 @@ dev = [
     "pyarrow-stubs>=20.0.0.20250928",
     "types-jsonschema",
     "types-psutil",
-    "types-PyYAML"
+    "types-PyYAML",
+    "types-Send2Trash"
 ]
 doc = [
     "jupyter",
@@ -90,7 +92,8 @@ dev = [
     "pyarrow-stubs>=20.0.0.20250928",
     "types-jsonschema",
     "types-psutil",
-    "types-PyYAML"
+    "types-PyYAML",
+    "types-Send2Trash"
 ]
 doc = [
     "jupyter",

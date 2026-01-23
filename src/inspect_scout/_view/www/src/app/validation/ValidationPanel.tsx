@@ -362,7 +362,7 @@ export const ValidationPanel: FC = () => {
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
         onSubmit={deleteSetMutation.isPending ? undefined : handleDeleteSet}
-        title="Delete Validation Set"
+        title="Move to Trash"
         footer={
           <>
             <VscodeButton secondary onClick={() => setShowDeleteModal(false)}>
@@ -372,16 +372,16 @@ export const ValidationPanel: FC = () => {
               onClick={handleDeleteSet}
               disabled={deleteSetMutation.isPending}
             >
-              {deleteSetMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteSetMutation.isPending ? "Moving..." : "Move to Trash"}
             </VscodeButton>
           </>
         }
       >
         <div className={styles.modalContent}>
           <p>
-            Are you sure you want to delete <strong>{currentFilename}</strong>?
+            Are you sure you want to move <strong>{currentFilename}</strong> to
+            the trash?
           </p>
-          <p className={styles.warning}>This action cannot be undone.</p>
         </div>
       </Modal>
 

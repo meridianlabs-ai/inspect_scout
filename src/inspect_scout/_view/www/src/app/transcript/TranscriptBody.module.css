@@ -11,7 +11,7 @@
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   position: sticky;
-  z-index: 1001;
+  z-index: 999;
   top: 0;
   background-color: var(--bs-body-bg);
 }

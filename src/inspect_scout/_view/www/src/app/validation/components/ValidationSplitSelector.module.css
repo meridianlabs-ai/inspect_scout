@@ -1,0 +1,38 @@
+/* Modal styles for the "New Split" dialog */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+}
+
+.modalButton {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalButton:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.modalButtonPrimary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.modalButtonPrimary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.modalButtonPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

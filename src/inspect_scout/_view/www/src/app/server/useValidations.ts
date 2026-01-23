@@ -40,18 +40,17 @@ export const useValidationCases = (
  * Hook to fetch a single validation case by URI and case ID.
  */
 export const useValidationCase = (
-  uri: string | typeof skipToken,
-  caseId: string | typeof skipToken
+  params: { url: string; caseId: string } | typeof skipToken
 ): AsyncData<ValidationCase> => {
   const api = useApi();
+
   return useAsyncDataFromQuery({
-    queryKey: ["validationCase", uri, caseId],
+    queryKey: ["validationCase", params],
     queryFn:
-      uri === skipToken || caseId === skipToken
+      params === skipToken
         ? skipToken
-        : () => api.getValidationCase(uri, caseId),
+        : () => api.getValidationCase(params.url, params.caseId),
     staleTime: 60 * 1000,
-    enabled: uri !== skipToken && caseId !== skipToken,
   });
 };
 

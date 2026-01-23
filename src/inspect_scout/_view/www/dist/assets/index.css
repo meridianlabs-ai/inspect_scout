@@ -4108,39 +4108,39 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   cursor: default;
 }
-._dropdownContainer_1yyrd_1 {
+._dropdownContainer_16avu_1 {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
-.btn._toolButton_1yyrd_7 {
+.btn._toolButton_16avu_7 {
   background-color: var(--bs-light-border-subtle);
 }
 
-.btn._toolButton_1yyrd_7._bodyColor_1yyrd_11 {
+.btn._toolButton_16avu_7._bodyColor_16avu_11 {
   background-color: var(--bs-body-bg);
 }
 
-.btn-tools._toolButton_1yyrd_7 {
+.btn-tools._toolButton_16avu_7 {
   border: solid 1px var(--bs-border-color);
 }
 
-._toolButton_1yyrd_7 {
+._toolButton_16avu_7 {
   white-space: nowrap;
 }
 
-._toolButton_1yyrd_7 i {
+._toolButton_16avu_7 i {
   margin-right: 0.5em;
 }
 
-._toolButton_1yyrd_7 ._chevron_1yyrd_27 {
+._toolButton_16avu_7 ._chevron_16avu_27 {
   margin-left: 0.5em;
   margin-right: 0;
   font-size: 0.75em;
 }
 
-._toolButton_1yyrd_7:focus {
+._toolButton_16avu_7:focus {
   outline: none;
   box-shadow:
     0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
@@ -4148,7 +4148,7 @@ so disabling selection can break that functionality */
     inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-._backdrop_1yyrd_41 {
+._backdrop_16avu_41 {
   position: fixed;
   top: 0;
   left: 0;
@@ -4157,7 +4157,7 @@ so disabling selection can break that functionality */
   z-index: 1000;
 }
 
-._dropdownMenu_1yyrd_50 {
+._dropdownMenu_16avu_50 {
   position: absolute;
   top: 100%;
   left: 0;
@@ -4166,17 +4166,17 @@ so disabling selection can break that functionality */
   border: 1px solid var(--bs-border-color);
   border-radius: 0.25rem;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  z-index: 1001;
+  z-index: 999;
   min-width: 100%;
   overflow: hidden;
 }
 
-._dropdownMenu_1yyrd_50._alignRight_1yyrd_64 {
+._dropdownMenu_16avu_50._alignRight_16avu_64 {
   right: 0;
   left: auto;
 }
 
-._dropdownItem_1yyrd_69 {
+._dropdownItem_16avu_69 {
   display: block;
   width: 100%;
   padding: 0.25rem 0.75rem;
@@ -4189,11 +4189,11 @@ so disabling selection can break that functionality */
   transition: background-color 0.15s ease-in-out;
 }
 
-._dropdownItem_1yyrd_69:hover {
+._dropdownItem_16avu_69:hover {
   background-color: var(--bs-tertiary-bg);
 }
 
-._dropdownItem_1yyrd_69:active {
+._dropdownItem_16avu_69:active {
   background-color: var(--bs-secondary-bg);
 }
 ._chip_4n1t8_1 {
@@ -5123,6 +5123,44 @@ so disabling selection can break that functionality */
 }
 
 ._modalButtonPrimary_1dhsw_159:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Modal styles for the "New Split" dialog */
+._modalContent_cmqyy_2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+._modalContent_cmqyy_2 p {
+  margin: 0;
+}
+
+._modalButton_cmqyy_12 {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+._modalButton_cmqyy_12:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26 {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+._modalButtonPrimary_cmqyy_26:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -9043,57 +9081,57 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: 0.65rem;
   overflow: visible;
 }
-._tabContainer_vrt5k_1 {
+._tabContainer_rltdb_1 {
   display: grid;
   grid-template-rows: max-content minmax(0, 1fr);
   height: 100%;
 }
 
-.nav._tabs_vrt5k_7 {
+.nav._tabs_rltdb_7 {
   border-bottom: solid 1px var(--bs-border-color);
   padding-bottom: 0.25rem;
   padding-top: 0.5rem;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   position: sticky;
-  z-index: 1001;
+  z-index: 999;
   top: 0;
   background-color: var(--bs-body-bg);
 }
 
-.nav._tabs_vrt5k_7 .nav-link {
+.nav._tabs_rltdb_7 .nav-link {
   padding: 0.3rem 0.5rem;
   font-size: var(--inspect-font-size-smallest) !important;
 }
 
-._chatTab_vrt5k_24 > * > * {
+._chatTab_rltdb_24 > * > * {
   padding: 0.5rem;
 }
 
-._chatTab_vrt5k_24 {
+._chatTab_rltdb_24 {
   padding-bottom: 50px;
 }
 
-._metadata_vrt5k_32 {
+._metadata_rltdb_32 {
   padding: 0.5rem;
   padding-bottom: 50px;
 }
 
-._scrollable_vrt5k_37 {
+._scrollable_rltdb_37 {
   overflow-y: auto;
   min-height: 0;
   height: 100%;
 }
 
-._eventsSeparator_vrt5k_43 {
+._eventsSeparator_rltdb_43 {
   background-color: var(--bs-border-color);
 }
 
-._eventsList_vrt5k_47 {
+._eventsList_rltdb_47 {
   padding-bottom: 1rem;
 }
 
-._eventsContainer_vrt5k_51 {
+._eventsContainer_rltdb_51 {
   display: grid;
   width: 100%;
   grid-template-columns: 180px 1px 1fr;
@@ -9102,20 +9140,20 @@ span.ap-marker-container:hover span.ap-marker {
   padding-bottom: 44px;
 }
 
-._eventsContainer_vrt5k_51._outlineCollapsed_vrt5k_60 {
+._eventsContainer_rltdb_51._outlineCollapsed_rltdb_60 {
   grid-template-columns: 28px 1px 1fr;
 }
 
-._eventsTab_vrt5k_64 {
+._eventsTab_rltdb_64 {
   display: flex;
 }
 
-._eventsOutline_vrt5k_68 {
+._eventsOutline_rltdb_68 {
   padding-left: 0.5rem;
   padding-top: 0.8rem;
 }
 
-._outlineToggle_vrt5k_73 {
+._outlineToggle_rltdb_73 {
   cursor: pointer;
   font-size: 0.8em;
   position: absolute;
@@ -9123,7 +9161,7 @@ span.ap-marker-container:hover span.ap-marker {
   right: 0.5em;
 }
 
-._tabTool_vrt5k_81 {
+._tabTool_rltdb_81 {
   font-size: var(--inspect-font-size-smallestest) !important;
   padding: 0.1rem 0.4rem !important;
 }

@@ -56,7 +56,7 @@
   border: 1px solid var(--bs-border-color);
   border-radius: 0.25rem;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  z-index: 1001;
+  z-index: 999;
   min-width: 100%;
   overflow: hidden;
 }

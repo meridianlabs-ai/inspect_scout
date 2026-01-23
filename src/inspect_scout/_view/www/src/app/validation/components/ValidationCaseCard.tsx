@@ -1,9 +1,4 @@
-import {
-  VscodeCheckbox,
-  VscodeOption,
-  VscodeSingleSelect,
-  VscodeTextfield,
-} from "@vscode-elements/react-elements";
+import { VscodeCheckbox } from "@vscode-elements/react-elements";
 import { FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +9,7 @@ import { TranscriptInfo, ValidationCase } from "../../../types/api-types";
 import { getIdText } from "../utils";
 
 import styles from "./ValidationCaseCard.module.css";
+import { ValidationSplitSelector } from "./ValidationSplitSelector";
 
 interface ValidationCaseCardProps {
   validationCase: ValidationCase;
@@ -133,8 +129,6 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
 
   // Modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showCustomSplit, setShowCustomSplit] = useState(false);
-  const [customSplit, setCustomSplit] = useState("");
 
   // Get display text for the ID
   const idText = getIdText(id);
@@ -158,37 +152,10 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
     onSelectionChange(checked);
   };
 
-  const handleSplitChange = (e: Event) => {
-    const value = (e.target as HTMLSelectElement).value;
-    if (value === "__custom__") {
-      setShowCustomSplit(true);
-      setCustomSplit("");
-    } else if (value === "__none__") {
-      onSplitChange?.(null);
-    } else {
-      onSplitChange?.(value);
-    }
-  };
-
-  const handleCustomSplitInput = (e: Event) => {
-    setCustomSplit((e.target as HTMLInputElement).value);
-  };
-
-  const handleCustomSplitSubmit = () => {
-    if (customSplit.trim()) {
-      onSplitChange?.(customSplit.trim());
-    }
-    setShowCustomSplit(false);
-    setCustomSplit("");
-  };
-
   const handleDelete = () => {
     onDelete?.();
     setShowDeleteModal(false);
   };
-
-  // Current split value for the select
-  const splitSelectValue = split ?? "__none__";
 
   return (
     <div className={`${styles.card} ${isSelected ? styles.selected : ""}`}>
@@ -227,20 +194,13 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
 
         {/* Split column */}
         {onSplitChange ? (
-          <VscodeSingleSelect
-            value={splitSelectValue}
-            onChange={handleSplitChange}
-            className={styles.splitSelect}
+          <ValidationSplitSelector
+            value={split}
+            existingSplits={existingSplits}
+            onChange={onSplitChange}
             disabled={isUpdating}
-          >
-            <VscodeOption value="__none__">No split</VscodeOption>
-            {existingSplits.map((s) => (
-              <VscodeOption key={s} value={s}>
-                {s}
-              </VscodeOption>
-            ))}
-            <VscodeOption value="__custom__">New split...</VscodeOption>
-          </VscodeSingleSelect>
+            className={styles.splitSelect}
+          />
         ) : (
           <span className={styles.target}>{split ?? "—"}</span>
         )}
@@ -274,41 +234,6 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
           {buildTranscriptDetails(transcript)}
         </div>
       )}
-
-      {/* Custom Split Modal */}
-      <Modal
-        show={showCustomSplit}
-        onHide={() => setShowCustomSplit(false)}
-        onSubmit={customSplit.trim() ? handleCustomSplitSubmit : undefined}
-        title="New Split"
-        footer={
-          <>
-            <button
-              className={styles.modalButton}
-              onClick={() => setShowCustomSplit(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
-              onClick={handleCustomSplitSubmit}
-              disabled={!customSplit.trim()}
-            >
-              Create
-            </button>
-          </>
-        }
-      >
-        <div className={styles.modalContent}>
-          <p>Enter a name for the new split:</p>
-          <VscodeTextfield
-            value={customSplit}
-            onInput={handleCustomSplitInput}
-            placeholder="Split name"
-            data-autofocus
-          />
-        </div>
-      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

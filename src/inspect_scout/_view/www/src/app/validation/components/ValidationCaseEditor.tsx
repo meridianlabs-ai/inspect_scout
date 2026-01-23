@@ -13,11 +13,14 @@ import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
 import {
   useValidationCase,
+  useValidationCases,
   useValidationSets,
 } from "../../server/useValidations";
+import { extractUniqueSplits } from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
 import { ValidationSetSelector } from "./ValidationSetSelector";
+import { ValidationSplitSelector } from "./ValidationSplitSelector";
 
 interface ValidationCaseEditorProps {
   transcriptId: string;
@@ -45,8 +48,20 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     loading: caseLoading,
     error: caseError,
   } = useValidationCase(
-    editorValidationSetUri ? editorValidationSetUri : skipToken,
-    editorValidationSetUri ? transcriptId : skipToken
+    !editorValidationSetUri
+      ? skipToken
+      : {
+          url: editorValidationSetUri,
+          caseId: transcriptId,
+        }
+  );
+
+  const {
+    data: casesData,
+    loading: casesLoading,
+    error: casesError,
+  } = useValidationCases(
+    editorValidationSetUri ? editorValidationSetUri : skipToken
   );
 
   useEffect(() => {
@@ -56,8 +71,9 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     }
   }, [setsData, editorValidationSetUri, setEditorSelectedValidationSetUri]);
 
-  const error = setsError || caseError;
-  const loading = setsLoading || (!!editorValidationSetUri && caseLoading);
+  const error = setsError || casesError || caseError;
+  const loading =
+    setsLoading || casesLoading || (!!editorValidationSetUri && caseLoading);
   const showPanel = !setsLoading;
 
   return (
@@ -77,6 +93,7 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
               validationSets={setsData}
               editorValidationSetUri={editorValidationSetUri}
               validationCase={caseData}
+              validationCases={casesData}
               className={className}
             />
           )}
@@ -91,6 +108,7 @@ interface ValidationCaseEditorComponentProps {
   validationSets: string[];
   editorValidationSetUri?: string;
   validationCase?: ValidationCase;
+  validationCases?: ValidationCase[];
   className?: string | string[];
 }
 
@@ -99,21 +117,36 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   validationSets,
   editorValidationSetUri,
   validationCase,
+  validationCases,
   className,
 }) => {
   const setEditorSelectedValidationSetUri = useStore(
     (state) => state.setEditorSelectedValidationSetUri
   );
+  const onSplitChange = (newSplit: string | null) => {
+    // Handle split change logic here
+    // This is a placeholder; actual implementation may vary
+    console.log("Selected split:", newSplit);
+  };
+
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader title="Validation" secondary={transcriptId} />
       <div className={styles.content}>
         <VscodeCollapsible heading="Validation Set" open>
           <SidebarPanel>
+            <VscodeLabel>Validation Set</VscodeLabel>
             <ValidationSetSelector
               validationSets={validationSets || []}
               selectedUri={editorValidationSetUri}
               onSelect={setEditorSelectedValidationSetUri}
+            />
+            <VscodeLabel>Split</VscodeLabel>
+            <ValidationSplitSelector
+              value={validationCase?.split || null}
+              existingSplits={extractUniqueSplits(validationCases || [])}
+              onChange={onSplitChange}
+              disabled={!validationCase}
             />
           </SidebarPanel>
         </VscodeCollapsible>

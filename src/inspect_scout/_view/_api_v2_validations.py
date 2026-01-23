@@ -86,11 +86,16 @@ def create_validation_router(
                     detail=f"Case {i}: 'id' is required",
                 )
 
-            # Validate that at least one of target or labels is provided
+            # Validate that exactly one of target or labels is provided
             if case_req.target is None and case_req.labels is None:
                 raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST,
                     detail=f"Case {i}: must specify either 'target' or 'labels'",
+                )
+            if case_req.target is not None and case_req.labels is not None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail=f"Case {i}: cannot specify both 'target' and 'labels'",
                 )
 
             cases.append(
@@ -279,11 +284,16 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        # Validate that at least one of target or labels is provided
+        # Validate that exactly one of target or labels is provided
         if body.target is None and body.labels is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail="Must specify either 'target' or 'labels'",
+            )
+        if body.target is not None and body.labels is not None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Cannot specify both 'target' and 'labels'",
             )
 
         try:

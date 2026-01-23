@@ -224,33 +224,37 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   onClick={() => setActiveModal("split")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Assign Split"
                 >
                   <i className={ApplicationIcons.fork} />
-                  Assign Split
+                  <span className={styles.buttonText}>Assign Split</span>
                 </VscodeButton>
                 <VscodeButton
                   onClick={() => setActiveModal("copy")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Copy"
                 >
                   <i className={ApplicationIcons.copy} />
-                  Copy
+                  <span className={styles.buttonText}>Copy</span>
                 </VscodeButton>
                 <VscodeButton
                   onClick={() => setActiveModal("move")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Move"
                 >
                   <i className={ApplicationIcons.move} />
-                  Move
+                  <span className={styles.buttonText}>Move</span>
                 </VscodeButton>
                 <VscodeButton
                   onClick={() => setActiveModal("delete")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Delete"
                 >
                   <i className={ApplicationIcons.trash} />
-                  Delete
+                  <span className={styles.buttonText}>Delete</span>
                 </VscodeButton>
               </span>
             )}

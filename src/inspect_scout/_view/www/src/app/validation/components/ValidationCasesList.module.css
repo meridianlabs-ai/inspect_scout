@@ -84,6 +84,25 @@
   margin-right: 4px;
 }
 
+.buttonText {
+  /* Text shown by default */
+}
+
+/* Responsive: Icons only at narrow widths */
+@media (max-width: 900px) {
+  .buttonText {
+    display: none;
+  }
+
+  .bulkButton i {
+    margin-right: 0;
+  }
+
+  .selectedCount {
+    margin-right: 4px;
+  }
+}
+
 .headerTarget {
   text-align: right;
   min-width: 80px;

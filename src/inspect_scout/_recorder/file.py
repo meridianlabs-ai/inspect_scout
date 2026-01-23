@@ -284,10 +284,12 @@ class FileRecorder(ScanRecorder):
                 scanner_path_str = scanner_path.as_posix()
 
                 # For remote filesystems, pre-fetch the file into memory
+                dataset: ds.Dataset
                 if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
                     with file(scanner_path_str, "rb") as f:
                         file_bytes = f.read()
-                    dataset = ds.dataset(pa.BufferReader(file_bytes), format="parquet")
+                    table = pq.read_table(io.BytesIO(file_bytes))
+                    dataset = ds.dataset(table)
                 else:
                     dataset = ds.dataset(str(scanner_path), format="parquet")
 

@@ -143,20 +143,6 @@
   padding: 48px 16px;
 }
 
-.noSetsState {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-.noSetsTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--vscode-descriptionForeground);
-}
-
 .casesPlaceholder {
   padding: 16px;
   background: var(--vscode-editor-background);

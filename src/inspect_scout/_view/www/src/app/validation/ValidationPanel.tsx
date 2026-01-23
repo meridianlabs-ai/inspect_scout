@@ -16,6 +16,7 @@ import {
 
 import { ApplicationIcons } from "../../components/icons";
 import { Modal } from "../../components/Modal";
+import { NonIdealState } from "../../components/NonIdealState";
 import { TextInput } from "../../components/TextInput";
 import { useStore } from "../../state/store";
 import { useConfig } from "../server/useConfig";
@@ -205,16 +206,31 @@ export const ValidationPanel: FC = () => {
   // Extract unique splits for filter dropdown
   const splits = useMemo(() => extractUniqueSplits(cases ?? []), [cases]);
 
+  // Show nothing while loading to prevent flash of main UI
+  if (setsLoading) {
+    return <div className={styles.container} />;
+  }
+
   // Check for empty state (no validation sets available)
-  const hasNoValidationSets =
-    !setsLoading && !setsError && validationSets?.length === 0;
+  const hasNoValidationSets = !setsError && validationSets?.length === 0;
 
   if (hasNoValidationSets) {
     return (
       <div className={styles.container}>
-        <div className={styles.noSetsState}>
-          <span className={styles.noSetsTitle}>Validation</span>
-        </div>
+        <NonIdealState
+          icon={ApplicationIcons.validation}
+          title="No Validation Sets in Project"
+          description="Validation sets enable you to check scanner results against labeled cases."
+          action={
+            <a
+              href="https://meridianlabs-ai.github.io/inspect_scout/validation.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Using Scout Validation
+            </a>
+          }
+        />
       </div>
     );
   }
@@ -235,9 +251,7 @@ export const ValidationPanel: FC = () => {
       <div className={styles.headerRow}>
         <h2 className={styles.title}>Validation Set:</h2>
 
-        {setsLoading ? (
-          <div className={styles.loading}>Loading sets...</div>
-        ) : setsError ? (
+        {setsError ? (
           <div className={styles.error}>
             Error loading validation sets: {setsError.message}
           </div>

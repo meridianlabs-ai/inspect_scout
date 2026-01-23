@@ -4915,6 +4915,56 @@ so disabling selection can break that functionality */
   border-top: 1px solid
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
+._container_cr35j_1 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  width: 100%;
+  gap: 12px;
+  padding: 24px;
+}
+
+._container_cr35j_1::before {
+  content: "";
+  flex: 0 0 15%;
+}
+
+._icon_cr35j_17 {
+  font-size: 48px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+
+._title_cr35j_23 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  text-align: center;
+}
+
+._description_cr35j_30 {
+  font-size: 14px;
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
+  max-width: 300px;
+}
+
+._action_cr35j_37 {
+  margin-top: 4px;
+}
+
+._action_cr35j_37 a {
+  color: var(--bs-link-color);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+._action_cr35j_37 a:hover {
+  color: var(--bs-link-hover-color);
+  text-decoration: underline;
+}
 ._container_1linb_1 {
   display: grid;
   grid-template-columns: 1fr max-content;
@@ -5410,14 +5460,14 @@ so disabling selection can break that functionality */
 ._separator_1ph4q_10 {
   color: var(--vscode-panel-border);
 }
-._container_1pkrj_1 {
+._container_12me1_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-._headerRow_1pkrj_8 {
+._headerRow_12me1_8 {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -5425,7 +5475,7 @@ so disabling selection can break that functionality */
   flex-shrink: 0;
 }
 
-._title_1pkrj_16 {
+._title_12me1_16 {
   font-size: 16px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -5433,50 +5483,50 @@ so disabling selection can break that functionality */
   flex-shrink: 0;
 }
 
-._spacer_1pkrj_24 {
+._spacer_12me1_24 {
   flex: 1;
 }
 
-._headerActions_1pkrj_28 {
+._headerActions_12me1_28 {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 /* Filter controls in header */
-._filterControls_1pkrj_35 {
+._filterControls_12me1_35 {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-._searchInput_1pkrj_41 {
+._searchInput_12me1_41 {
   width: 180px;
   font-size: 0.85rem !important;
 }
 
-._searchInput_1pkrj_41 input {
+._searchInput_12me1_41 input {
   font-size: 0.85rem !important;
 }
 
-._splitFilter_1pkrj_50 {
+._splitFilter_12me1_50 {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-._filterLabel_1pkrj_56 {
+._filterLabel_12me1_56 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
-._splitSelect_1pkrj_61 {
+._splitSelect_12me1_61 {
   width: 80px !important;
   min-width: 80px !important;
   max-width: 80px !important;
 }
 
-._iconButton_1pkrj_67 {
+._iconButton_12me1_67 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5493,36 +5543,36 @@ so disabling selection can break that functionality */
     color 0.1s;
 }
 
-._iconButton_1pkrj_67:hover {
+._iconButton_12me1_67:hover {
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
 
-._iconButton_1pkrj_67:disabled {
+._iconButton_12me1_67:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-._modalContent_1pkrj_94 {
+._modalContent_12me1_94 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_1pkrj_94 p {
+._modalContent_12me1_94 p {
   margin: 0;
 }
 
-._warning_1pkrj_104 {
+._warning_12me1_104 {
   color: var(--vscode-errorForeground);
   font-size: 13px;
 }
 
-._renameInput_1pkrj_109 {
+._renameInput_12me1_109 {
   width: 100%;
 }
 
-._content_1pkrj_113 {
+._content_12me1_113 {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -5531,45 +5581,31 @@ so disabling selection can break that functionality */
   padding: 0;
 }
 
-._casesSection_1pkrj_122 {
+._casesSection_12me1_122 {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-._loading_1pkrj_129 {
+._loading_12me1_129 {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
   padding: 16px 0;
 }
 
-._error_1pkrj_135 {
+._error_12me1_135 {
   color: var(--vscode-errorForeground);
   padding: 16px 0;
 }
 
-._emptyState_1pkrj_140 {
+._emptyState_12me1_140 {
   color: var(--vscode-descriptionForeground);
   text-align: center;
   padding: 48px 16px;
 }
 
-._noSetsState_1pkrj_146 {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-._noSetsTitle_1pkrj_154 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--vscode-descriptionForeground);
-}
-
-._casesPlaceholder_1pkrj_160 {
+._casesPlaceholder_12me1_146 {
   padding: 16px;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
@@ -5578,28 +5614,28 @@ so disabling selection can break that functionality */
 }
 
 /* Summary wrapper for responsive hiding */
-._summaryWrapper_1pkrj_169 {
+._summaryWrapper_12me1_155 {
   flex-shrink: 0;
 }
 
 /* Responsive: Hide summary at medium widths */
 @media (max-width: 1150px) {
-  ._summaryWrapper_1pkrj_169 {
+  ._summaryWrapper_12me1_155 {
     display: none;
   }
 }
 
 /* Responsive: Wrap header at narrow widths */
 @media (max-width: 900px) {
-  ._headerRow_1pkrj_8 {
+  ._headerRow_12me1_8 {
     flex-wrap: wrap;
   }
 
-  ._spacer_1pkrj_24 {
+  ._spacer_12me1_24 {
     display: none;
   }
 
-  ._filterControls_1pkrj_35 {
+  ._filterControls_12me1_35 {
     width: 100%;
     margin-top: 4px;
     order: 10;

@@ -5153,7 +5153,7 @@ so disabling selection can break that functionality */
   opacity: 0.5;
   cursor: default;
 }
-._container_1x5gb_1 {
+._container_6yq0c_1 {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -5163,7 +5163,7 @@ so disabling selection can break that functionality */
 }
 
 /* Grid layout for header and rows */
-._gridContainer_1x5gb_11 {
+._gridContainer_6yq0c_11 {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -5172,16 +5172,18 @@ so disabling selection can break that functionality */
 }
 
 /* Grid header - fully enclosed */
-._header_1x5gb_20 {
+._header_6yq0c_20 {
   display: grid;
   grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
   gap: 12px;
-  padding: calc(0.3rem + 1px) 1rem;
+  padding: 0 1rem;
+  height: 28px;
   background: var(--vscode-sideBarSectionHeader-background);
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   font-size: 0.75rem;
   font-weight: 500;
+  line-height: 28px;
   color: var(--vscode-descriptionForeground);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -5191,57 +5193,62 @@ so disabling selection can break that functionality */
   user-select: none;
 }
 
-._headerCheckbox_1x5gb_39 {
+._headerCheckbox_6yq0c_41 {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   transform: scale(0.85);
 }
 
-._headerTranscript_1x5gb_46 {
+._headerTranscript_6yq0c_48 {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 /* Bulk actions in header */
-._bulkActions_1x5gb_53 {
+._bulkActions_6yq0c_55 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-left: 12px;
 }
 
-._selectedCount_1x5gb_60 {
+._selectedCount_6yq0c_62 {
   font-weight: 600;
+  font-size: 10px;
   text-transform: none;
   letter-spacing: normal;
   color: var(--vscode-foreground);
 }
 
-._bulkButton_1x5gb_67 {
+._bulkButton_6yq0c_70 {
   text-transform: none;
   letter-spacing: normal;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+  height: 24px !important;
+  min-height: 24px !important;
 }
 
-._headerTarget_1x5gb_72 {
+._headerTarget_6yq0c_79 {
   text-align: right;
   min-width: 80px;
   padding-right: 8px;
 }
 
-._headerSplit_1x5gb_78 {
+._headerSplit_6yq0c_85 {
   text-align: center;
 }
 
-._headerActions_1x5gb_82 {
+._headerActions_6yq0c_89 {
   display: flex;
   justify-content: flex-start;
   min-width: 56px;
 }
 
 /* Scrollable list */
-._list_1x5gb_89 {
+._list_6yq0c_96 {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -5250,35 +5257,35 @@ so disabling selection can break that functionality */
   flex: 1;
 }
 
-._emptyState_1x5gb_98 {
+._emptyState_6yq0c_105 {
   color: var(--vscode-descriptionForeground);
   text-align: center;
   padding: 24px 1rem;
 }
 
 /* Modal styles */
-._modalContent_1x5gb_105 {
+._modalContent_6yq0c_112 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_1x5gb_105 p {
+._modalContent_6yq0c_112 p {
   margin: 0;
   color: var(--vscode-foreground);
 }
 
-._splitSelector_1x5gb_116 {
+._splitSelector_6yq0c_123 {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-._customInput_1x5gb_122 {
+._customInput_6yq0c_129 {
   margin-top: 4px;
 }
 
-._warning_1x5gb_126 {
+._warning_6yq0c_133 {
   color: var(--vscode-errorForeground);
   font-size: 0.9em;
 }

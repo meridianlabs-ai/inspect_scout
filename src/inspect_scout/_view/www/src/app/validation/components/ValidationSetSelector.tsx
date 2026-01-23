@@ -40,7 +40,6 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
         onChange={handleChange}
         className={styles.select}
       >
-        <VscodeOption value="">Select a validation set...</VscodeOption>
         {validationSets.map((uri) => (
           <VscodeOption key={uri} value={uri}>
             {getDisplayName(uri)}

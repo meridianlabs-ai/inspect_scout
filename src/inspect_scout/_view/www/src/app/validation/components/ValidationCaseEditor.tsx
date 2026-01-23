@@ -6,6 +6,7 @@ import { LoadingBar } from "../../../components/LoadingBar";
 import { useValidationSets } from "../../server/useValidations";
 
 import styles from "./ValidationCaseEditor.module.css";
+import { ValidationSetSelector } from "./ValidationSetSelector";
 
 interface ValidationCaseEditorProps {
   className?: string | string[];
@@ -14,7 +15,7 @@ interface ValidationCaseEditorProps {
 export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
   className,
 }) => {
-  const { data, isLoading, error } = useValidationSets();
+  const { data, loading, error } = useValidationSets();
 
   return (
     <>
@@ -26,11 +27,13 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
       )}
       {!error && (
         <>
-          <LoadingBar loading={isLoading} />
-          <ValidationCaseEditorComponent
-            validationSets={data}
-            className={className}
-          />
+          <LoadingBar loading={loading} />
+          {!loading && (
+            <ValidationCaseEditorComponent
+              validationSets={data}
+              className={className}
+            />
+          )}
         </>
       )}
     </>
@@ -53,7 +56,11 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       </div>
       <div className={styles.content}>
         <p className={styles.placeholder}>
-          Select a message to create a validation case
+          <ValidationSetSelector
+            validationSets={validationSets || []}
+            selectedUri={""}
+            onSelect={() => {}}
+          />
         </p>
       </div>
     </div>

@@ -9,7 +9,6 @@ import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscode } from "./api/api-vscode";
 import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
-import { useTopicInvalidation } from "./app/server/useTopicInvalidation";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
 import { defaultRetry } from "./utils/react-query";

@@ -4960,12 +4960,12 @@ so disabling selection can break that functionality */
 ._hidden_e1pcq_40 {
   opacity: 0 !important;
 }
-._card_tvzj6_1 {
+._card_1v407_1 {
   display: grid;
-  grid-template-columns: 27px 1fr auto 90px auto;
+  grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
   gap: 12px;
-  padding: 0.3rem 1rem;
+  padding: calc(0.3rem + 1px) 1rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -4973,28 +4973,29 @@ so disabling selection can break that functionality */
   cursor: pointer;
 }
 
-._card_tvzj6_1:hover {
+._card_1v407_1:hover {
   background: var(--vscode-list-inactiveSelectionBackground, rgba(128, 128, 128, 0.04));
 }
 
-._card_tvzj6_1._selected_tvzj6_18 {
+._card_1v407_1._selected_1v407_18 {
   /* No special background for selected rows */
 }
 
-._checkbox_tvzj6_22 {
+._checkbox_1v407_22 {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: scale(0.85);
 }
 
-._transcriptCell_tvzj6_28 {
+._transcriptCell_1v407_29 {
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
 }
 
-._idLink_tvzj6_35 {
+._idLink_1v407_36 {
   background: none;
   border: none;
   padding: 0;
@@ -5008,28 +5009,28 @@ so disabling selection can break that functionality */
   text-align: left;
 }
 
-._idLink_tvzj6_35:hover:not(:disabled) {
+._idLink_1v407_36:hover:not(:disabled) {
   text-decoration: underline;
 }
 
-._idLink_tvzj6_35:disabled {
+._idLink_1v407_36:disabled {
   color: var(--vscode-disabledForeground);
   cursor: default;
 }
 
-._targetCell_tvzj6_58 {
+._targetCell_1v407_59 {
   text-align: right;
   min-width: 80px;
   padding-right: 8px;
 }
 
-._target_tvzj6_58 {
+._target_1v407_59 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
 /* Boolean target badges */
-._targetTrue_tvzj6_70 {
+._targetTrue_1v407_71 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -5041,7 +5042,7 @@ so disabling selection can break that functionality */
   color: var(--bs-body-bg);
 }
 
-._targetFalse_tvzj6_82 {
+._targetFalse_1v407_83 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -5054,7 +5055,7 @@ so disabling selection can break that functionality */
 }
 
 /* Subtle split selector */
-._splitSelect_tvzj6_95 {
+._splitSelect_1v407_96 {
   width: 90px !important;
   min-width: 90px !important;
   max-width: 90px !important;
@@ -5062,12 +5063,12 @@ so disabling selection can break that functionality */
   --vscode-dropdown-background: transparent;
 }
 
-._splitSelect_tvzj6_95:hover {
+._splitSelect_1v407_96:hover {
   --vscode-dropdown-background: var(--vscode-list-hoverBackground);
 }
 
 /* Action buttons */
-._actions_tvzj6_108 {
+._actions_1v407_109 {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -5075,7 +5076,7 @@ so disabling selection can break that functionality */
   min-width: 56px;
 }
 
-._actionButton_tvzj6_116 {
+._actionButton_1v407_117 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5091,18 +5092,18 @@ so disabling selection can break that functionality */
   transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
-._actionButton_tvzj6_116:hover:not(:disabled) {
+._actionButton_1v407_117:hover:not(:disabled) {
   opacity: 1;
   background: var(--vscode-list-hoverBackground);
 }
 
-._actionButton_tvzj6_116:disabled {
+._actionButton_1v407_117:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
 /* Transcript details (below ID link) */
-._detailsRow_tvzj6_143 {
+._detailsRow_1v407_144 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.8rem;
   line-height: 1.2;
@@ -5110,22 +5111,22 @@ so disabling selection can break that functionality */
 }
 
 /* Modal styles */
-._modalContent_tvzj6_151 {
+._modalContent_1v407_152 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_tvzj6_151 p {
+._modalContent_1v407_152 p {
   margin: 0;
 }
 
-._warning_tvzj6_161 {
+._warning_1v407_162 {
   color: var(--vscode-errorForeground);
   font-size: 0.9rem;
 }
 
-._modalButton_tvzj6_166 {
+._modalButton_1v407_167 {
   padding: 6px 14px;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 2px;
@@ -5135,24 +5136,24 @@ so disabling selection can break that functionality */
   font-size: 13px;
 }
 
-._modalButton_tvzj6_166:hover {
+._modalButton_1v407_167:hover {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
-._modalButtonPrimary_tvzj6_180 {
+._modalButtonPrimary_1v407_181 {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
 }
 
-._modalButtonPrimary_tvzj6_180:hover {
+._modalButtonPrimary_1v407_181:hover {
   background: var(--vscode-button-hoverBackground);
 }
 
-._modalButtonPrimary_tvzj6_180:disabled {
+._modalButtonPrimary_1v407_181:disabled {
   opacity: 0.5;
   cursor: default;
 }
-._container_1u4kp_1 {
+._container_1x5gb_1 {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -5162,7 +5163,7 @@ so disabling selection can break that functionality */
 }
 
 /* Grid layout for header and rows */
-._gridContainer_1u4kp_11 {
+._gridContainer_1x5gb_11 {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -5171,12 +5172,12 @@ so disabling selection can break that functionality */
 }
 
 /* Grid header - fully enclosed */
-._header_1u4kp_20 {
+._header_1x5gb_20 {
   display: grid;
-  grid-template-columns: 27px 1fr auto 90px auto;
+  grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
   gap: 12px;
-  padding: 0.3rem 1rem;
+  padding: calc(0.3rem + 1px) 1rem;
   background: var(--vscode-sideBarSectionHeader-background);
   border-bottom: solid var(--bs-light-border-subtle) 1px;
   font-size: 0.75rem;
@@ -5190,56 +5191,57 @@ so disabling selection can break that functionality */
   user-select: none;
 }
 
-._headerCheckbox_1u4kp_39 {
+._headerCheckbox_1x5gb_39 {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  transform: scale(0.85);
 }
 
-._headerTranscript_1u4kp_45 {
+._headerTranscript_1x5gb_46 {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 /* Bulk actions in header */
-._bulkActions_1u4kp_52 {
+._bulkActions_1x5gb_53 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-left: 12px;
 }
 
-._selectedCount_1u4kp_59 {
+._selectedCount_1x5gb_60 {
   font-weight: 600;
   text-transform: none;
   letter-spacing: normal;
   color: var(--vscode-foreground);
 }
 
-._bulkButton_1u4kp_66 {
+._bulkButton_1x5gb_67 {
   text-transform: none;
   letter-spacing: normal;
 }
 
-._headerTarget_1u4kp_71 {
+._headerTarget_1x5gb_72 {
   text-align: right;
   min-width: 80px;
   padding-right: 8px;
 }
 
-._headerSplit_1u4kp_77 {
+._headerSplit_1x5gb_78 {
   text-align: center;
 }
 
-._headerActions_1u4kp_81 {
+._headerActions_1x5gb_82 {
   display: flex;
   justify-content: flex-start;
   min-width: 56px;
 }
 
 /* Scrollable list */
-._list_1u4kp_88 {
+._list_1x5gb_89 {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -5248,35 +5250,35 @@ so disabling selection can break that functionality */
   flex: 1;
 }
 
-._emptyState_1u4kp_97 {
+._emptyState_1x5gb_98 {
   color: var(--vscode-descriptionForeground);
   text-align: center;
   padding: 24px 1rem;
 }
 
 /* Modal styles */
-._modalContent_1u4kp_104 {
+._modalContent_1x5gb_105 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_1u4kp_104 p {
+._modalContent_1x5gb_105 p {
   margin: 0;
   color: var(--vscode-foreground);
 }
 
-._splitSelector_1u4kp_115 {
+._splitSelector_1x5gb_116 {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-._customInput_1u4kp_121 {
+._customInput_1x5gb_122 {
   margin-top: 4px;
 }
 
-._warning_1u4kp_125 {
+._warning_1x5gb_126 {
   color: var(--vscode-errorForeground);
   font-size: 0.9em;
 }

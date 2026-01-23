@@ -1,9 +1,9 @@
 .card {
   display: grid;
-  grid-template-columns: 27px 1fr auto 90px auto;
+  grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
   gap: 12px;
-  padding: 0.3rem 1rem;
+  padding: calc(0.3rem + 1px) 1rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -23,6 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: scale(0.85);
 }
 
 .transcriptCell {

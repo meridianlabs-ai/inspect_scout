@@ -55,13 +55,12 @@
 .bulkActions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin-left: 12px;
 }
 
 .selectedCount {
   font-weight: 600;
-  font-size: 10px;
   text-transform: none;
   letter-spacing: normal;
   color: var(--vscode-foreground);
@@ -74,6 +73,10 @@
   font-size: 10px !important;
   height: 24px !important;
   min-height: 24px !important;
+}
+
+.bulkButton i {
+  margin-right: 4px;
 }
 
 .headerTarget {

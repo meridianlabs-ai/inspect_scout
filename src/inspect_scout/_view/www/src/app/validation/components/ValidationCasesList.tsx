@@ -1,6 +1,7 @@
 import { VscodeButton, VscodeCheckbox } from "@vscode-elements/react-elements";
 import { FC, useMemo, useState } from "react";
 
+import { ApplicationIcons } from "../../../components/icons";
 import { Modal } from "../../../components/Modal";
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
@@ -220,35 +221,35 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   {selectedIds.length} selected
                 </span>
                 <VscodeButton
-                  secondary
                   onClick={() => setActiveModal("split")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
+                  <i className={ApplicationIcons.fork} />
                   Assign Split
                 </VscodeButton>
                 <VscodeButton
-                  secondary
                   onClick={() => setActiveModal("copy")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
-                  Copy to...
+                  <i className={ApplicationIcons.copy} />
+                  Copy
                 </VscodeButton>
                 <VscodeButton
-                  secondary
                   onClick={() => setActiveModal("move")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
-                  Move to...
+                  <i className={ApplicationIcons.move} />
+                  Move
                 </VscodeButton>
                 <VscodeButton
-                  secondary
                   onClick={() => setActiveModal("delete")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
+                  <i className={ApplicationIcons.trash} />
                   Delete
                 </VscodeButton>
               </span>

@@ -1,15 +1,20 @@
-import { VscodeCheckbox } from "@vscode-elements/react-elements";
-import { FC, useMemo } from "react";
+import {
+  VscodeButton,
+  VscodeCheckbox,
+  VscodeOption,
+  VscodeSingleSelect,
+  VscodeTextfield,
+} from "@vscode-elements/react-elements";
+import { FC, useMemo, useState } from "react";
 
+import { Modal } from "../../../components/Modal";
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
 import { useTranscriptsByIds } from "../hooks/useTranscriptsByIds";
 import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
-import { ValidationBulkActions } from "./ValidationBulkActions";
 import { ValidationCaseCard } from "./ValidationCaseCard";
 import styles from "./ValidationCasesList.module.css";
-import { ValidationFilterBar } from "./ValidationFilterBar";
 
 interface ValidationCasesListProps {
   cases: ValidationCase[];
@@ -43,9 +48,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
     (state) => state.toggleValidationCaseSelection
   );
   const splitFilter = useStore((state) => state.validationSplitFilter);
-  const setSplitFilter = useStore((state) => state.setValidationSplitFilter);
   const searchText = useStore((state) => state.validationSearchText);
-  const setSearchText = useStore((state) => state.setValidationSearchText);
 
   // Extract all transcript IDs from cases (use first ID for composite IDs)
   const transcriptIds = useMemo(() => {
@@ -61,20 +64,14 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   const { data: transcriptMap, loading: transcriptsLoading } =
     useTranscriptsByIds(transcriptsDir, transcriptIds);
 
-  // Filter cases based on split, search, and transcript availability
+  // Filter and sort cases based on split, search, and transcript availability
   const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
+    const filtered = cases.filter((c) => {
       // Split filter
       if (splitFilter && c.split !== splitFilter) {
         return false;
       }
-      // Search filter (case-insensitive ID search)
-      if (searchText) {
-        const idText = getIdText(c.id).toLowerCase();
-        if (!idText.includes(searchText.toLowerCase())) {
-          return false;
-        }
-      }
+
       // Filter out cases without transcript data (once loaded)
       if (transcriptMap) {
         const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
@@ -82,7 +79,45 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           return false;
         }
       }
+
+      // Search filter (search across multiple fields)
+      if (searchText) {
+        const search = searchText.toLowerCase();
+        const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
+        const transcript = transcriptId
+          ? transcriptMap?.get(transcriptId)
+          : undefined;
+
+        // Check ID
+        const idText = getIdText(c.id).toLowerCase();
+        if (idText.includes(search)) return true;
+
+        // Check transcript details if available
+        if (transcript) {
+          if (transcript.task_set?.toLowerCase().includes(search)) return true;
+          if (transcript.task_id?.toLowerCase().includes(search)) return true;
+          if (transcript.model?.toLowerCase().includes(search)) return true;
+          if (transcript.agent?.toLowerCase().includes(search)) return true;
+        }
+
+        return false;
+      }
+
       return true;
+    });
+
+    // Sort by split: no split first, then alphabetically by split name
+    return filtered.sort((a, b) => {
+      const splitA = a.split;
+      const splitB = b.split;
+
+      // No split comes first
+      if (!splitA && splitB) return -1;
+      if (splitA && !splitB) return 1;
+      if (!splitA && !splitB) return 0;
+
+      // Both have splits - sort alphabetically
+      return splitA!.localeCompare(splitB!);
     });
   }, [cases, splitFilter, searchText, transcriptMap]);
 
@@ -138,29 +173,49 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
     setSelection({});
   };
 
+  // Bulk action modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [selectedSplit, setSelectedSplit] = useState<string>("");
+  const [customSplit, setCustomSplit] = useState("");
+  const [useCustomSplit, setUseCustomSplit] = useState(false);
+
+  const handleSplitSelectChange = (e: Event) => {
+    const value = (e.target as HTMLSelectElement).value;
+    if (value === "__custom__") {
+      setUseCustomSplit(true);
+      setSelectedSplit("");
+    } else {
+      setUseCustomSplit(false);
+      setSelectedSplit(value);
+      setCustomSplit("");
+    }
+  };
+
+  const handleCustomSplitInput = (e: Event) => {
+    const value = (e.target as HTMLInputElement).value;
+    setCustomSplit(value);
+  };
+
+  const handleAssignSplit = () => {
+    const split = useCustomSplit ? customSplit : selectedSplit;
+    handleBulkSplitChange(selectedIds, split || null);
+    setShowSplitModal(false);
+    setSelectedSplit("");
+    setCustomSplit("");
+    setUseCustomSplit(false);
+  };
+
+  const handleConfirmDelete = () => {
+    handleBulkDelete(selectedIds);
+    setShowDeleteModal(false);
+  };
+
+  const hasSelection = selectedIds.length > 0;
+  const hasBulkActions = onBulkSplitChange && onBulkDelete;
+
   return (
     <div className={styles.container}>
-      {/* Filter bar */}
-      <ValidationFilterBar
-        cases={cases}
-        splitFilter={splitFilter}
-        onSplitFilterChange={setSplitFilter}
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
-      />
-
-      {/* Bulk actions (shown when items selected) */}
-      {selectedIds.length > 0 && onBulkSplitChange && onBulkDelete && (
-        <ValidationBulkActions
-          cases={cases}
-          selectedIds={selectedIds}
-          onBulkSplitChange={handleBulkSplitChange}
-          onBulkDelete={handleBulkDelete}
-          isUpdating={isUpdating}
-          isDeleting={isDeleting}
-        />
-      )}
-
       {/* Grid container with sticky header */}
       <div className={styles.gridContainer}>
         {/* Header row */}
@@ -173,7 +228,33 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
               title={allSelected ? "Deselect all" : "Select all"}
             />
           </div>
-          <div className={styles.headerTranscript}>Transcript</div>
+          <div className={styles.headerTranscript}>
+            <span>Transcript</span>
+            {/* Bulk actions inline */}
+            {hasSelection && hasBulkActions && (
+              <span className={styles.bulkActions}>
+                <span className={styles.selectedCount}>
+                  {selectedIds.length} selected
+                </span>
+                <VscodeButton
+                  secondary
+                  onClick={() => setShowSplitModal(true)}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                >
+                  Assign Split
+                </VscodeButton>
+                <VscodeButton
+                  secondary
+                  onClick={() => setShowDeleteModal(true)}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                >
+                  Delete
+                </VscodeButton>
+              </span>
+            )}
+          </div>
           <div className={styles.headerTarget}>Target</div>
           <div className={styles.headerSplit}>Split</div>
           <div className={styles.headerActions}>Actions</div>
@@ -223,6 +304,83 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           )}
         </div>
       </div>
+
+      {/* Split Assignment Modal */}
+      <Modal
+        show={showSplitModal}
+        onHide={() => setShowSplitModal(false)}
+        title="Assign Split"
+        footer={
+          <>
+            <VscodeButton secondary onClick={() => setShowSplitModal(false)}>
+              Cancel
+            </VscodeButton>
+            <VscodeButton
+              onClick={handleAssignSplit}
+              disabled={isUpdating || (useCustomSplit && !customSplit)}
+            >
+              {isUpdating ? "Assigning..." : "Assign"}
+            </VscodeButton>
+          </>
+        }
+      >
+        <div className={styles.modalContent}>
+          <p>
+            Assign a split to {selectedIds.length} selected{" "}
+            {selectedIds.length === 1 ? "case" : "cases"}.
+          </p>
+
+          <div className={styles.splitSelector}>
+            <VscodeSingleSelect
+              value={useCustomSplit ? "__custom__" : selectedSplit}
+              onChange={handleSplitSelectChange}
+            >
+              <VscodeOption value="">Remove split</VscodeOption>
+              {existingSplits.map((split) => (
+                <VscodeOption key={split} value={split}>
+                  {split}
+                </VscodeOption>
+              ))}
+              <VscodeOption value="__custom__">Custom...</VscodeOption>
+            </VscodeSingleSelect>
+
+            {useCustomSplit && (
+              <VscodeTextfield
+                value={customSplit}
+                onInput={handleCustomSplitInput}
+                placeholder="Enter custom split name"
+                className={styles.customInput}
+                data-autofocus
+              />
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        title="Confirm Delete"
+        footer={
+          <>
+            <VscodeButton secondary onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </VscodeButton>
+            <VscodeButton onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </VscodeButton>
+          </>
+        }
+      >
+        <div className={styles.modalContent}>
+          <p>
+            Are you sure you want to delete {selectedIds.length}{" "}
+            {selectedIds.length === 1 ? "case" : "cases"}?
+          </p>
+          <p className={styles.warning}>This action cannot be undone.</p>
+        </div>
+      </Modal>
     </div>
   );
 };

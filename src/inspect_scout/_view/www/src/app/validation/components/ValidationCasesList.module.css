@@ -3,6 +3,8 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
+  width: 100%;
 }
 
 /* Grid layout for header and rows */
@@ -14,15 +16,15 @@
   overflow: hidden;
 }
 
-/* Sticky header */
+/* Grid header - fully enclosed */
 .header {
   display: grid;
-  grid-template-columns: 27px 1fr auto 90px auto;
+  grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
-  gap: 16px;
-  padding: 6px 12px;
-  background: var(--vscode-editor-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  gap: 12px;
+  padding: calc(0.3rem + 1px) 1rem;
+  background: var(--vscode-sideBarSectionHeader-background);
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--vscode-descriptionForeground);
@@ -31,22 +33,46 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  user-select: none;
 }
 
 .headerCheckbox {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  transform: scale(0.85);
 }
 
 .headerTranscript {
-  /* Takes remaining space */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Bulk actions in header */
+.bulkActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.selectedCount {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--vscode-foreground);
+}
+
+.bulkButton {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .headerTarget {
   text-align: right;
-  min-width: 100px;
-  padding-right: 16px;
+  min-width: 80px;
+  padding-right: 8px;
 }
 
 .headerSplit {
@@ -63,8 +89,8 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
+  gap: 0;
+  padding: 0;
   overflow-y: auto;
   flex: 1;
 }
@@ -72,5 +98,32 @@
 .emptyState {
   color: var(--vscode-descriptionForeground);
   text-align: center;
-  padding: 24px;
+  padding: 24px 1rem;
+}
+
+/* Modal styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+  color: var(--vscode-foreground);
+}
+
+.splitSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customInput {
+  margin-top: 4px;
+}
+
+.warning {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9em;
 }

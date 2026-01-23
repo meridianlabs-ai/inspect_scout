@@ -1,5 +1,10 @@
-import { VscodeCheckbox } from "@vscode-elements/react-elements";
-import { FC, useState } from "react";
+import {
+  VscodeCheckbox,
+  VscodeOption,
+  VscodeSingleSelect,
+  VscodeTextfield,
+} from "@vscode-elements/react-elements";
+import React, { FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ApplicationIcons } from "../../../components/icons";
@@ -9,7 +14,6 @@ import { TranscriptInfo, ValidationCase } from "../../../types/api-types";
 import { getIdText } from "../utils";
 
 import styles from "./ValidationCaseCard.module.css";
-import { ValidationSplitSelector } from "./ValidationSplitSelector";
 
 interface ValidationCaseCardProps {
   validationCase: ValidationCase;
@@ -25,14 +29,11 @@ interface ValidationCaseCardProps {
 }
 
 /**
- * Format the target value for display.
+ * Format the target value for display (non-boolean values).
  */
 const formatTarget = (target: ValidationCase["target"]): string => {
   if (typeof target === "string") {
     return target;
-  }
-  if (typeof target === "boolean") {
-    return target ? "true" : "false";
   }
   if (typeof target === "number") {
     return String(target);
@@ -44,6 +45,39 @@ const formatTarget = (target: ValidationCase["target"]): string => {
     return "";
   }
   return JSON.stringify(target);
+};
+
+/**
+ * Render the target value with appropriate styling.
+ * Boolean targets get styled badges, others get plain text.
+ */
+const renderTarget = (
+  target: ValidationCase["target"],
+  predicate: string | null | undefined
+): React.ReactNode => {
+  const showPredicate = predicate && predicate !== "eq";
+  const predicatePrefix = showPredicate ? `(${predicate}) ` : "";
+
+  if (typeof target === "boolean") {
+    return (
+      <>
+        {predicatePrefix}
+        <span className={target ? styles.targetTrue : styles.targetFalse}>
+          {String(target)}
+        </span>
+      </>
+    );
+  }
+
+  const targetText = formatTarget(target);
+  if (!targetText) return null;
+
+  return (
+    <span className={styles.target}>
+      {predicatePrefix}
+      {targetText}
+    </span>
+  );
 };
 
 /**
@@ -129,15 +163,14 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
 
   // Modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCustomSplit, setShowCustomSplit] = useState(false);
+  const [customSplit, setCustomSplit] = useState("");
 
   // Get display text for the ID
   const idText = getIdText(id);
 
-  // Format target for display
-  const targetText = formatTarget(target);
-
-  // Show predicate if it's not the default "eq"
-  const showPredicate = predicate && predicate !== "eq";
+  // Render target with appropriate styling
+  const targetElement = renderTarget(target, predicate);
 
   // Handle navigation to transcript (only works for single string IDs)
   const handleNavigateToTranscript = () => {
@@ -152,88 +185,160 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
     onSelectionChange(checked);
   };
 
+  // Handle row click to toggle selection
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't toggle if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("vscode-checkbox") ||
+      target.closest("vscode-single-select")
+    ) {
+      return;
+    }
+    onSelectionChange(!isSelected);
+  };
+
+  const handleSplitChange = (e: Event) => {
+    const value = (e.target as HTMLSelectElement).value;
+    if (value === "__custom__") {
+      setShowCustomSplit(true);
+      setCustomSplit("");
+    } else if (value === "__none__") {
+      onSplitChange?.(null);
+    } else {
+      onSplitChange?.(value);
+    }
+  };
+
+  const handleCustomSplitInput = (e: Event) => {
+    setCustomSplit((e.target as HTMLInputElement).value);
+  };
+
+  const handleCustomSplitSubmit = () => {
+    if (customSplit.trim()) {
+      onSplitChange?.(customSplit.trim());
+    }
+    setShowCustomSplit(false);
+    setCustomSplit("");
+  };
+
   const handleDelete = () => {
     onDelete?.();
     setShowDeleteModal(false);
   };
 
+  // Current split value for the select
+  const splitSelectValue = split ?? "__none__";
+
   return (
-    <div className={`${styles.card} ${isSelected ? styles.selected : ""}`}>
-      {/* First row: grid layout matching header */}
-      <div className={styles.row}>
-        {/* Checkbox column */}
-        <div className={styles.checkbox}>
-          <VscodeCheckbox
-            checked={isSelected}
-            onChange={handleCheckboxChange}
-          />
-        </div>
-
-        {/* Transcript column */}
-        <div className={styles.transcriptCell}>
-          <button
-            className={styles.idLink}
-            onClick={handleNavigateToTranscript}
-            disabled={!transcriptsDir}
-            title={
-              transcriptsDir ? "View transcript" : "No transcripts directory"
-            }
-          >
-            {idText}
-          </button>
-        </div>
-
-        {/* Target column */}
-        <div className={styles.targetCell}>
-          {targetText && (
-            <span className={styles.target}>
-              {showPredicate ? `(${predicate}) ` : ""}{targetText}
-            </span>
-          )}
-        </div>
-
-        {/* Split column */}
-        {onSplitChange ? (
-          <ValidationSplitSelector
-            value={split}
-            existingSplits={existingSplits}
-            onChange={onSplitChange}
-            disabled={isUpdating}
-            className={styles.splitSelect}
-          />
-        ) : (
-          <span className={styles.target}>{split ?? "—"}</span>
-        )}
-
-        {/* Actions column */}
-        <div className={styles.actions}>
-          <button
-            className={styles.actionButton}
-            onClick={handleNavigateToTranscript}
-            disabled={!transcriptsDir}
-            title="View transcript"
-          >
-            <i className={ApplicationIcons.edit} />
-          </button>
-          {onDelete && (
-            <button
-              className={styles.actionButton}
-              onClick={() => setShowDeleteModal(true)}
-              disabled={isDeleting}
-              title="Delete case"
-            >
-              <i className={ApplicationIcons.trash} />
-            </button>
-          )}
-        </div>
+    <div
+      className={`${styles.card} ${isSelected ? styles.selected : ""}`}
+      onClick={handleRowClick}
+    >
+      {/* Checkbox column */}
+      <div className={styles.checkbox}>
+        <VscodeCheckbox checked={isSelected} onChange={handleCheckboxChange} />
       </div>
 
-      {/* Second row: Transcript details */}
-      {transcript && (
-        <div className={styles.detailsRow}>
-          {buildTranscriptDetails(transcript)}
-        </div>
+      {/* Transcript column (ID + details) */}
+      <div className={styles.transcriptCell}>
+        <button
+          className={styles.idLink}
+          onClick={handleNavigateToTranscript}
+          disabled={!transcriptsDir}
+          title={
+            transcriptsDir ? "View transcript" : "No transcripts directory"
+          }
+        >
+          Transcript ID: {idText}
+        </button>
+        {transcript && (
+          <div className={styles.detailsRow}>
+            {buildTranscriptDetails(transcript)}
+          </div>
+        )}
+      </div>
+
+      {/* Target column */}
+      <div className={styles.targetCell}>{targetElement}</div>
+
+      {/* Split column */}
+      {onSplitChange ? (
+        <VscodeSingleSelect
+          value={splitSelectValue}
+          onChange={handleSplitChange}
+          className={styles.splitSelect}
+          disabled={isUpdating}
+        >
+          <VscodeOption value="__none__">(No split)</VscodeOption>
+          {existingSplits.map((s) => (
+            <VscodeOption key={s} value={s}>
+              {s}
+            </VscodeOption>
+          ))}
+          <VscodeOption value="__custom__">New split...</VscodeOption>
+        </VscodeSingleSelect>
+      ) : (
+        <span className={styles.target}>{split ?? "—"}</span>
       )}
+
+      {/* Actions column */}
+      <div className={styles.actions}>
+        <button
+          className={styles.actionButton}
+          onClick={handleNavigateToTranscript}
+          disabled={!transcriptsDir}
+          title="View transcript"
+        >
+          <i className={ApplicationIcons.edit} />
+        </button>
+        {onDelete && (
+          <button
+            className={styles.actionButton}
+            onClick={() => setShowDeleteModal(true)}
+            disabled={isDeleting}
+            title="Delete case"
+          >
+            <i className={ApplicationIcons.trash} />
+          </button>
+        )}
+      </div>
+
+      {/* Custom Split Modal */}
+      <Modal
+        show={showCustomSplit}
+        onHide={() => setShowCustomSplit(false)}
+        onSubmit={customSplit.trim() ? handleCustomSplitSubmit : undefined}
+        title="New Split"
+        footer={
+          <>
+            <button
+              className={styles.modalButton}
+              onClick={() => setShowCustomSplit(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+              onClick={handleCustomSplitSubmit}
+              disabled={!customSplit.trim()}
+            >
+              Create
+            </button>
+          </>
+        }
+      >
+        <div className={styles.modalContent}>
+          <p>Enter a name for the new split:</p>
+          <VscodeTextfield
+            value={customSplit}
+            onInput={handleCustomSplitInput}
+            placeholder="Split name"
+            data-autofocus
+          />
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

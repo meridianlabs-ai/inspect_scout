@@ -1,10 +1,11 @@
 import {
   VscodeOption,
   VscodeSingleSelect,
-  VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, useMemo } from "react";
+import { ChangeEvent, FC, useMemo } from "react";
 
+import { ApplicationIcons } from "../../../components/icons";
+import { TextInput } from "../../../components/TextInput";
 import { ValidationCase } from "../../../types/api-types";
 import { extractUniqueSplits } from "../utils";
 
@@ -36,15 +37,24 @@ export const ValidationFilterBar: FC<ValidationFilterBarProps> = ({
     onSplitFilterChange(value || undefined);
   };
 
-  const handleSearchInput = (e: Event) => {
-    const value = (e.target as HTMLInputElement).value;
-    onSearchTextChange(value || undefined);
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onSearchTextChange(e.target.value || undefined);
   };
 
   return (
     <div className={styles.container}>
+      {/* Search first */}
+      <TextInput
+        icon={ApplicationIcons.search}
+        value={searchText ?? ""}
+        onChange={handleSearchChange}
+        placeholder="Search..."
+        className={styles.searchInput}
+      />
+
+      {/* Filter second */}
       <div className={styles.filterGroup}>
-        <span className={styles.filterLabel}>Filter</span>
+        <span className={styles.filterLabel}>Split:</span>
         <VscodeSingleSelect
           value={splitFilter ?? ""}
           onChange={handleSplitChange}
@@ -58,13 +68,6 @@ export const ValidationFilterBar: FC<ValidationFilterBarProps> = ({
           ))}
         </VscodeSingleSelect>
       </div>
-
-      <VscodeTextfield
-        value={searchText ?? ""}
-        onInput={handleSearchInput}
-        placeholder="Search by ID..."
-        className={styles.searchInput}
-      />
     </div>
   );
 };

@@ -5,7 +5,14 @@ import {
   VscodeSingleSelect,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { ChangeEvent, FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { Modal } from "../../components/Modal";
@@ -212,7 +219,7 @@ export const ValidationPanel: FC = () => {
     <div className={styles.container}>
       {/* Header row: Title + Set Selector + Actions + Summary + Filter */}
       <div className={styles.headerRow}>
-        <h2 className={styles.title}>Validation Set</h2>
+        <h2 className={styles.title}>Validation Set:</h2>
 
         {setsLoading ? (
           <div className={styles.loading}>Loading sets...</div>

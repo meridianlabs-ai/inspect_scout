@@ -54,10 +54,6 @@ export const apiVscode = (
 
   return {
     capability: "scans",
-    // eslint-disable-next-line @typescript-eslint/require-await
-    getConfigVersion: async (): Promise<string> => {
-      throw new Error("Not Yet Implemented");
-    },
     getConfig: async () => {
       const data = await fetchScansData();
       return {

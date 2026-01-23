@@ -9,7 +9,7 @@ import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscode } from "./api/api-vscode";
 import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
-import { useServerConfigInvalidation } from "./app/server/useServerConfigInvalidation";
+import { useTopicInvalidation } from "./app/server/useTopicInvalidation";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
 import { defaultRetry } from "./utils/react-query";
@@ -51,9 +51,9 @@ const urlParams = new URLSearchParams(window.location.search);
 const scansMode =
   urlParams.get("mode") === "scans" || api.capability === "scans";
 
-// Component to run config invalidation hook
-const ServerConfigWatcher = (): null => {
-  useServerConfigInvalidation();
+// Component to run topic invalidation hook
+const TopicWatcher = (): null => {
+  useTopicInvalidation();
   return null;
 };
 
@@ -66,7 +66,7 @@ root.render(
           <App mode={scansMode ? "scans" : "workbench"} />
         </ExtendedFindProvider>
       </StoreProvider>
-      <ServerConfigWatcher />
+      <TopicWatcher />
     </ApiProvider>
     <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>

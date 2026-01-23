@@ -13,6 +13,7 @@ from .._validation.types import ValidationCase
 from ._api_v2_config import create_config_router
 from ._api_v2_scanners import create_scanners_router
 from ._api_v2_scans import create_scans_router
+from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import create_transcripts_router
 from ._api_v2_validations import create_validation_router
 from ._server_common import CustomJsonSchemaGenerator
@@ -109,6 +110,7 @@ def v2_api_app(
 
     # Include all routers
     app.include_router(create_config_router(view_config=view_config))
+    app.include_router(create_topics_router())
     app.include_router(create_transcripts_router())
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())

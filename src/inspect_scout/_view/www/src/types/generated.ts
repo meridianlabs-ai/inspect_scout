@@ -44,46 +44,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/config-version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get config version
-         * @description Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.
-         */
-        get: operations["config_version_config_version_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/config-version/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Stream config version changes
-         * @description SSE endpoint that pushes when config version changes.
-         */
-        get: operations["config_version_stream_config_version_stream_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/project/config": {
         parameters: {
             query?: never;
@@ -242,6 +202,26 @@ export interface paths {
          * @description Runs a scan using llm_scanner with the provided ScanJobConfig.
          */
         post: operations["run_llm_scanner_startscan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/topics/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream topic updates
+         * @description SSE endpoint that pushes topic versions when they change. Each message is a JSON dict mapping topic names to timestamps.
+         */
+        get: operations["topics_stream_topics_stream_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3873,44 +3853,6 @@ export interface operations {
             };
         };
     };
-    config_version_config_version_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    config_version_stream_config_version_stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     get_project_config_project_config_get: {
         parameters: {
             query?: never;
@@ -4126,6 +4068,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    topics_stream_topics_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

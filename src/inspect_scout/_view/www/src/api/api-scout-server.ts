@@ -32,10 +32,6 @@ export const apiScoutServer = (
 
   return {
     capability: "workbench",
-    getConfigVersion: async (): Promise<string> => {
-      const result = await requestApi.fetchString("GET", `/config-version`);
-      return result.raw;
-    },
     getConfig: async (): Promise<AppConfig> => {
       const result = await requestApi.fetchString("GET", `/config`);
       return asyncJsonParse<AppConfig>(result.raw);

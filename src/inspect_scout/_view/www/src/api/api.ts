@@ -66,6 +66,7 @@ export interface ScanApi {
   // Validation API
   getValidationSets(): Promise<string[]>;
   getValidationCases(uri: string): Promise<ValidationCase[]>;
+  getValidationCase(uri: string, caseId: string): Promise<ValidationCase>;
   createValidationSet(request: CreateValidationSetRequest): Promise<string>;
   upsertValidationCase(
     uri: string,

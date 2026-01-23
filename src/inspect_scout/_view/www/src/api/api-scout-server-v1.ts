@@ -172,6 +172,10 @@ export const apiScoutServerV1 = (
       throw new Error("Not implemented in API v1");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
     createValidationSet: async (): Promise<never> => {
       throw new Error("Not implemented in API v1");
     },

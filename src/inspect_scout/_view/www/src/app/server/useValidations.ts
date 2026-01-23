@@ -37,6 +37,25 @@ export const useValidationCases = (
 };
 
 /**
+ * Hook to fetch a single validation case by URI and case ID.
+ */
+export const useValidationCase = (
+  uri: string | typeof skipToken,
+  caseId: string | typeof skipToken
+): AsyncData<ValidationCase> => {
+  const api = useApi();
+  return useAsyncDataFromQuery({
+    queryKey: ["validationCase", uri, caseId],
+    queryFn:
+      uri === skipToken || caseId === skipToken
+        ? skipToken
+        : () => api.getValidationCase(uri, caseId),
+    staleTime: 60 * 1000,
+    enabled: uri !== skipToken && caseId !== skipToken,
+  });
+};
+
+/**
  * Hook to create a new validation set.
  */
 export const useCreateValidationSet = () => {

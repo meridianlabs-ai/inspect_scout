@@ -10,20 +10,24 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem;
-  border-bottom: 1px solid var(--bs-border-color);
-  background-color: var(--bs-light);
   flex-shrink: 0;
 }
 
-.title {
+.headerTitle {
   margin: 0;
   font-size: var(--inspect-font-size-smaller);
   color: var(--bs-body-color);
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.headerSecondary {
+  font-size: var(--inspect-font-size-smallest);
+  color: var(--bs-secondary-color);
 }
 
 .content {
   flex: 1;
-  padding: 1rem;
   overflow-y: auto;
 }
 
@@ -32,4 +36,14 @@
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
+}
+
+.textValue {
+  font-family: var(--bs-font-monospace);
+  font-size: var(--inspect-font-size-smaller);
+}
+
+.panel {
+  background-color: var(--bs-body-bg);
+  padding: 0.5rem 0.5rem 1.5rem 0.5rem;
 }

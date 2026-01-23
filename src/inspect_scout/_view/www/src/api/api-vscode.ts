@@ -192,6 +192,10 @@ export const apiVscode = (
       throw new Error("Not implemented in VSCode API");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
     createValidationSet: async (): Promise<never> => {
       throw new Error("Not implemented in VSCode API");
     },

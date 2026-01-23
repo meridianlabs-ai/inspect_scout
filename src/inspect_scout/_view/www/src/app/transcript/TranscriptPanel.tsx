@@ -110,7 +110,7 @@ export const TranscriptPanel: FC = () => {
             <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
           </div>
           <div slot="end" className={styles.validationSidebar}>
-            <ValidationCaseEditor />
+            <ValidationCaseEditor transcriptId={transcript.transcript_id} />
           </div>
         </VscodeSplitLayout>
       )}

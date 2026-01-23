@@ -224,6 +224,16 @@ export const apiScoutServer = (
       );
       return asyncJsonParse<ValidationCase[]>(result.raw);
     },
+    getValidationCase: async (
+      uri: string,
+      caseId: string
+    ): Promise<ValidationCase> => {
+      const result = await requestApi.fetchString(
+        "GET",
+        `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`
+      );
+      return asyncJsonParse<ValidationCase>(result.raw);
+    },
     createValidationSet: async (
       request: CreateValidationSetRequest
     ): Promise<string> => {

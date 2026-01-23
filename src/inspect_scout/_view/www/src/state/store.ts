@@ -130,6 +130,9 @@ interface StoreState {
   validationSplitFilter?: string;
   validationSearchText?: string;
 
+  // validationEditorState
+  editorSelectedValidationSetUri?: string;
+
   // App initialization
   setShowFind: (show: boolean) => void;
   setSingleFileMode: (enabled: boolean) => void;
@@ -235,6 +238,8 @@ interface StoreState {
   setValidationSplitFilter: (split: string | undefined) => void;
   setValidationSearchText: (text: string | undefined) => void;
   clearValidationState: () => void;
+
+  setEditorSelectedValidationSetUri: (uri: string | undefined) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -681,6 +686,11 @@ export const createStore = (api: ScanApi) =>
               state.validationCaseSelection = {};
               state.validationSplitFilter = undefined;
               state.validationSearchText = undefined;
+            });
+          },
+          setEditorSelectedValidationSetUri: (uri: string | undefined) => {
+            set((state) => {
+              state.editorSelectedValidationSetUri = uri;
             });
           },
         })),

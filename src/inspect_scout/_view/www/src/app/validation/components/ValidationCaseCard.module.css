@@ -1,29 +1,22 @@
 .card {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 12px;
-  gap: 2px;
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 4px;
-  transition: border-color 0.15s ease;
-}
-
-.card:hover {
-  border-color: var(--vscode-focusBorder);
-}
-
-.card.selected {
-  border-color: var(--vscode-inputOption-activeBorder);
-  background: var(--vscode-list-hoverBackground);
-}
-
-/* First row: grid layout matching header */
-.row {
   display: grid;
   grid-template-columns: 27px 1fr auto 90px auto;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  padding: 0.3rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: solid 1px var(--bs-border-color);
+  cursor: pointer;
+}
+
+.card:hover {
+  background: var(--vscode-list-inactiveSelectionBackground, rgba(128, 128, 128, 0.04));
+}
+
+.card.selected {
+  /* No special background for selected rows */
 }
 
 .checkbox {
@@ -33,6 +26,8 @@
 }
 
 .transcriptCell {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
 }
@@ -62,13 +57,38 @@
 
 .targetCell {
   text-align: right;
-  min-width: 100px;
-  padding-right: 16px;
+  min-width: 80px;
+  padding-right: 8px;
 }
 
 .target {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
+}
+
+/* Boolean target badges */
+.targetTrue {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  background-color: var(--bs-success);
+  border: solid var(--bs-success) 1px;
+  color: var(--bs-body-bg);
+}
+
+.targetFalse {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  background-color: var(--bs-danger);
+  border: solid var(--bs-danger) 1px;
+  color: var(--bs-body-bg);
 }
 
 /* Subtle split selector */
@@ -119,11 +139,12 @@
   cursor: default;
 }
 
-/* Second row: transcript details */
+/* Transcript details (below ID link) */
 .detailsRow {
-  padding-left: 43px; /* Align with transcript column (27px checkbox + 16px gap) */
   color: var(--vscode-descriptionForeground);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  padding-bottom: 1px;
 }
 
 /* Modal styles */

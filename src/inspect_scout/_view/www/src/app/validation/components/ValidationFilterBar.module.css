@@ -1,9 +1,18 @@
 .container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
+  padding: 0.5rem 1rem;
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
+}
+
+.searchInput {
+  width: 200px;
+  font-size: 0.85rem !important;
+}
+
+.searchInput input {
+  font-size: 0.85rem !important;
 }
 
 .filterGroup {
@@ -14,13 +23,11 @@
 
 .filterLabel {
   color: var(--vscode-descriptionForeground);
-  font-size: 13px;
+  font-size: 0.85rem;
 }
 
 .splitSelect {
-  min-width: 70px;
-}
-
-.searchInput {
-  width: 200px;
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
 }

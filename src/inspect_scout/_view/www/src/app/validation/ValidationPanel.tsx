@@ -1,9 +1,15 @@
 import { skipToken } from "@tanstack/react-query";
-import { VscodeButton, VscodeTextfield } from "@vscode-elements/react-elements";
-import { FC, useCallback, useEffect, useState } from "react";
+import {
+  VscodeButton,
+  VscodeOption,
+  VscodeSingleSelect,
+  VscodeTextfield,
+} from "@vscode-elements/react-elements";
+import { ChangeEvent, FC, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { Modal } from "../../components/Modal";
+import { TextInput } from "../../components/TextInput";
 import { useStore } from "../../state/store";
 import { useConfig } from "../server/useConfig";
 import {
@@ -18,7 +24,7 @@ import {
 import { ValidationCasesList } from "./components/ValidationCasesList";
 import { ValidationSetSelector } from "./components/ValidationSetSelector";
 import { ValidationSummary } from "./components/ValidationSummary";
-import { getCaseKey, getFilenameFromUri } from "./utils";
+import { extractUniqueSplits, getCaseKey, getFilenameFromUri } from "./utils";
 import styles from "./ValidationPanel.module.css";
 
 export const ValidationPanel: FC = () => {
@@ -30,6 +36,10 @@ export const ValidationPanel: FC = () => {
   const selectedUri = useStore((state) => state.selectedValidationSetUri);
   const setSelectedUri = useStore((state) => state.setSelectedValidationSetUri);
   const clearValidationState = useStore((state) => state.clearValidationState);
+  const splitFilter = useStore((state) => state.validationSplitFilter);
+  const setSplitFilter = useStore((state) => state.setValidationSplitFilter);
+  const searchText = useStore((state) => state.validationSearchText);
+  const setSearchText = useStore((state) => state.setValidationSearchText);
 
   // Modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -182,11 +192,24 @@ export const ValidationPanel: FC = () => {
 
   const currentFilename = selectedUri ? getFilenameFromUri(selectedUri) : "";
 
+  // Extract unique splits for filter dropdown
+  const splits = useMemo(() => extractUniqueSplits(cases ?? []), [cases]);
+
+  // Filter handlers
+  const handleSplitFilterChange = (e: Event) => {
+    const value = (e.target as HTMLSelectElement).value;
+    setSplitFilter(value || undefined);
+  };
+
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value || undefined);
+  };
+
   return (
     <div className={styles.container}>
-      {/* Header row: Title + Set Selector + Summary + Actions */}
+      {/* Header row: Title + Set Selector + Actions + Summary + Filter */}
       <div className={styles.headerRow}>
-        <h2 className={styles.title}>Validation</h2>
+        <h2 className={styles.title}>Validation Set</h2>
 
         {setsLoading ? (
           <div className={styles.loading}>Loading sets...</div>
@@ -202,13 +225,7 @@ export const ValidationPanel: FC = () => {
           />
         )}
 
-        {/* Summary (only when cases loaded) */}
-        {cases && cases.length > 0 && <ValidationSummary cases={cases} />}
-
-        {/* Spacer to push actions to the right */}
-        <div className={styles.spacer} />
-
-        {/* Action icons (only when a set is selected) */}
+        {/* Action icons (right after selector) */}
         {selectedUri && (
           <div className={styles.headerActions}>
             <button
@@ -227,6 +244,44 @@ export const ValidationPanel: FC = () => {
             >
               <i className={ApplicationIcons.trash} />
             </button>
+          </div>
+        )}
+
+        {/* Summary (only when cases loaded) */}
+        {cases && cases.length > 0 && (
+          <div className={styles.summaryWrapper}>
+            <ValidationSummary cases={cases} />
+          </div>
+        )}
+
+        {/* Spacer to push filter to the right */}
+        <div className={styles.spacer} />
+
+        {/* Search and split filter (at far right) */}
+        {selectedUri && cases && (
+          <div className={styles.filterControls}>
+            <TextInput
+              icon={ApplicationIcons.search}
+              value={searchText ?? ""}
+              onChange={handleSearchChange}
+              placeholder="Search..."
+              className={styles.searchInput}
+            />
+            <div className={styles.splitFilter}>
+              <span className={styles.filterLabel}>Split:</span>
+              <VscodeSingleSelect
+                value={splitFilter ?? ""}
+                onChange={handleSplitFilterChange}
+                className={styles.splitSelect}
+              >
+                <VscodeOption value="">All</VscodeOption>
+                {splits.map((split) => (
+                  <VscodeOption key={split} value={split}>
+                    {split}
+                  </VscodeOption>
+                ))}
+              </VscodeSingleSelect>
+            </div>
           </div>
         )}
       </div>

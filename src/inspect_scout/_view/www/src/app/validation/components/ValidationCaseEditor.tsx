@@ -14,7 +14,7 @@ interface ValidationCaseEditorProps {
 export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
   className,
 }) => {
-  const { data, isLoading, error } = useValidationSets();
+  const { data, loading, error } = useValidationSets();
 
   return (
     <>
@@ -26,7 +26,7 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
       )}
       {!error && (
         <>
-          <LoadingBar loading={isLoading} />
+          <LoadingBar loading={loading} />
           <ValidationCaseEditorComponent
             validationSets={data}
             className={className}
@@ -43,7 +43,7 @@ interface ValidationCaseEditorComponentProps {
 }
 
 const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
-  validationSets,
+  validationSets: _validationSets,
   className,
 }) => {
   return (

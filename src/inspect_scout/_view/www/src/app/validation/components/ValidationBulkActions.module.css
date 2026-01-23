@@ -2,10 +2,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-inputOption-activeBorder);
-  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
 }
 
 .selectedCount {

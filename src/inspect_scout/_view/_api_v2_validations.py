@@ -198,7 +198,7 @@ def create_validation_router(
             )
 
         # Check for invalid characters in filename
-        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if any(c in new_name for c in invalid_chars):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,

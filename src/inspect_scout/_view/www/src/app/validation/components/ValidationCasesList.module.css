@@ -84,10 +84,6 @@
   margin-right: 4px;
 }
 
-.buttonText {
-  /* Text shown by default */
-}
-
 /* Responsive: Icons only at narrow widths */
 @media (max-width: 900px) {
   .buttonText {

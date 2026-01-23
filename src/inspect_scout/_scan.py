@@ -3,7 +3,7 @@ import os
 import traceback
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Mapping, Sequence
+from typing import Any, AsyncIterator, Mapping, Sequence, cast
 
 import anyio
 import yaml
@@ -27,7 +27,7 @@ from inspect_ai.model._model_config import (
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
-from pydantic import TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 from rich import box
 from rich.table import Column, Table
 from typing_extensions import Unpack
@@ -1169,7 +1169,7 @@ async def _validate_scan(
                     predicate_override=v_case.predicate,
                 )
                 return ResultValidation(
-                    target=v_case.labels,
+                    target=cast(JsonValue, v_case.labels),
                     valid=valid,
                     predicate=predicate_str,
                     split=v_case.split,

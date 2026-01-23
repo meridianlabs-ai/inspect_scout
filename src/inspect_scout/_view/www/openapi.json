@@ -5595,6 +5595,19 @@
         "title": "ProvenanceData",
         "type": "object"
       },
+      "RenameValidationSetRequest": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameValidationSetRequest",
+        "type": "object"
+      },
       "ResponseSchema": {
         "description": "Schema for model response when using Structured Output.",
         "properties": {
@@ -9603,7 +9616,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
+                  "type": "boolean"
                 },
                 "type": "object"
               },
@@ -9664,7 +9677,8 @@
           }
         },
         "required": [
-          "id"
+          "id",
+          "labels"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -9692,7 +9706,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
+                  "type": "boolean"
                 },
                 "type": "object"
               },
@@ -10639,6 +10653,52 @@
           }
         },
         "summary": "Get validation cases",
+        "tags": [
+          "validations"
+        ]
+      }
+    },
+    "/validations/{uri}/rename": {
+      "put": {
+        "description": "Renames a validation file. Returns the new URI.",
+        "operationId": "rename_validation_validations__uri__rename_put",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameValidationSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Rename Validation Validations  Uri  Rename Put",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rename a validation file",
         "tags": [
           "validations"
         ]

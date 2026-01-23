@@ -66,7 +66,7 @@ id,target
 
 ### Result Set Validation
 
-When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
+When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate whether results with specific labels are present or absent. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
 
 #### Format
 
@@ -95,11 +95,20 @@ For YAML/JSON files, use a labels key instead of target:
     misconfig: false
 ```
 
-#### Validation Semantics
+#### Validation Labels
 
-Label-based validation uses "at least one" logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has `value==True`, then validation passes if the expected value is true.
+Label validation uses boolean expectations to check for presence or absence of labeled results:
 
-Missing labels are treated as negative/absent values. If your validation set expects `label_phishing: false` but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
+- **`true`**: Validation passes if at least one result with that label has a **positive** (non-negative) value
+- **`false`**: Validation passes if no results with that label exist, or if all results have **negative** values
+
+**Negative values** are: `false`, `null`/`None`, `0`, `""` (empty string), `"NONE"`, `{}` (empty dict), `[]` (empty list).
+
+**Positive values** are: `true`, non-zero numbers, non-empty strings, non-empty dicts/lists.
+
+For example, if your validation expects `label_deception: true` and the scanner returns a result with `label="deception"` and `value={"confidence": 0.9}`, the validation passes because a non-empty dict is a positive value.
+
+If your validation expects `label_phishing: false` and the scanner returns no results with `label="phishing"`, validation passes because absence is treated as negative.
 
 ### Value Dictionary
 

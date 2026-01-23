@@ -23,10 +23,9 @@ interface ValidationCaseTargetEditorProps {
 /**
  * Editor component for modifying the target of a validation case.
  */
-export const ValidationCaseTargetEditor: FC<ValidationCaseTargetEditorProps> = ({
-  target,
-  onChange,
-}) => {
+export const ValidationCaseTargetEditor: FC<
+  ValidationCaseTargetEditorProps
+> = ({ target, onChange }) => {
   const [mode, setMode] = useState<TargetMode>(() => getInitialMode(target));
   const [customValue, setCustomValue] = useState(() =>
     getInitialMode(target) === "other" ? String(target ?? "") : ""
@@ -51,7 +50,9 @@ export const ValidationCaseTargetEditor: FC<ValidationCaseTargetEditorProps> = (
   return (
     <div>
       <VscodeRadioGroup
-        onChange={(e) => handleRadioChange((e.target as HTMLInputElement).value)}
+        onChange={(e) =>
+          handleRadioChange((e.target as HTMLInputElement).value)
+        }
       >
         <VscodeRadio label="True" value="true" checked={mode === "true"} />
         <VscodeRadio label="False" value="false" checked={mode === "false"} />

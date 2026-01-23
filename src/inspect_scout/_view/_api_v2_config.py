@@ -122,7 +122,7 @@ def create_config_router(
                 detail=str(e),
             ) from None
 
-        await notify_topics(["serverConfig"])
+        await notify_topics(["project-config"])
 
         return InspectPydanticJSONResponse(
             content=updated_config,

@@ -21,7 +21,6 @@ export type ClientStorage = StateStorage;
 export type ScalarValue = string | number | boolean | null;
 
 export interface ScanApi {
-  getConfigVersion(): Promise<string>;
   getConfig(): Promise<AppConfig>;
   getTranscripts(
     transcriptsDir: string,

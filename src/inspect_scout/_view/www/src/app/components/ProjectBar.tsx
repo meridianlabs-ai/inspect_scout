@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ApplicationIcons } from "../../components/icons";
 import { getActivityByRoute } from "../../router/activities";
 import { AppConfig } from "../../types/api-types";
-import { appAliasedPath } from "../server/useConfig";
+import { appAliasedPath } from "../server/useAppConfig";
 
 import styles from "./ProjectBar.module.css";
 

@@ -9,7 +9,7 @@ import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useConfig } from "../server/useConfig";
+import { useAppConfig } from "../server/useAppConfig";
 import { useScans } from "../server/useScans";
 import { useScansDir } from "../utils/useScansDir";
 
@@ -17,7 +17,7 @@ import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
-  const config = useConfig();
+  const config = useAppConfig();
   const scanDir = config.scans.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const {

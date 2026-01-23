@@ -49,7 +49,7 @@ export const useServerTranscriptsInfinite = (
   >({
     queryKey: [
       "transcripts-infinite",
-      "serverConfig",
+      "project-config",
       params !== skipToken ? params.location : skipToken,
       params !== skipToken ? params.filter : undefined,
       orderBy,

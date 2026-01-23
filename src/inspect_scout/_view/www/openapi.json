@@ -3625,6 +3625,12 @@
         "title": "InputEvent",
         "type": "object"
       },
+      "InvalidationTopic": {
+        "enum": [
+          "project-config"
+        ],
+        "type": "string"
+      },
       "JSONSchema": {
         "description": "JSON Schema for type.",
         "properties": {
@@ -9907,6 +9913,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/app-config": {
+      "get": {
+        "description": "Returns app config including transcripts and scans directories.",
+        "operationId": "config_app_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get application configuration",
+        "tags": [
+          "config"
+        ]
+      }
+    },
     "/code": {
       "post": {
         "description": "Process condition.",
@@ -9951,63 +9979,6 @@
         "summary": "Code endpoint",
         "tags": [
           "scanners"
-        ]
-      }
-    },
-    "/config": {
-      "get": {
-        "description": "Returns app config including transcripts and scans directories.",
-        "operationId": "config_config_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppConfig"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get application configuration",
-        "tags": [
-          "config"
-        ]
-      }
-    },
-    "/config-version": {
-      "get": {
-        "description": "Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.",
-        "operationId": "config_version_config_version_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get config version",
-        "tags": [
-          "config"
-        ]
-      }
-    },
-    "/config-version/stream": {
-      "get": {
-        "description": "SSE endpoint that pushes when config version changes.",
-        "operationId": "config_version_stream_config_version_stream_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Stream config version changes",
-        "tags": [
-          "config"
         ]
       }
     },
@@ -10375,6 +10346,26 @@
         "summary": "Run llm_scanner",
         "tags": [
           "scans"
+        ]
+      }
+    },
+    "/topics/stream": {
+      "get": {
+        "description": "SSE endpoint that pushes topic versions when they change. Each message is a JSON dict mapping topic names to timestamps.",
+        "operationId": "topics_stream_topics_stream_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stream topic updates",
+        "tags": [
+          "topics"
         ]
       }
     },

@@ -10,7 +10,7 @@ import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterConditions } from "../hooks/useFilterConditions";
 import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
-import { useConfig } from "../server/useConfig";
+import { useAppConfig } from "../server/useAppConfig";
 import { useTranscript } from "../server/useTranscript";
 import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
@@ -36,7 +36,7 @@ export const TranscriptPanel: FC = () => {
   } = useTranscriptsDir(true);
 
   // Server transcripts directory
-  const config = useConfig();
+  const config = useAppConfig();
   const {
     loading,
     data: transcript,

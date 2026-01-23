@@ -64,9 +64,9 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   const { data: transcriptMap, loading: transcriptsLoading } =
     useTranscriptsByIds(transcriptsDir, transcriptIds);
 
-  // Filter cases based on split, search, and transcript availability
+  // Filter and sort cases based on split, search, and transcript availability
   const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
+    const filtered = cases.filter((c) => {
       // Split filter
       if (splitFilter && c.split !== splitFilter) {
         return false;
@@ -104,6 +104,20 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       }
 
       return true;
+    });
+
+    // Sort by split: no split first, then alphabetically by split name
+    return filtered.sort((a, b) => {
+      const splitA = a.split;
+      const splitB = b.split;
+
+      // No split comes first
+      if (!splitA && splitB) return -1;
+      if (splitA && !splitB) return 1;
+      if (!splitA && !splitB) return 0;
+
+      // Both have splits - sort alphabetically
+      return splitA!.localeCompare(splitB!);
     });
   }, [cases, splitFilter, searchText, transcriptMap]);
 

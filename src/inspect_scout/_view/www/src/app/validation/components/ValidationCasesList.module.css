@@ -55,7 +55,7 @@
 .bulkActions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 1px;
   margin-left: 12px;
 }
 
@@ -64,15 +64,20 @@
   text-transform: none;
   letter-spacing: normal;
   color: var(--vscode-foreground);
+  margin-right: 8px;
 }
 
 .bulkButton {
   text-transform: none;
   letter-spacing: normal;
-  padding: 2px 6px !important;
+  padding: 2px 4px !important;
   font-size: 10px !important;
   height: 24px !important;
   min-height: 24px !important;
+}
+
+.bulkActions :global(vscode-button)::part(base) {
+  padding: 2px 6px !important;
 }
 
 .bulkButton i {

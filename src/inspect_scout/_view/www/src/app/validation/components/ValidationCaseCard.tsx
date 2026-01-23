@@ -1,5 +1,5 @@
 import { VscodeCheckbox } from "@vscode-elements/react-elements";
-import React, { FC, useState } from "react";
+import React, { CSSProperties, FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ApplicationIcons } from "../../../components/icons";
@@ -22,6 +22,9 @@ interface ValidationCaseCardProps {
   onDelete?: () => void;
   isUpdating?: boolean;
   isDeleting?: boolean;
+  showLabels?: boolean;
+  showTarget?: boolean;
+  gridStyle?: CSSProperties;
 }
 
 /**
@@ -96,6 +99,20 @@ const formatScore = (score: TranscriptInfo["score"]): string => {
 };
 
 /**
+ * Format labels for display.
+ * Shows comma-separated label: true/false pairs, with true values first.
+ */
+const formatLabels = (
+  labels: Record<string, boolean> | null | undefined
+): string => {
+  if (!labels) return "";
+  const entries = Object.entries(labels);
+  // Sort: true values first, then false
+  entries.sort(([, a], [, b]) => (b ? 1 : 0) - (a ? 1 : 0));
+  return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
+};
+
+/**
  * Build the transcript details line.
  * Format: <task_set>/<task_id> (<repeat>) - <agent> - <model> (score: <score>)
  */
@@ -152,10 +169,13 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
   onDelete,
   isUpdating,
   isDeleting,
+  showLabels,
+  showTarget,
+  gridStyle,
 }) => {
   const navigate = useNavigate();
 
-  const { id, target, split, predicate } = validationCase;
+  const { id, target, split, predicate, labels } = validationCase;
 
   // Modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -198,9 +218,13 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
     setShowDeleteModal(false);
   };
 
+  // Format labels for display
+  const labelsText = formatLabels(labels);
+
   return (
     <div
       className={`${styles.card} ${isSelected ? styles.selected : ""}`}
+      style={gridStyle}
       onClick={handleRowClick}
     >
       {/* Checkbox column */}
@@ -227,8 +251,11 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
         )}
       </div>
 
-      {/* Target column */}
-      <div className={styles.targetCell}>{targetElement}</div>
+      {/* Labels column (conditional) */}
+      {showLabels && <div className={styles.labelsCell}>{labelsText}</div>}
+
+      {/* Target column (conditional) */}
+      {showTarget && <div className={styles.targetCell}>{targetElement}</div>}
 
       {/* Split column */}
       {onSplitChange ? (

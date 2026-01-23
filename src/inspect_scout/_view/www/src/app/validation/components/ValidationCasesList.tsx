@@ -1,5 +1,5 @@
 import { VscodeButton, VscodeCheckbox } from "@vscode-elements/react-elements";
-import { FC, useMemo, useState } from "react";
+import { CSSProperties, FC, useMemo, useState } from "react";
 
 import { ApplicationIcons } from "../../../components/icons";
 import { Modal } from "../../../components/Modal";
@@ -58,6 +58,27 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
 
   // Extract unique splits from all cases
   const existingSplits = useMemo(() => extractUniqueSplits(cases), [cases]);
+
+  // Determine which columns to show based on case data
+  const hasLabels = useMemo(
+    () => cases.some((c) => c.labels !== null && c.labels !== undefined),
+    [cases]
+  );
+  const hasTargets = useMemo(
+    () => cases.some((c) => c.target !== null && c.target !== undefined),
+    [cases]
+  );
+
+  // Build dynamic grid columns: checkbox, transcript, [labels], [target], split, actions
+  const gridColumns = useMemo(() => {
+    const cols = ["20px", "1fr"]; // checkbox, transcript
+    if (hasLabels) cols.push("auto"); // labels
+    if (hasTargets) cols.push("auto"); // target
+    cols.push("90px", "auto"); // split, actions
+    return cols.join(" ");
+  }, [hasLabels, hasTargets]);
+
+  const gridStyle: CSSProperties = { gridTemplateColumns: gridColumns };
 
   // Fetch transcript data for all cases
   const { data: transcriptMap, loading: transcriptsLoading } =
@@ -203,7 +224,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       {/* Grid container with sticky header */}
       <div className={styles.gridContainer}>
         {/* Header row */}
-        <div className={styles.header}>
+        <div className={styles.header} style={gridStyle}>
           <div className={styles.headerCheckbox}>
             <VscodeCheckbox
               checked={allSelected}
@@ -259,7 +280,8 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
               </span>
             )}
           </div>
-          <div className={styles.headerTarget}>Target</div>
+          {hasLabels && <div className={styles.headerLabels}>Labels</div>}
+          {hasTargets && <div className={styles.headerTarget}>Target</div>}
           <div className={styles.headerSplit}>Split</div>
           <div className={styles.headerActions}>Actions</div>
         </div>
@@ -302,6 +324,9 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   }
                   isUpdating={isUpdating}
                   isDeleting={isDeleting}
+                  showLabels={hasLabels}
+                  showTarget={hasTargets}
+                  gridStyle={gridStyle}
                 />
               );
             })

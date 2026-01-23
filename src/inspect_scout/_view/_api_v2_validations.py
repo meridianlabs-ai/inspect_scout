@@ -17,7 +17,7 @@ from upath import UPath
 from .._validation.file_scanner import scan_validation_files
 from .._validation.predicates import PredicateType
 from .._validation.types import ValidationCase
-from .._validation.writer import ValidationFileWriter
+from .._validation.writer import ValidationFileWriter, _unflatten_labels
 from ._api_v2_types import (
     CreateValidationSetRequest,
     RenameValidationSetRequest,
@@ -135,7 +135,9 @@ def create_validation_router(
 
         try:
             writer = ValidationFileWriter(file_path)
-            return writer.read_cases()
+            cases = writer.read_cases()
+            # Convert label_* columns to nested labels object for API response
+            return _unflatten_labels(cases)
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,

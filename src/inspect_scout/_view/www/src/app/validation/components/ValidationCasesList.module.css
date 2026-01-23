@@ -19,7 +19,7 @@
 /* Grid header - fully enclosed */
 .header {
   display: grid;
-  grid-template-columns: 20px 1fr auto 90px auto;
+  /* grid-template-columns set dynamically via inline style */
   align-items: center;
   gap: 12px;
   padding: 0 1rem;
@@ -97,6 +97,12 @@
   .selectedCount {
     margin-right: 4px;
   }
+}
+
+.headerLabels {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
 }
 
 .headerTarget {

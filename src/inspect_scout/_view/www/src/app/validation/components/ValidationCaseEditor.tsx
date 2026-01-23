@@ -19,6 +19,7 @@ import {
 import { extractUniqueSplits } from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
+import { ValidationCasePredicateSelector } from "./ValidationCasePredicateSelector";
 import { ValidationCaseTargetEditor } from "./ValidationCaseTargetEditor";
 import { ValidationSetSelector } from "./ValidationSetSelector";
 import { ValidationSplitSelector } from "./ValidationSplitSelector";
@@ -176,7 +177,13 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               </Field>
 
               <Field label="Predicate">
-                {validationCase?.predicate || "eq"}
+                <ValidationCasePredicateSelector
+                  value={validationCase?.predicate || null}
+                  onChange={(predicate) => {
+                    console.log("NEW PREDICATE:", predicate);
+                  }}
+                  disabled={!validationCase}
+                />
               </Field>
             </SidebarPanel>
           </VscodeCollapsible>

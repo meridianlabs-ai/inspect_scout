@@ -87,23 +87,26 @@ export const ValidationPanel: FC = () => {
 
       // Update all cases in parallel
       const updateCases = async () => {
-        try {
-          await Promise.all(
-            ids.map((id) => {
-              const existingCase = caseMap.get(id);
-              if (!existingCase) return Promise.resolve();
+        const results = await Promise.allSettled(
+          ids.map((id) => {
+            const existingCase = caseMap.get(id);
+            if (!existingCase) return Promise.resolve();
 
-              return updateMutation.mutateAsync({
-                caseId: id,
-                data: {
-                  ...existingCase,
-                  split: split,
-                },
-              });
-            })
+            return updateMutation.mutateAsync({
+              caseId: id,
+              data: {
+                ...existingCase,
+                split: split,
+              },
+            });
+          })
+        );
+
+        const failed = results.filter((r) => r.status === "rejected").length;
+        if (failed > 0) {
+          console.error(
+            `Bulk split update: ${failed} of ${ids.length} updates failed`
           );
-        } catch (error) {
-          console.error("Error updating validation cases:", error);
         }
       };
       void updateCases();

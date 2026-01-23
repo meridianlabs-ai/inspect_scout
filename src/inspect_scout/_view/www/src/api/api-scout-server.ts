@@ -277,7 +277,10 @@ export const apiScoutServer = (
       const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
       return response.deleted;
     },
-    renameValidationSet: async (uri: string, newName: string): Promise<string> => {
+    renameValidationSet: async (
+      uri: string,
+      newName: string
+    ): Promise<string> => {
       const result = await requestApi.fetchString(
         "PUT",
         `/validations/${encodeBase64Url(uri)}/rename`,

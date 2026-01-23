@@ -1,7 +1,4 @@
-import {
-  VscodeButton,
-  VscodeCheckbox,
-} from "@vscode-elements/react-elements";
+import { VscodeButton, VscodeCheckbox } from "@vscode-elements/react-elements";
 import { FC, useMemo, useState } from "react";
 
 import { Modal } from "../../../components/Modal";
@@ -10,6 +7,7 @@ import { ValidationCase } from "../../../types/api-types";
 import { useTranscriptsByIds } from "../hooks/useTranscriptsByIds";
 import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
+import { CopyMoveCasesModal } from "./CopyMoveCasesModal";
 import { ValidationCaseCard } from "./ValidationCaseCard";
 import styles from "./ValidationCasesList.module.css";
 import { ValidationSplitSelector } from "./ValidationSplitSelector";
@@ -17,6 +15,7 @@ import { ValidationSplitSelector } from "./ValidationSplitSelector";
 interface ValidationCasesListProps {
   cases: ValidationCase[];
   transcriptsDir: string | undefined;
+  sourceUri: string | undefined;
   onBulkSplitChange?: (ids: string[], split: string | null) => void;
   onBulkDelete?: (ids: string[]) => void;
   onSingleSplitChange?: (caseId: string, split: string | null) => void;
@@ -32,6 +31,7 @@ interface ValidationCasesListProps {
 export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   cases,
   transcriptsDir,
+  sourceUri,
   onBulkSplitChange,
   onBulkDelete,
   onSingleSplitChange,
@@ -131,6 +131,11 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       .map(([id]) => id);
   }, [selection]);
 
+  // Get selected cases (full case data for copy/move operations)
+  const selectedCases = useMemo(() => {
+    return filteredCases.filter((c) => selection[getCaseKey(c.id)]);
+  }, [filteredCases, selection]);
+
   // Check if all filtered cases are selected
   const allSelected =
     filteredCaseKeys.length > 0 &&
@@ -171,21 +176,23 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
     setSelection({});
   };
 
-  // Bulk action modal state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showSplitModal, setShowSplitModal] = useState(false);
+  // Bulk action modal state - single enum instead of multiple booleans
+  type ModalType = "none" | "delete" | "split" | "copy" | "move";
+  const [activeModal, setActiveModal] = useState<ModalType>("none");
   const [bulkSplitValue, setBulkSplitValue] = useState<string | null>(null);
 
   const handleAssignSplit = () => {
     handleBulkSplitChange(selectedIds, bulkSplitValue);
-    setShowSplitModal(false);
+    setActiveModal("none");
     setBulkSplitValue(null);
   };
 
   const handleConfirmDelete = () => {
     handleBulkDelete(selectedIds);
-    setShowDeleteModal(false);
+    setActiveModal("none");
   };
+
+  const closeModal = () => setActiveModal("none");
 
   const hasSelection = selectedIds.length > 0;
   const hasBulkActions = onBulkSplitChange && onBulkDelete;
@@ -214,7 +221,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                 </span>
                 <VscodeButton
                   secondary
-                  onClick={() => setShowSplitModal(true)}
+                  onClick={() => setActiveModal("split")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
@@ -222,7 +229,23 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                 </VscodeButton>
                 <VscodeButton
                   secondary
-                  onClick={() => setShowDeleteModal(true)}
+                  onClick={() => setActiveModal("copy")}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                >
+                  Copy to...
+                </VscodeButton>
+                <VscodeButton
+                  secondary
+                  onClick={() => setActiveModal("move")}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                >
+                  Move to...
+                </VscodeButton>
+                <VscodeButton
+                  secondary
+                  onClick={() => setActiveModal("delete")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
                 >
@@ -283,12 +306,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
 
       {/* Split Assignment Modal */}
       <Modal
-        show={showSplitModal}
-        onHide={() => setShowSplitModal(false)}
+        show={activeModal === "split"}
+        onHide={closeModal}
         title="Assign Split"
         footer={
           <>
-            <VscodeButton secondary onClick={() => setShowSplitModal(false)}>
+            <VscodeButton secondary onClick={closeModal}>
               Cancel
             </VscodeButton>
             <VscodeButton onClick={handleAssignSplit} disabled={isUpdating}>
@@ -316,12 +339,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
 
       {/* Delete Confirmation Modal */}
       <Modal
-        show={showDeleteModal}
-        onHide={() => setShowDeleteModal(false)}
+        show={activeModal === "delete"}
+        onHide={closeModal}
         title="Confirm Delete"
         footer={
           <>
-            <VscodeButton secondary onClick={() => setShowDeleteModal(false)}>
+            <VscodeButton secondary onClick={closeModal}>
               Cancel
             </VscodeButton>
             <VscodeButton onClick={handleConfirmDelete} disabled={isDeleting}>
@@ -338,6 +361,32 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           <p className={styles.warning}>This action cannot be undone.</p>
         </div>
       </Modal>
+
+      {/* Copy Cases Modal */}
+      {sourceUri && (
+        <CopyMoveCasesModal
+          show={activeModal === "copy"}
+          mode="copy"
+          sourceUri={sourceUri}
+          selectedIds={selectedIds}
+          selectedCases={selectedCases}
+          onHide={closeModal}
+          onSuccess={() => setSelection({})}
+        />
+      )}
+
+      {/* Move Cases Modal */}
+      {sourceUri && (
+        <CopyMoveCasesModal
+          show={activeModal === "move"}
+          mode="move"
+          sourceUri={sourceUri}
+          selectedIds={selectedIds}
+          selectedCases={selectedCases}
+          onHide={closeModal}
+          onSuccess={() => setSelection({})}
+        />
+      )}
     </div>
   );
 };

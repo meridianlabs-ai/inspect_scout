@@ -45,3 +45,61 @@ export const getFilenameFromUri = (
   }
   return filename;
 };
+
+/**
+ * Extracts the directory portion of a URI (everything before the filename).
+ * @param uri - The full URI (e.g., "file:///path/to/file.csv")
+ * @returns The directory URI without trailing slash
+ */
+export const getDirFromUri = (uri: string): string => {
+  const parts = uri.split("/");
+  parts.pop(); // Remove filename
+  return parts.join("/");
+};
+
+/**
+ * Generates a new file URI in the same directory as the source with given name.
+ * @param sourceUri - The source file URI
+ * @param newName - The new filename (without extension)
+ * @returns New file URI with .csv extension
+ */
+export const generateNewSetUri = (
+  sourceUri: string,
+  newName: string
+): string => {
+  const dir = getDirFromUri(sourceUri);
+  return `${dir}/${newName}.csv`;
+};
+
+/** Characters that are not allowed in filenames */
+const INVALID_FILENAME_CHARS = /[/\\:*?"<>|]/;
+
+/**
+ * Validates a filename for invalid characters.
+ * @param name - The filename to validate (without extension)
+ * @returns Object with isValid and optional error message
+ */
+export const isValidFilename = (
+  name: string
+): { isValid: boolean; error?: string } => {
+  if (!name.trim()) {
+    return { isValid: false, error: "Name cannot be empty" };
+  }
+
+  if (INVALID_FILENAME_CHARS.test(name)) {
+    return {
+      isValid: false,
+      error: 'Name contains invalid characters: / \\ : * ? " < > |',
+    };
+  }
+
+  if (name.startsWith(".")) {
+    return { isValid: false, error: "Name cannot start with a dot" };
+  }
+
+  if (name.length > 255) {
+    return { isValid: false, error: "Name is too long (max 255 characters)" };
+  }
+
+  return { isValid: true };
+};

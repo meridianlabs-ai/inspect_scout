@@ -4962,7 +4962,48 @@ so disabling selection can break that functionality */
 ._hidden_1linb_42 {
   opacity: 0 !important;
 }
-._card_1v407_1 {
+._modalContent_x5gpr_1 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+._modalContent_x5gpr_1 p {
+  margin: 0;
+  color: var(--vscode-foreground);
+}
+
+._fieldGroup_x5gpr_12 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+._label_x5gpr_18 {
+  font-size: 0.85rem;
+  color: var(--vscode-descriptionForeground);
+}
+
+._select_x5gpr_23 {
+  width: 100%;
+}
+
+._textInput_x5gpr_27 {
+  width: 100%;
+}
+
+._hint_x5gpr_31 {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+._error_x5gpr_37 {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9em;
+  margin: 0;
+}
+._card_pbbzb_1 {
   display: grid;
   grid-template-columns: 20px 1fr auto 90px auto;
   align-items: center;
@@ -4975,29 +5016,32 @@ so disabling selection can break that functionality */
   cursor: pointer;
 }
 
-._card_1v407_1:hover {
-  background: var(--vscode-list-inactiveSelectionBackground, rgba(128, 128, 128, 0.04));
+._card_pbbzb_1:hover {
+  background: var(
+    --vscode-list-inactiveSelectionBackground,
+    rgba(128, 128, 128, 0.04)
+  );
 }
 
-._card_1v407_1._selected_1v407_18 {
+._card_pbbzb_1._selected_pbbzb_21 {
   /* No special background for selected rows */
 }
 
-._checkbox_1v407_22 {
+._checkbox_pbbzb_25 {
   display: flex;
   align-items: center;
   justify-content: center;
   transform: scale(0.85);
 }
 
-._transcriptCell_1v407_29 {
+._transcriptCell_pbbzb_32 {
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
 }
 
-._idLink_1v407_36 {
+._idLink_pbbzb_39 {
   background: none;
   border: none;
   padding: 0;
@@ -5011,28 +5055,28 @@ so disabling selection can break that functionality */
   text-align: left;
 }
 
-._idLink_1v407_36:hover:not(:disabled) {
+._idLink_pbbzb_39:hover:not(:disabled) {
   text-decoration: underline;
 }
 
-._idLink_1v407_36:disabled {
+._idLink_pbbzb_39:disabled {
   color: var(--vscode-disabledForeground);
   cursor: default;
 }
 
-._targetCell_1v407_59 {
+._targetCell_pbbzb_62 {
   text-align: right;
   min-width: 80px;
   padding-right: 8px;
 }
 
-._target_1v407_59 {
+._target_pbbzb_62 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
 /* Boolean target badges */
-._targetTrue_1v407_71 {
+._targetTrue_pbbzb_74 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -5044,7 +5088,7 @@ so disabling selection can break that functionality */
   color: var(--bs-body-bg);
 }
 
-._targetFalse_1v407_83 {
+._targetFalse_pbbzb_86 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -5057,7 +5101,7 @@ so disabling selection can break that functionality */
 }
 
 /* Subtle split selector */
-._splitSelect_1v407_96 {
+._splitSelect_pbbzb_99 {
   width: 90px !important;
   min-width: 90px !important;
   max-width: 90px !important;
@@ -5065,12 +5109,12 @@ so disabling selection can break that functionality */
   --vscode-dropdown-background: transparent;
 }
 
-._splitSelect_1v407_96:hover {
+._splitSelect_pbbzb_99:hover {
   --vscode-dropdown-background: var(--vscode-list-hoverBackground);
 }
 
 /* Action buttons */
-._actions_1v407_109 {
+._actions_pbbzb_112 {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -5078,7 +5122,7 @@ so disabling selection can break that functionality */
   min-width: 56px;
 }
 
-._actionButton_1v407_117 {
+._actionButton_pbbzb_120 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5091,21 +5135,23 @@ so disabling selection can break that functionality */
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
 }
 
-._actionButton_1v407_117:hover:not(:disabled) {
+._actionButton_pbbzb_120:hover:not(:disabled) {
   opacity: 1;
   background: var(--vscode-list-hoverBackground);
 }
 
-._actionButton_1v407_117:disabled {
+._actionButton_pbbzb_120:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
 /* Transcript details (below ID link) */
-._detailsRow_1v407_144 {
+._detailsRow_pbbzb_149 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.8rem;
   line-height: 1.2;
@@ -5113,22 +5159,22 @@ so disabling selection can break that functionality */
 }
 
 /* Modal styles */
-._modalContent_1v407_152 {
+._modalContent_pbbzb_157 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_1v407_152 p {
+._modalContent_pbbzb_157 p {
   margin: 0;
 }
 
-._warning_1v407_162 {
+._warning_pbbzb_167 {
   color: var(--vscode-errorForeground);
   font-size: 0.9rem;
 }
 
-._modalButton_1v407_167 {
+._modalButton_pbbzb_172 {
   padding: 6px 14px;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 2px;
@@ -5138,20 +5184,20 @@ so disabling selection can break that functionality */
   font-size: 13px;
 }
 
-._modalButton_1v407_167:hover {
+._modalButton_pbbzb_172:hover {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
-._modalButtonPrimary_1v407_181 {
+._modalButtonPrimary_pbbzb_186 {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
 }
 
-._modalButtonPrimary_1v407_181:hover {
+._modalButtonPrimary_pbbzb_186:hover {
   background: var(--vscode-button-hoverBackground);
 }
 
-._modalButtonPrimary_1v407_181:disabled {
+._modalButtonPrimary_pbbzb_186:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -5361,14 +5407,14 @@ so disabling selection can break that functionality */
 ._separator_1ph4q_10 {
   color: var(--vscode-panel-border);
 }
-._container_3g5an_1 {
+._container_12me1_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-._headerRow_3g5an_8 {
+._headerRow_12me1_8 {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -5376,7 +5422,7 @@ so disabling selection can break that functionality */
   flex-shrink: 0;
 }
 
-._title_3g5an_16 {
+._title_12me1_16 {
   font-size: 16px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -5384,50 +5430,50 @@ so disabling selection can break that functionality */
   flex-shrink: 0;
 }
 
-._spacer_3g5an_24 {
+._spacer_12me1_24 {
   flex: 1;
 }
 
-._headerActions_3g5an_28 {
+._headerActions_12me1_28 {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 /* Filter controls in header */
-._filterControls_3g5an_35 {
+._filterControls_12me1_35 {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-._searchInput_3g5an_41 {
+._searchInput_12me1_41 {
   width: 180px;
   font-size: 0.85rem !important;
 }
 
-._searchInput_3g5an_41 input {
+._searchInput_12me1_41 input {
   font-size: 0.85rem !important;
 }
 
-._splitFilter_3g5an_50 {
+._splitFilter_12me1_50 {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-._filterLabel_3g5an_56 {
+._filterLabel_12me1_56 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
-._splitSelect_3g5an_61 {
+._splitSelect_12me1_61 {
   width: 80px !important;
   min-width: 80px !important;
   max-width: 80px !important;
 }
 
-._iconButton_3g5an_67 {
+._iconButton_12me1_67 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5439,39 +5485,41 @@ so disabling selection can break that functionality */
   border-radius: 4px;
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
-  transition: background-color 0.1s, color 0.1s;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
 }
 
-._iconButton_3g5an_67:hover {
+._iconButton_12me1_67:hover {
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
 
-._iconButton_3g5an_67:disabled {
+._iconButton_12me1_67:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-._modalContent_3g5an_92 {
+._modalContent_12me1_94 {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-._modalContent_3g5an_92 p {
+._modalContent_12me1_94 p {
   margin: 0;
 }
 
-._warning_3g5an_102 {
+._warning_12me1_104 {
   color: var(--vscode-errorForeground);
   font-size: 13px;
 }
 
-._renameInput_3g5an_107 {
+._renameInput_12me1_109 {
   width: 100%;
 }
 
-._content_3g5an_111 {
+._content_12me1_113 {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -5480,31 +5528,31 @@ so disabling selection can break that functionality */
   padding: 0;
 }
 
-._casesSection_3g5an_120 {
+._casesSection_12me1_122 {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-._loading_3g5an_127 {
+._loading_12me1_129 {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
   padding: 16px 0;
 }
 
-._error_3g5an_133 {
+._error_12me1_135 {
   color: var(--vscode-errorForeground);
   padding: 16px 0;
 }
 
-._emptyState_3g5an_138 {
+._emptyState_12me1_140 {
   color: var(--vscode-descriptionForeground);
   text-align: center;
   padding: 48px 16px;
 }
 
-._casesPlaceholder_3g5an_144 {
+._casesPlaceholder_12me1_146 {
   padding: 16px;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
@@ -5513,28 +5561,28 @@ so disabling selection can break that functionality */
 }
 
 /* Summary wrapper for responsive hiding */
-._summaryWrapper_3g5an_153 {
+._summaryWrapper_12me1_155 {
   flex-shrink: 0;
 }
 
 /* Responsive: Hide summary at medium widths */
 @media (max-width: 1150px) {
-  ._summaryWrapper_3g5an_153 {
+  ._summaryWrapper_12me1_155 {
     display: none;
   }
 }
 
 /* Responsive: Wrap header at narrow widths */
 @media (max-width: 900px) {
-  ._headerRow_3g5an_8 {
+  ._headerRow_12me1_8 {
     flex-wrap: wrap;
   }
 
-  ._spacer_3g5an_24 {
+  ._spacer_12me1_24 {
     display: none;
   }
 
-  ._filterControls_3g5an_35 {
+  ._filterControls_12me1_35 {
     width: 100%;
     margin-top: 4px;
     order: 10;

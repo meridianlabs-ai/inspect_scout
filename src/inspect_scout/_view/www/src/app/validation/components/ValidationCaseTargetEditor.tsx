@@ -1,7 +1,19 @@
-import { VscodeRadioGroup, VscodeRadio } from "@vscode-elements/react-elements";
-import { FC } from "react";
+import {
+  VscodeRadio,
+  VscodeRadioGroup,
+  VscodeTextfield,
+} from "@vscode-elements/react-elements";
+import { FC, useState } from "react";
 
 import { JsonValue } from "../../../types/api-types";
+
+type TargetMode = "true" | "false" | "other";
+
+function getInitialMode(target: JsonValue): TargetMode {
+  if (target === "true" || target === true) return "true";
+  if (target === "false" || target === false) return "false";
+  return "other";
+}
 
 interface ValidationCaseTargetEditorProps {
   target: JsonValue;
@@ -11,16 +23,51 @@ interface ValidationCaseTargetEditorProps {
 /**
  * Editor component for modifying the target of a validation case.
  */
-export const ValidationCaseTargetEditor: FC<
-  ValidationCaseTargetEditorProps
-> = ({ target, onChange }) => {
+export const ValidationCaseTargetEditor: FC<ValidationCaseTargetEditorProps> = ({
+  target,
+  onChange,
+}) => {
+  const [mode, setMode] = useState<TargetMode>(() => getInitialMode(target));
+  const [customValue, setCustomValue] = useState(() =>
+    getInitialMode(target) === "other" ? String(target ?? "") : ""
+  );
+
+  const handleRadioChange = (value: string) => {
+    const newMode = value as TargetMode;
+    setMode(newMode);
+
+    if (newMode === "other") {
+      onChange(customValue);
+    } else {
+      onChange(newMode);
+    }
+  };
+
+  const handleCustomValueChange = (value: string) => {
+    setCustomValue(value);
+    onChange(value);
+  };
+
   return (
-    <VscodeRadioGroup
-      onChange={(e) => onChange((e.target as HTMLInputElement).value)}
-    >
-      <VscodeRadio label="True" value="true" checked={target === "true"} />
-      <VscodeRadio label="False" value="false" checked={target === "false"} />
-      <VscodeRadio label="Other" value="other" checked={target === "other"} />
-    </VscodeRadioGroup>
+    <div>
+      <VscodeRadioGroup
+        onChange={(e) => handleRadioChange((e.target as HTMLInputElement).value)}
+      >
+        <VscodeRadio label="True" value="true" checked={mode === "true"} />
+        <VscodeRadio label="False" value="false" checked={mode === "false"} />
+        <VscodeRadio label="Other" value="other" checked={mode === "other"} />
+      </VscodeRadioGroup>
+
+      {mode === "other" && (
+        <VscodeTextfield
+          value={customValue}
+          placeholder="Enter target value"
+          onInput={(e) =>
+            handleCustomValueChange((e.target as HTMLInputElement).value)
+          }
+          style={{ marginTop: "8px" }}
+        />
+      )}
+    </div>
   );
 };

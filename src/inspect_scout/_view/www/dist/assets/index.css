@@ -9073,14 +9073,14 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: 0.65rem;
   overflow: visible;
 }
-._container_1i5bp_1 {
+._container_iqqa2_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 0;
 }
 
-._header_1i5bp_8 {
+._header_iqqa2_8 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9089,7 +9089,7 @@ span.ap-marker-container:hover span.ap-marker {
   height: 40px;
 }
 
-._headerTitle_1i5bp_17 {
+._headerTitle_iqqa2_17 {
   margin: 0;
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
@@ -9097,29 +9097,29 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerSecondary_1i5bp_25 {
+._headerSecondary_iqqa2_25 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_1i5bp_30 {
+._content_iqqa2_30 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_1i5bp_35 {
+._placeholder_iqqa2_35 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_1i5bp_42 {
+._textValue_iqqa2_42 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_1i5bp_47 {
+._panel_iqqa2_47 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
@@ -9127,11 +9127,19 @@ span.ap-marker-container:hover span.ap-marker {
   padding: 0.5rem 0.5rem 1.5rem 0.5rem;
 }
 
-._clickable_1i5bp_55 {
+/* Make all form controls full width within the panel */
+._panel_iqqa2_47 vscode-single-select,
+._panel_iqqa2_47 vscode-textfield {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+._clickable_iqqa2_63 {
   cursor: pointer;
 }
 
-._idLabel_1i5bp_59 {
+._idLabel_iqqa2_67 {
   margin-right: 0.5em;
 }
 /* Modal styles for the "New Split" dialog */

@@ -52,6 +52,14 @@
   padding: 0.5rem 0.5rem 1.5rem 0.5rem;
 }
 
+/* Make all form controls full width within the panel */
+.panel :global(vscode-single-select),
+.panel :global(vscode-textfield) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
 .clickable {
   cursor: pointer;
 }

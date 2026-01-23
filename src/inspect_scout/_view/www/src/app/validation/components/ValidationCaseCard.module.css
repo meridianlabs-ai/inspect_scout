@@ -161,6 +161,21 @@
   padding-bottom: 1px;
 }
 
+/* Warning for missing transcripts */
+.notFoundRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  padding-bottom: 1px;
+}
+
+.notFoundRow i {
+  font-size: 0.75rem;
+}
+
 /* Modal styles */
 .modalContent {
   display: flex;

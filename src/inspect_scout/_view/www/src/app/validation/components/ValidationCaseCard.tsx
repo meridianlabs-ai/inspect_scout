@@ -244,9 +244,14 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
         >
           Transcript ID: {idText}
         </button>
-        {transcript && (
+        {transcript ? (
           <div className={styles.detailsRow}>
             {buildTranscriptDetails(transcript)}
+          </div>
+        ) : (
+          <div className={styles.notFoundRow}>
+            <i className={ApplicationIcons.logging.warning} />
+            <span>Not found in project transcripts</span>
           </div>
         )}
       </div>

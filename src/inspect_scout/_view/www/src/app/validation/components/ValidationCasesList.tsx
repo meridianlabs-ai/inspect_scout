@@ -84,20 +84,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   const { data: transcriptMap, loading: transcriptsLoading } =
     useTranscriptsByIds(transcriptsDir, transcriptIds);
 
-  // Filter and sort cases based on split, search, and transcript availability
+  // Filter and sort cases based on split and search
   const filteredCases = useMemo(() => {
     const filtered = cases.filter((c) => {
       // Split filter
       if (splitFilter && c.split !== splitFilter) {
         return false;
-      }
-
-      // Filter out cases without transcript data (once loaded)
-      if (transcriptMap) {
-        const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
-        if (!transcriptId || !transcriptMap.has(transcriptId)) {
-          return false;
-        }
       }
 
       // Search filter (search across multiple fields)

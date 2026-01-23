@@ -242,7 +242,10 @@ class ScanRecorder(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     async def results_df(
-        scan_location: str, *, scanner: str | None = None
+        scan_location: str,
+        *,
+        scanner: str | None = None,
+        exclude_columns: list[str] | None = None,
     ) -> ScanResultsDF: ...
 
     @staticmethod

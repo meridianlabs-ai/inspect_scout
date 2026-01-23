@@ -73,6 +73,7 @@ def scan_results_df(
     *,
     scanner: str | None = None,
     rows: Literal["results", "transcripts"] = "results",
+    exclude_columns: list[str] | None = None,
 ) -> ScanResultsDF:
     """Scan results as Pandas data frames.
 
@@ -83,12 +84,16 @@ def scan_results_df(
             (potentially multiple per transcript); Specify "transcript" to yield a row
             for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
 
     Returns:
          ScanResults: Results as pandas data frames.
     """
     return run_coroutine(
-        scan_results_df_async(scan_location, scanner=scanner, rows=rows)
+        scan_results_df_async(
+            scan_location, scanner=scanner, rows=rows, exclude_columns=exclude_columns
+        )
     )
 
 
@@ -97,6 +102,7 @@ async def scan_results_df_async(
     *,
     scanner: str | None = None,
     rows: Literal["results", "transcripts"] = "results",
+    exclude_columns: list[str] | None = None,
 ) -> ScanResultsDF:
     """Scan results as Pandas data frames.
 
@@ -107,12 +113,16 @@ async def scan_results_df_async(
             (potentially multiple per transcript); Specify "transcript" to yield a row
             for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
 
     Returns:
          ScanResults: Results as Pandas data frames.
     """
     recorder = scan_recorder_type_for_location(scan_location)
-    results = await recorder.results_df(scan_location, scanner=scanner)
+    results = await recorder.results_df(
+        scan_location, scanner=scanner, exclude_columns=exclude_columns
+    )
 
     # Apply expansion lazily when in "results" mode
     if rows == "results":

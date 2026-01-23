@@ -10,7 +10,7 @@ import {
 } from "../types/api-types";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { NoPersistence, ScanApi } from "./api";
+import { NoPersistence, ScanApi, TopicVersions } from "./api";
 import { AsyncCache } from "./api-cache";
 import { serverRequestApi } from "./request";
 
@@ -166,6 +166,12 @@ export const apiScoutServerV1 = (
     // eslint-disable-next-line @typescript-eslint/require-await
     getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
+    },
+    connectTopicUpdates: (
+      callback: (topVersions: TopicVersions) => void
+    ): (() => void) => {
+      callback({ "project-config": "yo" });
+      return () => {};
     },
     storage: NoPersistence,
   };

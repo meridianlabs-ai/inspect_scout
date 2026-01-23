@@ -9,25 +9,28 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import "./app/App.css";
-import { useConfigAsync } from "./app/server/useConfig";
+import { useAppConfigAsync } from "./app/server/useAppConfig";
+import { useTopicInvalidation } from "./app/server/useTopicInvalidation";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import { createAppRouter } from "./AppRouter";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
+
+export const AppModeContext = createContext<AppProps["mode"]>("scans");
 
 export interface AppProps {
   mode?: "scans" | "workbench";
 }
 
-export const AppModeContext = createContext<AppProps["mode"]>("scans");
+export const App: FC<AppProps> = (props) => {
+  const invalidationReady = useTopicInvalidation();
 
-export const App: FC<AppProps> = ({ mode = "scans" }) => {
-  const { data: config } = useConfigAsync();
-  const router = useMemo(
-    () => (config ? createAppRouter({ mode, config }) : null),
-    [mode, config]
-  );
+  return invalidationReady ? <AppContent {...props} /> : null;
+};
 
-  return config && router ? (
+const AppContent: FC<AppProps> = ({ mode = "scans" }) => {
+  const router = useAppRouter(mode);
+
+  return router ? (
     <AppErrorBoundary>
       <AppModeContext.Provider value={mode}>
         <ExtendedFindProvider>
@@ -36,4 +39,12 @@ export const App: FC<AppProps> = ({ mode = "scans" }) => {
       </AppModeContext.Provider>
     </AppErrorBoundary>
   ) : null;
+};
+
+const useAppRouter = (mode: "scans" | "workbench") => {
+  const { data: appConfig } = useAppConfigAsync();
+  return useMemo(
+    () => (appConfig ? createAppRouter({ mode, config: appConfig }) : null),
+    [mode, appConfig]
+  );
 };

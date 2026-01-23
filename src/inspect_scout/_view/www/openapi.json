@@ -9907,6 +9907,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/app-config": {
+      "get": {
+        "description": "Returns app config including transcripts and scans directories.",
+        "operationId": "config_app_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get application configuration",
+        "tags": [
+          "config"
+        ]
+      }
+    },
     "/code": {
       "post": {
         "description": "Process condition.",
@@ -9951,28 +9973,6 @@
         "summary": "Code endpoint",
         "tags": [
           "scanners"
-        ]
-      }
-    },
-    "/config": {
-      "get": {
-        "description": "Returns app config including transcripts and scans directories.",
-        "operationId": "config_config_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppConfig"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get application configuration",
-        "tags": [
-          "config"
         ]
       }
     },

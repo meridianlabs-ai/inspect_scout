@@ -40,7 +40,7 @@ def create_config_router(
     view_config = view_config or ViewConfig()
 
     @router.get(
-        "/config",
+        "/app-config",
         response_model=AppConfig,
         response_class=InspectPydanticJSONResponse,
         summary="Get application configuration",

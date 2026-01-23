@@ -10,7 +10,7 @@ import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
  * data globally. After this completes, all other components should use
  * useConfig to access the loaded value synchronously.
  */
-export const useConfigAsync = (): AsyncData<AppConfig> => {
+export const useAppConfigAsync = (): AsyncData<AppConfig> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
@@ -27,9 +27,9 @@ export const useConfigAsync = (): AsyncData<AppConfig> => {
  * data has already been loaded at app initialization via useConfigAsync.
  * Throws if data not yet available.
  */
-export const useConfig = (): AppConfig => {
-  const { data } = useConfigAsync();
-  if (!data) throw new Error("Config not loaded");
+export const useAppConfig = (): AppConfig => {
+  const { data } = useAppConfigAsync();
+  if (!data) throw new Error("App Config not loaded");
   return data;
 };
 

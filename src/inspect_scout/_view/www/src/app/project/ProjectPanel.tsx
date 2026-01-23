@@ -9,7 +9,7 @@ import { useBlocker } from "react-router-dom";
 import { ApiError } from "../../api/request";
 import { Modal } from "../../components/Modal";
 import { AppConfig, ProjectConfigInput } from "../../types/api-types";
-import { appAliasedPath } from "../server/useConfig";
+import { appAliasedPath } from "../server/useAppConfig";
 import {
   useProjectConfig,
   useUpdateProjectConfig,

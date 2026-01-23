@@ -1,6 +1,6 @@
 import { useStore } from "../../state/store";
 import { useScanRoute } from "../hooks/useScanRoute";
-import { appAliasedPath, useConfig } from "../server/useConfig";
+import { appAliasedPath, useAppConfig } from "../server/useAppConfig";
 
 interface UseScansDirResult {
   displayScansDir: string;
@@ -10,7 +10,7 @@ interface UseScansDirResult {
 }
 
 export function useScansDir(useRouteParam = false): UseScansDirResult {
-  const config = useConfig();
+  const config = useAppConfig();
   const { scansDir: routeScansDir } = useScanRoute();
   const userScansDir = useStore((state) => state.userScansDir);
   const setUserScansDir = useStore((state) => state.setUserScansDir);

@@ -51,12 +51,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const scansMode =
   urlParams.get("mode") === "scans" || api.capability === "scans";
 
-// Component to run topic invalidation hook
-const TopicWatcher = (): null => {
-  useTopicInvalidation();
-  return null;
-};
-
 // Render the app
 root.render(
   <QueryClientProvider client={queryClient}>
@@ -66,7 +60,6 @@ root.render(
           <App mode={scansMode ? "scans" : "workbench"} />
         </ExtendedFindProvider>
       </StoreProvider>
-      <TopicWatcher />
     </ApiProvider>
     <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>

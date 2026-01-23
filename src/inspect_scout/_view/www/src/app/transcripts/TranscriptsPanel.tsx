@@ -9,7 +9,7 @@ import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
 import { useFilterBarProps } from "../hooks/useFilterBarProps";
-import { useConfig } from "../server/useConfig";
+import { useAppConfig } from "../server/useAppConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 
@@ -26,7 +26,7 @@ export const TranscriptsPanel: FC = () => {
     resolvedTranscriptsDirSource,
     setTranscriptsDir,
   } = useTranscriptsDir();
-  const config = useConfig();
+  const config = useAppConfig();
   const filter = Array.isArray(config.filter)
     ? config.filter.join(" ")
     : config.filter;

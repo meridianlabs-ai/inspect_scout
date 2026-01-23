@@ -1,5 +1,5 @@
 import { useStore } from "../../state/store";
-import { appAliasedPath, useConfig } from "../server/useConfig";
+import { appAliasedPath, useAppConfig } from "../server/useAppConfig";
 
 import { useTranscriptDirParams } from "./router";
 
@@ -13,7 +13,7 @@ interface UseTranscriptsDirResult {
 export function useTranscriptsDir(
   useRouteParam = false
 ): UseTranscriptsDirResult {
-  const config = useConfig();
+  const config = useAppConfig();
   const routeTranscriptsDir = useTranscriptDirParams();
   const userTranscriptsDir = useStore((state) => state.userTranscriptsDir);
   const setUserTranscriptsDir = useStore(

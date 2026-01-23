@@ -33,7 +33,7 @@ export const apiScoutServer = (
   return {
     capability: "workbench",
     getConfig: async (): Promise<AppConfig> => {
-      const result = await requestApi.fetchString("GET", `/config`);
+      const result = await requestApi.fetchString("GET", `/app-config`);
       return asyncJsonParse<AppConfig>(result.raw);
     },
     getTranscripts: async (

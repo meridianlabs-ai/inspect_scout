@@ -449,6 +449,8 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
           className={styles.splitLayout}
           fixedPane="end"
           initialHandlePosition="80%"
+          minEnd="180px"
+          minStart="200px"
         >
           <div slot="start" className={styles.splitStart}>
             {tabSetContent}

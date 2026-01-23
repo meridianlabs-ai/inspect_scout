@@ -9178,57 +9178,74 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: 0.65rem;
   overflow: visible;
 }
-._container_ncxp5_1 {
+._container_iqqa2_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 0;
 }
 
-._header_ncxp5_8 {
+._header_iqqa2_8 {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem;
   flex-shrink: 0;
+  height: 40px;
 }
 
-._headerTitle_ncxp5_16 {
+._headerTitle_iqqa2_17 {
   margin: 0;
-  font-size: var(--inspect-font-size-smaller);
+  font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
   text-transform: uppercase;
   font-weight: 400;
 }
 
-._headerSecondary_ncxp5_24 {
+._headerSecondary_iqqa2_25 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_ncxp5_29 {
+._content_iqqa2_30 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_ncxp5_34 {
+._placeholder_iqqa2_35 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_ncxp5_41 {
+._textValue_iqqa2_42 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_ncxp5_46 {
+._panel_iqqa2_47 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.5rem 0.5rem 1.5rem 0.5rem;
+}
+
+/* Make all form controls full width within the panel */
+._panel_iqqa2_47 vscode-single-select,
+._panel_iqqa2_47 vscode-textfield {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+._clickable_iqqa2_63 {
+  cursor: pointer;
+}
+
+._idLabel_iqqa2_67 {
+  margin-right: 0.5em;
 }
 ._tabContainer_8gcnx_1 {
   display: grid;

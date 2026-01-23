@@ -11,11 +11,12 @@
   justify-content: space-between;
   padding: 0.5rem;
   flex-shrink: 0;
+  height: 40px;
 }
 
 .headerTitle {
   margin: 0;
-  font-size: var(--inspect-font-size-smaller);
+  font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
   text-transform: uppercase;
   font-weight: 400;
@@ -49,4 +50,20 @@
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.5rem 0.5rem 1.5rem 0.5rem;
+}
+
+/* Make all form controls full width within the panel */
+.panel :global(vscode-single-select),
+.panel :global(vscode-textfield) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.idLabel {
+  margin-right: 0.5em;
 }

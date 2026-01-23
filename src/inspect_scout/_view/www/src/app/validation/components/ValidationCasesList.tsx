@@ -1,9 +1,6 @@
 import {
   VscodeButton,
   VscodeCheckbox,
-  VscodeOption,
-  VscodeSingleSelect,
-  VscodeTextfield,
 } from "@vscode-elements/react-elements";
 import { FC, useMemo, useState } from "react";
 
@@ -15,6 +12,7 @@ import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
 import { ValidationCaseCard } from "./ValidationCaseCard";
 import styles from "./ValidationCasesList.module.css";
+import { ValidationSplitSelector } from "./ValidationSplitSelector";
 
 interface ValidationCasesListProps {
   cases: ValidationCase[];
@@ -176,34 +174,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   // Bulk action modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
-  const [selectedSplit, setSelectedSplit] = useState<string>("");
-  const [customSplit, setCustomSplit] = useState("");
-  const [useCustomSplit, setUseCustomSplit] = useState(false);
-
-  const handleSplitSelectChange = (e: Event) => {
-    const value = (e.target as HTMLSelectElement).value;
-    if (value === "__custom__") {
-      setUseCustomSplit(true);
-      setSelectedSplit("");
-    } else {
-      setUseCustomSplit(false);
-      setSelectedSplit(value);
-      setCustomSplit("");
-    }
-  };
-
-  const handleCustomSplitInput = (e: Event) => {
-    const value = (e.target as HTMLInputElement).value;
-    setCustomSplit(value);
-  };
+  const [bulkSplitValue, setBulkSplitValue] = useState<string | null>(null);
 
   const handleAssignSplit = () => {
-    const split = useCustomSplit ? customSplit : selectedSplit;
-    handleBulkSplitChange(selectedIds, split || null);
+    handleBulkSplitChange(selectedIds, bulkSplitValue);
     setShowSplitModal(false);
-    setSelectedSplit("");
-    setCustomSplit("");
-    setUseCustomSplit(false);
+    setBulkSplitValue(null);
   };
 
   const handleConfirmDelete = () => {
@@ -315,10 +291,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
             <VscodeButton secondary onClick={() => setShowSplitModal(false)}>
               Cancel
             </VscodeButton>
-            <VscodeButton
-              onClick={handleAssignSplit}
-              disabled={isUpdating || (useCustomSplit && !customSplit)}
-            >
+            <VscodeButton onClick={handleAssignSplit} disabled={isUpdating}>
               {isUpdating ? "Assigning..." : "Assign"}
             </VscodeButton>
           </>
@@ -331,28 +304,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           </p>
 
           <div className={styles.splitSelector}>
-            <VscodeSingleSelect
-              value={useCustomSplit ? "__custom__" : selectedSplit}
-              onChange={handleSplitSelectChange}
-            >
-              <VscodeOption value="">Remove split</VscodeOption>
-              {existingSplits.map((split) => (
-                <VscodeOption key={split} value={split}>
-                  {split}
-                </VscodeOption>
-              ))}
-              <VscodeOption value="__custom__">Custom...</VscodeOption>
-            </VscodeSingleSelect>
-
-            {useCustomSplit && (
-              <VscodeTextfield
-                value={customSplit}
-                onInput={handleCustomSplitInput}
-                placeholder="Enter custom split name"
-                className={styles.customInput}
-                data-autofocus
-              />
-            )}
+            <ValidationSplitSelector
+              value={bulkSplitValue}
+              existingSplits={existingSplits}
+              onChange={setBulkSplitValue}
+              noSplitLabel="Remove split"
+            />
           </div>
         </div>
       </Modal>

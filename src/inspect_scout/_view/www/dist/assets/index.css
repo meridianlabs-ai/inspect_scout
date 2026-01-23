@@ -4915,49 +4915,51 @@ so disabling selection can break that functionality */
   border-top: 1px solid
     var(--vscode-widget-border, var(--vscode-editorWidget-border));
 }
-._container_e1pcq_1 {
+._container_1linb_1 {
   display: grid;
-  grid-template-columns: max-content max-content;
+  grid-template-columns: 1fr max-content;
   column-gap: 0.3em;
   border: solid var(--bs-border-color) 1px;
   border-radius: var(--bs-border-radius);
   background-color: var(--inspect-input-background);
   align-items: center;
+  overflow: hidden;
 }
 
-._container_e1pcq_1:focus-within {
+._container_1linb_1:focus-within {
   outline: 2px solid var(--bs-primary);
   outline-offset: 2px;
 }
 
-._input_e1pcq_16 {
+._input_1linb_17 {
   border: none;
   outline: none;
   background: transparent;
   color: var(--bs-body-color);
+  min-width: 0;
 }
 
-._withIcon_e1pcq_23 {
-  grid-template-columns: max-content max-content max-content;
+._withIcon_1linb_25 {
+  grid-template-columns: max-content 1fr max-content;
 }
 
-._icon_e1pcq_27 {
+._icon_1linb_29 {
   margin-left: 0.3em;
 }
 
-._clearText_e1pcq_31 {
+._clearText_1linb_33 {
   opacity: 0.6;
   margin-right: 0.3em;
 }
 
-._clearText_e1pcq_31:hover {
+._clearText_1linb_33:hover {
   cursor: pointer;
 }
 
-._clearText_e1pcq_31._hidden_e1pcq_40:hover {
+._clearText_1linb_33._hidden_1linb_42:hover {
   cursor: default !important;
 }
-._hidden_e1pcq_40 {
+._hidden_1linb_42 {
   opacity: 0 !important;
 }
 ._card_1v407_1 {
@@ -5150,6 +5152,44 @@ so disabling selection can break that functionality */
 }
 
 ._modalButtonPrimary_1v407_181:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Modal styles for the "New Split" dialog */
+._modalContent_cmqyy_2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+._modalContent_cmqyy_2 p {
+  margin: 0;
+}
+
+._modalButton_cmqyy_12 {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+._modalButton_cmqyy_12:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26 {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+._modalButtonPrimary_cmqyy_26:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -9141,44 +9181,6 @@ span.ap-marker-container:hover span.ap-marker {
 
 ._idLabel_iqqa2_67 {
   margin-right: 0.5em;
-}
-/* Modal styles for the "New Split" dialog */
-._modalContent_cmqyy_2 {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-._modalContent_cmqyy_2 p {
-  margin: 0;
-}
-
-._modalButton_cmqyy_12 {
-  padding: 6px 14px;
-  border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: 2px;
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  cursor: pointer;
-  font-size: 13px;
-}
-
-._modalButton_cmqyy_12:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-}
-
-._modalButtonPrimary_cmqyy_26 {
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-}
-
-._modalButtonPrimary_cmqyy_26:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-._modalButtonPrimary_cmqyy_26:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 ._tabContainer_8gcnx_1 {
   display: grid;

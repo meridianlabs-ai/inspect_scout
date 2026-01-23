@@ -82,3 +82,22 @@
   font-size: var(--inspect-font-size-smallestest) !important;
   padding: 0.1rem 0.4rem !important;
 }
+
+.splitLayout {
+  height: 100%;
+  width: 100%;
+}
+
+.splitStart {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.validationSidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-left: 1px solid var(--bs-border-color);
+  background-color: var(--bs-body-bg);
+  overflow-y: auto;
+}

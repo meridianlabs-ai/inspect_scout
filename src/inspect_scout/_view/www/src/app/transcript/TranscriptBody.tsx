@@ -1,3 +1,4 @@
+import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import {
   FC,
@@ -31,6 +32,7 @@ import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
+import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
 import styles from "./TranscriptBody.module.css";
@@ -425,18 +427,37 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     </TabPanel>
   );
 
+  const tabSetContent = (
+    <TabSet
+      id={"transcript-body"}
+      type="pills"
+      tabPanelsClassName={clsx(styles.tabSet)}
+      tabControlsClassName={clsx(styles.tabControl)}
+      className={clsx(styles.tabs)}
+      tools={tabTools}
+    >
+      {tabPanels}
+    </TabSet>
+  );
+
   return (
     <DisplayModeContext.Provider value={displayModeContextValue}>
-      <TabSet
-        id={"transcript-body"}
-        type="pills"
-        tabPanelsClassName={clsx(styles.tabSet)}
-        tabControlsClassName={clsx(styles.tabControl)}
-        className={clsx(styles.tabs)}
-        tools={tabTools}
-      >
-        {tabPanels}
-      </TabSet>
+      {validationSidebarCollapsed ? (
+        tabSetContent
+      ) : (
+        <VscodeSplitLayout
+          className={styles.splitLayout}
+          fixedPane="end"
+          initialHandlePosition="80%"
+        >
+          <div slot="start" className={styles.splitStart}>
+            {tabSetContent}
+          </div>
+          <div slot="end" className={styles.validationSidebar}>
+            <ValidationCaseEditor transcriptId={transcript.transcript_id} />
+          </div>
+        </VscodeSplitLayout>
+      )}
     </DisplayModeContext.Provider>
   );
 };

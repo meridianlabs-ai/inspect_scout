@@ -5,7 +5,7 @@ import {
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { FC } from "react";
+import { FC, useEffect } from "react";
 
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { LoadingBar } from "../../../components/LoadingBar";
@@ -31,6 +31,9 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
   const editorValidationSetUri = useStore(
     (state) => state.editorSelectedValidationSetUri
   );
+  const setEditorSelectedValidationSetUri = useStore(
+    (state) => state.setEditorSelectedValidationSetUri
+  );
   const {
     data: setsData,
     loading: setsLoading,
@@ -45,6 +48,13 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     editorValidationSetUri ? editorValidationSetUri : skipToken,
     editorValidationSetUri ? transcriptId : skipToken
   );
+
+  useEffect(() => {
+    // By default, select the first validation set if none is selected when loaded
+    if (setsData && setsData.length > 0 && !editorValidationSetUri) {
+      setEditorSelectedValidationSetUri(setsData[0]);
+    }
+  }, [setsData, editorValidationSetUri, setEditorSelectedValidationSetUri]);
 
   const error = setsError || caseError;
   const loading = setsLoading || (!!editorValidationSetUri && caseLoading);

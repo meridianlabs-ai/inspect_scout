@@ -13,7 +13,7 @@ import {
 } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
-import { ClientStorage, ScanApi } from "./api";
+import { ClientStorage, ScanApi, TopicVersions } from "./api";
 import { AsyncCache } from "./api-cache";
 import {
   kMethodGetScan,
@@ -174,6 +174,13 @@ export const apiVscode = (
     // eslint-disable-next-line @typescript-eslint/require-await
     getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
+    },
+    // Noop for now since vs code
+    connectTopicUpdates: (
+      callback: (topVersions: TopicVersions) => void
+    ): (() => void) => {
+      callback({ "project-config": "yo" });
+      return () => {};
     },
     storage: createVSCodeStore(vscodeApi),
   };

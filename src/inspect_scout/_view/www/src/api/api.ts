@@ -5,6 +5,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
+  InvalidationTopic,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -19,6 +20,9 @@ import {
 export type ClientStorage = StateStorage;
 
 export type ScalarValue = string | number | boolean | null;
+
+/** Topic versions: maps topic name to timestamp. */
+export type TopicVersions = Record<InvalidationTopic, string>;
 
 export interface ScanApi {
   getConfig(): Promise<AppConfig>;
@@ -61,6 +65,9 @@ export interface ScanApi {
   ): Promise<{ config: ProjectConfig; etag: string }>;
   startScan(config: ScanJobConfig): Promise<Status>;
   getScanners(): Promise<ScannersResponse>;
+  connectTopicUpdates(
+    onUpdate: (topVersions: TopicVersions) => void
+  ): () => void;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

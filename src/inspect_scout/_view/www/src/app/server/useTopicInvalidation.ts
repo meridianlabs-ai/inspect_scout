@@ -1,10 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useRef } from "react";
 
-import { InvalidationTopic } from "../../types/api-types";
-
-/** Topic versions: maps topic name to timestamp. */
-type TopicVersions = Record<InvalidationTopic, string>;
+import { TopicVersions } from "../../api/api";
+import { useApi } from "../../state/store";
 
 /**
  * Monitors topic updates via SSE and invalidates dependent queries on change.
@@ -44,23 +42,12 @@ export const useTopicInvalidation = (): boolean => {
  * Returns current topic versions dict, auto-reconnects on disconnect.
  */
 const useTopicUpdates = (): TopicVersions | undefined => {
+  const api = useApi();
   const [versions, setVersions] = useState<TopicVersions | undefined>(
     undefined
   );
 
-  useEffect(() => {
-    const connect = () => {
-      const es = new EventSource("/api/v2/topics/stream");
-      es.onmessage = (e) => setVersions(JSON.parse(e.data) as TopicVersions);
-      es.onerror = () => {
-        es.close();
-        setTimeout(connect, 5000);
-      };
-      return es;
-    };
-    const es = connect();
-    return () => es.close();
-  }, []);
+  useEffect(() => api.connectTopicUpdates(setVersions), [api, setVersions]);
 
   return versions;
 };

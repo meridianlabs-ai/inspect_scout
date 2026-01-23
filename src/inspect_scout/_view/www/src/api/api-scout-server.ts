@@ -16,7 +16,7 @@ import {
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { NoPersistence, ScanApi, ScalarValue } from "./api";
+import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
 import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -27,8 +27,8 @@ export const apiScoutServer = (
     headerProvider?: HeaderProvider;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl, headerProvider } = options;
-  const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
+  const { apiBaseUrl = "/api/v2", headerProvider } = options;
+  const requestApi = serverRequestApi(apiBaseUrl, headerProvider);
 
   return {
     capability: "workbench",
@@ -206,6 +206,28 @@ export const apiScoutServer = (
     getScanners: async (): Promise<ScannersResponse> => {
       const result = await requestApi.fetchString("GET", `/scanners`);
       return asyncJsonParse<ScannersResponse>(result.raw);
+    },
+    connectTopicUpdates: (
+      onUpdate: (topVersions: TopicVersions) => void
+    ): (() => void) => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      let eventSource: EventSource | undefined;
+
+      const connect = () => {
+        eventSource = new EventSource(`${apiBaseUrl}/topics/stream`);
+        eventSource.onmessage = (e) =>
+          onUpdate(JSON.parse(e.data) as TopicVersions);
+        eventSource.onerror = () => {
+          eventSource?.close();
+          timeoutId = setTimeout(connect, 5000);
+        };
+      };
+
+      connect();
+      return () => {
+        clearTimeout(timeoutId);
+        eventSource?.close();
+      };
     },
     storage: NoPersistence,
   };

@@ -4,11 +4,12 @@ from pathlib import Path
 
 import pytest
 from inspect_scout._util.path_str import as_path, make_path
+from inspect_scout._util.uri_str import as_uri
 from upath import UPath
 
 
-class TestMakePath:
-    """Tests for make_path function."""
+class TestMakePathFromPath:
+    """Tests for make_path with Path input."""
 
     @pytest.mark.parametrize(
         ("input_path", "expected"),
@@ -54,8 +55,11 @@ class TestMakePath:
     def test_returns_pathstr_type(self, input_path: Path) -> None:
         """make_path returns PathStr (which is a str)."""
         result = make_path(input_path)
-        # PathStr is a NewType, so at runtime it's just str
         assert type(result) is str
+
+
+class TestMakePathFromUPath:
+    """Tests for make_path with UPath input."""
 
     @pytest.mark.parametrize(
         ("input_path", "expected"),
@@ -67,10 +71,59 @@ class TestMakePath:
         ids=["simple", "with_space", "with_at"],
     )
     def test_accepts_upath(self, input_path: UPath, expected: str) -> None:
-        """make_path accepts UPath in addition to Path."""
+        """make_path accepts UPath."""
         result = make_path(input_path)
         assert result == expected
         assert type(result) is str
+
+
+class TestMakePathFromUriStr:
+    """Tests for make_path with UriStr input (decodes percent-encoding)."""
+
+    @pytest.mark.parametrize(
+        ("uri", "expected"),
+        [
+            ("file:///tmp/file.txt", "/tmp/file.txt"),
+            ("file:///tmp/foo%20bar.txt", "/tmp/foo bar.txt"),
+            ("file:///tmp/foo%40bar.txt", "/tmp/foo@bar.txt"),
+            ("file:///tmp/file%23hash.txt", "/tmp/file#hash.txt"),
+            ("file:///tmp/file%3Fquery.txt", "/tmp/file?query.txt"),
+            ("file:///tmp/100%25done.txt", "/tmp/100%done.txt"),
+            ("file:///tmp/a/b/c.txt", "/tmp/a/b/c.txt"),
+            (
+                "file:///tmp/%E2%9C%93check.txt",
+                "/tmp/\u2713check.txt",
+            ),  # unicode checkmark
+        ],
+        ids=[
+            "simple",
+            "space_decoded",
+            "at_decoded",
+            "hash_decoded",
+            "question_decoded",
+            "percent_decoded",
+            "nested",
+            "unicode_decoded",
+        ],
+    )
+    def test_decodes_uri_to_path(self, uri: str, expected: str) -> None:
+        """make_path decodes percent-encoded characters from UriStr."""
+        result = make_path(as_uri(uri))
+        assert result == expected
+
+    def test_returns_pathstr_type(self) -> None:
+        """make_path returns PathStr (which is a str)."""
+        result = make_path(as_uri("file:///tmp/file.txt"))
+        assert type(result) is str
+
+    def test_double_encoding_not_applied(self) -> None:
+        """make_path doesn't double-decode (e.g., %2520 -> %20 -> space)."""
+        # A URI where %25 represents a literal % in the path
+        # So %2520 means the path contains literal "%20" (not a space)
+        uri = as_uri("file:///tmp/file%2520name.txt")
+        path = make_path(uri)
+        # Should decode %25 -> % once, leaving 20 after it as literal
+        assert "%20" in path  # literal %20 in filename
 
 
 class TestAsPath:

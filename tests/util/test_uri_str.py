@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import pytest
-from inspect_scout._util.path_str import PathStr, as_path
-from inspect_scout._util.uri_str import as_uri, make_uri, uri_to_path
+from inspect_scout._util.path_str import PathStr, as_path, make_path
+from inspect_scout._util.uri_str import as_uri, make_uri
 from upath import UPath
 
 
@@ -21,8 +21,8 @@ class TestMakeUri:
             (Path("/tmp/file#hash.txt"), "/tmp/file%23hash.txt"),
             (Path("/tmp/file?query.txt"), "/tmp/file%3Fquery.txt"),
             (Path("/tmp/100%done.txt"), "/tmp/100%25done.txt"),
-            (Path("/tmp/file&name.txt"), "/tmp/file%26name.txt"),  # & encoded
-            (Path("/tmp/file=name.txt"), "/tmp/file%3Dname.txt"),  # = encoded
+            (Path("/tmp/file&name.txt"), "/tmp/file%26name.txt"),
+            (Path("/tmp/file=name.txt"), "/tmp/file%3Dname.txt"),
         ],
         ids=[
             "simple",
@@ -74,44 +74,9 @@ class TestMakeUri:
         assert ".." not in result
         assert "/." not in result
 
-
-class TestUriToPath:
-    """Tests for uri_to_path function."""
-
-    @pytest.mark.parametrize(
-        ("uri", "expected"),
-        [
-            ("file:///tmp/file.txt", "/tmp/file.txt"),
-            ("file:///tmp/foo%20bar.txt", "/tmp/foo bar.txt"),
-            ("file:///tmp/foo%40bar.txt", "/tmp/foo@bar.txt"),
-            ("file:///tmp/file%23hash.txt", "/tmp/file#hash.txt"),
-            ("file:///tmp/file%3Fquery.txt", "/tmp/file?query.txt"),
-            ("file:///tmp/100%25done.txt", "/tmp/100%done.txt"),
-            ("file:///tmp/a/b/c.txt", "/tmp/a/b/c.txt"),
-            (
-                "file:///tmp/%E2%9C%93check.txt",
-                "/tmp/\u2713check.txt",
-            ),  # unicode checkmark
-        ],
-        ids=[
-            "simple",
-            "space_decoded",
-            "at_decoded",
-            "hash_decoded",
-            "question_decoded",
-            "percent_decoded",
-            "nested",
-            "unicode_decoded",
-        ],
-    )
-    def test_decodes_uri_to_path(self, uri: str, expected: str) -> None:
-        """uri_to_path decodes percent-encoded characters."""
-        result = uri_to_path(as_uri(uri))
-        assert result == expected
-
-    def test_returns_pathstr_type(self) -> None:
-        """uri_to_path returns PathStr (which is a str)."""
-        result = uri_to_path(as_uri("file:///tmp/file.txt"))
+    def test_returns_uristr_type(self) -> None:
+        """make_uri returns UriStr (which is a str)."""
+        result = make_uri(Path("/tmp/file.txt"))
         assert type(result) is str
 
 
@@ -176,7 +141,7 @@ class TestRoundTrip:
         """Converting path -> URI -> path preserves the original path."""
         path = Path(original_path)
         uri = make_uri(path)
-        result = uri_to_path(uri)
+        result = make_path(uri)
         # Note: result may have platform prefix like /private on macOS
         assert result.endswith(original_path) or original_path in result
 
@@ -192,7 +157,7 @@ class TestRoundTrip:
     def test_uri_to_path_to_uri(self, uri: str, expected_path_suffix: str) -> None:
         """Converting URI -> path -> URI preserves encoding semantics."""
         typed_uri = as_uri(uri)
-        path = uri_to_path(typed_uri)
+        path = make_path(typed_uri)
         assert path.endswith(expected_path_suffix)
         # Round-trip back to URI
         new_uri = make_uri(Path(path))
@@ -206,28 +171,19 @@ class TestEdgeCases:
     def test_empty_filename(self) -> None:
         """Handles paths with empty-ish filenames."""
         uri = make_uri(Path("/tmp/"))
-        path = uri_to_path(uri)
+        path = make_path(uri)
         assert "/tmp" in path
 
     def test_multiple_encoded_chars(self) -> None:
         """Handles paths with multiple special characters."""
         original = Path("/tmp/a@b c#d?e%f.txt")
         uri = make_uri(original)
-        path = uri_to_path(uri)
+        path = make_path(uri)
         assert "@" in path
         assert " " in path
         assert "#" in path
         assert "?" in path
         assert "%" in path
-
-    def test_double_encoding_not_applied(self) -> None:
-        """uri_to_path doesn't double-decode (e.g., %2520 -> %20 -> space)."""
-        # A URI where %25 represents a literal % in the path
-        # So %2520 means the path contains literal "%20" (not a space)
-        uri = as_uri("file:///tmp/file%2520name.txt")
-        path = uri_to_path(uri)
-        # Should decode %25 -> % once, leaving 20 after it as literal
-        assert "%20" in path  # literal %20 in filename
 
     def test_already_decoded_path_encodes_correctly(self) -> None:
         """Paths with literal percent signs encode correctly."""
@@ -237,35 +193,5 @@ class TestEdgeCases:
         # The % should be encoded as %25
         assert "%25" in uri
         # Round-trip should preserve
-        result = uri_to_path(uri)
+        result = make_path(uri)
         assert "100%" in result
-
-
-class TestTypeAnnotations:
-    """Tests verifying type annotation behavior."""
-
-    def test_make_uri_return_type_is_str(self) -> None:
-        """make_uri returns a value that is a str at runtime."""
-        result = make_uri(Path("/tmp/file.txt"))
-        assert isinstance(result, str)
-
-    def test_uri_to_path_return_type_is_str(self) -> None:
-        """uri_to_path returns a value that is a str at runtime."""
-        result = uri_to_path(as_uri("file:///tmp/file.txt"))
-        assert isinstance(result, str)
-
-    def test_pathstr_usable_as_str(self) -> None:
-        """PathStr can be used anywhere str is expected."""
-        path_str = uri_to_path(as_uri("file:///tmp/file.txt"))
-        # String operations work
-        assert path_str.startswith("/")
-        assert path_str.endswith(".txt")
-        assert len(path_str) > 0
-
-    def test_uristr_usable_as_str(self) -> None:
-        """UriStr can be used anywhere str is expected."""
-        uri_str = make_uri(Path("/tmp/file.txt"))
-        # String operations work
-        assert uri_str.startswith("file://")
-        assert uri_str.endswith(".txt")
-        assert len(uri_str) > 0

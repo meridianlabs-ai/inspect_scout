@@ -21,7 +21,7 @@ from .._project.types import ProjectConfig
 from .._util.constants import DEFAULT_SCANS_DIR
 from ._api_v2_types import AppConfig, AppDir
 from ._server_common import InspectPydanticJSONResponse
-from .topics import notify_topics
+from .invalidationTopics import notify_topics
 from .types import ViewConfig
 
 

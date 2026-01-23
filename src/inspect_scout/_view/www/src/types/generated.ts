@@ -1535,6 +1535,8 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
+        /** @enum {string} */
+        InvalidationTopic: "project-config";
         /**
          * JSONSchema
          * @description JSON Schema for type.

@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter
 from sse_starlette.sse import EventSourceResponse
 
-from .topics import get_condition, topic_versions_json
+from .invalidationTopics import get_condition, topic_versions_json
 
 
 def create_topics_router() -> APIRouter:

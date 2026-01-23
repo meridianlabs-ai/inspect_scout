@@ -1,7 +1,7 @@
 """V2 API orchestrator - creates FastAPI app and includes all routers."""
 
 from pathlib import Path as PathlibPath
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 
 from fastapi import FastAPI
 from inspect_ai._util.json import JsonChange
@@ -17,6 +17,7 @@ from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import create_transcripts_router
 from ._api_v2_validations import create_validation_router
 from ._server_common import CustomJsonSchemaGenerator
+from .invalidationTopics import InvalidationTopic
 from .types import ViewConfig
 
 API_VERSION = "2.0.0-alpha"
@@ -70,6 +71,7 @@ def v2_api_app(
                 ("Event", Event),
                 ("JsonChange", JsonChange),
                 ("LlmScannerParams", LlmScannerParams),
+                ("InvalidationTopic", InvalidationTopic),
             ]
             ref_template = "#/components/schemas/{model}"
             schemas = openapi_schema.setdefault("components", {}).setdefault(
@@ -94,6 +96,9 @@ def v2_api_app(
                             for m in members
                         ]
                     }
+                elif get_origin(t) is Literal:
+                    # Literal type: create enum schema
+                    schemas[name] = {"type": "string", "enum": list(get_args(t))}
                 elif hasattr(t, "model_json_schema"):
                     # Pydantic model: add directly
                     schema = t.model_json_schema(

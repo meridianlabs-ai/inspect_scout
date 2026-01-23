@@ -3625,6 +3625,12 @@
         "title": "InputEvent",
         "type": "object"
       },
+      "InvalidationTopic": {
+        "enum": [
+          "project-config"
+        ],
+        "type": "string"
+      },
       "JSONSchema": {
         "description": "JSON Schema for type.",
         "properties": {

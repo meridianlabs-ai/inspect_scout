@@ -1,8 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useRef } from "react";
 
+import { InvalidationTopic } from "../../types/api-types";
+
 /** Topic versions: maps topic name to timestamp. */
-type TopicVersions = Record<string, string>;
+type TopicVersions = Record<InvalidationTopic, string>;
 
 /**
  * Monitors topic updates via SSE and invalidates dependent queries on change.
@@ -17,13 +19,13 @@ type TopicVersions = Record<string, string>;
 export const useTopicInvalidation = (): boolean => {
   const queryClient = useQueryClient();
   const versions = useTopicUpdates();
-  const prevVersionsRef = useRef<TopicVersions>({});
+  const prevVersionsRef = useRef<TopicVersions | undefined>(undefined);
 
   useEffect(() => {
     if (versions === undefined) return;
 
     const changedTopics = Object.entries(versions).filter(
-      ([topic, timestamp]) => prevVersionsRef.current[topic] !== timestamp
+      ([topic, timestamp]) => prevVersionsRef.current?.[topic] !== timestamp
     );
     for (const [topic] of changedTopics) {
       void queryClient.invalidateQueries({

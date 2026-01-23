@@ -1,7 +1,7 @@
 """Branded string type for URIs (percent-encoded per RFC 3986)."""
 
 from pathlib import Path
-from typing import NewType, overload
+from typing import NewType
 from urllib.parse import unquote
 
 from upath import UPath
@@ -10,18 +10,6 @@ from .path_str import PathStr, as_path
 
 UriStr = NewType("UriStr", str)
 """A percent-encoded URI string per RFC 3986."""
-
-
-@overload
-def make_uri(path: Path) -> UriStr: ...
-
-
-@overload
-def make_uri(path: UPath) -> UriStr: ...
-
-
-@overload
-def make_uri(path: PathStr) -> UriStr: ...
 
 
 def make_uri(path: Path | UPath | PathStr) -> UriStr:

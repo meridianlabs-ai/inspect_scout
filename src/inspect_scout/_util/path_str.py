@@ -3,12 +3,14 @@
 from pathlib import Path
 from typing import NewType
 
+from upath import UPath
+
 PathStr = NewType("PathStr", str)
 """A filesystem path as a string (no encoding)."""
 
 
-def make_path(path: Path) -> PathStr:
-    """Convert a Path to PathStr."""
+def make_path(path: Path | UPath) -> PathStr:
+    """Convert a Path or UPath to PathStr."""
     return PathStr(str(path))
 
 

@@ -83,6 +83,7 @@ export const useCreateValidationSet = () => {
 
 /**
  * Hook to update a validation case (upsert).
+ * Uses optimistic updates to prevent UI flicker during save.
  */
 export const useUpdateValidationCase = (uri: string) => {
   const queryClient = useQueryClient();
@@ -90,19 +91,71 @@ export const useUpdateValidationCase = (uri: string) => {
   return useMutation<
     ValidationCase,
     Error,
-    { caseId: string; data: ValidationCaseRequest }
+    { caseId: string; data: ValidationCaseRequest },
+    { previousCase: ValidationCase | undefined; previousCases: ValidationCase[] | undefined }
   >({
     mutationFn: ({ caseId, data }) =>
       api.upsertValidationCase(uri, caseId, data),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
+
+    onMutate: ({ caseId, data }) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      void queryClient.cancelQueries({
+        queryKey: validationQueryKeys.case({ url: uri, caseId }),
+      });
+      void queryClient.cancelQueries({
         queryKey: validationQueryKeys.cases(uri),
       });
+
+      // Snapshot the previous values for rollback
+      const previousCase = queryClient.getQueryData<ValidationCase>(
+        validationQueryKeys.case({ url: uri, caseId })
+      );
+      const previousCases = queryClient.getQueryData<ValidationCase[]>(
+        validationQueryKeys.cases(uri)
+      );
+
+      // Optimistically update both caches
+      if (previousCase) {
+        queryClient.setQueryData(
+          validationQueryKeys.case({ url: uri, caseId }),
+          { ...previousCase, ...data }
+        );
+      }
+      if (previousCases) {
+        queryClient.setQueryData(
+          validationQueryKeys.cases(uri),
+          previousCases.map((c) => (c.id === caseId ? { ...c, ...data } : c))
+        );
+      }
+
+      return { previousCase, previousCases };
+    },
+
+    onError: (_err, { caseId }, context) => {
+      // Rollback to previous values on error
+      if (context?.previousCase) {
+        queryClient.setQueryData(
+          validationQueryKeys.case({ url: uri, caseId }),
+          context.previousCase
+        );
+      }
+      if (context?.previousCases) {
+        queryClient.setQueryData(
+          validationQueryKeys.cases(uri),
+          context.previousCases
+        );
+      }
+    },
+
+    onSuccess: (_data, { caseId }) => {
+      // Invalidate both queries to sync with server.
+      // Since we've already optimistically updated both caches, the invalidation
+      // will refetch in the background without causing UI flicker.
       void queryClient.invalidateQueries({
-        queryKey: validationQueryKeys.case({
-          url: uri,
-          caseId: variables.caseId,
-        }),
+        queryKey: validationQueryKeys.case({ url: uri, caseId }),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: validationQueryKeys.cases(uri),
       });
     },
   });

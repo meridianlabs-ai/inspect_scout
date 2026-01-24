@@ -1,8 +1,7 @@
 import { skipToken } from "@tanstack/react-query";
 import { VscodeCollapsible } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { debounce } from "lodash-es";
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ErrorPanel } from "../../../components/ErrorPanel";
@@ -20,6 +19,7 @@ import {
   ValidationCase,
   ValidationCaseRequest,
 } from "../../../types/api-types";
+import { useDebouncedCallback } from "../../../utils/useDebouncedCallback";
 import { Field } from "../../project/components/FormFields";
 import {
   useUpdateValidationCase,
@@ -160,88 +160,89 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   >("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Mutation hook for saving
-  const updateValidationCase = useUpdateValidationCase(
-    editorValidationSetUri ?? ""
+  // Local working copy of the validation case for editing
+  // This is the single source of truth for the UI during editing
+  const [workingCase, setWorkingCase] = useState<ValidationCase | undefined>(
+    validationCase
   );
 
-  // Track pending changes to make sure we save all changes in the
-  // debounce window
-  const pendingChangesRef = useRef<Partial<ValidationCaseRequest>>({});
+  // Sync working copy from server when:
+  // 1. Server data changes and we're not in the middle of saving
+  // 2. The case identity changes (different transcriptId or validation set)
+  const updateValidationCaseMutation = useUpdateValidationCase(
+    editorValidationSetUri ?? ""
+  );
+  const isSaving = updateValidationCaseMutation.isPending;
 
-  // Create debounced save function
-  const debouncedSave = useMemo(() => {
-    const doSave = () => {
-      // No file selected or no case loaded
-      if (!editorValidationSetUri || !validationCase) {
-        return;
-      }
-
-      // Only save if there are pending changes
-      const changes = pendingChangesRef.current;
-      if (Object.keys(changes).length === 0) {
-        return;
-      }
-
-      // Build the full request with current values + pending changes
-      const request: ValidationCaseRequest = {
-        id: validationCase.id,
-        predicate:
-          "predicate" in changes ? changes.predicate : validationCase.predicate,
-        split: "split" in changes ? changes.split : validationCase.split,
-        ...(validationCase.labels != null
-          ? { labels: validationCase.labels }
-          : {
-              target:
-                "target" in changes ? changes.target : validationCase.target,
-            }),
-      };
-
-      setSaveStatus("saving");
-      setSaveError(null);
-
-      updateValidationCase.mutate(
-        { caseId: transcriptId, data: request },
-        {
-          onSuccess: () => {
-            setSaveStatus("saved");
-            pendingChangesRef.current = {};
-            // Reset to idle after showing "saved" briefly
-            setTimeout(() => setSaveStatus("idle"), 1500);
-          },
-          onError: (error) => {
-            setSaveStatus("error");
-            setSaveError(error.message);
-          },
-        }
-      );
-    };
-
-    return debounce(doSave, 600);
-  }, [
-    editorValidationSetUri,
-    validationCase,
-    transcriptId,
-    updateValidationCase,
-  ]);
-
-  // Cleanup debounce on unmount
   useEffect(() => {
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [debouncedSave]);
+    if (!isSaving && validationCase) {
+      setWorkingCase(validationCase);
+    }
+  }, [validationCase, isSaving]);
 
-  // Handler for field changes
+  // Reset working case when switching to a different case
+  const prevTranscriptIdRef = useRef(transcriptId);
+  const prevUriRef = useRef(editorValidationSetUri);
+  useEffect(() => {
+    if (
+      transcriptId !== prevTranscriptIdRef.current ||
+      editorValidationSetUri !== prevUriRef.current
+    ) {
+      setWorkingCase(validationCase);
+      prevTranscriptIdRef.current = transcriptId;
+      prevUriRef.current = editorValidationSetUri;
+    }
+  }, [transcriptId, editorValidationSetUri, validationCase]);
+
+  // Debounced save function - always has access to current state
+  const debouncedSave = useDebouncedCallback(() => {
+    // Access current state directly - no refs needed
+    if (!editorValidationSetUri || !workingCase) {
+      return;
+    }
+
+    const request: ValidationCaseRequest = {
+      id: workingCase.id,
+      predicate: workingCase.predicate,
+      split: workingCase.split,
+      ...(workingCase.labels != null
+        ? { labels: workingCase.labels }
+        : { target: workingCase.target }),
+    };
+
+    setSaveStatus("saving");
+    setSaveError(null);
+
+    updateValidationCaseMutation.mutate(
+      { caseId: transcriptId, data: request },
+      {
+        onSuccess: () => {
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 1500);
+        },
+        onError: (error) => {
+          setSaveStatus("error");
+          setSaveError(error.message);
+        },
+      }
+    );
+  }, 600);
+
+  // Handler for field changes - updates local state immediately, debounces server call
   const handleFieldChange = useCallback(
     (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
-      pendingChangesRef.current = {
-        ...pendingChangesRef.current,
-        [field]: value,
-      };
+      if (!editorValidationSetUri || !workingCase) return;
+
+      // Update local working copy immediately for instant UI feedback
+      setWorkingCase((prev) => {
+        if (!prev) return prev;
+        return { ...prev, [field]: value };
+      });
+
+      // Debounce the actual server call
       debouncedSave();
     },
-    [debouncedSave]
+    [editorValidationSetUri, workingCase, debouncedSave]
   );
 
   const handleValidationSetSelect = useCallback(
@@ -287,10 +288,10 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               helper='The case that describe the purpose of this validation (e.g., "dev", "test", "train")'
             >
               <ValidationSplitSelector
-                value={validationCase?.split || null}
+                value={workingCase?.split || null}
                 existingSplits={extractUniqueSplits(validationCases || [])}
                 onChange={(split) => handleFieldChange("split", split)}
-                disabled={!validationCase}
+                disabled={!workingCase}
               />
             </Field>
           </SidebarPanel>
@@ -305,7 +306,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper="The expected value for this validation case."
               >
                 <ValidationCaseTargetEditor
-                  target={validationCase?.target}
+                  target={workingCase?.target}
                   onChange={(target) => handleFieldChange("target", target)}
                 />
               </Field>
@@ -315,11 +316,11 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
               >
                 <ValidationCasePredicateSelector
-                  value={validationCase?.predicate || null}
+                  value={workingCase?.predicate || null}
                   onChange={(predicate) =>
                     handleFieldChange("predicate", predicate)
                   }
-                  disabled={!validationCase}
+                  disabled={!workingCase}
                 />
               </Field>
             </SidebarPanel>

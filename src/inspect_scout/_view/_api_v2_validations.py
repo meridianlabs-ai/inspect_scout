@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as PathParam
+from send2trash import send2trash
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -16,7 +17,7 @@ from upath import UPath
 from .._validation.file_scanner import scan_validation_files
 from .._validation.predicates import PredicateType
 from .._validation.types import ValidationCase
-from .._validation.writer import ValidationFileWriter
+from .._validation.writer import ValidationFileWriter, _unflatten_labels
 from ._api_v2_types import (
     CreateValidationSetRequest,
     RenameValidationSetRequest,
@@ -86,10 +87,15 @@ def create_validation_router(
                 )
 
             # Validate that exactly one of target or labels is provided
-            if (case_req.target is None) == (case_req.labels is None):
+            if case_req.target is None and case_req.labels is None:
                 raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST,
-                    detail=f"Case {i}: must specify exactly one of 'target' or 'labels'",
+                    detail=f"Case {i}: must specify either 'target' or 'labels'",
+                )
+            if case_req.target is not None and case_req.labels is not None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail=f"Case {i}: cannot specify both 'target' and 'labels'",
                 )
 
             cases.append(
@@ -129,7 +135,9 @@ def create_validation_router(
 
         try:
             writer = ValidationFileWriter(file_path)
-            return writer.read_cases()
+            cases = writer.read_cases()
+            # Convert label_* columns to nested labels object for API response
+            return _unflatten_labels(cases)
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
@@ -151,14 +159,14 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        try:
-            file_path.unlink()
-            return {"deleted": True}
-        except FileNotFoundError:
+        if not file_path.exists():
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Validation file not found",
-            ) from None
+            )
+
+        send2trash(str(file_path))
+        return {"deleted": True}
 
     @router.put(
         "/{uri}/rename",
@@ -192,7 +200,7 @@ def create_validation_router(
             )
 
         # Check for invalid characters in filename
-        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if any(c in new_name for c in invalid_chars):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -279,10 +287,15 @@ def create_validation_router(
         _validate_path_within_project(file_path, project_dir)
 
         # Validate that exactly one of target or labels is provided
-        if (body.target is None) == (body.labels is None):
+        if body.target is None and body.labels is None:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail="Must specify exactly one of 'target' or 'labels'",
+                detail="Must specify either 'target' or 'labels'",
+            )
+        if body.target is not None and body.labels is not None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Cannot specify both 'target' and 'labels'",
             )
 
         try:

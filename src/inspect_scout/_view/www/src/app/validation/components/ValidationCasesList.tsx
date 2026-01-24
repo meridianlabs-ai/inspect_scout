@@ -1,15 +1,14 @@
-import {
-  VscodeButton,
-  VscodeCheckbox,
-} from "@vscode-elements/react-elements";
-import { FC, useMemo, useState } from "react";
+import { VscodeButton, VscodeCheckbox } from "@vscode-elements/react-elements";
+import { CSSProperties, FC, useMemo, useState } from "react";
 
+import { ApplicationIcons } from "../../../components/icons";
 import { Modal } from "../../../components/Modal";
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
 import { useTranscriptsByIds } from "../hooks/useTranscriptsByIds";
 import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
+import { CopyMoveCasesModal } from "./CopyMoveCasesModal";
 import { ValidationCaseCard } from "./ValidationCaseCard";
 import styles from "./ValidationCasesList.module.css";
 import { ValidationSplitSelector } from "./ValidationSplitSelector";
@@ -17,7 +16,7 @@ import { ValidationSplitSelector } from "./ValidationSplitSelector";
 interface ValidationCasesListProps {
   cases: ValidationCase[];
   transcriptsDir: string | undefined;
-  validationSetUri?: string;
+  sourceUri: string | undefined;
   onBulkSplitChange?: (ids: string[], split: string | null) => void;
   onBulkDelete?: (ids: string[]) => void;
   onSingleSplitChange?: (caseId: string, split: string | null) => void;
@@ -33,7 +32,7 @@ interface ValidationCasesListProps {
 export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   cases,
   transcriptsDir,
-  validationSetUri,
+  sourceUri,
   onBulkSplitChange,
   onBulkDelete,
   onSingleSplitChange,
@@ -60,24 +59,37 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   // Extract unique splits from all cases
   const existingSplits = useMemo(() => extractUniqueSplits(cases), [cases]);
 
+  // Determine which columns to show based on case data
+  const hasLabels = useMemo(
+    () => cases.some((c) => c.labels !== null && c.labels !== undefined),
+    [cases]
+  );
+  const hasTargets = useMemo(
+    () => cases.some((c) => c.target !== null && c.target !== undefined),
+    [cases]
+  );
+
+  // Build dynamic grid columns: checkbox, transcript, [labels], [target], split, actions
+  const gridColumns = useMemo(() => {
+    const cols = ["20px", "1fr"]; // checkbox, transcript
+    if (hasLabels) cols.push("auto"); // labels
+    if (hasTargets) cols.push("auto"); // target
+    cols.push("90px", "auto"); // split, actions
+    return cols.join(" ");
+  }, [hasLabels, hasTargets]);
+
+  const gridStyle: CSSProperties = { gridTemplateColumns: gridColumns };
+
   // Fetch transcript data for all cases
   const { data: transcriptMap, loading: transcriptsLoading } =
     useTranscriptsByIds(transcriptsDir, transcriptIds);
 
-  // Filter and sort cases based on split, search, and transcript availability
+  // Filter and sort cases based on split and search
   const filteredCases = useMemo(() => {
     const filtered = cases.filter((c) => {
       // Split filter
       if (splitFilter && c.split !== splitFilter) {
         return false;
-      }
-
-      // Filter out cases without transcript data (once loaded)
-      if (transcriptMap) {
-        const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
-        if (!transcriptId || !transcriptMap.has(transcriptId)) {
-          return false;
-        }
       }
 
       // Search filter (search across multiple fields)
@@ -133,6 +145,11 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       .map(([id]) => id);
   }, [selection]);
 
+  // Get selected cases (full case data for copy/move operations)
+  const selectedCases = useMemo(() => {
+    return filteredCases.filter((c) => selection[getCaseKey(c.id)]);
+  }, [filteredCases, selection]);
+
   // Check if all filtered cases are selected
   const allSelected =
     filteredCaseKeys.length > 0 &&
@@ -173,21 +190,23 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
     setSelection({});
   };
 
-  // Bulk action modal state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showSplitModal, setShowSplitModal] = useState(false);
+  // Bulk action modal state - single enum instead of multiple booleans
+  type ModalType = "none" | "delete" | "split" | "copy" | "move";
+  const [activeModal, setActiveModal] = useState<ModalType>("none");
   const [bulkSplitValue, setBulkSplitValue] = useState<string | null>(null);
 
   const handleAssignSplit = () => {
     handleBulkSplitChange(selectedIds, bulkSplitValue);
-    setShowSplitModal(false);
+    setActiveModal("none");
     setBulkSplitValue(null);
   };
 
   const handleConfirmDelete = () => {
     handleBulkDelete(selectedIds);
-    setShowDeleteModal(false);
+    setActiveModal("none");
   };
+
+  const closeModal = () => setActiveModal("none");
 
   const hasSelection = selectedIds.length > 0;
   const hasBulkActions = onBulkSplitChange && onBulkDelete;
@@ -197,7 +216,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       {/* Grid container with sticky header */}
       <div className={styles.gridContainer}>
         {/* Header row */}
-        <div className={styles.header}>
+        <div className={styles.header} style={gridStyle}>
           <div className={styles.headerCheckbox}>
             <VscodeCheckbox
               checked={allSelected}
@@ -215,25 +234,46 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   {selectedIds.length} selected
                 </span>
                 <VscodeButton
-                  secondary
-                  onClick={() => setShowSplitModal(true)}
+                  onClick={() => setActiveModal("split")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Assign Split"
                 >
-                  Assign Split
+                  <i className={ApplicationIcons.fork} />
+                  <span className={styles.buttonText}>Assign Split</span>
                 </VscodeButton>
                 <VscodeButton
-                  secondary
-                  onClick={() => setShowDeleteModal(true)}
+                  onClick={() => setActiveModal("copy")}
                   disabled={isUpdating || isDeleting}
                   className={styles.bulkButton}
+                  title="Copy"
                 >
-                  Delete
+                  <i className={ApplicationIcons.copy} />
+                  <span className={styles.buttonText}>Copy</span>
+                </VscodeButton>
+                <VscodeButton
+                  onClick={() => setActiveModal("move")}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                  title="Move"
+                >
+                  <i className={ApplicationIcons.move} />
+                  <span className={styles.buttonText}>Move</span>
+                </VscodeButton>
+                <VscodeButton
+                  onClick={() => setActiveModal("delete")}
+                  disabled={isUpdating || isDeleting}
+                  className={styles.bulkButton}
+                  title="Delete"
+                >
+                  <i className={ApplicationIcons.trash} />
+                  <span className={styles.buttonText}>Delete</span>
                 </VscodeButton>
               </span>
             )}
           </div>
-          <div className={styles.headerTarget}>Target</div>
+          {hasLabels && <div className={styles.headerLabels}>Labels</div>}
+          {hasTargets && <div className={styles.headerTarget}>Target</div>}
           <div className={styles.headerSplit}>Split</div>
           <div className={styles.headerActions}>Actions</div>
         </div>
@@ -263,7 +303,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   validationCase={c}
                   transcript={transcript}
                   transcriptsDir={transcriptsDir}
-                  validationSetUri={validationSetUri}
+                  validationSetUri={sourceUri}
                   isSelected={selection[caseKey] ?? false}
                   onSelectionChange={() => toggleSelection(caseKey)}
                   existingSplits={existingSplits}
@@ -277,6 +317,9 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   }
                   isUpdating={isUpdating}
                   isDeleting={isDeleting}
+                  showLabels={hasLabels}
+                  showTarget={hasTargets}
+                  gridStyle={gridStyle}
                 />
               );
             })
@@ -286,12 +329,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
 
       {/* Split Assignment Modal */}
       <Modal
-        show={showSplitModal}
-        onHide={() => setShowSplitModal(false)}
+        show={activeModal === "split"}
+        onHide={closeModal}
         title="Assign Split"
         footer={
           <>
-            <VscodeButton secondary onClick={() => setShowSplitModal(false)}>
+            <VscodeButton secondary onClick={closeModal}>
               Cancel
             </VscodeButton>
             <VscodeButton onClick={handleAssignSplit} disabled={isUpdating}>
@@ -319,12 +362,12 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
 
       {/* Delete Confirmation Modal */}
       <Modal
-        show={showDeleteModal}
-        onHide={() => setShowDeleteModal(false)}
+        show={activeModal === "delete"}
+        onHide={closeModal}
         title="Confirm Delete"
         footer={
           <>
-            <VscodeButton secondary onClick={() => setShowDeleteModal(false)}>
+            <VscodeButton secondary onClick={closeModal}>
               Cancel
             </VscodeButton>
             <VscodeButton onClick={handleConfirmDelete} disabled={isDeleting}>
@@ -341,6 +384,32 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
           <p className={styles.warning}>This action cannot be undone.</p>
         </div>
       </Modal>
+
+      {/* Copy Cases Modal */}
+      {sourceUri && (
+        <CopyMoveCasesModal
+          show={activeModal === "copy"}
+          mode="copy"
+          sourceUri={sourceUri}
+          selectedIds={selectedIds}
+          selectedCases={selectedCases}
+          onHide={closeModal}
+          onSuccess={() => setSelection({})}
+        />
+      )}
+
+      {/* Move Cases Modal */}
+      {sourceUri && (
+        <CopyMoveCasesModal
+          show={activeModal === "move"}
+          mode="move"
+          sourceUri={sourceUri}
+          selectedIds={selectedIds}
+          selectedCases={selectedCases}
+          onHide={closeModal}
+          onSuccess={() => setSelection({})}
+        />
+      )}
     </div>
   );
 };

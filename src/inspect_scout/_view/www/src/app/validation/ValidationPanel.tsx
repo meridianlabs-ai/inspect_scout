@@ -16,6 +16,7 @@ import {
 
 import { ApplicationIcons } from "../../components/icons";
 import { Modal } from "../../components/Modal";
+import { NonIdealState } from "../../components/NonIdealState";
 import { TextInput } from "../../components/TextInput";
 import { useStore } from "../../state/store";
 import { useConfig } from "../server/useConfig";
@@ -205,6 +206,35 @@ export const ValidationPanel: FC = () => {
   // Extract unique splits for filter dropdown
   const splits = useMemo(() => extractUniqueSplits(cases ?? []), [cases]);
 
+  // Show nothing while loading to prevent flash of main UI
+  if (setsLoading) {
+    return <div className={styles.container} />;
+  }
+
+  // Check for empty state (no validation sets available)
+  const hasNoValidationSets = !setsError && validationSets?.length === 0;
+
+  if (hasNoValidationSets) {
+    return (
+      <div className={styles.container}>
+        <NonIdealState
+          icon={ApplicationIcons.validation}
+          title="No Validation Sets in Project"
+          description="Validation sets enable you to check scanner results against labeled cases."
+          action={
+            <a
+              href="https://meridianlabs-ai.github.io/inspect_scout/validation.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Using Scout Validation
+            </a>
+          }
+        />
+      </div>
+    );
+  }
+
   // Filter handlers
   const handleSplitFilterChange = (e: Event) => {
     const value = (e.target as HTMLSelectElement).value;
@@ -221,9 +251,7 @@ export const ValidationPanel: FC = () => {
       <div className={styles.headerRow}>
         <h2 className={styles.title}>Validation Set:</h2>
 
-        {setsLoading ? (
-          <div className={styles.loading}>Loading sets...</div>
-        ) : setsError ? (
+        {setsError ? (
           <div className={styles.error}>
             Error loading validation sets: {setsError.message}
           </div>
@@ -311,7 +339,7 @@ export const ValidationPanel: FC = () => {
               <ValidationCasesList
                 cases={cases}
                 transcriptsDir={transcriptsDir}
-                validationSetUri={selectedUri}
+                sourceUri={selectedUri}
                 onBulkSplitChange={handleBulkSplitChange}
                 onBulkDelete={handleBulkDelete}
                 onSingleSplitChange={handleSingleSplitChange}
@@ -335,7 +363,7 @@ export const ValidationPanel: FC = () => {
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
         onSubmit={deleteSetMutation.isPending ? undefined : handleDeleteSet}
-        title="Delete Validation Set"
+        title="Move to Trash"
         footer={
           <>
             <VscodeButton secondary onClick={() => setShowDeleteModal(false)}>
@@ -345,16 +373,16 @@ export const ValidationPanel: FC = () => {
               onClick={handleDeleteSet}
               disabled={deleteSetMutation.isPending}
             >
-              {deleteSetMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteSetMutation.isPending ? "Moving..." : "Move to Trash"}
             </VscodeButton>
           </>
         }
       >
         <div className={styles.modalContent}>
           <p>
-            Are you sure you want to delete <strong>{currentFilename}</strong>?
+            Are you sure you want to move <strong>{currentFilename}</strong> to
+            the trash?
           </p>
-          <p className={styles.warning}>This action cannot be undone.</p>
         </div>
       </Modal>
 

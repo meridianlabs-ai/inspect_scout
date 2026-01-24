@@ -1,6 +1,6 @@
 .card {
   display: grid;
-  grid-template-columns: 20px 1fr auto 90px auto;
+  /* grid-template-columns set dynamically via inline style */
   align-items: center;
   gap: 12px;
   padding: calc(0.3rem + 1px) 1rem;
@@ -12,7 +12,10 @@
 }
 
 .card:hover {
-  background: var(--vscode-list-inactiveSelectionBackground, rgba(128, 128, 128, 0.04));
+  background: var(
+    --vscode-list-inactiveSelectionBackground,
+    rgba(128, 128, 128, 0.04)
+  );
 }
 
 .card.selected {
@@ -54,6 +57,14 @@
 .idLink:disabled {
   color: var(--vscode-disabledForeground);
   cursor: default;
+}
+
+.labelsCell {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
 }
 
 .targetCell {
@@ -127,7 +138,9 @@
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .actionButton:hover:not(:disabled) {
@@ -146,6 +159,21 @@
   font-size: 0.8rem;
   line-height: 1.2;
   padding-bottom: 1px;
+}
+
+/* Warning for missing transcripts */
+.notFoundRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  padding-bottom: 1px;
+}
+
+.notFoundRow i {
+  font-size: 0.75rem;
 }
 
 /* Modal styles */

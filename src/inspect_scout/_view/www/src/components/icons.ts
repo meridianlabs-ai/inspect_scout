@@ -62,6 +62,7 @@ export const ApplicationIcons = {
   config: "bi bi-gear",
   confirm: "bi bi-check",
   copy: "bi bi-copy",
+  move: "bi bi-box-arrow-right",
   display: "bi bi-card-text",
   download: "bi bi-download",
   epoch: (epoch: string) => {

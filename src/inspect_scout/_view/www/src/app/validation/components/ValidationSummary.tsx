@@ -44,8 +44,7 @@ export const ValidationSummary: FC<ValidationSummaryProps> = ({ cases }) => {
             Splits:{" "}
             {stats.splits.map(([split, count], i) => (
               <span key={split}>
-                {split} ({count})
-                {i < stats.splits.length - 1 && ", "}
+                {split} ({count}){i < stats.splits.length - 1 && ", "}
               </span>
             ))}
           </span>

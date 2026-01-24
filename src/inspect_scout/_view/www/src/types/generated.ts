@@ -356,6 +356,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/validations/{uri}/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rename a validation file
+         * @description Renames a validation file. Returns the new URI.
+         */
+        put: operations["rename_validation_validations__uri__rename_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/validations/{uri}/{case_id}": {
         parameters: {
             query?: never;
@@ -2204,6 +2224,11 @@ export interface components {
              */
             timestamp: string;
         };
+        /** RenameValidationSetRequest */
+        RenameValidationSetRequest: {
+            /** Name */
+            name: string;
+        };
         /**
          * ResponseSchema
          * @description Schema for model response when using Structured Output.
@@ -3743,7 +3768,7 @@ export interface components {
              * @default null
              */
             labels: {
-                [key: string]: components["schemas"]["JsonValue"];
+                [key: string]: boolean;
             } | null;
             /**
              * Predicate
@@ -3764,7 +3789,7 @@ export interface components {
             id?: string | string[] | null;
             /** Labels */
             labels?: {
-                [key: string]: components["schemas"]["JsonValue"];
+                [key: string]: boolean;
             } | null;
             /** Predicate */
             predicate?: string | null;
@@ -4290,6 +4315,33 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+        };
+    };
+    rename_validation_validations__uri__rename_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameValidationSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };

@@ -10,7 +10,7 @@ async def validate(
     validation: ValidationSet,
     result: Result,
     target: JsonValue | None = None,
-    labels: dict[str, JsonValue] | None = None,
+    labels: dict[str, bool] | None = None,
     predicate_override: ValidationPredicate | None = None,
 ) -> bool | dict[str, bool]:
     """Validate a result against a target or labels using the validation set's predicate.
@@ -98,74 +98,81 @@ async def _validate_dict(
 async def _validate_labels(
     validation: ValidationSet,
     result: Result,
-    labels: dict[str, JsonValue],
+    labels: dict[str, bool],
     predicate: ValidationPredicate | None,
 ) -> dict[str, bool]:
-    """Validate a resultset against label-specific expected values.
-
-    Uses "at least one" logic: if any result with a given label matches the
-    expected value, validation passes for that label. Missing labels are treated
-    as negative values (False, None, "NONE", 0, etc).
+    """Validate a resultset against label presence/absence expectations.
 
     Args:
-        validation: ValidationSet containing the predicate
-        result: The result to validate (should be a resultset)
-        labels: Dict mapping label names to expected values
-        predicate: The predicate to use for validation
+        validation: ValidationSet (unused, kept for API compatibility)
+        result: The result to validate (must be a resultset)
+        labels: Dict mapping label names to boolean expectations
+               true = expect positive result, false = expect no result or negative
+        predicate: Unused (kept for API compatibility)
 
     Returns:
         Dict mapping each label to its validation result (bool)
     """
     import json
 
-    # Validate that this is a resultset
+    # Validate resultset type
     if result.type != "resultset":
         raise ValueError(
-            f"Label-based validation requires a resultset, but got result of type '{result.type}'"
+            f"Label-based validation requires a resultset, got '{result.type}'"
         )
 
-    # Parse the resultset value (JSON array of Result objects)
+    # Parse resultset value
     if isinstance(result.value, str):
         resultset_data = json.loads(result.value)
     elif isinstance(result.value, list):
         resultset_data = result.value
     else:
-        raise ValueError(
-            f"Resultset value must be a JSON string or list, got {type(result.value)}"
-        )
+        raise ValueError("Resultset value must be JSON string or list")
 
-    # Build a dict of label -> list of Result objects
+    # Group results by label
     results_by_label: dict[str, list[dict[str, JsonValue]]] = {}
     for item in resultset_data:
         if isinstance(item, dict) and "label" in item:
             label = item["label"]
-            if label not in results_by_label:
-                results_by_label[label] = []
-            results_by_label[label].append(item)
+            results_by_label.setdefault(label, []).append(item)
 
     # Validate each label
-    predicate_fn = resolve_predicate(predicate)
     validation_results: dict[str, bool] = {}
 
-    for label, expected_value in labels.items():
-        # Get all results with this label
+    for label, expect_positive in labels.items():
         label_results = results_by_label.get(label, [])
 
-        if label_results:
-            # At least one result exists - check if any matches expected value
-            # Use "at least one" logic
-            any_match = False
-            for item_data in label_results:
-                item_result = Result.model_validate(item_data)
-                is_match = await predicate_fn(item_result, expected_value)
-                if is_match:
-                    any_match = True
-                    break
-            validation_results[label] = any_match
+        if expect_positive:
+            # true: pass if ANY result has non-negative value
+            validation_results[label] = any(
+                _is_positive_value(Result.model_validate(item).value)
+                for item in label_results
+            )
         else:
-            # No results with this label - treat as negative/absent
-            # Passes if expected value is a "negative" value
-            negative_values = (False, None, "NONE", "none", 0, "")
-            validation_results[label] = expected_value in negative_values
+            # false: pass if NO results OR ALL have negative values
+            validation_results[label] = all(
+                not _is_positive_value(Result.model_validate(item).value)
+                for item in label_results
+            )
 
     return validation_results
+
+
+def _is_positive_value(value: JsonValue) -> bool:
+    """Check if a value is considered 'positive' (non-negative).
+
+    Negative values: False, None, 0, "", "NONE", "none", {}, []
+    Non-empty dicts, lists, non-zero numbers, non-empty strings, True = positive.
+    """
+    if value is None or value is False:
+        return False
+    if value == 0 or value == "":
+        return False
+    if isinstance(value, str) and value.lower() == "none":
+        return False
+    if isinstance(value, dict) and len(value) == 0:
+        return False
+    if isinstance(value, list) and len(value) == 0:
+        return False
+    # Non-empty dicts/lists, non-zero numbers, non-empty strings, True = positive
+    return True

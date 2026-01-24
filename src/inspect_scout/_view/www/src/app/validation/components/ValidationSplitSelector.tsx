@@ -3,7 +3,7 @@ import {
   VscodeSingleSelect,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 
 import { Modal } from "../../../components/Modal";
 
@@ -42,6 +42,16 @@ export const ValidationSplitSelector: FC<ValidationSplitSelectorProps> = ({
   // Internal modal state
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customSplitValue, setCustomSplitValue] = useState("");
+
+  // Ensure current value is always in the options list.
+  // This prevents the dropdown from showing "(No split)" during React Query
+  // cache transitions when the cases data is temporarily stale.
+  const effectiveSplits = useMemo(() => {
+    if (value && !existingSplits.includes(value)) {
+      return [...existingSplits, value].sort();
+    }
+    return existingSplits;
+  }, [existingSplits, value]);
 
   // Map null to internal sentinel value for the select
   const selectValue = value ?? "__none__";
@@ -84,7 +94,7 @@ export const ValidationSplitSelector: FC<ValidationSplitSelectorProps> = ({
         disabled={disabled}
       >
         <VscodeOption value="__none__">{noSplitLabel}</VscodeOption>
-        {existingSplits.map((s) => (
+        {effectiveSplits.map((s) => (
           <VscodeOption key={s} value={s}>
             {s}
           </VscodeOption>

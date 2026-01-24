@@ -89,6 +89,7 @@
   background-color: var(--bs-success);
   border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
+  width: 4.5em;
 }
 
 .targetFalse {
@@ -101,6 +102,7 @@
   background-color: var(--bs-danger);
   border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
+  width: 4.5em;
 }
 
 /* Subtle split selector */

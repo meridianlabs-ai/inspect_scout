@@ -311,6 +311,7 @@ export const ValidationPanel: FC = () => {
               <ValidationCasesList
                 cases={cases}
                 transcriptsDir={transcriptsDir}
+                validationSetUri={selectedUri}
                 onBulkSplitChange={handleBulkSplitChange}
                 onBulkDelete={handleBulkDelete}
                 onSingleSplitChange={handleSingleSplitChange}

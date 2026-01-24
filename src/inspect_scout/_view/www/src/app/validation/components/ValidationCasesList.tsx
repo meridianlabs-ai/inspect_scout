@@ -17,6 +17,7 @@ import { ValidationSplitSelector } from "./ValidationSplitSelector";
 interface ValidationCasesListProps {
   cases: ValidationCase[];
   transcriptsDir: string | undefined;
+  validationSetUri?: string;
   onBulkSplitChange?: (ids: string[], split: string | null) => void;
   onBulkDelete?: (ids: string[]) => void;
   onSingleSplitChange?: (caseId: string, split: string | null) => void;
@@ -32,6 +33,7 @@ interface ValidationCasesListProps {
 export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   cases,
   transcriptsDir,
+  validationSetUri,
   onBulkSplitChange,
   onBulkDelete,
   onSingleSplitChange,
@@ -261,6 +263,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
                   validationCase={c}
                   transcript={transcript}
                   transcriptsDir={transcriptsDir}
+                  validationSetUri={validationSetUri}
                   isSelected={selection[caseKey] ?? false}
                   onSelectionChange={() => toggleSelection(caseKey)}
                   existingSplits={existingSplits}

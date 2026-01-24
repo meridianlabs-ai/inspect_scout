@@ -7,7 +7,12 @@ import { useSearchParams } from "react-router-dom";
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { ApplicationIcons } from "../../../components/icons";
 import { LoadingBar } from "../../../components/LoadingBar";
-import { getValidationParam, updateValidationParam } from "../../../router/url";
+import {
+  getValidationParam,
+  getValidationSetParam,
+  updateValidationParam,
+  updateValidationSetParam,
+} from "../../../router/url";
 import { useStore } from "../../../state/store";
 import { ValidationCase } from "../../../types/api-types";
 import { Field } from "../../project/components/FormFields";
@@ -33,6 +38,7 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
   transcriptId,
   className,
 }) => {
+  const [searchParams] = useSearchParams();
   const editorValidationSetUri = useStore(
     (state) => state.editorSelectedValidationSetUri
   );
@@ -66,12 +72,27 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     editorValidationSetUri ? editorValidationSetUri : skipToken
   );
 
+  // Initialize from URL param or fall back to first available set
+  // URL param always takes precedence when present and valid
   useEffect(() => {
-    // By default, select the first validation set if none is selected when loaded
-    if (setsData && setsData.length > 0 && !editorValidationSetUri) {
+    if (!setsData || setsData.length === 0) return;
+
+    const validationSetParam = getValidationSetParam(searchParams);
+    if (validationSetParam && setsData.includes(validationSetParam)) {
+      // URL param is valid - use it (even if store has a different value)
+      if (editorValidationSetUri !== validationSetParam) {
+        setEditorSelectedValidationSetUri(validationSetParam);
+      }
+    } else if (!editorValidationSetUri) {
+      // No URL param and no store value - fall back to first set
       setEditorSelectedValidationSetUri(setsData[0]);
     }
-  }, [setsData, editorValidationSetUri, setEditorSelectedValidationSetUri]);
+  }, [
+    setsData,
+    searchParams,
+    editorValidationSetUri,
+    setEditorSelectedValidationSetUri,
+  ]);
 
   const error = setsError || casesError || caseError;
   const loading =
@@ -130,7 +151,18 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     // This is a placeholder; actual implementation may vary
     console.log("Selected split:", newSplit);
   };
-  const [_, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
+
+  const handleValidationSetSelect = useCallback(
+    (uri: string | undefined) => {
+      setEditorSelectedValidationSetUri(uri);
+      setSearchParams(
+        (prevParams) => updateValidationSetParam(prevParams, uri),
+        { replace: true }
+      );
+    },
+    [setEditorSelectedValidationSetUri, setSearchParams]
+  );
 
   const closeValidationSidebar = useCallback(() => {
     setSearchParams((prevParams) => {
@@ -156,7 +188,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               <ValidationSetSelector
                 validationSets={validationSets || []}
                 selectedUri={editorValidationSetUri}
-                onSelect={setEditorSelectedValidationSetUri}
+                onSelect={handleValidationSetSelect}
               />
             </Field>
             <Field

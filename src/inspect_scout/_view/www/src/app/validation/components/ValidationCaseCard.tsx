@@ -15,6 +15,7 @@ interface ValidationCaseCardProps {
   validationCase: ValidationCase;
   transcript?: TranscriptInfo;
   transcriptsDir: string | undefined;
+  validationSetUri?: string;
   isSelected: boolean;
   onSelectionChange: (selected: boolean) => void;
   existingSplits: string[];
@@ -145,6 +146,7 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
   validationCase,
   transcript,
   transcriptsDir,
+  validationSetUri,
   isSelected,
   onSelectionChange,
   existingSplits,
@@ -170,7 +172,9 @@ export const ValidationCaseCard: FC<ValidationCaseCardProps> = ({
   const handleNavigateToTranscript = () => {
     const singleId = Array.isArray(id) ? id[0] : id;
     if (transcriptsDir && singleId) {
-      void navigate(transcriptRoute(transcriptsDir, singleId));
+      void navigate(
+        transcriptRoute(transcriptsDir, singleId, undefined, validationSetUri)
+      );
     }
   };
 

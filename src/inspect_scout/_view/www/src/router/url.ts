@@ -20,6 +20,7 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 // Query parameter constants
 export const kScannerQueryParam = "scanner";
 export const kValidationQueryParam = "validation";
+export const kValidationSetQueryParam = "validationSet";
 
 // Helper functions to generate routes
 export const scanRoute = (
@@ -76,13 +77,21 @@ export const validationRoute = () => "/validation";
 export const transcriptRoute = (
   transcriptsDir: string,
   transcriptId: string,
-  searchParams?: URLSearchParams
+  searchParams?: URLSearchParams,
+  validationSetUri?: string
 ) => {
   const encodedDir = encodeBase64Url(transcriptsDir);
   const route = `/transcripts/${encodedDir}/${transcriptId}`;
-  return searchParams?.toString()
-    ? `${route}?${searchParams.toString()}`
-    : route;
+
+  // If validationSetUri is provided, add validation params
+  let params = searchParams ? new URLSearchParams(searchParams) : undefined;
+  if (validationSetUri) {
+    params = params ?? new URLSearchParams();
+    params.set(kValidationQueryParam, "1");
+    params.set(kValidationSetQueryParam, encodeBase64Url(validationSetUri));
+  }
+
+  return params?.toString() ? `${route}?${params.toString()}` : route;
 };
 
 /**
@@ -225,6 +234,33 @@ export const updateValidationParam = (
 // Retrieves the validation sidebar parameter from URL search params.
 export const getValidationParam = (searchParams: URLSearchParams): boolean => {
   return searchParams.get(kValidationQueryParam) === "1";
+};
+
+// Retrieves the validation set URI from URL search params.
+export const getValidationSetParam = (
+  searchParams: URLSearchParams
+): string | undefined => {
+  const encoded = searchParams.get(kValidationSetQueryParam);
+  if (!encoded) return undefined;
+  try {
+    return decodeBase64Url(encoded);
+  } catch {
+    return undefined;
+  }
+};
+
+// Updates the validation set URI parameter in URL search params.
+export const updateValidationSetParam = (
+  searchParams: URLSearchParams,
+  uri: string | undefined
+): URLSearchParams => {
+  const newParams = new URLSearchParams(searchParams);
+  if (uri) {
+    newParams.set(kValidationSetQueryParam, encodeBase64Url(uri));
+  } else {
+    newParams.delete(kValidationSetQueryParam);
+  }
+  return newParams;
 };
 
 export const isHostedEnvironment = () => {

@@ -32,9 +32,14 @@ export const ValidationCaseTargetEditor: FC<
     setMode(getInitialMode(target));
   }, [target, setMode]);
 
-  const [customValue, setCustomValue] = useState(() =>
-    getInitialMode(target) === "other" ? String(target ?? "") : ""
-  );
+  const [customValue, setCustomValue] = useState(() => {
+    return getInitialMode(target) === "other" ? String(target ?? "") : "";
+  });
+  useEffect(() => {
+    if (getInitialMode(target) === "other") {
+      setCustomValue(String(target ?? ""));
+    }
+  }, [target, setCustomValue]);
 
   const handleRadioChange = (value: string) => {
     const newMode = value as TargetMode;

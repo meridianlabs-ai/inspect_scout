@@ -3,7 +3,7 @@ import {
   VscodeRadioGroup,
   VscodeTextfield,
 } from "@vscode-elements/react-elements";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 
 import { JsonValue } from "../../../types/api-types";
 
@@ -27,6 +27,11 @@ export const ValidationCaseTargetEditor: FC<
   ValidationCaseTargetEditorProps
 > = ({ target, onChange }) => {
   const [mode, setMode] = useState<TargetMode>(() => getInitialMode(target));
+
+  useEffect(() => {
+    setMode(getInitialMode(target));
+  }, [target, setMode]);
+
   const [customValue, setCustomValue] = useState(() =>
     getInitialMode(target) === "other" ? String(target ?? "") : ""
   );

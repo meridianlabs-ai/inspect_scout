@@ -171,6 +171,8 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     });
   }, [setSearchParams]);
 
+  console.log({ validationCase });
+
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader
@@ -214,7 +216,11 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper="The expected value for this validation case."
               >
                 <ValidationCaseTargetEditor
-                  target="true"
+                  target={
+                    validationCase?.target !== undefined
+                      ? validationCase?.target
+                      : true
+                  }
                   onChange={(target) => {
                     console.log("NEW TARGET:" + target);
                   }}

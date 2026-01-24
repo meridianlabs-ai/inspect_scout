@@ -171,8 +171,6 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     });
   }, [setSearchParams]);
 
-  console.log({ validationCase });
-
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader

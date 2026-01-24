@@ -22,6 +22,10 @@
   font-weight: 400;
 }
 
+.headerIcon {
+  margin-right: 0.5em;
+}
+
 .headerSecondary {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
@@ -54,7 +58,8 @@
 
 /* Make all form controls full width within the panel */
 .panel :global(vscode-single-select),
-.panel :global(vscode-textfield) {
+.panel :global(vscode-textfield),
+.panel :global(button) {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;

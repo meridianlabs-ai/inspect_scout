@@ -232,6 +232,7 @@ export const ValidationPanel: FC = () => {
             validationSets={validationSets ?? []}
             selectedUri={selectedUri}
             onSelect={handleSelectSet}
+            autoSize={true}
           />
         )}
 

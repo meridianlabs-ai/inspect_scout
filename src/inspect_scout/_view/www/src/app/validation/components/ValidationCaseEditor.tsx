@@ -141,18 +141,28 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
 
   return (
     <div className={clsx(styles.container, className)}>
-      <SidebarHeader title="Validation" onClose={closeValidationSidebar} />
+      <SidebarHeader
+        title="Validation"
+        icon={ApplicationIcons.validation}
+        onClose={closeValidationSidebar}
+      />
       <div className={styles.content}>
         <VscodeCollapsible heading="Validation Set" open>
           <SidebarPanel>
-            <Field label="Validation Set">
+            <Field
+              label="Validation Set"
+              helper="The file which contains this validation set."
+            >
               <ValidationSetSelector
                 validationSets={validationSets || []}
                 selectedUri={editorValidationSetUri}
                 onSelect={setEditorSelectedValidationSetUri}
               />
             </Field>
-            <Field label="Split">
+            <Field
+              label="Split"
+              helper='The case that describe the purpose of this validation (e.g., "dev", "test", "train")'
+            >
               <ValidationSplitSelector
                 value={validationCase?.split || null}
                 existingSplits={extractUniqueSplits(validationCases || [])}
@@ -167,7 +177,10 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
           <VscodeCollapsible heading="Validation Case" open>
             <SidebarPanel>
               <SecondaryDisplayValue label="ID" value={transcriptId} />
-              <Field label="Target">
+              <Field
+                label="Target"
+                helper="The expected value for this validation case."
+              >
                 <ValidationCaseTargetEditor
                   target="true"
                   onChange={(target) => {
@@ -176,7 +189,10 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 />
               </Field>
 
-              <Field label="Predicate">
+              <Field
+                label="Predicate"
+                helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+              >
                 <ValidationCasePredicateSelector
                   value={validationCase?.predicate || null}
                   onChange={(predicate) => {
@@ -201,19 +217,24 @@ export const SidebarPanel: FC<SidebarPanelProps> = ({ children }) => {
 };
 
 interface SidebarHeaderProps {
+  icon?: string;
   title?: string;
   secondary?: string;
   onClose?: () => void;
 }
 
 export const SidebarHeader: FC<SidebarHeaderProps> = ({
+  icon,
   title,
   secondary,
   onClose,
 }) => {
   return (
     <div className={styles.header}>
-      <h3 className={styles.headerTitle}>{title}</h3>
+      <h3 className={styles.headerTitle}>
+        {icon && <i className={clsx(icon, styles.headerIcon)} />}
+        {title}
+      </h3>
       {secondary && <div className={styles.headerSecondary}>{secondary}</div>}
       {onClose && (
         <i

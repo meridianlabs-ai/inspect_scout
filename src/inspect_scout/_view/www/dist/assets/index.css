@@ -5329,24 +5329,144 @@ so disabling selection can break that functionality */
   color: var(--vscode-errorForeground);
   font-size: 0.9em;
 }
-._container_1ocg6_1 {
+._container_asm93_1 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Trigger button (collapsed state) */
+._trigger_asm93_8 {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  width: fit-content;
+  padding: 3px 3px;
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
 }
 
-._select_1ocg6_7 {
-  width: 220px !important;
-  min-width: 220px !important;
-  max-width: 220px !important;
+._chevron_asm93_26 {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.6;
+  line-height: 1;
+  transform: rotate(180deg);
 }
 
-._loading_1ocg6_13 {
+._trigger_asm93_8:hover {
+  background: var(--vscode-dropdown-background);
+  border-color: var(--vscode-focusBorder);
+}
+
+._trigger_asm93_8:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+._triggerContent_asm93_44 {
+  display: flex;
+  flex-direction: column;
+}
+
+._triggerSizer_asm93_49 {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+  height: 0;
+  overflow: hidden;
+  display: block;
+}
+
+._triggerPrimary_asm93_57 {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+}
+
+._triggerSecondary_asm93_62 {
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+._triggerPlaceholder_asm93_71 {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+/* Dropdown panel - rendered via portal */
+._dropdown_asm93_76 {
+  z-index: 10000;
+  background: var(
+    --vscode-dropdown-background,
+    var(--vscode-input-background, #252526)
+  );
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Dropdown items */
+._item_asm93_91 {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+._item_asm93_91:last-child {
+  border-bottom: none;
+}
+
+._item_asm93_91:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Selected item - with proper contrast */
+._item_asm93_91._selected_asm93_106 {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+._item_asm93_91._selected_asm93_106 ._primaryText_asm93_110,
+._item_asm93_91._selected_asm93_106 ._secondaryText_asm93_111 {
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+._primaryText_asm93_110 {
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+._secondaryText_asm93_111 {
+  color: var(--vscode-descriptionForeground);
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._loading_asm93_133 {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
 }
 
-._error_1ocg6_18 {
+._error_asm93_138 {
   color: var(--vscode-errorForeground);
 }
 ._container_1ph4q_1 {
@@ -9113,14 +9233,14 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: 0.65rem;
   overflow: visible;
 }
-._container_iqqa2_1 {
+._container_1mdbe_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 0;
 }
 
-._header_iqqa2_8 {
+._header_1mdbe_8 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9129,7 +9249,7 @@ span.ap-marker-container:hover span.ap-marker {
   height: 40px;
 }
 
-._headerTitle_iqqa2_17 {
+._headerTitle_1mdbe_17 {
   margin: 0;
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
@@ -9137,29 +9257,33 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerSecondary_iqqa2_25 {
+._headerIcon_1mdbe_25 {
+  margin-right: 0.5em;
+}
+
+._headerSecondary_1mdbe_29 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_iqqa2_30 {
+._content_1mdbe_34 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_iqqa2_35 {
+._placeholder_1mdbe_39 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_iqqa2_42 {
+._textValue_1mdbe_46 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_iqqa2_47 {
+._panel_1mdbe_51 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
@@ -9168,18 +9292,19 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Make all form controls full width within the panel */
-._panel_iqqa2_47 vscode-single-select,
-._panel_iqqa2_47 vscode-textfield {
+._panel_1mdbe_51 vscode-single-select,
+._panel_1mdbe_51 vscode-textfield,
+._panel_1mdbe_51 button {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
 
-._clickable_iqqa2_63 {
+._clickable_1mdbe_68 {
   cursor: pointer;
 }
 
-._idLabel_iqqa2_67 {
+._idLabel_1mdbe_72 {
   margin-right: 0.5em;
 }
 ._tabContainer_8gcnx_1 {

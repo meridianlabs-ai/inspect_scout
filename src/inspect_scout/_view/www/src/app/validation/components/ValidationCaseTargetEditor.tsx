@@ -9,14 +9,14 @@ import { JsonValue } from "../../../types/api-types";
 
 type TargetMode = "true" | "false" | "other";
 
-function getInitialMode(target: JsonValue): TargetMode {
+function getInitialMode(target?: JsonValue): TargetMode {
   if (target === "true" || target === true) return "true";
   if (target === "false" || target === false) return "false";
   return "other";
 }
 
 interface ValidationCaseTargetEditorProps {
-  target: JsonValue;
+  target?: JsonValue;
   onChange: (newTarget: string) => void;
 }
 

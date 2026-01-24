@@ -186,10 +186,15 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       // Build the full request with current values + pending changes
       const request: ValidationCaseRequest = {
         id: validationCase.id,
-        target: changes.target ?? validationCase.target,
-        predicate: changes.predicate ?? validationCase.predicate,
-        split: changes.split ?? validationCase.split,
-        labels: validationCase.labels,
+        predicate:
+          "predicate" in changes ? changes.predicate : validationCase.predicate,
+        split: "split" in changes ? changes.split : validationCase.split,
+        ...(validationCase.labels != null
+          ? { labels: validationCase.labels }
+          : {
+              target:
+                "target" in changes ? changes.target : validationCase.target,
+            }),
       };
 
       setSaveStatus("saving");
@@ -300,11 +305,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper="The expected value for this validation case."
               >
                 <ValidationCaseTargetEditor
-                  target={
-                    validationCase?.target !== undefined
-                      ? validationCase?.target
-                      : true
-                  }
+                  target={validationCase?.target}
                   onChange={(target) => handleFieldChange("target", target)}
                 />
               </Field>

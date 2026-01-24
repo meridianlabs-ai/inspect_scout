@@ -4,6 +4,7 @@
 - Projects: Always apply project level `filter` to scans (AND combine with scan filters).
 - Scan Results: Add `exclude_columns` parameter for reading parquet reuslts to optionally reduce memory usage.
 - Scan Results: Pre-fetch optimization for S3/remote parquet files.
+- Scanning: Add `--skip-scored` option to skip samples already scored by the scanner.
 
 ## 0.4.10 (21 January 2026)
 

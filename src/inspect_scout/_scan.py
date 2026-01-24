@@ -36,6 +36,7 @@ from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._project import read_project
 from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
+from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
     init_task_files_cache,
@@ -107,6 +108,7 @@ def scan(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    skip_scored: bool = False,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
@@ -141,6 +143,7 @@ def scan(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        skip_scored: Skip samples that already have a score from this scanner in the source eval log. Defaults to False.
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
@@ -171,6 +174,7 @@ def scan(
             max_processes=max_processes,
             limit=limit,
             shuffle=shuffle,
+            skip_scored=skip_scored,
             tags=tags,
             metadata=metadata,
             log_level=log_level,
@@ -201,6 +205,7 @@ async def scan_async(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    skip_scored: bool = False,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
@@ -234,6 +239,7 @@ async def scan_async(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        skip_scored: Skip samples that already have a score from this scanner in the source eval log. Defaults to False.
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         log_level: Level for logging to the console: "debug", "http", "sandbox",
@@ -302,6 +308,7 @@ async def scan_async(
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
+    scanjob._skip_scored = skip_scored or scanjob._skip_scored
 
     # tags and metadata
     scanjob._tags = tags or scanjob._tags
@@ -911,6 +918,7 @@ async def _parse_jobs(
     This encapsulates the logic for:
     - Determining union content once
     - Skipping already recorded (per-scanner) work
+    - Skipping samples that already have a score in the source eval log (if skip_scored)
     - Grouping scanners per transcript
     """
     # Build name->index mapping for scanners
@@ -924,6 +932,8 @@ async def _parse_jobs(
         }
     else:
         scanner_to_transcript_ids = None
+
+    skip_scored = context.spec.options.skip_scored
 
     async for transcript_info in tr.index():
         scanner_indices_for_transcript: list[int] = []
@@ -939,6 +949,8 @@ async def _parse_jobs(
                 transcript_info.transcript_id, name
             ):
                 continue
+            if skip_scored and _has_scanner_score(transcript_info, name):
+                continue
             scanner_indices_for_transcript.append(name_to_index[name])
         if not scanner_indices_for_transcript:
             continue
@@ -946,6 +958,18 @@ async def _parse_jobs(
             transcript_info=transcript_info,
             scanner_indices=set(scanner_indices_for_transcript),
         )
+
+
+def _has_scanner_score(transcript_info: TranscriptInfo, scanner_name: str) -> bool:
+    """Check if transcript already has a score from this scanner."""
+    if transcript_info.source_type != EVAL_LOG_SOURCE_TYPE:
+        return False
+
+    score_key = f"score_{scanner_name}"
+    return any(
+        key == score_key or key.startswith(f"{score_key}_")
+        for key in transcript_info.metadata
+    )
 
 
 def _transcripts_for_scan_options(scan: ScanContext) -> Transcripts:

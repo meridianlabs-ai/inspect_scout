@@ -72,6 +72,9 @@ class ScanOptions(BaseModel):
     shuffle: bool | int | None = Field(default=None)
     """Shuffle order of transcripts."""
 
+    skip_scored: bool = Field(default=False)
+    """Skip samples that already have a score from this scanner in the source eval log."""
+
 
 class TranscriptField(TypedDict, total=False):
     """Field in transcript data frame."""

@@ -245,6 +245,13 @@ class ScanGroup(click.Group):
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 @click.option(
+    "--skip-scored",
+    is_flag=True,
+    default=False,
+    help="Skip samples that already have a score from this scanner in the source eval log.",
+    envvar="SCOUT_SCAN_SKIP_SCORED",
+)
+@click.option(
     "--tags",
     type=str,
     help="Tags to associate with this scan job (comma separated)",
@@ -374,6 +381,7 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
+    skip_scored: bool,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     cache: int | str | None,
@@ -593,6 +601,11 @@ def scan_command(
         scan_shuffle = shuffle
     scan_shuffle = resolve_scan_option(ctx, "shuffle", scan_shuffle, scanjob.shuffle)
 
+    # skip_scored
+    scan_skip_scored = resolve_scan_option(
+        ctx, "skip_scored", skip_scored or None, scanjob.skip_scored
+    )
+
     # tags and metadata
     scan_tags = resolve_scan_option(
         ctx, "tags", _parse_comma_separated(tags), scanjob.tags
@@ -622,6 +635,7 @@ def scan_command(
         max_processes=scan_max_processes,
         limit=scan_limit,
         shuffle=scan_shuffle,
+        skip_scored=scan_skip_scored or False,
         tags=scan_tags,
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],

@@ -9385,14 +9385,13 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: 0.65rem;
   overflow: visible;
 }
-._container_1mdbe_1 {
+._container_g1baa_1 {
   display: flex;
   flex-direction: column;
-  height: 100%;
   padding: 0;
 }
 
-._header_1mdbe_8 {
+._header_g1baa_7 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9401,7 +9400,7 @@ span.ap-marker-container:hover span.ap-marker {
   height: 40px;
 }
 
-._headerTitle_1mdbe_17 {
+._headerTitle_g1baa_16 {
   margin: 0;
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
@@ -9409,33 +9408,33 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerIcon_1mdbe_25 {
+._headerIcon_g1baa_24 {
   margin-right: 0.5em;
 }
 
-._headerSecondary_1mdbe_29 {
+._headerSecondary_g1baa_28 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_1mdbe_34 {
+._content_g1baa_33 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_1mdbe_39 {
+._placeholder_g1baa_38 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_1mdbe_46 {
+._textValue_g1baa_45 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_1mdbe_51 {
+._panel_g1baa_50 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
@@ -9444,20 +9443,50 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Make all form controls full width within the panel */
-._panel_1mdbe_51 vscode-single-select,
-._panel_1mdbe_51 vscode-textfield,
-._panel_1mdbe_51 button {
+._panel_g1baa_50 vscode-single-select,
+._panel_g1baa_50 vscode-textfield,
+._panel_g1baa_50 button {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
 
-._clickable_1mdbe_68 {
+._clickable_g1baa_67 {
   cursor: pointer;
 }
 
-._idLabel_1mdbe_72 {
+._idLabel_g1baa_71 {
   margin-right: 0.5em;
+}
+
+._saveStatusContainer_g1baa_75 {
+  position: fixed;
+  bottom: 0.1rem;
+  right: 0.1rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bs-body-bg);
+  border-radius: var(--bs-border-radius);
+  max-width: 175px;
+  line-height: 1.3;
+  pointer-events: none;
+  transition: opacity 300ms ease-in-out;
+}
+
+._saveStatusContainer_g1baa_75._saveStatusHidden_g1baa_88 {
+  opacity: 0;
+}
+
+._saveStatusContainer_g1baa_75._saveStatusError_g1baa_92 {
+  opacity: 1;
+  color: var(--bs-danger);
+}
+
+._saveStatus_g1baa_75 {
+  font-size: var(--inspect-font-size-smallest);
+  color: var(--bs-secondary-color);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: block;
 }
 ._tabContainer_8gcnx_1 {
   display: grid;

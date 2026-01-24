@@ -1,7 +1,8 @@
 import { skipToken } from "@tanstack/react-query";
 import { VscodeCollapsible } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { FC, useCallback, useEffect } from "react";
+import { debounce } from "lodash-es";
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ErrorPanel } from "../../../components/ErrorPanel";
@@ -14,9 +15,14 @@ import {
   updateValidationSetParam,
 } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { ValidationCase } from "../../../types/api-types";
+import {
+  JsonValue,
+  ValidationCase,
+  ValidationCaseRequest,
+} from "../../../types/api-types";
 import { Field } from "../../project/components/FormFields";
 import {
+  useUpdateValidationCase,
   useValidationCase,
   useValidationCases,
   useValidationSets,
@@ -146,12 +152,92 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   const setEditorSelectedValidationSetUri = useStore(
     (state) => state.setEditorSelectedValidationSetUri
   );
-  const onSplitChange = (newSplit: string | null) => {
-    // Handle split change logic here
-    // This is a placeholder; actual implementation may vary
-    console.log("Selected split:", newSplit);
-  };
   const [, setSearchParams] = useSearchParams();
+
+  // Save status state
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Mutation hook for saving
+  const updateValidationCase = useUpdateValidationCase(
+    editorValidationSetUri ?? ""
+  );
+
+  // Track pending changes to make sure we save all changes in the
+  // debounce window
+  const pendingChangesRef = useRef<Partial<ValidationCaseRequest>>({});
+
+  // Create debounced save function
+  const debouncedSave = useMemo(() => {
+    const doSave = () => {
+      // No file selected or no case loaded
+      if (!editorValidationSetUri || !validationCase) {
+        return;
+      }
+
+      // Only save if there are pending changes
+      const changes = pendingChangesRef.current;
+      if (Object.keys(changes).length === 0) {
+        return;
+      }
+
+      // Build the full request with current values + pending changes
+      const request: ValidationCaseRequest = {
+        id: validationCase.id,
+        target: changes.target ?? validationCase.target,
+        predicate: changes.predicate ?? validationCase.predicate,
+        split: changes.split ?? validationCase.split,
+        labels: validationCase.labels,
+      };
+
+      setSaveStatus("saving");
+      setSaveError(null);
+
+      updateValidationCase.mutate(
+        { caseId: transcriptId, data: request },
+        {
+          onSuccess: () => {
+            setSaveStatus("saved");
+            pendingChangesRef.current = {};
+            // Reset to idle after showing "saved" briefly
+            setTimeout(() => setSaveStatus("idle"), 1500);
+          },
+          onError: (error) => {
+            setSaveStatus("error");
+            setSaveError(error.message);
+          },
+        }
+      );
+    };
+
+    return debounce(doSave, 600);
+  }, [
+    editorValidationSetUri,
+    validationCase,
+    transcriptId,
+    updateValidationCase,
+  ]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
+
+  // Handler for field changes
+  const handleFieldChange = useCallback(
+    (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
+      pendingChangesRef.current = {
+        ...pendingChangesRef.current,
+        [field]: value,
+      };
+      debouncedSave();
+    },
+    [debouncedSave]
+  );
 
   const handleValidationSetSelect = useCallback(
     (uri: string | undefined) => {
@@ -198,7 +284,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               <ValidationSplitSelector
                 value={validationCase?.split || null}
                 existingSplits={extractUniqueSplits(validationCases || [])}
-                onChange={onSplitChange}
+                onChange={(split) => handleFieldChange("split", split)}
                 disabled={!validationCase}
               />
             </Field>
@@ -219,9 +305,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                       ? validationCase?.target
                       : true
                   }
-                  onChange={(target) => {
-                    console.log("NEW TARGET:" + target);
-                  }}
+                  onChange={(target) => handleFieldChange("target", target)}
                 />
               </Field>
 
@@ -231,9 +315,9 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               >
                 <ValidationCasePredicateSelector
                   value={validationCase?.predicate || null}
-                  onChange={(predicate) => {
-                    console.log("NEW PREDICATE:", predicate);
-                  }}
+                  onChange={(predicate) =>
+                    handleFieldChange("predicate", predicate)
+                  }
                   disabled={!validationCase}
                 />
               </Field>
@@ -241,6 +325,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
           </VscodeCollapsible>
         )}
       </div>
+      <SaveStatus status={saveStatus} error={saveError} />
     </div>
   );
 };
@@ -296,6 +381,35 @@ export const SecondaryDisplayValue: FC<{ label: string; value: string }> = ({
     >
       <span className={styles.idLabel}>{label}:</span>
       <span className={styles.idValue}>{value}</span>
+    </div>
+  );
+};
+
+type SaveStatusType = "idle" | "saving" | "saved" | "error";
+
+interface SaveStatusProps {
+  status: SaveStatusType;
+  error: string | null;
+}
+
+const SaveStatus: FC<SaveStatusProps> = ({ status, error }) => {
+  return (
+    <div
+      className={clsx(
+        styles.saveStatusContainer,
+        status === "error" && styles.saveStatusError,
+        status === "idle" && styles.saveStatusHidden
+      )}
+    >
+      <span className={styles.saveStatus}>
+        {status === "saving"
+          ? "Saving..."
+          : status === "saved"
+            ? "Saved"
+            : status === "error"
+              ? error || "Error saving changes"
+              : ""}
+      </span>
     </div>
   );
 };

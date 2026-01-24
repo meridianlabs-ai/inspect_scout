@@ -1,7 +1,6 @@
 .container {
   display: flex;
   flex-direction: column;
-  height: 100%;
   padding: 0;
 }
 
@@ -71,4 +70,34 @@
 
 .idLabel {
   margin-right: 0.5em;
+}
+
+.saveStatusContainer {
+  position: fixed;
+  bottom: 0.1rem;
+  right: 0.1rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bs-body-bg);
+  border-radius: var(--bs-border-radius);
+  max-width: 175px;
+  line-height: 1.3;
+  pointer-events: none;
+  transition: opacity 300ms ease-in-out;
+}
+
+.saveStatusContainer.saveStatusHidden {
+  opacity: 0;
+}
+
+.saveStatusContainer.saveStatusError {
+  opacity: 1;
+  color: var(--bs-danger);
+}
+
+.saveStatus {
+  font-size: var(--inspect-font-size-smallest);
+  color: var(--bs-secondary-color);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: block;
 }

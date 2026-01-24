@@ -15,6 +15,7 @@ import {
   useCreateValidationSet,
   useValidationCases,
   useValidationSets,
+  validationQueryKeys,
 } from "../../server/useValidations";
 import {
   extractUniqueSplits,
@@ -250,7 +251,7 @@ export const CopyMoveCasesModal: FC<CopyMoveCasesModalProps> = ({
 
       // Invalidate target set cache to show new cases
       void queryClient.invalidateQueries({
-        queryKey: ["validationCases", finalTargetUri],
+        queryKey: validationQueryKeys.cases(finalTargetUri),
       });
 
       // If move mode, delete from source

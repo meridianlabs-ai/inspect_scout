@@ -10,12 +10,23 @@ import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 /**
+ * Query key factory for validation-related queries.
+ * Centralizes key definitions to ensure consistency between queries and invalidations.
+ */
+export const validationQueryKeys = {
+  sets: () => ["validationSets"] as const,
+  cases: (uri: string | typeof skipToken) => ["validationCases", uri] as const,
+  case: (params: { url: string; caseId: string } | typeof skipToken) =>
+    ["validationCase", params] as const,
+};
+
+/**
  * Hook to fetch all validation set URIs in the project.
  */
 export const useValidationSets = (): AsyncData<string[]> => {
   const api = useApi();
   return useAsyncDataFromQuery({
-    queryKey: ["validationSets"],
+    queryKey: validationQueryKeys.sets(),
     queryFn: () => api.getValidationSets(),
     staleTime: 60 * 1000,
   });
@@ -29,7 +40,7 @@ export const useValidationCases = (
 ): AsyncData<ValidationCase[]> => {
   const api = useApi();
   return useAsyncDataFromQuery({
-    queryKey: ["validationCases", uri],
+    queryKey: validationQueryKeys.cases(uri),
     queryFn: uri === skipToken ? skipToken : () => api.getValidationCases(uri),
     staleTime: 60 * 1000,
     enabled: uri !== skipToken,
@@ -45,7 +56,7 @@ export const useValidationCase = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["validationCase", params],
+    queryKey: validationQueryKeys.case(params),
     queryFn:
       params === skipToken
         ? skipToken
@@ -63,7 +74,9 @@ export const useCreateValidationSet = () => {
   return useMutation<string, Error, CreateValidationSetRequest>({
     mutationFn: (request) => api.createValidationSet(request),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["validationSets"] });
+      void queryClient.invalidateQueries({
+        queryKey: validationQueryKeys.sets(),
+      });
     },
   });
 };
@@ -81,9 +94,15 @@ export const useUpdateValidationCase = (uri: string) => {
   >({
     mutationFn: ({ caseId, data }) =>
       api.upsertValidationCase(uri, caseId, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: ["validationCases", uri],
+        queryKey: validationQueryKeys.cases(uri),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: validationQueryKeys.case({
+          url: uri,
+          caseId: variables.caseId,
+        }),
       });
     },
   });
@@ -99,7 +118,7 @@ export const useDeleteValidationCase = (uri: string) => {
     mutationFn: (caseId) => api.deleteValidationCase(uri, caseId),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["validationCases", uri],
+        queryKey: validationQueryKeys.cases(uri),
       });
     },
   });
@@ -124,7 +143,7 @@ export const useBulkDeleteValidationCases = (uri: string) => {
       // Always invalidate cache if at least one succeeded
       if (succeeded > 0) {
         void queryClient.invalidateQueries({
-          queryKey: ["validationCases", uri],
+          queryKey: validationQueryKeys.cases(uri),
         });
       }
 
@@ -150,7 +169,9 @@ export const useDeleteValidationSet = () => {
   return useMutation<boolean, Error, string>({
     mutationFn: (uri) => api.deleteValidationSet(uri),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["validationSets"] });
+      void queryClient.invalidateQueries({
+        queryKey: validationQueryKeys.sets(),
+      });
     },
   });
 };
@@ -164,7 +185,9 @@ export const useRenameValidationSet = () => {
   return useMutation<string, Error, { uri: string; newName: string }>({
     mutationFn: ({ uri, newName }) => api.renameValidationSet(uri, newName),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["validationSets"] });
+      void queryClient.invalidateQueries({
+        queryKey: validationQueryKeys.sets(),
+      });
     },
   });
 };

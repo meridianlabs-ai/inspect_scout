@@ -55,7 +55,7 @@ For example, here we `observe()` transcripts generated with the Anthropic SDK:
 import anthropic
 from inspect_scout import observe, observe_update
 
-@observe(db="./transcripts",  provider="anthropic")
+@observe(db="./transcripts", provider="anthropic")
 async def run_case():
     client = anthropic.AsyncAnthropic()
     response = await client.messages.create(

@@ -4,7 +4,11 @@ import { createPortal } from "react-dom";
 
 import { Modal } from "../../../components/Modal";
 import { dirname } from "../../../utils/path";
-import { getFilenameFromUri } from "../utils";
+import {
+  getFilenameFromUri,
+  hasValidationSetExtension,
+  VALIDATION_SET_EXTENSIONS,
+} from "../utils";
 
 import styles from "./ValidationSetSelector.module.css";
 
@@ -18,6 +22,9 @@ interface ValidationSetSelectorProps {
   /** Adds a create new option the dropown */
   allowCreate?: boolean;
   onCreate?: (name: string) => void;
+
+  /** Project directory path for displaying full file path in create modal */
+  projectDir?: string;
 }
 
 /**
@@ -32,6 +39,7 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   autoSize = false,
   allowCreate = false,
   onCreate,
+  projectDir,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
@@ -42,6 +50,7 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   // Modal state for creating new set
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newSetName, setNewSetName] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Extract display name from URI (last part of path with extension)
   const getDisplayName = (uri: string): string => {
@@ -79,6 +88,18 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     }
   }, [isOpen]);
 
+  // Close dropdown on window resize to prevent orphaned positioning
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      setIsOpen(false);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen]);
+
   // Close on click outside (check both container and dropdown since dropdown is in portal)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -103,6 +124,7 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     if (uri === "__create_new__") {
       setShowCreateModal(true);
       setNewSetName("");
+      setValidationError(null);
       setIsOpen(false);
     } else {
       onSelect(uri);
@@ -110,23 +132,70 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     }
   };
 
+  // Check if a name has an extension (any extension, valid or not)
+  const hasAnyExtension = (name: string): boolean => {
+    const lastDot = name.lastIndexOf(".");
+    // Has extension if there's a dot that's not at the start and has chars after it
+    return lastDot > 0 && lastDot < name.length - 1;
+  };
+
+  // Check if a name is starting to type an extension (has a dot)
+  const isTypingExtension = (name: string): boolean => {
+    const lastDot = name.lastIndexOf(".");
+    return lastDot > 0; // Has a dot that's not at the start
+  };
+
+  // Check if the partial extension could be the start of a valid extension
+  const isValidPartialExtension = (name: string): boolean => {
+    const lastDot = name.lastIndexOf(".");
+    if (lastDot <= 0) return true; // No extension being typed
+
+    const partialExt = name.slice(lastDot).toLowerCase();
+    // Check if any valid extension starts with what the user has typed
+    return VALIDATION_SET_EXTENSIONS.some((ext) => ext.startsWith(partialExt));
+  };
+
+  // Get the extension validation error for real-time feedback
+  const getExtensionError = (name: string): string | null => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+
+    // If user is typing an extension that can't match any valid extension
+    if (isTypingExtension(trimmed) && !isValidPartialExtension(trimmed)) {
+      return `Invalid extension. Valid extensions: ${VALIDATION_SET_EXTENSIONS.join(", ")}`;
+    }
+
+    return null;
+  };
+
   // Modal handlers
   const handleNameInput = (e: Event) => {
     setNewSetName((e.target as HTMLInputElement).value);
+    setValidationError(null);
   };
 
   const handleCreateSubmit = () => {
     const trimmedName = newSetName.trim();
     if (!trimmedName) return;
 
+    // Check if user provided an extension that's not valid
+    if (hasAnyExtension(trimmedName) && !hasValidationSetExtension(trimmedName)) {
+      setValidationError(
+        `Invalid extension. Valid extensions: ${VALIDATION_SET_EXTENSIONS.join(", ")}`
+      );
+      return;
+    }
+
     onCreate?.(trimmedName);
     setShowCreateModal(false);
     setNewSetName("");
+    setValidationError(null);
   };
 
   const handleModalClose = () => {
     setShowCreateModal(false);
     setNewSetName("");
+    setValidationError(null);
   };
 
   // Keyboard navigation
@@ -260,11 +329,35 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
             placeholder="validation-set-name"
             data-autofocus
           />
-          {newSetName.trim() && (
-            <span className={styles.hint}>
-              Will be created as {newSetName.trim()}.csv
-            </span>
-          )}
+          {(() => {
+            const trimmedName = newSetName.trim();
+            const extensionError = getExtensionError(trimmedName);
+            const displayError = validationError || extensionError;
+            const displayDir = projectDir?.startsWith("file://")
+              ? projectDir.slice(7)
+              : projectDir;
+
+            // Show hint only if no error and we have a name and projectDir
+            if (trimmedName && !displayError && displayDir) {
+              // If user is providing any extension, use their filename as-is
+              // Otherwise append .csv
+              const filename = isTypingExtension(trimmedName)
+                ? trimmedName
+                : `${trimmedName}.csv`;
+              return (
+                <span className={styles.hint}>
+                  {displayDir}/{filename}
+                </span>
+              );
+            }
+
+            // Show error if present
+            if (displayError) {
+              return <span className={styles.error}>{displayError}</span>;
+            }
+
+            return null;
+          })()}
         </div>
       </Modal>
     </>

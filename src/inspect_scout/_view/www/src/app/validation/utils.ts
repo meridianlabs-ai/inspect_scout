@@ -1,5 +1,22 @@
 import type { ValidationCase } from "../../types/api-types";
 
+/** Valid file extensions for validation set files */
+export const VALIDATION_SET_EXTENSIONS = [
+  ".csv",
+  ".json",
+  ".jsonl",
+  ".yml",
+  ".yaml",
+];
+
+/**
+ * Check if a filename has a valid validation set extension.
+ */
+export const hasValidationSetExtension = (name: string): boolean => {
+  const lower = name.toLowerCase();
+  return VALIDATION_SET_EXTENSIONS.some((ext) => lower.endsWith(ext));
+};
+
 /**
  * Converts a validation case ID to a display string.
  * Handles both single string IDs and composite (array) IDs.
@@ -41,7 +58,7 @@ export const getFilenameFromUri = (
 ): string => {
   const filename = uri.split("/").pop() ?? uri;
   if (stripExtension) {
-    return filename.replace(/\.(csv|json|yaml|yml)$/i, "");
+    return filename.replace(/\.(csv|json|jsonl|yaml|yml)$/i, "");
   }
   return filename;
 };

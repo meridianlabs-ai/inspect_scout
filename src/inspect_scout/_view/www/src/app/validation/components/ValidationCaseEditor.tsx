@@ -29,7 +29,11 @@ import {
   useValidationCases,
   useValidationSets,
 } from "../../server/useValidations";
-import { extractUniqueSplits, isValidFilename } from "../utils";
+import {
+  extractUniqueSplits,
+  hasValidationSetExtension,
+  isValidFilename,
+} from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
 import { ValidationCasePredicateSelector } from "./ValidationCasePredicateSelector";
@@ -296,7 +300,9 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       }
 
       // Always use project directory (as URI) for new validation sets
-      const newUri = `${config.project_dir}/${name}.csv`;
+      // Only add .csv extension if the user didn't already include a valid extension
+      const filename = hasValidationSetExtension(name) ? name : `${name}.csv`;
+      const newUri = `${config.project_dir}/${filename}`;
 
       // Check for duplicates
       if (validationSets?.includes(newUri)) {
@@ -342,6 +348,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 onSelect={handleValidationSetSelect}
                 allowCreate={true}
                 onCreate={(name) => void handleCreateSet(name)}
+                projectDir={config.project_dir}
               />
               {createError && (
                 <div className={styles.createError}>{createError}</div>

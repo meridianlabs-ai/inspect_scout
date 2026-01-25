@@ -142,17 +142,31 @@
 /* Divider between sets and create option */
 .divider {
   height: 1px;
-  background: var(--vscode-panel-border);
-  margin: 4px 0;
+  background: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  margin: 4px 10px;
+}
+
+/* Remove border from item before divider */
+.item:has(+ .divider) {
+  border-bottom: none;
 }
 
 /* Create option styling */
 .createOption {
-  font-style: italic;
+  margin-top: 2px;
 }
 
 .createOption .primaryText {
   color: var(--vscode-textLink-foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.createOption .primaryText::before {
+  content: "+";
+  font-weight: 600;
+  font-size: 14px;
 }
 
 /* Modal content styles */

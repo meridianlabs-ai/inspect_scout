@@ -378,7 +378,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 <ValidationCaseTargetEditor
                   target={workingCase?.target}
                   onChange={(target) => {
-                    if (isBooleanTarget(target)) {
+                    if (!isOtherTarget(target)) {
                       // Clear the predicate when switching away from boolean target
                       handleFieldChange("predicate", null);
                     }
@@ -387,7 +387,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 />
               </Field>
 
-              {!isBooleanTarget(workingCase?.target) && (
+              {isOtherTarget(workingCase?.target) && (
                 <Field
                   label="Predicate"
                   helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
@@ -493,20 +493,20 @@ const SaveStatus: FC<SaveStatusProps> = ({ status, error }) => {
   );
 };
 
-const isBooleanTarget = (target?: JsonValue): target is boolean => {
+const isOtherTarget = (target?: JsonValue): target is boolean => {
   if (target === null || target === undefined) {
     return false;
   }
 
   // true boolean
   if (typeof target === "boolean") {
-    return true;
+    return false;
   }
 
   // Check string representations of booleans
   if (typeof target === "string") {
     const lower = target.toLowerCase();
-    return lower === "true" || lower === "false";
+    return lower !== "true" && lower !== "false";
   }
 
   return false;

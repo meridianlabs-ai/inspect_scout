@@ -7,11 +7,18 @@ import { FC, useEffect, useState } from "react";
 
 import { JsonValue } from "../../../types/api-types";
 
-type TargetMode = "true" | "false" | "other";
+type TargetMode = "true" | "false" | "other" | "unset";
 
 function getInitialMode(target?: JsonValue): TargetMode {
-  if (target === "true" || target === true) return "true";
-  if (target === "false" || target === false) return "false";
+  if (target === undefined) {
+    return "unset";
+  }
+  if (target === "true" || target === true) {
+    return "true";
+  }
+  if (target === "false" || target === false) {
+    return "false";
+  }
   return "other";
 }
 

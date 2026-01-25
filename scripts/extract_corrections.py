@@ -106,12 +106,19 @@ def extract_corrections(project_dir: Path) -> list[str]:
                             texts = [content]
                         elif isinstance(content, list):
                             for block in content:
-                                if isinstance(block, dict) and block.get("type") == "text":
+                                if (
+                                    isinstance(block, dict)
+                                    and block.get("type") == "text"
+                                ):
                                     texts.append(block.get("text", ""))
 
                         for text in texts:
                             # Skip system/command messages
-                            if text.startswith("<") or "command-" in text or "[Request interrupted" in text:
+                            if (
+                                text.startswith("<")
+                                or "command-" in text
+                                or "[Request interrupted" in text
+                            ):
                                 continue
                             if pattern.search(text) and 15 < len(text) < 500:
                                 corrections.append(text.strip())

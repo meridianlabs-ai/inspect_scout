@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { FC, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { ConfirmationDialog } from "../../../components/ConfirmationDialog";
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { ApplicationIcons } from "../../../components/icons";
 import { LoadingBar } from "../../../components/LoadingBar";
@@ -24,6 +25,7 @@ import { Field } from "../../project/components/FormFields";
 import { useConfig } from "../../server/useConfig";
 import {
   useCreateValidationSet,
+  useDeleteValidationCase,
   useUpdateValidationCase,
   useValidationCase,
   useValidationCases,
@@ -170,6 +172,12 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   // Create set status state
   const [createError, setCreateError] = useState<string | null>(null);
   const createSetMutation = useCreateValidationSet();
+
+  // Delete case state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const deleteCaseMutation = useDeleteValidationCase(
+    editorValidationSetUri ?? ""
+  );
 
   // Local working copy of the validation case for editing
   // This is the single source of truth for the UI during editing
@@ -337,6 +345,19 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     ]
   );
 
+  // Handler for deleting the current validation case
+  const handleDeleteCase = useCallback(async () => {
+    if (!transcriptId) return;
+    try {
+      await deleteCaseMutation.mutateAsync(transcriptId);
+      setShowDeleteModal(false);
+      // Reset working case to null after deletion (keeps panel open)
+      setWorkingCase(null);
+    } catch {
+      // Error is handled by mutation state - modal stays open
+    }
+  }, [transcriptId, deleteCaseMutation]);
+
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader
@@ -377,40 +398,71 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
         </VscodeCollapsible>
 
         {editorValidationSetUri && (
-          <VscodeCollapsible heading="Validation Case" open>
-            <SidebarPanel>
-              <SecondaryDisplayValue label="ID" value={transcriptId} />
-              <Field
-                label="Target"
-                helper="The expected value for this validation case."
-              >
-                <ValidationCaseTargetEditor
-                  target={workingCase?.target}
-                  onChange={(target) => {
-                    if (!isOtherTarget(target)) {
-                      // Clear the predicate when switching away from boolean target
-                      handleFieldChange("predicate", null);
+          <>
+            <VscodeCollapsible heading="Validation Case" open>
+              {workingCase?.target != null && workingCase.target !== "" && (
+                <span
+                  slot="decorations"
+                  className={styles.headerActionButton}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!deleteCaseMutation.isPending) {
+                      setShowDeleteModal(true);
                     }
-                    handleFieldChange("target", target);
                   }}
-                />
-              </Field>
-
-              {isOtherTarget(workingCase?.target) && (
-                <Field
-                  label="Predicate"
-                  helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+                  aria-disabled={deleteCaseMutation.isPending}
+                  title="Delete validation case"
                 >
-                  <ValidationCasePredicateSelector
-                    value={workingCase?.predicate || null}
-                    onChange={(predicate) =>
-                      handleFieldChange("predicate", predicate)
-                    }
+                  <i className={ApplicationIcons.trash} />
+                </span>
+              )}
+              <SidebarPanel>
+                <SecondaryDisplayValue label="ID" value={transcriptId} />
+                <Field
+                  label="Target"
+                  helper="The expected value for this validation case."
+                >
+                  <ValidationCaseTargetEditor
+                    target={workingCase?.target}
+                    onChange={(target) => {
+                      if (!isOtherTarget(target)) {
+                        // Clear the predicate when switching away from boolean target
+                        handleFieldChange("predicate", null);
+                      }
+                      handleFieldChange("target", target);
+                    }}
                   />
                 </Field>
-              )}
-            </SidebarPanel>
-          </VscodeCollapsible>
+
+                {isOtherTarget(workingCase?.target) && (
+                  <Field
+                    label="Predicate"
+                    helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+                  >
+                    <ValidationCasePredicateSelector
+                      value={workingCase?.predicate || null}
+                      onChange={(predicate) =>
+                        handleFieldChange("predicate", predicate)
+                      }
+                    />
+                  </Field>
+                )}
+              </SidebarPanel>
+            </VscodeCollapsible>
+
+            <ConfirmationDialog
+              show={showDeleteModal}
+              onHide={() => setShowDeleteModal(false)}
+              onConfirm={() => void handleDeleteCase()}
+              title="Delete Case"
+              message="Are you sure you want to delete this validation case?"
+              confirmLabel="Delete"
+              confirmingLabel="Deleting..."
+              isConfirming={deleteCaseMutation.isPending}
+            />
+          </>
         )}
       </div>
       <SaveStatus status={saveStatus} error={saveError} />

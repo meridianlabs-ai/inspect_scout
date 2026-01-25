@@ -7,7 +7,7 @@ Useful for identifying patterns to add to AGENTS.md Common Pitfalls sections.
 Usage:
     .venv/bin/python scripts/extract_corrections.py [project_path]
 
-If project_path not provided, uses the inspect_scout project path.
+If project_path not provided, uses the current working directory.
 
 Sample output:
     just run related tests - not all of them
@@ -42,13 +42,13 @@ from pathlib import Path
 
 def get_project_dir(project_path: str | None = None) -> Path:
     """Get the Claude Code project directory for conversation logs."""
-    if project_path:
-        # Convert path to Claude's naming convention
-        safe_name = project_path.replace("/", "-")
-        if safe_name.startswith("-"):
-            safe_name = safe_name[1:]
-    else:
-        safe_name = "Users-ericpatey-code-inspect-scout"
+    if project_path is None:
+        project_path = str(Path.cwd().resolve())
+
+    # Convert path to Claude's naming convention (slashes and underscores become hyphens)
+    safe_name = project_path.replace("/", "-").replace("_", "-")
+    if safe_name.startswith("-"):
+        safe_name = safe_name[1:]
 
     return Path.home() / ".claude/projects" / f"-{safe_name}"
 

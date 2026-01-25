@@ -8,7 +8,7 @@
 
 - Shortcuts become someone else's problem; hacks compound into debt
 - Patterns get copied—establish good ones
-- Flag issues you encounter in code you're touching; ask before fixing anything beyond the original request
+- Flag issues; ask before fixing
 - Strict typing required
   - Python: modern syntax (`X | None`, `dict[str, Any]`)
   - TypeScript: no `any`, no type assertions
@@ -60,7 +60,7 @@ Directory: `src/inspect_scout/`
 ### Style
 - **Formatting**: Follow Google style convention. Use ruff for formatting
 - **Imports**: Use isort order (enforced by ruff)
-- **Types**: Strict typing is required. All functions must have type annotations, including functions in tests.
+- **Types**: All functions must have type annotations, including in tests.
 - **Naming**: Use snake_case for variables, functions, methods; PascalCase for classes
 - **Docstrings**: Google-style docstrings required for public APIs
 - **Error Handling**: Use appropriate exception types; include context in error messages
@@ -96,7 +96,7 @@ pnpm install
 | `pnpm typecheck` | Type check |
 
 ### Style
-- Strict mode enabled
+- Strict mode enabled; no `any`, no type assertions
 - ESLint + Prettier
 
 ### Common Pitfalls

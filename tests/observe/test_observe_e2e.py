@@ -254,3 +254,47 @@ class TestObserveWithInference:
                 assert float(t.score) == 1.0  # type: ignore[arg-type]
             finally:
                 await db.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_model_auto_detected_from_event(self) -> None:
+        """Model name is auto-detected from ModelEvent when not specified."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db = transcripts_db(tmpdir)
+
+            # Don't specify model in observe - should be auto-detected
+            async with observe(db=db, task_set="auto_model"):
+                model = get_model("mockllm/model")
+                await model.generate([ChatMessageUser(content="Test")])
+
+            await db.connect()
+            try:
+                transcripts = [t async for t in db.select()]
+                assert len(transcripts) == 1
+
+                t = transcripts[0]
+                # Model should be auto-populated from the ModelEvent
+                assert t.model == "mockllm/model"
+            finally:
+                await db.disconnect()
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_not_overwritten(self) -> None:
+        """Explicitly specified model is not overwritten by auto-detection."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db = transcripts_db(tmpdir)
+
+            # Explicitly specify a different model name
+            async with observe(db=db, task_set="explicit_model", model="my-custom-model"):
+                model = get_model("mockllm/model")
+                await model.generate([ChatMessageUser(content="Test")])
+
+            await db.connect()
+            try:
+                transcripts = [t async for t in db.select()]
+                assert len(transcripts) == 1
+
+                t = transcripts[0]
+                # Explicit model should be preserved, not overwritten
+                assert t.model == "my-custom-model"
+            finally:
+                await db.disconnect()

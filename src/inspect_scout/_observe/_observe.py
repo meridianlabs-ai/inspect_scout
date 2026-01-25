@@ -61,9 +61,6 @@ def observe(
     agent_args: dict[str, Any] | None = None,
     model: str | None = None,
     model_options: dict[str, Any] | None = None,
-    score: JsonValue | None = None,
-    success: bool | None = None,
-    limit: str | None = None,
     metadata: dict[str, Any] | None = None,
     info: TranscriptInfo | None = None,
 ) -> _ObserveContextManager: ...
@@ -84,9 +81,6 @@ def observe(
     agent_args: dict[str, Any] | None = None,
     model: str | None = None,
     model_options: dict[str, Any] | None = None,
-    score: JsonValue | None = None,
-    success: bool | None = None,
-    limit: str | None = None,
     metadata: dict[str, Any] | None = None,
     # Full TranscriptInfo for advanced use
     info: TranscriptInfo | None = None,
@@ -116,9 +110,6 @@ def observe(
         agent_args: Arguments passed to create agent.
         model: Main model used by agent.
         model_options: Generation options for main model.
-        score: Value indicating score on task.
-        success: Boolean reduction of score to succeeded/failed.
-        limit: Limit that caused the task to exit (e.g. "tokens", "messages").
         metadata: Transcript source specific metadata (merged with parent).
         info: Full TranscriptInfo for advanced use (fields override parent,
             explicit args override info).
@@ -182,9 +173,6 @@ def observe(
             agent_args=agent_args,
             model=model,
             model_options=model_options,
-            score=score,
-            success=success,
-            limit=limit,
             metadata=metadata,
         )
 
@@ -412,7 +400,7 @@ def _build_transcript(
     # Extract events from Inspect AI transcript
     events = list(ctx.inspect_transcript.events)
 
-    # Extract messages from FINAL ModelEvent only (input + output)
+    # Extract data from FINAL ModelEvent (messages, model, config)
     messages: list[ChatMessage] = []
     total_tokens = 0
 
@@ -423,6 +411,17 @@ def _build_transcript(
             output = event.output
             if isinstance(output, ModelOutput) and output.message:
                 messages.append(output.message)
+
+            # Auto-populate model if not explicitly set
+            if info.model is None:
+                info.model = event.model
+
+            # Auto-populate model_options if not explicitly set
+            if info.model_options is None:
+                config_dict = event.config.model_dump(exclude_none=True)
+                if config_dict:
+                    info.model_options = config_dict
+
             break  # Only use the last ModelEvent
 
     # Sum tokens from ALL ModelEvents

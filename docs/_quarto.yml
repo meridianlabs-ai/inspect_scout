@@ -50,6 +50,7 @@ website:
         menu:
           - href: db_overview.qmd
           - href: db_schema.qmd
+          - href: db_capturing.qmd
           - href: db_importing.qmd
           - href: db_publishing.qmd
       - text: "Reference"
@@ -91,6 +92,8 @@ website:
               href: db_overview.qmd
             - text: Schema
               href: db_schema.qmd
+            - text: Capturing
+              href: db_capturing.qmd
             - text: Importing
               href: db_importing.qmd
             - text: Publishing

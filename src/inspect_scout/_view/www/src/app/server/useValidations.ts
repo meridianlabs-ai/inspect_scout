@@ -1,5 +1,6 @@
 import { skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { ApiError } from "../../api/request";
 import { useApi } from "../../state/store";
 import {
   CreateValidationSetRequest,
@@ -49,10 +50,11 @@ export const useValidationCases = (
 
 /**
  * Hook to fetch a single validation case by URI and case ID.
+ * Returns null (not an error) when the case is not found (404).
  */
 export const useValidationCase = (
   params: { url: string; caseId: string } | typeof skipToken
-): AsyncData<ValidationCase> => {
+): AsyncData<ValidationCase | null> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
@@ -60,7 +62,16 @@ export const useValidationCase = (
     queryFn:
       params === skipToken
         ? skipToken
-        : () => api.getValidationCase(params.url, params.caseId),
+        : async () => {
+            try {
+              return await api.getValidationCase(params.url, params.caseId);
+            } catch (error) {
+              if (error instanceof ApiError && error.status === 404) {
+                return null;
+              }
+              throw error;
+            }
+          },
     staleTime: 60 * 1000,
   });
 };

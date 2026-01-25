@@ -16,6 +16,14 @@
 - Respect existing patterns
 - Before committing, run the appropriate checks for code you touched (lint, typecheck, test)
 
+### Testing
+- Test observable behavior, not internal implementation details
+- Be efficient; avoid duplicate coverage
+- Prefer data/table driven tests for maintainability
+- Tests must be isolated; no shared mutable state or order dependencies
+- Tests must be deterministic; control randomness with seeds
+- Prefer real objects over mocks when possible
+
 ## Documentation
 
 Consult documentation when you need deeper context on how subsystems work.

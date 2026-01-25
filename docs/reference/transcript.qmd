@@ -25,5 +25,9 @@ reference: "inspect_scout"
 ### LogColumns
 ### log_columns
 
+## Capture
+
+### observe
+### observe_update
 
 

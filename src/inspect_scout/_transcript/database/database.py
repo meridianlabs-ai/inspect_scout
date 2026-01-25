@@ -122,10 +122,27 @@ class TranscriptsDB(TranscriptsView):
         | AsyncIterable[Transcript]
         | Transcripts
         | pa.RecordBatchReader,
+        commit: bool = True,
     ) -> None:
         """Insert transcripts into database.
 
         Args:
-           transcripts: Transcripts to insert (iterable, async iterable, or source).
+            transcripts: Transcripts to insert (iterable, async iterable, or source).
+            commit: If True (default), commit after insert (compact + index).
+                If False, defer commit for batch operations. Call commit()
+                explicitly when ready to finalize.
+        """
+        ...
+
+    @abc.abstractmethod
+    async def commit(self) -> None:
+        """Commit pending changes.
+
+        For parquet: compacts data files + rebuilds index.
+        For relational DBs: may be a no-op or transaction commit.
+
+        This is called automatically when insert() is called with commit=True
+        (the default). Only call this manually when using commit=False with
+        insert() for batch operations.
         """
         ...

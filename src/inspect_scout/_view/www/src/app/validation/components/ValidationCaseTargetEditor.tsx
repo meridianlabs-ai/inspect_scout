@@ -9,8 +9,16 @@ import { JsonValue } from "../../../types/api-types";
 
 type TargetMode = "true" | "false" | "other" | "unset";
 
-function getInitialMode(target?: JsonValue): TargetMode {
-  if (target === undefined) {
+/**
+ * Determines the mode based on the target value.
+ * - null/undefined = "unset" (user hasn't selected anything)
+ * - "" (empty string) = "other" (user selected "Other" but hasn't typed a value)
+ * - "true"/true = "true"
+ * - "false"/false = "false"
+ * - any other value = "other"
+ */
+function getTargetMode(target?: JsonValue): TargetMode {
+  if (target === undefined || target === null) {
     return "unset";
   }
   if (target === "true" || target === true) {
@@ -19,6 +27,7 @@ function getInitialMode(target?: JsonValue): TargetMode {
   if (target === "false" || target === false) {
     return "false";
   }
+  // Empty string or any other value = "other"
   return "other";
 }
 
@@ -33,27 +42,29 @@ interface ValidationCaseTargetEditorProps {
 export const ValidationCaseTargetEditor: FC<
   ValidationCaseTargetEditorProps
 > = ({ target, onChange }) => {
-  const [mode, setMode] = useState<TargetMode>(() => getInitialMode(target));
-
-  useEffect(() => {
-    setMode(getInitialMode(target));
-  }, [target, setMode]);
+  const [mode, setMode] = useState<TargetMode>(() => getTargetMode(target));
 
   const [customValue, setCustomValue] = useState(() => {
-    return getInitialMode(target) === "other" ? String(target ?? "") : "";
+    return getTargetMode(target) === "other" ? String(target ?? "") : "";
   });
+
+  // Sync mode and customValue when target prop changes
   useEffect(() => {
-    if (getInitialMode(target) === "other") {
+    const newMode = getTargetMode(target);
+    setMode(newMode);
+    if (newMode === "other") {
       setCustomValue(String(target ?? ""));
     }
-  }, [target, setCustomValue]);
+  }, [target]);
 
   const handleRadioChange = (value: string) => {
     const newMode = value as TargetMode;
     setMode(newMode);
 
     if (newMode === "other") {
-      onChange(customValue);
+      // When switching to "other", propagate empty string as sentinel
+      // This distinguishes "other selected" from "never selected"
+      onChange(customValue || "");
     } else {
       onChange(newMode);
     }

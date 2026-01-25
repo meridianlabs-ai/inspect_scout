@@ -215,6 +215,15 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       return;
     }
 
+    // Don't save if neither target nor labels is set - silently wait for user to set one
+    // Also don't save if target is empty string (user selected "Other" but hasn't typed a value)
+    if (
+      (workingCase.target == null || workingCase.target === "") &&
+      workingCase.labels == null
+    ) {
+      return;
+    }
+
     const request: ValidationCaseRequest = {
       id: workingCase.id,
       predicate: workingCase.predicate,
@@ -493,21 +502,25 @@ const SaveStatus: FC<SaveStatusProps> = ({ status, error }) => {
   );
 };
 
-const isOtherTarget = (target?: JsonValue): target is boolean => {
-  if (target === null || target === undefined) {
+/**
+ * Returns true if the target is an "other" value (not a boolean or boolean string).
+ * "Other" targets include numbers, objects, arrays, and non-boolean strings.
+ */
+const isOtherTarget = (target?: JsonValue): boolean => {
+  if (target === null || target === undefined || target === "") {
     return false;
   }
 
-  // true boolean
   if (typeof target === "boolean") {
     return false;
   }
 
-  // Check string representations of booleans
   if (typeof target === "string") {
     const lower = target.toLowerCase();
+    // "true" and "false" strings are treated as boolean targets
     return lower !== "true" && lower !== "false";
   }
 
-  return false;
+  // Numbers, objects, arrays are all "other" targets
+  return true;
 };

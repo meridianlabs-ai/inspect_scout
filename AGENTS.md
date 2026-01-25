@@ -24,6 +24,11 @@
 - Tests must be deterministic; control randomness with seeds
 - Prefer real objects over mocks when possible
 
+### Common Pitfalls
+- Stay within scope—don't make unrequested changes
+- Never edit generated files—`openapi.json` and `generated.ts` are generated; modify source and regenerate
+- During development, run only implicated tests; run the full suite when the work is complete
+
 ## Documentation
 
 Consult documentation when you need deeper context on how subsystems work.
@@ -69,7 +74,6 @@ Directory: `src/inspect_scout/`
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
 - **Never use `uv sync` or `uv run`**—developers often have local editable installs (e.g., `pip install -e` for inspect_ai) that uv silently removes
-- During development, run only related/implicated tests; run the full suite before committing
 
 
 ## TypeScript
@@ -100,6 +104,8 @@ pnpm install
 - ESLint + Prettier
 
 ### Common Pitfalls
+- Use pnpm, not npm—this project uses pnpm exclusively
+- Hook tests don't need JSX—use `.test.ts` not `.test.tsx`; see `useMapAsyncData.test.ts`
 - Run `pnpm build` before committing (not just `pnpm check`)—we ship the built .js code
 
 

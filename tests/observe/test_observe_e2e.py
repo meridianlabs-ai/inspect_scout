@@ -284,7 +284,9 @@ class TestObserveWithInference:
             db = transcripts_db(tmpdir)
 
             # Explicitly specify a different model name
-            async with observe(db=db, task_set="explicit_model", model="my-custom-model"):
+            async with observe(
+                db=db, task_set="explicit_model", model="my-custom-model"
+            ):
                 model = get_model("mockllm/model")
                 await model.generate([ChatMessageUser(content="Test")])
 

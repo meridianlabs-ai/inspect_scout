@@ -12,6 +12,8 @@ from typing import (
     AsyncIterator,
     Awaitable,
     Callable,
+    Literal,
+    Sequence,
     overload,
 )
 
@@ -34,6 +36,12 @@ from .context import (
     _current_context,
     _ObserveContextManager,
 )
+from .providers import (
+    ObserveProvider,
+    ObserveProviderName,
+    get_provider_instance,
+    install_providers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +58,12 @@ def observe(
 def observe(
     func: None = None,
     *,
+    provider: (
+        Literal["inspect", "openai", "anthropic", "google"]
+        | ObserveProvider
+        | Sequence[ObserveProviderName | ObserveProvider]
+        | None
+    ) = ...,
     db: str | TranscriptsDB | None = None,
     source_type: str = "observe",
     source_id: str | None = None,
@@ -69,6 +83,12 @@ def observe(
 def observe(
     func: Callable[OP, Awaitable[OR]] | None = None,
     *,
+    provider: (
+        Literal["inspect", "openai", "anthropic", "google"]
+        | ObserveProvider
+        | Sequence[ObserveProviderName | ObserveProvider]
+        | None
+    ) = "inspect",
     db: str | TranscriptsDB | None = None,
     # Fields in same order as TranscriptInfo
     source_type: str = "observe",  # Default to "observe" for this decorator
@@ -97,6 +117,11 @@ def observe(
 
     Args:
         func: The async function to decorate (when used as @observe without parens).
+        provider: Provider(s) for capturing LLM calls. Can be a provider name
+            ("inspect", "openai", "anthropic", "google"), an ObserveProvider
+            instance, or a sequence of either. Defaults to "inspect" which
+            captures Inspect AI model.generate() calls. Use other providers
+            to capture direct SDK calls. Can only be set on root observe.
         db: Transcript database or path for writing. Can be a TranscriptsDB instance
             or a string path (which will be passed to transcripts_db()). Only valid
             on outermost observe; defaults to project transcripts directory.
@@ -120,21 +145,31 @@ def observe(
 
     Raises:
         TypeError: If used to decorate a non-async function.
-        ValueError: If db is specified on a non-root observe.
+        ValueError: If db or provider is specified on a non-root observe.
 
     Example:
         ```python
-        # As decorator
+        # As decorator with Inspect AI capture (default)
         @observe(task_set="eval", task_id="case_1")
         async def run_case():
             response = await model.generate([ChatMessageUser(content="Hello")])
             observe_update(score=0.95, success=True)
             return response
 
-        # As context manager
-        async with observe(db=my_db, task_set="eval"):
-            async with observe(task_id="case_1"):
-                response = await model.generate([ChatMessageUser(content="Hello")])
+        # Capture OpenAI SDK calls directly
+        @observe(provider="openai", task_set="eval")
+        async def run_openai():
+            client = openai.AsyncOpenAI()
+            response = await client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": "Hello"}]
+            )
+            return response
+
+        # Capture multiple providers
+        async with observe(provider=["openai", "anthropic"], task_set="eval"):
+            # Both OpenAI and Anthropic calls will be captured
+            ...
         ```
     """
 
@@ -146,6 +181,16 @@ def observe(
         # Validate: db can only be set on root
         if db is not None and not is_root:
             raise ValueError("'db' can only be specified on the outermost observe")
+
+        # Validate: provider can only be set on root (non-default value)
+        if provider is not None and provider != "inspect" and not is_root:
+            raise ValueError(
+                "'provider' can only be specified on the outermost observe"
+            )
+
+        # Install providers at root (idempotent, tracked by class name)
+        if is_root and provider is not None:
+            install_providers(provider)
 
         # Resolve db: explicit (root only) or inherit from parent or project default
         if is_root:
@@ -206,6 +251,19 @@ def observe(
             _current_context.reset(token)
 
             try:
+                # Process any pending SDK captures before building transcript
+                for data, provider_key in ctx.pending_captures:
+                    provider_instance = get_provider_instance(provider_key)
+                    if provider_instance is not None:
+                        try:
+                            event = await provider_instance.build_event(data)
+                            ctx.inspect_transcript._events.append(event)
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to build event from {provider_key}: {e}"
+                            )
+                ctx.pending_captures.clear()
+
                 # Insert transcript immediately if leaf node (no children ran)
                 if not ctx.had_children:
                     transcript = _build_transcript(ctx, start_time, error)

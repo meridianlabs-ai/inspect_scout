@@ -2,7 +2,7 @@
 
 import inspect
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 from typing import (
     Any,
@@ -44,6 +44,9 @@ class ObserveContext:
 
     is_root: bool = False
     """True if this is the outermost observe context."""
+
+    pending_captures: list[tuple[dict[str, Any], str]] = field(default_factory=list)
+    """Pending SDK captures as (data, provider_key) tuples to process at exit."""
 
 
 _current_context: ContextVar[ObserveContext | None] = ContextVar(

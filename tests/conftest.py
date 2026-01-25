@@ -82,6 +82,12 @@ def skip_if_no_anthropic(func: F) -> F:
     )
 
 
+def skip_if_no_google(func: F) -> F:
+    return cast(
+        F, pytest.mark.api(skip_if_env_var("GOOGLE_API_KEY", exists=False)(func))
+    )
+
+
 def skip_if_github_action(func: F) -> F:
     return cast(F, skip_if_env_var("GITHUB_ACTIONS", exists=True)(func))
 

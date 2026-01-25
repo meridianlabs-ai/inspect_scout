@@ -21,13 +21,15 @@ import {
 } from "../../../types/api-types";
 import { useDebouncedCallback } from "../../../utils/useDebouncedCallback";
 import { Field } from "../../project/components/FormFields";
+import { useConfig } from "../../server/useConfig";
 import {
+  useCreateValidationSet,
   useUpdateValidationCase,
   useValidationCase,
   useValidationCases,
   useValidationSets,
 } from "../../server/useValidations";
-import { extractUniqueSplits } from "../utils";
+import { extractUniqueSplits, isValidFilename } from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
 import { ValidationCasePredicateSelector } from "./ValidationCasePredicateSelector";
@@ -136,7 +138,7 @@ interface ValidationCaseEditorComponentProps {
   transcriptId: string;
   validationSets: string[];
   editorValidationSetUri?: string;
-  validationCase?: ValidationCase;
+  validationCase?: ValidationCase | null;
   validationCases?: ValidationCase[];
   className?: string | string[];
 }
@@ -149,6 +151,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   validationCases,
   className,
 }) => {
+  const config = useConfig();
   const setEditorSelectedValidationSetUri = useStore(
     (state) => state.setEditorSelectedValidationSetUri
   );
@@ -160,11 +163,16 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   >("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Create set status state
+  const [createError, setCreateError] = useState<string | null>(null);
+  const createSetMutation = useCreateValidationSet();
+
   // Local working copy of the validation case for editing
   // This is the single source of truth for the UI during editing
-  const [workingCase, setWorkingCase] = useState<ValidationCase | undefined>(
-    validationCase
-  );
+  // null means the case doesn't exist yet (404), undefined means not loaded
+  const [workingCase, setWorkingCase] = useState<
+    ValidationCase | null | undefined
+  >(validationCase);
 
   // Sync working copy from server when:
   // 1. Server data changes and we're not in the middle of saving
@@ -175,7 +183,9 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   const isSaving = updateValidationCaseMutation.isPending;
 
   useEffect(() => {
-    if (!isSaving && validationCase) {
+    // Sync from server when not saving
+    // validationCase is null when case doesn't exist (404), undefined when not loaded
+    if (!isSaving && validationCase !== undefined) {
       setWorkingCase(validationCase);
     }
   }, [validationCase, isSaving]);
@@ -231,18 +241,28 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   // Handler for field changes - updates local state immediately, debounces server call
   const handleFieldChange = useCallback(
     (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
-      if (!editorValidationSetUri || !workingCase) return;
+      if (!editorValidationSetUri) return;
 
       // Update local working copy immediately for instant UI feedback
       setWorkingCase((prev) => {
-        if (!prev) return prev;
+        // If no existing case, create a default one with the changed field
+        if (!prev) {
+          return {
+            id: transcriptId,
+            labels: null,
+            predicate: null,
+            split: null,
+            target: null,
+            [field]: value,
+          };
+        }
         return { ...prev, [field]: value };
       });
 
       // Debounce the actual server call
       debouncedSave();
     },
-    [editorValidationSetUri, workingCase, debouncedSave]
+    [editorValidationSetUri, transcriptId, debouncedSave]
   );
 
   const handleValidationSetSelect = useCallback(
@@ -263,6 +283,45 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     });
   }, [setSearchParams]);
 
+  // Handler for creating a new validation set
+  const handleCreateSet = useCallback(
+    async (name: string) => {
+      setCreateError(null);
+
+      // Validate filename
+      const validation = isValidFilename(name);
+      if (!validation.isValid) {
+        setCreateError(validation.error ?? "Invalid filename");
+        return;
+      }
+
+      // Always use project directory (as URI) for new validation sets
+      const newUri = `${config.project_dir}/${name}.csv`;
+
+      // Check for duplicates
+      if (validationSets?.includes(newUri)) {
+        setCreateError("A validation set with this name already exists");
+        return;
+      }
+
+      try {
+        await createSetMutation.mutateAsync({ path: newUri, cases: [] });
+        setCreateError(null);
+        handleValidationSetSelect(newUri); // Select the new set
+      } catch (err) {
+        setCreateError(
+          err instanceof Error ? err.message : "Failed to create set"
+        );
+      }
+    },
+    [
+      config.project_dir,
+      validationSets,
+      createSetMutation,
+      handleValidationSetSelect,
+    ]
+  );
+
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader
@@ -281,7 +340,12 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 validationSets={validationSets || []}
                 selectedUri={editorValidationSetUri}
                 onSelect={handleValidationSetSelect}
+                allowCreate={true}
+                onCreate={(name) => void handleCreateSet(name)}
               />
+              {createError && (
+                <div className={styles.createError}>{createError}</div>
+              )}
             </Field>
             <Field
               label="Split"
@@ -291,7 +355,6 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 value={workingCase?.split || null}
                 existingSplits={extractUniqueSplits(validationCases || [])}
                 onChange={(split) => handleFieldChange("split", split)}
-                disabled={!workingCase}
               />
             </Field>
           </SidebarPanel>
@@ -307,22 +370,29 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               >
                 <ValidationCaseTargetEditor
                   target={workingCase?.target}
-                  onChange={(target) => handleFieldChange("target", target)}
+                  onChange={(target) => {
+                    if (isBooleanTarget(target)) {
+                      // Clear the predicate when switching away from boolean target
+                      handleFieldChange("predicate", null);
+                    }
+                    handleFieldChange("target", target);
+                  }}
                 />
               </Field>
 
-              <Field
-                label="Predicate"
-                helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
-              >
-                <ValidationCasePredicateSelector
-                  value={workingCase?.predicate || null}
-                  onChange={(predicate) =>
-                    handleFieldChange("predicate", predicate)
-                  }
-                  disabled={!workingCase}
-                />
-              </Field>
+              {!isBooleanTarget(workingCase?.target) && (
+                <Field
+                  label="Predicate"
+                  helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+                >
+                  <ValidationCasePredicateSelector
+                    value={workingCase?.predicate || null}
+                    onChange={(predicate) =>
+                      handleFieldChange("predicate", predicate)
+                    }
+                  />
+                </Field>
+              )}
             </SidebarPanel>
           </VscodeCollapsible>
         )}
@@ -414,4 +484,23 @@ const SaveStatus: FC<SaveStatusProps> = ({ status, error }) => {
       </span>
     </div>
   );
+};
+
+const isBooleanTarget = (target?: JsonValue): target is boolean => {
+  if (target === null || target === undefined) {
+    return false;
+  }
+
+  // true boolean
+  if (typeof target === "boolean") {
+    return true;
+  }
+
+  // Check string representations of booleans
+  if (typeof target === "string") {
+    const lower = target.toLowerCase();
+    return lower === "true" || lower === "false";
+  }
+
+  return false;
 };

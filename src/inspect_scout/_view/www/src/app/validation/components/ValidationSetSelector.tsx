@@ -1,6 +1,8 @@
+import { VscodeTextfield } from "@vscode-elements/react-elements";
 import { FC, useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
+import { Modal } from "../../../components/Modal";
 import { dirname } from "../../../utils/path";
 import { getFilenameFromUri } from "../utils";
 
@@ -10,8 +12,12 @@ interface ValidationSetSelectorProps {
   validationSets: string[];
   selectedUri: string | undefined;
   onSelect: (uri: string | undefined) => void;
-  /** When true, sizes trigger to fit longest option (default: false) */
+  /** Size trigger to fit longest option (default: false) */
   autoSize?: boolean;
+
+  /** Adds a create new option the dropown */
+  allowCreate?: boolean;
+  onCreate?: (name: string) => void;
 }
 
 /**
@@ -24,12 +30,18 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   selectedUri,
   onSelect,
   autoSize = false,
+  allowCreate = false,
+  onCreate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Modal state for creating new set
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newSetName, setNewSetName] = useState("");
 
   // Extract display name from URI (last part of path with extension)
   const getDisplayName = (uri: string): string => {
@@ -82,13 +94,39 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     };
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
 
   const handleSelect = (uri: string) => {
-    onSelect(uri);
-    setIsOpen(false);
+    if (uri === "__create_new__") {
+      setShowCreateModal(true);
+      setNewSetName("");
+      setIsOpen(false);
+    } else {
+      onSelect(uri);
+      setIsOpen(false);
+    }
+  };
+
+  // Modal handlers
+  const handleNameInput = (e: Event) => {
+    setNewSetName((e.target as HTMLInputElement).value);
+  };
+
+  const handleCreateSubmit = () => {
+    const trimmedName = newSetName.trim();
+    if (!trimmedName) return;
+
+    onCreate?.(trimmedName);
+    setShowCreateModal(false);
+    setNewSetName("");
+  };
+
+  const handleModalClose = () => {
+    setShowCreateModal(false);
+    setNewSetName("");
   };
 
   // Keyboard navigation
@@ -101,9 +139,7 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
       return;
     }
 
-    const currentIndex = selectedUri
-      ? validationSets.indexOf(selectedUri)
-      : -1;
+    const currentIndex = selectedUri ? validationSets.indexOf(selectedUri) : -1;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -139,44 +175,98 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
           <div className={styles.secondaryText}>{getDisplayPath(uri)}</div>
         </div>
       ))}
+
+      {/* Create new set option */}
+      {allowCreate && onCreate && (
+        <>
+          {validationSets.length > 0 && <div className={styles.divider} />}
+          <div
+            role="option"
+            aria-selected={false}
+            className={`${styles.item} ${styles.createOption}`}
+            onClick={() => handleSelect("__create_new__")}
+          >
+            <div className={styles.primaryText}>Create new set...</div>
+          </div>
+        </>
+      )}
     </div>
   ) : null;
 
   return (
-    <div ref={containerRef} className={styles.container}>
-      {/* Trigger button - shows selected item */}
-      <button
-        ref={triggerRef}
-        className={styles.trigger}
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={handleKeyDown}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
+    <>
+      <div ref={containerRef} className={styles.container}>
+        {/* Trigger button - shows selected item */}
+        <button
+          ref={triggerRef}
+          className={styles.trigger}
+          onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={handleKeyDown}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+        >
+          <div className={styles.triggerContent}>
+            {/* Hidden sizer to set min-width based on longest option */}
+            {autoSize && (
+              <span className={styles.triggerSizer} aria-hidden="true">
+                {longestDisplayName}
+              </span>
+            )}
+            {selectedUri ? (
+              <span className={styles.triggerPrimary}>
+                {getDisplayName(selectedUri)}
+              </span>
+            ) : (
+              <span className={styles.triggerPlaceholder}>
+                Select validation set...
+              </span>
+            )}
+          </div>
+          <span className={styles.chevron} aria-hidden="true">
+            ⌃
+          </span>
+        </button>
+
+        {/* Dropdown rendered via portal to escape clipping */}
+        {createPortal(dropdown, document.body)}
+      </div>
+
+      {/* Create new set modal */}
+      <Modal
+        show={showCreateModal}
+        onHide={handleModalClose}
+        onSubmit={newSetName.trim() ? handleCreateSubmit : undefined}
+        title="Create New Validation Set"
+        footer={
+          <>
+            <button className={styles.modalButton} onClick={handleModalClose}>
+              Cancel
+            </button>
+            <button
+              className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+              onClick={handleCreateSubmit}
+              disabled={!newSetName.trim()}
+            >
+              Create
+            </button>
+          </>
+        }
       >
-        <div className={styles.triggerContent}>
-          {/* Hidden sizer to set min-width based on longest option */}
-          {autoSize && (
-            <span className={styles.triggerSizer} aria-hidden="true">
-              {longestDisplayName}
-            </span>
-          )}
-          {selectedUri ? (
-            <span className={styles.triggerPrimary}>
-              {getDisplayName(selectedUri)}
-            </span>
-          ) : (
-            <span className={styles.triggerPlaceholder}>
-              Select validation set...
+        <div className={styles.modalContent}>
+          <p>Enter a name for the new validation set:</p>
+          <VscodeTextfield
+            value={newSetName}
+            onInput={handleNameInput}
+            placeholder="validation-set-name"
+            data-autofocus
+          />
+          {newSetName.trim() && (
+            <span className={styles.hint}>
+              Will be created as {newSetName.trim()}.csv
             </span>
           )}
         </div>
-        <span className={styles.chevron} aria-hidden="true">
-          ⌃
-        </span>
-      </button>
-
-      {/* Dropdown rendered via portal to escape clipping */}
-      {createPortal(dropdown, document.body)}
-    </div>
+      </Modal>
+    </>
   );
 };

@@ -101,3 +101,9 @@
   overflow-wrap: break-word;
   display: block;
 }
+
+.createError {
+  color: var(--vscode-errorForeground);
+  font-size: var(--inspect-font-size-smallest);
+  margin-top: 0.25rem;
+}

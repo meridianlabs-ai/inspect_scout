@@ -138,3 +138,65 @@
 .error {
   color: var(--vscode-errorForeground);
 }
+
+/* Divider between sets and create option */
+.divider {
+  height: 1px;
+  background: var(--vscode-panel-border);
+  margin: 4px 0;
+}
+
+/* Create option styling */
+.createOption {
+  font-style: italic;
+}
+
+.createOption .primaryText {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Modal content styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+/* Modal button styles */
+.modalButton {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalButton:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.modalButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.modalButtonPrimary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.modalButtonPrimary:hover {
+  background: var(--vscode-button-hoverBackground);
+}

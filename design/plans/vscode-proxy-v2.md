@@ -414,11 +414,11 @@ E2E: Existing behavior unchanged—VS Code extension still uses V1 path.
 
 ---
 
-## Phase 3: Polling Fallback for Topic Updates (inspect_scout)
+## Phase 3: Polling Fallback for Topic Updates (inspect_scout) ✅ COMPLETE
 
 Replace SSE-only topic updates with polling fallback for VS Code proxy mode.
 
-### 3.1 Modify: `src/inspect_scout/_view/_api_v2_topics.py`
+### 3.1 Modify: `src/inspect_scout/_view/_api_v2_topics.py` ✅
 Add non-streaming `/topics` endpoint:
 
 ```python
@@ -427,35 +427,33 @@ Add non-streaming `/topics` endpoint:
     summary="Get current topic versions",
     description="Returns current topic versions dict for polling clients.",
 )
-async def get_topics() -> dict[str, str]:
+async def get_topics() -> dict[InvalidationTopic, str]:
     """Return current topic versions."""
-    return topic_versions()
+    return get_topic_versions()
 ```
 
-### 3.2 Modify: `www/src/api/api-scout-server.ts`
+### 3.2 Modify: `www/src/api/api-scout-server.ts` ✅
 Replace no-op with polling when `disableSSE` is true:
 
 ```typescript
-connectTopicUpdates: (
-  onUpdate: (topVersions: TopicVersions) => void
-): (() => void) => {
-  if (disableSSE) {
-    // Poll /topics every 10s for VS Code proxy mode
-    const poll = async () => {
-      const result = await requestApi.fetchString("GET", "/topics");
+if (disableSSE) {
+  let active = true;
+  const poll = async () => {
+    const result = await requestApi.fetchString("GET", "/topics");
+    if (active) {
       onUpdate(JSON.parse(result.raw) as TopicVersions);
-    };
-    poll(); // Initial fetch
-    const intervalId = setInterval(poll, 10000);
-    return () => clearInterval(intervalId);
-  }
-
-  // SSE mode (default)
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  let eventSource: EventSource | undefined;
-  // ... existing SSE code ...
+    }
+  };
+  void poll();
+  const intervalId = setInterval(() => void poll(), 10000);
+  return () => {
+    active = false;
+    clearInterval(intervalId);
+  };
 }
 ```
+
+Note: Added `active` flag to prevent updates after cleanup (race condition fix).
 
 ### Verification (Phase 3)
 ```bash
@@ -471,8 +469,8 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ### Files Summary (Phase 3)
 | File | Change |
 |------|--------|
-| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint |
-| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true |
+| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint ✅ |
+| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true ✅ |
 
 ---
 
@@ -600,11 +598,11 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `www/src/api/request.ts` | Add optional `customFetch` param to `serverRequestApi` ✅ |
 | `www/src/utils/embeddedState.ts` | Add `extensionProtocolVersion` to `EmbeddedScanState` ✅ |
 
-### Phase 3: Polling Fallback
+### Phase 3: Polling Fallback ✅
 | File | Change |
 |------|--------|
-| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint |
-| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true |
+| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint ✅ |
+| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true ✅ |
 
 ### Phase 4: Extension
 | File | Change |

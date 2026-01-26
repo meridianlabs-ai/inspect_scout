@@ -217,9 +217,21 @@ export const apiScoutServer = (
     connectTopicUpdates: (
       onUpdate: (topVersions: TopicVersions) => void
     ): (() => void) => {
-      // SSE not supported in VS Code webview proxy mode
+      // SSE not supported in VS Code webview proxy mode; use polling instead
       if (disableSSE) {
-        return () => {};
+        let active = true;
+        const poll = async () => {
+          const result = await requestApi.fetchString("GET", "/topics");
+          if (active) {
+            onUpdate(JSON.parse(result.raw) as TopicVersions);
+          }
+        };
+        void poll();
+        const intervalId = setInterval(() => void poll(), 10000);
+        return () => {
+          active = false;
+          clearInterval(intervalId);
+        };
       }
 
       let timeoutId: ReturnType<typeof setTimeout> | undefined;

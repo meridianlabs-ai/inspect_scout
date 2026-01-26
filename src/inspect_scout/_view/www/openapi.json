@@ -10349,6 +10349,35 @@
         ]
       }
     },
+    "/topics": {
+      "get": {
+        "description": "Returns current topic versions dict for polling clients.",
+        "operationId": "get_topics_topics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "const": "project-config"
+                  },
+                  "title": "Response Get Topics Topics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get current topic versions",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
     "/topics/stream": {
       "get": {
         "description": "SSE endpoint that pushes topic versions when they change. Each message is a JSON dict mapping topic names to timestamps.",

@@ -5,7 +5,12 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter
 from sse_starlette.sse import EventSourceResponse
 
-from .invalidationTopics import get_condition, topic_versions_json
+from .invalidationTopics import (
+    InvalidationTopic,
+    get_condition,
+    get_topic_versions,
+    topic_versions_json,
+)
 
 
 def create_topics_router() -> APIRouter:
@@ -15,6 +20,15 @@ def create_topics_router() -> APIRouter:
         Configured APIRouter with topics endpoints.
     """
     router = APIRouter(tags=["topics"])
+
+    @router.get(
+        "/topics",
+        summary="Get current topic versions",
+        description="Returns current topic versions dict for polling clients.",
+    )
+    async def get_topics() -> dict[InvalidationTopic, str]:
+        """Return current topic versions."""
+        return get_topic_versions()
 
     @router.get(
         "/topics/stream",

@@ -122,12 +122,15 @@ class TranscriptsDB(TranscriptsView):
         | AsyncIterable[Transcript]
         | Transcripts
         | pa.RecordBatchReader,
+        session_id: str | None = None,
         commit: bool = True,
     ) -> None:
         """Insert transcripts into database.
 
         Args:
             transcripts: Transcripts to insert (iterable, async iterable, or source).
+            session_id: Optional session ID to include in parquet filenames.
+                Used for session-scoped compaction at commit time.
             commit: If True (default), commit after insert (compact + index).
                 If False, defer commit for batch operations. Call commit()
                 explicitly when ready to finalize.
@@ -135,7 +138,7 @@ class TranscriptsDB(TranscriptsView):
         ...
 
     @abc.abstractmethod
-    async def commit(self) -> None:
+    async def commit(self, session_id: str | None = None) -> None:
         """Commit pending changes.
 
         For parquet: compacts data files + rebuilds index.
@@ -144,5 +147,10 @@ class TranscriptsDB(TranscriptsView):
         This is called automatically when insert() is called with commit=True
         (the default). Only call this manually when using commit=False with
         insert() for batch operations.
+
+        Args:
+            session_id: Optional session ID for session-scoped compaction.
+                When provided, parquet files created during this session are
+                compacted into fewer larger files before index compaction.
         """
         ...

@@ -276,10 +276,14 @@ class TestLeafDetection:
             # Create a mock insert to count leaf writes
             original_insert = db.insert
 
-            async def mock_insert(transcripts: Any, commit: bool = True) -> None:
+            async def mock_insert(
+                transcripts: Any,
+                session_id: str | None = None,
+                commit: bool = True,
+            ) -> None:
                 nonlocal leaf_count
                 leaf_count += 1
-                await original_insert(transcripts, commit=commit)
+                await original_insert(transcripts, session_id=session_id, commit=commit)
 
             db.insert = mock_insert  # type: ignore[method-assign]
 

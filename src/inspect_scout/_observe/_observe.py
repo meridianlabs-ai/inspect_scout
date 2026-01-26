@@ -23,6 +23,7 @@ from inspect_ai.log._transcript import init_transcript
 from inspect_ai.model import ChatMessage
 from inspect_ai.model._model_output import ModelOutput
 from pydantic import JsonValue
+from shortuuid import uuid as shortuuid
 
 from inspect_scout._project import read_project
 from inspect_scout._transcript.database.database import TranscriptsDB
@@ -242,12 +243,19 @@ def observe(
         inspect_transcript = InspectTranscript()
         init_transcript(inspect_transcript)
 
+        # Generate session ID for root context (used for parquet file compaction)
+        # Nested contexts inherit session_id from parent
+        session_id = (
+            shortuuid()[:12] if is_root else (parent.session_id if parent else None)
+        )
+
         ctx = ObserveContext(
             info=merged_info,
             inspect_transcript=inspect_transcript,
             db=resolved_db,
             is_root=is_root,
             parent=parent,
+            session_id=session_id,
         )
 
         if parent:
@@ -276,12 +284,14 @@ def observe(
                 # Insert transcript immediately if leaf node (no children ran)
                 if not ctx.had_children:
                     transcript = _build_transcript(ctx, start_time, error)
-                    await ctx.db.insert([transcript], commit=False)
+                    await ctx.db.insert(
+                        [transcript], commit=False, session_id=ctx.session_id
+                    )
 
                 # If we're the root, commit (compact + index)
                 if ctx.is_root:
                     try:
-                        await ctx.db.commit()
+                        await ctx.db.commit(session_id=ctx.session_id)
                     except Exception as e:
                         logger.warning(f"Commit failed (transcripts saved): {e}")
             except Exception as e:

@@ -48,6 +48,9 @@ class ObserveContext:
     pending_captures: list[tuple[dict[str, Any], str]] = field(default_factory=list)
     """Pending SDK captures as (data, provider_key) tuples to process at exit."""
 
+    session_id: str | None = None
+    """Session ID for parquet file compaction. Set only on root context."""
+
 
 _current_context: ContextVar[ObserveContext | None] = ContextVar(
     "observe_context", default=None

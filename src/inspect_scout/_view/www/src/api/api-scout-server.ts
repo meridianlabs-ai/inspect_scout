@@ -232,10 +232,11 @@ const connectTopicUpdatesViaPolling = (
   customFetch?: typeof fetch
 ): (() => void) => {
   const controller = new AbortController();
-  const fetchFn = customFetch ?? fetch;
 
   const poll = () =>
-    fetchFn(`${apiBaseUrl}/topics`, { signal: controller.signal })
+    (customFetch ?? fetch)(`${apiBaseUrl}/topics`, {
+      signal: controller.signal,
+    })
       .then<TopicVersions>((res) => res.json())
       .then(onUpdate)
       .catch((error) => {

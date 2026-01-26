@@ -17,7 +17,10 @@ export const useScan = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scan", params],
+    queryKey:
+      params === skipToken
+        ? ["scan", skipToken, skipToken]
+        : ["scan", params.scansDir, params.scanPath],
     queryFn:
       params === skipToken
         ? skipToken

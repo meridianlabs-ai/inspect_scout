@@ -20,7 +20,10 @@ export const useScanDataframe = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scanDataframe", params],
+    queryKey:
+      params === skipToken
+        ? ["scanDataframe", skipToken, skipToken, skipToken]
+        : ["scanDataframe", params.scansDir, params.scanPath, params.scanner],
     queryFn:
       params === skipToken
         ? skipToken

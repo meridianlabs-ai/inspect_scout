@@ -15,6 +15,7 @@ import { ScansResponse } from "../../types/api-types";
 import { CursorType, sortingStateToOrderBy } from ".";
 
 export const useScansInfinite = (
+  scansDir: string,
   pageSize: number = 50,
   filter?: Condition,
   sorting?: SortingState
@@ -36,13 +37,13 @@ export const useScansInfinite = (
     QueryKey,
     CursorType | undefined
   >({
-    queryKey: ["scans-infinite", filter, orderBy, pageSize],
+    queryKey: ["scans-infinite", scansDir, filter, orderBy, pageSize],
     queryFn: async ({ pageParam }) => {
       const pagination = pageParam
         ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }
         : { limit: pageSize, cursor: null, direction: "forward" as const };
 
-      return await api.getScans(filter, orderBy, pagination);
+      return await api.getScans(scansDir, filter, orderBy, pagination);
     },
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,

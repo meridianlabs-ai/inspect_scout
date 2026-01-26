@@ -9,7 +9,7 @@ import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
-import { useConfig } from "../server/useConfig";
+import { useAppConfig } from "../server/useAppConfig";
 import { useScans } from "../server/useScans";
 import { useScansDir } from "../utils/useScansDir";
 
@@ -17,13 +17,17 @@ import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
-  // Load scans data
-  const { loading, error, data: scans } = useScans();
-  const config = useConfig();
+  const config = useAppConfig();
   const scanDir = config.scans.dir;
   const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
-  const { displayScansDir, resolvedScansDirSource, setScansDir } =
-    useScansDir();
+  const {
+    displayScansDir,
+    resolvedScansDir,
+    resolvedScansDirSource,
+    setScansDir,
+  } = useScansDir();
+  // Load scans data
+  const { loading, error, data: scans } = useScans(resolvedScansDir);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);

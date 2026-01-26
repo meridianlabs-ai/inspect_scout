@@ -179,7 +179,10 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     if (!trimmedName) return;
 
     // Check if user provided an extension that's not valid
-    if (hasAnyExtension(trimmedName) && !hasValidationSetExtension(trimmedName)) {
+    if (
+      hasAnyExtension(trimmedName) &&
+      !hasValidationSetExtension(trimmedName)
+    ) {
       setValidationError(
         `Invalid extension. Valid extensions: ${VALIDATION_SET_EXTENSIONS.join(", ")}`
       );

@@ -9,13 +9,12 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Iterable, Literal, TypeVar
+from typing import Any, Iterable, Literal
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.responses import StreamingResponse
-from inspect_ai._util.file import FileSystem
 from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -292,19 +291,12 @@ async def _wait_for_active_scan(
 # --- Router factory ---
 
 
-T = TypeVar("T")
-
-
 def create_scans_router(
-    results_dir: str | None = None,
-    fs: FileSystem | None = None,
     streaming_batch_size: int = 1024,
 ) -> APIRouter:
     """Create scans API router.
 
     Args:
-        results_dir: Directory containing scan results.
-        fs: FileSystem instance for file operations.
         streaming_batch_size: Batch size for Arrow IPC streaming.
 
     Returns:
@@ -312,34 +304,25 @@ def create_scans_router(
     """
     router = APIRouter(tags=["scans"])
 
-    def _ensure_not_none(
-        value: T | None, error_message: str = "Required value is None"
-    ) -> T:
-        """Raises HTTPException if value is None, otherwise returns the non-None value."""
-        if value is None:
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=error_message
-            )
-        return value
-
     @router.post(
-        "/scans",
+        "/scans/{dir}",
         response_class=InspectPydanticJSONResponse,
         summary="List scans",
-        description="Returns scans from the results directory. "
+        description="Returns scans from specified directory. "
         "Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. "
         "Optional pagination for cursor-based pagination.",
     )
     async def scans(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
         body: ScansRequest | None = None,
     ) -> ScansResponse:
-        """Filter scan jobs from the results directory."""
-        validated_results_dir = _ensure_not_none(results_dir, "results_dir is required")
+        """Filter scan jobs from the scans directory."""
+        scans_dir = decode_base64url(dir)
 
         ctx = _build_pagination_context(body, "scan_id")
 
         try:
-            async with await scan_jobs_view(validated_results_dir) as view:
+            async with await scan_jobs_view(scans_dir) as view:
                 count = await view.count(Query(where=ctx.filter_conditions or []))
                 results = [
                     status
@@ -441,23 +424,19 @@ def create_scans_router(
         )
 
     @router.get(
-        "/scans/{scan}",
+        "/scans/{dir}/{scan}",
         response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
         description="Returns detailed status and metadata for a single scan.",
     )
     async def scan(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> ScanStatus:
         """Get detailed status for a single scan."""
-        scan_path = UPath(decode_base64url(scan))
-        if not scan_path.is_absolute():
-            validated_results_dir = _ensure_not_none(
-                results_dir, "results_dir is required"
-            )
-            results_path = UPath(validated_results_dir)
-            scan_path = results_path / scan_path
+        scans_dir = decode_base64url(dir)
+        scan_path = UPath(scans_dir) / decode_base64url(scan)
 
         recorder_status_with_df = await scan_results_df_async(
             str(scan_path), rows="transcripts"
@@ -473,23 +452,19 @@ def create_scans_router(
         return recorder_status_with_df
 
     @router.get(
-        "/scans/{scan}/{scanner}",
+        "/scans/{dir}/{scan}/{scanner}",
         summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
         "Excludes input column for efficiency; use the input endpoint for input text.",
     )
     async def scan_df(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
     ) -> Response:
         """Stream scanner results as Arrow IPC with LZ4 compression."""
-        scan_path = UPath(decode_base64url(scan))
-        if not scan_path.is_absolute():
-            validated_results_dir = _ensure_not_none(
-                results_dir, "results_dir is required"
-            )
-            results_path = UPath(validated_results_dir)
-            scan_path = results_path / scan_path
+        scans_dir = decode_base64url(dir)
+        scan_path = UPath(scans_dir) / decode_base64url(scan)
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:
@@ -530,24 +505,20 @@ def create_scans_router(
         )
 
     @router.get(
-        "/scans/{scan}/{scanner}/{uuid}/input",
+        "/scans/{dir}/{scan}/{scanner}/{uuid}/input",
         summary="Get scanner input for a specific transcript",
         description="Returns the original input text for a specific scanner result. "
         "The input type is returned in the X-Input-Type response header.",
     )
     async def scanner_input(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
         """Retrieve original input text for a scanner result."""
-        scan_path = UPath(decode_base64url(scan))
-        if not scan_path.is_absolute():
-            validated_results_dir = _ensure_not_none(
-                results_dir, "results_dir is required"
-            )
-            results_path = UPath(validated_results_dir)
-            scan_path = results_path / scan_path
+        scans_dir = decode_base64url(dir)
+        scan_path = UPath(scans_dir) / decode_base64url(scan)
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:

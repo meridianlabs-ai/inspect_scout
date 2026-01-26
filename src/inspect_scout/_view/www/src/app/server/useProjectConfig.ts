@@ -28,7 +28,7 @@ export const useProjectConfig = (): AsyncData<ProjectConfigWithEtag> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["project-config", "serverConfig"],
+    queryKey: ["project-config", "project-config"],
     queryFn: () => api.getProjectConfig(),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
@@ -58,9 +58,9 @@ export const useUpdateProjectConfig = (): UseMutationResult<
     mutationFn: ({ config, etag }) => api.updateProjectConfig(config, etag),
     onSuccess: (data) => {
       // Update cache with new config and etag
-      queryClient.setQueryData(["project-config", "serverConfig"], data);
+      queryClient.setQueryData(["project-config", "project-config"], data);
       queryClient
-        .invalidateQueries({ queryKey: ["config", "serverConfig"] })
+        .invalidateQueries({ queryKey: ["config", "project-config"] })
         .catch(console.log);
     },
   });

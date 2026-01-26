@@ -19,7 +19,7 @@ import {
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { NoPersistence, ScanApi, ScalarValue } from "./api";
+import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
 import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -30,17 +30,13 @@ export const apiScoutServer = (
     headerProvider?: HeaderProvider;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl, headerProvider } = options;
-  const requestApi = serverRequestApi(apiBaseUrl || "/api/v2", headerProvider);
+  const { apiBaseUrl = "/api/v2", headerProvider } = options;
+  const requestApi = serverRequestApi(apiBaseUrl, headerProvider);
 
   return {
     capability: "workbench",
-    getConfigVersion: async (): Promise<string> => {
-      const result = await requestApi.fetchString("GET", `/config-version`);
-      return result.raw;
-    },
     getConfig: async (): Promise<AppConfig> => {
-      const result = await requestApi.fetchString("GET", `/config`);
+      const result = await requestApi.fetchString("GET", `/app-config`);
       return asyncJsonParse<AppConfig>(result.raw);
     },
     getTranscripts: async (
@@ -88,23 +84,24 @@ export const apiScoutServer = (
       );
       return asyncJsonParse<ScalarValue[]>(result.raw);
     },
-    getScan: async (scanLocation: string): Promise<Status> => {
+    getScan: async (scansDir: string, scanPath: string): Promise<Status> => {
       const result = await requestApi.fetchString(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`
       );
 
       return asyncJsonParse<Status>(result.raw);
     },
 
     getScans: async (
+      scansDir: string,
       filter?: Condition,
       orderBy?: OrderByModel | OrderByModel[],
       pagination?: Pagination
     ): Promise<ScansResponse> => {
       const result = await requestApi.fetchString(
         "POST",
-        `/scans`,
+        `/scans/${encodeBase64Url(scansDir)}`,
         {},
         JSON.stringify({
           filter: filter ?? null,
@@ -115,23 +112,25 @@ export const apiScoutServer = (
       return asyncJsonParse<ScansResponse>(result.raw);
     },
     getScannerDataframe: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string
     ): Promise<ArrayBuffer> => {
       return await requestApi.fetchBytes(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/${encodeURIComponent(scanner)}`
       );
     },
     getScannerDataframeInput: async (
-      scanLocation: string,
+      scansDir: string,
+      scanPath: string,
       scanner: string,
       uuid: string
     ): Promise<ScanResultInputData> => {
       // Fetch the data
       const response = await requestApi.fetchType<Input>(
         "GET",
-        `/scans/${encodeBase64Url(scanLocation)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/${encodeURIComponent(scanner)}/${encodeURIComponent(uuid)}/input`
       );
       const input = response.parsed;
 
@@ -290,6 +289,28 @@ export const apiScoutServer = (
       return asyncJsonParse<string>(result.raw);
     },
 
+    connectTopicUpdates: (
+      onUpdate: (topVersions: TopicVersions) => void
+    ): (() => void) => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      let eventSource: EventSource | undefined;
+
+      const connect = () => {
+        eventSource = new EventSource(`${apiBaseUrl}/topics/stream`);
+        eventSource.onmessage = (e) =>
+          onUpdate(JSON.parse(e.data) as TopicVersions);
+        eventSource.onerror = () => {
+          eventSource?.close();
+          timeoutId = setTimeout(connect, 5000);
+        };
+      };
+
+      connect();
+      return () => {
+        clearTimeout(timeoutId);
+        eventSource?.close();
+      };
+    },
     storage: NoPersistence,
   };
 };

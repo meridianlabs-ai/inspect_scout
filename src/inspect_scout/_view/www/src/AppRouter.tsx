@@ -13,7 +13,7 @@ import { RunScanPanel } from "./app/runScan/RunScanPanel";
 import { ScanPanel } from "./app/scan/ScanPanel";
 import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
 import { ScansPanel } from "./app/scans/ScansPanel";
-import { useConfig } from "./app/server/useConfig";
+import { useAppConfig } from "./app/server/useAppConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { ValidationPanel } from "./app/validation/ValidationPanel";
@@ -64,7 +64,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
       (state) => state.selectedScanLocation
     );
     const userScansDir = useStore((state) => state.userScansDir);
-    const config = useConfig();
+    const config = useAppConfig();
     const serverScansDir = config.scans.dir;
     const setSelectedScanner = useStore((state) => state.setSelectedScanner);
     const setHasInitializedEmbeddedData = useStore(
@@ -214,7 +214,7 @@ const ScanOrScanResultsRoute = () => {
 };
 
 const ProjectPanelRoute = () => {
-  const config = useConfig();
+  const config = useAppConfig();
   return <ProjectPanel config={config} />;
 };
 

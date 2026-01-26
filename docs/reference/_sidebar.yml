@@ -101,6 +101,14 @@ website:
           href: reference/transcript.qmd#logcolumns
         - text: log_columns
           href: reference/transcript.qmd#log_columns
+        - text: observe
+          href: reference/transcript.qmd#observe
+        - text: observe_update
+          href: reference/transcript.qmd#observe_update
+        - text: ObserveProvider
+          href: reference/transcript.qmd#observeprovider
+        - text: ObserveEmit
+          href: reference/transcript.qmd#observeemit
       - section: scanner
         href: reference/scanner.qmd
         contents:

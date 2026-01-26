@@ -8,10 +8,12 @@ import { useScanRoute } from "./useScanRoute";
 import { useSelectedScanner } from "./useSelectedScanner";
 
 export const useSelectedScanDataframe = (): AsyncData<ColumnTable> => {
-  const { location } = useScanRoute();
+  const { resolvedScansDir, scanPath } = useScanRoute();
   const scanner = useSelectedScanner();
 
   return useScanDataframe(
-    location && scanner.data ? { location, scanner: scanner.data } : skipToken
+    resolvedScansDir && scanPath && scanner.data
+      ? { scansDir: resolvedScansDir, scanPath, scanner: scanner.data }
+      : skipToken
   );
 };

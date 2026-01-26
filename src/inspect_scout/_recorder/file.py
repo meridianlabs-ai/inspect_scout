@@ -247,7 +247,20 @@ class FileRecorder(ScanRecorder):
             ) -> pa.RecordBatchReader:
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
-                parquet = pq.ParquetFile(str(scanner_path))
+
+                # For remote filesystems (S3, etc.), pre-fetch the file into memory
+                # to avoid per-row-group latency. This is 2-3x faster for files with
+                # many row groups. For local files, read directly to avoid memory copy.
+                scanner_path_str = scanner_path.as_posix()
+                if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
+                    # Pre-fetch entire file into memory for faster iteration
+                    with file(scanner_path_str, "rb") as f:
+                        file_bytes = f.read()
+                    parquet = pq.ParquetFile(io.BytesIO(file_bytes))
+                else:
+                    # Local files: read directly (no memory copy needed)
+                    parquet = pq.ParquetFile(str(scanner_path))
+
                 columns = [
                     c
                     for c in parquet.schema.names
@@ -268,7 +281,18 @@ class FileRecorder(ScanRecorder):
             ) -> "Scalar[Any]":
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
-                dataset = ds.dataset(str(scanner_path), format="parquet")
+                scanner_path_str = scanner_path.as_posix()
+
+                # For remote filesystems, pre-fetch the file into memory
+                dataset: ds.Dataset
+                if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
+                    with file(scanner_path_str, "rb") as f:
+                        file_bytes = f.read()
+                    table = pq.read_table(io.BytesIO(file_bytes))
+                    dataset = ds.dataset(table)
+                else:
+                    dataset = ds.dataset(str(scanner_path), format="parquet")
+
                 table = dataset.to_table(
                     columns=[target_column],
                     filter=(pc.field(id_column) == id_value),
@@ -310,6 +334,7 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
+        exclude_columns: list[str] | None = None,
     ) -> ScanResultsDF:
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
@@ -323,7 +348,9 @@ class FileRecorder(ScanRecorder):
         # Create lazy mapping with a loader that reads DataFrames on demand
         scanners = LazyScannerMapping(
             scanner_names=scanner_names,
-            loader=lambda name: _load_scanner_df(scan_dir, name),
+            loader=lambda name: _load_scanner_df(
+                scan_dir, name, exclude_columns=exclude_columns
+            ),
         )
 
         return ScanResultsDF(
@@ -665,12 +692,19 @@ def _cast_value_sql(value_type: str) -> str:
         return "value"
 
 
-def _load_scanner_df(scan_dir: UPath, scanner_name: str) -> pd.DataFrame:
+def _load_scanner_df(
+    scan_dir: UPath,
+    scanner_name: str,
+    *,
+    exclude_columns: list[str] | None = None,
+) -> pd.DataFrame:
     """Load a scanner's DataFrame from a parquet file.
 
     Args:
         scan_dir: Directory containing the scan parquet files.
         scanner_name: Name of the scanner (without .parquet extension).
+        exclude_columns: List of column names to exclude when reading.
+            Non-existent columns are silently ignored.
 
     Returns:
         DataFrame with the scanner results, value column cast appropriately.
@@ -679,7 +713,15 @@ def _load_scanner_df(scan_dir: UPath, scanner_name: str) -> pd.DataFrame:
     # Use file() from inspect_ai to match original AsyncFilesystem behavior
     with file(parquet_file.as_posix(), "rb") as f:
         file_bytes = f.read()
-    table = pq.read_table(io.BytesIO(file_bytes))
+
+    # Determine columns to read (exclude specified columns if they exist)
+    columns: list[str] | None = None
+    if exclude_columns:
+        parquet_schema = pq.read_schema(io.BytesIO(file_bytes))
+        all_columns = set(parquet_schema.names)
+        columns = [col for col in all_columns if col not in exclude_columns]
+
+    table = pq.read_table(io.BytesIO(file_bytes), columns=columns)
     df = table.to_pandas(types_mapper=pd.ArrowDtype)
     return _cast_value_column(df)
 

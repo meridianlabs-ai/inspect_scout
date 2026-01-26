@@ -70,11 +70,7 @@ def view_server(
         fs=fs,
     )
 
-    v2_api = v2_api_app(
-        view_config=config,
-        results_dir=scans,
-        fs=fs,
-    )
+    v2_api = v2_api_app(view_config=config)
 
     if authorization:
         v1_api.add_middleware(AuthorizationMiddleware, authorization=authorization)

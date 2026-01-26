@@ -4,6 +4,26 @@
  */
 import { JsonValue } from "./json-value";
 export interface paths {
+    "/app-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get application configuration
+         * @description Returns app config including transcripts and scans directories.
+         */
+        get: operations["config_app_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/code": {
         parameters: {
             query?: never;
@@ -18,66 +38,6 @@ export interface paths {
          * @description Process condition.
          */
         post: operations["code_code_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get application configuration
-         * @description Returns app config including transcripts and scans directories.
-         */
-        get: operations["config_config_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/config-version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get config version
-         * @description Returns an opaque version string that changes when server restarts or project config is modified. Used for cache invalidation.
-         */
-        get: operations["config_version_config_version_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/config-version/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Stream config version changes
-         * @description SSE endpoint that pushes when config version changes.
-         */
-        get: operations["config_version_stream_config_version_stream_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -128,26 +88,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * List scans
-         * @description Returns scans from the results directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
-         */
-        post: operations["scans_scans_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/scans/active": {
         parameters: {
             query?: never;
@@ -168,7 +108,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}": {
+    "/scans/{dir}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List scans
+         * @description Returns scans from specified directory. Optional filter condition uses SQL-like DSL. Optional order_by for sorting results. Optional pagination for cursor-based pagination.
+         */
+        post: operations["scans_scans__dir__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scans/{dir}/{scan}": {
         parameters: {
             query?: never;
             header?: never;
@@ -179,7 +139,7 @@ export interface paths {
          * Get scan status
          * @description Returns detailed status and metadata for a single scan.
          */
-        get: operations["scan_scans__scan__get"];
+        get: operations["scan_scans__dir___scan__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -188,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}": {
+    "/scans/{dir}/{scan}/{scanner}": {
         parameters: {
             query?: never;
             header?: never;
@@ -199,7 +159,7 @@ export interface paths {
          * Get scanner dataframe containing results for all transcripts
          * @description Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.
          */
-        get: operations["scan_df_scans__scan___scanner__get"];
+        get: operations["scan_df_scans__dir___scan___scanner__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -208,7 +168,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/scans/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
         parameters: {
             query?: never;
             header?: never;
@@ -219,7 +179,7 @@ export interface paths {
          * Get scanner input for a specific transcript
          * @description Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.
          */
-        get: operations["scanner_input_scans__scan___scanner___uuid__input_get"];
+        get: operations["scanner_input_scans__dir___scan___scanner___uuid__input_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -242,6 +202,26 @@ export interface paths {
          * @description Runs a scan using llm_scanner with the provided ScanJobConfig.
          */
         post: operations["run_llm_scanner_startscan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/topics/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream topic updates
+         * @description SSE endpoint that pushes topic versions when they change. Each message is a JSON dict mapping topic names to timestamps.
+         */
+        get: operations["topics_stream_topics_stream_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1575,6 +1555,8 @@ export interface components {
             /** Working Start */
             working_start: number;
         };
+        /** @enum {string} */
+        InvalidationTopic: "project-config";
         /**
          * JSONSchema
          * @description JSON Schema for type.
@@ -3852,6 +3834,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    config_app_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfig"];
+                };
+            };
+        };
+    };
     code_code_post: {
         parameters: {
             query?: never;
@@ -3874,64 +3876,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
-                };
-            };
-        };
-    };
-    config_config_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AppConfig"];
-                };
-            };
-        };
-    };
-    config_version_config_version_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    config_version_stream_config_version_stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -4003,30 +3947,6 @@ export interface operations {
             };
         };
     };
-    scans_scans_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ScansRequest"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScansResponse"];
-                };
-            };
-        };
-    };
     active_scans_scans_active_get: {
         parameters: {
             query?: never;
@@ -4047,11 +3967,40 @@ export interface operations {
             };
         };
     };
-    scan_scans__scan__get: {
+    scans_scans__dir__post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScansRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScansResponse"];
+                };
+            };
+        };
+    };
+    scan_scans__dir___scan__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
             };
@@ -4070,11 +4019,13 @@ export interface operations {
             };
         };
     };
-    scan_df_scans__scan___scanner__get: {
+    scan_df_scans__dir___scan___scanner__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
                 /** @description Scanner name */
@@ -4095,11 +4046,13 @@ export interface operations {
             };
         };
     };
-    scanner_input_scans__scan___scanner___uuid__input_get: {
+    scanner_input_scans__dir___scan___scanner___uuid__input_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
                 /** @description Scan path (base64url-encoded) */
                 scan: string;
                 /** @description Scanner name */
@@ -4142,6 +4095,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    topics_stream_topics_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -103,7 +103,10 @@ export const useUpdateValidationCase = (uri: string) => {
     ValidationCase,
     Error,
     { caseId: string; data: ValidationCaseRequest },
-    { previousCase: ValidationCase | undefined; previousCases: ValidationCase[] | undefined }
+    {
+      previousCase: ValidationCase | undefined;
+      previousCases: ValidationCase[] | undefined;
+    }
   >({
     mutationFn: ({ caseId, data }) =>
       api.upsertValidationCase(uri, caseId, data),

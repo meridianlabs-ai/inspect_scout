@@ -65,9 +65,9 @@ async def populated_db(test_location: Path) -> AsyncIterator[ParquetTranscriptsD
 
 
 @pytest.fixture
-def client(test_location: Path, populated_db: ParquetTranscriptsDB) -> TestClient:
+def client(populated_db: ParquetTranscriptsDB) -> TestClient:
     """Create test client."""
-    return TestClient(v2_api_app(results_dir=str(test_location)))
+    return TestClient(v2_api_app())
 
 
 class TestDistinctEndpoint:

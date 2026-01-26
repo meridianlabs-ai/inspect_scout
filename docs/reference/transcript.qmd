@@ -25,5 +25,11 @@ reference: "inspect_scout"
 ### LogColumns
 ### log_columns
 
+## Observe
+
+### observe
+### observe_update
+### ObserveProvider
+### ObserveEmit
 
 

@@ -19,7 +19,7 @@ import { Modal } from "../../components/Modal";
 import { NonIdealState } from "../../components/NonIdealState";
 import { TextInput } from "../../components/TextInput";
 import { useStore } from "../../state/store";
-import { useConfig } from "../server/useConfig";
+import { useAppConfig } from "../server/useAppConfig";
 import {
   useBulkDeleteValidationCases,
   useDeleteValidationSet,
@@ -37,7 +37,7 @@ import styles from "./ValidationPanel.module.css";
 
 export const ValidationPanel: FC = () => {
   // Config for transcripts directory
-  const config = useConfig();
+  const config = useAppConfig();
   const transcriptsDir = config.transcripts?.dir ?? undefined;
 
   // State management

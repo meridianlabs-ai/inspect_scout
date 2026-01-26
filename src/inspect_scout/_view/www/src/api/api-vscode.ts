@@ -13,7 +13,7 @@ import {
 } from "../types/api-types";
 import { VSCodeApi } from "../utils/vscode";
 
-import { ClientStorage, ScanApi } from "./api";
+import { ClientStorage, ScanApi, TopicVersions } from "./api";
 import { AsyncCache } from "./api-cache";
 import {
   kMethodGetScan,
@@ -54,10 +54,6 @@ export const apiVscode = (
 
   return {
     capability: "scans",
-    // eslint-disable-next-line @typescript-eslint/require-await
-    getConfigVersion: async (): Promise<string> => {
-      throw new Error("Not Yet Implemented");
-    },
     getConfig: async () => {
       const data = await fetchScansData();
       return {
@@ -92,20 +88,16 @@ export const apiVscode = (
     getTranscriptsColumnValues: async (): Promise<never> => {
       throw new Error("Not Yet Implemented");
     },
-    getScan: async (scanLocation: string): Promise<Status> => {
-      const response = (await rpcClient(kMethodGetScan, [
-        scanLocation,
-      ])) as string;
+    getScan: async (_scansDir: string, scanPath: string): Promise<Status> => {
+      const response = (await rpcClient(kMethodGetScan, [scanPath])) as string;
 
       if (response) {
         return JSON5.parse<Status>(response);
       } else {
-        throw new Error(
-          `Invalid response for getScan for scan: ${scanLocation}`
-        );
+        throw new Error(`Invalid response for getScan for scan: ${scanPath}`);
       }
     },
-    getScans: async (): Promise<ScansResponse> => {
+    getScans: async (_scansDir: string): Promise<ScansResponse> => {
       const data = await fetchScansData();
       return {
         items: data.scans,
@@ -114,24 +106,25 @@ export const apiVscode = (
       };
     },
     getScannerDataframe: async (
-      scanLocation: string,
+      _scansDir: string,
+      scanPath: string,
       scanner: string
     ): Promise<Uint8Array> => {
       const response = await rpcClient(kMethodGetScannerDataframe, [
-        scanLocation,
+        scanPath,
         scanner,
       ]);
       if (response && response instanceof Uint8Array) {
         return response;
       } else {
         throw new Error(
-          `Invalid response for getScannerDataframe for scan: ${scanLocation}, scanner: ${scanner}`
+          `Invalid response for getScannerDataframe for scan: ${scanPath}, scanner: ${scanner}`
         );
       }
     },
-    getScannerDataframeInput: async (scanLocation, scanner, uuid) => {
+    getScannerDataframeInput: async (_scansDir, scanPath, scanner, uuid) => {
       const response = await rpcClient(kMethodGetScannerDataframeInput, [
-        scanLocation,
+        scanPath,
         scanner,
         uuid,
       ]);
@@ -139,7 +132,7 @@ export const apiVscode = (
       // Ensure we have the correct response
       if (!Array.isArray(response) || response.length !== 2) {
         throw new Error(
-          `Invalid response for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+          `Invalid response for getScannerDataframeInput for scan: ${scanPath}, scanner: ${scanner}, uuid: ${uuid}`
         );
       }
 
@@ -149,13 +142,13 @@ export const apiVscode = (
 
         if (typeof inputRaw !== "string") {
           throw new Error(
-            `Invalid input data for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+            `Invalid input data for getScannerDataframeInput for scan: ${scanPath}, scanner: ${scanner}, uuid: ${uuid}`
           );
         }
 
         if (typeof inputTypeRaw !== "string") {
           throw new Error(
-            `Invalid input type for getScannerDataframeInput for scan: ${scanLocation}, scanner: ${scanner}, uuid: ${uuid}`
+            `Invalid input type for getScannerDataframeInput for scan: ${scanPath}, scanner: ${scanner}, uuid: ${uuid}`
           );
         }
 
@@ -181,6 +174,13 @@ export const apiVscode = (
     // eslint-disable-next-line @typescript-eslint/require-await
     getScanners: async (): Promise<ScannersResponse> => {
       throw new Error("Not Yet Implemented");
+    },
+    // Noop for now since vs code
+    connectTopicUpdates: (
+      callback: (topVersions: TopicVersions) => void
+    ): (() => void) => {
+      callback({ "project-config": "yo" });
+      return () => {};
     },
     // Validation API (not implemented for VSCode)
     // eslint-disable-next-line @typescript-eslint/require-await

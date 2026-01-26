@@ -6,6 +6,7 @@ import {
   ActiveScansResponse,
   AppConfig,
   CreateValidationSetRequest,
+  InvalidationTopic,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -23,8 +24,10 @@ export type ClientStorage = StateStorage;
 
 export type ScalarValue = string | number | boolean | null;
 
+/** Topic versions: maps topic name to timestamp. */
+export type TopicVersions = Record<InvalidationTopic, string>;
+
 export interface ScanApi {
-  getConfigVersion(): Promise<string>;
   getConfig(): Promise<AppConfig>;
   getTranscripts(
     transcriptsDir: string,
@@ -39,17 +42,20 @@ export interface ScanApi {
     filter: Condition | undefined
   ): Promise<ScalarValue[]>;
   getScans(
+    scansDir: string,
     filter?: Condition,
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
   ): Promise<ScansResponse>;
-  getScan(scanLocation: string): Promise<Status>;
+  getScan(scansDir: string, scanPath: string): Promise<Status>;
   getScannerDataframe(
-    scanLocation: string,
+    scansDir: string,
+    scanPath: string,
     scanner: string
   ): Promise<ArrayBuffer | Uint8Array>;
   getScannerDataframeInput(
-    scanLocation: string,
+    scansDir: string,
+    scanPath: string,
     scanner: string,
     uuid: string
   ): Promise<ScanResultInputData>;
@@ -62,6 +68,9 @@ export interface ScanApi {
   ): Promise<{ config: ProjectConfig; etag: string }>;
   startScan(config: ScanJobConfig): Promise<Status>;
   getScanners(): Promise<ScannersResponse>;
+  connectTopicUpdates(
+    onUpdate: (topVersions: TopicVersions) => void
+  ): () => void;
 
   // Validation API
   getValidationSets(): Promise<string[]>;

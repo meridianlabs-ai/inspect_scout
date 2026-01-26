@@ -9,12 +9,17 @@ import { useSelectedScanner } from "./useSelectedScanner";
 
 export const useSelectedScanResultInputData =
   (): AsyncData<ScanResultInputData> => {
-    const { location, scanResultUuid } = useScanRoute();
+    const { resolvedScansDir, scanPath, scanResultUuid } = useScanRoute();
     const scanner = useSelectedScanner();
 
     return useScanDataframeInput(
-      location && scanner.data && scanResultUuid
-        ? { location, scanner: scanner.data, uuid: scanResultUuid }
+      resolvedScansDir && scanPath && scanner.data && scanResultUuid
+        ? {
+            scansDir: resolvedScansDir,
+            scanPath,
+            scanner: scanner.data,
+            uuid: scanResultUuid,
+          }
         : skipToken
     );
   };

@@ -47,6 +47,7 @@ export type StoreEvent = components["schemas"]["StoreEvent"];
 export type SubtaskEvent = components["schemas"]["SubtaskEvent"];
 export type ToolEvent = components["schemas"]["ToolEvent"];
 export type Event = components["schemas"]["Event"];
+export type InvalidationTopic = components["schemas"]["InvalidationTopic"];
 
 export type JsonChange = components["schemas"]["JsonChange"];
 

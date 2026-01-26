@@ -22,7 +22,7 @@ import {
 } from "../../../types/api-types";
 import { useDebouncedCallback } from "../../../utils/useDebouncedCallback";
 import { Field } from "../../project/components/FormFields";
-import { useConfig } from "../../server/useConfig";
+import { useAppConfig } from "../../server/useAppConfig";
 import {
   useCreateValidationSet,
   useDeleteValidationCase,
@@ -157,7 +157,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   validationCases,
   className,
 }) => {
-  const config = useConfig();
+  const config = useAppConfig();
   const setEditorSelectedValidationSetUri = useStore(
     (state) => state.setEditorSelectedValidationSetUri
   );

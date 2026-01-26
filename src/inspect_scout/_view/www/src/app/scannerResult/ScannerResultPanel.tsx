@@ -21,6 +21,7 @@ import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
 import { useScansDir } from "../utils/useScansDir";
+import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -189,105 +190,119 @@ export const ScannerResultPanel: FC = () => {
 
       {selectedResult && (
         <ExtendedFindProvider>
-          <TabSet
-            id={"scan-result-tabs"}
-            type="pills"
-            tabPanelsClassName={clsx(styles.tabSet)}
-            tabControlsClassName={clsx(styles.tabControl)}
-            className={clsx(styles.tabs)}
-            tools={tools}
+          <div
+            className={clsx(
+              styles.contentArea,
+              !validationSidebarCollapsed && styles.withValidation
+            )}
           >
-            {hasError ? (
-              <TabPanel
-                id={kTabIdError}
-                selected={
-                  selectedTab === kTabIdError || selectedTab === undefined
-                }
-                title="Error"
-                onSelected={() => {
-                  handleTabChange(kTabIdError);
-                }}
+            <div className={styles.tabSetWrapper}>
+              <TabSet
+                id={"scan-result-tabs"}
+                type="pills"
+                tabPanelsClassName={clsx(styles.tabSet)}
+                tabControlsClassName={clsx(styles.tabControl)}
+                className={clsx(styles.tabs)}
+                tools={tools}
               >
-                <ErrorPanel
-                  error={selectedResult.scanError}
-                  traceback={selectedResult.scanErrorTraceback}
-                />
-              </TabPanel>
-            ) : undefined}
-            {!hasError ? (
-              <TabPanel
-                id={kTabIdResult}
-                selected={
-                  selectedTab === kTabIdResult ||
-                  (!hasError && selectedTab === undefined)
-                }
-                title="Result"
-                scrollable={false}
-                onSelected={() => {
-                  handleTabChange(kTabIdResult);
-                }}
-                className={styles.fullHeight}
-              >
-                <ResultPanel
-                  resultData={selectedResult}
-                  inputData={inputData}
+                {hasError ? (
+                  <TabPanel
+                    id={kTabIdError}
+                    selected={
+                      selectedTab === kTabIdError || selectedTab === undefined
+                    }
+                    title="Error"
+                    onSelected={() => {
+                      handleTabChange(kTabIdError);
+                    }}
+                  >
+                    <ErrorPanel
+                      error={selectedResult.scanError}
+                      traceback={selectedResult.scanErrorTraceback}
+                    />
+                  </TabPanel>
+                ) : undefined}
+                {!hasError ? (
+                  <TabPanel
+                    id={kTabIdResult}
+                    selected={
+                      selectedTab === kTabIdResult ||
+                      (!hasError && selectedTab === undefined)
+                    }
+                    title="Result"
+                    scrollable={false}
+                    onSelected={() => {
+                      handleTabChange(kTabIdResult);
+                    }}
+                    className={styles.fullHeight}
+                  >
+                    <ResultPanel
+                      resultData={selectedResult}
+                      inputData={inputData}
+                    />
+                  </TabPanel>
+                ) : undefined}
+                {showEvents ? (
+                  <TabPanel
+                    id={kTabIdTranscript}
+                    selected={selectedTab === kTabIdTranscript}
+                    title="Events"
+                    onSelected={() => {
+                      handleTabChange(kTabIdTranscript);
+                    }}
+                  >
+                    <TranscriptPanel
+                      id="scan-transcript"
+                      resultData={selectedResult}
+                      nodeFilter={skipScanSpan}
+                    />
+                  </TabPanel>
+                ) : undefined}
+                <TabPanel
+                  id={kTabIdMetadata}
+                  selected={selectedTab === kTabIdMetadata}
+                  title="Metadata"
+                  onSelected={() => {
+                    handleTabChange(kTabIdMetadata);
+                  }}
+                >
+                  <MetadataPanel resultData={selectedResult} />
+                </TabPanel>
+                <TabPanel
+                  id={kTabIdInfo}
+                  selected={selectedTab === kTabIdInfo}
+                  title="Info"
+                  onSelected={() => {
+                    handleTabChange(kTabIdInfo);
+                  }}
+                >
+                  <InfoPanel resultData={selectedResult} />
+                </TabPanel>
+                <TabPanel
+                  id={kTabIdJson}
+                  selected={selectedTab === kTabIdJson}
+                  title="JSON"
+                  onSelected={() => {
+                    handleTabChange(kTabIdJson);
+                  }}
+                >
+                  <JSONPanel
+                    id="scan-result-json-contents"
+                    data={selectedResult}
+                    simple={true}
+                    className={styles.json}
+                  />
+                </TabPanel>
+              </TabSet>
+            </div>
+            {!validationSidebarCollapsed && selectedResult.transcriptId && (
+              <div className={styles.validationSidebar}>
+                <ValidationCaseEditor
                   transcriptId={selectedResult.transcriptId}
-                  showValidationSidebar={!validationSidebarCollapsed}
                 />
-              </TabPanel>
-            ) : undefined}
-            {showEvents ? (
-              <TabPanel
-                id={kTabIdTranscript}
-                selected={selectedTab === kTabIdTranscript}
-                title="Events"
-                onSelected={() => {
-                  handleTabChange(kTabIdTranscript);
-                }}
-              >
-                <TranscriptPanel
-                  id="scan-transcript"
-                  resultData={selectedResult}
-                  nodeFilter={skipScanSpan}
-                />
-              </TabPanel>
-            ) : undefined}
-            <TabPanel
-              id={kTabIdMetadata}
-              selected={selectedTab === kTabIdMetadata}
-              title="Metadata"
-              onSelected={() => {
-                handleTabChange(kTabIdMetadata);
-              }}
-            >
-              <MetadataPanel resultData={selectedResult} />
-            </TabPanel>
-            <TabPanel
-              id={kTabIdInfo}
-              selected={selectedTab === kTabIdInfo}
-              title="Info"
-              onSelected={() => {
-                handleTabChange(kTabIdInfo);
-              }}
-            >
-              <InfoPanel resultData={selectedResult} />
-            </TabPanel>
-            <TabPanel
-              id={kTabIdJson}
-              selected={selectedTab === kTabIdJson}
-              title="JSON"
-              onSelected={() => {
-                handleTabChange(kTabIdJson);
-              }}
-            >
-              <JSONPanel
-                id="scan-result-json-contents"
-                data={selectedResult}
-                simple={true}
-                className={styles.json}
-              />
-            </TabPanel>
-          </TabSet>
+              </div>
+            )}
+          </div>
         </ExtendedFindProvider>
       )}
     </div>

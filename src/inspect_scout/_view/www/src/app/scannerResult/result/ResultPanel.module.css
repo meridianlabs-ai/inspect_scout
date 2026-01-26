@@ -10,17 +10,3 @@
 .container > * {
   min-height: 0;
 }
-
-.withValidation {
-  grid-template-columns: 1fr 2fr minmax(200px, 280px);
-}
-
-.validationSidebar {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  border-left: 1px solid var(--bs-border-color);
-  background-color: var(--bs-body-bg);
-  overflow-y: auto;
-}

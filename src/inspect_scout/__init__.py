@@ -2,6 +2,7 @@ from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._grep_scanner import grep_scanner
 from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
+from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
 from ._query.condition import Condition
 from ._recorder.recorder import (
@@ -73,6 +74,11 @@ except ImportError:
 
 
 __all__ = [
+    # observe
+    "observe",
+    "observe_update",
+    "ObserveEmit",
+    "ObserveProvider",
     # scan
     "scan",
     "scan_resume",

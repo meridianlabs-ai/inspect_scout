@@ -197,16 +197,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
         | AsyncIterable[Transcript]
         | Transcripts
         | pa.RecordBatchReader,
+        commit: bool = True,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
         Transcript ids that are already in the database are not inserted.
         Each batch write also creates a corresponding index file. After all
-        inserts complete, index files are compacted.
+        inserts complete, index files are compacted (if commit=True).
 
         Args:
             transcripts: Transcripts to insert (iterable, async iterable, source,
                 or PyArrow RecordBatchReader for efficient Arrow-native insertion).
+            commit: If True (default), commit after insert (compact + refresh view).
+                If False, defer commit for batch operations. Call commit()
+                explicitly when ready to finalize.
         """
         assert self._conn is not None
         assert self._index_storage is not None
@@ -231,7 +235,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
         else:
             await self._insert_from_transcripts(transcripts)
 
-        # refresh the view
+        # Commit if requested (default behavior)
+        if commit:
+            await self.commit()
+
+    @override
+    async def commit(self) -> None:
+        """Commit pending changes by compacting index files and refreshing view.
+
+        This is called automatically when insert() is called with commit=True
+        (the default). Only call this manually when using commit=False with
+        insert() for batch operations.
+
+        For parquet: refreshes the DuckDB view and compacts index files.
+        """
+        assert self._conn is not None
+        assert self._index_storage is not None
+
+        # Refresh the view to include newly inserted data
         await self._create_transcripts_table()
 
         # Best-effort compaction - merge index files

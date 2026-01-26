@@ -81,12 +81,30 @@ def _normalize_to_sequence(
 
 
 def get_provider_instance(key: str) -> ObserveProvider | None:
-    """Get provider instance by key."""
+    """Get an installed provider instance by its registry key.
+
+    Args:
+        key: Provider registry key (class name for custom providers,
+            or 'inspect', 'openai', 'anthropic', 'google' for built-ins).
+
+    Returns:
+        The provider instance if installed, None otherwise.
+    """
     return _provider_instances.get(key)
 
 
 def create_emit_callback(provider: ObserveProvider) -> ObserveEmit:
-    """Create emit callback for a provider (context-checked, queues data)."""
+    """Create an emit callback for a provider.
+
+    The callback is context-checked: it only queues data if called within
+    an active observe context. Otherwise it's a no-op.
+
+    Args:
+        provider: The provider instance to create the callback for.
+
+    Returns:
+        A sync callback that queues captured data for later processing.
+    """
     provider_key = _resolve_provider_key(provider)
 
     def emit(data: dict[str, Any]) -> None:

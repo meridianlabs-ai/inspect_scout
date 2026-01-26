@@ -388,38 +388,8 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
         self._self_emit = emit
         self._self_final_message: Any = None
 
-    def __iter__(self) -> Iterator[Any]:
-        for event in self.__wrapped__:
-            yield event
-
-        # Get final message from stream
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._self_final_message = self.__wrapped__.get_final_message()
-            self._self_emit(
-                {
-                    "request": self._self_request_kwargs,
-                    "response": self._self_final_message,
-                }
-            )
-
-    @property
-    def text_stream(self) -> Iterator[str]:
-        """Pass through text_stream property."""
-        for text in self.__wrapped__.text_stream:
-            yield text
-
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._self_final_message = self.__wrapped__.get_final_message()
-            self._self_emit(
-                {
-                    "request": self._self_request_kwargs,
-                    "response": self._self_final_message,
-                }
-            )
-
-    def get_final_message(self) -> Any:
-        """Get final message and ensure emission."""
-        message = self.__wrapped__.get_final_message()
+    def _emit_if_needed(self, message: Any) -> None:
+        """Emit the message if not already emitted."""
         if self._self_final_message is None:
             self._self_final_message = message
             self._self_emit(
@@ -428,10 +398,32 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
                     "response": message,
                 }
             )
+
+    def __iter__(self) -> Iterator[Any]:
+        for event in self.__wrapped__:
+            yield event
+
+        if hasattr(self.__wrapped__, "get_final_message"):
+            self._emit_if_needed(self.__wrapped__.get_final_message())
+
+    @property
+    def text_stream(self) -> Iterator[str]:
+        """Pass through text_stream property."""
+        for text in self.__wrapped__.text_stream:
+            yield text
+
+        if hasattr(self.__wrapped__, "get_final_message"):
+            self._emit_if_needed(self.__wrapped__.get_final_message())
+
+    def get_final_message(self) -> Any:
+        """Get final message and ensure emission."""
+        message = self.__wrapped__.get_final_message()
+        self._emit_if_needed(message)
         return message
 
     def get_final_text(self) -> str:
-        """Get final text."""
+        """Get final text and ensure emission."""
+        self.get_final_message()  # Ensure emission happens
         return cast(str, self.__wrapped__.get_final_text())
 
     def until_done(self) -> None:
@@ -477,41 +469,8 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy):  # type: ignore[mi
         self._self_emit = emit
         self._self_final_message: Any = None
 
-    async def __aiter__(self) -> AsyncIterator[Any]:
-        async for event in self.__wrapped__:
-            yield event
-
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._self_final_message = await self.__wrapped__.get_final_message()
-            self._self_emit(
-                {
-                    "request": self._self_request_kwargs,
-                    "response": self._self_final_message,
-                }
-            )
-
-    @property
-    def text_stream(self) -> AsyncIterator[str]:
-        """Pass through async text_stream property."""
-
-        async def _text_stream() -> AsyncIterator[str]:
-            async for text in self.__wrapped__.text_stream:
-                yield text
-
-            if hasattr(self.__wrapped__, "get_final_message"):
-                self._self_final_message = await self.__wrapped__.get_final_message()
-                self._self_emit(
-                    {
-                        "request": self._self_request_kwargs,
-                        "response": self._self_final_message,
-                    }
-                )
-
-        return _text_stream()
-
-    async def get_final_message(self) -> Any:
-        """Get final message and ensure emission."""
-        message = await self.__wrapped__.get_final_message()
+    def _emit_if_needed(self, message: Any) -> None:
+        """Emit the message if not already emitted."""
         if self._self_final_message is None:
             self._self_final_message = message
             self._self_emit(
@@ -520,10 +479,37 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy):  # type: ignore[mi
                     "response": message,
                 }
             )
+
+    async def __aiter__(self) -> AsyncIterator[Any]:
+        async for event in self.__wrapped__:
+            yield event
+
+        if hasattr(self.__wrapped__, "get_final_message"):
+            self._emit_if_needed(await self.__wrapped__.get_final_message())
+
+    @property
+    def text_stream(self) -> AsyncIterator[str]:
+        """Pass through async text_stream property."""
+        parent = self
+
+        async def _text_stream() -> AsyncIterator[str]:
+            async for text in parent.__wrapped__.text_stream:
+                yield text
+
+            if hasattr(parent.__wrapped__, "get_final_message"):
+                parent._emit_if_needed(await parent.__wrapped__.get_final_message())
+
+        return _text_stream()
+
+    async def get_final_message(self) -> Any:
+        """Get final message and ensure emission."""
+        message = await self.__wrapped__.get_final_message()
+        self._emit_if_needed(message)
         return message
 
     async def get_final_text(self) -> str:
-        """Get final text."""
+        """Get final text and ensure emission."""
+        await self.get_final_message()  # Ensure emission happens
         return cast(str, await self.__wrapped__.get_final_text())
 
     async def until_done(self) -> None:

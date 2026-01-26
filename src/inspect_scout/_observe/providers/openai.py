@@ -80,9 +80,10 @@ class OpenAIProvider:
         ) -> Any:
             response = wrapped(*args, **kwargs)
 
+            # Check for ResponseStream (high-level) or Stream (with stream=True)
             if _is_stream_type(
                 response, "openai.lib.streaming.responses", "ResponseStream"
-            ):
+            ) or _is_stream_type(response, "openai", "Stream"):
                 return OpenAIResponsesStreamCapture(response, kwargs, emit)
 
             emit({"request": kwargs, "response": response, "api": "responses"})
@@ -94,9 +95,10 @@ class OpenAIProvider:
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
 
+                # Check for AsyncResponseStream (high-level) or AsyncStream (with stream=True)
                 if _is_stream_type(
                     response, "openai.lib.streaming.responses", "AsyncResponseStream"
-                ):
+                ) or _is_stream_type(response, "openai", "AsyncStream"):
                     return OpenAIResponsesAsyncStreamCapture(response, kwargs, emit)
 
                 emit({"request": kwargs, "response": response, "api": "responses"})
@@ -414,8 +416,11 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
 
     def __iter__(self) -> Iterator[Any]:
         for event in self.__wrapped__:
-            # Capture the complete response from response.completed event
-            if hasattr(event, "type") and event.type == "response.completed":
+            # Capture response from completed or incomplete events
+            if hasattr(event, "type") and event.type in (
+                "response.completed",
+                "response.incomplete",
+            ):
                 if hasattr(event, "response"):
                     self._self_complete_response = event.response
             yield event
@@ -447,7 +452,11 @@ class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
 
     async def __aiter__(self) -> AsyncIterator[Any]:
         async for event in self.__wrapped__:
-            if hasattr(event, "type") and event.type == "response.completed":
+            # Capture response from completed or incomplete events
+            if hasattr(event, "type") and event.type in (
+                "response.completed",
+                "response.incomplete",
+            ):
                 if hasattr(event, "response"):
                     self._self_complete_response = event.response
             yield event

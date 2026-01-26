@@ -371,7 +371,6 @@ class TestOpenAIProvider:
 
     @skip_if_no_openai
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Responses API streaming capture needs investigation")
     async def test_openai_responses_sync_streaming(self) -> None:
         """OpenAI Responses API - sync, streaming."""
         from openai import OpenAI
@@ -387,9 +386,9 @@ class TestOpenAIProvider:
             ):
                 client = OpenAI()
                 stream = client.responses.create(
-                    model="gpt-5-mini",
+                    model="gpt-5-mini-2025-08-07",
                     input="Say hello",
-                    max_output_tokens=50,
+                    max_output_tokens=500,
                     stream=True,
                 )
                 events = []
@@ -411,7 +410,6 @@ class TestOpenAIProvider:
 
     @skip_if_no_openai
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Responses API streaming capture needs investigation")
     async def test_openai_responses_async_streaming(self) -> None:
         """OpenAI Responses API - async, streaming."""
         from openai import AsyncOpenAI
@@ -427,9 +425,9 @@ class TestOpenAIProvider:
             ):
                 client = AsyncOpenAI()
                 stream = await client.responses.create(
-                    model="gpt-5-mini",
+                    model="gpt-5-mini-2025-08-07",
                     input="Say hello",
-                    max_output_tokens=50,
+                    max_output_tokens=500,
                     stream=True,
                 )
                 events = []

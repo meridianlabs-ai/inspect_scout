@@ -552,13 +552,45 @@ def tool_choice_from_google_tool_config(
 # =============================================================================
 
 
-class GoogleStreamCapture:
-    """Capture wrapper for Google GenAI sync streams.
+class GoogleStreamAccumulator:
+    """Helper class to accumulate Google GenAI stream chunks.
 
     Google streams are incremental - each chunk contains new parts.
-    We accumulate all parts by candidate index following the same pattern
-    as inspect_ai's _stream_generate_content.
+    This accumulator collects all parts by candidate index following the
+    same pattern as inspect_ai's _stream_generate_content.
     """
+
+    def __init__(self) -> None:
+        self.candidates_parts: dict[int, list[Any]] = {}
+        self.last_chunk: Any = None
+
+    def accumulate_chunk(self, chunk: Any) -> None:
+        """Accumulate parts from a streaming chunk."""
+        self.last_chunk = chunk
+        if hasattr(chunk, "candidates") and chunk.candidates:
+            for candidate in chunk.candidates:
+                idx = getattr(candidate, "index", 0) or 0
+                if idx not in self.candidates_parts:
+                    self.candidates_parts[idx] = []
+                if (
+                    hasattr(candidate, "content")
+                    and candidate.content
+                    and hasattr(candidate.content, "parts")
+                    and candidate.content.parts
+                ):
+                    self.candidates_parts[idx].extend(candidate.content.parts)
+
+    def get_response_data(self, request_kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Get the accumulated response data for emission."""
+        return {
+            "request": request_kwargs,
+            "response": self.last_chunk,
+            "accumulated_parts": self.candidates_parts,
+        }
+
+
+class GoogleStreamCapture:
+    """Capture wrapper for Google GenAI sync streams."""
 
     def __init__(
         self,
@@ -569,46 +601,19 @@ class GoogleStreamCapture:
         self._stream = stream
         self._request_kwargs = request_kwargs
         self._emit = emit
-        # Accumulate parts by candidate index
-        self._candidates_parts: dict[int, list[Any]] = {}
-        self._last_chunk: Any = None
+        self._accumulator = GoogleStreamAccumulator()
 
     def __iter__(self) -> Iterator[Any]:
         for chunk in self._stream:
-            self._last_chunk = chunk
-            # Accumulate parts from each candidate
-            if hasattr(chunk, "candidates") and chunk.candidates:
-                for candidate in chunk.candidates:
-                    idx = getattr(candidate, "index", 0) or 0
-                    if idx not in self._candidates_parts:
-                        self._candidates_parts[idx] = []
-                    if (
-                        hasattr(candidate, "content")
-                        and candidate.content
-                        and hasattr(candidate.content, "parts")
-                        and candidate.content.parts
-                    ):
-                        self._candidates_parts[idx].extend(candidate.content.parts)
+            self._accumulator.accumulate_chunk(chunk)
             yield chunk
 
-        # Emit final response with accumulated parts and last chunk metadata
-        if self._last_chunk is not None:
-            self._emit(
-                {
-                    "request": self._request_kwargs,
-                    "response": self._last_chunk,
-                    "accumulated_parts": self._candidates_parts,
-                }
-            )
+        if self._accumulator.last_chunk is not None:
+            self._emit(self._accumulator.get_response_data(self._request_kwargs))
 
 
 class GoogleAsyncStreamCapture:
-    """Capture wrapper for Google GenAI async streams.
-
-    Google streams are incremental - each chunk contains new parts.
-    We accumulate all parts by candidate index following the same pattern
-    as inspect_ai's _stream_generate_content.
-    """
+    """Capture wrapper for Google GenAI async streams."""
 
     def __init__(
         self,
@@ -619,33 +624,12 @@ class GoogleAsyncStreamCapture:
         self._stream = stream
         self._request_kwargs = request_kwargs
         self._emit = emit
-        # Accumulate parts by candidate index
-        self._candidates_parts: dict[int, list[Any]] = {}
-        self._last_chunk: Any = None
+        self._accumulator = GoogleStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
         async for chunk in self._stream:
-            self._last_chunk = chunk
-            # Accumulate parts from each candidate
-            if hasattr(chunk, "candidates") and chunk.candidates:
-                for candidate in chunk.candidates:
-                    idx = getattr(candidate, "index", 0) or 0
-                    if idx not in self._candidates_parts:
-                        self._candidates_parts[idx] = []
-                    if (
-                        hasattr(candidate, "content")
-                        and candidate.content
-                        and hasattr(candidate.content, "parts")
-                        and candidate.content.parts
-                    ):
-                        self._candidates_parts[idx].extend(candidate.content.parts)
+            self._accumulator.accumulate_chunk(chunk)
             yield chunk
 
-        if self._last_chunk is not None:
-            self._emit(
-                {
-                    "request": self._request_kwargs,
-                    "response": self._last_chunk,
-                    "accumulated_parts": self._candidates_parts,
-                }
-            )
+        if self._accumulator.last_chunk is not None:
+            self._emit(self._accumulator.get_response_data(self._request_kwargs))

@@ -1,4 +1,5 @@
 import { ReactNode, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { ChatView } from "../../components/chat/ChatView";
 import { MarkdownReference } from "../../components/MarkdownDivWithReferences";
@@ -25,6 +26,8 @@ export const useMarkdownRefs = (
   inputData?: ScanResultInputData
 ) => {
   const { scansDir, scanPath } = useScanRoute();
+  const [currentSearchParams] = useSearchParams();
+
   // Build URL to the scan result with the appropriate query parameters
   const buildUrl = useMemo(() => {
     if (!summary?.uuid) {
@@ -35,10 +38,18 @@ export const useMarkdownRefs = (
       if (!scansDir) {
         return `?${queryParams}`;
       }
-      const searchParams = new URLSearchParams(queryParams);
-      return `#${scanResultRoute(scansDir, scanPath, summary.uuid, searchParams)}`;
+      // Start with current search params to preserve validation, etc.
+      const mergedParams = new URLSearchParams(currentSearchParams);
+      // Add/override with new params
+      const newParams = new URLSearchParams(queryParams);
+      for (const [key, value] of newParams) {
+        mergedParams.set(key, value);
+      }
+      return `#${scanResultRoute(scansDir, scanPath, summary.uuid, mergedParams)}`;
     };
-  }, [summary?.uuid, scanPath, scansDir]);
+    // Use .toString() for currentSearchParams since URLSearchParams object reference
+    // may not change when URL changes, causing stale closures
+  }, [summary?.uuid, scanPath, scansDir, currentSearchParams]);
 
   const refs: MarkdownReference[] = summary
     ? toMarkdownRefs(

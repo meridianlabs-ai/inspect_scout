@@ -18,7 +18,7 @@ from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
-from inspect_ai.util import trace_action
+from inspect_ai.util import trace_action, trace_message
 from typing_extensions import override
 from upath import UPath
 
@@ -197,6 +197,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         | AsyncIterable[Transcript]
         | Transcripts
         | pa.RecordBatchReader,
+        session_id: str | None = None,
         commit: bool = True,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
@@ -208,6 +209,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Args:
             transcripts: Transcripts to insert (iterable, async iterable, source,
                 or PyArrow RecordBatchReader for efficient Arrow-native insertion).
+            session_id: Optional session ID to include in parquet filenames.
+                Used for session-scoped compaction at commit time.
             commit: If True (default), commit after insert (compact + refresh view).
                 If False, defer commit for batch operations. Call commit()
                 explicitly when ready to finalize.
@@ -231,16 +234,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # two insert codepaths, one for arrow batch, one for transcripts
         if isinstance(transcripts, pa.RecordBatchReader):
-            await self._insert_from_record_batch_reader(transcripts)
+            await self._insert_from_record_batch_reader(transcripts, session_id)
         else:
-            await self._insert_from_transcripts(transcripts)
+            await self._insert_from_transcripts(transcripts, session_id)
 
         # Commit if requested (default behavior)
         if commit:
-            await self.commit()
+            await self.commit(session_id)
 
     @override
-    async def commit(self) -> None:
+    async def commit(self, session_id: str | None = None) -> None:
         """Commit pending changes by compacting index files and refreshing view.
 
         This is called automatically when insert() is called with commit=True
@@ -248,18 +251,31 @@ class ParquetTranscriptsDB(TranscriptsDB):
         insert() for batch operations.
 
         For parquet: refreshes the DuckDB view and compacts index files.
+
+        Args:
+            session_id: Optional session ID for session-scoped compaction.
+                When provided, parquet files created during this session are
+                compacted into fewer larger files before index compaction.
         """
         assert self._conn is not None
         assert self._index_storage is not None
 
-        # Refresh the view to include newly inserted data
-        await self._create_transcripts_table()
+        # Compact session files FIRST if session_id provided
+        # This creates new compacted files and deletes old session files
+        if session_id:
+            try:
+                await self._compact_session(session_id)
+            except Exception as e:
+                logger.warning(f"Session compaction failed (data is consistent): {e}")
 
-        # Best-effort compaction - merge index files
+        # Best-effort index compaction - merge index files
         try:
             await compact_index(self._conn, self._index_storage)
         except Exception as e:
             logger.warning(f"Index compaction failed (data is consistent): {e}")
+
+        # Refresh the view AFTER compaction to reflect the final state
+        await self._create_transcripts_table()
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -621,6 +637,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
     async def _insert_from_transcripts(
         self,
         transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
+        session_id: str | None = None,
     ) -> None:
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
@@ -642,7 +659,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     current_batch_size > 0
                     and current_batch_size + row_size >= target_size_bytes
                 ):
-                    await self._write_parquet_batch(batch)
+                    await self._write_parquet_batch(batch, session_id)
                     batch = []
                     current_batch_size = 0
 
@@ -652,10 +669,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # write any leftover elements
             if batch:
-                await self._write_parquet_batch(batch)
+                await self._write_parquet_batch(batch, session_id)
 
     async def _insert_from_record_batch_reader(
-        self, reader: pa.RecordBatchReader
+        self, reader: pa.RecordBatchReader, session_id: str | None = None
     ) -> None:
         """Insert transcripts from Arrow RecordBatchReader.
 
@@ -663,6 +680,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             reader: PyArrow RecordBatchReader containing transcript data.
+            session_id: Optional session ID to include in parquet filenames.
         """
         # Validate schema once
         self._validate_record_batch_schema(reader.schema)
@@ -709,7 +727,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     accumulated_size > 0
                     and accumulated_size + batch_size >= target_size_bytes
                 ):
-                    await self._write_arrow_batch(accumulated_batches)
+                    await self._write_arrow_batch(accumulated_batches, session_id)
                     accumulated_batches = []
                     accumulated_size = 0
 
@@ -719,7 +737,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Write remainder
             if accumulated_batches:
-                await self._write_arrow_batch(accumulated_batches)
+                await self._write_arrow_batch(accumulated_batches, session_id)
 
     def _transcript_to_row(self, transcript: Transcript) -> dict[str, Any]:
         """Convert Transcript to Parquet row dict with flattened metadata.
@@ -953,7 +971,62 @@ class ParquetTranscriptsDB(TranscriptsDB):
             write_statistics=True,
         )
 
-    async def _write_arrow_batch(self, batches: list[pa.RecordBatch]) -> None:
+    def _generate_parquet_filename(self, session_id: str | None = None) -> str:
+        """Generate parquet filename with optional session_id prefix.
+
+        Args:
+            session_id: Optional session ID to include in filename for grouping.
+
+        Returns:
+            Filename like 'transcripts_{session_id}_{timestamp}_{uuid}.parquet'
+            or 'transcripts_{timestamp}_{uuid}.parquet' if no session_id.
+        """
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        file_uuid = uuid.uuid4().hex[:8]
+        if session_id:
+            return f"transcripts_{session_id}_{timestamp}_{file_uuid}.parquet"
+        else:
+            return f"transcripts_{timestamp}_{file_uuid}.parquet"
+
+    async def _write_table_to_storage(self, table: pa.Table, filename: str) -> str:
+        """Write PyArrow table to storage (S3 or local).
+
+        Args:
+            table: PyArrow table to write.
+            filename: Parquet filename (without path).
+
+        Returns:
+            Full path to the written parquet file.
+        """
+        assert self._location is not None
+
+        if self._location.startswith("s3://"):
+            parquet_path = f"{self._location.rstrip('/')}/{filename}"
+
+            # For S3, write to temp file then upload
+            with tempfile.NamedTemporaryFile(
+                suffix=".parquet", delete=False
+            ) as tmp_file:
+                tmp_path = tmp_file.name
+
+            try:
+                self._write_parquet_file(table, tmp_path)
+                assert self._fs is not None
+                await self._fs.write_file(parquet_path, Path(tmp_path).read_bytes())
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
+        else:
+            # Local file system
+            output_path = Path(self._location) / filename
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            parquet_path = output_path.as_posix()
+            self._write_parquet_file(table, parquet_path)
+
+        return parquet_path
+
+    async def _write_arrow_batch(
+        self, batches: list[pa.RecordBatch], session_id: str | None = None
+    ) -> None:
         """Write accumulated Arrow batches to a new Parquet file and index.
 
         Concatenates batches into a single table and writes with same
@@ -962,6 +1035,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             batches: List of PyArrow RecordBatches to write.
+            session_id: Optional session ID to include in filename.
         """
         if not batches:
             return
@@ -973,40 +1047,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Ensure all required columns exist
             table = self._ensure_required_columns(table)
 
-            # Generate filename
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-            file_uuid = uuid.uuid4().hex[:8]
-            filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
-
-            # Determine output path and write Parquet file
-            assert self._location is not None
-            parquet_path: str
-            if self._location.startswith("s3://"):
-                parquet_path = f"{self._location.rstrip('/')}/{filename}"
-
-                # For S3, write to temp file then upload
-                with tempfile.NamedTemporaryFile(
-                    suffix=".parquet", delete=False
-                ) as tmp_file:
-                    tmp_path = tmp_file.name
-
-                try:
-                    # Write to temporary file
-                    self._write_parquet_file(table, tmp_path)
-
-                    # Upload to S3
-                    assert self._fs is not None
-                    await self._fs.write_file(parquet_path, Path(tmp_path).read_bytes())
-                finally:
-                    # Clean up temp file
-                    Path(tmp_path).unlink(missing_ok=True)
-            else:
-                # Local file system
-                output_path = Path(self._location) / filename
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                parquet_path = output_path.as_posix()
-
-                self._write_parquet_file(table, parquet_path)
+            # Generate filename and write to storage
+            filename = self._generate_parquet_filename(session_id)
+            parquet_path = await self._write_table_to_storage(table, filename)
 
             # Write index file for this batch
             await self._write_index_for_batch(table, parquet_path, filename)
@@ -1079,7 +1122,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Mixed incompatible types → use string
             return pa.string()
 
-    async def _write_parquet_batch(self, batch: list[dict[str, Any]]) -> None:
+    async def _write_parquet_batch(
+        self, batch: list[dict[str, Any]], session_id: str | None = None
+    ) -> None:
         """Write a batch of pre-serialized rows to a new Parquet file and index.
 
         Writes parquet data file first, then writes corresponding index file.
@@ -1087,6 +1132,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         Args:
             batch: List of row dicts (already serialized by _transcript_to_row).
+            session_id: Optional session ID to include in filename.
         """
         if not batch:
             return
@@ -1099,40 +1145,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             df = pd.DataFrame(batch)
             table = pa.Table.from_pandas(df, schema=schema)
 
-            # Generate filename
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-            file_uuid = uuid.uuid4().hex[:8]
-            filename = f"transcripts_{timestamp}_{file_uuid}.parquet"
-
-            # Determine output path and write Parquet file
-            assert self._location is not None
-            parquet_path: str
-            if self._location.startswith("s3://"):
-                parquet_path = f"{self._location.rstrip('/')}/{filename}"
-
-                # For S3, write to temp file then upload
-                with tempfile.NamedTemporaryFile(
-                    suffix=".parquet", delete=False
-                ) as tmp_file:
-                    tmp_path = tmp_file.name
-
-                try:
-                    # Write to temporary file
-                    self._write_parquet_file(table, tmp_path)
-
-                    # Upload to S3
-                    assert self._fs is not None
-                    await self._fs.write_file(parquet_path, Path(tmp_path).read_bytes())
-                finally:
-                    # Clean up temp file
-                    Path(tmp_path).unlink(missing_ok=True)
-            else:
-                # Local file system
-                output_path = Path(self._location) / filename
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                parquet_path = output_path.as_posix()
-
-                self._write_parquet_file(table, parquet_path)
+            # Generate filename and write to storage
+            filename = self._generate_parquet_filename(session_id)
+            parquet_path = await self._write_table_to_storage(table, filename)
 
             # Write index file for this batch
             await self._write_index_for_batch(table, parquet_path, filename)
@@ -1671,6 +1686,130 @@ class ParquetTranscriptsDB(TranscriptsDB):
             fs.rm(path)
         else:
             Path(path).unlink(missing_ok=True)
+
+    async def _compact_session(self, session_id: str) -> None:
+        """Compact all parquet files from a session.
+
+        Uses existing write logic which respects target_file_size_mb and
+        row_group_size_mb, potentially creating multiple output files for
+        large sessions.
+
+        Safe at every step - if interrupted, data remains queryable.
+
+        Steps:
+        1. Find all session's parquet files
+        2. Read all session data into Arrow table via DuckDB
+        3. Write to new file(s) using existing logic (which creates index entries)
+        4. Index compaction (in commit()) deduplicates, keeping newest entries
+        5. Delete old session parquet files (now orphaned from index)
+
+        Args:
+            session_id: Session ID to compact files for.
+        """
+        assert self._conn is not None
+        assert self._index_storage is not None
+
+        # 1. Find all session's parquet files
+        session_files = await self._list_session_files(session_id)
+
+        if len(session_files) == 0:
+            trace_message(
+                logger,
+                "Scout Session Compact",
+                f"No files found for session {session_id}, skipping compaction",
+            )
+            return
+        if len(session_files) == 1:
+            trace_message(
+                logger,
+                "Scout Session Compact",
+                f"Single file for session {session_id}, no compaction needed",
+            )
+            return
+
+        with trace_action(
+            logger,
+            "Scout Session Compact",
+            f"Compacting {len(session_files)} files for session {session_id}",
+        ):
+            # 2. Read all session data via DuckDB
+            pattern = self._build_parquet_pattern(session_files)
+            enc_config = self._read_parquet_encryption_config()
+
+            # Query and get a RecordBatchReader for streaming
+            result = self._conn.execute(f"""
+                SELECT * FROM read_parquet({pattern}, union_by_name=true{enc_config})
+            """)
+
+            # 3. Write to new file(s) WITHOUT session_id using existing logic
+            # Fetch batches manually since we need to write in batches
+            accumulated_batches: list[pa.RecordBatch] = []
+            accumulated_size = 0
+            target_size_bytes = self._target_file_size_mb * 1024 * 1024
+
+            # Fetch as Arrow table and convert to batches
+            table = result.fetch_arrow_table()
+            for batch in table.to_batches():
+                batch_size = self._estimate_batch_size(batch)
+
+                if (
+                    accumulated_size > 0
+                    and accumulated_size + batch_size >= target_size_bytes
+                ):
+                    await self._write_arrow_batch(accumulated_batches, session_id=None)
+                    accumulated_batches = []
+                    accumulated_size = 0
+
+                accumulated_batches.append(batch)
+                accumulated_size += batch_size
+
+            # Write remainder
+            if accumulated_batches:
+                await self._write_arrow_batch(accumulated_batches, session_id=None)
+
+            # 4. Index compaction will happen in commit() after this method returns
+            # Deduplication keeps newest file_order entries → new files win
+
+            # 5. Delete old session parquet files (now orphaned)
+            for f in session_files:
+                try:
+                    self._delete_file(f)
+                except Exception as e:
+                    logger.warning(f"Failed to delete orphaned session file {f}: {e}")
+
+    async def _list_session_files(self, session_id: str) -> list[str]:
+        """List all parquet files belonging to a session.
+
+        Args:
+            session_id: Session ID to find files for.
+
+        Returns:
+            List of full paths to session parquet files.
+        """
+        assert self._location is not None
+
+        # Pattern to match: transcripts_{session_id}_*.parquet
+        session_pattern = f"transcripts_{session_id}_"
+
+        if self._is_s3() or self._is_hf():
+            assert self._fs is not None
+            fs = filesystem(self._location)
+            all_files = fs.ls(self._location, recursive=True)
+            return [
+                f.name
+                for f in all_files
+                if f.name.endswith(".parquet")
+                and Path(f.name).name.startswith(session_pattern)
+            ]
+        else:
+            location_path = UPath(self._location)
+            if not location_path.exists():
+                return []
+
+            # Glob for session files
+            return [
+                str(p) for p in location_path.glob(f"**/{session_pattern}*.parquet")
+            ]
 
     def _as_async_iterator(
         self,

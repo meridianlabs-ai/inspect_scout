@@ -75,6 +75,7 @@ class ScanJob:
         max_processes: int | None = None,
         limit: int | None = None,
         shuffle: bool | int | None = None,
+        skip_scored: bool = False,
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
         log_level: str | None = None,
@@ -114,6 +115,7 @@ class ScanJob:
         self._max_processes = max_processes
         self._limit = limit
         self._shuffle = shuffle
+        self._skip_scored = skip_scored
         self._tags = tags
         self._metadata = metadata
         self._log_level = log_level
@@ -263,6 +265,11 @@ class ScanJob:
     def shuffle(self) -> bool | int | None:
         """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
         return self._shuffle
+
+    @property
+    def skip_scored(self) -> bool:
+        """Skip samples that already have a score from this scanner in the source eval log."""
+        return self._skip_scored
 
     @property
     def tags(self) -> list[str] | None:

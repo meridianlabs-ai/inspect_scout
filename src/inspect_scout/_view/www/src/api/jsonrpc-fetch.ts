@@ -22,15 +22,34 @@ export const kMethodHttpRequest = "http_request";
 function isHttpProxyResponse(value: unknown): value is HttpProxyResponse {
   if (typeof value !== "object" || value === null) return false;
   if (!("status" in value) || typeof value.status !== "number") return false;
-  if (!("headers" in value) || typeof value.headers !== "object" || value.headers === null) return false;
-  if (!("body" in value) || (typeof value.body !== "string" && value.body !== null)) return false;
-  if ("bodyEncoding" in value && value.bodyEncoding !== "utf8" && value.bodyEncoding !== "base64") return false;
+  if (
+    !("headers" in value) ||
+    typeof value.headers !== "object" ||
+    value.headers === null
+  )
+    return false;
+  if (
+    !("body" in value) ||
+    (typeof value.body !== "string" && value.body !== null)
+  )
+    return false;
+  if (
+    "bodyEncoding" in value &&
+    value.bodyEncoding !== "utf8" &&
+    value.bodyEncoding !== "base64"
+  )
+    return false;
   return true;
 }
 
 function toHttpMethod(method: string): HttpProxyRequest["method"] {
   const upper = method.toUpperCase();
-  if (upper === "GET" || upper === "POST" || upper === "PUT" || upper === "DELETE") {
+  if (
+    upper === "GET" ||
+    upper === "POST" ||
+    upper === "PUT" ||
+    upper === "DELETE"
+  ) {
     return upper;
   }
   throw new Error(`Unsupported HTTP method: ${method}`);
@@ -40,7 +59,7 @@ function toHttpMethod(method: string): HttpProxyRequest["method"] {
  * Creates a fetch function that proxies requests through JSON-RPC.
  * Used in VS Code webview to route HTTP requests through the extension host.
  */
-export function createProxyFetch(
+export function createJsonRpcFetch(
   rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): typeof fetch {
   return async (

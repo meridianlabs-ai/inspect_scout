@@ -20,41 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -193,6 +158,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li>
     <a class="dropdown-item" href="./db_schema.html">
  <span class="dropdown-text">Database Schema</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./db_capturing.html">
+ <span class="dropdown-text">Capturing Transcripts</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./db_importing.html">
@@ -357,6 +326,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./db_capturing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Capturing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./db_importing.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Importing</span></a>
   </div>
@@ -411,20 +386,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
 <p>The purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g.&nbsp;a Postgress database) and extract them into a Scout database for a given analysis project.</p>
-<p>This documentation covers how to create transcript databases, import your transcripts into them, and publish them for use by others. If you just want to read existing transcript databases see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
+<p>This documentation covers how to create transcript databases. You can either capture transcripts from your LLM generation code, or import transcripts from various sources. You can also publish transcripts for use by others. If you just want to read existing transcript databases see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
 </section>
 <section id="creating-a-database" class="level2">
 <h2 class="anchored" data-anchor-id="creating-a-database">Creating a Database</h2>
-<p>If you have some existing source of transcript data it is straightforward to import it into a Scout database. Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (<code>metadata</code>) which can be used for transcript filtering.</p>
-<p>Use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> async context manager to open a connection to a database (which can be stored in a local file path or remote file system like S3):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># </span><span class="al">TODO</span><span class="co">: insert transcripts into db</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To popualte the database you’ll need to:</p>
+<p>If you have some existing source of transcript data it is straightforward to <a href="./db_importing.html">import</a> it into a Scout database. You can also <a href="./db_capturing.html">capture</a> transcripts from your running LLM generation code.</p>
+<p>Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (<code>metadata</code>) which can be used for transcript filtering.</p>
+<p>To create a transcript database you’ll need to:</p>
 <ol type="1">
-<li><p>Understand the <a href="./db_schema.html">Database Schema</a> and decide how you want to map your data source into it; and</p></li>
-<li><p>Pick a method for <a href="./db_importing.html">Importing Transcripts</a> and implement the logic for inserting your data.</p></li>
+<li><p>Understand the <a href="./db_schema.html">Database Schema</a> and decide how you want to map your data into it; and</p></li>
+<li><p>Then, pick a method for either <a href="./db_capturing.html">Capturing</a> or <a href="./db_importing.html">Importing</a> transcripts, and implement the logic for inserting your data.</p></li>
 </ol>
 </section>
 <section id="publishing-transcripts" class="level2">

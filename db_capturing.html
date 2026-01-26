@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Importing Transcripts – Inspect Scout</title>
+<title>Capturing Transcripts – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./db_publishing.html" rel="next">
-<link href="./db_capturing.html" rel="prev">
+<link href="./db_importing.html" rel="next">
+<link href="./db_schema.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -234,7 +234,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_importing.html">Importing</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_capturing.html">Capturing</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -361,13 +361,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./db_capturing.html" class="sidebar-item-text sidebar-link">
+  <a href="./db_capturing.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Capturing</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./db_importing.html" class="sidebar-item-text sidebar-link active">
+  <a href="./db_importing.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Importing</span></a>
   </div>
 </li>
@@ -390,26 +390,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#transcript-api" id="toc-transcript-api" class="nav-link" data-scroll-target="#transcript-api">Transcript API</a>
-  <ul class="collapse">
-  <li><a href="#streaming" id="toc-streaming" class="nav-link" data-scroll-target="#streaming">Streaming</a></li>
-  <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a></li>
-  </ul></li>
-  <li><a href="#arrow-import" id="toc-arrow-import" class="nav-link" data-scroll-target="#arrow-import">Arrow Import</a></li>
-  <li><a href="#parquet-data-lake" id="toc-parquet-data-lake" class="nav-link" data-scroll-target="#parquet-data-lake">Parquet Data Lake</a>
-  <ul class="collapse">
-  <li><a href="#transcript-index" id="toc-transcript-index" class="nav-link" data-scroll-target="#transcript-index">Transcript Index</a></li>
-  </ul></li>
-  <li><a href="#inspect-logs" id="toc-inspect-logs" class="nav-link" data-scroll-target="#inspect-logs">Inspect Logs</a></li>
+  <li><a href="#providers" id="toc-providers" class="nav-link" data-scroll-target="#providers">Providers</a></li>
+  <li><a href="#decorator-usage" id="toc-decorator-usage" class="nav-link" data-scroll-target="#decorator-usage">Decorator Usage</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#updating-fields" id="toc-updating-fields" class="nav-link" data-scroll-target="#updating-fields">Updating Fields</a></li>
+  <li><a href="#nested-contexts" id="toc-nested-contexts" class="nav-link" data-scroll-target="#nested-contexts">Nested Contexts</a></li>
+  <li><a href="#error-handling" id="toc-error-handling" class="nav-link" data-scroll-target="#error-handling">Error Handling</a></li>
+  <li><a href="#example-evaluation" id="toc-example-evaluation" class="nav-link" data-scroll-target="#example-evaluation">Example: Evaluation</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_importing.html">Importing</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li><li class="breadcrumb-item"><a href="./db_capturing.html">Capturing</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Importing Transcripts</h1>
+<h1 class="title">Capturing Transcripts</h1>
 </div>
 
 
@@ -426,170 +422,348 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Note that the transcript capture feature described below ais available only in the development version of Inspect Scout. Install the development version from GitHub with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pip install git<span class="op">+</span>https:<span class="op">//</span>github.com<span class="op">/</span>meridianlabs<span class="op">-</span>ai<span class="op">/</span>inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:</p>
-<ol type="1">
-<li><p><a href="#transcript-api">Transcript API</a>: Python API for creating and inserting transcripts;</p></li>
-<li><p><a href="#arrow-import">Arrow Import</a>: Efficient direct insertion using <code>RecordBatchReader</code>;</p></li>
-<li><p><a href="#parquet-data-lake">Parquet Data Lake</a>: Use an existing data lake not created using Inspect Scout; and</p></li>
-<li><p><a href="#inspect-logs">Inspect Logs</a>: Read transcript data from Inspect eval log files.</p></li>
-</ol>
-<p>We’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the <a href="./db_schema.html">Database Schema</a> and make a plan for how you want to map your data into it.</p>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.</p>
+<p>Observe can be used with either the Inspect AI <a href="https://inspect.aisi.org.uk/models.html">Model API</a> or with the native SDKs from <a href="https://github.com/openai/openai-python">OpenAI</a>, <a href="https://github.com/anthropics/anthropic-sdk-python">Anthropic</a>, and <a href="">Google</a>https://github.com/googleapis/python-genai.</p>
+<p>Use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> as a decorator on async functions:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> get_model, ChatMessageUser</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> observe, observe_update</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"my_eval"</span>, task_id<span class="op">=</span><span class="st">"case_1"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> run_case():</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> <span class="cf">await</span> model.generate([</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        ChatMessageUser(content<span class="op">=</span><span class="st">"What is the capital of France?"</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    observe_update(score<span class="op">=</span><span class="fl">1.0</span>, success<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> response.completion</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or use it as an async context manager:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> observe(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"my_eval"</span>):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> <span class="cf">await</span> model.generate([</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        ChatMessageUser(content<span class="op">=</span><span class="st">"What is the capital of France?"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    ])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>db</code> parameter accepts either a path string or a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> instance. If omitted, it defaults to the project’s configured transcripts directory (or <code>./transcripts</code> if none is configured).</p>
 </section>
-<section id="transcript-api" class="level2">
-<h2 class="anchored" data-anchor-id="transcript-api">Transcript API</h2>
-<p>To create a transcripts database, use the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_db">transcripts_db()</a></span> function to get a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcriptsdb">TranscriptsDB</a></span> interface and then insert <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> objects. In this example imagine we have a <code>read_weave_transcripts()</code> function which can read transcripts from an external JSON transcript format:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .readers <span class="im">import</span> read_json_transcripts</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># create/open database</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># read transcripts to insert</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> read_json_transcripts()</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># insert into database</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Once you’ve created a database and populated it with transcripts, you can read from it using <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_from">transcripts_from()</a></span>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>scan(</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[...],</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts_from(<span class="st">"s3://my-transcripts"</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="streaming" class="level3">
-<h3 class="anchored" data-anchor-id="streaming">Streaming</h3>
-<p>Each call to <code>db.insert()</code> will minimally create one Parquet file, but will break transcripts across multiple files as required (typically of size 75-100MB). This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to <code>db.insert()</code> (which is likely to result in more Parquet files than is ideal).</p>
-<p>For example, we might implement <code>read_json_transcripts()</code> like this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_json_transcripts(<span class="bu">dir</span>: Path) <span class="op">-&gt;</span> AsyncIterator[Transcript]:</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    json_files <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dir</span>.rglob(<span class="st">"*.json"</span>))</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> json_file <span class="kw">in</span> json_files:</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">yield</span> <span class="cf">await</span> json_to_transcript(json_file)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># convert json_file to Transcript</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Transcript(...)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>We can then pass this generator function directly to <code>db.insert()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(read_json_transcripts())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.</p>
+<section id="providers" class="level2">
+<h2 class="anchored" data-anchor-id="providers">Providers</h2>
+<p>Above we demonstrated capturing transcripts when using the Inspect Model API. You can alternatively capture LLM generation from a native SDK by specifying an alternate <code>provider</code> (“openai”, “anthropic”, or “google”).</p>
+<p>For example, here we <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> transcripts generated with the Anthropic SDK:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> anthropic</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> observe, observe_update</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./transcripts"</span>, provider<span class="op">=</span><span class="st">"anthropic"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> run_case():</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    client <span class="op">=</span> anthropic.AsyncAnthropic()</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> <span class="cf">await</span> client.messages.create(</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span><span class="st">"claude-haiku-4-5-20251001"</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        max_tokens<span class="op">=</span><span class="dv">1024</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        messages<span class="op">=</span>[{</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">"role"</span>: <span class="st">"user"</span>, </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>            <span class="st">"content"</span>: <span class="st">"What is the capital of France?"</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        }],</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    observe_update(score<span class="op">=</span><span class="fl">1.0</span>, success<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> response.content[<span class="dv">0</span>].text</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>provider</code> parameter tells <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> to patch the specified SDK to capture LLM calls. Available providers include:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Provider</th>
+<th>SDK</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>inspect</code></td>
+<td><a href="https://inspect.aisi.org.uk/models.html">Inspect AI</a></td>
+<td>Inspect Model API (default)</td>
+</tr>
+<tr class="even">
+<td><code>openai</code></td>
+<td><a href="https://github.com/openai/openai-python">OpenAI</a></td>
+<td>OpenAI Chat Completions and Responses APIs</td>
+</tr>
+<tr class="odd">
+<td><code>anthropic</code></td>
+<td><a href="https://github.com/anthropics/anthropic-sdk-python">Anthropic</a></td>
+<td>Anthropic Messages API</td>
+</tr>
+<tr class="even">
+<td><code>google</code></td>
+<td><a href="https://github.com/googleapis/python-genai">Google GenAI</a></td>
+<td>Google Gemini API</td>
+</tr>
+</tbody>
+</table>
+<p>You can also implement a custom provider by implementing the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observeprovider">ObserveProvider</a></span> protocol.</p>
 </section>
-<section id="transcripts" class="level3">
-<h3 class="anchored" data-anchor-id="transcripts">Transcripts</h3>
-<p>Here is how we might implement <code>json_to_transcript()</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> AsyncIterator</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> (</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    messages_from_openai, model_output_from_openai</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_transcript(json_file: Path) <span class="op">-&gt;</span> Transcript:</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(json_file, <span class="st">"r"</span>) <span class="im">as</span> f:</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        json_data: <span class="bu">dict</span>[<span class="bu">str</span>,Any] <span class="op">=</span> json.loads(f.read())</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Transcript(</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>            transcript_id <span class="op">=</span> json_data[<span class="st">"trace_id"</span>],</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>            source_type<span class="op">=</span><span class="st">"abracadabra"</span>,</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>            source_id<span class="op">=</span>json_data[<span class="st">"project_id"</span>],</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>            metadata<span class="op">=</span>json_data[<span class="st">"attributes"</span>],</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>            messages<span class="op">=</span><span class="cf">await</span> json_to_messages(</span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>                <span class="bu">input</span><span class="op">=</span>json_data[<span class="st">"inputs"</span>][<span class="st">"messages"</span>], </span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>                output<span class="op">=</span>json_data[<span class="st">"output"</span>]</span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="co"># convert raw model input and output to inspect messages</span></span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> json_to_messages(</span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="bu">input</span>: <span class="bu">list</span>[<span class="bu">dict</span>[<span class="bu">str</span>, Any]], output: <span class="bu">dict</span>[<span class="bu">str</span>, Any]</span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">list</span>[ChatMessage]:</span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># start with input messages</span></span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    messages <span class="op">=</span> <span class="cf">await</span> messages_from_openai(<span class="bu">input</span>)</span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    <span class="co"># extract and append assistant message from output</span></span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    output <span class="op">=</span> <span class="cf">await</span> model_output_from_openai(output)</span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    messages.append(output.message)</span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    <span class="co"># return full message history for transcript</span></span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> messages</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that we use the <code>messages_from_openai()</code> and <code>model_output_from_openai()</code> function from <code>inspect_ai</code> to convert the raw model payloads in the trace data to the correct types for the transcript database.</p>
-<p>The most important fields to populate are <code>transcript_id</code> and <code>messages</code>. The <code>source_*</code> fields are also useful for providing additional context. The <code>metadata</code> field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The <code>events</code> field is not required and useful primarily for more complex multi-agent transcripts.</p>
+<section id="decorator-usage" class="level2">
+<h2 class="anchored" data-anchor-id="decorator-usage">Decorator Usage</h2>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> decorator supports several usage patterns:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># without parameters (uses project default db)</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> my_function():</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># with parameters</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(task_set<span class="op">=</span><span class="st">"eval"</span>, task_id<span class="op">=</span><span class="st">"case_1"</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> my_function():</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># with explicit database path</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./my_transcripts"</span>, task_set<span class="op">=</span><span class="st">"eval"</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> my_function():</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe">observe()</a></span> function accepts the following parameters.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 36%">
+<col style="width: 20%">
+<col style="width: 43%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>db</code></td>
+<td><code>str | TranscriptsDB</code></td>
+<td>Database path or instance. Only valid on outermost observe.</td>
+</tr>
+<tr class="even">
+<td><code>source_type</code></td>
+<td><code>str</code></td>
+<td>Type of source for transcript. Defaults to “observe”.</td>
+</tr>
+<tr class="odd">
+<td><code>source_id</code></td>
+<td><code>str</code></td>
+<td>Globally unique ID for transcript source.</td>
+</tr>
+<tr class="even">
+<td><code>source_uri</code></td>
+<td><code>str</code></td>
+<td>URI for source data.</td>
+</tr>
+<tr class="odd">
+<td><code>task_set</code></td>
+<td><code>str</code></td>
+<td>Set from which transcript task was drawn (e.g., benchmark name).</td>
+</tr>
+<tr class="even">
+<td><code>task_id</code></td>
+<td><code>str</code></td>
+<td>Identifier for task (e.g., dataset sample id).</td>
+</tr>
+<tr class="odd">
+<td><code>task_repeat</code></td>
+<td><code>int</code></td>
+<td>Repeat number for a given task id (e.g., epoch).</td>
+</tr>
+<tr class="even">
+<td><code>model</code></td>
+<td><code>str</code></td>
+<td>Main model used by agent.</td>
+</tr>
+<tr class="odd">
+<td><code>model_options</code></td>
+<td><code>dict</code></td>
+<td>Generation options for main model.</td>
+</tr>
+<tr class="even">
+<td><code>agent</code></td>
+<td><code>str</code></td>
+<td>Agent used to execute task.</td>
+</tr>
+<tr class="odd">
+<td><code>agent_args</code></td>
+<td><code>dict</code></td>
+<td>Arguments passed to create agent.</td>
+</tr>
+<tr class="even">
+<td><code>metadata</code></td>
+<td><code>dict</code></td>
+<td>Additional metadata (merged with parent context).</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>task_set</code> and <code>task_id</code> parameters are not required but are a good way of providing context on transcripts (e.g in evaluations these are often used for dataset name and sample id).</p>
+<p>The following <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> fields are automatically populated when a transcript is written:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 65%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>transcript_id</code></td>
+<td>Unique UUID generated for each transcript</td>
+</tr>
+<tr class="even">
+<td><code>date</code></td>
+<td>UTC timestamp when the context exited</td>
+</tr>
+<tr class="odd">
+<td><code>total_time</code></td>
+<td>Duration of the observe context in seconds</td>
+</tr>
+<tr class="even">
+<td><code>message_count</code></td>
+<td>Number of messages in the transcript</td>
+</tr>
+<tr class="odd">
+<td><code>total_tokens</code></td>
+<td>Sum of tokens from all model calls</td>
+</tr>
+<tr class="even">
+<td><code>model</code></td>
+<td>Model name from the final generation (if not explicitly set)</td>
+</tr>
+<tr class="odd">
+<td><code>model_options</code></td>
+<td>Generation config from the final generation (if not explicitly set)</td>
+</tr>
+<tr class="even">
+<td><code>error</code></td>
+<td>Error message if an exception occurred</td>
+</tr>
+<tr class="odd">
+<td><code>events</code></td>
+<td>Events which occurred during execution (e.g.&nbsp;<code>ModelEvent</code>, <code>ToolEvent</code>).</td>
+</tr>
+<tr class="even">
+<td><code>messages</code></td>
+<td>Input and output message(s) of the final generation in the transcript.</td>
+</tr>
+</tbody>
+</table>
 </section>
-<section id="arrow-import" class="level2">
-<h2 class="anchored" data-anchor-id="arrow-import">Arrow Import</h2>
-<p>In some cases you may already have arrow-accessible data (e.g.&nbsp;from Parquet files or a database that supports yielding arrow batches) that you want to insert directly into a transcript database. So long as your data conforms to the <a href="./db_schema.html">schema</a>, you can do this by passing a PyArrow <code>RecordBatchReader</code> to <code>db.insert()</code>.</p>
-<p>For example, to read from existing Parquet files using the PyArrow dataset API:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pyarrow.dataset <span class="im">as</span> ds</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># read from existing parquet files</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> ds.dataset(<span class="st">"path/to/parquet/files"</span>, <span class="bu">format</span><span class="op">=</span><span class="st">"parquet"</span>)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>reader <span class="op">=</span> dataset.scanner().to_reader()</span>
+<section id="updating-fields" class="level2">
+<h2 class="anchored" data-anchor-id="updating-fields">Updating Fields</h2>
+<p>Use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe_update">observe_update()</a></span> to set transcript fields after execution, which is useful for recording scores or outcomes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"eval"</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> run_and_score():</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> <span class="cf">await</span> model.generate([</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        ChatMessageUser(content<span class="op">=</span><span class="st">"Solve: 2 + 2 = ?"</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    ])</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(reader)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You can also use DuckDB to query and transform data before import:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> duckdb</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>conn <span class="op">=</span> duckdb.<span class="ex">connect</span>(<span class="st">"my_database.db"</span>)</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>reader <span class="op">=</span> conn.execute(<span class="st">"""</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">    SELECT</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st">        trace_id as transcript_id,</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">        messages,</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">        'myapp' as source_type,</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">        project_id as source_id</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">    FROM traces</span></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>).fetch_record_batch()</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcripts"</span>) <span class="im">as</span> db:</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(reader)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Evaluate and update transcript</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    correct <span class="op">=</span> <span class="st">"4"</span> <span class="kw">in</span> response.completion</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    observe_update(</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>        score<span class="op">=</span><span class="fl">1.0</span> <span class="cf">if</span> correct <span class="cf">else</span> <span class="fl">0.0</span>,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>        success<span class="op">=</span>correct,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        metadata<span class="op">=</span>{<span class="st">"answer"</span>: response.completion}</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> response.completion</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can call <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#observe_update">observe_update()</a></span> multiple times—fields are merged (metadata is combined, other fields are overwritten).</p>
 </section>
-<section id="parquet-data-lake" class="level2">
-<h2 class="anchored" data-anchor-id="parquet-data-lake">Parquet Data Lake</h2>
-<p>If you have transcripts already stored in Parquet format you don’t need to use <code>db.insert()</code> at all. So long as your Parquet files conform to the <a href="./db_schema.html">transcript database schema</a> then you can read them directly using <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcripts_from">transcripts_from()</a></span>. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_from</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># read from an existing parquet data lake</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"s3://my-transcripts-data-lake/cyber"</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that several fields in the database schema are marked as <small>JSON</small>—these should be encoded as serialized JSON strings within your parquet files.</p>
-<p>You can validate that your custom data lake conforms to the schema using the <code>scout db validate</code> command. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db validate s3://my-transcripts-data-lake/cyber</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="transcript-index" class="level3">
-<h3 class="anchored" data-anchor-id="transcript-index">Transcript Index</h3>
-<p>One critical additional step required for a custom data lake is to build a transcript index. While this is not required, it can make querying across large sets of transcripts dramatically faster (10x or better) as well as improve the handling of large databases in Scout View.</p>
-<p>To build an index, use the <code>scout db index</code> command. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db index s3://my-transcripts-data-lake/cyber</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You should run this command whenever you add or remove transcripts from your data lake (transcripts will not be visible to clients until the index is updated). While building an index is not required, it is highly reccommend if you want optimal query performance.</p>
+<section id="nested-contexts" class="level2">
+<h2 class="anchored" data-anchor-id="nested-contexts">Nested Contexts</h2>
+<p>Nested <code>observe</code> contexts support batch processing where an outer context sets shared parameters and inner contexts represent individual transcripts:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"cybench"</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> run_evaluation():</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> case <span class="kw">in</span> test_cases:</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">async</span> <span class="cf">with</span> observe(task_id<span class="op">=</span>case.<span class="bu">id</span>):</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>            response <span class="op">=</span> <span class="cf">await</span> model.generate([</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>                ChatMessageUser(content<span class="op">=</span>case.prompt)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>            ])</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>            score <span class="op">=</span> evaluate(response, case.expected)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>            observe_update(score<span class="op">=</span>score, success<span class="op">=</span>score <span class="op">&gt;</span> <span class="fl">0.8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Key behaviors for nested contexts:</p>
+<ol type="1">
+<li><strong>Inheritance</strong>: Inner contexts inherit parameters from outer contexts.</li>
+<li><strong>Leaf detection</strong>: Only the innermost context (the “leaf”) writes a transcript</li>
+<li><strong>Database scope</strong>: The <code>db</code> parameter can only be set on the outermost context</li>
+<li><strong>Metadata merging</strong>: The <code>metadata</code> dict is merged across all levels</li>
+</ol>
 </section>
+<section id="error-handling" class="level2">
+<h2 class="anchored" data-anchor-id="error-handling">Error Handling</h2>
+<p>Exceptions within an <code>observe</code> context are caught, logged, and saved to the transcript’s <code>error</code> field. The exception is suppressed to allow batch processing to continue:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="at">@observe</span>(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"eval"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> run_with_error():</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> model.generate([ChatMessageUser(content<span class="op">=</span><span class="st">"Hello"</span>)])</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"Something went wrong"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Transcript is still written with error="Something went wrong"</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co"># This completes without raising</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="cf">await</span> run_with_error()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="inspect-logs" class="level2">
-<h2 class="anchored" data-anchor-id="inspect-logs">Inspect Logs</h2>
-<p>If you prefer to keep all of your transcripts (including ones from Inspect evals) in a transcript database, you can easily import Inspect logs as follows:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> transcripts_db, transcripts_from</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts_from(<span class="st">"./logs"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You could also insert a filtered list of transcripts:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> columns <span class="im">as</span> c</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">with</span> transcripts_db(<span class="st">"s3://my-transcript-db/"</span>) <span class="im">as</span> db:</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    transcripts <span class="op">=</span> (</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        transcripts_from(<span class="st">"./logs"</span>)</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        .where(c.task_set <span class="op">==</span> <span class="st">"cybench"</span>)</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        .where(c.model.like(<span class="st">"openai/%"</span>))</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> db.insert(transcripts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="example-evaluation" class="level2">
+<h2 class="anchored" data-anchor-id="example-evaluation">Example: Evaluation</h2>
+<p>Here’s a complete example of running a batch evaluation with parallel processing:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> asyncio</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> get_model, ChatMessageUser</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> observe, observe_update</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> main():</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    test_cases <span class="op">=</span> [</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        {<span class="st">"id"</span>: <span class="st">"math_1"</span>, <span class="st">"prompt"</span>: <span class="st">"What is 2+2?"</span>, <span class="st">"expected"</span>: <span class="st">"4"</span>},</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>        {<span class="st">"id"</span>: <span class="st">"math_2"</span>, <span class="st">"prompt"</span>: <span class="st">"What is 3*3?"</span>, <span class="st">"expected"</span>: <span class="st">"9"</span>},</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>        {<span class="st">"id"</span>: <span class="st">"math_3"</span>, <span class="st">"prompt"</span>: <span class="st">"What is 10/2?"</span>, <span class="st">"expected"</span>: <span class="st">"5"</span>},</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> run_case(case: <span class="bu">dict</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">async</span> <span class="cf">with</span> observe(task_id<span class="op">=</span>case[<span class="st">"id"</span>]):</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>            model <span class="op">=</span> get_model(<span class="st">"openai/gpt-4o"</span>)</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>            response <span class="op">=</span> <span class="cf">await</span> model.generate([</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>                ChatMessageUser(content<span class="op">=</span>case[<span class="st">"prompt"</span>])</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>            ])</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>            correct <span class="op">=</span> case[<span class="st">"expected"</span>] <span class="kw">in</span> response.completion</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>            observe_update(</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>                score<span class="op">=</span><span class="fl">1.0</span> <span class="cf">if</span> correct <span class="cf">else</span> <span class="fl">0.0</span>, </span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>                success<span class="op">=</span>correct</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="cf">with</span> observe(db<span class="op">=</span><span class="st">"./transcripts"</span>, task_set<span class="op">=</span><span class="st">"math_eval"</span>):</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">await</span> asyncio.gather(<span class="op">*</span>[run_case(case) <span class="cf">for</span> case <span class="kw">in</span> test_cases])</span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>asyncio.run(main())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After running, you can view the transcripts:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> view <span class="at">-T</span> ./transcripts</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or scan them with your scanners:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan, transcripts_from</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> my_scanners <span class="im">import</span> math_checker</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>scan(</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[math_checker()],</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span>transcripts_from(<span class="st">"./transcripts"</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -1038,13 +1212,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./db_capturing.html" class="pagination-link" aria-label="Capturing">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Capturing</span>
+      <a href="./db_schema.html" class="pagination-link" aria-label="Schema">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Schema</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./db_publishing.html" class="pagination-link" aria-label="Publishing">
-        <span class="nav-page-text">Publishing</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./db_importing.html" class="pagination-link" aria-label="Importing">
+        <span class="nav-page-text">Importing</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

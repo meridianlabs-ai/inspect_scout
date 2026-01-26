@@ -19,6 +19,7 @@
 
 - [Overview](https://meridianlabs-ai.github.io/inspect_scout/db_overview.html.md): Overview of transcript database concepts and basic usage.
 - [Schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html.md): Details on the required and optional fields for databases and underlying data formats for messages and events.
+- [Capturing](https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html.md): The `observe` decorator and context manager captures LLM calls and writes transcripts directly to a database.
 - [Importing](https://meridianlabs-ai.github.io/inspect_scout/db_importing.html.md): Importing transcripts into databases from a variety of sources.
 - [Publishing](https://meridianlabs-ai.github.io/inspect_scout/db_publishing.html.md): Best practices for publishing transcript databases for use by others.
 

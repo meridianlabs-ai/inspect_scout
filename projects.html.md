@@ -50,6 +50,10 @@ generate_config:
 tags: [ctf, cybench]
 ```
 
+Note that the `filter` will constrain any scan done within the project
+(i.e. filters applied to individual scans will be AND combined with this
+filter).
+
 Note that `scout.yaml` project files are intended to be checked in to
 version control so do not contain secrets. See the section below on
 using [environment files](#environment-files) for details on handling
@@ -74,7 +78,7 @@ fields:
 |----|----|----|
 | `name` | str | Project name (defaults to directory name). |
 | `transcripts` | str | Transcript source: local path, S3 URL, or list of sources. |
-| `filter` | str \| list | SQL WHERE clauses that filter based on fields in the transcript database. |
+| `filter` | str \| list | SQL WHERE clauses that filter based on fields in the transcript database. This will constrain any scan done within the project (i.e. filters applied to individual scans will be AND combined with this filter). |
 | `scans` | str | Location for scan results (defaults to `./scans`). |
 | `model` | str | Model for scanning (e.g., `openai/gpt-5`). |
 | `model_base_url` | str | Base URL for model API. |

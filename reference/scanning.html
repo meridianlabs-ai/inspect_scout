@@ -195,6 +195,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Database Schema</span></a>
   </li>  
         <li>
+    <a class="dropdown-item" href="../db_capturing.html">
+ <span class="dropdown-text">Capturing Transcripts</span></a>
+  </li>  
+        <li>
     <a class="dropdown-item" href="../db_importing.html">
  <span class="dropdown-text">Importing Transcripts</span></a>
   </li>  
@@ -544,6 +548,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">log_columns</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe_update" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe_update</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeprovider" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveProvider</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeemit" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveEmit</span></a>
+  </div>
+</li>
       </ul>
   </li>
           <li class="sidebar-item sidebar-item-section">
@@ -833,7 +861,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scan transcripts.</p>
 <p>Scan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scan.py#L90">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scan.py#L90">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    scanners: (</span>
@@ -886,7 +914,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 <dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Model to use for scanning by default (individual scanners can always call <code>get_model()</code> to us arbitrary models). If not specified use the value of the SCOUT_SCAN_MODEL environment variable.</p>
+<p>Model to use for scanning by default (individual scanners can always call <code>get_model()</code> to us arbitrary models). If not specified use the model specified in the scout project config (if any).</p>
 </dd>
 <dt><code class="ref-definition">model_config</code> <span class="element-type"><span class="element-type-name">GenerateConfig</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -954,7 +982,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_resume">scan_resume</h3>
 <p>Resume a previous scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scan.py#L341">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scan.py#L343">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_resume(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
@@ -986,7 +1014,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Complete a scan.</p>
 <p>This function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scan.py#L411">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scan.py#L413">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_complete(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
@@ -1015,7 +1043,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanjob">scanjob</h3>
 <p>Decorator for registering scan jobs.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanjob.py#L299">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanjob.py#L299">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scanjob(</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    func: ScanJobType <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>, <span class="op">*</span>, name: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
@@ -1035,7 +1063,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanjob-1">ScanJob</h3>
 <p>Scan job definition.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanjob.py#L57">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanjob.py#L57">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanJob</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1121,7 +1149,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanjobconfig">ScanJobConfig</h3>
 <p>Scan job configuration.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanjob_config.py#L11">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanjob_config.py#L11">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanJobConfig(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1214,7 +1242,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scout project configuration from scout.yaml.</p>
 <p>Extends ScanJobConfig to represent project-level defaults. All fields from ScanJobConfig are available as project defaults.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_project/types.py#L8">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_project/types.py#L8">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProjectConfig(ScanJobConfig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1306,7 +1334,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scannerspec">ScannerSpec</h3>
 <p>Scanner used by scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L22">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L22">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScannerSpec(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1340,7 +1368,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Definition of work to perform for a scanner.</p>
 <p>By default scanners process all transcripts passed to <span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scan">scan()</a></span>. You can alternately pass a list of <span class="element-type-name ref-interlink"><a href="../reference/scanning.html#scannerwork">ScannerWork</a></span> to specify that only particular scanners and transcripts should be processed.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_transcript/transcripts.py#L227">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_transcript/transcripts.py#L227">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScannerWork</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1361,7 +1389,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="worklist">Worklist</h3>
 <p>List of transcript ids to process for a scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L139">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L139">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Worklist(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1385,7 +1413,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="status-1">Status</h3>
 <p>Status of scan job.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_recorder/recorder.py#L19">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_recorder/recorder.py#L19">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1419,7 +1447,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanoptions">ScanOptions</h3>
 <p>Options used for scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L60">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L60">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanOptions(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1448,7 +1476,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanrevision">ScanRevision</h3>
 <p>Git revision for scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L44">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L44">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanRevision(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1477,7 +1505,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scantranscripts">ScanTranscripts</h3>
 <p>Transcripts targeted by a scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L89">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L89">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanTranscripts(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1508,7 +1536,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcriptfield">TranscriptField</h3>
 <p>Field in transcript data frame.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f388d3c024628cb59283e2c9eb9fa8609a24867/src/inspect_scout/_scanspec.py#L76">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/1022e1f00bb1257f0ee493e0e6a1610878b9586c/src/inspect_scout/_scanspec.py#L76">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptField(TypedDict, total<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">

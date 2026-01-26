@@ -15,39 +15,33 @@ your cannonical storage for transcripts, or you might alternatively
 store them in another system entirely (e.g. a Postgress database) and
 extract them into a Scout database for a given analysis project.
 
-This documentation covers how to create transcript databases, import
-your transcripts into them, and publish them for use by others. If you
-just want to read existing transcript databases see the general article
-on [Transcripts](transcripts.qmd),
+This documentation covers how to create transcript databases. You can
+either capture transcripts from your LLM generation code, or import
+transcripts from various sources. You can also publish transcripts for
+use by others. If you just want to read existing transcript databases
+see the general article on [Transcripts](transcripts.qmd),
 
 ## Creating a Database
 
 If you have some existing source of transcript data it is
-straightforward to import it into a Scout database. Transcript databases
-have very few required fields (minimally just `transcript_id` and
-`messages`) but there are other fields that identify the source of the
-transcript that you’ll likely want to populate. You can also include
-arbitrary other columns in the database (`metadata`) which can be used
-for transcript filtering.
+straightforward to [import](db_importing.qmd) it into a Scout database.
+You can also [capture](db_capturing.qmd) transcripts from your running
+LLM generation code.
 
-Use the `transcripts_db()` async context manager to open a connection to
-a database (which can be stored in a local file path or remote file
-system like S3):
+Transcript databases have very few required fields (minimally just
+`transcript_id` and `messages`) but there are other fields that identify
+the source of the transcript that you’ll likely want to populate. You
+can also include arbitrary other columns in the database (`metadata`)
+which can be used for transcript filtering.
 
-``` python
-from inspect_scout import transcripts_db
-
-async with transcripts_db("s3://my-transcripts") as db:
-    # TODO: insert transcripts into db
-```
-
-To popualte the database you’ll need to:
+To create a transcript database you’ll need to:
 
 1.  Understand the [Database Schema](db_schema.qmd) and decide how you
-    want to map your data source into it; and
+    want to map your data into it; and
 
-2.  Pick a method for [Importing Transcripts](db_importing.qmd) and
-    implement the logic for inserting your data.
+2.  Then, pick a method for either [Capturing](db_capturing.qmd) or
+    [Importing](db_importing.qmd) transcripts, and implement the logic
+    for inserting your data.
 
 ## Publishing Transcripts
 

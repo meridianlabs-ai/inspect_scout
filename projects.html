@@ -111,13 +111,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <meta property="og:description" content="Transcript Analysis for AI Agents">
 <meta property="og:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
 <meta property="og:site_name" content="Inspect Scout">
-<meta property="og:image:height" content="1232">
-<meta property="og:image:width" content="1654">
+<meta property="og:image:height" content="1230">
+<meta property="og:image:width" content="1650">
 <meta name="twitter:title" content="Inspect Scout">
 <meta name="twitter:description" content="Transcript Analysis for AI Agents">
 <meta name="twitter:image" content="https://meridianlabs-ai.github.io/inspect_scout/images/project.png">
-<meta name="twitter:image-height" content="1232">
-<meta name="twitter:image-width" content="1654">
+<meta name="twitter:image-height" content="1230">
+<meta name="twitter:image-width" content="1650">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -199,6 +199,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li>
     <a class="dropdown-item" href="./db_schema.html">
  <span class="dropdown-text">Database Schema</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./db_capturing.html">
+ <span class="dropdown-text">Capturing Transcripts</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./db_importing.html">
@@ -363,6 +367,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./db_capturing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Capturing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./db_importing.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Importing</span></a>
   </div>
@@ -455,6 +465,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="fu">tags</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">ctf</span><span class="kw">,</span><span class="at"> cybench</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
+<p>Note that the <code>filter</code> will constrain any scan done within the project (i.e.&nbsp;filters applied to individual scans will be AND combined with this filter).</p>
 <p>Note that <code>scout.yaml</code> project files are intended to be checked in to version control so do not contain secrets. See the section below on using <a href="#environment-files">environment files</a> for details on handling secrets.</p>
 </section>
 <section id="scout-view" class="level2">
@@ -492,7 +503,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>filter</code></td>
 <td>str | list</td>
-<td>SQL WHERE clauses that filter based on fields in the transcript database.</td>
+<td>SQL WHERE clauses that filter based on fields in the transcript database. This will constrain any scan done within the project (i.e.&nbsp;filters applied to individual scans will be AND combined with this filter).</td>
 </tr>
 <tr class="even">
 <td><code>scans</code></td>

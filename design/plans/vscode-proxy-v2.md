@@ -95,6 +95,7 @@ Trace a `getScans` call from React hook → Scout server → response.
 | RPC methods | Per-endpoint (`get_scans`, `get_scan`, ...) | Single (`http_request`) |
 | Backend API | `/api/scans` (V1) | `/api/v2/scans/{dir}` (V2) |
 | New endpoint support | Requires 3 code changes | Zero changes |
+| Caching | Duplicate (AsyncCache + react-query) | Single layer (react-query) |
 
 ---
 
@@ -117,47 +118,84 @@ JSON-RPC 2.0 over `postMessage`. Each request has unique `id` for response corre
 { jsonrpc: "2.0", id: 12345, error: { code: -32601, message: "Method not found" } }
 ```
 
-### Webview Side (Frontend)
+### Webview Side: `webViewJsonRpcClient` Deep Dive
 
-**Client creation** [www/src/api/jsonrpc.ts:63-81]:
+Location: [www/src/api/jsonrpc.ts](../../../src/inspect_scout/_view/www/src/api/jsonrpc.ts)
+
+#### Key Components
+
+| Function | Lines | Purpose |
+|----------|-------|---------|
+| `webViewJsonRpcClient(vscode)` | 63-81 | Entry point; creates RPC client wrapping VSCode postMessage API |
+| `jsonRpcPostMessageRequestTransport(target)` | 119-152 | Core transport: request/response tracking via `Map<id, {resolve,reject}>` |
+| `jsonRpcPostMessageServer(target, methods)` | 154-185 | Server-side handler (used by extension, not webview) |
+
+#### Architecture
+
+```
+webViewJsonRpcClient(vscode)
+  │
+  ├─► creates PostMessageTarget {
+  │     postMessage: vscode.postMessage,
+  │     onMessage: window.addEventListener("message", ...)
+  │   }
+  │
+  └─► jsonRpcPostMessageRequestTransport(target)
+        │
+        ├─► Sets up response listener (lines 121-134)
+        │     - Validates JSON-RPC structure via asJsonRpcResponse()
+        │     - Looks up pending request by response.id
+        │     - Calls resolve(result) or reject(error)
+        │
+        └─► Returns { request, disconnect }
+              - request(method, params) → Promise<unknown>
+              - disconnect() removes message listener
+```
+
+#### Request Flow (lines 137-148)
+
 ```typescript
-export function webViewJsonRpcClient(vscode: VSCodeApi) {
-  const target: PostMessageTarget = {
-    postMessage: (data) => vscode.postMessage(data),
-    onMessage: (handler) => {
-      const onMessage = (ev: MessageEvent) => handler(ev.data);
-      window.addEventListener("message", onMessage);
-      return () => window.removeEventListener("message", onMessage);
-    },
-  };
-  return jsonRpcPostMessageRequestTransport(target).request;
+request: (method: string, params?: unknown): Promise<unknown> => {
+  return new Promise((resolve, reject) => {
+    const requestId = Math.floor(Math.random() * 1e6);  // Random ID
+    requests.set(requestId, { resolve, reject });        // Store handlers
+    target.postMessage({                                 // Send to extension
+      jsonrpc: "2.0", id: requestId, method, params
+    });
+  });
 }
 ```
 
-**Request/response tracking** [www/src/api/jsonrpc.ts:119-152]:
-```typescript
-// Map of pending requests: id → { resolve, reject }
-const requests = new Map<number, RequestHandlers>();
+#### Response Flow (lines 121-134)
 
-// Listen for responses
-target.onMessage((ev) => {
-  const response = asJsonRpcResponse(ev);
+```typescript
+target.onMessage((ev: unknown) => {
+  const response = asJsonRpcResponse(ev);  // Validate structure
   if (response) {
-    const request = requests.get(response.id);
+    const request = requests.get(response.id);  // Find pending request
     if (request) {
-      requests.delete(response.id);
-      response.error ? request.reject(response.error) : request.resolve(response.result);
+      requests.delete(response.id);  // Cleanup
+      if (response.error) {
+        request.reject(response.error);
+      } else {
+        request.resolve(response.result);
+      }
     }
   }
 });
+```
 
-// Send request, return promise
-request: (method, params) => {
-  return new Promise((resolve, reject) => {
-    const requestId = Math.floor(Math.random() * 1e6);
-    requests.set(requestId, { resolve, reject });
-    target.postMessage({ jsonrpc: "2.0", id: requestId, method, params });
-  });
+#### Type Definitions (lines 4-36)
+
+```typescript
+interface PostMessageTarget {
+  postMessage: (data: unknown) => void;
+  onMessage: (handler: (data: unknown) => void) => () => void;  // Returns unsubscribe
+}
+
+interface RequestHandlers {
+  resolve: (value: unknown) => void;
+  reject: (error: JsonRpcError) => void;
 }
 ```
 
@@ -229,9 +267,87 @@ panel.webview.onDidReceiveMessage(async (data) => {
 
 ---
 
-## Phase 1: Frontend (inspect_scout)
+## Phase 1: Remove Duplicate Caching (inspect_scout)
 
-### 1.1 New: `www/src/api/proxy-fetch.ts`
+Independent prerequisite. Can be done and verified before any V2 work.
+
+### Problem
+
+`api-vscode.ts` implements `AsyncCache` with 10s TTL:
+
+```typescript
+// api-vscode.ts:28-33
+const scansCache = new AsyncCache<{ scans: Status[]; results_dir: string }>(
+  cacheTtlMs  // default 10000ms
+);
+```
+
+But `useScans.ts` already uses react-query:
+
+```typescript
+// useScans.ts:15-26
+return useAsyncDataFromQuery({
+  queryKey: ["scans", scansDir],
+  staleTime: 5000,
+  refetchInterval: 5000,
+});
+```
+
+Two overlapping cache layers:
+1. **AsyncCache** (10s TTL, promise dedup)
+2. **react-query** (5s stale, 5s refetch, promise dedup)
+
+React-query already provides promise deduplication, TTL caching, background refetch, cache invalidation.
+
+### 1.1 Modify: `www/src/api/api-vscode.ts`
+
+Remove `AsyncCache` usage:
+
+```typescript
+// DELETE these lines:
+import { AsyncCache } from "./api-cache";
+const scansCache = new AsyncCache<...>(cacheTtlMs);
+
+// SIMPLIFY fetchScansData to direct RPC call:
+const fetchScansData = async (): Promise<...> => {
+  const response = (await rpcClient(kMethodGetScans, [])) as string;
+  if (response) {
+    return JSON5.parse<...>(response);
+  }
+  throw new Error("Invalid response for getScans");
+};
+
+// REMOVE cacheTtlMs parameter from apiVscode signature
+```
+
+### 1.2 Delete: `www/src/api/api-cache.ts`
+
+File only used by `api-vscode.ts`. Delete entirely.
+
+### Files Summary (Phase 1)
+
+| File | Change |
+|------|--------|
+| `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData |
+| `www/src/api/api-cache.ts` | DELETE |
+
+### Verification (Phase 1)
+
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+E2E: Open VS Code extension, verify scans list still loads correctly.
+
+---
+
+## Phase 2: Frontend HTTP Proxy (inspect_scout)
+
+### 2.1 New: `www/src/api/proxy-fetch.ts`
 Create proxied fetch that routes through JSON-RPC:
 
 ```typescript
@@ -258,7 +374,7 @@ export function createProxyFetch(
 
 Binary handling: extension base64-encodes Arrow IPC responses, frontend decodes.
 
-### 1.2 Modify: `www/src/api/api-scout-server.ts`
+### 2.2 Modify: `www/src/api/api-scout-server.ts`
 Extract to allow injecting custom fetch:
 
 ```typescript
@@ -268,7 +384,7 @@ export const apiScoutServer = (options?: {
 }): ScanApi => { ... }
 ```
 
-### 1.3 Modify: `www/src/utils/embeddedState.ts`
+### 2.3 Modify: `www/src/utils/embeddedState.ts`
 Add capability field:
 
 ```typescript
@@ -278,7 +394,7 @@ interface EmbeddedState {
 }
 ```
 
-### 1.4 Modify: `www/src/main.tsx`
+### 2.4 Modify: `www/src/main.tsx`
 Capability detection:
 
 ```typescript
@@ -300,7 +416,7 @@ const selectApi = (): ScanApi => {
 };
 ```
 
-### 1.5 Modify: `www/src/api/api-scout-server.ts` - SSE TODO
+### 2.5 Modify: `www/src/api/api-scout-server.ts` - SSE TODO
 Add comment in `connectTopicUpdates`:
 
 ```typescript
@@ -319,9 +435,9 @@ connectTopicUpdates: (onUpdate) => {
 
 ---
 
-## Phase 2: Extension (inspect_vscode)
+## Phase 3: Extension (inspect_vscode)
 
-### 2.1 Modify: `src/core/package/view-server.ts`
+### 3.1 Modify: `src/core/package/view-server.ts`
 Add generic HTTP method:
 
 ```typescript
@@ -348,7 +464,7 @@ protected async apiGeneric(
 }
 ```
 
-### 2.2 Modify: `src/providers/scout/scout-view-server.ts`
+### 3.2 Modify: `src/providers/scout/scout-view-server.ts`
 Add proxy handler:
 
 ```typescript
@@ -366,7 +482,7 @@ async httpRequest(request: HttpProxyRequest): Promise<HttpProxyResponse> {
 }
 ```
 
-### 2.3 Modify: `src/providers/scanview/scanview-panel.ts`
+### 3.3 Modify: `src/providers/scanview/scanview-panel.ts`
 Register handler:
 
 ```typescript
@@ -378,7 +494,7 @@ this._rpcDisconnect = webviewPanelJsonRpcServer(panel_, {
 });
 ```
 
-### 2.4 Modify: webview HTML injection
+### 3.4 Modify: webview HTML injection
 Inject capability flag in embedded state:
 
 ```typescript
@@ -390,12 +506,23 @@ Inject capability flag in embedded state:
 
 ## Files Summary
 
+### Phase 1: Remove Duplicate Caching
+| File | Change |
+|------|--------|
+| `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData |
+| `www/src/api/api-cache.ts` | DELETE |
+
+### Phase 2: Frontend HTTP Proxy
 | File | Change |
 |------|--------|
 | `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl |
 | `www/src/api/api-scout-server.ts` | Add `customFetch` option, SSE TODO |
 | `www/src/utils/embeddedState.ts` | Add `supportsHttpProxy` type |
 | `www/src/main.tsx` | Capability detection |
+
+### Phase 3: Extension
+| File | Change |
+|------|--------|
 | `vscode/.../view-server.ts` | Add `apiGeneric()` |
 | `vscode/.../scout-view-server.ts` | Add `httpRequest()` |
 | `vscode/.../scanview-panel.ts` | Register `http_request` handler |
@@ -412,22 +539,26 @@ Inject capability flag in embedded state:
 
 ## Verification
 
-### Frontend
+### Phase 1
 ```bash
 cd src/inspect_scout/_view/www
-pnpm typecheck
-pnpm lint
-pnpm test
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+E2E: VS Code extension scans list still loads.
+
+### Phase 2
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
-### Extension
+### Phase 3
 ```bash
 cd ~/code/inspect_vscode
-npm run compile
-npm test
+npm run compile && npm test
 ```
 
-### E2E
+### Full E2E (after Phase 2+3)
 1. Run `scout view` with sample data
 2. Open in VS Code extension
 3. Verify scans list loads (uses V2 API)

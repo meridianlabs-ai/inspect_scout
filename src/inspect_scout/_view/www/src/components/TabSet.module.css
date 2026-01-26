@@ -10,6 +10,7 @@
 .tabContents.scrollable {
   min-height: 0;
   overflow-y: auto;
+  height: 100%;
 }
 
 .tab {

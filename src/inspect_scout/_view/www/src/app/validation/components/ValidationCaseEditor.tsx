@@ -368,10 +368,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       <div className={styles.content}>
         <VscodeCollapsible heading="Validation Set" open>
           <SidebarPanel>
-            <Field
-              label="Validation Set"
-              helper="The file which contains this validation set."
-            >
+            <Field label="Validation Set">
               <ValidationSetSelector
                 validationSets={validationSets || []}
                 selectedUri={editorValidationSetUri}
@@ -386,7 +383,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
             </Field>
             <Field
               label="Split"
-              helper='The case that describe the purpose of this validation (e.g., "dev", "test", "train")'
+              helper='Split for this case (e.g., "dev", "test", "train"). Not required.'
             >
               <ValidationSplitSelector
                 value={workingCase?.split || null}
@@ -422,7 +419,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 <SecondaryDisplayValue label="ID" value={transcriptId} />
                 <Field
                   label="Target"
-                  helper="The expected value for this validation case."
+                  helper="The expected value for this case."
                 >
                   <ValidationCaseTargetEditor
                     target={workingCase?.target}

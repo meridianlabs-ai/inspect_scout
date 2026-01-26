@@ -51,13 +51,10 @@ class GoogleProvider:
 
             return isinstance(response, types.AsyncGeneratorType)
 
-        # Helper to extract model name from instance
-        def get_model_name(instance: Any, kwargs: dict[str, Any]) -> str:
-            # Try to get model from kwargs first
-            model = kwargs.get("model")
-            if model:
+        def _extract_model(instance: Any, kwargs: dict[str, Any]) -> str:
+            """Extract model identifier from kwargs or instance."""
+            if model := kwargs.get("model"):
                 return str(model)
-            # Try to get from instance
             if hasattr(instance, "_model"):
                 return str(instance._model)
             return "unknown"
@@ -67,14 +64,14 @@ class GoogleProvider:
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             response = wrapped(*args, **kwargs)
-            model_name = get_model_name(instance, kwargs)
+            model = _extract_model(instance, kwargs)
 
             # Check if streaming
             if is_sync_stream(response):
                 return GoogleStreamCapture(
                     response,
                     {
-                        "model": model_name,
+                        "model": model,
                         **kwargs,
                         "contents": args[0] if args else [],
                     },
@@ -84,7 +81,7 @@ class GoogleProvider:
             emit(
                 {
                     "request": {
-                        "model": model_name,
+                        "model": model,
                         **kwargs,
                         "contents": args[0] if args else [],
                     },
@@ -97,7 +94,7 @@ class GoogleProvider:
         def async_generate_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
-            model_name = get_model_name(instance, kwargs)
+            model = _extract_model(instance, kwargs)
 
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
@@ -107,7 +104,7 @@ class GoogleProvider:
                     return GoogleAsyncStreamCapture(
                         response,
                         {
-                            "model": model_name,
+                            "model": model,
                             **kwargs,
                             "contents": args[0] if args else [],
                         },
@@ -117,7 +114,7 @@ class GoogleProvider:
                 emit(
                     {
                         "request": {
-                            "model": model_name,
+                            "model": model,
                             **kwargs,
                             "contents": args[0] if args else [],
                         },
@@ -133,11 +130,11 @@ class GoogleProvider:
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             response = wrapped(*args, **kwargs)
-            model_name = get_model_name(instance, kwargs)
+            model = _extract_model(instance, kwargs)
 
             return GoogleStreamCapture(
                 response,
-                {"model": model_name, **kwargs, "contents": args[0] if args else []},
+                {"model": model, **kwargs, "contents": args[0] if args else []},
                 emit,
             )
 
@@ -145,14 +142,14 @@ class GoogleProvider:
         def async_stream_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
-            model_name = get_model_name(instance, kwargs)
+            model = _extract_model(instance, kwargs)
 
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
                 return GoogleAsyncStreamCapture(
                     response,
                     {
-                        "model": model_name,
+                        "model": model,
                         **kwargs,
                         "contents": args[0] if args else [],
                     },
@@ -203,13 +200,8 @@ class GoogleProvider:
         - Handles thought signatures
         """
         try:
-            from google.genai.types import (
-                Candidate,
-                Content,
-                Part,
-            )
+            from google.genai.types import Candidate, Content, GenerateContentResponse
         except ImportError:
-            # If we can't import, just return the last chunk as-is
             return last_chunk
 
         if not accumulated_parts:
@@ -218,112 +210,9 @@ class GoogleProvider:
         final_candidates = []
         for idx in sorted(accumulated_parts.keys()):
             parts = accumulated_parts[idx]
+            merged_parts = self._merge_candidate_parts(parts)
+            last_candidate = self._find_candidate(last_chunk, idx)
 
-            # Merge parts following inspect_ai's pattern
-            merged_parts: list[Part] = []
-            thinking_texts: list[str] = []
-            output_texts: list[str] = []
-
-            for part in parts:
-                # Handle thought signature (encrypted reasoning)
-                if hasattr(part, "thought_signature") and part.thought_signature:
-                    # Flush thinking texts
-                    if thinking_texts:
-                        merged_parts.append(
-                            Part(thought=True, text="".join(thinking_texts))
-                        )
-                        thinking_texts = []
-
-                    # Handle text with signature
-                    if hasattr(part, "text") and part.text:
-                        combined_text = "".join(output_texts) + part.text
-                        merged_parts.append(
-                            Part(
-                                thought_signature=part.thought_signature,
-                                text=combined_text,
-                            )
-                        )
-                        output_texts = []
-                    # Handle function call with signature
-                    elif hasattr(part, "function_call") and part.function_call:
-                        if output_texts:
-                            merged_parts.append(Part(text="".join(output_texts)))
-                            output_texts = []
-                        merged_parts.append(
-                            Part(
-                                thought_signature=part.thought_signature,
-                                function_call=part.function_call,
-                            )
-                        )
-                    # Handle executable code with signature
-                    elif hasattr(part, "executable_code") and part.executable_code:
-                        if output_texts:
-                            merged_parts.append(Part(text="".join(output_texts)))
-                            output_texts = []
-                        merged_parts.append(
-                            Part(
-                                thought_signature=part.thought_signature,
-                                executable_code=part.executable_code,
-                            )
-                        )
-                    else:
-                        if output_texts:
-                            merged_parts.append(
-                                Part(
-                                    thought_signature=part.thought_signature,
-                                    text="".join(output_texts),
-                                )
-                            )
-                            output_texts = []
-
-                # Handle thinking block (unencrypted reasoning)
-                elif (
-                    hasattr(part, "thought")
-                    and part.thought is True
-                    and hasattr(part, "text")
-                    and part.text
-                ):
-                    if output_texts:
-                        merged_parts.append(Part(text="".join(output_texts)))
-                        output_texts = []
-                    thinking_texts.append(part.text)
-
-                # Handle regular text
-                elif hasattr(part, "text") and part.text:
-                    if thinking_texts:
-                        merged_parts.append(
-                            Part(thought=True, text="".join(thinking_texts))
-                        )
-                        thinking_texts = []
-                    output_texts.append(part.text)
-
-                # Handle other parts (function calls, code, etc.)
-                else:
-                    if thinking_texts:
-                        merged_parts.append(
-                            Part(thought=True, text="".join(thinking_texts))
-                        )
-                        thinking_texts = []
-                    if output_texts:
-                        merged_parts.append(Part(text="".join(output_texts)))
-                        output_texts = []
-                    merged_parts.append(part)
-
-            # Flush remaining texts
-            if thinking_texts:
-                merged_parts.append(Part(thought=True, text="".join(thinking_texts)))
-            if output_texts:
-                merged_parts.append(Part(text="".join(output_texts)))
-
-            # Get candidate metadata from last chunk
-            last_candidate = None
-            if hasattr(last_chunk, "candidates") and last_chunk.candidates:
-                for c in last_chunk.candidates:
-                    if getattr(c, "index", 0) == idx:
-                        last_candidate = c
-                        break
-
-            # Construct candidate with merged parts
             candidate = Candidate(
                 index=idx,
                 content=Content(parts=merged_parts, role="model"),
@@ -336,18 +225,115 @@ class GoogleProvider:
             )
             final_candidates.append(candidate)
 
-        # Construct response with merged candidates
-        # We need to return something that model_output_from_google can handle
-        # which expects a GenerateContentResponse-like object
-        from google.genai.types import (
-            GenerateContentResponse,
-        )
-
         return GenerateContentResponse(
             candidates=final_candidates,
             usage_metadata=getattr(last_chunk, "usage_metadata", None),
             model_version=getattr(last_chunk, "model_version", None),
         )
+
+    def _merge_candidate_parts(self, parts: list[Any]) -> list[Any]:
+        """Merge streaming parts for a single candidate.
+
+        Handles thinking blocks, text accumulation, and tool calls.
+        """
+        from google.genai.types import Part
+
+        merged: list[Part] = []
+        thinking_texts: list[str] = []
+        output_texts: list[str] = []
+
+        def flush_thinking() -> None:
+            if thinking_texts:
+                merged.append(Part(thought=True, text="".join(thinking_texts)))
+                thinking_texts.clear()
+
+        def flush_output() -> None:
+            if output_texts:
+                merged.append(Part(text="".join(output_texts)))
+                output_texts.clear()
+
+        for part in parts:
+            # Handle thought signature (encrypted reasoning)
+            if hasattr(part, "thought_signature") and part.thought_signature:
+                flush_thinking()
+                self._handle_signed_part(part, merged, output_texts)
+
+            # Handle thinking block (unencrypted reasoning)
+            elif self._is_thinking_part(part):
+                flush_output()
+                thinking_texts.append(part.text)
+
+            # Handle regular text
+            elif hasattr(part, "text") and part.text:
+                flush_thinking()
+                output_texts.append(part.text)
+
+            # Handle other parts (function calls, code, etc.)
+            else:
+                flush_thinking()
+                flush_output()
+                merged.append(part)
+
+        # Flush remaining
+        flush_thinking()
+        flush_output()
+        return merged
+
+    def _handle_signed_part(
+        self, part: Any, merged: list[Any], output_texts: list[str]
+    ) -> None:
+        """Handle a part with thought_signature."""
+        from google.genai.types import Part
+
+        if hasattr(part, "text") and part.text:
+            combined = "".join(output_texts) + part.text
+            merged.append(Part(thought_signature=part.thought_signature, text=combined))
+            output_texts.clear()
+        elif hasattr(part, "function_call") and part.function_call:
+            if output_texts:
+                merged.append(Part(text="".join(output_texts)))
+                output_texts.clear()
+            merged.append(
+                Part(
+                    thought_signature=part.thought_signature,
+                    function_call=part.function_call,
+                )
+            )
+        elif hasattr(part, "executable_code") and part.executable_code:
+            if output_texts:
+                merged.append(Part(text="".join(output_texts)))
+                output_texts.clear()
+            merged.append(
+                Part(
+                    thought_signature=part.thought_signature,
+                    executable_code=part.executable_code,
+                )
+            )
+        elif output_texts:
+            merged.append(
+                Part(
+                    thought_signature=part.thought_signature,
+                    text="".join(output_texts),
+                )
+            )
+            output_texts.clear()
+
+    def _is_thinking_part(self, part: Any) -> bool:
+        """Check if part is a thinking block (unencrypted reasoning)."""
+        return (
+            hasattr(part, "thought")
+            and part.thought is True
+            and hasattr(part, "text")
+            and part.text
+        )
+
+    def _find_candidate(self, chunk: Any, idx: int) -> Any:
+        """Find candidate by index in a chunk."""
+        if hasattr(chunk, "candidates") and chunk.candidates:
+            for c in chunk.candidates:
+                if getattr(c, "index", 0) == idx:
+                    return c
+        return None
 
     async def build_event(self, data: dict[str, Any]) -> Event:
         """Build ModelEvent from captured Google GenAI request/response."""

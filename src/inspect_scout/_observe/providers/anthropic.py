@@ -31,40 +31,40 @@ class AnthropicProvider:
 
         from wrapt import wrap_function_wrapper
 
-        def is_stream(response: Any) -> bool:
+        def _is_sync_stream(response: Any) -> bool:
+            """Check if response is an Anthropic sync Stream."""
             try:
                 from anthropic import Stream
             except ImportError:
                 return False
             return isinstance(response, Stream)
 
-        def is_async_stream(response: Any) -> bool:
+        def _is_async_stream(response: Any) -> bool:
+            """Check if response is an Anthropic AsyncStream."""
             try:
                 from anthropic import AsyncStream
             except ImportError:
                 return False
             return isinstance(response, AsyncStream)
 
-        # Sync wrapper for Messages.create
         def sync_create_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             response = wrapped(*args, **kwargs)
 
-            if is_stream(response):
+            if _is_sync_stream(response):
                 return AnthropicStreamCapture(response, kwargs, emit)
 
             emit({"request": kwargs, "response": response})
             return response
 
-        # Async wrapper for AsyncMessages.create
         def async_create_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
 
-                if is_async_stream(response):
+                if _is_async_stream(response):
                     return AnthropicAsyncStreamCapture(response, kwargs, emit)
 
                 emit({"request": kwargs, "response": response})
@@ -193,6 +193,110 @@ class AnthropicProvider:
 # =============================================================================
 
 
+class AnthropicStreamAccumulator:
+    """Helper class to accumulate Anthropic stream events into a complete response.
+
+    This class contains the shared accumulation logic used by both sync and async
+    stream capture wrappers, avoiding code duplication.
+    """
+
+    def __init__(self) -> None:
+        self.accumulated: dict[str, Any] = {
+            "id": None,
+            "type": "message",
+            "role": "assistant",
+            "model": None,
+            "content": [],
+            "stop_reason": None,
+            "stop_sequence": None,
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+        }
+        self._current_block: dict[str, Any] | None = None
+
+    def accumulate_event(self, event: Any) -> None:
+        """Accumulate a streaming event into the complete response."""
+        event_type = getattr(event, "type", None)
+
+        if event_type == "message_start":
+            message = event.message
+            self.accumulated["id"] = message.id
+            self.accumulated["model"] = message.model
+            if message.usage:
+                self.accumulated["usage"]["input_tokens"] = message.usage.input_tokens
+
+        elif event_type == "content_block_start":
+            block = event.content_block
+            if block.type == "text":
+                self._current_block = {"type": "text", "text": ""}
+            elif block.type == "thinking":
+                self._current_block = {"type": "thinking", "thinking": ""}
+            elif block.type in ("tool_use", "server_tool_use", "mcp_tool_use"):
+                # server_tool_use is for server-side tools like web search/fetch
+                # mcp_tool_use is for MCP connector tools
+                self._current_block = {
+                    "type": block.type,
+                    "id": block.id,
+                    "name": block.name,
+                    "input": "",
+                }
+                # mcp_tool_use also has server_name
+                if block.type == "mcp_tool_use":
+                    self._current_block["server_name"] = getattr(
+                        block, "server_name", None
+                    )
+            elif block.type in ("web_search_tool_result", "web_fetch_tool_result"):
+                # Server-side tool results come complete in content_block_start
+                self._current_block = {
+                    "type": block.type,
+                    "tool_use_id": getattr(block, "tool_use_id", None),
+                    "content": getattr(block, "content", []),
+                }
+            elif block.type == "mcp_tool_result":
+                # MCP tool results
+                self._current_block = {
+                    "type": "mcp_tool_result",
+                    "tool_use_id": getattr(block, "tool_use_id", None),
+                    "is_error": getattr(block, "is_error", False),
+                    "content": getattr(block, "content", []),
+                }
+            else:
+                self._current_block = {"type": block.type}
+            self.accumulated["content"].append(self._current_block)
+
+        elif event_type == "content_block_delta":
+            if self._current_block is not None:
+                delta = event.delta
+                if delta.type == "text_delta":
+                    self._current_block["text"] += delta.text
+                elif delta.type == "thinking_delta":
+                    self._current_block["thinking"] += delta.thinking
+                elif delta.type == "signature_delta":
+                    # Signature for thinking block integrity verification
+                    self._current_block["signature"] = delta.signature
+                elif delta.type == "input_json_delta":
+                    self._current_block["input"] += delta.partial_json
+
+        elif event_type == "content_block_stop":
+            # Finalize current block - parse accumulated JSON for tool inputs
+            if self._current_block and "input" in self._current_block:
+                try:
+                    self._current_block["input"] = json.loads(
+                        self._current_block["input"]
+                    )
+                except json.JSONDecodeError:
+                    self._current_block["input"] = {}
+            self._current_block = None
+
+        elif event_type == "message_delta":
+            if event.delta:
+                if hasattr(event.delta, "stop_reason"):
+                    self.accumulated["stop_reason"] = event.delta.stop_reason
+                if hasattr(event.delta, "stop_sequence"):
+                    self.accumulated["stop_sequence"] = event.delta.stop_sequence
+            if event.usage:
+                self.accumulated["usage"]["output_tokens"] = event.usage.output_tokens
+
+
 class AnthropicStreamCapture(ObjectProxy):  # type: ignore[misc]
     """Capture wrapper for Anthropic sync streams (with stream=True)."""
 
@@ -205,121 +309,17 @@ class AnthropicStreamCapture(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_accumulated: dict[str, Any] = {
-            "id": None,
-            "type": "message",
-            "role": "assistant",
-            "model": None,
-            "content": [],
-            "stop_reason": None,
-            "stop_sequence": None,
-            "usage": {"input_tokens": 0, "output_tokens": 0},
-        }
-        self._self_current_block_idx = -1
-        self._self_current_block: dict[str, Any] | None = None
+        self._self_accumulator = AnthropicStreamAccumulator()
 
     def __iter__(self) -> Iterator[Any]:
         for event in self.__wrapped__:
-            self._accumulate_event(event)
+            self._self_accumulator.accumulate_event(event)
             yield event
 
-        self._emit_response()
-
-    def _accumulate_event(self, event: Any) -> None:
-        """Accumulate a streaming event into the complete response."""
-        event_type = getattr(event, "type", None)
-
-        if event_type == "message_start":
-            message = event.message
-            self._self_accumulated["id"] = message.id
-            self._self_accumulated["model"] = message.model
-            if message.usage:
-                self._self_accumulated["usage"]["input_tokens"] = (
-                    message.usage.input_tokens
-                )
-
-        elif event_type == "content_block_start":
-            self._self_current_block_idx = event.index
-            block = event.content_block
-            if block.type == "text":
-                self._self_current_block = {"type": "text", "text": ""}
-            elif block.type == "thinking":
-                self._self_current_block = {"type": "thinking", "thinking": ""}
-            elif block.type in ("tool_use", "server_tool_use", "mcp_tool_use"):
-                # server_tool_use is for server-side tools like web search/fetch
-                # mcp_tool_use is for MCP connector tools
-                self._self_current_block = {
-                    "type": block.type,
-                    "id": block.id,
-                    "name": block.name,
-                    "input": "",
-                }
-                # mcp_tool_use also has server_name
-                if block.type == "mcp_tool_use":
-                    self._self_current_block["server_name"] = getattr(
-                        block, "server_name", None
-                    )
-            elif block.type in ("web_search_tool_result", "web_fetch_tool_result"):
-                # Server-side tool results come complete in content_block_start
-                self._self_current_block = {
-                    "type": block.type,
-                    "tool_use_id": getattr(block, "tool_use_id", None),
-                    "content": getattr(block, "content", []),
-                }
-            elif block.type == "mcp_tool_result":
-                # MCP tool results
-                self._self_current_block = {
-                    "type": "mcp_tool_result",
-                    "tool_use_id": getattr(block, "tool_use_id", None),
-                    "is_error": getattr(block, "is_error", False),
-                    "content": getattr(block, "content", []),
-                }
-            else:
-                self._self_current_block = {"type": block.type}
-            self._self_accumulated["content"].append(self._self_current_block)
-
-        elif event_type == "content_block_delta":
-            if self._self_current_block is not None:
-                delta = event.delta
-                if delta.type == "text_delta":
-                    self._self_current_block["text"] += delta.text
-                elif delta.type == "thinking_delta":
-                    self._self_current_block["thinking"] += delta.thinking
-                elif delta.type == "signature_delta":
-                    # Signature for thinking block integrity verification
-                    self._self_current_block["signature"] = delta.signature
-                elif delta.type == "input_json_delta":
-                    self._self_current_block["input"] += delta.partial_json
-
-        elif event_type == "content_block_stop":
-            # Finalize current block
-            if self._self_current_block and "input" in self._self_current_block:
-                # Parse the accumulated JSON string
-                try:
-                    self._self_current_block["input"] = json.loads(
-                        self._self_current_block["input"]
-                    )
-                except json.JSONDecodeError:
-                    self._self_current_block["input"] = {}
-            self._self_current_block = None
-
-        elif event_type == "message_delta":
-            if event.delta:
-                if hasattr(event.delta, "stop_reason"):
-                    self._self_accumulated["stop_reason"] = event.delta.stop_reason
-                if hasattr(event.delta, "stop_sequence"):
-                    self._self_accumulated["stop_sequence"] = event.delta.stop_sequence
-            if event.usage:
-                self._self_accumulated["usage"]["output_tokens"] = (
-                    event.usage.output_tokens
-                )
-
-    def _emit_response(self) -> None:
-        """Emit the accumulated response."""
         self._self_emit(
             {
                 "request": self._self_request_kwargs,
-                "response": self._self_accumulated,
+                "response": self._self_accumulator.accumulated,
             }
         )
 
@@ -336,119 +336,17 @@ class AnthropicAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_accumulated: dict[str, Any] = {
-            "id": None,
-            "type": "message",
-            "role": "assistant",
-            "model": None,
-            "content": [],
-            "stop_reason": None,
-            "stop_sequence": None,
-            "usage": {"input_tokens": 0, "output_tokens": 0},
-        }
-        self._self_current_block_idx = -1
-        self._self_current_block: dict[str, Any] | None = None
+        self._self_accumulator = AnthropicStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
         async for event in self.__wrapped__:
-            self._accumulate_event(event)
+            self._self_accumulator.accumulate_event(event)
             yield event
 
-        self._emit_response()
-
-    def _accumulate_event(self, event: Any) -> None:
-        """Accumulate a streaming event into the complete response."""
-        event_type = getattr(event, "type", None)
-
-        if event_type == "message_start":
-            message = event.message
-            self._self_accumulated["id"] = message.id
-            self._self_accumulated["model"] = message.model
-            if message.usage:
-                self._self_accumulated["usage"]["input_tokens"] = (
-                    message.usage.input_tokens
-                )
-
-        elif event_type == "content_block_start":
-            self._self_current_block_idx = event.index
-            block = event.content_block
-            if block.type == "text":
-                self._self_current_block = {"type": "text", "text": ""}
-            elif block.type == "thinking":
-                self._self_current_block = {"type": "thinking", "thinking": ""}
-            elif block.type in ("tool_use", "server_tool_use", "mcp_tool_use"):
-                # server_tool_use is for server-side tools like web search/fetch
-                # mcp_tool_use is for MCP connector tools
-                self._self_current_block = {
-                    "type": block.type,
-                    "id": block.id,
-                    "name": block.name,
-                    "input": "",
-                }
-                # mcp_tool_use also has server_name
-                if block.type == "mcp_tool_use":
-                    self._self_current_block["server_name"] = getattr(
-                        block, "server_name", None
-                    )
-            elif block.type in ("web_search_tool_result", "web_fetch_tool_result"):
-                # Server-side tool results come complete in content_block_start
-                self._self_current_block = {
-                    "type": block.type,
-                    "tool_use_id": getattr(block, "tool_use_id", None),
-                    "content": getattr(block, "content", []),
-                }
-            elif block.type == "mcp_tool_result":
-                # MCP tool results
-                self._self_current_block = {
-                    "type": "mcp_tool_result",
-                    "tool_use_id": getattr(block, "tool_use_id", None),
-                    "is_error": getattr(block, "is_error", False),
-                    "content": getattr(block, "content", []),
-                }
-            else:
-                self._self_current_block = {"type": block.type}
-            self._self_accumulated["content"].append(self._self_current_block)
-
-        elif event_type == "content_block_delta":
-            if self._self_current_block is not None:
-                delta = event.delta
-                if delta.type == "text_delta":
-                    self._self_current_block["text"] += delta.text
-                elif delta.type == "thinking_delta":
-                    self._self_current_block["thinking"] += delta.thinking
-                elif delta.type == "signature_delta":
-                    # Signature for thinking block integrity verification
-                    self._self_current_block["signature"] = delta.signature
-                elif delta.type == "input_json_delta":
-                    self._self_current_block["input"] += delta.partial_json
-
-        elif event_type == "content_block_stop":
-            if self._self_current_block and "input" in self._self_current_block:
-                try:
-                    self._self_current_block["input"] = json.loads(
-                        self._self_current_block["input"]
-                    )
-                except json.JSONDecodeError:
-                    self._self_current_block["input"] = {}
-            self._self_current_block = None
-
-        elif event_type == "message_delta":
-            if event.delta:
-                if hasattr(event.delta, "stop_reason"):
-                    self._self_accumulated["stop_reason"] = event.delta.stop_reason
-                if hasattr(event.delta, "stop_sequence"):
-                    self._self_accumulated["stop_sequence"] = event.delta.stop_sequence
-            if event.usage:
-                self._self_accumulated["usage"]["output_tokens"] = (
-                    event.usage.output_tokens
-                )
-
-    def _emit_response(self) -> None:
-        """Emit the accumulated response."""
         self._self_emit(
             {
                 "request": self._self_request_kwargs,
-                "response": self._self_accumulated,
+                "response": self._self_accumulator.accumulated,
             }
         )
 

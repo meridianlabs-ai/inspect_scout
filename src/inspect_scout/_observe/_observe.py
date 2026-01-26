@@ -46,6 +46,23 @@ from .providers import (
 logger = logging.getLogger(__name__)
 
 
+async def _process_pending_captures(ctx: ObserveContext) -> None:
+    """Process pending SDK captures and append events to transcript.
+
+    Args:
+        ctx: The observe context containing pending captures.
+    """
+    for data, provider_key in ctx.pending_captures:
+        provider_instance = get_provider_instance(provider_key)
+        if provider_instance is not None:
+            try:
+                event = await provider_instance.build_event(data)
+                ctx.inspect_transcript._events.append(event)
+            except Exception as e:
+                logger.warning(f"Failed to build event from {provider_key}: {e}")
+    ctx.pending_captures.clear()
+
+
 # @observe (bare decorator without parens)
 @overload
 def observe(
@@ -90,8 +107,8 @@ def observe(
         | None
     ) = "inspect",
     db: str | TranscriptsDB | None = None,
-    # Fields in same order as TranscriptInfo
-    source_type: str = "observe",  # Default to "observe" for this decorator
+    # TranscriptInfo fields (ordered to match TranscriptInfo for consistency)
+    source_type: str = "observe",
     source_id: str | None = None,
     source_uri: str | None = None,
     task_set: str | None = None,
@@ -242,8 +259,11 @@ def observe(
         token = _current_context.set(ctx)
         try:
             yield ctx
+        except (KeyboardInterrupt, SystemExit, GeneratorExit):
+            # Let abort exceptions propagate - these should stop processing
+            raise
         except Exception as e:
-            # Capture error for transcript - suppress to continue run
+            # Capture error for transcript - suppress to continue batch run
             error = e
             logger.warning(f"Error in observe context (saved to transcript): {e}")
         finally:
@@ -251,34 +271,28 @@ def observe(
             _current_context.reset(token)
 
             try:
-                # Process any pending SDK captures before building transcript
-                for data, provider_key in ctx.pending_captures:
-                    provider_instance = get_provider_instance(provider_key)
-                    if provider_instance is not None:
-                        try:
-                            event = await provider_instance.build_event(data)
-                            ctx.inspect_transcript._events.append(event)
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to build event from {provider_key}: {e}"
-                            )
-                ctx.pending_captures.clear()
+                await _process_pending_captures(ctx)
 
                 # Insert transcript immediately if leaf node (no children ran)
                 if not ctx.had_children:
                     transcript = _build_transcript(ctx, start_time, error)
                     await ctx.db.insert([transcript], commit=False)
 
-                # If we're the root, commit (compact + index) and disconnect
+                # If we're the root, commit (compact + index)
                 if ctx.is_root:
                     try:
                         await ctx.db.commit()
                     except Exception as e:
                         logger.warning(f"Commit failed (transcripts saved): {e}")
-                    finally:
-                        await ctx.db.disconnect()
             except Exception as e:
                 logger.warning(f"Failed to save transcript: {e}")
+            finally:
+                # CRITICAL: Always disconnect if root, even on errors
+                if ctx.is_root:
+                    try:
+                        await ctx.db.disconnect()
+                    except Exception:
+                        pass  # Best effort - don't mask other errors
 
     if func is not None:
         # Called as @observe without parens - must be async function
@@ -352,21 +366,22 @@ def observe_update(
         raise RuntimeError("observe_update() called outside of an observe context")
 
     # Update fields on the context's info (only non-None values)
-    for field_name, value in [
-        ("source_type", source_type),
-        ("source_id", source_id),
-        ("source_uri", source_uri),
-        ("task_set", task_set),
-        ("task_id", task_id),
-        ("task_repeat", task_repeat),
-        ("agent", agent),
-        ("agent_args", agent_args),
-        ("model", model),
-        ("model_options", model_options),
-        ("score", score),
-        ("success", success),
-        ("limit", limit),
-    ]:
+    updates = {
+        "source_type": source_type,
+        "source_id": source_id,
+        "source_uri": source_uri,
+        "task_set": task_set,
+        "task_id": task_id,
+        "task_repeat": task_repeat,
+        "agent": agent,
+        "agent_args": agent_args,
+        "model": model,
+        "model_options": model_options,
+        "score": score,
+        "success": success,
+        "limit": limit,
+    }
+    for field_name, value in updates.items():
         if value is not None:
             setattr(ctx.info, field_name, value)
 

@@ -124,3 +124,17 @@ def skip_if_no_langfuse_project(func: F) -> F:
             reason="Test requires Langfuse test project",
         )(func),
     )
+
+
+@pytest.fixture(autouse=True)
+def reset_observe_providers() -> Any:
+    """Reset observe provider state between tests for isolation.
+
+    Provider installations are global and persist across tests. This fixture
+    ensures each test starts with a clean provider registry.
+    """
+    from inspect_scout._observe.providers.provider import reset_providers
+
+    reset_providers()
+    yield
+    reset_providers()

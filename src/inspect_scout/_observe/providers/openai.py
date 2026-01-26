@@ -30,55 +30,44 @@ class OpenAIProvider:
 
         from wrapt import wrap_function_wrapper
 
-        # Check if response is a stream
-        def is_chat_stream(response: Any) -> bool:
-            try:
-                from openai import Stream
-            except ImportError:
-                return False
-            return isinstance(response, Stream)
+        def _is_stream_type(response: Any, module: str, class_name: str) -> bool:
+            """Check if response is an instance of a stream class.
 
-        def is_chat_async_stream(response: Any) -> bool:
-            try:
-                from openai import AsyncStream
-            except ImportError:
-                return False
-            return isinstance(response, AsyncStream)
+            Args:
+                response: The response object to check.
+                module: Module path (e.g., "openai" or "openai.lib.streaming.responses").
+                class_name: Class name (e.g., "Stream", "AsyncStream").
 
-        def is_responses_stream(response: Any) -> bool:
+            Returns:
+                True if response is an instance of the specified class.
+            """
             try:
-                from openai.lib.streaming.responses import ResponseStream
-            except ImportError:
-                return False
-            return isinstance(response, ResponseStream)
+                import importlib
 
-        def is_responses_async_stream(response: Any) -> bool:
-            try:
-                from openai.lib.streaming.responses import AsyncResponseStream
-            except ImportError:
+                mod = importlib.import_module(module)
+                cls = getattr(mod, class_name)
+                return isinstance(response, cls)
+            except (ImportError, AttributeError):
                 return False
-            return isinstance(response, AsyncResponseStream)
 
-        # Sync wrapper for Chat Completions
         def sync_chat_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             response = wrapped(*args, **kwargs)
 
-            if is_chat_stream(response):
+            if _is_stream_type(response, "openai", "Stream"):
                 return OpenAIChatStreamCapture(response, kwargs, emit)
 
             emit({"request": kwargs, "response": response, "api": "completions"})
             return response
 
-        # Async wrapper for Chat Completions
         def async_chat_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
 
-                if is_chat_async_stream(response):
+                if _is_stream_type(response, "openai", "AsyncStream"):
                     return OpenAIChatAsyncStreamCapture(response, kwargs, emit)
 
                 emit({"request": kwargs, "response": response, "api": "completions"})
@@ -86,26 +75,28 @@ class OpenAIProvider:
 
             return _async_wrapper()
 
-        # Sync wrapper for Responses API
         def sync_responses_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             response = wrapped(*args, **kwargs)
 
-            if is_responses_stream(response):
+            if _is_stream_type(
+                response, "openai.lib.streaming.responses", "ResponseStream"
+            ):
                 return OpenAIResponsesStreamCapture(response, kwargs, emit)
 
             emit({"request": kwargs, "response": response, "api": "responses"})
             return response
 
-        # Async wrapper for Responses API
         def async_responses_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
             async def _async_wrapper() -> Any:
                 response = await wrapped(*args, **kwargs)
 
-                if is_responses_async_stream(response):
+                if _is_stream_type(
+                    response, "openai.lib.streaming.responses", "AsyncResponseStream"
+                ):
                     return OpenAIResponsesAsyncStreamCapture(response, kwargs, emit)
 
                 emit({"request": kwargs, "response": response, "api": "responses"})
@@ -267,19 +258,15 @@ class OpenAIProvider:
 # =============================================================================
 
 
-class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
-    """Capture wrapper for OpenAI Chat Completions sync streams."""
+class OpenAIChatStreamAccumulator:
+    """Helper class to accumulate OpenAI Chat Completions stream chunks.
 
-    def __init__(
-        self,
-        stream: Any,
-        request_kwargs: dict[str, Any],
-        emit: ObserveEmit,
-    ) -> None:
-        super().__init__(stream)
-        self._self_request_kwargs = request_kwargs
-        self._self_emit = emit
-        self._self_accumulated: dict[str, Any] = {
+    This class contains the shared accumulation logic used by both sync and async
+    stream capture wrappers, avoiding code duplication.
+    """
+
+    def __init__(self) -> None:
+        self.accumulated: dict[str, Any] = {
             "id": None,
             "object": "chat.completion",
             "created": 0,
@@ -288,31 +275,23 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
             "usage": None,
         }
 
-    def __iter__(self) -> Iterator[Any]:
-        for chunk in self.__wrapped__:
-            self._accumulate_chunk(chunk)
-            yield chunk
-
-        # Stream complete - emit accumulated response
-        self._emit_response()
-
-    def _accumulate_chunk(self, chunk: Any) -> None:
+    def accumulate_chunk(self, chunk: Any) -> None:
         """Accumulate a chunk into the complete response."""
         if chunk.id:
-            self._self_accumulated["id"] = chunk.id
+            self.accumulated["id"] = chunk.id
         if chunk.model:
-            self._self_accumulated["model"] = chunk.model
+            self.accumulated["model"] = chunk.model
         if hasattr(chunk, "created") and chunk.created:
-            self._self_accumulated["created"] = chunk.created
+            self.accumulated["created"] = chunk.created
         if chunk.usage:
-            self._self_accumulated["usage"] = chunk.usage
+            self.accumulated["usage"] = chunk.usage
 
         for choice in chunk.choices:
             # Ensure we have enough choice slots
-            while len(self._self_accumulated["choices"]) <= choice.index:
-                self._self_accumulated["choices"].append(
+            while len(self.accumulated["choices"]) <= choice.index:
+                self.accumulated["choices"].append(
                     {
-                        "index": len(self._self_accumulated["choices"]),
+                        "index": len(self.accumulated["choices"]),
                         "message": {
                             "role": "assistant",
                             "content": "",
@@ -322,7 +301,7 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
                     }
                 )
 
-            acc_choice = self._self_accumulated["choices"][choice.index]
+            acc_choice = self.accumulated["choices"][choice.index]
 
             if choice.finish_reason:
                 acc_choice["finish_reason"] = choice.finish_reason
@@ -355,17 +334,37 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
                             if tc.function.arguments:
                                 tc_acc["function"]["arguments"] += tc.function.arguments
 
-    def _emit_response(self) -> None:
-        """Emit the accumulated response."""
-        # Clean up empty tool_calls lists
-        for choice in self._self_accumulated["choices"]:
+    def get_response(self) -> dict[str, Any]:
+        """Get the accumulated response, cleaning up empty tool_calls."""
+        for choice in self.accumulated["choices"]:
             if not choice["message"]["tool_calls"]:
                 del choice["message"]["tool_calls"]
+        return self.accumulated
+
+
+class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
+    """Capture wrapper for OpenAI Chat Completions sync streams."""
+
+    def __init__(
+        self,
+        stream: Any,
+        request_kwargs: dict[str, Any],
+        emit: ObserveEmit,
+    ) -> None:
+        super().__init__(stream)
+        self._self_request_kwargs = request_kwargs
+        self._self_emit = emit
+        self._self_accumulator = OpenAIChatStreamAccumulator()
+
+    def __iter__(self) -> Iterator[Any]:
+        for chunk in self.__wrapped__:
+            self._self_accumulator.accumulate_chunk(chunk)
+            yield chunk
 
         self._self_emit(
             {
                 "request": self._self_request_kwargs,
-                "response": self._self_accumulated,
+                "response": self._self_accumulator.get_response(),
                 "api": "completions",
             }
         )
@@ -383,90 +382,17 @@ class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_accumulated: dict[str, Any] = {
-            "id": None,
-            "object": "chat.completion",
-            "created": 0,
-            "model": None,
-            "choices": [],
-            "usage": None,
-        }
+        self._self_accumulator = OpenAIChatStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
         async for chunk in self.__wrapped__:
-            self._accumulate_chunk(chunk)
+            self._self_accumulator.accumulate_chunk(chunk)
             yield chunk
-
-        # Stream complete - emit accumulated response
-        self._emit_response()
-
-    def _accumulate_chunk(self, chunk: Any) -> None:
-        """Accumulate a chunk into the complete response."""
-        if chunk.id:
-            self._self_accumulated["id"] = chunk.id
-        if chunk.model:
-            self._self_accumulated["model"] = chunk.model
-        if hasattr(chunk, "created") and chunk.created:
-            self._self_accumulated["created"] = chunk.created
-        if chunk.usage:
-            self._self_accumulated["usage"] = chunk.usage
-
-        for choice in chunk.choices:
-            while len(self._self_accumulated["choices"]) <= choice.index:
-                self._self_accumulated["choices"].append(
-                    {
-                        "index": len(self._self_accumulated["choices"]),
-                        "message": {
-                            "role": "assistant",
-                            "content": "",
-                            "tool_calls": [],
-                        },
-                        "finish_reason": None,
-                    }
-                )
-
-            acc_choice = self._self_accumulated["choices"][choice.index]
-
-            if choice.finish_reason:
-                acc_choice["finish_reason"] = choice.finish_reason
-
-            if choice.delta:
-                delta = choice.delta
-                if delta.role:
-                    acc_choice["message"]["role"] = delta.role
-                if delta.content:
-                    acc_choice["message"]["content"] += delta.content
-
-                if delta.tool_calls:
-                    for tc in delta.tool_calls:
-                        tool_calls = acc_choice["message"]["tool_calls"]
-                        while len(tool_calls) <= tc.index:
-                            tool_calls.append(
-                                {
-                                    "id": "",
-                                    "type": "function",
-                                    "function": {"name": "", "arguments": ""},
-                                }
-                            )
-                        tc_acc = tool_calls[tc.index]
-                        if tc.id:
-                            tc_acc["id"] = tc.id
-                        if tc.function:
-                            if tc.function.name:
-                                tc_acc["function"]["name"] += tc.function.name
-                            if tc.function.arguments:
-                                tc_acc["function"]["arguments"] += tc.function.arguments
-
-    def _emit_response(self) -> None:
-        """Emit the accumulated response."""
-        for choice in self._self_accumulated["choices"]:
-            if not choice["message"]["tool_calls"]:
-                del choice["message"]["tool_calls"]
 
         self._self_emit(
             {
                 "request": self._self_request_kwargs,
-                "response": self._self_accumulated,
+                "response": self._self_accumulator.get_response(),
                 "api": "completions",
             }
         )

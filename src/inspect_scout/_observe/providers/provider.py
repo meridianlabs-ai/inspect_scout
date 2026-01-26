@@ -58,11 +58,26 @@ _installed_providers: set[str] = set()
 _provider_instances: dict[str, ObserveProvider] = {}
 
 
-def _get_provider_key(provider: str | ObserveProvider) -> str:
-    """Get unique key for a provider (class name for instances, string for names)."""
+def _resolve_provider_key(provider: str | ObserveProvider) -> str:
+    """Resolve provider to its unique registry key.
+
+    For string names, returns the string as-is.
+    For provider instances, returns the class name.
+    """
     if isinstance(provider, str):
         return provider
     return provider.__class__.__name__
+
+
+def _normalize_to_sequence(
+    providers: str | ObserveProvider | Sequence[str | ObserveProvider] | None,
+) -> Sequence[str | ObserveProvider]:
+    """Normalize provider input to a sequence for iteration."""
+    if providers is None:
+        return []
+    if isinstance(providers, (str, ObserveProvider)):
+        return [providers]
+    return providers
 
 
 def get_provider_instance(key: str) -> ObserveProvider | None:
@@ -72,7 +87,7 @@ def get_provider_instance(key: str) -> ObserveProvider | None:
 
 def create_emit_callback(provider: ObserveProvider) -> ObserveEmit:
     """Create emit callback for a provider (context-checked, queues data)."""
-    provider_key = _get_provider_key(provider)
+    provider_key = _resolve_provider_key(provider)
 
     def emit(data: dict[str, Any]) -> None:
         from ..context import current_observe_context
@@ -129,14 +144,7 @@ def install_providers(
     Args:
         providers: Provider name(s), instance(s), or sequence of either.
     """
-    if providers is None:
-        return
-
-    # Normalize to sequence
-    if isinstance(providers, (str, ObserveProvider)):
-        provider_list: Sequence[str | ObserveProvider] = [providers]
-    else:
-        provider_list = providers
+    provider_list = _normalize_to_sequence(providers)
 
     for provider in provider_list:
         # Resolve string to provider instance first
@@ -144,7 +152,7 @@ def install_providers(
             provider = get_provider(provider)
 
         # Get key from the resolved provider instance
-        key = _get_provider_key(provider)
+        key = _resolve_provider_key(provider)
         if key in _installed_providers:
             continue  # Already installed
 

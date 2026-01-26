@@ -158,7 +158,7 @@ scout scan scanner.py \
 Note that when we using a model that requires an API  key you'll need to provide it in the enviroment (e.g. `OPENAI_API_KEY`). As with Inspect AI, you can use a [.env file](https://inspect.aisi.org.uk/options.html#env-files) for providing API keys.
 
 
-### Viewing Scans
+### Scout View
 
 Scout includes a viewer application for looking at scan results in depth. Run the viewer with:
 

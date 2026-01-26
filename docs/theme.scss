@@ -151,6 +151,10 @@ table>caption {
     display: none;
 }
 
+table {
+    margin-bottom: 1.2em !important;
+}
+
 .jinja2 .ot {
     font-weight: 700;
     color: var(--quarto-hl-fu-color);

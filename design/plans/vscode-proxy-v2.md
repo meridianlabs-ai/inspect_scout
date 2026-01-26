@@ -346,7 +346,9 @@ E2E: Open VS Code extension, verify scans list still loads correctly.
 
 ---
 
-## Phase 2: Frontend HTTP Proxy (inspect_scout)
+## Phase 2: Frontend HTTP Proxy Infrastructure (inspect_scout)
+
+Additive changes only—no behavior change until Phase 4 activates.
 
 ### 2.1 New: `www/src/api/proxy-fetch.ts`
 Create proxied fetch that routes through JSON-RPC:
@@ -376,17 +378,20 @@ export function createProxyFetch(
 Binary handling: extension base64-encodes Arrow IPC responses, frontend decodes.
 
 ### 2.2 Modify: `www/src/api/api-scout-server.ts`
-Extract to allow injecting custom fetch:
+Add optional parameters:
 
 ```typescript
 export const apiScoutServer = (options?: {
   apiBaseUrl?: string;
-  customFetch?: typeof fetch;  // NEW
+  customFetch?: typeof fetch;  // NEW - defaults to fetch
+  disableSSE?: boolean;        // NEW - defaults to false
 }): ScanApi => { ... }
 ```
 
+When `disableSSE` is true, `connectTopicUpdates` returns a no-op.
+
 ### 2.3 Modify: `www/src/utils/embeddedState.ts`
-Add capability field:
+Add optional capability field:
 
 ```typescript
 interface EmbeddedState {
@@ -395,44 +400,12 @@ interface EmbeddedState {
 }
 ```
 
-### 2.4 Modify: `www/src/main.tsx`
-Capability detection:
-
-```typescript
-const selectApi = (): ScanApi => {
-  const vscodeApi = getVscodeApi();
-  if (vscodeApi) {
-    const rpcClient = webViewJsonRpcClient(vscodeApi);
-    const embeddedState = getEmbeddedState();
-
-    if (embeddedState?.supportsHttpProxy) {
-      // V2 via proxy
-      const proxyFetch = createProxyFetch(rpcClient);
-      return apiScoutServer({ apiBaseUrl: "/api/v2", customFetch: proxyFetch });
-    }
-    // V1 fallback
-    return apiVscode(vscodeApi, rpcClient);
-  }
-  return apiScoutServer();
-};
+### Verification (Phase 2)
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
-
-### 2.5 Modify: `www/src/api/api-scout-server.ts` - SSE TODO
-Add comment in `connectTopicUpdates`:
-
-```typescript
-connectTopicUpdates: (onUpdate) => {
-  // TODO: SSE not supported in VS Code proxy mode.
-  // Options: (1) investigate CSP connect-src for direct SSE,
-  // (2) implement polling fallback, (3) extension subscribes
-  // to SSE and forwards via postMessage.
-  if (options?.customFetch) {
-    onUpdate({ "project-config": Date.now().toString() });
-    return () => {};
-  }
-  // existing EventSource implementation...
-}
-```
+E2E: Existing behavior unchanged—VS Code extension still uses V1 path.
 
 ---
 
@@ -505,6 +478,44 @@ Inject capability flag in embedded state:
 
 ---
 
+## Phase 4: Activate HTTP Proxy (inspect_scout)
+
+Requires Phase 3 complete (extension must handle `http_request`).
+
+### 4.1 Modify: `www/src/main.tsx`
+Capability detection:
+
+```typescript
+const selectApi = (): ScanApi => {
+  const vscodeApi = getVscodeApi();
+  if (vscodeApi) {
+    const rpcClient = webViewJsonRpcClient(vscodeApi);
+    const embeddedState = getEmbeddedState();
+
+    if (embeddedState?.supportsHttpProxy) {
+      // V2 via proxy
+      const proxyFetch = createProxyFetch(rpcClient);
+      return apiScoutServer({
+        apiBaseUrl: "/api/v2",
+        customFetch: proxyFetch,
+        disableSSE: true,
+      });
+    }
+    // V1 fallback
+    return apiVscode(vscodeApi, rpcClient);
+  }
+  return apiScoutServer();
+};
+```
+
+### Verification (Phase 4)
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+
+---
+
 ## Files Summary
 
 ### Phase 1: Remove Duplicate Caching
@@ -513,13 +524,12 @@ Inject capability flag in embedded state:
 | `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData |
 | `www/src/api/api-cache.ts` | DELETE |
 
-### Phase 2: Frontend HTTP Proxy
+### Phase 2: Frontend HTTP Proxy Infrastructure
 | File | Change |
 |------|--------|
 | `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl |
-| `www/src/api/api-scout-server.ts` | Add `customFetch` option, SSE TODO |
+| `www/src/api/api-scout-server.ts` | Add optional `customFetch`, `disableSSE` params |
 | `www/src/utils/embeddedState.ts` | Add `supportsHttpProxy` type |
-| `www/src/main.tsx` | Capability detection |
 
 ### Phase 3: Extension
 | File | Change |
@@ -528,6 +538,11 @@ Inject capability flag in embedded state:
 | `vscode/.../scout-view-server.ts` | Add `httpRequest()` |
 | `vscode/.../scanview-panel.ts` | Register `http_request` handler |
 | `vscode/.../webview.ts` | Inject capability flag |
+
+### Phase 4: Activate HTTP Proxy
+| File | Change |
+|------|--------|
+| `www/src/main.tsx` | Capability detection, switch to V2, pass `disableSSE: true` |
 
 ---
 
@@ -552,6 +567,7 @@ E2E: VS Code extension scans list still loads.
 cd src/inspect_scout/_view/www
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
+E2E: Existing behavior unchanged—VS Code extension still uses V1.
 
 ### Phase 3
 ```bash
@@ -559,7 +575,13 @@ cd ~/code/inspect_vscode
 npm run compile && npm test
 ```
 
-### Full E2E (after Phase 2+3)
+### Phase 4
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+
+### Full E2E (after Phase 4)
 1. Run `scout view` with sample data
 2. Open in VS Code extension
 3. Verify scans list loads (uses V2 API)

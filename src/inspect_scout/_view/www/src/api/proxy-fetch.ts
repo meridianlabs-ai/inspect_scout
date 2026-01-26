@@ -19,6 +19,23 @@ export interface HttpProxyResponse {
 
 export const kMethodHttpRequest = "http_request";
 
+function isHttpProxyResponse(value: unknown): value is HttpProxyResponse {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("status" in value) || typeof value.status !== "number") return false;
+  if (!("headers" in value) || typeof value.headers !== "object" || value.headers === null) return false;
+  if (!("body" in value) || (typeof value.body !== "string" && value.body !== null)) return false;
+  if ("bodyEncoding" in value && value.bodyEncoding !== "utf8" && value.bodyEncoding !== "base64") return false;
+  return true;
+}
+
+function toHttpMethod(method: string): HttpProxyRequest["method"] {
+  const upper = method.toUpperCase();
+  if (upper === "GET" || upper === "POST" || upper === "PUT" || upper === "DELETE") {
+    return upper;
+  }
+  throw new Error(`Unsupported HTTP method: ${method}`);
+}
+
 /**
  * Creates a fetch function that proxies requests through JSON-RPC.
  * Used in VS Code webview to route HTTP requests through the extension host.
@@ -34,9 +51,7 @@ export function createProxyFetch(
     const urlObj = new URL(url, window.location.origin);
     const path = urlObj.pathname + urlObj.search;
 
-    const method = (
-      init?.method ?? "GET"
-    ).toUpperCase() as HttpProxyRequest["method"];
+    const method = toHttpMethod(init?.method ?? "GET");
 
     // Convert Headers to Record<string, string>
     const headers: Record<string, string> = {};
@@ -64,25 +79,17 @@ export function createProxyFetch(
     }
 
     const request: HttpProxyRequest = { method, path, headers, body };
-    const response = (await rpcClient(kMethodHttpRequest, [
-      request,
-    ])) as HttpProxyResponse;
-
-    // Decode body based on encoding
-    let responseBody: BodyInit | null = null;
-    if (response.body !== null) {
-      if (response.bodyEncoding === "base64") {
-        // Decode base64 to binary
-        const binary = atob(response.body);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        responseBody = bytes;
-      } else {
-        responseBody = response.body;
-      }
+    const response = await rpcClient(kMethodHttpRequest, [request]);
+    if (!isHttpProxyResponse(response)) {
+      throw new Error("Invalid HTTP proxy response from extension host");
     }
+
+    const responseBody: BodyInit | null =
+      response.body === null
+        ? null
+        : response.bodyEncoding === "base64"
+          ? Uint8Array.from(atob(response.body), (c) => c.charCodeAt(0))
+          : response.body;
 
     return new Response(responseBody, {
       status: response.status,

@@ -68,6 +68,13 @@ export function serverRequestApi(
     }
   }
 
+  async function mergeGlobalHeaders(headers: HeadersInit): Promise<void> {
+    if (getHeaders) {
+      const globalHeaders = await getHeaders();
+      Object.assign(headers, globalHeaders);
+    }
+  }
+
   const fetchType = async <T>(
     method: HttpMethod,
     path: string,
@@ -90,10 +97,7 @@ export function serverRequestApi(
           ...request?.headers,
         };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(responseHeaders, globalHeaders);
-    }
+    await mergeGlobalHeaders(responseHeaders);
 
     if (request?.body) {
       responseHeaders["Content-Type"] = "application/json";
@@ -148,10 +152,7 @@ export function serverRequestApi(
       ...headers,
     };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(requestHeaders, globalHeaders);
-    }
+    await mergeGlobalHeaders(requestHeaders);
 
     if (body) {
       requestHeaders["Content-Type"] = "application/json";
@@ -189,10 +190,7 @@ export function serverRequestApi(
       "Cache-Control": "no-cache",
     };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(headers, globalHeaders);
-    }
+    await mergeGlobalHeaders(headers);
 
     const response = await fetchFn(url, {
       method,

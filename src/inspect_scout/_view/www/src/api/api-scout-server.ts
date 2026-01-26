@@ -29,7 +29,12 @@ export const apiScoutServer = (
     disableSSE?: boolean;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl = "/api/v2", headerProvider, customFetch, disableSSE } = options;
+  const {
+    apiBaseUrl = "/api/v2",
+    headerProvider,
+    customFetch,
+    disableSSE,
+  } = options;
   const requestApi = serverRequestApi(apiBaseUrl, headerProvider, customFetch);
 
   return {

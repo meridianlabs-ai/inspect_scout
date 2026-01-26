@@ -26,12 +26,17 @@ export const kMethodHttpRequest = "http_request";
 export function createProxyFetch(
   rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): typeof fetch {
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
     const url = typeof input === "string" ? input : input.toString();
     const urlObj = new URL(url, window.location.origin);
     const path = urlObj.pathname + urlObj.search;
 
-    const method = (init?.method ?? "GET").toUpperCase() as HttpProxyRequest["method"];
+    const method = (
+      init?.method ?? "GET"
+    ).toUpperCase() as HttpProxyRequest["method"];
 
     // Convert Headers to Record<string, string>
     const headers: Record<string, string> = {};
@@ -59,7 +64,9 @@ export function createProxyFetch(
     }
 
     const request: HttpProxyRequest = { method, path, headers, body };
-    const response = (await rpcClient(kMethodHttpRequest, [request])) as HttpProxyResponse;
+    const response = (await rpcClient(kMethodHttpRequest, [
+      request,
+    ])) as HttpProxyResponse;
 
     // Decode body based on encoding
     let responseBody: BodyInit | null = null;

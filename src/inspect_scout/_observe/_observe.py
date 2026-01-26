@@ -37,6 +37,7 @@ from .context import (
     _current_context,
     _ObserveContextManager,
 )
+from .message_ids import MessageIdManager, apply_message_ids_to_event
 from .providers import (
     ObserveProvider,
     ObserveProviderName,
@@ -50,14 +51,22 @@ logger = logging.getLogger(__name__)
 async def _process_pending_captures(ctx: ObserveContext) -> None:
     """Process pending SDK captures and append events to transcript.
 
+    Creates a MessageIdManager per transcript (leaf) to ensure stable message IDs
+    based on content hash. Messages with identical content receive the same ID,
+    enabling cross-event message identity tracking.
+
     Args:
         ctx: The observe context containing pending captures.
     """
+    id_manager = MessageIdManager()
+
     for data, provider_key in ctx.pending_captures:
         provider_instance = get_provider_instance(provider_key)
         if provider_instance is not None:
             try:
                 event = await provider_instance.build_event(data)
+                if isinstance(event, ModelEvent):
+                    apply_message_ids_to_event(event, id_manager)
                 ctx.inspect_transcript._events.append(event)
             except Exception as e:
                 logger.warning(f"Failed to build event from {provider_key}: {e}")

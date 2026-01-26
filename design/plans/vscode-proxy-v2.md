@@ -487,24 +487,23 @@ Proxied fetch that routes through JSON-RPC (created in Phase 2, renamed from `pr
 Add capability detection and API selection:
 
 ```typescript
-import { getEmbeddedScanState } from "./utils/embeddedState";
-import { createJsonRpcFetch } from "./api/jsonrpc-fetch";
+const maybeGetVscodeContext = () => {
+  const vscodeApi = getVscodeApi();
+  return vscodeApi ? ([vscodeApi, webViewJsonRpcClient(vscodeApi)] as const) : undefined;
+};
 
 const selectApi = (): ScanApi => {
-  const vscodeApi = getVscodeApi();
-  if (vscodeApi) {
-    const rpcClient = webViewJsonRpcClient(vscodeApi);
-    const embeddedState = getEmbeddedScanState();
+  const vscodeContext = maybeGetVscodeContext();
+  const isV1 =
+    vscodeContext && (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2;
 
-    if ((embeddedState?.extensionProtocolVersion ?? 1) >= 2) {
-      // V2: HTTP proxy via JSON-RPC
-      const jsonRpcFetch = createJsonRpcFetch(rpcClient);
-      return apiScoutServer({ customFetch: jsonRpcFetch, disableSSE: true });
-    }
-    // V1 fallback for older extensions
-    return apiVscode(vscodeApi, rpcClient);
-  }
-  return apiScoutServer();
+  return isV1
+    ? apiVscode(vscodeContext[0], vscodeContext[1])
+    : apiScoutServer(
+        vscodeContext
+          ? { customFetch: createJsonRpcFetch(vscodeContext[1]), disableSSE: true }
+          : {}
+      );
 };
 ```
 

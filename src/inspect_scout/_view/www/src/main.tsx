@@ -29,22 +29,19 @@ if (!container) {
 // Render into the root
 const root = createRoot(container);
 
-// Select the API client
 const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
-  if (vscodeApi) {
-    const rpcClient = webViewJsonRpcClient(vscodeApi);
-    const embeddedState = getEmbeddedScanState();
-
-    if ((embeddedState?.extensionProtocolVersion ?? 1) >= 2) {
-      // V2: HTTP proxy via JSON-RPC
-      const jsonRpcFetch = createJsonRpcFetch(rpcClient);
-      return apiScoutServer({ customFetch: jsonRpcFetch, disableSSE: true });
-    }
-    // V1 fallback for older extensions
-    return apiVscode(vscodeApi, rpcClient);
+  if (!vscodeApi) {
+    return apiScoutServer();
   }
-  return apiScoutServer();
+
+  const rpcClient = webViewJsonRpcClient(vscodeApi);
+  return (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
+    ? apiVscode(vscodeApi, rpcClient)
+    : apiScoutServer({
+        customFetch: createJsonRpcFetch(rpcClient),
+        disableSSE: true,
+      });
 };
 
 // Create the API, store, and query client

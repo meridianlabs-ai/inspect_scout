@@ -72,6 +72,16 @@ describe("createJsonRpcFetch", () => {
       const request = rpcClient.mock.calls[0]![1]![0] as HttpProxyRequest;
       expect(request.path).toBe("/api/resource?id=123");
     });
+
+    it("handles Request object input", async () => {
+      const rpcClient = mockRpcClient(validResponse);
+      const fetch = createJsonRpcFetch(rpcClient);
+
+      await fetch(new Request("http://localhost/api/from-request?x=1"));
+
+      const request = rpcClient.mock.calls[0]![1]![0] as HttpProxyRequest;
+      expect(request.path).toBe("/api/from-request?x=1");
+    });
   });
 
   describe("headers conversion", () => {

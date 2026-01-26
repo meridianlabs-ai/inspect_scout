@@ -3,6 +3,10 @@
  * Routes fetch requests through JSON-RPC to the extension host.
  */
 
+import { kMethodHttpRequest } from "./jsonrpc";
+
+export { kMethodHttpRequest };
+
 export interface HttpProxyRequest {
   method: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
@@ -16,8 +20,6 @@ export interface HttpProxyResponse {
   body: string | null;
   bodyEncoding?: "utf8" | "base64";
 }
-
-export const kMethodHttpRequest = "http_request";
 
 function isHttpProxyResponse(value: unknown): value is HttpProxyResponse {
   if (typeof value !== "object" || value === null) return false;
@@ -66,7 +68,12 @@ export function createJsonRpcFetch(
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> => {
-    const url = typeof input === "string" ? input : input.toString();
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof Request
+          ? input.url
+          : input.toString();
     const urlObj = new URL(url, window.location.origin);
     const path = urlObj.pathname + urlObj.search;
 

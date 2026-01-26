@@ -53,7 +53,7 @@ Trace a `getScans` call from React hook → Scout server → response.
    - calls api.getScans(scansDir) via React Query
    ↓
 3. useApi() returns ScanApi from ApiContext
-   - main.tsx detected supportsHttpProxy, selected apiScoutServer(proxyFetch)
+   - main.tsx detected supportsHttpProxy, selected apiScoutServer(jsonRpcFetch)
    ↓
 4. apiScoutServer.getScans() [www/src/api/api-scout-server.ts:93]
    - requestApi.fetchString("POST", `/scans/${encodeBase64Url(scansDir)}`, {}, body)
@@ -62,7 +62,7 @@ Trace a `getScans` call from React hook → Scout server → response.
    - normally calls fetch(url, {...})
    - WITH proxyFetch: calls proxyFetch(url, {...})
    ↓
-6. proxyFetch() [NEW: www/src/api/proxy-fetch.ts]
+6. jsonRpcFetch() [www/src/api/jsonrpc-fetch.ts]
    - converts fetch args to HttpProxyRequest
    - calls rpcClient("http_request", [{ method: "POST", path: "/scans/...", body: "..." }])
    ↓
@@ -80,7 +80,7 @@ Trace a `getScans` call from React hook → Scout server → response.
 11. Extension: builds HttpProxyResponse { status, headers, body, bodyEncoding }
     - postMessage({ jsonrpc: "2.0", id, result: response })
     ↓
-12. proxyFetch() reconstructs Response object from HttpProxyResponse
+12. jsonRpcFetch() reconstructs Response object from HttpProxyResponse
     ↓
 13. serverRequestApi.fetchString() continues normally (text(), parse, etc.)
     ↓
@@ -254,7 +254,7 @@ panel.webview.onDidReceiveMessage(async (data) => {
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ PROXY MODE (new)                                                    │
-│ Webview: apiScoutServer (V2) → proxyFetch → http_request RPC        │
+│ Webview: apiScoutServer (V2) → jsonRpcFetch → http_request RPC      │
 │    → Extension: single handler → HTTP /api/v2/* → Scout Server      │
 └─────────────────────────────────────────────────────────────────────┘
 
@@ -350,7 +350,7 @@ E2E: Open VS Code extension, verify scans list still loads correctly.
 
 Additive changes only—no behavior change until Phase 4 activates.
 
-### 2.1 New: `www/src/api/proxy-fetch.ts` ✅
+### 2.1 New: `www/src/api/jsonrpc-fetch.ts` ✅
 Create proxied fetch that routes through JSON-RPC:
 
 ```typescript
@@ -474,9 +474,58 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 ---
 
-## Phase 4: Extension (inspect_vscode)
+## Phase 4: Client-Side API Selection (inspect_scout) ✅ COMPLETE
 
-### 4.1 Modify: `src/core/package/view-server.ts`
+Switch `main.tsx` to use `apiScoutServer` (with `disableSSE` and `customFetch`) when `extensionProtocolVersion >= 2`. Uses `jsonrpc-fetch.ts` from Phase 2.
+
+### 4.1 New: `www/src/api/jsonrpc-fetch.ts` ✅
+
+Proxied fetch that routes through JSON-RPC (created in Phase 2, renamed from `proxy-fetch.ts`).
+
+### 4.2 Modify: `www/src/main.tsx` ✅
+
+Add capability detection and API selection:
+
+```typescript
+const maybeGetVscodeContext = () => {
+  const vscodeApi = getVscodeApi();
+  return vscodeApi ? ([vscodeApi, webViewJsonRpcClient(vscodeApi)] as const) : undefined;
+};
+
+const selectApi = (): ScanApi => {
+  const vscodeContext = maybeGetVscodeContext();
+  const isV1 =
+    vscodeContext && (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2;
+
+  return isV1
+    ? apiVscode(vscodeContext[0], vscodeContext[1])
+    : apiScoutServer(
+        vscodeContext
+          ? { customFetch: createJsonRpcFetch(vscodeContext[1]), disableSSE: true }
+          : {}
+      );
+};
+```
+
+### Verification (Phase 4)
+```bash
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+
+E2E: Extension still uses V1 (no `extensionProtocolVersion` in state yet).
+
+### Files Summary (Phase 4)
+| File | Change |
+|------|--------|
+| `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
+| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
+
+---
+
+## Phase 5: Extension (inspect_vscode)
+
+### 5.1 Modify: `src/core/package/view-server.ts`
 Add generic HTTP method:
 
 ```typescript
@@ -503,7 +552,7 @@ protected async apiGeneric(
 }
 ```
 
-### 4.2 Modify: `src/providers/scout/scout-view-server.ts`
+### 5.2 Modify: `src/providers/scout/scout-view-server.ts`
 Add proxy handler:
 
 ```typescript
@@ -521,7 +570,7 @@ async httpRequest(request: HttpProxyRequest): Promise<HttpProxyResponse> {
 }
 ```
 
-### 4.3 Modify: `src/providers/scanview/scanview-panel.ts`
+### 5.3 Modify: `src/providers/scanview/scanview-panel.ts`
 Register handler:
 
 ```typescript
@@ -533,7 +582,7 @@ this._rpcDisconnect = webviewPanelJsonRpcServer(panel_, {
 });
 ```
 
-### 4.4 Modify: webview HTML injection
+### 5.4 Modify: webview HTML injection
 Include `extensionProtocolVersion` in existing `scanview-state` element:
 
 ```html
@@ -544,41 +593,9 @@ Include `extensionProtocolVersion` in existing `scanview-state` element:
 
 ---
 
-## Phase 5: Activate HTTP Proxy (inspect_scout)
+## Phase 6: E2E Testing
 
-Requires Phase 4 complete (extension must handle `http_request`).
-
-### 5.1 Modify: `www/src/main.tsx`
-Capability detection:
-
-```typescript
-const selectApi = (): ScanApi => {
-  const vscodeApi = getVscodeApi();
-  if (vscodeApi) {
-    const rpcClient = webViewJsonRpcClient(vscodeApi);
-    const embeddedState = getEmbeddedScanState();
-
-    if ((embeddedState?.extensionProtocolVersion ?? 1) >= 2) {
-      // V2 via proxy
-      const proxyFetch = createProxyFetch(rpcClient);
-      return apiScoutServer({
-        apiBaseUrl: "/api/v2",
-        customFetch: proxyFetch,
-        disableSSE: true,
-      });
-    }
-    // V1 fallback
-    return apiVscode(vscodeApi, rpcClient);
-  }
-  return apiScoutServer();
-};
-```
-
-### Verification (Phase 5)
-```bash
-cd src/inspect_scout/_view/www
-pnpm typecheck && pnpm lint && pnpm test && pnpm build
-```
+Requires Phase 5 complete (extension must handle `http_request` and set `extensionProtocolVersion: 2`).
 
 ---
 
@@ -593,7 +610,6 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ### Phase 2: Frontend HTTP Proxy Infrastructure ✅
 | File | Change |
 |------|--------|
-| `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl ✅ |
 | `www/src/api/api-scout-server.ts` | Add optional `customFetch`, `disableSSE` params ✅ |
 | `www/src/api/request.ts` | Add optional `customFetch` param to `serverRequestApi` ✅ |
 | `www/src/utils/embeddedState.ts` | Add `extensionProtocolVersion` to `EmbeddedScanState` ✅ |
@@ -604,18 +620,19 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint ✅ |
 | `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true ✅ |
 
-### Phase 4: Extension
+### Phase 4: Client-Side API Selection ✅
+| File | Change |
+|------|--------|
+| `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
+| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
+
+### Phase 5: Extension
 | File | Change |
 |------|--------|
 | `vscode/.../view-server.ts` | Add `apiGeneric()` |
 | `vscode/.../scout-view-server.ts` | Add `httpRequest()` |
 | `vscode/.../scanview-panel.ts` | Register `http_request` handler |
 | `vscode/.../webview.ts` | Add `extensionProtocolVersion: 2` to `scanview-state` element |
-
-### Phase 5: Activate HTTP Proxy
-| File | Change |
-|------|--------|
-| `www/src/main.tsx` | Capability detection, switch to V2, pass `disableSSE: true` |
 
 ---
 
@@ -655,17 +672,17 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 ### Phase 4
 ```bash
-cd ~/code/inspect_vscode
-npm run compile && npm test
-```
-
-### Phase 5
-```bash
 cd src/inspect_scout/_view/www
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
-### Full E2E (after Phase 5)
+### Phase 5
+```bash
+cd ~/code/inspect_vscode
+npm run compile && npm test
+```
+
+### Full E2E (after Phase 6)
 1. Run `scout view` with sample data
 2. Open in VS Code extension
 3. Verify scans list loads (uses V2 API)

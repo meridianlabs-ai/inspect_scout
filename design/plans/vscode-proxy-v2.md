@@ -53,7 +53,7 @@ Trace a `getScans` call from React hook → Scout server → response.
    - calls api.getScans(scansDir) via React Query
    ↓
 3. useApi() returns ScanApi from ApiContext
-   - main.tsx detected supportsHttpProxy, selected apiScoutServer(proxyFetch)
+   - main.tsx detected supportsHttpProxy, selected apiScoutServer(jsonRpcFetch)
    ↓
 4. apiScoutServer.getScans() [www/src/api/api-scout-server.ts:93]
    - requestApi.fetchString("POST", `/scans/${encodeBase64Url(scansDir)}`, {}, body)
@@ -62,7 +62,7 @@ Trace a `getScans` call from React hook → Scout server → response.
    - normally calls fetch(url, {...})
    - WITH proxyFetch: calls proxyFetch(url, {...})
    ↓
-6. proxyFetch() [NEW: www/src/api/proxy-fetch.ts]
+6. jsonRpcFetch() [www/src/api/jsonrpc-fetch.ts]
    - converts fetch args to HttpProxyRequest
    - calls rpcClient("http_request", [{ method: "POST", path: "/scans/...", body: "..." }])
    ↓
@@ -80,7 +80,7 @@ Trace a `getScans` call from React hook → Scout server → response.
 11. Extension: builds HttpProxyResponse { status, headers, body, bodyEncoding }
     - postMessage({ jsonrpc: "2.0", id, result: response })
     ↓
-12. proxyFetch() reconstructs Response object from HttpProxyResponse
+12. jsonRpcFetch() reconstructs Response object from HttpProxyResponse
     ↓
 13. serverRequestApi.fetchString() continues normally (text(), parse, etc.)
     ↓
@@ -254,7 +254,7 @@ panel.webview.onDidReceiveMessage(async (data) => {
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ PROXY MODE (new)                                                    │
-│ Webview: apiScoutServer (V2) → proxyFetch → http_request RPC        │
+│ Webview: apiScoutServer (V2) → jsonRpcFetch → http_request RPC      │
 │    → Extension: single handler → HTTP /api/v2/* → Scout Server      │
 └─────────────────────────────────────────────────────────────────────┘
 
@@ -350,7 +350,7 @@ E2E: Open VS Code extension, verify scans list still loads correctly.
 
 Additive changes only—no behavior change until Phase 4 activates.
 
-### 2.1 New: `www/src/api/proxy-fetch.ts` ✅
+### 2.1 New: `www/src/api/jsonrpc-fetch.ts` ✅
 Create proxied fetch that routes through JSON-RPC:
 
 ```typescript
@@ -474,68 +474,21 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 ---
 
-## Phase 4: Client-Side API Selection (inspect_scout)
+## Phase 4: Client-Side API Selection (inspect_scout) ✅ COMPLETE
 
-Switch `main.tsx` to use `apiScoutServer` (with `disableSSE` and `customFetch`) when `extensionProtocolVersion >= 2`. Requires `proxy-fetch.ts` from Phase 2.
+Switch `main.tsx` to use `apiScoutServer` (with `disableSSE` and `customFetch`) when `extensionProtocolVersion >= 2`. Uses `jsonrpc-fetch.ts` from Phase 2.
 
-### 4.1 New: `www/src/api/proxy-fetch.ts`
+### 4.1 New: `www/src/api/jsonrpc-fetch.ts` ✅
 
-Create the proxied fetch implementation:
+Proxied fetch that routes through JSON-RPC (created in Phase 2, renamed from `proxy-fetch.ts`).
 
-```typescript
-export interface HttpProxyRequest {
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  path: string;
-  headers?: Record<string, string>;
-  body?: string;
-}
-
-export interface HttpProxyResponse {
-  status: number;
-  headers: Record<string, string>;
-  body: string | null;
-  bodyEncoding?: "utf8" | "base64";
-}
-
-export const kMethodHttpRequest = "http_request";
-
-export function createProxyFetch(
-  rpcClient: (method: string, params?: unknown) => Promise<unknown>
-): typeof fetch {
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === "string" ? input : input.toString();
-    const path = new URL(url, "http://localhost").pathname;
-
-    const request: HttpProxyRequest = {
-      method: (init?.method ?? "GET") as HttpProxyRequest["method"],
-      path,
-      headers: init?.headers as Record<string, string> | undefined,
-      body: init?.body as string | undefined,
-    };
-
-    const response = (await rpcClient(kMethodHttpRequest, [request])) as HttpProxyResponse;
-
-    const body = response.body
-      ? response.bodyEncoding === "base64"
-        ? Uint8Array.from(atob(response.body), (c) => c.charCodeAt(0))
-        : response.body
-      : null;
-
-    return new Response(body, {
-      status: response.status,
-      headers: response.headers,
-    });
-  };
-}
-```
-
-### 4.2 Modify: `www/src/main.tsx`
+### 4.2 Modify: `www/src/main.tsx` ✅
 
 Add capability detection and API selection:
 
 ```typescript
 import { getEmbeddedScanState } from "./utils/embeddedState";
-import { createProxyFetch } from "./api/proxy-fetch";
+import { createJsonRpcFetch } from "./api/jsonrpc-fetch";
 
 const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
@@ -544,12 +497,9 @@ const selectApi = (): ScanApi => {
     const embeddedState = getEmbeddedScanState();
 
     if ((embeddedState?.extensionProtocolVersion ?? 1) >= 2) {
-      // V2 via HTTP proxy
-      const proxyFetch = createProxyFetch(rpcClient);
-      return apiScoutServer({
-        customFetch: proxyFetch,
-        disableSSE: true,
-      });
+      // V2: HTTP proxy via JSON-RPC
+      const jsonRpcFetch = createJsonRpcFetch(rpcClient);
+      return apiScoutServer({ customFetch: jsonRpcFetch, disableSSE: true });
     }
     // V1 fallback for older extensions
     return apiVscode(vscodeApi, rpcClient);
@@ -569,8 +519,8 @@ E2E: Extension still uses V1 (no `extensionProtocolVersion` in state yet).
 ### Files Summary (Phase 4)
 | File | Change |
 |------|--------|
-| `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl |
-| `www/src/main.tsx` | Add capability detection, switch API based on version |
+| `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
+| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
 
 ---
 
@@ -671,11 +621,11 @@ Requires Phase 5 complete (extension must handle `http_request` and set `extensi
 | `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint ✅ |
 | `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true ✅ |
 
-### Phase 4: Client-Side API Selection
+### Phase 4: Client-Side API Selection ✅
 | File | Change |
 |------|--------|
-| `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl |
-| `www/src/main.tsx` | Add capability detection, switch API based on version |
+| `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
+| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
 
 ### Phase 5: Extension
 | File | Change |

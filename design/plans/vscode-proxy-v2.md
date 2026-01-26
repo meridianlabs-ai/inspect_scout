@@ -391,14 +391,18 @@ export const apiScoutServer = (options?: {
 When `disableSSE` is true, `connectTopicUpdates` returns a no-op.
 
 ### 2.3 Modify: `www/src/utils/embeddedState.ts` ✅
-Add protocol version field:
+Add separate interface and getter for extension metadata:
 
 ```typescript
-interface EmbeddedScanState {
-  // existing fields...
+interface VscodeExtensionInfo {
   protocolVersion?: number;  // undefined/1 = legacy V1, 2 = HTTP proxy support
 }
+
+function getVscodeExtensionInfo(): VscodeExtensionInfo | null { ... }
 ```
+
+Extension injects `<script id="vscode-extension-info">{"protocolVersion": 2}</script>`.
+Keeps extension↔frontend protocol info separate from scan-specific state.
 
 ### Verification (Phase 2)
 ```bash
@@ -469,11 +473,12 @@ this._rpcDisconnect = webviewPanelJsonRpcServer(panel_, {
 ```
 
 ### 3.4 Modify: webview HTML injection
-Inject protocol version in embedded state:
+Inject extension info as separate script tag:
 
-```typescript
-// When rendering webview HTML, add to scanview-state:
-{ "type": "updateState", "url": "...", "protocolVersion": 2 }
+```html
+<script id="vscode-extension-info" type="application/json">
+{"protocolVersion": 2}
+</script>
 ```
 
 ---
@@ -490,9 +495,9 @@ const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
   if (vscodeApi) {
     const rpcClient = webViewJsonRpcClient(vscodeApi);
-    const embeddedState = getEmbeddedScanState();
+    const extensionInfo = getVscodeExtensionInfo();
 
-    if ((embeddedState?.protocolVersion ?? 1) >= 2) {
+    if ((extensionInfo?.protocolVersion ?? 1) >= 2) {
       // V2 via proxy
       const proxyFetch = createProxyFetch(rpcClient);
       return apiScoutServer({
@@ -530,7 +535,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `www/src/api/proxy-fetch.ts` | NEW - proxied fetch impl ✅ |
 | `www/src/api/api-scout-server.ts` | Add optional `customFetch`, `disableSSE` params ✅ |
 | `www/src/api/request.ts` | Add optional `customFetch` param to `serverRequestApi` ✅ |
-| `www/src/utils/embeddedState.ts` | Add `protocolVersion` field ✅ |
+| `www/src/utils/embeddedState.ts` | Add `VscodeExtensionInfo` interface and `getVscodeExtensionInfo()` ✅ |
 
 ### Phase 3: Extension
 | File | Change |
@@ -538,7 +543,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `vscode/.../view-server.ts` | Add `apiGeneric()` |
 | `vscode/.../scout-view-server.ts` | Add `httpRequest()` |
 | `vscode/.../scanview-panel.ts` | Register `http_request` handler |
-| `vscode/.../webview.ts` | Inject capability flag |
+| `vscode/.../webview.ts` | Inject `vscode-extension-info` script tag with `protocolVersion: 2` |
 
 ### Phase 4: Activate HTTP Proxy
 | File | Change |

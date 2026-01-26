@@ -6,6 +6,9 @@ export interface EmbeddedScanState {
   dir: string;
   scan: string;
   scanner?: string;
+}
+
+export interface VscodeExtensionInfo {
   /** Protocol version: undefined/1 = legacy V1, 2 = HTTP proxy support */
   protocolVersion?: number;
 }
@@ -24,22 +27,40 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
   }
 
   try {
-    const state: {
-      type: string;
-      url: string;
-      scanner?: string;
-      protocolVersion?: number;
-    } = JSON5.parse(embeddedState.textContent);
+    const state: { type: string; url: string; scanner?: string } = JSON5.parse(
+      embeddedState.textContent
+    );
 
     if (state.type === "updateState" && state.url) {
       const url = state.url;
       const dir = dirname(url);
       const scan = basename(url);
-      return { dir, scan, scanner: state.scanner, protocolVersion: state.protocolVersion };
+      return { dir, scan, scanner: state.scanner };
     }
   } catch (error) {
     console.error("Failed to parse embedded state:", error);
   }
 
   return null;
+}
+
+/**
+ * Reads VS Code extension metadata injected into the HTML document.
+ * Separate from scan state to cleanly distinguish extension↔frontend protocol info.
+ */
+export function getVscodeExtensionInfo(): VscodeExtensionInfo | null {
+  const element = document.getElementById(
+    "vscode-extension-info"
+  ) as HTMLScriptElement | null;
+
+  if (!element?.textContent) {
+    return null;
+  }
+
+  try {
+    return JSON5.parse<VscodeExtensionInfo>(element.textContent);
+  } catch (error) {
+    console.error("Failed to parse vscode-extension-info:", error);
+    return null;
+  }
 }

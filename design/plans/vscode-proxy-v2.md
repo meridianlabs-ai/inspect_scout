@@ -267,7 +267,7 @@ panel.webview.onDidReceiveMessage(async (data) => {
 
 ---
 
-## Phase 1: Remove Duplicate Caching (inspect_scout)
+## Phase 1: Remove Duplicate Caching (inspect_scout) ✅ COMPLETE
 
 Independent prerequisite. Can be done and verified before any V2 work.
 
@@ -328,8 +328,9 @@ File only used by `api-vscode.ts`. Delete entirely.
 
 | File | Change |
 |------|--------|
-| `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData |
-| `www/src/api/api-cache.ts` | DELETE |
+| `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData ✅ |
+| `www/src/api/api-scout-server-v1.ts` | Remove AsyncCache, simplify readScans ✅ (also used cache) |
+| `www/src/api/api-cache.ts` | DELETE ✅ |
 
 ### Verification (Phase 1)
 

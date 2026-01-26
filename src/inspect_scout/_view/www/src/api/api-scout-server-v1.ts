@@ -11,7 +11,6 @@ import {
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi, TopicVersions } from "./api";
-import { AsyncCache } from "./api-cache";
 import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -26,29 +25,18 @@ export const apiScoutServerV1 = (
   const { apiBaseUrl, headerProvider, resultsDir } = options;
   const requestApi = serverRequestApi(apiBaseUrl || "/api", headerProvider);
 
-  // Cache for scans data with promise deduplication and TTL-based expiration
-  const scansCache = new AsyncCache<{ scans: Status[]; results_dir: string }>(
-    10000
-  );
-
+  // Fetch scans data - caching is handled by react-query at the hook level
   const readScans = async () => {
-    // Use resultsDir as cache key (or "default" if not specified)
-    const cacheKey = resultsDir || "default";
-
-    return scansCache.get(cacheKey, async () => {
-      let query = "/scans?status_only=true";
-      if (resultsDir) {
-        query += `&results_dir=${encodeURIComponent(resultsDir)}`;
-      }
-      const response = (
-        await requestApi.fetchType<{ scans: Status[]; results_dir: string }>(
-          "GET",
-          query
-        )
-      ).parsed;
-
-      return response;
-    });
+    let query = "/scans?status_only=true";
+    if (resultsDir) {
+      query += `&results_dir=${encodeURIComponent(resultsDir)}`;
+    }
+    return (
+      await requestApi.fetchType<{ scans: Status[]; results_dir: string }>(
+        "GET",
+        query
+      )
+    ).parsed;
   };
 
   return {

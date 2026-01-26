@@ -14,7 +14,6 @@ import {
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi, TopicVersions } from "./api";
-import { AsyncCache } from "./api-cache";
 import {
   kMethodGetScan,
   kMethodGetScannerDataframe,
@@ -24,32 +23,19 @@ import {
 
 export const apiVscode = (
   vscodeApi: VSCodeApi,
-  rpcClient: (method: string, params?: unknown) => Promise<unknown>,
-  cacheTtlMs: number = 10000
+  rpcClient: (method: string, params?: unknown) => Promise<unknown>
 ): ScanApi => {
-  // Cache for scans data with promise deduplication and TTL-based expiration
-  // VSCode API uses a single cache key since the scan list is tied to the extension instance
-  const scansCache = new AsyncCache<{ scans: Status[]; results_dir: string }>(
-    cacheTtlMs
-  );
-
-  // Shared method to fetch scans data (used by both getScans and getScansDir)
+  // Fetch scans data (used by both getScans and getScansDir)
+  // Note: caching is handled by react-query at the hook level
   const fetchScansData = async (): Promise<{
     scans: Status[];
     results_dir: string;
   }> => {
-    return scansCache.get("vscode-scans", async () => {
-      const response = (await rpcClient(kMethodGetScans, [])) as string;
-      if (response) {
-        const result = JSON5.parse<{ scans: Status[]; results_dir: string }>(
-          response
-        );
-        // For VSCode, we don't have a separate scansDir, so we use empty string
-        return { scans: result.scans, results_dir: result.results_dir };
-      } else {
-        throw new Error("Invalid response for getScans");
-      }
-    });
+    const response = (await rpcClient(kMethodGetScans, [])) as string;
+    if (response) {
+      return JSON5.parse<{ scans: Status[]; results_dir: string }>(response);
+    }
+    throw new Error("Invalid response for getScans");
   };
 
   return {

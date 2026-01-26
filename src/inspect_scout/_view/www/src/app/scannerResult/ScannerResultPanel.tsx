@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, ReactNode, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
@@ -9,7 +9,11 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolButton } from "../../components/ToolButton";
 import { EventNode, EventType } from "../../components/transcript/types";
-import { getScannerParam } from "../../router/url";
+import {
+  getScannerParam,
+  getValidationParam,
+  updateValidationParam,
+} from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useScanRoute } from "../hooks/useScanRoute";
@@ -53,6 +57,16 @@ export const ScannerResultPanel: FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
+
+  // Validation sidebar - URL is the source of truth
+  const validationSidebarCollapsed = !getValidationParam(searchParams);
+
+  const toggleValidationSidebar = useCallback(() => {
+    setSearchParams((prevParams) => {
+      const isCurrentlyOpen = getValidationParam(prevParams);
+      return updateValidationParam(prevParams, !isCurrentlyOpen);
+    });
+  }, [setSearchParams]);
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
@@ -114,24 +128,52 @@ export const ScannerResultPanel: FC = () => {
   }, [highlightLabeled, setHighlightLabeled]);
 
   const tools = useMemo(() => {
+    const toolButtons: ReactNode[] = [];
+
+    // Existing highlight refs button (keep as-is)
     if (
       selectedTab === kTabIdInput &&
       selectedResult?.inputType === "transcript" &&
       selectedResult?.messageReferences.length > 0
     ) {
-      return [
+      toolButtons.push(
         <ToolButton
           icon={ApplicationIcons.highlight}
           key="highlight-labeled"
           latched={!!highlightLabeled}
           onClick={toggleHighlightLabeled}
           label="Highlight Refs"
-        />,
-      ];
-    } else {
-      return [];
+        />
+      );
     }
-  }, [highlightLabeled, toggleHighlightLabeled, selectedTab, selectedResult]);
+
+    // Validation button - only show when transcriptId is available
+    if (selectedResult?.transcriptId) {
+      toolButtons.push(
+        <ToolButton
+          key="validation-sidebar-toggle"
+          label="Validation"
+          icon={ApplicationIcons.edit}
+          onClick={toggleValidationSidebar}
+          title={
+            validationSidebarCollapsed
+              ? "Show validation editor"
+              : "Hide validation editor"
+          }
+          subtle={true}
+        />
+      );
+    }
+
+    return toolButtons;
+  }, [
+    highlightLabeled,
+    toggleHighlightLabeled,
+    selectedTab,
+    selectedResult,
+    toggleValidationSidebar,
+    validationSidebarCollapsed,
+  ]);
 
   return (
     <div className={clsx(styles.root)}>
@@ -189,6 +231,8 @@ export const ScannerResultPanel: FC = () => {
                 <ResultPanel
                   resultData={selectedResult}
                   inputData={inputData}
+                  transcriptId={selectedResult.transcriptId}
+                  showValidationSidebar={!validationSidebarCollapsed}
                 />
               </TabPanel>
             ) : undefined}

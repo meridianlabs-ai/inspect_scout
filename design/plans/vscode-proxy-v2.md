@@ -388,7 +388,7 @@ export const apiScoutServer = (options?: {
 }): ScanApi => { ... }
 ```
 
-When `disableSSE` is true, `connectTopicUpdates` returns a no-op.
+When `disableSSE` is true, `connectTopicUpdates` uses polling instead of SSE.
 
 ### 2.3 Modify: `www/src/utils/embeddedState.ts` ✅
 Add `extensionProtocolVersion` field to `EmbeddedScanState`:
@@ -414,9 +414,71 @@ E2E: Existing behavior unchanged—VS Code extension still uses V1 path.
 
 ---
 
-## Phase 3: Extension (inspect_vscode)
+## Phase 3: Polling Fallback for Topic Updates (inspect_scout)
 
-### 3.1 Modify: `src/core/package/view-server.ts`
+Replace SSE-only topic updates with polling fallback for VS Code proxy mode.
+
+### 3.1 Modify: `src/inspect_scout/_view/_api_v2_topics.py`
+Add non-streaming `/topics` endpoint:
+
+```python
+@router.get(
+    "/topics",
+    summary="Get current topic versions",
+    description="Returns current topic versions dict for polling clients.",
+)
+async def get_topics() -> dict[str, str]:
+    """Return current topic versions."""
+    return topic_versions()
+```
+
+### 3.2 Modify: `www/src/api/api-scout-server.ts`
+Replace no-op with polling when `disableSSE` is true:
+
+```typescript
+connectTopicUpdates: (
+  onUpdate: (topVersions: TopicVersions) => void
+): (() => void) => {
+  if (disableSSE) {
+    // Poll /topics every 10s for VS Code proxy mode
+    const poll = async () => {
+      const result = await requestApi.fetchString("GET", "/topics");
+      onUpdate(JSON.parse(result.raw) as TopicVersions);
+    };
+    poll(); // Initial fetch
+    const intervalId = setInterval(poll, 10000);
+    return () => clearInterval(intervalId);
+  }
+
+  // SSE mode (default)
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let eventSource: EventSource | undefined;
+  // ... existing SSE code ...
+}
+```
+
+### Verification (Phase 3)
+```bash
+# Python
+cd src/inspect_scout
+make check && make test
+
+# TypeScript
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+
+### Files Summary (Phase 3)
+| File | Change |
+|------|--------|
+| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint |
+| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true |
+
+---
+
+## Phase 4: Extension (inspect_vscode)
+
+### 4.1 Modify: `src/core/package/view-server.ts`
 Add generic HTTP method:
 
 ```typescript
@@ -443,7 +505,7 @@ protected async apiGeneric(
 }
 ```
 
-### 3.2 Modify: `src/providers/scout/scout-view-server.ts`
+### 4.2 Modify: `src/providers/scout/scout-view-server.ts`
 Add proxy handler:
 
 ```typescript
@@ -461,7 +523,7 @@ async httpRequest(request: HttpProxyRequest): Promise<HttpProxyResponse> {
 }
 ```
 
-### 3.3 Modify: `src/providers/scanview/scanview-panel.ts`
+### 4.3 Modify: `src/providers/scanview/scanview-panel.ts`
 Register handler:
 
 ```typescript
@@ -473,7 +535,7 @@ this._rpcDisconnect = webviewPanelJsonRpcServer(panel_, {
 });
 ```
 
-### 3.4 Modify: webview HTML injection
+### 4.4 Modify: webview HTML injection
 Include `extensionProtocolVersion` in existing `scanview-state` element:
 
 ```html
@@ -484,11 +546,11 @@ Include `extensionProtocolVersion` in existing `scanview-state` element:
 
 ---
 
-## Phase 4: Activate HTTP Proxy (inspect_scout)
+## Phase 5: Activate HTTP Proxy (inspect_scout)
 
-Requires Phase 3 complete (extension must handle `http_request`).
+Requires Phase 4 complete (extension must handle `http_request`).
 
-### 4.1 Modify: `www/src/main.tsx`
+### 5.1 Modify: `www/src/main.tsx`
 Capability detection:
 
 ```typescript
@@ -514,7 +576,7 @@ const selectApi = (): ScanApi => {
 };
 ```
 
-### Verification (Phase 4)
+### Verification (Phase 5)
 ```bash
 cd src/inspect_scout/_view/www
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
@@ -538,7 +600,13 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `www/src/api/request.ts` | Add optional `customFetch` param to `serverRequestApi` ✅ |
 | `www/src/utils/embeddedState.ts` | Add `extensionProtocolVersion` to `EmbeddedScanState` ✅ |
 
-### Phase 3: Extension
+### Phase 3: Polling Fallback
+| File | Change |
+|------|--------|
+| `src/inspect_scout/_view/_api_v2_topics.py` | Add `/topics` GET endpoint |
+| `www/src/api/api-scout-server.ts` | Replace no-op with polling when `disableSSE` is true |
+
+### Phase 4: Extension
 | File | Change |
 |------|--------|
 | `vscode/.../view-server.ts` | Add `apiGeneric()` |
@@ -546,7 +614,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 | `vscode/.../scanview-panel.ts` | Register `http_request` handler |
 | `vscode/.../webview.ts` | Add `extensionProtocolVersion: 2` to `scanview-state` element |
 
-### Phase 4: Activate HTTP Proxy
+### Phase 5: Activate HTTP Proxy
 | File | Change |
 |------|--------|
 | `www/src/main.tsx` | Capability detection, switch to V2, pass `disableSSE: true` |
@@ -578,17 +646,28 @@ E2E: Existing behavior unchanged—VS Code extension still uses V1.
 
 ### Phase 3
 ```bash
+# Python
+cd src/inspect_scout
+make check && make test
+
+# TypeScript
+cd src/inspect_scout/_view/www
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
+
+### Phase 4
+```bash
 cd ~/code/inspect_vscode
 npm run compile && npm test
 ```
 
-### Phase 4
+### Phase 5
 ```bash
 cd src/inspect_scout/_view/www
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
-### Full E2E (after Phase 4)
+### Full E2E (after Phase 5)
 1. Run `scout view` with sample data
 2. Open in VS Code extension
 3. Verify scans list loads (uses V2 API)

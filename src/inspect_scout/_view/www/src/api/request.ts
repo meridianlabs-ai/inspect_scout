@@ -43,8 +43,10 @@ export interface ServerRequestApi {
 
 export function serverRequestApi(
   baseUrl?: string,
-  getHeaders?: HeaderProvider
+  getHeaders?: HeaderProvider,
+  customFetch?: typeof fetch
 ): ServerRequestApi {
+  const fetchFn = customFetch ?? fetch;
   const apiUrl = baseUrl || "";
 
   function buildApiUrl(path: string): string {
@@ -63,6 +65,13 @@ export function serverRequestApi(
       );
     } catch (error) {
       return false;
+    }
+  }
+
+  async function mergeGlobalHeaders(headers: HeadersInit): Promise<void> {
+    if (getHeaders) {
+      const globalHeaders = await getHeaders();
+      Object.assign(headers, globalHeaders);
     }
   }
 
@@ -88,16 +97,13 @@ export function serverRequestApi(
           ...request?.headers,
         };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(responseHeaders, globalHeaders);
-    }
+    await mergeGlobalHeaders(responseHeaders);
 
     if (request?.body) {
       responseHeaders["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers: responseHeaders,
       body: request?.body,
@@ -146,16 +152,13 @@ export function serverRequestApi(
       ...headers,
     };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(requestHeaders, globalHeaders);
-    }
+    await mergeGlobalHeaders(requestHeaders);
 
     if (body) {
       requestHeaders["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers: requestHeaders,
       body,
@@ -187,12 +190,9 @@ export function serverRequestApi(
       "Cache-Control": "no-cache",
     };
 
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(headers, globalHeaders);
-    }
+    await mergeGlobalHeaders(headers);
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers,
       credentials: isApiCrossOrigin() ? "include" : "same-origin",

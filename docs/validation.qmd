@@ -46,6 +46,8 @@ validation = validation_set("validation.csv", split=["dev", "test"])
 
 When filtering by split, only cases with matching split values are included. Cases without a split value are excluded when a split filter is applied.
 
+<!----
+
 ## Validating Labels
 
 When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate whether results with specific labels are present or absent. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
@@ -97,6 +99,8 @@ For YAML/JSON files, use a labels key instead of target:
     jailbreak: true 
     misconfig: false
 ```
+
+---->
 
 ## Predicates
 

@@ -293,29 +293,29 @@ See the [Results](results.qmd) article for more details on the columns available
 
 ## Validation
 
-As you are developing scanners you may want to validate them against some ground truth regarding what the ideal scanner result would be. You can do this by including a `ValidationSet` along with your scan. For example, imagine you had a validation set in the form of a CSV with `id` and `target` columns (representing the transcript_id and ideal target for the scanner):
+When developing scanners, it's often desirable to create a feedback loop based on human labeling of transcripts that indicate expected scanner results. You can do this by creating a validation set and applying it during your scan:
 
-``` {.default filename="ctf-validation.csv"}
-Fg3KBpgFr6RSsEWmHBUqeo, true
-VFkCH7gXWpJYUYonvfHxrG, false
-SiEXpECj7U9nNAvM3H7JqB, true
-```
+![](images/validation-flow.jpg)
 
-You can then compute results from the validation set as you scan:
+The *validation set* is the set of labeled transcripts that are compared against scan results. Validation sets are typically associated with the domain of a particular scanner type (e.g. "evaluation awareness", "refusal", etc.) so you will likely develop many of them for use with different scanners.
+
+You can create and edit validation sets directly within the transcript or scan results view:
+
+![](images/validation-panel-transcripts.png){.border}
+
+Apply a validation set by passing it to `scan()`. For example:
 
 ``` python
+from inspect_scout import scan, transcripts_from
+
+from my_scanners import eval_awarness
+
 scan(
-    scanners=[ctf_environment(), java_tool_usages()],
-    transcripts="./logs",
-    validation={
-        "ctf_environment": "ctf-validation.csv"
-    }
+    scanners=[eval_awarness()],
+    transcripts=transcripts_from("./logs"),
+    validation="eval-awareness.csv"
 )
 ```
-
-Validation results are reported both in the scan status/summary UI, within columns in the data frame produced for each scanner, as well as displayed in Scout View:
-
-![](images/validation.png){.border}
 
 To learn more about building and using validation sets see the article on [Validation](validation.qmd).
 

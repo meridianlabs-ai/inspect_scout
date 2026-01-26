@@ -25,10 +25,12 @@ export const apiScoutServer = (
   options: {
     apiBaseUrl?: string;
     headerProvider?: HeaderProvider;
+    customFetch?: typeof fetch;
+    disableSSE?: boolean;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl = "/api/v2", headerProvider } = options;
-  const requestApi = serverRequestApi(apiBaseUrl, headerProvider);
+  const { apiBaseUrl = "/api/v2", headerProvider, customFetch, disableSSE } = options;
+  const requestApi = serverRequestApi(apiBaseUrl, headerProvider, customFetch);
 
   return {
     capability: "workbench",
@@ -210,6 +212,11 @@ export const apiScoutServer = (
     connectTopicUpdates: (
       onUpdate: (topVersions: TopicVersions) => void
     ): (() => void) => {
+      // SSE not supported in VS Code webview proxy mode
+      if (disableSSE) {
+        return () => {};
+      }
+
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       let eventSource: EventSource | undefined;
 

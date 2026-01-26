@@ -43,8 +43,10 @@ export interface ServerRequestApi {
 
 export function serverRequestApi(
   baseUrl?: string,
-  getHeaders?: HeaderProvider
+  getHeaders?: HeaderProvider,
+  customFetch?: typeof fetch
 ): ServerRequestApi {
+  const fetchFn = customFetch ?? fetch;
   const apiUrl = baseUrl || "";
 
   function buildApiUrl(path: string): string {
@@ -97,7 +99,7 @@ export function serverRequestApi(
       responseHeaders["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers: responseHeaders,
       body: request?.body,
@@ -155,7 +157,7 @@ export function serverRequestApi(
       requestHeaders["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers: requestHeaders,
       body,
@@ -192,7 +194,7 @@ export function serverRequestApi(
       Object.assign(headers, globalHeaders);
     }
 
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method,
       headers,
       credentials: isApiCrossOrigin() ? "include" : "same-origin",

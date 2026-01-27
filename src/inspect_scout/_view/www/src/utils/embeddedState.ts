@@ -32,7 +32,7 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
     } = JSON5.parse(embeddedState.textContent);
 
     if (state.type === "updateState" && state.url) {
-      const url = state.url;
+      const url = decodeURIComponent(state.url);
       const dir = dirname(url);
       const scan = basename(url);
       return {

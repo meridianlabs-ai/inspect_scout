@@ -342,36 +342,37 @@ def _spawn_scan_subprocess(
     config: ScanJobConfig,
 ) -> tuple[subprocess.Popen[bytes], str, list[bytes], list[bytes]]:
     """Spawn a subprocess to run the scan."""
-    fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="scout_scan_config_")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(config.model_dump_json(exclude_none=True))
-    except Exception:
-        os.close(fd)
-        os.unlink(temp_path)
-        raise
-
-    proc = subprocess.Popen(
-        ["scout", "scan", temp_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", prefix="scout_scan_config_", delete=False
     )
+    try:
+        with f:
+            f.write(config.model_dump_json(exclude_none=True))
 
-    stdout_lines: list[bytes] = []
-    stderr_lines: list[bytes] = []
+        proc = subprocess.Popen(
+            ["scout", "scan", f.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
 
-    assert proc.stdout is not None
-    assert proc.stderr is not None
+        stdout_lines: list[bytes] = []
+        stderr_lines: list[bytes] = []
 
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
-    ).start()
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
-    ).start()
+        assert proc.stdout is not None
+        assert proc.stderr is not None
 
-    return proc, temp_path, stdout_lines, stderr_lines
+        threading.Thread(
+            target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
+        ).start()
+        threading.Thread(
+            target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
+        ).start()
+
+        return proc, f.name, stdout_lines, stderr_lines
+    except Exception:
+        os.unlink(f.name)
+        raise
 
 
 async def _wait_for_active_scan(

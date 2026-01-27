@@ -48,14 +48,14 @@ def cursor_to_condition(
             Condition(
                 left=order_columns[j].column,
                 operator=Operator.EQ,
-                right=cursor.get(order_columns[j].column) or "",
+                right=cursor.get(order_columns[j].column),
             )
             for j in range(prefix_count)
         ]
         cmp_condition = Condition(
             left=ob.column,
             operator=get_operator(ob.direction, direction),
-            right=cursor.get(ob.column) or "",
+            right=cursor.get(ob.column),
         )
         all_conditions = eq_conditions + [cmp_condition]
         return reduce(lambda a, b: a & b, all_conditions)

@@ -10,8 +10,14 @@ import { apiVscodeV1 } from "./api/api-vscode-v1";
 import { apiVscodeV2 } from "./api/api-vscode-v2";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
-import { ApiProvider, createStore, StoreProvider } from "./state/store";
-import { getEmbeddedScanState } from "./utils/embeddedState";
+import { scanRoute } from "./router/url";
+import {
+  ApiProvider,
+  createStore,
+  InitialStoreState,
+  StoreProvider,
+} from "./state/store";
+import { EmbeddedScanState, getEmbeddedScanState } from "./utils/embeddedState";
 import { defaultRetry } from "./utils/react-query";
 import { getVscodeApi } from "./utils/vscode";
 
@@ -28,18 +34,37 @@ if (!container) {
 // Render into the root
 const root = createRoot(container);
 
-const selectApi = (): ScanApi => {
+// Read embedded state once, synchronously before React renders
+const embeddedState = getEmbeddedScanState();
+
+// Set initial route from embedded state before router initializes
+if (embeddedState) {
+  window.location.hash = scanRoute(embeddedState.dir, embeddedState.scan);
+}
+
+const selectApi = (state: EmbeddedScanState | null): ScanApi => {
   const vscodeApi = getVscodeApi();
   return !vscodeApi
     ? apiScoutServer()
-    : (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
+    : (state?.extensionProtocolVersion ?? 1) < 2
       ? apiVscodeV1(vscodeApi)
       : apiVscodeV2(vscodeApi);
 };
 
+const getInitialStoreState = (
+  state: EmbeddedScanState | null
+): InitialStoreState | undefined =>
+  state
+    ? {
+        singleFileMode: true,
+        selectedScanner: state.scanner,
+        hasInitializedEmbeddedData: true,
+      }
+    : undefined;
+
 // Create the API, store, and query client
-const api = selectApi();
-const store = createStore(api);
+const api = selectApi(embeddedState);
+const store = createStore(api, getInitialStoreState(embeddedState));
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: defaultRetry } },
 });

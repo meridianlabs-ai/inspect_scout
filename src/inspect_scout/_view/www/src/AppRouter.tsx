@@ -33,7 +33,6 @@ import {
 } from "./router/url";
 import { useStore } from "./state/store";
 import { AppConfig } from "./types/api-types";
-import { getEmbeddedScanState } from "./utils/embeddedState";
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
@@ -48,12 +47,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     const showFind = useStore((state) => state.showFind);
     const setShowFind = useStore((state) => state.setShowFind);
 
-    const selectedScanner = useStore((state) => state.selectedScanner);
-    const setSingleFileMode = useStore((state) => state.setSingleFileMode);
     const singleFileMode = useStore((state) => state.singleFileMode);
-    const hasInitializedEmbeddedData = useStore(
-      (state) => state.hasInitializedEmbeddedData
-    );
     const hasInitializedRouting = useStore(
       (state) => state.hasInitializedRouting
     );
@@ -64,15 +58,9 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     const userScansDir = useStore((state) => state.userScansDir);
     const config = useAppConfig();
     const serverScansDir = config.scans.dir;
-    const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-    const setHasInitializedEmbeddedData = useStore(
-      (state) => state.setHasInitializedEmbeddedData
-    );
     const setHasInitializedRouting = useStore(
       (state) => state.setHasInitializedRouting
     );
-
-    const hasRestoredState = selectedScanner !== undefined;
 
     // Global keyboard shortcut to open FindBand
     useEffect(() => {
@@ -89,35 +77,6 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
       };
     }, [setShowFind]);
 
-    useEffect(() => {
-      if (hasInitializedEmbeddedData) {
-        return;
-      }
-
-      // Check for embedded state on initial load
-      const embeddedState = getEmbeddedScanState();
-      if (embeddedState && !hasRestoredState) {
-        const { scan, scanner, dir } = embeddedState;
-
-        // Set the results directory in the store
-        setSingleFileMode(true);
-        if (scanner) {
-          setSelectedScanner(scanner);
-        }
-
-        // Navigate to the scan
-        void navigate(scanRoute(dir, scan), { replace: true });
-      }
-
-      setHasInitializedEmbeddedData(true);
-    }, [
-      navigate,
-      hasInitializedEmbeddedData,
-      setSingleFileMode,
-      setHasInitializedEmbeddedData,
-      setSelectedScanner,
-      hasRestoredState,
-    ]);
 
     // Handle state-driven navigation on initial load
     useEffect(() => {
@@ -155,9 +114,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
       // Mark routing as initialized
       setHasInitializedRouting(true);
     }, [
-      hasInitializedEmbeddedData,
       hasInitializedRouting,
-      selectedScanner,
       selectedScanLocation,
       selectedScanResult,
       navigate,

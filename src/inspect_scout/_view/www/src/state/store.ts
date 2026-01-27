@@ -244,7 +244,13 @@ const createDebouncedPersistStorage = (
   };
 };
 
-export const createStore = (api: ScanApi) =>
+export interface InitialStoreState {
+  singleFileMode?: boolean;
+  selectedScanner?: string;
+  hasInitializedEmbeddedData?: boolean;
+}
+
+export const createStore = (api: ScanApi, initialState?: InitialStoreState) =>
   create<StoreState>()(
     devtools(
       persist(
@@ -252,6 +258,7 @@ export const createStore = (api: ScanApi) =>
           // Initial state
           resultsStoredInRef: false,
           resultDataInState: false,
+          ...initialState,
           properties: {},
           scrollPositions: {},
           listPositions: {},

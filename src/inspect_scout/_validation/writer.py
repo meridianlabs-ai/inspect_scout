@@ -73,7 +73,7 @@ def _load_raw_data(
         data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
         if not data:
-            return data, has_nested, True
+            return data, has_nested, False
         columns = list(data[0].keys()) if isinstance(data[0], dict) else []
         return data, has_nested, _has_valid_columns(columns)
 
@@ -86,7 +86,7 @@ def _load_raw_data(
         data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
         if not data:
-            return data, has_nested, True
+            return data, has_nested, False
         columns = list(data[0].keys()) if isinstance(data[0], dict) else []
         return data, has_nested, _has_valid_columns(columns)
 
@@ -95,7 +95,7 @@ def _load_raw_data(
             data = [json.loads(line) for line in f if line.strip()]
         data = _flatten_labels_in_data(data)
         if not data:
-            return data, False, True
+            return data, False, False
         columns = list(data[0].keys()) if isinstance(data[0], dict) else []
         return data, False, _has_valid_columns(columns)
 

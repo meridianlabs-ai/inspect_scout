@@ -1,5 +1,4 @@
 import { skipToken } from "@tanstack/react-query";
-import { VscodeDivider } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import React, {
   FC,
@@ -14,8 +13,8 @@ import { useSearchParams } from "react-router-dom";
 import { ConfirmationDialog } from "../../../components/ConfirmationDialog";
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { ApplicationIcons } from "../../../components/icons";
-import { MenuActionButton } from "../../../components/MenuActionButton";
 import { LoadingBar } from "../../../components/LoadingBar";
+import { MenuActionButton } from "../../../components/MenuActionButton";
 import {
   getValidationParam,
   getValidationSetParam,

@@ -7,17 +7,17 @@ import { VSCodeApi } from "../utils/vscode";
 
 import { ScanApi } from "./api";
 import { apiScoutServer } from "./api-scout-server";
-import { JsonRpcClient } from "./jsonrpc";
+import { webViewJsonRpcClient } from "./jsonrpc";
 import { createJsonRpcFetch } from "./jsonrpc-fetch";
 import { createVSCodeStore } from "./vscode-storage";
 
-export const apiVscodeV2 = (
-  vscodeApi: VSCodeApi,
-  rpcClient: JsonRpcClient
-): ScanApi => ({
-  ...apiScoutServer({
-    customFetch: createJsonRpcFetch(rpcClient),
-    disableSSE: true,
-  }),
-  storage: createVSCodeStore(vscodeApi),
-});
+export const apiVscodeV2 = (vscodeApi: VSCodeApi): ScanApi => {
+  const rpcClient = webViewJsonRpcClient(vscodeApi);
+  return {
+    ...apiScoutServer({
+      customFetch: createJsonRpcFetch(rpcClient),
+      disableSSE: true,
+    }),
+    storage: createVSCodeStore(vscodeApi),
+  };
+};

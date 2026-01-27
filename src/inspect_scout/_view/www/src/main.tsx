@@ -8,7 +8,6 @@ import { ScanApi } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscodeV1 } from "./api/api-vscode-v1";
 import { apiVscodeV2 } from "./api/api-vscode-v2";
-import { webViewJsonRpcClient } from "./api/jsonrpc";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
@@ -31,14 +30,11 @@ const root = createRoot(container);
 
 const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
-  if (!vscodeApi) {
-    return apiScoutServer();
-  }
-
-  const rpcClient = webViewJsonRpcClient(vscodeApi);
-  return (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
-    ? apiVscodeV1(vscodeApi, rpcClient)
-    : apiVscodeV2(vscodeApi, rpcClient);
+  return !vscodeApi
+    ? apiScoutServer()
+    : (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
+      ? apiVscodeV1(vscodeApi)
+      : apiVscodeV2(vscodeApi);
 };
 
 // Create the API, store, and query client

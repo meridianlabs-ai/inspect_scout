@@ -1,4 +1,12 @@
 
+::: {.callout-note}
+The validation features described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
 ## Overview
 
 When developing scanners, it's often desirable to create a feedback loop based on human labeling of transcripts that indicate expected scanner results. You can do this by creating a validation set and applying it during your scan:
@@ -12,10 +20,10 @@ Apply a validation set by passing it to `scan()`. For example:
 ``` python
 from inspect_scout import scan, transcripts_from
 
-from my_scanners import eval_awarness
+from my_scanners import eval_awareness
 
 scan(
-    scanners=[eval_awarness()],
+    scanners=[eval_awareness()],
     transcripts=transcripts_from("./logs"),
     validation="eval-awareness.csv"
 )
@@ -24,7 +32,7 @@ scan(
 Or from the command line:
 
 ``` bash
-scout scan eval_awarness.py -V eval-awarness.csv
+scout scan eval_awareness.py -V eval-awarness.csv
 ```
 
 Validation sets are stored in CSV, YAML, JSON, or JSONL text files, however you don't need to edit them in their raw format. The next section describes recommended workflows for editing and managing validation sets.
@@ -68,7 +76,7 @@ VFkCH7gXWpJYUYonvfHxrG,false
 SiEXpECj7U9nNAvM3H7JqB,true
 ```
 
-If you are editing validation files directly you will need a way to discover trancript IDs. Use the **Copy** button in the transcirpt view to copy the UUID of the transcript you are viewing:
+If you are editing validation files directly you will need a way to discover trancript IDs. Use the **Copy** button in the transcript view to copy the UUID of the transcript you are viewing:
 
 ![](images/transcript-uuid-copy.png){.border}
 
@@ -117,19 +125,31 @@ scout scan scanning.py \
 
 ### Validation Results
 
-Validation results are reported in scan status/summary UI, which provides running tabulations of the percentage of matching validations.
+Validation results are reported in the scan status/summary UI:
 
-Addtionally, the data frame produced for each scanner includes columns for the validation status of each transcript:
+![](images/validation-results-cli.png)
 
-| Column | Description |
-|------------------------------------|------------------------------------|
-| `validation_target` | Ideal scanner value |
-| `validation_result` | Boolean result of comparing scanner `value` against `validation_target` |
+The validation metric reported in the task summary is the _balanced accurary_, which is good overall metric especially for unbalanced datasets (which is often the case for validation sets). Other metrics (precision, recall, and f1) are available in Scout View.
+
+#### Scout View
 
 Scout View will also show validation results alongside scanner values (sorting validated scans to the top for easy review):
 
 ![](images/validation.png){.border}
 
-Each transcript also includes a visual indication of its validation status:
 
-![](images/validation-scan.png){.border}
+Validation results are reported using four standard classification metrics:
+
+| Metric | Description |
+|--------|-------------|
+| **Accuracy** | Balanced accuracy: average of recall and specificity. Accounts for class imbalance better than raw accuracy. |
+| **Precision** | When the scanner flags something, how often is it correct? High precision means few false alarms. |
+| **Recall** | Of all items that should be flagged, how many did the scanner find? High recall means few missed cases. |
+| **F1** | Harmonic mean of precision and recall. Useful when you need to balance both concerns. |
+
+: {tbl-colwidths="[20,80]"}
+
+In practice, there's often a tradeoff between precision and recall. A conservative scanner may have high precision but miss cases (low recall), while an aggressive scanner catches more cases (high recall) but with more false positives (lower precision). The right balance depends on your use case. Here are some resources that cover this in more depth:
+
+- [Precision and Recall](https://en.wikipedia.org/wiki/Precision_and_recall) (Wikipedia) — Comprehensive overview of precision, recall, F1, and related metrics.
+- [Classification Metrics](https://developers.google.com/machine-learning/crash-course/classification/precision-and-recall) (Google ML Crash Course) — Interactive tutorial on precision, recall, and the tradeoffs between them.

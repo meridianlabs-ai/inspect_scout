@@ -145,20 +145,20 @@ async def _validate_labels(
         if expect_positive:
             # true: pass if ANY result has non-negative value
             validation_results[label] = any(
-                _is_positive_value(Result.model_validate(item).value)
+                is_positive_value(Result.model_validate(item).value)
                 for item in label_results
             )
         else:
             # false: pass if NO results OR ALL have negative values
             validation_results[label] = all(
-                not _is_positive_value(Result.model_validate(item).value)
+                not is_positive_value(Result.model_validate(item).value)
                 for item in label_results
             )
 
     return validation_results
 
 
-def _is_positive_value(value: JsonValue) -> bool:
+def is_positive_value(value: JsonValue) -> bool:
     """Check if a value is considered 'positive' (non-negative).
 
     Negative values: False, None, 0, "", "NONE", "none", {}, []

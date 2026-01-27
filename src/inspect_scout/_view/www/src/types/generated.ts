@@ -2802,10 +2802,7 @@ export interface components {
              * @default 0
              */
             tokens: number;
-            /** Validations */
-            validations: (boolean | {
-                [key: string]: boolean;
-            })[];
+            validation: components["schemas"]["ValidationResults"] | null;
         };
         /** ScannersResponse */
         ScannersResponse: {
@@ -3779,6 +3776,17 @@ export interface components {
             split?: string | null;
             target?: components["schemas"]["JsonValue"] | null;
         };
+        /**
+         * ValidationEntry
+         * @description A single validation result with its target.
+         */
+        ValidationEntry: {
+            target?: components["schemas"]["JsonValue"] | null;
+            /** Valid */
+            valid: boolean | {
+                [key: string]: boolean;
+            };
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3787,6 +3795,72 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValidationMetrics
+         * @description Confusion matrix counts for precision/recall.
+         */
+        ValidationMetrics: {
+            /**
+             * Accuracy
+             * @description Balanced accuracy: (Recall + Specificity) / 2.
+             */
+            readonly accuracy: number | null;
+            /**
+             * F1
+             * @description Harmonic mean of precision and recall.
+             */
+            readonly f1: number | null;
+            /**
+             * Fn
+             * @default 0
+             */
+            fn: number;
+            /**
+             * Fp
+             * @default 0
+             */
+            fp: number;
+            /**
+             * Precision
+             * @description TP / (TP + FP). None if no positive predictions.
+             */
+            readonly precision: number | null;
+            /**
+             * Recall
+             * @description TP / (TP + FN). None if no positive targets.
+             */
+            readonly recall: number | null;
+            /**
+             * Specificity
+             * @description TN / (TN + FP). None if no negative targets.
+             */
+            readonly specificity: number | null;
+            /**
+             * Tn
+             * @default 0
+             */
+            tn: number;
+            /** Total */
+            readonly total: number;
+            /**
+             * Tp
+             * @default 0
+             */
+            tp: number;
+        };
+        /**
+         * ValidationResults
+         * @description Validation entries with pre-computed metrics.
+         */
+        ValidationResults: {
+            /** Entries */
+            entries: components["schemas"]["ValidationEntry"][];
+            metrics?: components["schemas"]["ValidationMetrics"] | null;
+            /** Metrics By Key */
+            metrics_by_key?: {
+                [key: string]: components["schemas"]["ValidationMetrics"];
+            } | null;
         };
         /**
          * ValidationSet

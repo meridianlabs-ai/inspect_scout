@@ -308,10 +308,10 @@ Apply a validation set by passing it to `scan()`. For example:
 ``` python
 from inspect_scout import scan, transcripts_from
 
-from my_scanners import eval_awarness
+from my_scanners import eval_awareness
 
 scan(
-    scanners=[eval_awarness()],
+    scanners=[eval_awareness()],
     transcripts=transcripts_from("./logs"),
     validation="eval-awareness.csv"
 )

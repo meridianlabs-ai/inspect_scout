@@ -84,6 +84,9 @@ export type ValidationSetInput = components["schemas"]["ValidationSet-Input"];
 export type ValidationSetOutput = components["schemas"]["ValidationSet-Output"];
 export type CreateValidationSetRequest =
   components["schemas"]["CreateValidationSetRequest"];
+export type ValidationEntry = components["schemas"]["ValidationEntry"];
+export type ValidationMetrics = components["schemas"]["ValidationMetrics"];
+export type ValidationResults = components["schemas"]["ValidationResults"];
 
 export type ContentCitation = components["schemas"]["ContentCitation"];
 export type DocumentCitation = components["schemas"]["DocumentCitation"];

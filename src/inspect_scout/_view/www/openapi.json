@@ -7162,29 +7162,22 @@
             "title": "Tokens",
             "type": "integer"
           },
-          "validations": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object"
-                }
-              ]
-            },
-            "title": "Validations",
-            "type": "array"
+          "validation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationResults"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "scans",
           "results",
           "errors",
-          "validations",
+          "validation",
           "tokens",
           "model_usage"
         ],
@@ -9758,6 +9751,40 @@
         "title": "ValidationCaseRequest",
         "type": "object"
       },
+      "ValidationEntry": {
+        "description": "A single validation result with its target.",
+        "properties": {
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              }
+            ],
+            "title": "Valid"
+          }
+        },
+        "required": [
+          "valid"
+        ],
+        "title": "ValidationEntry",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -9789,6 +9816,156 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationMetrics": {
+        "description": "Confusion matrix counts for precision/recall.",
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Balanced accuracy: (Recall + Specificity) / 2.",
+            "readOnly": true,
+            "title": "Accuracy"
+          },
+          "f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Harmonic mean of precision and recall.",
+            "readOnly": true,
+            "title": "F1"
+          },
+          "fn": {
+            "default": 0,
+            "title": "Fn",
+            "type": "integer"
+          },
+          "fp": {
+            "default": 0,
+            "title": "Fp",
+            "type": "integer"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TP / (TP + FP). None if no positive predictions.",
+            "readOnly": true,
+            "title": "Precision"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TP / (TP + FN). None if no positive targets.",
+            "readOnly": true,
+            "title": "Recall"
+          },
+          "specificity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TN / (TN + FP). None if no negative targets.",
+            "readOnly": true,
+            "title": "Specificity"
+          },
+          "tn": {
+            "default": 0,
+            "title": "Tn",
+            "type": "integer"
+          },
+          "total": {
+            "readOnly": true,
+            "title": "Total",
+            "type": "integer"
+          },
+          "tp": {
+            "default": 0,
+            "title": "Tp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tp",
+          "fp",
+          "tn",
+          "fn",
+          "total",
+          "precision",
+          "recall",
+          "specificity",
+          "f1",
+          "accuracy"
+        ],
+        "title": "ValidationMetrics",
+        "type": "object"
+      },
+      "ValidationResults": {
+        "description": "Validation entries with pre-computed metrics.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metrics_by_key": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ValidationMetrics"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics By Key"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "ValidationResults",
         "type": "object"
       },
       "ValidationSet-Input": {

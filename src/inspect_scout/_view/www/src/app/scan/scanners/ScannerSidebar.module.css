@@ -19,6 +19,7 @@
 }
 
 .validations {
+  margin-top: 0.3rem;
   grid-column: 1 / -1;
 }
 

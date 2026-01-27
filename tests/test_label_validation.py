@@ -8,7 +8,7 @@ import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import Result, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._validation.validate import _is_positive_value, _validate_labels
+from inspect_scout._validation.validate import _validate_labels, is_positive_value
 from inspect_scout._validation.validation import validation_set
 
 # Test data location
@@ -167,38 +167,38 @@ def test_validation_failure() -> None:
 
 
 # ============================================================================
-# Tests for _is_positive_value helper function
+# Tests for is_positive_value helper function
 # ============================================================================
 
 
 class TestIsPositiveValue:
-    """Tests for the _is_positive_value helper function."""
+    """Tests for the is_positive_value helper function."""
 
     def test_negative_values(self) -> None:
         """Test that negative values are correctly identified."""
         # Explicit negatives
-        assert _is_positive_value(None) is False
-        assert _is_positive_value(False) is False
-        assert _is_positive_value(0) is False
-        assert _is_positive_value("") is False
-        assert _is_positive_value("NONE") is False
-        assert _is_positive_value("none") is False
-        assert _is_positive_value("None") is False
-        assert _is_positive_value({}) is False
-        assert _is_positive_value([]) is False
+        assert is_positive_value(None) is False
+        assert is_positive_value(False) is False
+        assert is_positive_value(0) is False
+        assert is_positive_value("") is False
+        assert is_positive_value("NONE") is False
+        assert is_positive_value("none") is False
+        assert is_positive_value("None") is False
+        assert is_positive_value({}) is False
+        assert is_positive_value([]) is False
 
     def test_positive_values(self) -> None:
         """Test that positive values are correctly identified."""
         # Explicit positives
-        assert _is_positive_value(True) is True
-        assert _is_positive_value(1) is True
-        assert _is_positive_value(-1) is True
-        assert _is_positive_value(0.5) is True
-        assert _is_positive_value("hello") is True
-        assert _is_positive_value("false") is True  # String "false" is NOT False
-        assert _is_positive_value({"key": "value"}) is True
-        assert _is_positive_value([1, 2, 3]) is True
-        assert _is_positive_value({"confidence": 0.9}) is True
+        assert is_positive_value(True) is True
+        assert is_positive_value(1) is True
+        assert is_positive_value(-1) is True
+        assert is_positive_value(0.5) is True
+        assert is_positive_value("hello") is True
+        assert is_positive_value("false") is True  # String "false" is NOT False
+        assert is_positive_value({"key": "value"}) is True
+        assert is_positive_value([1, 2, 3]) is True
+        assert is_positive_value({"confidence": 0.9}) is True
 
 
 # ============================================================================

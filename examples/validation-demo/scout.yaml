@@ -1,0 +1,2 @@
+transcripts: ../../../inspect-viz-example-logs/logs/cybench
+model: openai/gpt-5

@@ -1,0 +1,9 @@
+scanners:
+  - name: eval_awareness
+    file: ../docs/eval_awareness.py
+  - name: refusal_classifier
+    file: ../docs/refusal_classifier.py
+
+validation:
+  refusal_classifier: refusal.csv
+  eval_awareness: eval-awareness.csv

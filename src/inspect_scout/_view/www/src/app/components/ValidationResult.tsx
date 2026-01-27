@@ -25,7 +25,7 @@ export const ValidationResult: FC<ValidationResultProps> = ({
         targetValue={valueStr(resolveTargetValue(target, label))}
       />
     );
-  } else if (typeof result === "object") {
+  } else if (result !== null && typeof result === "object") {
     const entries = Object.entries(result);
 
     return (

@@ -91,11 +91,12 @@ Trace a `getScans` call from React hook → Scout server → response.
 
 | Aspect | V1 Legacy | V2 Proxy |
 |--------|-----------|----------|
-| API impl | `apiVscode` (custom) | `apiScoutServer` (reused) |
+| API impl | `apiVscodeV1` (custom) | `apiVscodeV2` (composes `apiScoutServer`) |
 | RPC methods | Per-endpoint (`get_scans`, `get_scan`, ...) | Single (`http_request`) |
 | Backend API | `/api/scans` (V1) | `/api/v2/scans/{dir}` (V2) |
 | New endpoint support | Requires 3 code changes | Zero changes |
 | Caching | Duplicate (AsyncCache + react-query) | Single layer (react-query) |
+| Storage | VS Code webview state | VS Code webview state (shared via `vscode-storage.ts`) |
 
 ---
 
@@ -240,7 +241,7 @@ panel.webview.onDidReceiveMessage(async (data) => {
 
 **V1 approach** (current): Add to 3 places
 1. `jsonrpc.ts` - `export const kMethodNewThing = "new_thing";`
-2. `api-vscode.ts` - implement method calling `rpcClient(kMethodNewThing, [...])`
+2. `api-vscode-v1.ts` - implement method calling `rpcClient(kMethodNewThing, [...])`
 3. Extension `scanview-panel.ts` - add handler `[kMethodNewThing]: async (params) => ...`
 
 **V2 proxy approach** (new): Zero changes
@@ -254,13 +255,14 @@ panel.webview.onDidReceiveMessage(async (data) => {
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ PROXY MODE (new)                                                    │
-│ Webview: apiScoutServer (V2) → jsonRpcFetch → http_request RPC      │
+│ Webview: apiVscodeV2 → apiScoutServer + vscode-storage              │
+│    → jsonRpcFetch → http_request RPC                                │
 │    → Extension: single handler → HTTP /api/v2/* → Scout Server      │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │ LEGACY MODE (unchanged, for old extensions)                         │
-│ Webview: apiVscode → get_scans/get_scan RPC                        │
+│ Webview: apiVscodeV1 → get_scans/get_scan RPC + vscode-storage      │
 │    → Extension: per-method handlers → HTTP /api/* (V1) → Scout      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -476,34 +478,60 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 ## Phase 4: Client-Side API Selection (inspect_scout) ✅ COMPLETE
 
-Switch `main.tsx` to use `apiScoutServer` (with `disableSSE` and `customFetch`) when `extensionProtocolVersion >= 2`. Uses `jsonrpc-fetch.ts` from Phase 2.
+Switch `main.tsx` to use `apiVscodeV2` when `extensionProtocolVersion >= 2`. The V2 implementation composes `apiScoutServer` with VS Code storage.
 
 ### 4.1 New: `www/src/api/jsonrpc-fetch.ts` ✅
 
 Proxied fetch that routes through JSON-RPC (created in Phase 2, renamed from `proxy-fetch.ts`).
 
-### 4.2 Modify: `www/src/main.tsx` ✅
+### 4.2 New: `www/src/api/vscode-storage.ts` ✅
+
+Shared VS Code storage adapter extracted from `api-vscode.ts`:
+
+```typescript
+export const createVSCodeStore = (api: VSCodeApi): ClientStorage => ({
+  getItem: (key) => { /* ... */ },
+  setItem: (key, value) => { /* ... */ },
+  removeItem: (key) => { /* ... */ },
+});
+```
+
+### 4.3 Rename: `www/src/api/api-vscode.ts` → `www/src/api/api-vscode-v1.ts` ✅
+
+Renamed for consistency with V2. Now imports `createVSCodeStore` from shared module.
+
+### 4.4 New: `www/src/api/api-vscode-v2.ts` ✅
+
+Composes `apiScoutServer` with VS Code storage:
+
+```typescript
+export const apiVscodeV2 = (
+  vscodeApi: VSCodeApi,
+  rpcClient: JsonRpcClient
+): ScanApi => ({
+  ...apiScoutServer({
+    customFetch: createJsonRpcFetch(rpcClient),
+    disableSSE: true,
+  }),
+  storage: createVSCodeStore(vscodeApi),
+});
+```
+
+### 4.5 Modify: `www/src/main.tsx` ✅
 
 Add capability detection and API selection:
 
 ```typescript
-const maybeGetVscodeContext = () => {
-  const vscodeApi = getVscodeApi();
-  return vscodeApi ? ([vscodeApi, webViewJsonRpcClient(vscodeApi)] as const) : undefined;
-};
-
 const selectApi = (): ScanApi => {
-  const vscodeContext = maybeGetVscodeContext();
-  const isV1 =
-    vscodeContext && (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2;
+  const vscodeApi = getVscodeApi();
+  if (!vscodeApi) {
+    return apiScoutServer();
+  }
 
-  return isV1
-    ? apiVscode(vscodeContext[0], vscodeContext[1])
-    : apiScoutServer(
-        vscodeContext
-          ? { customFetch: createJsonRpcFetch(vscodeContext[1]), disableSSE: true }
-          : {}
-      );
+  const rpcClient = webViewJsonRpcClient(vscodeApi);
+  return (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
+    ? apiVscodeV1(vscodeApi, rpcClient)
+    : apiVscodeV2(vscodeApi, rpcClient);
 };
 ```
 
@@ -519,7 +547,10 @@ E2E: Extension still uses V1 (no `extensionProtocolVersion` in state yet).
 | File | Change |
 |------|--------|
 | `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
-| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
+| `www/src/api/vscode-storage.ts` | New: shared VS Code storage adapter ✅ |
+| `www/src/api/api-vscode-v1.ts` | Renamed from `api-vscode.ts`, uses shared storage ✅ |
+| `www/src/api/api-vscode-v2.ts` | New: composes `apiScoutServer` + VS Code storage ✅ |
+| `www/src/main.tsx` | Use `apiVscodeV1`/`apiVscodeV2` based on version ✅ |
 
 ---
 
@@ -604,7 +635,7 @@ Requires Phase 5 complete (extension must handle `http_request` and set `extensi
 ### Phase 1: Remove Duplicate Caching
 | File | Change |
 |------|--------|
-| `www/src/api/api-vscode.ts` | Remove AsyncCache, simplify fetchScansData |
+| `www/src/api/api-vscode-v1.ts` | Remove AsyncCache, simplify fetchScansData |
 | `www/src/api/api-cache.ts` | DELETE |
 
 ### Phase 2: Frontend HTTP Proxy Infrastructure ✅
@@ -624,7 +655,10 @@ Requires Phase 5 complete (extension must handle `http_request` and set `extensi
 | File | Change |
 |------|--------|
 | `www/src/api/jsonrpc-fetch.ts` | Created in Phase 2 ✅ |
-| `www/src/main.tsx` | Add capability detection, switch API based on version ✅ |
+| `www/src/api/vscode-storage.ts` | New: shared VS Code storage adapter ✅ |
+| `www/src/api/api-vscode-v1.ts` | Renamed from `api-vscode.ts`, uses shared storage ✅ |
+| `www/src/api/api-vscode-v2.ts` | New: composes `apiScoutServer` + VS Code storage ✅ |
+| `www/src/main.tsx` | Use `apiVscodeV1`/`apiVscodeV2` based on version ✅ |
 
 ### Phase 5: Extension
 | File | Change |

@@ -6,9 +6,9 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ScanApi } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
-import { apiVscode } from "./api/api-vscode";
+import { apiVscodeV1 } from "./api/api-vscode-v1";
+import { apiVscodeV2 } from "./api/api-vscode-v2";
 import { webViewJsonRpcClient } from "./api/jsonrpc";
-import { createJsonRpcFetch } from "./api/jsonrpc-fetch";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
@@ -37,11 +37,8 @@ const selectApi = (): ScanApi => {
 
   const rpcClient = webViewJsonRpcClient(vscodeApi);
   return (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
-    ? apiVscode(vscodeApi, rpcClient)
-    : apiScoutServer({
-        customFetch: createJsonRpcFetch(rpcClient),
-        disableSSE: true,
-      });
+    ? apiVscodeV1(vscodeApi, rpcClient)
+    : apiVscodeV2(vscodeApi, rpcClient);
 };
 
 // Create the API, store, and query client

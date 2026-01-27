@@ -3,16 +3,18 @@
  * Routes fetch requests through JSON-RPC to the extension host.
  */
 
-import { kMethodHttpRequest } from "./jsonrpc";
+import { JsonValue } from "../types/json-value";
+
+import { JsonRpcParams, kMethodHttpRequest } from "./jsonrpc";
 
 export { kMethodHttpRequest };
 
-export interface HttpProxyRequest {
+export type HttpProxyRequest = {
   method: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
   headers?: Record<string, string>;
   body?: string;
-}
+};
 
 export interface HttpProxyResponse {
   status: number;
@@ -62,7 +64,7 @@ function toHttpMethod(method: string): HttpProxyRequest["method"] {
  * Used in VS Code webview to route HTTP requests through the extension host.
  */
 export function createJsonRpcFetch(
-  rpcClient: (method: string, params?: unknown) => Promise<unknown>
+  rpcClient: (method: string, params?: JsonRpcParams) => Promise<JsonValue>
 ): typeof fetch {
   return async (
     input: RequestInfo | URL,

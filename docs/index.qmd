@@ -17,7 +17,7 @@ Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. 
 
 4.  Scale to thousands of transcripts with parallel processing, batching, and fault tolerance.
 
-Scout can directly analyze Inspect AI eval logs or alternatively take input from a [transcript database](transcripts.qmd#transcripts-database) (which can be populated from any source).
+Scout can directly analyze Inspect AI eval logs or alternatively take input from a [transcript database](db_overview.qmd) (which can be populated from any source).
 
 ### Installation
 

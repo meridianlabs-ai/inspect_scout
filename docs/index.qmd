@@ -37,9 +37,42 @@ Below we'll provide some simple examples of creating and using Scout scanners. S
 
 -   **Results** --- Data frame(s) that includes the results of scanners applied to transcripts.
 
-### Creating a Scanner
+### LLM Scanner
 
-The following illustrates the implementation of a simple LLM scanner (click on the numbers at right for further explanation):
+For many application you can use the high-level `llm_scanner()`, which uses a model for transcript analysis and can be customized with many options. For example:
+
+``` {.python filename="scanner.py"}
+from inspect_scout import Scanner, Transcript, llm_scanner, scanner
+
+@scanner(messages="all")
+def ctf_environment() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="In the transcript above do you detect "
+        "instances of environment misconfiguration "
+        "preventing the agent from completing it's task?",
+        answer="boolean"
+    )
+```
+
+The `llm_scanner()` supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](llm_scanner.qmd) article.
+
+### Grep Scanner
+
+Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the `grep_scanner()`. For example, here we search assistant messages for references to phrases that might indicate secrets:
+
+```python
+from inspect_scout import Transcript, grep_scanner, scanner
+
+@scanner(messages=["assistant"])
+def secrets() -> Scanner[Transcript]:
+    return grep_scanner(["password", "secret", "token"])
+```
+
+For additional details on using this scanner, see the [Grep Scanner](grep_scanner.qmd) article.
+
+### Custom Scanner
+
+If the higher level LLM and Grep scanners don't meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):
 
 ``` {.python filename="scanner.py"}
 from inspect_scout import (
@@ -96,64 +129,20 @@ def ctf_environment() -> Scanner[Transcript]:
 
 Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
 
-### LLM Scanner
-
-The example scanner above repeats several steps quite common to LLM-driven scanners (prompting, message history, answer extraction, etc.). There is a higher-level `llm_scanner()` function that includes these things automatically and provides several ways to configure its behavior. For example, we could re-write our scanner above as follows:
-
-``` {.python filename="scanner.py"}
-from inspect_scout import Scanner, Transcript, llm_scanner, scanner
-
-@scanner(messages="all")
-def ctf_environment() -> Scanner[Transcript]:
-    return llm_scanner(
-        question="In the transcript above do you detect any "
-        "instances of environment misconfiguration "
-        "preventing the agent from completing it's task?",
-        answer="boolean"
-    )
-```
-
-For additional details on using this scanner, see the [LLM Scanner](llm_scanner.qmd) article.
-
-### Grep Scanner
-
-Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the `grep_scanner()`. For example, here we search assistant messages for references to phrases that might indicate secrets:
-
-```python
-from inspect_scout import Transcript, grep_scanner, scanner
-
-@scanner(messages=["assistant"])
-def secrets() -> Scanner[Transcript]:
-    return grep_scanner(["password", "secret", "token"])
-```
-
-For additional details on using this scanner, see the [Grep Scanner](grep_scanner.qmd) article.
 
 ### Running a Scan
 
-Use the `scout scan` command to run one or more scanners on a set of transcripts. The `Scanner` will be called once for `Transcript`:
+Use the `scout scan` command to run one or more scanners on a set of transcripts. The `Scanner` will be called once for each `Transcript`. For example:
 
 ``` bash
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
-It's also possible to filter the transcripts to a subset using `-F` (or `--filter`):
-
-``` bash
-scout scan scanner.py \
-   -T ./logs \
-   -F "task_set='cybench'" \
-   --model openai/gpt-5
-```
-
 The `-T` argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a [transcripts database](transcripts.qmd#transcripts-database) that is either local or on S3. For example, here we scan some W&B Weave transcripts stored on S3:
 
 ``` bash
-scout scan scanner.py \
-   -T s3://weave-rollouts/cybench \
-   --model openai/gpt-5
+scout scan scanner.py -T s3://cybench-rollouts --model openai/gpt-5
 ```
-
 
 Note that when we using a model that requires an API  key you'll need to provide it in the enviroment (e.g. `OPENAI_API_KEY`). As with Inspect AI, you can use a [.env file](https://inspect.aisi.org.uk/options.html#env-files) for providing API keys.
 
@@ -166,7 +155,7 @@ Scout includes a viewer application for looking at scan results in depth. Run th
 scout view
 ```
 
-![](images/scout-view.png){.border}
+![](images/validation.png){.border}
 
 By default this will view the scan results in the `./scans` directory of the current working directory. Specify an alternate results location with:
 
@@ -202,32 +191,6 @@ Use Scout View to explore and manage project settings:
 ![](images/project.png){.border}
 
 See the [Projects](projects.qmd) article for more details on managing configuration with projects.
-
-### Event Scanner
-
-Let's add another scanner that looks for uses of Java in tool calls:
-
-``` python
-@scanner(events=["tool"]) 
-def java_tool_usages() -> Scanner[ToolEvent]:
-    
-    async def scan(event: ToolEvent) -> Result:
-        if "java" in str(event.arguments).lower():
-            return Result(
-                value=True, 
-                explanation=str(event.arguments)
-            )
-        else:
-            return Result(value=False)
-       
-    return scan
-```
-
-Note that we specify `events=["tool"]` to constrain reading to only tool events, and that our function takes an individual event rather than a `Transcript`.
-
-If you add this scanner to the same source file as the `ctf_environment()` scanner then `scout scan` will run both of the scanners using the same `scout scan scanner.py` command,
-
-See the [Scanners](scanners.qmd) article for more details on creating scanners, including how to write scanners that accept a variety of inputs and how to use scanners directly as Inspect scorers.
 
 ## Scan Jobs
 

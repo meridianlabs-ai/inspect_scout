@@ -103,22 +103,32 @@ def _load_raw_data(
         raise ValueError(f"Unsupported file format: {suffix}")
 
 
-def _unflatten_labels(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Convert label_* keys back to nested labels dict."""
+def _unflatten_columns(
+    cases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Convert prefixed flat keys back to nested dicts.
+
+    For each prefix in prefix_to_key, keys like "label_foo" become
+    {"labels": {"foo": value}} (using the mapped nested key name).
+    """
+    prefix_to_key = {
+        "label_": "labels",
+        "target_": "target",
+    }
     unflattened = []
     for case in cases:
         if not isinstance(case, dict):
             unflattened.append(case)
             continue
 
-        label_cols = {k: v for k, v in case.items() if k.startswith("label_")}
-        if label_cols:
-            new_case = {k: v for k, v in case.items() if not k.startswith("label_")}
-            labels = {k[6:]: v for k, v in label_cols.items()}  # Remove "label_" prefix
-            new_case["labels"] = labels
-            unflattened.append(new_case)
-        else:
-            unflattened.append(case)
+        new_case = dict(case)
+        for prefix, nested_key in prefix_to_key.items():
+            matched = {k: v for k, v in new_case.items() if k.startswith(prefix)}
+            if matched:
+                for k in matched:
+                    del new_case[k]
+                new_case[nested_key] = {k[len(prefix) :]: v for k, v in matched.items()}
+        unflattened.append(new_case)
     return unflattened
 
 
@@ -240,7 +250,7 @@ class ValidationFileWriter:
         fmt: Literal["yaml", "json"],
     ) -> None:
         """Write cases to YAML or JSON format."""
-        data = _unflatten_labels(cases)
+        data = _unflatten_columns(cases)
         if nested_splits:
             data = _nest_by_splits(data)
 
@@ -252,7 +262,7 @@ class ValidationFileWriter:
 
     def _write_jsonl(self, cases: list[dict[str, Any]]) -> None:
         """Write cases to JSONL format."""
-        data = _unflatten_labels(cases)
+        data = _unflatten_columns(cases)
         with open(self.file_path, "w") as f:
             for case in data:
                 f.write(json.dumps(case) + "\n")
@@ -365,7 +375,7 @@ class ValidationFileWriter:
             df.to_csv(file_path, index=False)
 
         elif suffix in {".yaml", ".yml", ".json"}:
-            data = _unflatten_labels(case_dicts)
+            data = _unflatten_columns(case_dicts)
             if nested_splits and data:
                 data = _nest_by_splits(data)
 
@@ -376,7 +386,7 @@ class ValidationFileWriter:
                     json.dump(data, f, indent=2)
 
         elif suffix == ".jsonl":
-            data = _unflatten_labels(case_dicts)
+            data = _unflatten_columns(case_dicts)
             with open(file_path, "w") as f:
                 for case_dict in data:
                     f.write(json.dumps(case_dict) + "\n")

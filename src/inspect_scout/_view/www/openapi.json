@@ -7626,6 +7626,21 @@
             "default": null,
             "title": "Metadata"
           },
+          "model_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ModelUsage"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Usage"
+          },
           "pending": {
             "anyOf": [
               {

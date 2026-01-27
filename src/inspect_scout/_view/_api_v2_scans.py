@@ -8,8 +8,7 @@ import sys
 import tempfile
 import threading
 import time
-from dataclasses import dataclass
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable
 
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
@@ -21,8 +20,7 @@ from starlette.status import (
 )
 from upath import UPath
 
-from .._query import Operator, Query
-from .._query.condition import Condition as ConditionType
+from .._query import Query
 from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
@@ -32,263 +30,16 @@ from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
-    PaginatedRequest,
     ScansRequest,
     ScansResponse,
     ScanStatus,
     ScanStatusWithActiveInfo,
 )
+from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
-
-
-# --- Pagination helpers ---
-
-
-def _ensure_tiebreaker(
-    order_by: OrderBy | list[OrderBy] | None,
-    tiebreaker_col: str,
-) -> list[OrderBy]:
-    """Ensure sort order has tiebreaker column as final element."""
-    if order_by is None:
-        return [OrderBy(tiebreaker_col, "ASC")]
-
-    order_bys = order_by if isinstance(order_by, list) else [order_by]
-    columns = [OrderBy(ob.column, ob.direction) for ob in order_bys]
-
-    if any(ob.column == tiebreaker_col for ob in columns):
-        return columns
-
-    return columns + [OrderBy(tiebreaker_col, "ASC")]
-
-
-def _cursor_to_condition(
-    cursor: dict[str, Any],
-    order_columns: list[OrderBy],
-    direction: Literal["forward", "backward"],
-) -> ConditionType:
-    """Convert cursor to SQL condition for keyset pagination."""
-
-    def get_operator(
-        sort_dir: Literal["ASC", "DESC"], pag_dir: Literal["forward", "backward"]
-    ) -> Operator:
-        want_greater = (pag_dir == "forward" and sort_dir == "ASC") or (
-            pag_dir == "backward" and sort_dir == "DESC"
-        )
-        return Operator.GT if want_greater else Operator.LT
-
-    or_conditions: list[ConditionType] = []
-
-    for i in range(len(order_columns)):
-        and_conditions: list[ConditionType] = []
-
-        for j in range(i):
-            col_name = order_columns[j].column
-            cursor_val = cursor.get(col_name)
-            cursor_val = "" if cursor_val is None else cursor_val
-            and_conditions.append(
-                ConditionType(left=col_name, operator=Operator.EQ, right=cursor_val)
-            )
-
-        ob = order_columns[i]
-        col_name = ob.column
-        sort_dir = ob.direction
-        cursor_val = cursor.get(col_name)
-        cursor_val = "" if cursor_val is None else cursor_val
-        op = get_operator(sort_dir, direction)
-        and_conditions.append(
-            ConditionType(left=col_name, operator=op, right=cursor_val)
-        )
-
-        combined = and_conditions[0]
-        for cond in and_conditions[1:]:
-            combined = combined & cond
-        or_conditions.append(combined)
-
-    result = or_conditions[0]
-    for cond in or_conditions[1:]:
-        result = result | cond
-
-    return result
-
-
-def _reverse_order_columns(order_columns: list[OrderBy]) -> list[OrderBy]:
-    """Reverse direction of all order columns."""
-    return [
-        OrderBy(ob.column, "DESC" if ob.direction == "ASC" else "ASC")
-        for ob in order_columns
-    ]
-
-
-def _build_scans_cursor(
-    status: RecorderStatus,
-    order_columns: list[OrderBy],
-) -> dict[str, Any]:
-    """Build cursor from Status using sort columns."""
-    cursor: dict[str, Any] = {}
-    for ob in order_columns:
-        column = ob.column
-        if column == "scan_id":
-            cursor[column] = status.spec.scan_id
-        elif column == "scan_name":
-            cursor[column] = status.spec.scan_name
-        elif column == "timestamp":
-            cursor[column] = (
-                status.spec.timestamp.isoformat() if status.spec.timestamp else None
-            )
-        elif column == "complete":
-            cursor[column] = status.complete
-        elif column == "location":
-            cursor[column] = status.location
-        elif column == "scanners":
-            cursor[column] = (
-                ",".join(status.spec.scanners.keys()) if status.spec.scanners else ""
-            )
-        elif column == "model":
-            model = status.spec.model
-            cursor[column] = (
-                getattr(model, "model", None) or str(model) if model else None
-            )
-        else:
-            cursor[column] = None
-    return cursor
-
-
-@dataclass
-class _PaginationContext:
-    """Context for paginated queries."""
-
-    filter_conditions: list[ConditionType]
-    conditions: list[ConditionType]
-    order_columns: list[OrderBy]
-    db_order_columns: list[OrderBy]
-    limit: int | None
-    needs_reverse: bool
-
-
-def _build_pagination_context(
-    body: PaginatedRequest | None,
-    tiebreaker_col: str,
-) -> _PaginationContext:
-    """Build pagination context from request body."""
-    filter_conditions: list[ConditionType] = []
-    if body and body.filter:
-        filter_conditions.append(body.filter)
-
-    conditions = filter_conditions.copy()
-    use_pagination = body is not None and body.pagination is not None
-    db_order_columns: list[OrderBy] = []
-    order_columns: list[OrderBy] = []
-    limit: int | None = None
-    needs_reverse = False
-
-    if use_pagination:
-        assert body is not None and body.pagination is not None
-        pagination = body.pagination
-
-        order_by = body.order_by or OrderBy(column=tiebreaker_col, direction="ASC")
-        order_columns = _ensure_tiebreaker(order_by, tiebreaker_col)
-
-        db_order_columns = order_columns
-        if pagination.direction == "backward" and not pagination.cursor:
-            db_order_columns = _reverse_order_columns(order_columns)
-            needs_reverse = True
-
-        if pagination.cursor:
-            conditions.append(
-                _cursor_to_condition(
-                    pagination.cursor, order_columns, pagination.direction
-                )
-            )
-
-        limit = pagination.limit
-    elif body and body.order_by:
-        order_bys = (
-            body.order_by if isinstance(body.order_by, list) else [body.order_by]
-        )
-        db_order_columns = [OrderBy(ob.column, ob.direction) for ob in order_bys]
-
-    return _PaginationContext(
-        filter_conditions=filter_conditions,
-        conditions=conditions,
-        order_columns=order_columns,
-        db_order_columns=db_order_columns,
-        limit=limit,
-        needs_reverse=needs_reverse,
-    )
-
-
-# --- Subprocess helpers (from _run_scan_helpers.py) ---
-
-
-def _tee_pipe(
-    pipe: io.BufferedReader, dest: io.TextIOWrapper, accumulator: list[bytes]
-) -> None:
-    """Read from pipe, write to dest, and accumulate."""
-    for line in pipe:
-        dest.buffer.write(line)
-        dest.buffer.flush()
-        accumulator.append(line)
-    pipe.close()
-
-
-def _spawn_scan_subprocess(
-    config: ScanJobConfig,
-) -> tuple[subprocess.Popen[bytes], str, list[bytes], list[bytes]]:
-    """Spawn a subprocess to run the scan."""
-    fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="scout_scan_config_")
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(config.model_dump_json(exclude_none=True))
-    except Exception:
-        os.close(fd)
-        os.unlink(temp_path)
-        raise
-
-    proc = subprocess.Popen(
-        ["scout", "scan", temp_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
-
-    stdout_lines: list[bytes] = []
-    stderr_lines: list[bytes] = []
-
-    assert proc.stdout is not None
-    assert proc.stderr is not None
-
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
-    ).start()
-    threading.Thread(
-        target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
-    ).start()
-
-    return proc, temp_path, stdout_lines, stderr_lines
-
-
-async def _wait_for_active_scan(
-    pid: int,
-    timeout_seconds: float = 10.0,
-    poll_interval: float = 0.5,
-) -> ActiveScanInfo | None:
-    """Wait for an active scan to appear for the given PID."""
-    start = time.time()
-
-    while time.time() - start < timeout_seconds:
-        with active_scans_store() as store:
-            info = store.read_by_pid(pid)
-            if info is not None:
-                return info
-        await asyncio.sleep(poll_interval)
-
-    return None
-
-
-# --- Router factory ---
 
 
 def create_scans_router(
@@ -319,7 +70,7 @@ def create_scans_router(
         """Filter scan jobs from the scans directory."""
         scans_dir = decode_base64url(dir)
 
-        ctx = _build_pagination_context(body, "scan_id")
+        ctx = build_pagination_context(body, "scan_id")
 
         try:
             async with await scan_jobs_view(scans_dir) as view:
@@ -537,3 +288,106 @@ def create_scans_router(
         )
 
     return router
+
+
+# --- Private helpers ---
+
+
+def _build_scans_cursor(
+    status: RecorderStatus,
+    order_columns: list[OrderBy],
+) -> dict[str, Any]:
+    """Build cursor from Status using sort columns."""
+    cursor: dict[str, Any] = {}
+    for ob in order_columns:
+        column = ob.column
+        if column == "scan_id":
+            cursor[column] = status.spec.scan_id
+        elif column == "scan_name":
+            cursor[column] = status.spec.scan_name
+        elif column == "timestamp":
+            cursor[column] = (
+                status.spec.timestamp.isoformat() if status.spec.timestamp else None
+            )
+        elif column == "complete":
+            cursor[column] = status.complete
+        elif column == "location":
+            cursor[column] = status.location
+        elif column == "scanners":
+            cursor[column] = (
+                ",".join(status.spec.scanners.keys()) if status.spec.scanners else ""
+            )
+        elif column == "model":
+            model = status.spec.model
+            cursor[column] = (
+                getattr(model, "model", None) or str(model) if model else None
+            )
+        else:
+            cursor[column] = None
+    return cursor
+
+
+def _tee_pipe(
+    pipe: io.BufferedReader, dest: io.TextIOWrapper, accumulator: list[bytes]
+) -> None:
+    """Read from pipe, write to dest, and accumulate."""
+    for line in pipe:
+        dest.buffer.write(line)
+        dest.buffer.flush()
+        accumulator.append(line)
+    pipe.close()
+
+
+def _spawn_scan_subprocess(
+    config: ScanJobConfig,
+) -> tuple[subprocess.Popen[bytes], str, list[bytes], list[bytes]]:
+    """Spawn a subprocess to run the scan."""
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", prefix="scout_scan_config_", delete=False
+    )
+    try:
+        with f:
+            f.write(config.model_dump_json(exclude_none=True))
+
+        proc = subprocess.Popen(
+            ["scout", "scan", f.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+
+        stdout_lines: list[bytes] = []
+        stderr_lines: list[bytes] = []
+
+        assert proc.stdout is not None
+        assert proc.stderr is not None
+
+        threading.Thread(
+            target=_tee_pipe, args=(proc.stdout, sys.stdout, stdout_lines), daemon=True
+        ).start()
+        threading.Thread(
+            target=_tee_pipe, args=(proc.stderr, sys.stderr, stderr_lines), daemon=True
+        ).start()
+
+        return proc, f.name, stdout_lines, stderr_lines
+    except Exception:
+        os.unlink(f.name)
+        raise
+
+
+async def _wait_for_active_scan(
+    pid: int,
+    timeout_seconds: float = 10.0,
+    poll_interval: float = 0.5,
+) -> ActiveScanInfo | None:
+    """Wait for an active scan to appear for the given PID."""
+    start = time.time()
+
+    while time.time() - start < timeout_seconds:
+        with active_scans_store() as store:
+            info = store.read_by_pid(pid)
+            if info is not None:
+                return info
+        await asyncio.sleep(poll_interval)
+
+    return None

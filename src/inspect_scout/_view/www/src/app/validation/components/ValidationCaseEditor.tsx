@@ -439,7 +439,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
 
               <Field
                 label="Split"
-                helper='Split for this case (e.g., "dev", "test", "train"). Not required.'
+                helper='Split for this case (e.g., "dev", "test").'
               >
                 <ValidationSplitSelector
                   value={workingCase?.split || null}

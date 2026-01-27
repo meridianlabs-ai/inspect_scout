@@ -36,7 +36,7 @@ export const ValidationSplitSelector: FC<ValidationSplitSelectorProps> = ({
   onChange,
   disabled = false,
   className,
-  noSplitLabel = "No split",
+  noSplitLabel = "(Optional)",
   newSplitLabel = "New split...",
 }) => {
   // Internal modal state

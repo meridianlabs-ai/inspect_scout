@@ -110,7 +110,7 @@ By default, validation compares scanner results to targets using equality (`eq`)
 
 When specifying a non-boolean target for a validation case, you can also customize the predicate used for comparison:
 
-![](images/validation-panel-transcripts.png){.border}
+![](images/validation-panel-predicate.png){.border width=297}
 
 Within a validation set CSV, add a `predicate` column to specify comparison logic for individual cases:
 

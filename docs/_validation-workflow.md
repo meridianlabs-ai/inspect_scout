@@ -53,7 +53,7 @@ A validation case maps a transcript to an expected target result. In the example
 
 Sometimes its more convenient to apply validation labels in the context of scan results. There is also a validation editor available in every result view:
 
-![](images/validation-panel-transcripts.png){.border}
+![](images/validation-panel-results.png){.border}
 
 It's often very natural to create cases this way as reviewing scan results often leads to judgments about whether the scanner is working as intended.
 

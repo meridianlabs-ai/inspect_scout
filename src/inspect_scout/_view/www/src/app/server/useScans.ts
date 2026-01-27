@@ -4,6 +4,7 @@ import { useApi } from "../../state/store";
 import { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { AsyncData } from "../../utils/asyncData";
 import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
+import { toRelativePath } from "../../utils/path";
 
 // Lists the available scans from the server and stores in state
 export const useScans = (
@@ -17,7 +18,10 @@ export const useScans = (
     queryFn: async () => {
       const response = await api.getScans(scansDir);
       for (const scan of response.items) {
-        queryClient.setQueryData(["scan", scan.location], scan);
+        queryClient.setQueryData(
+          ["scan", scansDir, toRelativePath(scan.location, scansDir)],
+          scan
+        );
       }
       return response.items;
     },

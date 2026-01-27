@@ -1,7 +1,7 @@
 """V2 API orchestrator - creates FastAPI app and includes all routers."""
 
 from pathlib import Path as PathlibPath
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any
 
 from fastapi import FastAPI
 from inspect_ai._util.json import JsonChange
@@ -16,7 +16,7 @@ from ._api_v2_scans import create_scans_router
 from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import create_transcripts_router
 from ._api_v2_validations import create_validation_router
-from ._server_common import CustomJsonSchemaGenerator
+from ._openapi import build_openapi_schema
 from .invalidationTopics import InvalidationTopic
 from .types import ViewConfig
 
@@ -38,87 +38,29 @@ def v2_api_app(
         title="Inspect Scout Viewer API",
         version=API_VERSION,
     )
-
-    # Remove implied and noisy 422 responses from OpenAPI schema
-    def custom_openapi() -> dict[str, Any]:
-        if not app.openapi_schema:
-            from fastapi._compat import v2
-            from fastapi.openapi.utils import get_openapi
-
-            # Monkey-patch custom schema generator for response-oriented schemas
-            v2.GenerateJsonSchema = CustomJsonSchemaGenerator  # type: ignore
-
-            openapi_schema = get_openapi(
-                title=app.title,
-                version=app.version,
-                routes=app.routes,
-            )
-            for path in openapi_schema.get("paths", {}).values():
-                for operation in path.values():
-                    if isinstance(operation, dict):
-                        operation.get("responses", {}).pop("422", None)
-
-            # Force additional types into schema even if not referenced by endpoints.
-            # Format: list of (schema_name, type) tuples.
-            # - For Union types (type aliases): creates a oneOf schema with the
-            #   given name, plus schemas for each member type. Python type aliases
-            #   don't preserve their name at runtime, so we must provide it explicitly.
-            # - For Pydantic models: creates a schema with the given name.
-            extra_schemas = [
-                ("Content", Content),
-                ("ChatMessage", ChatMessage),
-                ("ValidationCase", ValidationCase),
-                ("Event", Event),
-                ("JsonChange", JsonChange),
-                ("LlmScannerParams", LlmScannerParams),
-                ("InvalidationTopic", InvalidationTopic),
-            ]
-            ref_template = "#/components/schemas/{model}"
-            schemas = openapi_schema.setdefault("components", {}).setdefault(
-                "schemas", {}
-            )
-            for name, t in extra_schemas:
-                if get_origin(t) is Union:
-                    # Union type: create oneOf schema and add member schemas
-                    members = get_args(t)
-                    for m in members:
-                        schema = m.model_json_schema(
-                            ref_template=ref_template,
-                            schema_generator=CustomJsonSchemaGenerator,
-                        )
-                        schemas.update(schema.get("$defs", {}))
-                        schemas[m.__name__] = {
-                            k: v for k, v in schema.items() if k != "$defs"
-                        }
-                    schemas[name] = {
-                        "oneOf": [
-                            {"$ref": f"#/components/schemas/{m.__name__}"}
-                            for m in members
-                        ]
-                    }
-                elif get_origin(t) is Literal:
-                    # Literal type: create enum schema
-                    schemas[name] = {"type": "string", "enum": list(get_args(t))}
-                elif hasattr(t, "model_json_schema"):
-                    # Pydantic model: add directly
-                    schema = t.model_json_schema(
-                        ref_template=ref_template,
-                        schema_generator=CustomJsonSchemaGenerator,
-                    )
-                    schemas.update(schema.get("$defs", {}))
-                    schemas[name] = {k: v for k, v in schema.items() if k != "$defs"}
-
-            app.openapi_schema = openapi_schema
-        return app.openapi_schema
-
-    app.openapi = custom_openapi  # type: ignore[method-assign]
-
-    # Include all routers
     app.include_router(create_config_router(view_config=view_config))
     app.include_router(create_topics_router())
     app.include_router(create_transcripts_router())
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
+
+    def custom_openapi() -> dict[str, Any]:
+        if not app.openapi_schema:
+            app.openapi_schema = build_openapi_schema(
+                app,
+                extra_schemas=[
+                    ("Content", Content),
+                    ("ChatMessage", ChatMessage),
+                    ("ValidationCase", ValidationCase),
+                    ("Event", Event),
+                    ("JsonChange", JsonChange),
+                    ("LlmScannerParams", LlmScannerParams),
+                    ("InvalidationTopic", InvalidationTopic),
+                ],
+            )
+        return app.openapi_schema
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]
 
     return app

@@ -1,6 +1,18 @@
+import { JsonArray, JsonObject, JsonValue } from "../types/json-value";
 import { VSCodeApi } from "../utils/vscode";
 
 // Type definitions
+export type JsonRpcParams = JsonArray | JsonObject;
+
+// This isn't strictly correct. The data field is spec'ed to be JsonValue, but since
+// we're in control of the server, it's fine.
+type JsonRpcErrorData = { description?: string } & { [key: string]: JsonValue };
+
+export type JsonRpcClient = (
+  method: string,
+  params?: JsonRpcParams
+) => Promise<JsonValue>;
+
 interface JsonRpcMessage {
   jsonrpc: string;
   id: number;
@@ -8,28 +20,27 @@ interface JsonRpcMessage {
 
 interface JsonRpcRequest extends JsonRpcMessage {
   method: string;
-  params?: unknown;
+  params?: JsonRpcParams;
 }
 
 interface JsonRpcResponse extends JsonRpcMessage {
-  result?: unknown;
+  result?: JsonValue;
   error?: JsonRpcError;
 }
 
 interface JsonRpcError {
   code: number;
   message: string;
-  data?: {
-    description?: string;
-    [key: string]: unknown;
-  };
+  data?: JsonRpcErrorData;
 }
 
 interface RequestHandlers {
-  resolve: (value: unknown) => void;
+  resolve: (value: JsonValue) => void;
   reject: (error: JsonRpcError) => void;
 }
 
+// PostMessageTarget uses `unknown` because it's at the DOM boundary where
+// MessageEvent.data is untyped. The JSON-RPC layer validates incoming data.
 interface PostMessageTarget {
   postMessage: (data: unknown) => void;
   onMessage: (handler: (data: unknown) => void) => () => void;
@@ -52,6 +63,7 @@ export const kMethodGetScan = "get_scan";
 export const kMethodGetScans = "get_scans";
 export const kMethodGetScannerDataframe = "get_scanner_dataframe";
 export const kMethodGetScannerDataframeInput = "get_scanner_dataframe_input";
+export const kMethodHttpRequest = "http_request";
 
 export const kJsonRpcParseError = -32700;
 export const kJsonRpcInvalidRequest = -32600;
@@ -60,9 +72,7 @@ export const kJsonRpcInvalidParams = -32602;
 export const kJsonRpcInternalError = -32603;
 export const kJsonRpcVersion = "2.0";
 
-export function webViewJsonRpcClient(
-  vscode: VSCodeApi
-): (method: string, params?: unknown) => Promise<unknown> {
+export function webViewJsonRpcClient(vscode: VSCodeApi): JsonRpcClient {
   const target: PostMessageTarget = {
     postMessage: (data: unknown) => {
       vscode.postMessage(data);
@@ -80,29 +90,22 @@ export function webViewJsonRpcClient(
   return jsonRpcPostMessageRequestTransport(target).request;
 }
 
+const toErrorData = (data: unknown): JsonRpcErrorData =>
+  typeof data === "string"
+    ? { description: data }
+    : typeof data === "object" && data !== null
+      ? (data as JsonRpcErrorData)
+      : { description: JSON.stringify(data) };
+
 export function jsonRpcError(
   message: string,
   data?: unknown,
   code?: number
 ): JsonRpcError {
-  let errorData: { description?: string; [key: string]: unknown } | undefined;
-
-  if (data !== undefined) {
-    if (typeof data === "string") {
-      errorData = { description: data };
-    } else if (typeof data === "object" && data !== null) {
-      errorData = data as { description?: string; [key: string]: unknown };
-    } else {
-      errorData = {
-        description: JSON.stringify(data),
-      };
-    }
-  }
-
   return {
     code: code || -3200,
     message,
-    data: errorData,
+    data: data !== undefined ? toErrorData(data) : undefined,
   };
 }
 
@@ -127,14 +130,14 @@ export function jsonRpcPostMessageRequestTransport(target: PostMessageTarget) {
         if (response.error) {
           request.reject(response.error);
         } else {
-          request.resolve(response.result);
+          request.resolve(response.result ?? null);
         }
       }
     }
   });
 
   return {
-    request: (method: string, params?: unknown): Promise<unknown> => {
+    request: (method: string, params?: JsonRpcParams): Promise<JsonValue> => {
       return new Promise((resolve, reject) => {
         const requestId = Math.floor(Math.random() * 1e6);
         requests.set(requestId, { resolve, reject });
@@ -154,8 +157,8 @@ export function jsonRpcPostMessageRequestTransport(target: PostMessageTarget) {
 export function jsonRpcPostMessageServer(
   target: PostMessageTarget,
   methods:
-    | { [key: string]: (params: unknown) => Promise<unknown> }
-    | ((name: string) => ((params: unknown) => Promise<unknown>) | undefined)
+    | { [key: string]: (params: unknown) => Promise<JsonValue> }
+    | ((name: string) => ((params: unknown) => Promise<JsonValue>) | undefined)
 ): () => void {
   const lookupMethod =
     typeof methods === "function" ? methods : (name: string) => methods[name];
@@ -222,7 +225,7 @@ function asJsonRpcResponse(data: unknown): JsonRpcResponse | null {
 
 function jsonRpcResponse(
   request: JsonRpcRequest,
-  result: unknown
+  result: JsonValue
 ): JsonRpcResponse {
   return {
     jsonrpc: request.jsonrpc,

@@ -24,14 +24,23 @@ import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
 
+type TopicUpdateCallback = (topVersions: TopicVersions) => void;
+
 export const apiScoutServer = (
   options: {
     apiBaseUrl?: string;
     headerProvider?: HeaderProvider;
+    customFetch?: typeof fetch;
+    disableSSE?: boolean;
   } = {}
 ): ScanApi => {
-  const { apiBaseUrl = "/api/v2", headerProvider } = options;
-  const requestApi = serverRequestApi(apiBaseUrl, headerProvider);
+  const {
+    apiBaseUrl = "/api/v2",
+    headerProvider,
+    customFetch,
+    disableSSE,
+  } = options;
+  const requestApi = serverRequestApi(apiBaseUrl, headerProvider, customFetch);
 
   return {
     capability: "workbench",
@@ -291,26 +300,62 @@ export const apiScoutServer = (
 
     connectTopicUpdates: (
       onUpdate: (topVersions: TopicVersions) => void
-    ): (() => void) => {
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      let eventSource: EventSource | undefined;
-
-      const connect = () => {
-        eventSource = new EventSource(`${apiBaseUrl}/topics/stream`);
-        eventSource.onmessage = (e) =>
-          onUpdate(JSON.parse(e.data) as TopicVersions);
-        eventSource.onerror = () => {
-          eventSource?.close();
-          timeoutId = setTimeout(connect, 5000);
-        };
-      };
-
-      connect();
-      return () => {
-        clearTimeout(timeoutId);
-        eventSource?.close();
-      };
-    },
+    ): (() => void) =>
+      disableSSE
+        ? connectTopicUpdatesViaPolling(apiBaseUrl, onUpdate, customFetch)
+        : connectTopicUpdatesViaSSE(apiBaseUrl, onUpdate),
     storage: NoPersistence,
+  };
+};
+
+const connectTopicUpdatesViaPolling = (
+  apiBaseUrl: string,
+  onUpdate: TopicUpdateCallback,
+  customFetch?: typeof fetch
+): (() => void) => {
+  const controller = new AbortController();
+
+  const poll = () =>
+    (customFetch ?? fetch)(`${apiBaseUrl}/topics`, {
+      signal: controller.signal,
+    })
+      .then<TopicVersions>((res) => res.json())
+      .then(onUpdate)
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error("Topic polling failed:", error);
+        }
+      });
+
+  void poll();
+  const intervalId = setInterval(() => void poll(), 10000);
+
+  return () => {
+    controller.abort();
+    clearInterval(intervalId);
+  };
+};
+
+const connectTopicUpdatesViaSSE = (
+  apiBaseUrl: string,
+  onUpdate: TopicUpdateCallback
+): (() => void) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let eventSource: EventSource | undefined;
+
+  const connect = () => {
+    eventSource = new EventSource(`${apiBaseUrl}/topics/stream`);
+    eventSource.onmessage = (e) =>
+      onUpdate(JSON.parse(e.data) as TopicVersions);
+    eventSource.onerror = () => {
+      eventSource?.close();
+      timeoutId = setTimeout(connect, 5000);
+    };
+  };
+
+  connect();
+  return () => {
+    clearTimeout(timeoutId);
+    eventSource?.close();
   };
 };

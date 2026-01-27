@@ -208,6 +208,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current topic versions
+         * @description Returns current topic versions dict for polling clients.
+         */
+        get: operations["get_topics_topics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/topics/stream": {
         parameters: {
             query?: never;
@@ -2959,6 +2979,13 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Model Usage
+             * @default null
+             */
+            model_usage: {
+                [key: string]: components["schemas"]["ModelUsage"];
+            } | null;
+            /**
              * Pending
              * @default null
              */
@@ -4169,6 +4196,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    get_topics_topics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

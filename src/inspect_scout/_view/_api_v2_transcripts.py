@@ -1,7 +1,6 @@
 """Transcripts REST API endpoints."""
 
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Path
 from starlette.status import (
@@ -10,7 +9,7 @@ from starlette.status import (
 )
 
 from .._project._project import read_project
-from .._query import Column, Operator, Query, ScalarValue
+from .._query import Column, Query, ScalarValue
 from .._query.condition import Condition as ConditionType
 from .._query.condition_sql import condition_from_sql
 from .._query.order_by import OrderBy
@@ -23,187 +22,13 @@ from .._transcript.types import (
 )
 from ._api_v2_types import (
     DistinctRequest,
-    PaginatedRequest,
     TranscriptsRequest,
     TranscriptsResponse,
 )
+from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
 
 MAX_TRANSCRIPT_BYTES = 350 * 1024 * 1024  # 350MB
-
-
-# --- Pagination helpers (from _api_v2_helpers.py) ---
-
-
-def _ensure_tiebreaker(
-    order_by: OrderBy | list[OrderBy] | None,
-    tiebreaker_col: str,
-) -> list[OrderBy]:
-    """Ensure sort order has tiebreaker column as final element."""
-    if order_by is None:
-        return [OrderBy(tiebreaker_col, "ASC")]
-
-    order_bys = order_by if isinstance(order_by, list) else [order_by]
-    columns = [OrderBy(ob.column, ob.direction) for ob in order_bys]
-
-    if any(ob.column == tiebreaker_col for ob in columns):
-        return columns
-
-    return columns + [OrderBy(tiebreaker_col, "ASC")]
-
-
-def _cursor_to_condition(
-    cursor: dict[str, Any],
-    order_columns: list[OrderBy],
-    direction: Literal["forward", "backward"],
-) -> ConditionType:
-    """Convert cursor to SQL condition for keyset pagination."""
-
-    def get_operator(
-        sort_dir: Literal["ASC", "DESC"], pag_dir: Literal["forward", "backward"]
-    ) -> Operator:
-        want_greater = (pag_dir == "forward" and sort_dir == "ASC") or (
-            pag_dir == "backward" and sort_dir == "DESC"
-        )
-        return Operator.GT if want_greater else Operator.LT
-
-    or_conditions: list[ConditionType] = []
-
-    for i in range(len(order_columns)):
-        and_conditions: list[ConditionType] = []
-
-        for j in range(i):
-            col_name = order_columns[j].column
-            cursor_val = cursor.get(col_name)
-            cursor_val = "" if cursor_val is None else cursor_val
-            and_conditions.append(
-                ConditionType(left=col_name, operator=Operator.EQ, right=cursor_val)
-            )
-
-        ob = order_columns[i]
-        col_name = ob.column
-        sort_dir = ob.direction
-        cursor_val = cursor.get(col_name)
-        cursor_val = "" if cursor_val is None else cursor_val
-        op = get_operator(sort_dir, direction)
-        and_conditions.append(
-            ConditionType(left=col_name, operator=op, right=cursor_val)
-        )
-
-        combined = and_conditions[0]
-        for cond in and_conditions[1:]:
-            combined = combined & cond
-        or_conditions.append(combined)
-
-    result = or_conditions[0]
-    for cond in or_conditions[1:]:
-        result = result | cond
-
-    return result
-
-
-def _reverse_order_columns(order_columns: list[OrderBy]) -> list[OrderBy]:
-    """Reverse direction of all order columns."""
-    return [
-        OrderBy(ob.column, "DESC" if ob.direction == "ASC" else "ASC")
-        for ob in order_columns
-    ]
-
-
-def _build_transcripts_cursor(
-    transcript: TranscriptInfo,
-    order_columns: list[OrderBy],
-) -> dict[str, Any]:
-    """Build cursor from transcript using sort columns."""
-    cursor: dict[str, Any] = {}
-    for ob in order_columns:
-        column = ob.column
-        cursor[column] = getattr(transcript, column, None)
-    return cursor
-
-
-@dataclass
-class _PaginationContext:
-    """Context for paginated queries."""
-
-    filter_conditions: list[ConditionType]
-    conditions: list[ConditionType]
-    order_columns: list[OrderBy]
-    db_order_columns: list[OrderBy]
-    limit: int | None
-    needs_reverse: bool
-
-
-def _build_pagination_context(
-    body: PaginatedRequest | None,
-    tiebreaker_col: str,
-    global_filters: list[ConditionType] | None = None,
-) -> _PaginationContext:
-    """Build pagination context from request body."""
-    filter_conditions: list[ConditionType] = (
-        global_filters.copy() if global_filters else []
-    )
-    if body and body.filter:
-        filter_conditions.append(body.filter)
-
-    conditions = filter_conditions.copy()
-    use_pagination = body is not None and body.pagination is not None
-    db_order_columns: list[OrderBy] = []
-    order_columns: list[OrderBy] = []
-    limit: int | None = None
-    needs_reverse = False
-
-    if use_pagination:
-        assert body is not None and body.pagination is not None
-        pagination = body.pagination
-
-        order_by = body.order_by or OrderBy(column=tiebreaker_col, direction="ASC")
-        order_columns = _ensure_tiebreaker(order_by, tiebreaker_col)
-
-        db_order_columns = order_columns
-        if pagination.direction == "backward" and not pagination.cursor:
-            db_order_columns = _reverse_order_columns(order_columns)
-            needs_reverse = True
-
-        if pagination.cursor:
-            conditions.append(
-                _cursor_to_condition(
-                    pagination.cursor, order_columns, pagination.direction
-                )
-            )
-
-        limit = pagination.limit
-    elif body and body.order_by:
-        order_bys = (
-            body.order_by if isinstance(body.order_by, list) else [body.order_by]
-        )
-        db_order_columns = [OrderBy(ob.column, ob.direction) for ob in order_bys]
-
-    return _PaginationContext(
-        filter_conditions=filter_conditions,
-        conditions=conditions,
-        order_columns=order_columns,
-        db_order_columns=db_order_columns,
-        limit=limit,
-        needs_reverse=needs_reverse,
-    )
-
-
-# --- Project filters helper (from _transcripts_helpers.py) ---
-
-
-def _get_project_filters() -> list[ConditionType]:
-    project = read_project()
-    return [
-        condition_from_sql(f)
-        for f in (
-            project.filter if isinstance(project.filter, list) else [project.filter]
-        )
-        if f
-    ]
-
-
-# --- Router factory ---
 
 
 def create_transcripts_router() -> APIRouter:
@@ -229,7 +54,7 @@ def create_transcripts_router() -> APIRouter:
         transcripts_dir = decode_base64url(dir)
 
         try:
-            ctx = _build_pagination_context(
+            ctx = build_pagination_context(
                 body, "transcript_id", _get_project_filters()
             )
 
@@ -319,3 +144,26 @@ def create_transcripts_router() -> APIRouter:
             return await view.distinct(body.column, body.filter)
 
     return router
+
+
+# --- Private helpers ---
+
+
+def _build_transcripts_cursor(
+    transcript: TranscriptInfo,
+    order_columns: list[OrderBy],
+) -> dict[str, Any]:
+    """Build cursor from transcript using sort columns."""
+    return {ob.column: getattr(transcript, ob.column, None) for ob in order_columns}
+
+
+def _get_project_filters() -> list[ConditionType]:
+    """Get filter conditions from project configuration."""
+    project = read_project()
+    return [
+        condition_from_sql(f)
+        for f in (
+            project.filter if isinstance(project.filter, list) else [project.filter]
+        )
+        if f
+    ]

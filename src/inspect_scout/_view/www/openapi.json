@@ -7632,6 +7632,21 @@
             "default": null,
             "title": "Metadata"
           },
+          "model_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ModelUsage"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Usage"
+          },
           "pending": {
             "anyOf": [
               {
@@ -10537,6 +10552,35 @@
         "summary": "Run llm_scanner",
         "tags": [
           "scans"
+        ]
+      }
+    },
+    "/topics": {
+      "get": {
+        "description": "Returns current topic versions dict for polling clients.",
+        "operationId": "get_topics_topics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "const": "project-config"
+                  },
+                  "title": "Response Get Topics Topics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get current topic versions",
+        "tags": [
+          "topics"
         ]
       }
     },

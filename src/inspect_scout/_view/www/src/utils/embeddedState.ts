@@ -6,6 +6,8 @@ export interface EmbeddedScanState {
   dir: string;
   scan: string;
   scanner?: string;
+  /** Protocol version: undefined/1 = legacy V1, 2 = HTTP proxy support */
+  extensionProtocolVersion?: number;
 }
 
 /**
@@ -22,15 +24,23 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
   }
 
   try {
-    const state: { type: string; url: string; scanner?: string } = JSON5.parse(
-      embeddedState.textContent
-    );
+    const state: {
+      type: string;
+      url: string;
+      scanner?: string;
+      extensionProtocolVersion?: number;
+    } = JSON5.parse(embeddedState.textContent);
 
     if (state.type === "updateState" && state.url) {
       const url = state.url;
       const dir = dirname(url);
       const scan = basename(url);
-      return { dir, scan, scanner: state.scanner };
+      return {
+        dir,
+        scan,
+        scanner: state.scanner,
+        extensionProtocolVersion: state.extensionProtocolVersion,
+      };
     }
   } catch (error) {
     console.error("Failed to parse embedded state:", error);

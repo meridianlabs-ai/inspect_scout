@@ -2,10 +2,11 @@
 
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Mapping, cast
 
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as PathParam
+from pydantic import JsonValue
 from send2trash import send2trash
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
@@ -86,17 +87,7 @@ def create_validation_router(
                     detail=f"Case {i}: 'id' is required",
                 )
 
-            # Validate that exactly one of target or labels is provided
-            if case_req.target is None and case_req.labels is None:
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail=f"Case {i}: must specify either 'target' or 'labels'",
-                )
-            if case_req.target is not None and case_req.labels is not None:
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail=f"Case {i}: cannot specify both 'target' and 'labels'",
-                )
+            _validate_target_or_labels(case_req.target, case_req.labels, f"Case {i}")
 
             cases.append(
                 ValidationCase(
@@ -286,17 +277,7 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        # Validate that exactly one of target or labels is provided
-        if body.target is None and body.labels is None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="Must specify either 'target' or 'labels'",
-            )
-        if body.target is not None and body.labels is not None:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail="Cannot specify both 'target' and 'labels'",
-            )
+        _validate_target_or_labels(body.target, body.labels, "")
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -355,6 +336,29 @@ def create_validation_router(
             ) from None
 
     return router
+
+
+def _validate_target_or_labels(
+    target: JsonValue | None,
+    labels: Mapping[str, JsonValue] | None,
+    context: str,
+) -> None:
+    """Validate that exactly one of target or labels is provided.
+
+    Args:
+        target: The target value.
+        labels: The labels dict.
+        context: Context string for error message (e.g., "Case 0" or empty string).
+
+    Raises:
+        HTTPException with 400 status if validation fails.
+    """
+    if (target is None) == (labels is None):
+        prefix = f"{context}: " if context else ""
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=f"{prefix}must specify exactly one of 'target' or 'labels'",
+        )
 
 
 def _decode_case_id(encoded_id: str) -> str | list[str]:

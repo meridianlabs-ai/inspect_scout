@@ -11,10 +11,12 @@ import {
   Status,
   TranscriptsResponse,
 } from "../types/api-types";
+import { JsonValue } from "../types/json-value";
 import { VSCodeApi } from "../utils/vscode";
 
 import { ClientStorage, ScanApi, TopicVersions } from "./api";
 import {
+  JsonRpcParams,
   kMethodGetScan,
   kMethodGetScannerDataframe,
   kMethodGetScannerDataframeInput,
@@ -23,7 +25,7 @@ import {
 
 export const apiVscode = (
   vscodeApi: VSCodeApi,
-  rpcClient: (method: string, params?: unknown) => Promise<unknown>
+  rpcClient: (method: string, params?: JsonRpcParams) => Promise<JsonValue>
 ): ScanApi => {
   // Fetch scans data (used by both getScans and getScansDir)
   // Note: caching is handled by react-query at the hook level

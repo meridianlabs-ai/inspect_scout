@@ -1,16 +1,19 @@
 /**
- * JSON value type.
+ * JSON value type - any valid JSON value.
  *
- * openapi-typescript cannot generate this correctly because it inlines
- * recursive $refs, causing TS2502 circular reference errors. A truly
- * recursive type causes TS2589 with immer's deep type inference.
- *
- * Uses unknown for nested values as a pragmatic tradeoff.
+ * Uses interfaces for array/object to avoid TS2589 "excessively deep"
+ * errors with immer's type inference on recursive type aliases.
  */
 export type JsonValue =
   | null
   | boolean
   | number
   | string
-  | unknown[]
-  | { [key: string]: unknown };
+  | JsonArray
+  | JsonObject;
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface JsonArray extends Array<JsonValue> {}
+export interface JsonObject {
+  [key: string]: JsonValue;
+}

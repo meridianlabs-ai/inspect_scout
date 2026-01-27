@@ -2957,6 +2957,13 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Model Usage
+             * @default null
+             */
+            model_usage: {
+                [key: string]: components["schemas"]["ModelUsage"];
+            } | null;
+            /**
              * Pending
              * @default null
              */

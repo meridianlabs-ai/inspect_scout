@@ -27,9 +27,12 @@ interface JsonRpcResponse extends JsonRpcMessage {
 interface JsonRpcError {
   code: number;
   message: string;
+  // This isn't strictly correct. The data field is spec'ed to be JsonValue, but
+  // since we're in control of the server, it's fine.
   data?: {
     description?: string;
-    [key: string]: unknown;
+  } & {
+    [key: string]: JsonValue;
   };
 }
 
@@ -94,13 +97,17 @@ export function jsonRpcError(
   data?: unknown,
   code?: number
 ): JsonRpcError {
-  let errorData: { description?: string; [key: string]: unknown } | undefined;
+  let errorData:
+    | ({ description?: string } & { [key: string]: JsonValue })
+    | undefined;
 
   if (data !== undefined) {
     if (typeof data === "string") {
       errorData = { description: data };
     } else if (typeof data === "object" && data !== null) {
-      errorData = data as { description?: string; [key: string]: unknown };
+      errorData = data as { description?: string } & {
+        [key: string]: JsonValue;
+      };
     } else {
       errorData = {
         description: JSON.stringify(data),

@@ -87,9 +87,7 @@ def v2_api_app(
                             schema_generator=CustomJsonSchemaGenerator,
                         )
                         schemas.update(schema.get("$defs", {}))
-                        schemas[m.__name__] = {
-                            k: v for k, v in schema.items() if k != "$defs"
-                        }
+                        schemas[m.__name__] = _schema_without_defs(schema)
                     schemas[name] = {
                         "oneOf": [
                             {"$ref": f"#/components/schemas/{m.__name__}"}
@@ -106,7 +104,7 @@ def v2_api_app(
                         schema_generator=CustomJsonSchemaGenerator,
                     )
                     schemas.update(schema.get("$defs", {}))
-                    schemas[name] = {k: v for k, v in schema.items() if k != "$defs"}
+                    schemas[name] = _schema_without_defs(schema)
 
             app.openapi_schema = openapi_schema
         return app.openapi_schema
@@ -122,3 +120,8 @@ def v2_api_app(
     app.include_router(create_validation_router(PathlibPath.cwd()))
 
     return app
+
+
+def _schema_without_defs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Return schema dict excluding $defs key."""
+    return {k: v for k, v in schema.items() if k != "$defs"}

@@ -4,6 +4,10 @@ import { VSCodeApi } from "../utils/vscode";
 // Type definitions
 export type JsonRpcParams = JsonArray | JsonObject;
 
+// This isn't strictly correct. The data field is spec'ed to be JsonValue, but since
+// we're in control of the server, it's fine.
+type JsonRpcErrorData = { description?: string } & { [key: string]: JsonValue };
+
 export type JsonRpcClient = (
   method: string,
   params?: JsonRpcParams
@@ -27,13 +31,7 @@ interface JsonRpcResponse extends JsonRpcMessage {
 interface JsonRpcError {
   code: number;
   message: string;
-  // This isn't strictly correct. The data field is spec'ed to be JsonValue, but
-  // since we're in control of the server, it's fine.
-  data?: {
-    description?: string;
-  } & {
-    [key: string]: JsonValue;
-  };
+  data?: JsonRpcErrorData;
 }
 
 interface RequestHandlers {
@@ -92,33 +90,22 @@ export function webViewJsonRpcClient(vscode: VSCodeApi): JsonRpcClient {
   return jsonRpcPostMessageRequestTransport(target).request;
 }
 
+const toErrorData = (data: unknown): JsonRpcErrorData =>
+  typeof data === "string"
+    ? { description: data }
+    : typeof data === "object" && data !== null
+      ? (data as JsonRpcErrorData)
+      : { description: JSON.stringify(data) };
+
 export function jsonRpcError(
   message: string,
   data?: unknown,
   code?: number
 ): JsonRpcError {
-  let errorData:
-    | ({ description?: string } & { [key: string]: JsonValue })
-    | undefined;
-
-  if (data !== undefined) {
-    if (typeof data === "string") {
-      errorData = { description: data };
-    } else if (typeof data === "object" && data !== null) {
-      errorData = data as { description?: string } & {
-        [key: string]: JsonValue;
-      };
-    } else {
-      errorData = {
-        description: JSON.stringify(data),
-      };
-    }
-  }
-
   return {
     code: code || -3200,
     message,
-    data: errorData,
+    data: data !== undefined ? toErrorData(data) : undefined,
   };
 }
 

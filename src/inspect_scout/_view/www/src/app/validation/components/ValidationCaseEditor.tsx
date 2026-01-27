@@ -1,12 +1,20 @@
 import { skipToken } from "@tanstack/react-query";
-import { VscodeCollapsible } from "@vscode-elements/react-elements";
+import { VscodeDivider } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/ConfirmationDialog";
 import { ErrorPanel } from "../../../components/ErrorPanel";
 import { ApplicationIcons } from "../../../components/icons";
+import { MenuActionButton } from "../../../components/MenuActionButton";
 import { LoadingBar } from "../../../components/LoadingBar";
 import {
   getValidationParam,
@@ -358,114 +366,108 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     }
   }, [transcriptId, deleteCaseMutation]);
 
+  const actions: ReactNode =
+    workingCase?.target != null && workingCase.target !== "" ? (
+      <MenuActionButton
+        items={[
+          {
+            icon: ApplicationIcons.trash,
+            label: "Delete validation case",
+            value: "delete",
+            disabled: deleteCaseMutation.isPending,
+          },
+        ]}
+        onSelect={(value) => {
+          if (value === "delete") setShowDeleteModal(true);
+        }}
+        title="More actions"
+      />
+    ) : undefined;
+
   return (
     <div className={clsx(styles.container, className)}>
       <SidebarHeader
-        title="Validation"
+        title="Validation Case"
         icon={ApplicationIcons.validation}
+        actions={actions}
         onClose={closeValidationSidebar}
       />
       <div className={styles.content}>
-        <VscodeCollapsible heading="Validation Set" open>
-          <SidebarPanel>
-            <Field label="Validation Set">
-              <ValidationSetSelector
-                validationSets={validationSets || []}
-                selectedUri={editorValidationSetUri}
-                onSelect={handleValidationSetSelect}
-                allowCreate={true}
-                onCreate={(name) => void handleCreateSet(name)}
-                projectDir={config.project_dir}
-              />
-              {createError && (
-                <div className={styles.createError}>{createError}</div>
-              )}
-            </Field>
-            <Field
-              label="Split"
-              helper='Split for this case (e.g., "dev", "test", "train"). Not required.'
-            >
-              <ValidationSplitSelector
-                value={workingCase?.split || null}
-                existingSplits={extractUniqueSplits(validationCases || [])}
-                onChange={(split) => handleFieldChange("split", split)}
-              />
-            </Field>
-          </SidebarPanel>
-        </VscodeCollapsible>
+        <SidebarPanel>
+          <SecondaryDisplayValue label="ID" value={transcriptId} />
+          <Field label="Validation Set">
+            <ValidationSetSelector
+              validationSets={validationSets || []}
+              selectedUri={editorValidationSetUri}
+              onSelect={handleValidationSetSelect}
+              allowCreate={true}
+              onCreate={(name) => void handleCreateSet(name)}
+              projectDir={config.project_dir}
+            />
+            {createError && (
+              <div className={styles.createError}>{createError}</div>
+            )}
+          </Field>
 
-        {editorValidationSetUri && (
-          <>
-            <VscodeCollapsible heading="Validation Case" open>
-              {workingCase?.target != null && workingCase.target !== "" && (
-                <span
-                  slot="decorations"
-                  className={styles.headerActionButton}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!deleteCaseMutation.isPending) {
-                      setShowDeleteModal(true);
+          {editorValidationSetUri && (
+            <>
+              <Field label="Target" helper="The expected value for this case.">
+                <ValidationCaseTargetEditor
+                  target={workingCase?.target}
+                  onChange={(target) => {
+                    if (!isOtherTarget(target)) {
+                      // Clear the predicate when switching away from boolean target
+                      handleFieldChange("predicate", null);
                     }
+                    handleFieldChange("target", target);
                   }}
-                  aria-disabled={deleteCaseMutation.isPending}
-                  title="Delete validation case"
-                >
-                  <i className={ApplicationIcons.trash} />
-                </span>
-              )}
-              <SidebarPanel>
-                <SecondaryDisplayValue label="ID" value={transcriptId} />
+                />
+              </Field>
+
+              {isOtherTarget(workingCase?.target) && (
                 <Field
-                  label="Target"
-                  helper="The expected value for this case."
+                  label="Predicate"
+                  helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
                 >
-                  <ValidationCaseTargetEditor
-                    target={workingCase?.target}
-                    onChange={(target) => {
-                      if (!isOtherTarget(target)) {
-                        // Clear the predicate when switching away from boolean target
-                        handleFieldChange("predicate", null);
-                      }
-                      handleFieldChange("target", target);
-                    }}
+                  <ValidationCasePredicateSelector
+                    value={workingCase?.predicate || null}
+                    onChange={(predicate) =>
+                      handleFieldChange("predicate", predicate)
+                    }
                   />
                 </Field>
+              )}
 
-                {isOtherTarget(workingCase?.target) && (
-                  <Field
-                    label="Predicate"
-                    helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
-                  >
-                    <ValidationCasePredicateSelector
-                      value={workingCase?.predicate || null}
-                      onChange={(predicate) =>
-                        handleFieldChange("predicate", predicate)
-                      }
-                    />
-                  </Field>
-                )}
-              </SidebarPanel>
-            </VscodeCollapsible>
+              <Field
+                label="Split"
+                helper='Split for this case (e.g., "dev", "test", "train"). Not required.'
+              >
+                <ValidationSplitSelector
+                  value={workingCase?.split || null}
+                  existingSplits={extractUniqueSplits(validationCases || [])}
+                  onChange={(split) => handleFieldChange("split", split)}
+                />
+              </Field>
 
-            <ConfirmationDialog
-              show={showDeleteModal}
-              onHide={() => setShowDeleteModal(false)}
-              onConfirm={() => void handleDeleteCase()}
-              title="Delete Case"
-              message="Are you sure you want to delete this validation case?"
-              confirmLabel="Delete"
-              confirmingLabel="Deleting..."
-              isConfirming={deleteCaseMutation.isPending}
-            />
-          </>
-        )}
+              <ConfirmationDialog
+                show={showDeleteModal}
+                onHide={() => setShowDeleteModal(false)}
+                onConfirm={() => void handleDeleteCase()}
+                title="Delete Case"
+                message="Are you sure you want to delete this validation case?"
+                confirmLabel="Delete"
+                confirmingLabel="Deleting..."
+                isConfirming={deleteCaseMutation.isPending}
+              />
+            </>
+          )}
+        </SidebarPanel>
       </div>
       <SaveStatus status={saveStatus} error={saveError} />
     </div>
   );
 };
+
 interface SidebarPanelProps {
   children: React.ReactNode;
 }
@@ -478,6 +480,7 @@ interface SidebarHeaderProps {
   icon?: string;
   title?: string;
   secondary?: string;
+  actions?: React.ReactNode;
   onClose?: () => void;
 }
 
@@ -485,6 +488,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
   icon,
   title,
   secondary,
+  actions,
   onClose,
 }) => {
   return (
@@ -494,11 +498,17 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
         {title}
       </h3>
       {secondary && <div className={styles.headerSecondary}>{secondary}</div>}
-      {onClose && (
-        <i
-          className={clsx(ApplicationIcons.close, styles.clickable)}
-          onClick={onClose}
-        />
+
+      {(actions || onClose) && (
+        <div className={styles.headerActions}>
+          {actions}
+          {onClose && (
+            <i
+              className={clsx(ApplicationIcons.close, styles.clickable)}
+              onClick={onClose}
+            />
+          )}
+        </div>
       )}
     </div>
   );

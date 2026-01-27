@@ -9208,22 +9208,113 @@ span.ap-marker-container:hover span.ap-marker {
   color: var(--vscode-errorForeground);
   font-size: 0.9rem;
 }
-._container_1ui5g_1 {
+._wrapper_1egmr_1 {
+  position: relative;
+  display: inline-block;
+}
+
+._iconButton_1egmr_6 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
+}
+
+._iconButton_1egmr_6:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+._iconButton_1egmr_6:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+._backdrop_1egmr_33 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+._menu_1egmr_42 {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 2px;
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+  min-width: 160px;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+._menuItem_1egmr_57 {
+  display: block;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+._menuItem_1egmr_57:hover {
+  background: var(
+    --vscode-menu-selectionBackground,
+    var(--vscode-list-hoverBackground)
+  );
+  color: var(
+    --vscode-menu-selectionForeground,
+    var(--vscode-foreground)
+  );
+}
+
+._menuItem_1egmr_57:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+._menuItem_1egmr_57 i {
+  margin-right: 8px;
+}
+._container_1notz_1 {
   display: flex;
   flex-direction: column;
   padding: 0;
 }
 
-._header_1ui5g_7 {
+._header_1notz_7 {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem;
   flex-shrink: 0;
-  height: 40px;
+  height: 39px;
+  border-bottom: 1px solid var(--bs-border-color);
+  background-color: var(--bs-light);
 }
 
-._headerTitle_1ui5g_16 {
+._headerTitle_1notz_18 {
   margin: 0;
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
@@ -9231,33 +9322,33 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerIcon_1ui5g_24 {
+._headerIcon_1notz_26 {
   margin-right: 0.5em;
 }
 
-._headerSecondary_1ui5g_28 {
+._headerSecondary_1notz_30 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_1ui5g_33 {
+._content_1notz_35 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_1ui5g_38 {
+._placeholder_1notz_40 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_1ui5g_45 {
+._textValue_1notz_47 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_1ui5g_50 {
+._panel_1notz_52 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
@@ -9266,23 +9357,23 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Make all form controls full width within the panel */
-._panel_1ui5g_50 vscode-single-select,
-._panel_1ui5g_50 vscode-textfield,
-._panel_1ui5g_50 button {
+._panel_1notz_52 vscode-single-select,
+._panel_1notz_52 vscode-textfield,
+._panel_1notz_52 button {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
 
-._clickable_1ui5g_67 {
+._clickable_1notz_69 {
   cursor: pointer;
 }
 
-._idLabel_1ui5g_71 {
+._idLabel_1notz_73 {
   margin-right: 0.5em;
 }
 
-._saveStatusContainer_1ui5g_75 {
+._saveStatusContainer_1notz_77 {
   position: fixed;
   bottom: 0.1rem;
   right: 0.1rem;
@@ -9295,16 +9386,16 @@ span.ap-marker-container:hover span.ap-marker {
   transition: opacity 300ms ease-in-out;
 }
 
-._saveStatusContainer_1ui5g_75._saveStatusHidden_1ui5g_88 {
+._saveStatusContainer_1notz_77._saveStatusHidden_1notz_90 {
   opacity: 0;
 }
 
-._saveStatusContainer_1ui5g_75._saveStatusError_1ui5g_92 {
+._saveStatusContainer_1notz_77._saveStatusError_1notz_94 {
   opacity: 1;
   color: var(--bs-danger);
 }
 
-._saveStatus_1ui5g_75 {
+._saveStatus_1notz_77 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
   word-wrap: break-word;
@@ -9312,13 +9403,13 @@ span.ap-marker-container:hover span.ap-marker {
   display: block;
 }
 
-._createError_1ui5g_105 {
+._createError_1notz_107 {
   color: var(--vscode-errorForeground);
   font-size: var(--inspect-font-size-smallest);
   margin-top: 0.25rem;
 }
 
-._headerActionButton_1ui5g_111 {
+._headerActionButton_1notz_113 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9337,13 +9428,13 @@ span.ap-marker-container:hover span.ap-marker {
   z-index: 10;
 }
 
-._headerActionButton_1ui5g_111:hover:not(:disabled) {
+._headerActionButton_1notz_113:hover:not(:disabled) {
   opacity: 1;
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-errorForeground);
 }
 
-._headerActionButton_1ui5g_111:disabled {
+._headerActionButton_1notz_113:disabled {
   opacity: 0.3;
   cursor: default;
 }

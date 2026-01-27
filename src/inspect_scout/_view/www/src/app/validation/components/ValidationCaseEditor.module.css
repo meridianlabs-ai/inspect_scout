@@ -10,7 +10,9 @@
   justify-content: space-between;
   padding: 0.5rem;
   flex-shrink: 0;
-  height: 40px;
+  height: 39px;
+  border-bottom: 1px solid var(--bs-border-color);
+  background-color: var(--bs-light);
 }
 
 .headerTitle {

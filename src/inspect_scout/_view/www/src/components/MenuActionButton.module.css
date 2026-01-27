@@ -44,7 +44,10 @@
   top: 100%;
   right: 0;
   margin-top: 2px;
-  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  background: var(
+    --vscode-menu-background,
+    var(--vscode-editorWidget-background)
+  );
   border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border));
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -73,10 +76,7 @@
     --vscode-menu-selectionBackground,
     var(--vscode-list-hoverBackground)
   );
-  color: var(
-    --vscode-menu-selectionForeground,
-    var(--vscode-foreground)
-  );
+  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
 }
 
 .menuItem:disabled {

@@ -55,7 +55,8 @@ class ScannerSummary(BaseModel):
             entries: list[ValidationEntry] = []
             for item in v:
                 if isinstance(item, (bool, dict)):
-                    entries.append(ValidationEntry(target=None, valid=item))
+                    # Legacy entries have no id or target
+                    entries.append(ValidationEntry(id="", target=None, valid=item))
             if entries:
                 return ValidationResults.from_entries(entries)
             return None
@@ -107,8 +108,19 @@ class Summary(BaseModel):
                 else:
                     agg_results += 1
             if result.validation is not None:
+                # Normalize input_ids: single string if length 1, else list
+                entry_id: str | list[str] = (
+                    (
+                        result.input_ids[0]
+                        if len(result.input_ids) == 1
+                        else result.input_ids
+                    )
+                    if result.input_ids
+                    else ""
+                )
                 new_entries.append(
                     ValidationEntry(
+                        id=entry_id,
                         target=result.validation.target,
                         valid=result.validation.valid,
                     )

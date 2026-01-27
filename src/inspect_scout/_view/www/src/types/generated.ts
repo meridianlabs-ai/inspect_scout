@@ -3808,7 +3808,9 @@ export interface components {
          * @description A single validation result with its target.
          */
         ValidationEntry: {
-            target?: components["schemas"]["JsonValue"] | null;
+            /** Id */
+            id: string | string[];
+            target: components["schemas"]["JsonValue"];
             /** Valid */
             valid: boolean | {
                 [key: string]: boolean;

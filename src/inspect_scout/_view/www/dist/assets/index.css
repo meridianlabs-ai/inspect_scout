@@ -9208,12 +9208,12 @@ span.ap-marker-container:hover span.ap-marker {
   color: var(--vscode-errorForeground);
   font-size: 0.9rem;
 }
-._wrapper_1egmr_1 {
+._wrapper_poq0z_1 {
   position: relative;
   display: inline-block;
 }
 
-._iconButton_1egmr_6 {
+._iconButton_poq0z_6 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9230,17 +9230,17 @@ span.ap-marker-container:hover span.ap-marker {
     color 0.1s;
 }
 
-._iconButton_1egmr_6:hover {
+._iconButton_poq0z_6:hover {
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
 
-._iconButton_1egmr_6:disabled {
+._iconButton_poq0z_6:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-._backdrop_1egmr_33 {
+._backdrop_poq0z_33 {
   position: fixed;
   top: 0;
   left: 0;
@@ -9249,12 +9249,15 @@ span.ap-marker-container:hover span.ap-marker {
   z-index: 1000;
 }
 
-._menu_1egmr_42 {
+._menu_poq0z_42 {
   position: absolute;
   top: 100%;
   right: 0;
   margin-top: 2px;
-  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  background: var(
+    --vscode-menu-background,
+    var(--vscode-editorWidget-background)
+  );
   border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border));
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -9264,7 +9267,7 @@ span.ap-marker-container:hover span.ap-marker {
   padding: 4px 0;
 }
 
-._menuItem_1egmr_57 {
+._menuItem_poq0z_60 {
   display: block;
   width: 100%;
   padding: 4px 12px;
@@ -9278,23 +9281,20 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 22px;
 }
 
-._menuItem_1egmr_57:hover {
+._menuItem_poq0z_60:hover {
   background: var(
     --vscode-menu-selectionBackground,
     var(--vscode-list-hoverBackground)
   );
-  color: var(
-    --vscode-menu-selectionForeground,
-    var(--vscode-foreground)
-  );
+  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
 }
 
-._menuItem_1egmr_57:disabled {
+._menuItem_poq0z_60:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-._menuItem_1egmr_57 i {
+._menuItem_poq0z_60 i {
   margin-right: 8px;
 }
 ._container_1notz_1 {

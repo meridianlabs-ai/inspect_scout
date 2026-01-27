@@ -41,10 +41,7 @@ export const MenuActionButton: FC<MenuActionButtonProps> = ({
       </button>
       {showMenu && (
         <>
-          <div
-            className={styles.backdrop}
-            onClick={() => setShowMenu(false)}
-          />
+          <div className={styles.backdrop} onClick={() => setShowMenu(false)} />
           <div className={styles.menu}>
             {items.map((item) => (
               <button

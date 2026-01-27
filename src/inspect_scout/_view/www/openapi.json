@@ -9769,15 +9769,22 @@
       "ValidationEntry": {
         "description": "A single validation result with its target.",
         "properties": {
-          "target": {
+          "id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/JsonValue"
+                "type": "string"
               },
               {
-                "type": "null"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               }
-            ]
+            ],
+            "title": "Id"
+          },
+          "target": {
+            "$ref": "#/components/schemas/JsonValue"
           },
           "valid": {
             "anyOf": [
@@ -9795,6 +9802,8 @@
           }
         },
         "required": [
+          "id",
+          "target",
           "valid"
         ],
         "title": "ValidationEntry",

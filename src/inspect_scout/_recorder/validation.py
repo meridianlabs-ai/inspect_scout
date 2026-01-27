@@ -1,6 +1,8 @@
 """Validation metrics for scanner results."""
 
-from pydantic import BaseModel, Field, JsonValue, computed_field
+from typing import Any
+
+from pydantic import BaseModel, Field, JsonValue, computed_field, model_validator
 from typing_extensions import Self
 
 from inspect_scout._validation.validate import is_positive_value
@@ -9,11 +11,25 @@ from inspect_scout._validation.validate import is_positive_value
 class ValidationEntry(BaseModel):
     """A single validation result with its target."""
 
-    target: JsonValue | None = Field(default=None)
-    """Expected target value (None for migrated legacy entries)."""
+    id: str | list[str]
+    """ID(s) from the validation case (e.g., transcript_id)."""
+
+    target: JsonValue
+    """Expected target value."""
 
     valid: bool | dict[str, bool]
     """Whether validation passed."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_missing_fields(cls, data: Any) -> Any:
+        """Default missing fields for legacy serialized data."""
+        if isinstance(data, dict):
+            if "id" not in data:
+                data["id"] = ""
+            if "target" not in data:
+                data["target"] = None
+        return data
 
 
 class ValidationMetrics(BaseModel):

@@ -152,8 +152,8 @@ class TestComputeValidationMetrics:
     def test_legacy_data_no_targets(self) -> None:
         """Legacy data (all target=None) should return None."""
         validations = [
-            ValidationEntry(target=None, valid=True),
-            ValidationEntry(target=None, valid=False),
+            ValidationEntry(id="", target=None, valid=True),
+            ValidationEntry(id="", target=None, valid=False),
         ]
         assert compute_validation_metrics(validations) is None
 
@@ -161,15 +161,15 @@ class TestComputeValidationMetrics:
         """Basic metrics computation with mixed targets."""
         validations = [
             # TP: target truthy, valid true
-            ValidationEntry(target=True, valid=True),
-            ValidationEntry(target="yes", valid=True),
+            ValidationEntry(id="t1", target=True, valid=True),
+            ValidationEntry(id="t2", target="yes", valid=True),
             # FN: target truthy, valid false
-            ValidationEntry(target=True, valid=False),
+            ValidationEntry(id="t3", target=True, valid=False),
             # FP: target falsy, valid false
-            ValidationEntry(target=False, valid=False),
+            ValidationEntry(id="t4", target=False, valid=False),
             # TN: target falsy, valid true
-            ValidationEntry(target=None, valid=True),  # Legacy entry, excluded
-            ValidationEntry(target=False, valid=True),
+            ValidationEntry(id="", target=None, valid=True),  # Legacy entry, excluded
+            ValidationEntry(id="t5", target=False, valid=True),
         ]
         result = compute_validation_metrics(validations)
         assert result is not None
@@ -189,9 +189,9 @@ class TestComputeValidationMetrics:
     def test_dict_valid_per_key_metrics(self) -> None:
         """Dict valid entries should produce per-key metrics."""
         validations = [
-            ValidationEntry(target=True, valid={"a": True, "b": False}),
-            ValidationEntry(target=True, valid={"a": True, "b": True}),
-            ValidationEntry(target=False, valid={"a": True, "b": True}),
+            ValidationEntry(id="t1", target=True, valid={"a": True, "b": False}),
+            ValidationEntry(id="t2", target=True, valid={"a": True, "b": True}),
+            ValidationEntry(id="t3", target=False, valid={"a": True, "b": True}),
         ]
         result = compute_validation_metrics(validations)
         assert result is not None
@@ -212,11 +212,11 @@ class TestComputeValidationMetrics:
         """Mixed entries with some legacy (target=None) are handled correctly."""
         validations = [
             # Legacy entries - excluded
-            ValidationEntry(target=None, valid=True),
-            ValidationEntry(target=None, valid=False),
+            ValidationEntry(id="", target=None, valid=True),
+            ValidationEntry(id="", target=None, valid=False),
             # New entries - included
-            ValidationEntry(target=True, valid=True),  # TP
-            ValidationEntry(target=False, valid=True),  # TN
+            ValidationEntry(id="t1", target=True, valid=True),  # TP
+            ValidationEntry(id="t5", target=False, valid=True),  # TN
         ]
         result = compute_validation_metrics(validations)
         assert result is not None
@@ -235,8 +235,8 @@ class TestValidationResults:
     def test_from_entries_with_bool(self) -> None:
         """from_entries should compute metrics for bool entries."""
         entries = [
-            ValidationEntry(target=True, valid=True),
-            ValidationEntry(target=False, valid=True),
+            ValidationEntry(id="t1", target=True, valid=True),
+            ValidationEntry(id="t5", target=False, valid=True),
         ]
         results = ValidationResults.from_entries(entries)
         assert len(results.entries) == 2
@@ -248,8 +248,8 @@ class TestValidationResults:
     def test_from_entries_with_dict(self) -> None:
         """from_entries should compute per-key metrics for dict entries."""
         entries = [
-            ValidationEntry(target=True, valid={"a": True, "b": False}),
-            ValidationEntry(target=False, valid={"a": True, "b": True}),
+            ValidationEntry(id="t1", target=True, valid={"a": True, "b": False}),
+            ValidationEntry(id="t2", target=False, valid={"a": True, "b": True}),
         ]
         results = ValidationResults.from_entries(entries)
         assert len(results.entries) == 2
@@ -261,8 +261,8 @@ class TestValidationResults:
     def test_from_entries_no_targets(self) -> None:
         """from_entries with legacy data should have no metrics."""
         entries = [
-            ValidationEntry(target=None, valid=True),
-            ValidationEntry(target=None, valid=False),
+            ValidationEntry(id="", target=None, valid=True),
+            ValidationEntry(id="", target=None, valid=False),
         ]
         results = ValidationResults.from_entries(entries)
         assert len(results.entries) == 2

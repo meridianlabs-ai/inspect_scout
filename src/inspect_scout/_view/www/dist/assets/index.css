@@ -9297,13 +9297,13 @@ span.ap-marker-container:hover span.ap-marker {
 ._menuItem_poq0z_60 i {
   margin-right: 8px;
 }
-._container_1notz_1 {
+._container_akfd4_1 {
   display: flex;
   flex-direction: column;
   padding: 0;
 }
 
-._header_1notz_7 {
+._header_akfd4_7 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9314,7 +9314,7 @@ span.ap-marker-container:hover span.ap-marker {
   background-color: var(--bs-light);
 }
 
-._headerTitle_1notz_18 {
+._headerTitle_akfd4_18 {
   margin: 0;
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-body-color);
@@ -9322,33 +9322,33 @@ span.ap-marker-container:hover span.ap-marker {
   font-weight: 400;
 }
 
-._headerIcon_1notz_26 {
+._headerIcon_akfd4_26 {
   margin-right: 0.5em;
 }
 
-._headerSecondary_1notz_30 {
+._headerSecondary_akfd4_30 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
 }
 
-._content_1notz_35 {
+._content_akfd4_35 {
   flex: 1;
   overflow-y: auto;
 }
 
-._placeholder_1notz_40 {
+._placeholder_akfd4_40 {
   color: var(--bs-secondary-color);
   font-size: 0.875rem;
   text-align: center;
   margin-top: 2rem;
 }
 
-._textValue_1notz_47 {
+._textValue_akfd4_47 {
   font-family: var(--bs-font-monospace);
   font-size: var(--inspect-font-size-smaller);
 }
 
-._panel_1notz_52 {
+._panel_akfd4_52 {
   background-color: var(--bs-body-bg);
   display: flex;
   flex-direction: column;
@@ -9357,23 +9357,23 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Make all form controls full width within the panel */
-._panel_1notz_52 vscode-single-select,
-._panel_1notz_52 vscode-textfield,
-._panel_1notz_52 button {
+._panel_akfd4_52 vscode-single-select,
+._panel_akfd4_52 vscode-textfield,
+._panel_akfd4_52 button {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
 
-._clickable_1notz_69 {
+._clickable_akfd4_69 {
   cursor: pointer;
 }
 
-._idLabel_1notz_73 {
+._idLabel_akfd4_73 {
   margin-right: 0.5em;
 }
 
-._saveStatusContainer_1notz_77 {
+._saveStatusContainer_akfd4_77 {
   position: fixed;
   bottom: 0.1rem;
   right: 0.1rem;
@@ -9386,16 +9386,16 @@ span.ap-marker-container:hover span.ap-marker {
   transition: opacity 300ms ease-in-out;
 }
 
-._saveStatusContainer_1notz_77._saveStatusHidden_1notz_90 {
+._saveStatusContainer_akfd4_77._saveStatusHidden_akfd4_90 {
   opacity: 0;
 }
 
-._saveStatusContainer_1notz_77._saveStatusError_1notz_94 {
+._saveStatusContainer_akfd4_77._saveStatusError_akfd4_94 {
   opacity: 1;
   color: var(--bs-danger);
 }
 
-._saveStatus_1notz_77 {
+._saveStatus_akfd4_77 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--bs-secondary-color);
   word-wrap: break-word;
@@ -9403,13 +9403,13 @@ span.ap-marker-container:hover span.ap-marker {
   display: block;
 }
 
-._createError_1notz_107 {
+._createError_akfd4_107 {
   color: var(--vscode-errorForeground);
   font-size: var(--inspect-font-size-smallest);
   margin-top: 0.25rem;
 }
 
-._headerActionButton_1notz_113 {
+._headerActionButton_akfd4_113 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9428,15 +9428,20 @@ span.ap-marker-container:hover span.ap-marker {
   z-index: 10;
 }
 
-._headerActionButton_1notz_113:hover:not(:disabled) {
+._headerActionButton_akfd4_113:hover:not(:disabled) {
   opacity: 1;
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-errorForeground);
 }
 
-._headerActionButton_1notz_113:disabled {
+._headerActionButton_akfd4_113:disabled {
   opacity: 0.3;
   cursor: default;
+}
+._infoBox_akfd4_142 {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.3rem;
 }
 ._container_1cz5u_1 {
   margin: 0.5rem;

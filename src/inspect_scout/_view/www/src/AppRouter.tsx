@@ -1,5 +1,10 @@
-import { useEffect } from "react";
-import { createHashRouter, Outlet, useParams } from "react-router-dom";
+import { FC, useEffect } from "react";
+import {
+  createHashRouter,
+  Outlet,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ProjectPanel } from "./app/project/ProjectPanel";
@@ -14,6 +19,7 @@ import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
 import {
   LoggingNavigate,
+  navigationLog,
   useLoggingNavigate,
 } from "./debugging/navigationDebugging";
 import {
@@ -117,13 +123,7 @@ export const createAppRouter = (config: AppRouterConfig) => {
         children: [
           {
             index: true,
-            element: (
-              <LoggingNavigate
-                to={transcriptsDir ? "/transcripts" : "/scans"}
-                replace
-                reason="Root index redirect"
-              />
-            ),
+            element: <RootIndexRedirect transcriptsDir={transcriptsDir} />,
           },
           {
             path: kScansRootRouteUrlPattern,
@@ -286,4 +286,31 @@ const useFindBandShortcut = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [setShowFind]);
+};
+
+// Guard against redirecting when a navigation is already in-flight
+// (window.location updated but router state hasn't reconciled yet)
+const RootIndexRedirect: FC<{
+  transcriptsDir: AppConfig["transcripts"];
+}> = ({ transcriptsDir }) => {
+  const { pathname, search, hash } = useLocation();
+  const routerPath = pathname + search + hash;
+  const hashPath = window.location.hash.slice(1) || "/";
+  const shouldRedirect = hashPath === routerPath;
+
+  if (!shouldRedirect) {
+    navigationLog(
+      `RootIndexRedirect:\n\thashPath='${hashPath}'\n\trouterPath='${routerPath}'\n\t=> SKIPPING (navigation in-flight)"}`
+    );
+
+    return null;
+  }
+
+  return (
+    <LoggingNavigate
+      to={transcriptsDir ? "/transcripts" : "/scans"}
+      replace
+      reason="Root index redirect"
+    />
+  );
 };

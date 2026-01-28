@@ -676,6 +676,7 @@ def extract_tools(run: Any) -> list[ToolInfo]:
 
     Observed patterns:
     - Raw traces: inputs["tools"] (OpenAI format)
+    - Legacy traces: inputs["functions"] (legacy OpenAI format)
     - LangChain traces: extra["invocation_params"]["tools"]
 
     Args:
@@ -688,12 +689,21 @@ def extract_tools(run: Any) -> list[ToolInfo]:
     inputs = getattr(run, "inputs", None) or {}
     extra = getattr(run, "extra", None) or {}
 
-    # Try inputs["tools"] (raw API traces)
+    # Try inputs["tools"] (modern OpenAI format)
     if isinstance(inputs, dict):
         input_tools = inputs.get("tools", [])
         if isinstance(input_tools, list):
             for tool in input_tools:
                 tool_info = _parse_openai_tool(tool)
+                if tool_info:
+                    tools.append(tool_info)
+
+    # Try inputs["functions"] (legacy OpenAI format)
+    if not tools and isinstance(inputs, dict):
+        input_functions = inputs.get("functions", [])
+        if isinstance(input_functions, list):
+            for func in input_functions:
+                tool_info = _parse_legacy_function(func)
                 if tool_info:
                     tools.append(tool_info)
 
@@ -724,6 +734,40 @@ def _parse_openai_tool(tool: Any) -> ToolInfo | None:
         return None
 
     func = tool.get("function", {})
+    if not isinstance(func, dict):
+        return None
+
+    name = func.get("name", "")
+    if not name:
+        return None
+
+    params = func.get("parameters", {})
+    properties = params.get("properties", {}) if isinstance(params, dict) else {}
+    required = params.get("required", []) if isinstance(params, dict) else []
+
+    return ToolInfo(
+        name=name,
+        description=func.get("description", ""),
+        parameters=ToolParams(
+            type="object",
+            properties=properties,
+            required=required,
+        ),
+    )
+
+
+def _parse_legacy_function(func: Any) -> ToolInfo | None:
+    """Parse legacy OpenAI function format.
+
+    Legacy format has name/description/parameters directly on the object,
+    not nested under a "function" key.
+
+    Args:
+        func: Function definition dict
+
+    Returns:
+        ToolInfo or None
+    """
     if not isinstance(func, dict):
         return None
 

@@ -3,7 +3,7 @@
 
 > [!NOTE]
 >
-> Note that the transcript capture feature described below ais available
+> Note that the transcript capture feature described below are available
 > only in the development version of Inspect Scout. Install the
 > development version from GitHub with:
 >

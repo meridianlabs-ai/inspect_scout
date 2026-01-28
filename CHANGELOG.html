@@ -40,7 +40,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-58f3f7d8222792c3c3a2edf9e2d9a6e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-635e1193c7225b6cf6641c3367fdb6ca.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -228,6 +228,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Projects: Always read <code>scout.local.yaml</code> even if there is no <code>scout.yaml</code> file.</li>
 <li>Projects: Always apply project level <code>filter</code> to scans (AND combine with scan filters).</li>
+<li>Validation: Label validation is now binary: validate <code>true</code> if the label is present with a truthy value; validate <code>false</code> if the label is not present or has only falsey values.</li>
 <li>Scan Results: Add <code>exclude_columns</code> parameter for reading parquet reuslts to optionally reduce memory usage.</li>
 <li>Scan Results: Pre-fetch optimization for S3/remote parquet files.</li>
 <li>Transcript DB: <a href="[transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html).">observe()</a> decorator/context manager for writing transcripts based on observed LLM generations.</li>

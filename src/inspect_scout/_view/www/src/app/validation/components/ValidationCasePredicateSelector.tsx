@@ -2,9 +2,10 @@ import {
   VscodeOption,
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
-import { FC } from "react";
+import { FC, useEffect } from "react";
 
 import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
+import { ValidationCase } from "../../../types/api-types";
 
 import styles from "./ValidationSetSelector.module.css";
 
@@ -39,6 +40,7 @@ interface ValidationCasePredicateSelectorProps {
   value: Predicate | null;
   onChange: (predicate: Predicate) => void;
   disabled?: boolean;
+  existingPredicates?: Predicate[];
 }
 
 /**
@@ -46,21 +48,31 @@ interface ValidationCasePredicateSelectorProps {
  */
 export const ValidationCasePredicateSelector: FC<
   ValidationCasePredicateSelectorProps
-> = ({ value, onChange, disabled = false }) => {
+> = ({ value, onChange, disabled = false, existingPredicates }) => {
   const { ref, position } = useDropdownPosition({
     optionCount: PREDICATES.length,
   });
+  const defaultValue =
+    existingPredicates && existingPredicates.length === 1
+      ? existingPredicates[0]
+      : "eq";
 
   const handleChange = (e: Event) => {
     const newValue = (e.target as HTMLSelectElement).value as Predicate;
     onChange(newValue);
   };
 
+  useEffect(() => {
+    if (!value && defaultValue) {
+      onChange(defaultValue);
+    }
+  }, [value, defaultValue]);
+
   return (
     <div ref={ref} className={styles.container}>
       <VscodeSingleSelect
         position={position}
-        value={value ?? "eq"}
+        value={value ?? defaultValue}
         onChange={handleChange}
         className={styles.select}
         disabled={disabled}
@@ -73,4 +85,22 @@ export const ValidationCasePredicateSelector: FC<
       </VscodeSingleSelect>
     </div>
   );
+};
+
+/**
+ * Extracts unique predicate values from a list of validation cases.
+ * Returns sorted array of non-empty split values.
+ */
+export const extractUniquePredicates = (
+  cases: ValidationCase[]
+): Predicate[] => {
+  const predicateSet = new Set<Predicate>();
+  const predicates = PREDICATES.map((p) => p.value);
+
+  for (const c of cases) {
+    if (c.predicate && predicates.includes(c.predicate)) {
+      predicateSet.add(c.predicate);
+    }
+  }
+  return Array.from(predicateSet).sort();
 };

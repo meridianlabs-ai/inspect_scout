@@ -1,8 +1,9 @@
 import { clsx } from "clsx";
 import { FC } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { ApplicationIcons } from "../../components/icons";
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import { getActivityByRoute } from "../../router/activities";
 import { AppConfig } from "../../types/api-types";
 import { appAliasedPath } from "../server/useAppConfig";
@@ -14,7 +15,7 @@ interface ProjectBarProps {
 }
 
 export const ProjectBar: FC<ProjectBarProps> = ({ config }) => {
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ProjectBar");
   const location = useLocation();
   const currentActivity = getActivityByRoute(location.pathname);
 

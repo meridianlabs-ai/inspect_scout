@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import { FC, memo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { MarkdownReference } from "../../../../components/MarkdownDivWithReferences";
+import { useLoggingNavigate } from "../../../../debugging/navigationDebugging";
 import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Error } from "../../../components/Error";
@@ -42,7 +43,7 @@ const ScannerResultsRowComponent: FC<ScannerResultsRowProps> = ({
   const scanResultUrl = isNavigable
     ? scanResultRoute(scansDir, scanPath, summary.uuid, searchParams)
     : "";
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ScannerResultsRow");
 
   // Information about the row
   const hasExplanation = gridDescriptor.columns.includes("result");

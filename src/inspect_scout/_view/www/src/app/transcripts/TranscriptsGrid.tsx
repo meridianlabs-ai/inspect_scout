@@ -19,10 +19,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import type { SimpleCondition } from "../../query/types";
 import { transcriptRoute } from "../../router/url";
 import { useStore, FilterType } from "../../state/store";
@@ -92,7 +92,7 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // Table ref for DOM measurement (used by column sizing)
   const tableRef = useRef<HTMLTableElement>(null);
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("TranscriptsGrid");
 
   // Table state
   const columnOrder = useStore(

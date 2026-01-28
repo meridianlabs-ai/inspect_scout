@@ -1,6 +1,7 @@
 import { FC, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import { scanResultRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import { NextPreviousNav } from "../components/NextPreviousNav";
@@ -8,7 +9,7 @@ import { useScanRoute } from "../hooks/useScanRoute";
 import { IdentifierInfo, resultIdentifier } from "../utils/results";
 
 export const ScannerResultNav: FC = () => {
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ScannerResultNav");
   const [searchParams] = useSearchParams();
   const { scansDir, scanPath, scanResultUuid } = useScanRoute();
 

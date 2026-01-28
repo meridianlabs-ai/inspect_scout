@@ -1,6 +1,7 @@
 import { FC, ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import {
   activities,
   getActivityById,
@@ -25,7 +26,7 @@ export const ActivityBarLayout: FC<ActivityBarLayoutProps> = ({
   children,
 }) => {
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ActivityBarLayout");
 
   // Determine the currently selected activity based on the current route
   const currentActivity = getActivityByRoute(location.pathname);

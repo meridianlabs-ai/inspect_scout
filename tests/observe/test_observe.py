@@ -198,7 +198,7 @@ class TestObserveNesting:
                 assert outer_ctx.had_children is True
 
     @pytest.mark.asyncio
-    async def test_db_on_inner_raises(self, caplog: pytest.LogCaptureFixture) -> None:
+    async def test_db_on_inner_raises(self) -> None:
         """Setting db on non-root observe logs error and continues.
 
         Per the design, errors in observe contexts are caught, logged as
@@ -208,15 +208,17 @@ class TestObserveNesting:
             db1 = transcripts_db(tmpdir)
             db2 = transcripts_db(tmpdir + "/other")
 
-            with caplog.at_level("WARNING"):
+            with patch("inspect_scout._observe._observe.logger") as mock_logger:
                 async with observe(db=db1):
                     async with observe(db=db2):
                         # This line should not execute because ValueError is raised
                         # before yield, but the error is caught by outer context
                         pass
 
-            # Verify the error was logged
-            assert "outermost observe" in caplog.text
+                # Verify the error was logged
+                mock_logger.warning.assert_called()
+                warning_msg = mock_logger.warning.call_args[0][0]
+                assert "outermost observe" in warning_msg
 
 
 class TestObserveUpdate:

@@ -4,23 +4,29 @@ title: Transcripts Database
 
 ## Overview
 
-Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use [Parquet](https://parquet.apache.org) files for storage and can be located in the local filesystem or remote systems like S3.
+Scout can analyze transcripts from any source (e.g. evals, agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use [Parquet](https://parquet.apache.org) files for storage and can be located in the local filesystem or remote systems like S3.
 
-The purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g. a Postgress database) and extract them into a Scout database for a given analysis project.
-
-This documentation covers how to create transcript databases. You can either capture transcripts from your LLM generation code, or import transcripts from various sources. You can also publish transcripts for use by others. If you just want to read existing transcript databases see the general article on [Transcripts](transcripts.qmd), 
+This documentation covers how to create transcript databases. If you just want to read existing transcript databases see the general article on [Transcripts](transcripts.qmd), 
 
 ## Creating a Database
 
-If you have some existing source of transcript data it is straightforward to [import](db_importing.qmd) it into a Scout database. You can also [capture](db_capturing.qmd) transcripts from your running LLM generation code.
+There are several sources you can use for building a transcript database:
+
+1. Inspect evaluation logs.
+2. LLM observability systems (e.g. LangSmith).
+3. Traces directly captured from agent execution.
+4. Any other source using the import API.
 
 Transcript databases have very few required fields (minimally just `transcript_id` and `messages`) but there are other fields that identify the source of the transcript that you'll likely want to populate. You can also include arbitrary other columns in the database (`metadata`) which can be used for transcript filtering.
 
-To create a transcript database you'll need to:
+These articles cover transcript databases in more depth:
 
-1. Understand the [Database Schema](db_schema.qmd) and decide how you want to map your data into it; and 
+1. [Database Schema](db_schema.qmd) --- Documents the required and optional fields as well as data formats for transcript messages and events. 
 
-2. Then, pick a method for either [Capturing](db_capturing.qmd) or [Importing](db_importing.qmd) transcripts, and implement the logic for inserting your data.
+2. [Capturing Transcripts](db_capturing.qmd) --- Describes how to capture transcripts from running LLM code using the `@observe` decorator / context-manager.
+
+3. [Importing Transcripts](db_importing.qmd) --- Covers building a database from Inspect Logs, LangSmith, and custom sources using the import API.
+
 
 ## Publishing Transcripts
 

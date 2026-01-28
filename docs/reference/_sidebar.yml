@@ -152,6 +152,11 @@ website:
           href: reference/scanner.qmd#loader
         - text: as_scorer
           href: reference/scanner.qmd#as_scorer
+      - section: sources
+        href: reference/sources.qmd
+        contents:
+        - text: langsmith
+          href: reference/sources.qmd#langsmith
       - section: async
         href: reference/async.qmd
         contents:

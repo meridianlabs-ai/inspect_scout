@@ -14,6 +14,7 @@ reference_docs = [
     "reference/results.qmd",
     "reference/transcript.qmd",
     "reference/scanner.qmd",
+    "reference/sources.qmd",
     "reference/async.qmd"
 ]
 

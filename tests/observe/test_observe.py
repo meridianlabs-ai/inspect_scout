@@ -208,9 +208,7 @@ class TestObserveNesting:
             db1 = transcripts_db(tmpdir)
             db2 = transcripts_db(tmpdir + "/other")
 
-            with patch(
-                "inspect_scout._observe._observe.logger"
-            ) as mock_logger:
+            with patch("inspect_scout._observe._observe.logger") as mock_logger:
                 async with observe(db=db1):
                     async with observe(db=db2):
                         # This line should not execute because ValueError is raised

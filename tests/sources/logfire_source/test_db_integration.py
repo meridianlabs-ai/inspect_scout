@@ -16,7 +16,10 @@ from inspect_scout._query import Query
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.types import TranscriptContent
 
-from tests.sources.logfire_source.bootstrap import OPTIONAL_TRACES, REQUIRED_TRACES
+from tests.sources.logfire_source.bootstrap import (  # type: ignore
+    OPTIONAL_TRACES,
+    REQUIRED_TRACES,
+)
 from tests.sources.logfire_source.conftest import skip_if_no_logfire
 
 # =============================================================================

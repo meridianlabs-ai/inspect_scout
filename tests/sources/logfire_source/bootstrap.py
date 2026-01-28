@@ -1,3 +1,5 @@
+# type: ignore
+
 """Bootstrap script to create test traces in Logfire.
 
 This script creates real traces using various LLM providers with Logfire
@@ -741,7 +743,7 @@ async def create_pydantic_ai_tools_trace() -> None:
         system_prompt="You are a helpful weather assistant.",
     )
 
-    @agent.tool_plain  # type: ignore[misc]
+    @agent.tool_plain
     def get_weather(city: str) -> str:
         """Get the current weather for a city.
 
@@ -770,7 +772,7 @@ async def create_pydantic_ai_multiturn_tools_trace() -> None:
         system_prompt="You are a helpful weather assistant.",
     )
 
-    @agent.tool_plain  # type: ignore[misc]
+    @agent.tool_plain
     def get_weather(city: str) -> str:
         """Get the current weather for a city.
 

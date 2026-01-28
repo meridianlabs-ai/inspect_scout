@@ -42,3 +42,25 @@ export function appAliasedPath(
   }
   return path.replace(appConfig.home_dir, "~");
 }
+
+/** Strips leading slash from path if present */
+function stripLeadingSlash(path: string): string {
+  return path.startsWith("/") ? path.slice(1) : path;
+}
+
+export function projectOrAppAliasedPath(
+  appConfig: AppConfig,
+  path: string | null
+): string | null {
+  if (path == null) {
+    return null;
+  }
+
+  // Prefer project-relative path when within project directory
+  if (appConfig.project_dir && path.startsWith(appConfig.project_dir)) {
+    return stripLeadingSlash(path.slice(appConfig.project_dir.length));
+  }
+
+  // Fall back to home-aliased path
+  return appAliasedPath(appConfig, path);
+}

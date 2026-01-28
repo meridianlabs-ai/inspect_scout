@@ -371,7 +371,6 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     workingCase?.target === null ||
     (!Array.isArray(workingCase.target) &&
       typeof workingCase.target !== "object");
-  console.log({ workingCase, isEditable });
 
   const actions: ReactNode =
     workingCase?.target != null && workingCase.target !== "" ? (
@@ -409,7 +408,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
               onSelect={handleValidationSetSelect}
               allowCreate={true}
               onCreate={(name) => void handleCreateSet(name)}
-              projectDir={config.project_dir}
+              appConfig={config}
             />
             {createError && (
               <div className={styles.createError}>{createError}</div>

@@ -1,4 +1,5 @@
 import { skipToken } from "@tanstack/react-query";
+import { VscodeDivider } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import React, {
   FC,
@@ -49,8 +50,6 @@ import { ValidationCasePredicateSelector } from "./ValidationCasePredicateSelect
 import { ValidationCaseTargetEditor } from "./ValidationCaseTargetEditor";
 import { ValidationSetSelector } from "./ValidationSetSelector";
 import { ValidationSplitSelector } from "./ValidationSplitSelector";
-import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import { VscodeDivider } from "@vscode-elements/react-elements";
 
 interface ValidationCaseEditorProps {
   transcriptId: string;
@@ -421,8 +420,8 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
             <>
               <VscodeDivider />
               <InfoBox>
-                Validation sets with dictionary or list targets aren't
-                editable using this UI.
+                Validation sets with dictionary or list targets aren't editable
+                using this UI.
               </InfoBox>
             </>
           )}

@@ -19,7 +19,6 @@ import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
 import {
   LoggingNavigate,
-  navigationLog,
   useLoggingNavigate,
 } from "./debugging/navigationDebugging";
 import {

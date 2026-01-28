@@ -1,10 +1,5 @@
-import { FC, useEffect } from "react";
-import {
-  createHashRouter,
-  Outlet,
-  useLocation,
-  useParams,
-} from "react-router-dom";
+import { useEffect } from "react";
+import { createHashRouter, Outlet, useParams } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
 import { ProjectPanel } from "./app/project/ProjectPanel";

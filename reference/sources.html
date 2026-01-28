@@ -720,6 +720,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">langsmith</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/sources.html#logfire" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">logfire</span></a>
+  </div>
+</li>
       </ul>
   </li>
           <li class="sidebar-item sidebar-item-section">
@@ -823,6 +829,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#langsmith" id="toc-langsmith" class="nav-link active" data-scroll-target="#langsmith">langsmith</a></li>
+  <li><a href="#logfire" id="toc-logfire" class="nav-link" data-scroll-target="#logfire">logfire</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -872,7 +879,7 @@ Note
 <li><code>dataset</code> - Import examples from a dataset</li>
 </ul>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/8ec99d6832d634b14fb920ec31d62dd125190a89/src/inspect_scout/sources/_langsmith/__init__.py#L48">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f273e8c2615372121e4c040409910b177c3baea2/src/inspect_scout/sources/_langsmith/__init__.py#L48">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> langsmith(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -933,19 +940,53 @@ Note
 <p>LangSmith API URL (or LANGSMITH_ENDPOINT env var)</p>
 </dd>
 </dl>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datetime <span class="im">import</span> datetime</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout.sources <span class="im">import</span> langsmith</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Import from a LangSmith project</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> langsmith(project<span class="op">=</span><span class="st">"my-project"</span>)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Import with filters</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> langsmith(</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    project<span class="op">=</span><span class="st">"my-project"</span>,</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    tags<span class="op">=</span>[<span class="st">"production"</span>],</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    from_time<span class="op">=</span>datetime(<span class="dv">2024</span>, <span class="dv">1</span>, <span class="dv">1</span>),</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    limit<span class="op">=</span><span class="dv">100</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="logfire" class="level3">
+<h3 class="anchored" data-anchor-id="logfire">logfire</h3>
+<p>Read transcripts from <a href="https://logfire.pydantic.dev/">Logfire</a> traces.</p>
+<p>Each Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f273e8c2615372121e4c040409910b177c3baea2/src/inspect_scout/sources/_logfire/__init__.py#L44">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> logfire(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    from_time: datetime <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    to_time: datetime <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">filter</span>: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    trace_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    read_token: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> AsyncIterator[Transcript]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">project</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Logfire project name in format “org/project”. If not provided, queries across all accessible projects.</p>
+</dd>
+<dt><code class="ref-definition">from_time</code> <span class="element-type">datetime | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Only fetch traces created on or after this time</p>
+</dd>
+<dt><code class="ref-definition">to_time</code> <span class="element-type">datetime | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Only fetch traces created before this time</p>
+</dd>
+<dt><code class="ref-definition">filter</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>SQL WHERE fragment for additional filtering (e.g., “attributes-&gt;&gt;‘gen_ai.request.model’ = ‘gpt-4o’”)</p>
+</dd>
+<dt><code class="ref-definition">trace_id</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Fetch a specific trace by ID instead of querying</p>
+</dd>
+<dt><code class="ref-definition">limit</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Maximum number of transcripts to fetch</p>
+</dd>
+<dt><code class="ref-definition">read_token</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Logfire read token (or LOGFIRE_READ_TOKEN env var). Generate from Logfire dashboard Settings &gt; Read Tokens.</p>
+</dd>
+</dl>
 
 
 </section>

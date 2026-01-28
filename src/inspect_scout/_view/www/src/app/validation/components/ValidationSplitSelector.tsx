@@ -6,6 +6,7 @@ import {
 import { FC, useMemo, useState } from "react";
 
 import { Modal } from "../../../components/Modal";
+import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
 
 import styles from "./ValidationSplitSelector.module.css";
 
@@ -53,6 +54,12 @@ export const ValidationSplitSelector: FC<ValidationSplitSelectorProps> = ({
     return existingSplits;
   }, [existingSplits, value]);
 
+  // Auto-position dropdown based on available viewport space
+  // Option count: 1 (no split) + splits + 1 (new split)
+  const { ref, position } = useDropdownPosition({
+    optionCount: effectiveSplits.length + 2,
+  });
+
   // Map null to internal sentinel value for the select
   const selectValue = value ?? "__none__";
 
@@ -87,20 +94,23 @@ export const ValidationSplitSelector: FC<ValidationSplitSelectorProps> = ({
 
   return (
     <>
-      <VscodeSingleSelect
-        value={selectValue}
-        onChange={handleSelectChange}
-        className={className}
-        disabled={disabled}
-      >
-        <VscodeOption value="__none__">{noSplitLabel}</VscodeOption>
-        {effectiveSplits.map((s) => (
-          <VscodeOption key={s} value={s}>
-            {s}
-          </VscodeOption>
-        ))}
-        <VscodeOption value="__custom__">{newSplitLabel}</VscodeOption>
-      </VscodeSingleSelect>
+      <div ref={ref}>
+        <VscodeSingleSelect
+          value={selectValue}
+          onChange={handleSelectChange}
+          className={className}
+          disabled={disabled}
+          position={position}
+        >
+          <VscodeOption value="__none__">{noSplitLabel}</VscodeOption>
+          {effectiveSplits.map((s) => (
+            <VscodeOption key={s} value={s}>
+              {s}
+            </VscodeOption>
+          ))}
+          <VscodeOption value="__custom__">{newSplitLabel}</VscodeOption>
+        </VscodeSingleSelect>
+      </div>
 
       <Modal
         show={showCustomModal}

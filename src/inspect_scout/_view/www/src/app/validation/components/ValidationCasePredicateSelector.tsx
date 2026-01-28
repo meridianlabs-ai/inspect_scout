@@ -4,6 +4,8 @@ import {
 } from "@vscode-elements/react-elements";
 import { FC } from "react";
 
+import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
+
 import styles from "./ValidationSetSelector.module.css";
 
 type Predicate =
@@ -45,14 +47,19 @@ interface ValidationCasePredicateSelectorProps {
 export const ValidationCasePredicateSelector: FC<
   ValidationCasePredicateSelectorProps
 > = ({ value, onChange, disabled = false }) => {
+  const { ref, position } = useDropdownPosition({
+    optionCount: PREDICATES.length,
+  });
+
   const handleChange = (e: Event) => {
     const newValue = (e.target as HTMLSelectElement).value as Predicate;
     onChange(newValue);
   };
 
   return (
-    <div className={styles.container}>
+    <div ref={ref} className={styles.container}>
       <VscodeSingleSelect
+        position={position}
         value={value ?? "eq"}
         onChange={handleChange}
         className={styles.select}

@@ -9502,11 +9502,45 @@ span.ap-marker-container:hover span.ap-marker {
 ._item_5fj0m_6 {
   padding-bottom: 1em;
 }
-._header_189zi_1 {
+._header_m7jeh_1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background-color: var(--bs-light-bg-subtle);
   border-bottom: solid 1px var(--bs-border-color);
   width: 100%;
   padding-left: 0.5rem;
+}
+
+._actions_m7jeh_11 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 0.25rem;
+}
+
+._iconButton_m7jeh_18 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  margin: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
+}
+
+._iconButton_m7jeh_18:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
 }
 ._container_wqwns_1 {
   height: 100%;

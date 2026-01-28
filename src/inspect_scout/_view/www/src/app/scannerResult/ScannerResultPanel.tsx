@@ -1,3 +1,4 @@
+import { skipToken } from "@tanstack/react-query";
 import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import { clsx } from "clsx";
 import { FC, ReactNode, useCallback, useEffect, useMemo } from "react";
@@ -21,7 +22,9 @@ import { useScanRoute } from "../hooks/useScanRoute";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
+import { useHasTranscript } from "../server/useHasTranscript";
 import { useScansDir } from "../utils/useScansDir";
+import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { ErrorPanel } from "./error/ErrorPanel";
@@ -50,7 +53,6 @@ export const ScannerResultPanel: FC = () => {
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
   const { displayScansDir, resolvedScansDirSource, setScansDir } =
     useScansDir(true);
-
   // Sync URL query param with store state
   const setSelectedScanner = useStore((state) => state.setSelectedScanner);
   useEffect(() => {
@@ -81,6 +83,14 @@ export const ScannerResultPanel: FC = () => {
 
   const { loading: inputLoading, data: inputData } =
     useSelectedScanResultInputData();
+
+  const { resolvedTranscriptsDir } = useTranscriptsDir(false);
+  const { loading: hasTranscriptLoading, data: hasTranscript } =
+    useHasTranscript(
+      !selectedResult
+        ? skipToken
+        : { id: selectedResult.transcriptId, location: resolvedTranscriptsDir }
+    );
 
   // Sync URL tab parameter with store on mount and URL changes
   useEffect(() => {
@@ -186,7 +196,11 @@ export const ScannerResultPanel: FC = () => {
       >
         {visibleScannerResults.length > 0 && <ScannerResultNav />}
       </ScansNavbar>
-      <LoadingBar loading={scanLoading || resultLoading || inputLoading} />
+      <LoadingBar
+        loading={
+          scanLoading || resultLoading || inputLoading || hasTranscriptLoading
+        }
+      />
       <ScannerResultHeader inputData={inputData} scan={selectedScan} />
 
       {selectedResult && (
@@ -241,6 +255,8 @@ export const ScannerResultPanel: FC = () => {
                       <ResultPanel
                         resultData={selectedResult}
                         inputData={inputData}
+                        transcriptDir={resolvedTranscriptsDir}
+                        hasTranscript={!!hasTranscript}
                       />
                     </TabPanel>
                   ) : undefined}
@@ -349,6 +365,8 @@ export const ScannerResultPanel: FC = () => {
                         <ResultPanel
                           resultData={selectedResult}
                           inputData={inputData}
+                          transcriptDir={resolvedTranscriptsDir}
+                          hasTranscript={!!hasTranscript}
                         />
                       </TabPanel>
                     ) : undefined}

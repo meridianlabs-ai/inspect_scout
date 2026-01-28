@@ -1,11 +1,16 @@
 import clsx from "clsx";
-import { FC, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { FC, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../../components/chat/ChatViewVirtualList";
+import { ApplicationIcons } from "../../../components/icons";
 import { TranscriptView } from "../../../components/transcript/TranscriptView";
+import { transcriptRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { ColumnHeader } from "../../components/ColumnHeader";
+import {
+  ColumnHeader,
+  ColumnHeaderButton,
+} from "../../components/ColumnHeader";
 import {
   ScanResultInputData,
   isEventInput,
@@ -21,11 +26,19 @@ import styles from "./ResultBody.module.css";
 export interface ResultBodyProps {
   resultData: ScanResultData;
   inputData: ScanResultInputData;
+  transcriptDir: string;
+  hasTranscript: boolean;
 }
 
-export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
+export const ResultBody: FC<ResultBodyProps> = ({
+  resultData,
+  inputData,
+  transcriptDir,
+  hasTranscript,
+}) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Get message or event ID from query params
   const initialMessageId = searchParams.get("message");
@@ -33,9 +46,26 @@ export const ResultBody: FC<ResultBodyProps> = ({ resultData, inputData }) => {
 
   const highlightLabeled = useStore((state) => state.highlightLabeled);
 
+  const handleNavigateToTranscript = useCallback(() => {
+    if (transcriptDir && resultData.transcriptId) {
+      void navigate(transcriptRoute(transcriptDir, resultData.transcriptId));
+    }
+  }, [navigate, transcriptDir, resultData.transcriptId]);
+
+  // Only show the transcript button when we have both transcriptsDir and transcriptId
+  const canNavigateToTranscript =
+    hasTranscript && transcriptDir.length > 0 && resultData.transcriptId;
+  const transcriptAction = canNavigateToTranscript ? (
+    <ColumnHeaderButton
+      icon={ApplicationIcons.transcript}
+      onClick={handleNavigateToTranscript}
+      title="View complete transcript"
+    />
+  ) : undefined;
+
   return (
     <div className={styles.container}>
-      <ColumnHeader label="Input" />
+      <ColumnHeader label="Input" actions={transcriptAction} />
       <div ref={scrollRef} className={clsx(styles.scrollable)}>
         <InputRenderer
           resultData={resultData}

@@ -60,6 +60,10 @@ export const apiVscodeV1 = (vscodeApi: VSCodeApi): ScanApi => {
       return null as any;
     },
     // eslint-disable-next-line @typescript-eslint/require-await
+    hasTranscript: async (): Promise<never> => {
+      throw new Error("Not Yet Implemented");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
     getTranscripts: async (
       _transcriptsDir?: string,
       _filter?: Condition

@@ -35,6 +35,7 @@ export interface ScanApi {
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
   ): Promise<TranscriptsResponse>;
+  hasTranscript(transcriptsDir: string, id: string): Promise<boolean>;
   getTranscript(transcriptsDir: string, id: string): Promise<Transcript>;
   getTranscriptsColumnValues(
     transcriptsDir: string,

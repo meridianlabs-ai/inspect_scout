@@ -53,9 +53,12 @@ export function useDropdownPosition(
   const [element, setElement] = useState<HTMLElement | null>(null);
   const [position, setPosition] = useState<DropdownPosition>("below");
 
-  const ref: RefCallback<HTMLElement> = useCallback((node: HTMLElement | null) => {
-    setElement(node);
-  }, []);
+  const ref: RefCallback<HTMLElement> = useCallback(
+    (node: HTMLElement | null) => {
+      setElement(node);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!element) {

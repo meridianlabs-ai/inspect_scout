@@ -335,8 +335,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   const isEditable =
     caseData?.target === undefined ||
     caseData?.target === null ||
-    (!Array.isArray(caseData.target) &&
-      typeof caseData.target !== "object");
+    (!Array.isArray(caseData.target) && typeof caseData.target !== "object");
 
   const actions: ReactNode =
     caseData?.target != null && caseData.target !== "" ? (

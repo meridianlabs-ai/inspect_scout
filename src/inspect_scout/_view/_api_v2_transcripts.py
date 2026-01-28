@@ -94,6 +94,11 @@ def create_transcripts_router() -> APIRouter:
         except FileNotFoundError:
             return TranscriptsResponse(items=[], total_count=0, next_cursor=None)
 
+    @router.head(
+        "/transcripts/{dir}/{id}",
+        summary="Check transcript existence",
+        description="Checks if a transcript exists.",
+    )
     @router.get(
         "/transcripts/{dir}/{id}",
         response_model=Transcript,

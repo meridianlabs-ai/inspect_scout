@@ -1,6 +1,6 @@
 import { asyncJsonParse } from "../utils/json-worker";
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "HEAD";
 
 export class ApiError extends Error {
   status: number;

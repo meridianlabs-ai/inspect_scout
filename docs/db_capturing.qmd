@@ -15,7 +15,7 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 The `observe()` decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.
 
 
-Observe can be used with either the Inspect AI [Model API](https://inspect.aisi.org.uk/models.html) or with the native SDKs from [OpenAI](https://github.com/openai/openai-python), [Anthropic](https://github.com/anthropics/anthropic-sdk-python), and [Google]()https://github.com/googleapis/python-genai.
+Observe can be used with either the Inspect AI [Model API](https://inspect.aisi.org.uk/models.html) or with the native SDKs from [OpenAI](https://github.com/openai/openai-python), [Anthropic](https://github.com/anthropics/anthropic-sdk-python), and [Google](https://github.com/googleapis/python-genai).
 
 Use `observe()` as a decorator on async functions:
 

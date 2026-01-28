@@ -235,3 +235,5 @@ scout.local.yaml
 # dev scratch area
 /.dev
 
+
+**/scans/scan_id=*/

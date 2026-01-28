@@ -296,21 +296,12 @@ const RootIndexRedirect: FC<{
   const { pathname, search, hash } = useLocation();
   const routerPath = pathname + search + hash;
   const hashPath = window.location.hash.slice(1) || "/";
-  const shouldRedirect = hashPath === routerPath;
 
-  if (!shouldRedirect) {
-    navigationLog(
-      `RootIndexRedirect:\n\thashPath='${hashPath}'\n\trouterPath='${routerPath}'\n\t=> SKIPPING (navigation in-flight)`
-    );
-
-    return null;
-  }
-
-  return (
+  return hashPath === routerPath ? (
     <LoggingNavigate
       to={transcriptsDir ? "/transcripts" : "/scans"}
       replace
       reason="Root index redirect"
     />
-  );
+  ) : null;
 };

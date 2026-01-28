@@ -10789,6 +10789,50 @@
         "tags": [
           "transcripts"
         ]
+      },
+      "head": {
+        "description": "Checks if a transcript exists.",
+        "operationId": "transcript_transcripts__dir___id__head",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Check transcript existence",
+        "tags": [
+          "transcripts"
+        ]
       }
     },
     "/validations": {

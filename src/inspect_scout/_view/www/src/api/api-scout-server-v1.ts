@@ -66,6 +66,9 @@ export const apiScoutServerV1 = (
     ): Promise<TranscriptsResponse> => {
       throw new Error("Not implemented in API v1");
     },
+    hasTranscript: (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
     getTranscript: (): Promise<never> => {
       throw new Error("Not implemented in API v1");
     },

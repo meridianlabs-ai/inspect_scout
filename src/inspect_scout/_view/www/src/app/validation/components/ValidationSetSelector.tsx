@@ -3,7 +3,9 @@ import { FC, useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import { Modal } from "../../../components/Modal";
+import { AppConfig } from "../../../types/api-types";
 import { dirname } from "../../../utils/path";
+import { projectOrAppAliasedPath } from "../../server/useAppConfig";
 import {
   getFilenameFromUri,
   hasValidationSetExtension,
@@ -24,7 +26,7 @@ interface ValidationSetSelectorProps {
   onCreate?: (name: string) => void;
 
   /** Project directory path for displaying full file path in create modal */
-  projectDir?: string;
+  appConfig?: AppConfig;
 }
 
 /**
@@ -39,7 +41,7 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
   autoSize = false,
   allowCreate = false,
   onCreate,
-  projectDir,
+  appConfig,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
@@ -66,13 +68,15 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     }, "");
   }, [validationSets]);
 
-  const getDisplayPath = (uri: string): string => {
-    let path = dirname(uri);
+  const getDisplayPath = (uri: string, appConfig?: AppConfig): string => {
+    let path = appConfig
+      ? projectOrAppAliasedPath(appConfig, dirname(uri))
+      : dirname(uri);
     // Strip file:// prefix for cleaner display
-    if (path.startsWith("file://")) {
+    if (path && path.startsWith("file://")) {
       path = path.slice(7);
     }
-    return path;
+    return path ?? uri;
   };
 
   // Update dropdown position when opening
@@ -88,16 +92,22 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     }
   }, [isOpen]);
 
-  // Close dropdown on window resize to prevent orphaned positioning
+  // Close dropdown when trigger resizes to prevent orphaned positioning
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !triggerRef.current) return;
 
-    const handleResize = () => {
+    let initialCall = true;
+    const observer = new ResizeObserver(() => {
+      // Skip the initial callback that fires when observe() is called
+      if (initialCall) {
+        initialCall = false;
+        return;
+      }
       setIsOpen(false);
-    };
+    });
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    observer.observe(triggerRef.current);
+    return () => observer.disconnect();
   }, [isOpen]);
 
   // Close on click outside (check both container and dropdown since dropdown is in portal)
@@ -228,6 +238,12 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
     }
   };
 
+  // If any of the items will show a non-root dir, show paths
+  // spacing for all of them
+  const hasNonRootDir = validationSets.some((uri) => {
+    return !!getDisplayPath(uri, appConfig);
+  });
+
   const dropdown = isOpen ? (
     <div
       ref={dropdownRef}
@@ -244,7 +260,9 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
           onClick={() => handleSelect(uri)}
         >
           <div className={styles.primaryText}>{getDisplayName(uri)}</div>
-          <div className={styles.secondaryText}>{getDisplayPath(uri)}</div>
+          <div className={styles.secondaryText}>
+            {getDisplayPath(uri, appConfig) || (hasNonRootDir ? "\u00A0" : "")}
+          </div>
         </div>
       ))}
 
@@ -336,9 +354,9 @@ export const ValidationSetSelector: FC<ValidationSetSelectorProps> = ({
             const trimmedName = newSetName.trim();
             const extensionError = getExtensionError(trimmedName);
             const displayError = validationError || extensionError;
-            const displayDir = projectDir?.startsWith("file://")
-              ? projectDir.slice(7)
-              : projectDir;
+            const displayDir = appConfig?.project_dir?.startsWith("file://")
+              ? appConfig?.project_dir.slice(7)
+              : appConfig?.project_dir;
 
             // Show hint only if no error and we have a name and projectDir
             if (trimmedName && !displayError && displayDir) {

@@ -70,6 +70,24 @@ export const apiScoutServer = (
       );
       return parsedResult;
     },
+    hasTranscript: async (
+      transcriptsDir: string,
+      id: string
+    ): Promise<boolean> => {
+      try {
+        await requestApi.fetchString(
+          "HEAD",
+          `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
+        );
+        return true;
+      } catch (error) {
+        console.log({ error });
+        if (error instanceof Error && error.message.includes("404")) {
+          return false;
+        }
+        throw error;
+      }
+    },
     getTranscript: async (
       transcriptsDir: string,
       id: string

@@ -6,6 +6,7 @@ import {
 import { FC, useEffect, useState } from "react";
 
 import { JsonValue } from "../../../types/api-types";
+import { useDebouncedCallback } from "../../../utils/useDebouncedCallback";
 
 type TargetMode = "true" | "false" | "other" | "unset";
 
@@ -34,6 +35,8 @@ function getTargetMode(target?: JsonValue): TargetMode {
 interface ValidationCaseTargetEditorProps {
   target?: JsonValue;
   onChange: (newTarget: string) => void;
+  /** Called when the mode changes (e.g., user selects "other" radio) */
+  onModeChange?: (isOtherMode: boolean) => void;
 }
 
 /**
@@ -41,38 +44,61 @@ interface ValidationCaseTargetEditorProps {
  */
 export const ValidationCaseTargetEditor: FC<
   ValidationCaseTargetEditorProps
-> = ({ target, onChange }) => {
+> = ({ target, onChange, onModeChange }) => {
   const [mode, setMode] = useState<TargetMode>(() => getTargetMode(target));
 
-  const [customValue, setCustomValue] = useState(() => {
-    return getTargetMode(target) === "other" ? String(target ?? "") : "";
-  });
-
-  // Sync mode and customValue when target prop changes
+  // Notify parent when mode changes
   useEffect(() => {
+    onModeChange?.(mode === "other");
+  }, [mode, onModeChange]);
+  const [customValue, setCustomValue] = useState(() =>
+    getTargetMode(target) === "other" ? String(target ?? "") : ""
+  );
+  // Track when user is typing to prevent sync from overwriting during debounce
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Sync mode and customValue when target prop changes externally
+  // (e.g., data loads, switching cases, or after our save completes)
+  // Skip sync while user is typing to avoid overwriting during debounce
+  useEffect(() => {
+    if (isTyping) return;
+
+    // Only sync when target has a valid value.
+    // The initial "unset" state is handled by useState.
+    if (target === undefined || target === null) return;
+
     const newMode = getTargetMode(target);
     setMode(newMode);
     if (newMode === "other") {
       setCustomValue(String(target ?? ""));
     }
-  }, [target]);
+  }, [target, isTyping]);
+
+  // Debounce only the text input changes
+  const debouncedOnChange = useDebouncedCallback((value: unknown) => {
+    // Call onChange first to update the cache before clearing the typing flag.
+    onChange(value as string);
+    setIsTyping(false);
+  }, 600);
 
   const handleRadioChange = (value: string) => {
     const newMode = value as TargetMode;
     setMode(newMode);
 
     if (newMode === "other") {
-      // When switching to "other", propagate empty string as sentinel
+      // When switching to "other", propagate empty string as sentinel immediately
       // This distinguishes "other selected" from "never selected"
       onChange(customValue || "");
     } else {
+      // Radio changes fire immediately (no debounce)
       onChange(newMode);
     }
   };
 
   const handleCustomValueChange = (value: string) => {
-    setCustomValue(value);
-    onChange(value);
+    setIsTyping(true); // Set typing flag to prevent sync during debounce
+    setCustomValue(value); // Update UI immediately
+    debouncedOnChange(value); // Debounce the parent callback
   };
 
   return (

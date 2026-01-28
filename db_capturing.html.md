@@ -22,7 +22,7 @@ Observe can be used with either the Inspect AI [Model
 API](https://inspect.aisi.org.uk/models.html) or with the native SDKs
 from [OpenAI](https://github.com/openai/openai-python),
 [Anthropic](https://github.com/anthropics/anthropic-sdk-python), and
-[Google]()https://github.com/googleapis/python-genai.
+[Google](https://github.com/googleapis/python-genai).
 
 Use `observe()` as a decorator on async functions:
 

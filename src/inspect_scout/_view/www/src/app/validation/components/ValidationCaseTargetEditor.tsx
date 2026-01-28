@@ -35,6 +35,8 @@ function getTargetMode(target?: JsonValue): TargetMode {
 interface ValidationCaseTargetEditorProps {
   target?: JsonValue;
   onChange: (newTarget: string) => void;
+  /** Called when the mode changes (e.g., user selects "other" radio) */
+  onModeChange?: (isOtherMode: boolean) => void;
 }
 
 /**
@@ -42,8 +44,13 @@ interface ValidationCaseTargetEditorProps {
  */
 export const ValidationCaseTargetEditor: FC<
   ValidationCaseTargetEditorProps
-> = ({ target, onChange }) => {
+> = ({ target, onChange, onModeChange }) => {
   const [mode, setMode] = useState<TargetMode>(() => getTargetMode(target));
+
+  // Notify parent when mode changes
+  useEffect(() => {
+    onModeChange?.(mode === "other");
+  }, [mode, onModeChange]);
   const [customValue, setCustomValue] = useState(() =>
     getTargetMode(target) === "other" ? String(target ?? "") : ""
   );
@@ -56,6 +63,10 @@ export const ValidationCaseTargetEditor: FC<
   useEffect(() => {
     if (isTyping) return;
 
+    // Only sync when target has a valid value.
+    // The initial "unset" state is handled by useState.
+    if (target === undefined || target === null) return;
+
     const newMode = getTargetMode(target);
     setMode(newMode);
     if (newMode === "other") {
@@ -65,8 +76,9 @@ export const ValidationCaseTargetEditor: FC<
 
   // Debounce only the text input changes
   const debouncedOnChange = useDebouncedCallback((value: unknown) => {
-    setIsTyping(false); // Clear typing flag after debounce completes
+    // Call onChange first to update the cache before clearing the typing flag.
     onChange(value as string);
+    setIsTyping(false);
   }, 600);
 
   const handleRadioChange = (value: string) => {

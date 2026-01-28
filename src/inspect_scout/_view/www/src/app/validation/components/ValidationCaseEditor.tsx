@@ -180,6 +180,9 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
 
   // Delete case state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Track when "other" mode is selected in the target editor
+  const [isOtherModeSelected, setIsOtherModeSelected] = useState(false);
   const deleteCaseMutation = useDeleteValidationCase(
     editorValidationSetUri ?? ""
   );
@@ -205,12 +208,17 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
             [field]: value,
           };
 
-      // Skip save if target is empty (user selected "Other" but hasn't typed a value)
-      // Update cache for UI but don't save to server yet
-      if (
-        (updatedCase.target == null || updatedCase.target === "") &&
-        updatedCase.labels == null
-      ) {
+      // Skip save if this is a NEW case with empty target (user selected "Other" but hasn't typed a value yet).
+      // But allow saving empty target if there was a previous value (user is clearing it).
+      const hasEmptyTarget =
+        updatedCase.target == null || updatedCase.target === "";
+      const hadPreviousTarget =
+        caseData?.target != null && caseData.target !== "";
+      const isNewEmptyCase =
+        hasEmptyTarget && updatedCase.labels == null && !hadPreviousTarget;
+
+      if (isNewEmptyCase) {
+        // Update cache for UI but don't save to server yet
         queryClient.setQueryData(
           validationQueryKeys.case({
             url: editorValidationSetUri,
@@ -399,15 +407,16 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                   target={caseData?.target}
                   onChange={(target) => {
                     if (!isOtherTarget(target)) {
-                      // Clear the predicate when switching away from boolean target
-                      handleFieldChange("predicate", null);
+                      // Set predicate to "eq" for boolean targets
+                      handleFieldChange("predicate", "eq");
                     }
                     handleFieldChange("target", target);
                   }}
+                  onModeChange={setIsOtherModeSelected}
                 />
               </Field>
 
-              {isOtherTarget(caseData?.target) && (
+              {isOtherModeSelected && (
                 <Field
                   label="Predicate"
                   helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
@@ -556,11 +565,17 @@ const SaveStatus: FC<SaveStatusProps> = ({ status, error }) => {
 
 /**
  * Returns true if the target is an "other" value (not a boolean or boolean string).
- * "Other" targets include numbers, objects, arrays, and non-boolean strings.
+ * "Other" targets include numbers, objects, arrays, non-boolean strings, and empty string
+ * (which indicates the user selected "Other" mode but hasn't typed a value yet).
  */
 const isOtherTarget = (target?: JsonValue): boolean => {
-  if (target === null || target === undefined || target === "") {
+  if (target === null || target === undefined) {
     return false;
+  }
+
+  // Empty string means "other" was selected but no value typed yet
+  if (target === "") {
+    return true;
   }
 
   if (typeof target === "boolean") {

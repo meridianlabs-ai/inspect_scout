@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
 
+import { useLoggingNavigate } from "../debugging/navigationDebugging";
 import { useStore } from "../state/store";
 
 import { MarkdownDiv } from "./MarkdownDiv";
@@ -54,7 +54,7 @@ export const MarkdownDivWithReferences = forwardRef<
     [references]
   );
 
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("MarkdownDivWithReferences");
 
   const handleLinkClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

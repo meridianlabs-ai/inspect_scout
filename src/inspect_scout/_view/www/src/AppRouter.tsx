@@ -1,10 +1,9 @@
-import { useEffect } from "react";
+import { FC, useEffect } from "react";
 import {
   createHashRouter,
-  Navigate,
   Outlet,
+  useLocation,
   useParams,
-  useNavigate,
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
@@ -18,6 +17,11 @@ import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
 import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
+import {
+  LoggingNavigate,
+  timestamp,
+  useLoggingNavigate,
+} from "./debugging/navigationDebugging";
 import {
   kScansRootRouteUrlPattern,
   kScansRouteUrlPattern,
@@ -45,128 +49,14 @@ export interface AppRouterConfig {
 // Creates a layout component that handles embedded state and tracks route changes
 const createAppLayout = (routerConfig: AppRouterConfig) => {
   const AppLayout = () => {
-    const navigate = useNavigate();
-
     const showFind = useStore((state) => state.showFind);
     const setShowFind = useStore((state) => state.setShowFind);
-
-    const selectedScanner = useStore((state) => state.selectedScanner);
-    const setSingleFileMode = useStore((state) => state.setSingleFileMode);
     const singleFileMode = useStore((state) => state.singleFileMode);
-    const hasInitializedEmbeddedData = useStore(
-      (state) => state.hasInitializedEmbeddedData
-    );
-    const hasInitializedRouting = useStore(
-      (state) => state.hasInitializedRouting
-    );
-    const selectedScanResult = useStore((state) => state.selectedScanResult);
-    const selectedScanLocation = useStore(
-      (state) => state.selectedScanLocation
-    );
-    const userScansDir = useStore((state) => state.userScansDir);
     const config = useAppConfig();
-    const serverScansDir = config.scans.dir;
-    const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-    const setHasInitializedEmbeddedData = useStore(
-      (state) => state.setHasInitializedEmbeddedData
-    );
-    const setHasInitializedRouting = useStore(
-      (state) => state.setHasInitializedRouting
-    );
 
-    const hasRestoredState = selectedScanner !== undefined;
-
-    // Global keyboard shortcut to open FindBand
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-          e.preventDefault();
-          setShowFind(true);
-        }
-      };
-
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }, [setShowFind]);
-
-    useEffect(() => {
-      if (hasInitializedEmbeddedData) {
-        return;
-      }
-
-      // Check for embedded state on initial load
-      const embeddedState = getEmbeddedScanState();
-      if (embeddedState && !hasRestoredState) {
-        const { scan, scanner, dir } = embeddedState;
-
-        // Set the results directory in the store
-        setSingleFileMode(true);
-        if (scanner) {
-          setSelectedScanner(scanner);
-        }
-
-        // Navigate to the scan
-        void navigate(scanRoute(dir, scan), { replace: true });
-      }
-
-      setHasInitializedEmbeddedData(true);
-    }, [
-      navigate,
-      hasInitializedEmbeddedData,
-      setSingleFileMode,
-      setHasInitializedEmbeddedData,
-      setSelectedScanner,
-      hasRestoredState,
-    ]);
-
-    // Handle state-driven navigation on initial load
-    useEffect(() => {
-      // Only run once on initial mount, after embedded state is handled
-      if (hasInitializedRouting) {
-        return;
-      }
-
-      // Get current path (remove leading '#' from hash)
-      const currentPath = window.location.hash.slice(1);
-      const isDefaultRoute =
-        currentPath === "/" || currentPath === "/scans" || currentPath === "";
-
-      // If we're on a default route and have persisted state, navigate to the appropriate view
-      const resolvedScansDir = userScansDir || serverScansDir;
-      if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {
-        if (selectedScanResult) {
-          // Navigate to scan result view
-          void navigate(
-            scanResultRoute(
-              resolvedScansDir,
-              selectedScanLocation,
-              selectedScanResult
-            ),
-            { replace: true }
-          );
-        } else {
-          // Navigate to scanner view
-          void navigate(scanRoute(resolvedScansDir, selectedScanLocation), {
-            replace: true,
-          });
-        }
-      }
-
-      // Mark routing as initialized
-      setHasInitializedRouting(true);
-    }, [
-      hasInitializedEmbeddedData,
-      hasInitializedRouting,
-      selectedScanner,
-      selectedScanLocation,
-      selectedScanResult,
-      navigate,
-      setHasInitializedRouting,
-      serverScansDir,
-      userScansDir,
-    ]);
+    useFindBandShortcut();
+    useEmbeddedStateInitializer();
+    useRoutingInitializer(config.scans.dir);
 
     const content = <Outlet />;
     return (
@@ -204,10 +94,13 @@ const ScanOrScanResultsRoute = () => {
   // Validate that the path ends with the correct scan_id pattern
   if (!isValidScanPath(relativePath)) {
     // Redirect to /scans preserving the path structure
-    if (scansDir) {
-      return <Navigate to={scansRoute(scansDir, relativePath)} replace />;
-    }
-    return <Navigate to="/scans" replace />;
+    return (
+      <LoggingNavigate
+        to={scansDir ? scansRoute(scansDir, relativePath) : "/scans"}
+        replace
+        reason="Invalid scan path"
+      />
+    );
   }
 
   return <ScanPanel />;
@@ -231,9 +124,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             index: true,
             element: (
-              <Navigate
+              <LoggingNavigate
                 to={transcriptsDir ? "/transcripts" : "/scans"}
                 replace
+                reason="Root index redirect"
               />
             ),
           },
@@ -277,9 +171,129 @@ export const createAppRouter = (config: AppRouterConfig) => {
       },
       {
         path: "*",
-        element: <Navigate to="/scans" replace />,
+        element: <LoggingNavigate to="/scans" replace reason="catch-all" />,
       },
     ],
     { basename: "" }
   );
+};
+
+// Handles embedded state initialization on first load
+const useEmbeddedStateInitializer = () => {
+  const navigate = useLoggingNavigate("useEmbeddedStateInitializer");
+  const hasInitializedEmbeddedData = useStore(
+    (state) => state.hasInitializedEmbeddedData
+  );
+  const setHasInitializedEmbeddedData = useStore(
+    (state) => state.setHasInitializedEmbeddedData
+  );
+  const setSingleFileMode = useStore((state) => state.setSingleFileMode);
+  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
+  const selectedScanner = useStore((state) => state.selectedScanner);
+
+  useEffect(() => {
+    if (hasInitializedEmbeddedData) {
+      return;
+    }
+
+    // Check for embedded state on initial load
+    const hasRestoredState = selectedScanner !== undefined;
+    if (!hasRestoredState) {
+      const embeddedState = getEmbeddedScanState();
+      if (embeddedState) {
+        const { scan, scanner, dir } = embeddedState;
+
+        // Set the results directory in the store
+        setSingleFileMode(true);
+        if (scanner) {
+          setSelectedScanner(scanner);
+        }
+
+        console.log(
+          `[${timestamp()}] useEmbeddedStateInitializer.useEffect: navigating to ${scanRoute(dir, scan)}`
+        );
+
+        // Navigate to the scan
+        void navigate(scanRoute(dir, scan), { replace: true });
+      }
+    }
+    setHasInitializedEmbeddedData(true);
+  }, [
+    navigate,
+    hasInitializedEmbeddedData,
+    setSingleFileMode,
+    setHasInitializedEmbeddedData,
+    selectedScanner,
+    setSelectedScanner,
+  ]);
+};
+
+// Handles routing initialization on first load
+const useRoutingInitializer = (serverScansDir: string | undefined) => {
+  const navigate = useLoggingNavigate("useRoutingInitializer");
+  const hasInitializedRouting = useStore(
+    (state) => state.hasInitializedRouting
+  );
+  const setHasInitializedRouting = useStore(
+    (state) => state.setHasInitializedRouting
+  );
+  const selectedScanResult = useStore((state) => state.selectedScanResult);
+  const selectedScanLocation = useStore((state) => state.selectedScanLocation);
+  const userScansDir = useStore((state) => state.userScansDir);
+
+  useEffect(() => {
+    if (hasInitializedRouting) {
+      return;
+    }
+
+    const currentPath = window.location.hash.slice(1);
+    const isDefaultRoute =
+      currentPath === "/" || currentPath === "/scans" || currentPath === "";
+
+    const resolvedScansDir = userScansDir || serverScansDir;
+    if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {
+      if (selectedScanResult) {
+        void navigate(
+          scanResultRoute(
+            resolvedScansDir,
+            selectedScanLocation,
+            selectedScanResult
+          ),
+          { replace: true }
+        );
+      } else {
+        void navigate(scanRoute(resolvedScansDir, selectedScanLocation), {
+          replace: true,
+        });
+      }
+    }
+
+    setHasInitializedRouting(true);
+  }, [
+    hasInitializedRouting,
+    selectedScanLocation,
+    selectedScanResult,
+    navigate,
+    setHasInitializedRouting,
+    serverScansDir,
+    userScansDir,
+  ]);
+};
+
+// Global keyboard shortcut to open FindBand
+const useFindBandShortcut = () => {
+  const setShowFind = useStore((state) => state.setShowFind);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowFind(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [setShowFind]);
 };

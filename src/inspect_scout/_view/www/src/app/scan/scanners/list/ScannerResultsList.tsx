@@ -1,12 +1,13 @@
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { LoadingBar } from "../../../../components/LoadingBar";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
+import { useLoggingNavigate } from "../../../../debugging/navigationDebugging";
 import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types/api-types";
@@ -45,7 +46,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   selectedScan,
 }) => {
   // Url data
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ScannerResultsList");
   const [searchParams] = useSearchParams();
   const { scansDir, scanPath } = useScanRoute();
 

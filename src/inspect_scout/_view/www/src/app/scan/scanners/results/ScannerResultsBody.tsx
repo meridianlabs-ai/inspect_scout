@@ -2,11 +2,12 @@ import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { ColumnTable } from "arquero";
 import clsx from "clsx";
 import { FC, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { DataframeView } from "../../../../components/DataframeView";
 import { ErrorPanel } from "../../../../components/ErrorPanel";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
+import { useLoggingNavigate } from "../../../../debugging/navigationDebugging";
 import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types/api-types";
@@ -45,7 +46,7 @@ export const ScannerResultsBody: FC<{
   );
 
   // Navigation setup
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ScannerResultsBody");
   const [searchParams] = useSearchParams();
   const { scansDir, scanPath } = useScanRoute();
 

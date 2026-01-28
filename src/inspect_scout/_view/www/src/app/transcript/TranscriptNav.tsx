@@ -1,6 +1,7 @@
 import { FC } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import { transcriptRoute } from "../../router/url";
 import { Transcript } from "../../types/api-types";
 import { NextPreviousNav } from "../components/NextPreviousNav";
@@ -19,7 +20,7 @@ export const TranscriptNav: FC<TranscriptNavProps> = ({
   prevId,
   nextId,
 }) => {
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("TranscriptNav");
   const [searchParams] = useSearchParams();
 
   const handlePrevious = () => {

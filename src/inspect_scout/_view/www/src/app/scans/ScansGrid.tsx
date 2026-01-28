@@ -12,9 +12,10 @@ import {
 import { AgGridReact } from "ag-grid-react";
 import { clsx } from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { ApplicationIcons } from "../../components/icons";
+import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import { getRelativePathFromParams, scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
@@ -37,7 +38,7 @@ export const ScansGrid: FC<{
 }> = ({ scans, resultsDir }) => {
   const params = useParams<{ "*": string }>();
   const paramsRelativePath = getRelativePathFromParams(params);
-  const navigate = useNavigate();
+  const navigate = useLoggingNavigate("ScansGrid");
 
   const gridStates = useStore((state) => state.gridStates);
   const setGridState = useStore((state) => state.setGridState);

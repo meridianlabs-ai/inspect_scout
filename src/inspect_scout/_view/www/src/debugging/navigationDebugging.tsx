@@ -11,17 +11,21 @@ import {
 
 const NAVIGATION_LOGGING_ENABLED = false;
 
-export const timestamp = () => new Date().toISOString().slice(11, 23);
+const timestamp = () => new Date().toISOString().slice(11, 23);
+
+export const navigationLog = (description: string) => {
+  if (NAVIGATION_LOGGING_ENABLED) {
+    console.log(`[${timestamp()}] ${description}`);
+  }
+};
 
 type LoggingNavigateProps = NavigateProps & { reason: string };
 
 export const LoggingNavigate = ({ reason, ...props }: LoggingNavigateProps) => {
   const location = useLocation();
-  if (NAVIGATION_LOGGING_ENABLED) {
-    console.log(
-      `[${timestamp()}] <Navigate /> ('${reason}') navigating\n\twindow.location.hash='${window.location.hash}'\n\trouter.location='${location.pathname}'\nto\n\t${JSON.stringify(props.to)}`
-    );
-  }
+  navigationLog(
+    `<Navigate /> ('${reason}') navigating\n\twindow.location.hash='${window.location.hash}'\n\trouter.location='${location.pathname}'\nto\n\t${JSON.stringify(props.to)}`
+  );
   return <Navigate {...props} />;
 };
 
@@ -48,11 +52,9 @@ const wrapNavigate = (
     toOrDelta: To | number,
     options?: NavigateOptions
   ): void | Promise<void> {
-    if (NAVIGATION_LOGGING_ENABLED) {
-      console.log(
-        `[${timestamp()}] navigate() ('${description}')\n\twindow.location.hash='${window.location.hash}'\n\trouter location: pathname='${location.pathname}' hash='${location.hash}'\nto\n\t${JSON.stringify(toOrDelta)}`
-      );
-    }
+    navigationLog(
+      `navigate() ('${description}')\n\twindow.location.hash='${window.location.hash}'\n\trouter location: pathname='${location.pathname}' hash='${location.hash}'\nto\n\t${JSON.stringify(toOrDelta)}`
+    );
     if (typeof toOrDelta === "number") {
       return navigate(toOrDelta);
     } else {

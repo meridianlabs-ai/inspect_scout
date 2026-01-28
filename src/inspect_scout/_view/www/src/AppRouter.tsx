@@ -14,7 +14,6 @@ import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
 import {
   LoggingNavigate,
-  timestamp,
   useLoggingNavigate,
 } from "./debugging/navigationDebugging";
 import {
@@ -203,10 +202,6 @@ const useEmbeddedStateInitializer = () => {
         if (scanner) {
           setSelectedScanner(scanner);
         }
-
-        console.log(
-          `[${timestamp()}] useEmbeddedStateInitializer.useEffect: navigating to ${scanRoute(dir, scan)}`
-        );
 
         // Navigate to the scan
         void navigate(scanRoute(dir, scan), { replace: true });

@@ -300,7 +300,7 @@ const RootIndexRedirect: FC<{
 
   if (!shouldRedirect) {
     navigationLog(
-      `RootIndexRedirect:\n\thashPath='${hashPath}'\n\trouterPath='${routerPath}'\n\t=> SKIPPING (navigation in-flight)"}`
+      `RootIndexRedirect:\n\thashPath='${hashPath}'\n\trouterPath='${routerPath}'\n\t=> SKIPPING (navigation in-flight)`
     );
 
     return null;

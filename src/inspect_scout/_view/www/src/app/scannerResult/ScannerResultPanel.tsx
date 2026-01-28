@@ -22,6 +22,7 @@ import { useScanRoute } from "../hooks/useScanRoute";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
+import { useAppConfig } from "../server/useAppConfig";
 import { useHasTranscript } from "../server/useHasTranscript";
 import { ScanResultData } from "../types";
 import { useScansDir } from "../utils/useScansDir";
@@ -62,6 +63,7 @@ export const ScannerResultPanel: FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
+  const appConfig = useAppConfig();
 
   // Validation sidebar - URL is the source of truth
   const validationSidebarCollapsed = !getValidationParam(searchParams);
@@ -302,7 +304,11 @@ export const ScannerResultPanel: FC = () => {
           scanLoading || resultLoading || inputLoading || hasTranscriptLoading
         }
       />
-      <ScannerResultHeader inputData={inputData} scan={selectedScan} />
+      <ScannerResultHeader
+        inputData={inputData}
+        scan={selectedScan}
+        appConfig={appConfig}
+      />
 
       {selectedResult && (
         <ExtendedFindProvider>

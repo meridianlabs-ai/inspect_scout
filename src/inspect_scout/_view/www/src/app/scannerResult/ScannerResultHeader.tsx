@@ -2,8 +2,15 @@ import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
 import { EventType } from "../../components/transcript/types";
-import { Event, ChatMessage, Status, Transcript } from "../../types/api-types";
+import {
+  Event,
+  ChatMessage,
+  Status,
+  Transcript,
+  AppConfig,
+} from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
+import { projectOrAppAliasedPath } from "../server/useAppConfig";
 import {
   ScanResultInputData,
   isEventInput,
@@ -19,6 +26,7 @@ import styles from "./ScannerResultHeader.module.css";
 interface ScannerResultHeaderProps {
   scan?: Status;
   inputData?: ScanResultInputData;
+  appConfig: AppConfig;
 }
 
 interface Column {
@@ -30,8 +38,9 @@ interface Column {
 export const ScannerResultHeader: FC<ScannerResultHeaderProps> = ({
   scan,
   inputData,
+  appConfig,
 }) => {
-  const columns = colsForResult(inputData, scan) || [];
+  const columns = colsForResult(appConfig, inputData, scan) || [];
 
   return (
     <div className={clsx(styles.header, classForCols(columns.length))}>
@@ -83,14 +92,15 @@ const classForCols = (numCols: number) => {
 };
 
 const colsForResult: (
+  appConfig: AppConfig,
   inputData?: ScanResultInputData,
   status?: Status
-) => Column[] | undefined = (inputData, status) => {
+) => Column[] | undefined = (appConfig, inputData, status) => {
   if (!inputData) {
     return [];
   }
   if (isTranscriptInput(inputData)) {
-    return transcriptCols(inputData.input, status);
+    return transcriptCols(appConfig, inputData.input, status);
   } else if (isMessageInput(inputData)) {
     return messageCols(inputData.input, status);
   } else if (isMessagesInput(inputData)) {
@@ -104,7 +114,11 @@ const colsForResult: (
   }
 };
 
-const transcriptCols = (transcript: Transcript, status?: Status) => {
+const transcriptCols = (
+  appConfig: AppConfig,
+  transcript: Transcript,
+  status?: Status
+) => {
   // Read values from the transcript directly, falling back to metadata
   // The metadata was previously used to store these values before they were
   // added to the main Transcript schema (so we're doing this mainly for backwards
@@ -114,6 +128,16 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
     transcript.source_uri ||
     (transcript.metadata?.log as string | undefined) ||
     "";
+
+  // Coerce this to a URI
+  let resolvedSourceUrl = sourceUri;
+  if (resolvedSourceUrl && resolvedSourceUrl.startsWith("/")) {
+    resolvedSourceUrl = `file://${resolvedSourceUrl}`;
+  }
+  const displaySourceUri = projectOrAppAliasedPath(
+    appConfig,
+    resolvedSourceUrl
+  );
 
   // Model info
   const transcriptModel =
@@ -141,7 +165,7 @@ const transcriptCols = (transcript: Transcript, status?: Status) => {
     },
     {
       label: "Source",
-      value: sourceUri,
+      value: displaySourceUri,
     },
     {
       label: "Model",

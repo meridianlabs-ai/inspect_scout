@@ -128,6 +128,11 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
     ) {
       // Default sort for error filter: errors first, then by identifier
       setSortResults([{ column: "Error", direction: "desc" }]);
+    } else if (
+      filteredSummaries.some((s) => s.validationResult !== undefined)
+    ) {
+      // Default sort for validations: validations first, then by identifier
+      setSortResults([{ column: "Validation", direction: "desc" }]);
     }
   }, [sortResults, selectedFilter, filteredSummaries]);
 
@@ -557,7 +562,7 @@ const optimalColumnLayout = (
   );
   if (hasValidations) {
     columns.push("validations");
-    gridColParts.push("1fr");
+    gridColParts.push("minmax(80px, 1fr)");
   }
 
   const hasErrors = scannerSummaries.some((s) => !!s.scanError);

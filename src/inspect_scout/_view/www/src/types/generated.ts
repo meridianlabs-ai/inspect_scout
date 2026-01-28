@@ -304,7 +304,11 @@ export interface paths {
         post?: never;
         delete?: never;
         options?: never;
-        head?: never;
+        /**
+         * Check transcript existence
+         * @description Checks if a transcript exists.
+         */
+        head: operations["transcript_transcripts__dir___id__head"];
         patch?: never;
         trace?: never;
     };
@@ -4299,6 +4303,31 @@ export interface operations {
         };
     };
     transcript_transcripts__dir___id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+                /** @description Transcript ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Transcript"];
+                };
+            };
+        };
+    };
+    transcript_transcripts__dir___id__head: {
         parameters: {
             query?: never;
             header?: never;

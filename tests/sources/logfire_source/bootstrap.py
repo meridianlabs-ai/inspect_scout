@@ -26,17 +26,29 @@ Usage:
 import os
 import sys
 from datetime import datetime
+from typing import Any
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, rely on environment
 
 # Required trace names that must exist for tests to pass
 REQUIRED_TRACES = [
     "scout-test-openai-simple-v2",
     "scout-test-openai-multiturn-v2",
     "scout-test-openai-tools-v2",
+    "scout-test-openai-multiturn-tools-v2",
     "scout-test-anthropic-simple-v2",
     "scout-test-anthropic-multiturn-v2",
     "scout-test-anthropic-tools-v2",
+    "scout-test-anthropic-multiturn-tools-v2",
     "scout-test-pydantic-ai-simple-v2",
     "scout-test-pydantic-ai-tools-v2",
+    "scout-test-pydantic-ai-multiturn-tools-v2",
     "scout-test-pydantic-ai-openai-multiturn-v2",
     "scout-test-pydantic-ai-anthropic-multiturn-v2",
     "scout-test-pydantic-ai-google-multiturn-v2",
@@ -260,6 +272,118 @@ async def create_openai_tools_trace() -> None:
             print(f"OpenAI tools: {response2.choices[0].message.content}")
 
 
+async def create_openai_multiturn_tools_trace() -> None:
+    """Create a multi-turn OpenAI trace with tool calls across turns."""
+    import json
+
+    import logfire
+    import openai
+
+    logfire.instrument_openai()
+
+    client = openai.OpenAI()
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "city": {"type": "string", "description": "The city name"},
+                    },
+                    "required": ["city"],
+                },
+            },
+        }
+    ]
+
+    with logfire.span("scout-test-openai-multiturn-tools-v2"):
+        messages: list[Any] = [
+            {"role": "user", "content": "What's the weather in San Francisco?"},
+        ]
+
+        # Turn 1: Ask about SF weather
+        response1 = client.chat.completions.create(  # type: ignore[call-overload]
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+
+        if response1.choices[0].message.tool_calls:
+            tool_call1 = response1.choices[0].message.tool_calls[0]
+            print(
+                f"OpenAI multiturn-tools turn 1: Tool called - {tool_call1.function.name}"
+            )
+            messages.append(response1.choices[0].message)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call1.id,
+                    "content": json.dumps({"temperature": 72, "condition": "sunny"}),
+                }
+            )
+
+            # Get response after tool
+            response1b = client.chat.completions.create(
+                model="gpt-5-mini-2025-08-07",
+                messages=messages,
+                tools=tools,  # type: ignore[arg-type]
+            )
+            messages.append(response1b.choices[0].message)
+            print(
+                f"OpenAI multiturn-tools turn 1 response: {response1b.choices[0].message.content}"
+            )
+
+        # Turn 2: Ask about NYC weather
+        messages.append({"role": "user", "content": "What about New York?"})
+
+        response2 = client.chat.completions.create(  # type: ignore[call-overload]
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+
+        if response2.choices[0].message.tool_calls:
+            tool_call2 = response2.choices[0].message.tool_calls[0]
+            print(
+                f"OpenAI multiturn-tools turn 2: Tool called - {tool_call2.function.name}"
+            )
+            messages.append(response2.choices[0].message)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call2.id,
+                    "content": json.dumps({"temperature": 45, "condition": "cloudy"}),
+                }
+            )
+
+            # Get response after tool
+            response2b = client.chat.completions.create(
+                model="gpt-5-mini-2025-08-07",
+                messages=messages,
+                tools=tools,  # type: ignore[arg-type]
+            )
+            messages.append(response2b.choices[0].message)
+            print(
+                f"OpenAI multiturn-tools turn 2 response: {response2b.choices[0].message.content}"
+            )
+
+        # Turn 3: Ask comparison (no tool needed)
+        messages.append({"role": "user", "content": "Which city is warmer?"})
+
+        response3 = client.chat.completions.create(
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=tools,  # type: ignore[arg-type]
+        )
+        print(f"OpenAI multiturn-tools turn 3: {response3.choices[0].message.content}")
+
+
 async def create_anthropic_simple_trace() -> None:
     """Create a simple Anthropic trace."""
     import anthropic
@@ -418,6 +542,147 @@ async def create_anthropic_tools_trace() -> None:
             print(f"Anthropic tools: {content}")
 
 
+async def create_anthropic_multiturn_tools_trace() -> None:
+    """Create a multi-turn Anthropic trace with tool calls across turns."""
+    import anthropic
+    import logfire
+
+    logfire.instrument_anthropic()
+
+    client = anthropic.Anthropic()
+
+    tools: list[anthropic.types.ToolParam] = [
+        {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "The city name"},
+                },
+                "required": ["city"],
+            },
+        }
+    ]
+
+    with logfire.span("scout-test-anthropic-multiturn-tools-v2"):
+        messages: list[Any] = [
+            {"role": "user", "content": "What's the weather in San Francisco?"},
+        ]
+
+        # Turn 1: Ask about SF weather
+        response1 = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            tools=tools,
+            messages=messages,
+        )
+
+        tool_use_block1 = None
+        for block in response1.content:
+            if block.type == "tool_use":
+                tool_use_block1 = block
+                break
+
+        if tool_use_block1:
+            print(
+                f"Anthropic multiturn-tools turn 1: Tool called - {tool_use_block1.name}"
+            )
+            messages.append({"role": "assistant", "content": response1.content})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_block1.id,
+                            "content": '{"temperature": 72, "condition": "sunny"}',
+                        }
+                    ],
+                }
+            )
+
+            # Get response after tool
+            response1b = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                tools=tools,
+                messages=messages,
+            )
+            content1 = ""
+            for block in response1b.content:
+                if hasattr(block, "text"):
+                    content1 = block.text
+                    break
+            messages.append({"role": "assistant", "content": content1})
+            print(f"Anthropic multiturn-tools turn 1 response: {content1}")
+
+        # Turn 2: Ask about NYC weather
+        messages.append({"role": "user", "content": "What about New York?"})
+
+        response2 = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            tools=tools,
+            messages=messages,
+        )
+
+        tool_use_block2 = None
+        for block in response2.content:
+            if block.type == "tool_use":
+                tool_use_block2 = block
+                break
+
+        if tool_use_block2:
+            print(
+                f"Anthropic multiturn-tools turn 2: Tool called - {tool_use_block2.name}"
+            )
+            messages.append({"role": "assistant", "content": response2.content})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_block2.id,
+                            "content": '{"temperature": 45, "condition": "cloudy"}',
+                        }
+                    ],
+                }
+            )
+
+            # Get response after tool
+            response2b = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                tools=tools,
+                messages=messages,
+            )
+            content2 = ""
+            for block in response2b.content:
+                if hasattr(block, "text"):
+                    content2 = block.text
+                    break
+            messages.append({"role": "assistant", "content": content2})
+            print(f"Anthropic multiturn-tools turn 2 response: {content2}")
+
+        # Turn 3: Ask comparison (no tool needed)
+        messages.append({"role": "user", "content": "Which city is warmer?"})
+
+        response3 = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            tools=tools,
+            messages=messages,
+        )
+        content3 = ""
+        for block in response3.content:
+            if hasattr(block, "text"):
+                content3 = block.text
+                break
+        print(f"Anthropic multiturn-tools turn 3: {content3}")
+
+
 async def create_google_genai_trace() -> None:
     """Create a Google GenAI trace (optional)."""
     if not os.environ.get("GOOGLE_API_KEY"):
@@ -491,6 +756,54 @@ async def create_pydantic_ai_tools_trace() -> None:
     with logfire.span("scout-test-pydantic-ai-tools-v2"):
         result = await agent.run("What's the weather in San Francisco?")
         print(f"Pydantic AI tools: {result.output}")
+
+
+async def create_pydantic_ai_multiturn_tools_trace() -> None:
+    """Create a multi-turn Pydantic AI agent trace with tool calls across turns."""
+    import logfire
+    from pydantic_ai import Agent
+
+    logfire.instrument_pydantic_ai()
+
+    agent = Agent(
+        "openai:gpt-5-mini-2025-08-07",
+        system_prompt="You are a helpful weather assistant.",
+    )
+
+    @agent.tool_plain
+    def get_weather(city: str) -> str:
+        """Get the current weather for a city.
+
+        Args:
+            city: The city name to get weather for.
+
+        Returns:
+            Weather information as a string.
+        """
+        weather_data = {
+            "san francisco": "sunny with a temperature of 72F",
+            "new york": "cloudy with a temperature of 45F",
+        }
+        return f"The weather in {city} is {weather_data.get(city.lower(), 'unknown')}."
+
+    with logfire.span("scout-test-pydantic-ai-multiturn-tools-v2"):
+        # Turn 1: Ask about SF weather (triggers tool)
+        result1 = await agent.run("What's the weather in San Francisco?")
+        print(f"Pydantic AI multiturn-tools turn 1: {result1.output}")
+
+        # Turn 2: Ask about NYC weather (triggers tool again)
+        result2 = await agent.run(
+            "What about New York?",
+            message_history=result1.all_messages(),
+        )
+        print(f"Pydantic AI multiturn-tools turn 2: {result2.output}")
+
+        # Turn 3: Ask comparison (no tool needed, uses context)
+        result3 = await agent.run(
+            "Which city is warmer?",
+            message_history=result2.all_messages(),
+        )
+        print(f"Pydantic AI multiturn-tools turn 3: {result3.output}")
 
 
 async def create_pydantic_ai_openai_multiturn_trace() -> None:
@@ -637,6 +950,9 @@ async def main(force: bool = False) -> None:
     print("Creating OpenAI tools trace...")
     await create_openai_tools_trace()
 
+    print("Creating OpenAI multi-turn tools trace...")
+    await create_openai_multiturn_tools_trace()
+
     # Create Anthropic traces
     print("Creating Anthropic simple trace...")
     await create_anthropic_simple_trace()
@@ -646,6 +962,9 @@ async def main(force: bool = False) -> None:
 
     print("Creating Anthropic tools trace...")
     await create_anthropic_tools_trace()
+
+    print("Creating Anthropic multi-turn tools trace...")
+    await create_anthropic_multiturn_tools_trace()
 
     # Create Google GenAI trace (optional)
     print("Creating Google GenAI trace (if available)...")
@@ -657,6 +976,9 @@ async def main(force: bool = False) -> None:
 
     print("Creating Pydantic AI tools trace...")
     await create_pydantic_ai_tools_trace()
+
+    print("Creating Pydantic AI multi-turn tools trace...")
+    await create_pydantic_ai_multiturn_tools_trace()
 
     print("Creating Pydantic AI OpenAI multi-turn trace...")
     await create_pydantic_ai_openai_multiturn_trace()

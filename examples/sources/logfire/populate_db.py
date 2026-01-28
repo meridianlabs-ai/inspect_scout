@@ -11,7 +11,7 @@ from inspect_scout.sources import logfire
 
 async def main() -> None:
     async with transcripts_db("examples/sources/logfire/transcripts") as db:
-        await db.insert(logfire(filter="span_name LIKE 'scout-test-%-v2'"))
+        await db.insert(logfire())
 
 
 if __name__ == "__main__":

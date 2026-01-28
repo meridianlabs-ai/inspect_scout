@@ -170,6 +170,17 @@ def _normalize_pydantic_ai_messages(
                         }
                     )
                     continue
+                elif part_type == "tool_call_response":
+                    # Pydantic AI tool response format (different keys)
+                    # Has: id, name, result instead of tool_call_id, content
+                    normalized.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": part.get("id", ""),
+                            "content": str(part.get("result", "")),
+                        }
+                    )
+                    continue
 
             # Build the normalized message
             new_msg: dict[str, Any] = {"role": role}

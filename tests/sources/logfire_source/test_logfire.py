@@ -253,6 +253,61 @@ async def test_logfire_openai_multiturn() -> None:
     )
 
 
+@skip_if_no_logfire
+@pytest.mark.asyncio
+async def test_logfire_openai_multiturn_tools() -> None:
+    """Test fetching multi-turn OpenAI conversation with tool calls.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources import logfire
+
+    async for transcript in logfire(
+        filter="span_name = 'scout-test-openai-multiturn-tools-v2'",
+        limit=1,
+    ):
+        model_events, role_counts = _assert_logfire_transcript(
+            transcript,
+            expected_name="scout-test-openai-multiturn-tools-v2",
+            model_pattern="gpt",
+            min_model_events=5,  # Multiple LLM calls across turns
+            min_messages=8,  # Multiple user, assistant, and tool messages
+        )
+
+        # Should have all message types
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool messages"
+
+        # Multiple user messages (3 turns)
+        assert role_counts.get("user", 0) >= 3, (
+            f"Expected at least 3 user messages, got {role_counts.get('user', 0)}"
+        )
+
+        # Multiple tool results (2 tool calls)
+        assert role_counts.get("tool", 0) >= 2, (
+            f"Expected at least 2 tool messages, got {role_counts.get('tool', 0)}"
+        )
+
+        # Verify tool calls exist
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 2, (
+            f"Expected at least 2 assistant messages with tool_calls, got {len(tool_call_messages)}"
+        )
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-openai-multiturn-tools-v2 - run bootstrap"
+    )
+
+
 # =============================================================================
 # Anthropic Tests
 # =============================================================================
@@ -380,6 +435,61 @@ async def test_logfire_anthropic_multiturn() -> None:
     )
 
 
+@skip_if_no_logfire
+@pytest.mark.asyncio
+async def test_logfire_anthropic_multiturn_tools() -> None:
+    """Test fetching multi-turn Anthropic conversation with tool calls.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources import logfire
+
+    async for transcript in logfire(
+        filter="span_name = 'scout-test-anthropic-multiturn-tools-v2'",
+        limit=1,
+    ):
+        model_events, role_counts = _assert_logfire_transcript(
+            transcript,
+            expected_name="scout-test-anthropic-multiturn-tools-v2",
+            model_pattern="claude",
+            min_model_events=5,  # Multiple LLM calls across turns
+            min_messages=8,  # Multiple user, assistant, and tool messages
+        )
+
+        # Should have all message types
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool messages"
+
+        # Multiple user messages (3 turns)
+        assert role_counts.get("user", 0) >= 3, (
+            f"Expected at least 3 user messages, got {role_counts.get('user', 0)}"
+        )
+
+        # Multiple tool results (2 tool calls)
+        assert role_counts.get("tool", 0) >= 2, (
+            f"Expected at least 2 tool messages, got {role_counts.get('tool', 0)}"
+        )
+
+        # Verify tool calls exist
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 2, (
+            f"Expected at least 2 assistant messages with tool_calls, got {len(tool_call_messages)}"
+        )
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-anthropic-multiturn-tools-v2 - run bootstrap"
+    )
+
+
 # =============================================================================
 # Pydantic AI Tests
 # =============================================================================
@@ -460,6 +570,70 @@ async def test_logfire_pydantic_ai_tools() -> None:
 
     pytest.skip(
         "No transcript found for scout-test-pydantic-ai-tools-v2 - run bootstrap"
+    )
+
+
+@skip_if_no_logfire
+@pytest.mark.asyncio
+async def test_logfire_pydantic_ai_multiturn_tools() -> None:
+    """Test fetching multi-turn Pydantic AI conversation with tool calls.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> tool result -> response
+    - Turn 2: Ask weather in NYC -> tool call -> tool result -> response
+    - Turn 3: Ask comparison -> no tool -> response
+
+    Verifies that tool results are properly extracted from Pydantic AI traces.
+    """
+    from inspect_scout.sources import logfire
+
+    async for transcript in logfire(
+        filter="span_name = 'scout-test-pydantic-ai-multiturn-tools-v2'",
+        limit=1,
+    ):
+        model_events, role_counts = _assert_logfire_transcript(
+            transcript,
+            expected_name="scout-test-pydantic-ai-multiturn-tools-v2",
+            model_pattern="gpt",
+            min_model_events=4,  # Multiple LLM calls across turns
+            min_messages=8,  # system + 3 user + 2 tool results + multiple assistant
+        )
+
+        # Should have user, assistant, and tool messages
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool result messages"
+
+        # Multiple user messages (3 turns)
+        assert role_counts.get("user", 0) >= 3, (
+            f"Expected at least 3 user messages, got {role_counts.get('user', 0)}"
+        )
+
+        # Verify tool calls exist in assistant messages (2 weather queries)
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 2, (
+            f"Expected at least 2 assistant messages with tool_calls, "
+            f"got {len(tool_call_messages)}"
+        )
+
+        # Verify tool results exist (2 weather results)
+        tool_result_messages = [m for m in transcript.messages if m.role == "tool"]
+        assert len(tool_result_messages) >= 2, (
+            f"Expected at least 2 tool result messages, got {len(tool_result_messages)}"
+        )
+
+        # Verify tool results have content
+        for tool_msg in tool_result_messages:
+            assert hasattr(tool_msg, "content"), "Tool message should have content"
+            assert tool_msg.content, "Tool message content should not be empty"
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-pydantic-ai-multiturn-tools-v2 - run bootstrap"
     )
 
 

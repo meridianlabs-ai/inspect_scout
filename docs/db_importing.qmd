@@ -8,7 +8,7 @@ You can populate a transcript database in a variety of ways depending on where y
 
 1. [Inspect Logs](#inspect-logs): Read transcript data from Inspect eval log files.
 
-2. [LangSmith](#langsmith): Read transcript data from LangSmith traces or datasets.
+2. [LangSmith](#langsmith) and [Logfire](#logfire): Read transcript data from LLM observability platforms.
 
 2. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
@@ -47,43 +47,57 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
 ## LangSmith
 
-::: {.callout-note}
-The `langsmith()` transcript source described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 [LangSmith](https://smith.langchain.com/) is LangChain's platform for tracing, evaluating, and monitoring LLM applications. Scout can import transcripts from LangSmith traces, supporting:
 
 - LangChain agents and chains (via langchain tracing)
-- Raw OpenAI API calls (via `wrap_openai`)
-- Raw Anthropic API calls (via `wrap_anthropic`)
+- OpenAI API calls (via `wrap_openai`)
+- Anthropic API calls (via `wrap_anthropic`)
 
-Use the `langsmith()` transcript source to import traces from a LangSmith project:
+Use the `langsmith()` transcript source to import traces from a LangSmith project. You can filter by tags, time range, or using LangSmith's filter syntax:
 
 ```python
 from inspect_scout import transcripts_db
 from inspect_scout.sources import langsmith
 
 async with transcripts_db("s3://my-transcript-db/") as db:
-    await db.insert(langsmith(project="my-langsmith-project"))
-```
-
-You can filter traces by tags, time range, or using LangSmith's filter syntax:
-
-```python
-from datetime import datetime
-
-async with transcripts_db("s3://my-transcript-db/") as db:
     await db.insert(langsmith(
         project="my-langsmith-project",
         tags=["production"],
-        from_time=datetime(2024, 1, 1),
-        limit=100
     ))
 ```
+
+::: {.callout-note}
+## Authentication
+
+Set the `LANGSMITH_API_KEY` environment variable to authenticate with LangSmith. You can create an API key from [LangSmith Settings](https://smith.langchain.com/settings).
+:::
+
+## Logfire
+
+[Logfire](https://logfire.pydantic.dev/) is Pydantic's observability platform for Python applications. Scout can import transcripts from Logfire traces created by any of the supported instrumentors:
+
+- Pydantic AI (`logfire.instrument_pydantic_ai()`)
+- OpenAI (`logfire.instrument_openai()`)
+- Anthropic (`logfire.instrument_anthropic()`)
+- Google GenAI (`logfire.instrument_google_genai()`)
+
+Use the `logfire()` transcript source to import traces. You can filter by time range, specific trace ID, or using SQL WHERE fragments:
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import logfire
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(logfire(
+        filter="tags @> ARRAY['production']",
+    ))
+```
+
+::: {.callout-note}
+## Authentication
+
+Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with Logfire. You can create a read token from [Logfire Settings > Read Tokens](https://logfire.pydantic.dev/).
+:::
 
 ## Transcript API
 

@@ -14,7 +14,7 @@ from typing import Any, Callable, TypeVar, cast
 import pytest
 
 # Test project name for Logfire tests
-LOGFIRE_TEST_PROJECT = "scout-import-testing"
+LOGFIRE_TEST_PROJECT = "scout-import-testing-v2"
 
 F = TypeVar("F", bound=Callable[..., Any])
 

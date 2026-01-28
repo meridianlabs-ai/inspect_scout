@@ -7,8 +7,8 @@
 | [Results](/reference/results.qmd) | Status and results of scan jobs.|
 | [Transcripts](/reference/transcript.qmd) | Read and filter transcripts. |
 | [Scanners](/reference/scanner.qmd) | Implement scanners and loaders. |
+| [Sources](/reference/sources.qmd) | Import transcripts from various sources. |
 | [Async](/reference/async.qmd) | Async functions for scanning. |
-
 
 #### Scount CLI
 

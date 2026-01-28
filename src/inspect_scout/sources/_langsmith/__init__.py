@@ -7,7 +7,6 @@ Supports traces from:
 - LangChain agents/chains
 - Raw OpenAI (wrap_openai)
 - Raw Anthropic (wrap_anthropic)
-- Raw Google (wrap_gemini)
 """
 
 from datetime import datetime
@@ -15,7 +14,12 @@ from logging import getLogger
 from typing import Any, AsyncIterator
 
 from inspect_ai.event import ModelEvent
-from inspect_ai.model._chat_message import ChatMessage
+from inspect_ai.model._chat_message import (
+    ChatMessage,
+    ChatMessageAssistant,
+    ChatMessageSystem,
+    ChatMessageUser,
+)
 
 from inspect_scout._transcript.types import Transcript
 
@@ -44,8 +48,6 @@ logger = getLogger(__name__)
 async def langsmith(
     project: str | None = None,
     dataset: str | None = None,
-    insights_job: str | None = None,
-    cluster_id: str | None = None,
     from_time: datetime | None = None,
     to_time: datetime | None = None,
     tags: list[str] | None = None,
@@ -56,25 +58,21 @@ async def langsmith(
     api_key: str | None = None,
     api_url: str | None = None,
 ) -> AsyncIterator[Transcript]:
-    """Read transcripts from LangSmith traces.
+    """Read transcripts from [LangSmith](https://smith.langchain.com/) traces.
 
     Each LangSmith root run (trace) becomes one Scout transcript.
     Child runs (LLM calls, tools) become events within the transcript.
 
-    Data sources (in priority order):
-    1. `insights_job` - Fetch runs from an insights job (requires `project`)
-    2. `dataset` - Fetch examples from a dataset
-    3. `project` - Fetch traces from a project (default)
+    Data sources:
+
+    - `project` - Import traces from a project (default)
+    - `dataset` - Import examples from a dataset
 
     Args:
-        project: LangSmith project name. Required for insights_job, optional
-            for dataset, used as default data source otherwise.
+        project: LangSmith project name. Optional for dataset, used as
+            default data source otherwise.
         dataset: LangSmith dataset name or ID. Fetches from curated evaluation
             datasets instead of project traces.
-        insights_job: Insights job ID (beta API). Fetches runs associated with
-            an insights clustering job. Requires `project` to be set.
-        cluster_id: Optional cluster ID to filter insights job runs to a
-            specific cluster. Only used with `insights_job`.
         from_time: Only fetch traces created on or after this time
         to_time: Only fetch traces created before this time
         tags: Filter by tags (all must match)
@@ -94,21 +92,13 @@ async def langsmith(
         ValueError: If required parameters are missing
     """
     # Validate parameters
-    if insights_job and not project:
-        raise ValueError("'project' is required when using 'insights_job'")
     if not project and not dataset:
         raise ValueError("Either 'project' or 'dataset' must be provided")
 
     client = get_langsmith_client(api_key, api_url)
 
-    # Route to appropriate data source (priority: insights_job > dataset > project)
-    if insights_job:
-        assert project is not None
-        async for transcript in _from_insights_job(
-            client, project, insights_job, cluster_id, limit
-        ):
-            yield transcript
-    elif dataset:
+    # Route to appropriate data source
+    if dataset:
         async for transcript in _from_dataset(client, dataset, project, limit):
             yield transcript
     else:
@@ -249,122 +239,6 @@ async def _from_dataset(
             continue
 
 
-async def _from_insights_job(
-    client: Any,
-    project: str,
-    insights_job: str,
-    cluster_id: str | None,
-    limit: int | None,
-) -> AsyncIterator[Transcript]:
-    """Fetch transcripts from a LangSmith insights job.
-
-    Uses the beta REST API to fetch runs associated with an insights
-    clustering job.
-
-    Args:
-        client: LangSmith client
-        project: Project name (used as session_id)
-        insights_job: Insights job ID
-        cluster_id: Optional cluster ID to filter to specific cluster
-        limit: Max transcripts
-
-    Yields:
-        Transcript objects
-    """
-    # Get API URL and key from client
-    api_url = (
-        getattr(client, "api_url", None) or "https://api.smith.langchain.com"
-    ).rstrip("/")
-    api_key = getattr(client, "api_key", None)
-
-    if not api_key:
-        logger.error("API key required for insights job API")
-        return
-
-    # Import httpx for direct API calls
-    try:
-        import httpx
-    except ImportError:
-        logger.error("httpx package required for insights job API")
-        return
-
-    # Build request URL
-    # API: GET /api/v1/sessions/{session_id}/insights/{job_id}/runs
-    url = f"{api_url}/api/v1/sessions/{project}/insights/{insights_job}/runs"
-    params: dict[str, Any] = {}
-    if cluster_id:
-        params["cluster_id"] = cluster_id
-
-    headers = {
-        "X-Api-Key": api_key,
-        "Accept": "application/json",
-    }
-
-    # Fetch runs from insights job (with retry for transient errors)
-    def _fetch_insights_runs() -> Any:
-        with httpx.Client(timeout=30.0) as http_client:
-            response = http_client.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            return response.json()
-
-    try:
-        data = retry_api_call(_fetch_insights_runs)
-    except Exception as e:
-        logger.error(f"Failed to fetch insights job runs: {e}")
-        return
-
-    # Extract run IDs from response
-    # The response format may vary, try common structures
-    run_ids: list[str] = []
-    if isinstance(data, list):
-        # Direct list of runs or run IDs
-        for item in data:
-            if isinstance(item, str):
-                run_ids.append(item)
-            elif isinstance(item, dict) and "run_id" in item:
-                run_ids.append(item["run_id"])
-            elif isinstance(item, dict) and "id" in item:
-                run_ids.append(item["id"])
-    elif isinstance(data, dict):
-        # Wrapped response
-        runs = data.get("runs") or data.get("data") or []
-        for item in runs:
-            if isinstance(item, str):
-                run_ids.append(item)
-            elif isinstance(item, dict) and "run_id" in item:
-                run_ids.append(item["run_id"])
-            elif isinstance(item, dict) and "id" in item:
-                run_ids.append(item["id"])
-
-    if not run_ids:
-        logger.warning(f"No runs found in insights job {insights_job}")
-        return
-
-    # Fetch full run details and convert to transcripts
-    count = 0
-    for run_id in run_ids:
-        try:
-            # Fetch the run using the SDK
-            def _read_run(rid: str = run_id) -> Any:
-                return client.read_run(rid)
-
-            root_run = retry_api_call(_read_run)
-
-            transcript = await _trace_to_transcript(client, root_run, project)
-            if transcript:
-                # Add insights job metadata
-                transcript.metadata["insights_job"] = insights_job
-                if cluster_id:
-                    transcript.metadata["cluster_id"] = cluster_id
-                yield transcript
-                count += 1
-                if limit and count >= limit:
-                    return
-        except Exception as e:
-            logger.warning(f"Failed to process run {run_id}: {e}")
-            continue
-
-
 async def _trace_to_transcript(
     client: Any,
     root_run: Any,
@@ -407,15 +281,39 @@ async def _trace_to_transcript(
     # Get LLM runs for message extraction and metadata
     llm_runs = get_llm_runs(ordered_runs)
 
-    # Build messages from the last LLM run's input + output
+    # Build messages from LLM inputs + outputs
     messages: list[ChatMessage] = []
+    root_run_type = str(getattr(root_run, "run_type", "")).lower()
+
+    # For chain/agent runs with LLM calls, use the full conversation from the
+    # last LLM event which includes all intermediate turns (tool calls, results).
+    # For raw LLM runs without chain wrapper, use root inputs directly.
     if llm_runs:
         model_events = [e for e in events if isinstance(e, ModelEvent)]
         if model_events:
             last_model = model_events[-1]
+            # Use the LLM's input which has the full conversation
             messages = list(last_model.input)
+            # Append the final assistant response from output
             if last_model.output and last_model.output.message:
                 messages.append(last_model.output.message)
+
+    # Fallback: for traces without LLM events, try root inputs
+    if not messages:
+        root_inputs = getattr(root_run, "inputs", None) or {}
+        if root_run_type in ("chain", "agent") and root_inputs:
+            root_messages = root_inputs.get("messages", [])
+            for msg in root_messages:
+                if isinstance(msg, dict):
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    if content:
+                        if role == "user":
+                            messages.append(ChatMessageUser(content=str(content)))
+                        elif role == "system":
+                            messages.append(ChatMessageSystem(content=str(content)))
+                        elif role == "assistant":
+                            messages.append(ChatMessageAssistant(content=str(content)))
 
     # Extract metadata from root run
     metadata = extract_metadata(root_run)

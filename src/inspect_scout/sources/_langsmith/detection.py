@@ -4,7 +4,6 @@ LangSmith traces can come from multiple sources:
 - LangChain agents/chains (OpenAI-style format)
 - Raw OpenAI via wrap_openai (native OpenAI format)
 - Raw Anthropic via wrap_anthropic (native Anthropic format)
-- Raw Google via wrap_gemini (native Google format)
 
 This module detects the provider format from run data to enable
 correct message extraction using inspect_ai converters.
@@ -34,7 +33,7 @@ def detect_provider_format(run: Any) -> str:
     model_name = _extract_model_name(run)
 
     # 1. Check explicit provider metadata from LangSmith wrappers
-    # wrap_openai, wrap_anthropic, wrap_gemini set ls_provider
+    # wrap_openai, wrap_anthropic set ls_provider
     metadata = extra.get("metadata", {}) if isinstance(extra, dict) else {}
     ls_provider = metadata.get("ls_provider", "").lower() if metadata else ""
 

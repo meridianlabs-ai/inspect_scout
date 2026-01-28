@@ -1,14 +1,7 @@
-import { skipToken } from "@tanstack/react-query";
+import { skipToken, useQueryClient } from "@tanstack/react-query";
 import { VscodeDivider } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import React, {
-  FC,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { FC, ReactNode, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/ConfirmationDialog";
@@ -28,7 +21,6 @@ import {
   ValidationCase,
   ValidationCaseRequest,
 } from "../../../types/api-types";
-import { useDebouncedCallback } from "../../../utils/useDebouncedCallback";
 import { Field } from "../../project/components/FormFields";
 import { useAppConfig } from "../../server/useAppConfig";
 import {
@@ -38,6 +30,7 @@ import {
   useValidationCase,
   useValidationCases,
   useValidationSets,
+  validationQueryKeys,
 } from "../../server/useValidations";
 import {
   extractUniqueSplits,
@@ -161,11 +154,12 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   transcriptId,
   validationSets,
   editorValidationSetUri,
-  validationCase,
+  validationCase: caseData,
   validationCases,
   className,
 }) => {
   const config = useAppConfig();
+  const queryClient = useQueryClient();
   const setEditorSelectedValidationSetUri = useStore(
     (state) => state.setEditorSelectedValidationSetUri
   );
@@ -187,96 +181,19 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     editorValidationSetUri ?? ""
   );
 
-  // Local working copy of the validation case for editing
-  // This is the single source of truth for the UI during editing
-  // null means the case doesn't exist yet (404), undefined means not loaded
-  const [workingCase, setWorkingCase] = useState<
-    ValidationCase | null | undefined
-  >(validationCase);
-
-  // Sync working copy from server when:
-  // 1. Server data changes and we're not in the middle of saving
-  // 2. The case identity changes (different transcriptId or validation set)
   const updateValidationCaseMutation = useUpdateValidationCase(
     editorValidationSetUri ?? ""
   );
-  const isSaving = updateValidationCaseMutation.isPending;
 
-  useEffect(() => {
-    // Sync from server when not saving
-    // validationCase is null when case doesn't exist (404), undefined when not loaded
-    if (!isSaving && validationCase !== undefined) {
-      setWorkingCase(validationCase);
-    }
-  }, [validationCase, isSaving]);
-
-  // Reset working case when switching to a different case
-  const prevTranscriptIdRef = useRef(transcriptId);
-  const prevUriRef = useRef(editorValidationSetUri);
-  useEffect(() => {
-    if (
-      transcriptId !== prevTranscriptIdRef.current ||
-      editorValidationSetUri !== prevUriRef.current
-    ) {
-      setWorkingCase(validationCase);
-      prevTranscriptIdRef.current = transcriptId;
-      prevUriRef.current = editorValidationSetUri;
-    }
-  }, [transcriptId, editorValidationSetUri, validationCase]);
-
-  // Debounced save function - always has access to current state
-  const debouncedSave = useDebouncedCallback(() => {
-    // Access current state directly - no refs needed
-    if (!editorValidationSetUri || !workingCase) {
-      return;
-    }
-
-    // Don't save if neither target nor labels is set - silently wait for user to set one
-    // Also don't save if target is empty string (user selected "Other" but hasn't typed a value)
-    if (
-      (workingCase.target == null || workingCase.target === "") &&
-      workingCase.labels == null
-    ) {
-      return;
-    }
-
-    const request: ValidationCaseRequest = {
-      id: workingCase.id,
-      predicate: workingCase.predicate,
-      split: workingCase.split,
-      ...(workingCase.labels != null
-        ? { labels: workingCase.labels }
-        : { target: workingCase.target }),
-    };
-
-    setSaveStatus("saving");
-    setSaveError(null);
-
-    updateValidationCaseMutation.mutate(
-      { caseId: transcriptId, data: request },
-      {
-        onSuccess: () => {
-          setSaveStatus("saved");
-          setTimeout(() => setSaveStatus("idle"), 1500);
-        },
-        onError: (error) => {
-          setSaveStatus("error");
-          setSaveError(error.message);
-        },
-      }
-    );
-  }, 600);
-
-  // Handler for field changes - updates local state immediately, debounces server call
+  // Handler for field changes - updates cache immediately, fires mutation for non-empty values
   const handleFieldChange = useCallback(
     (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
       if (!editorValidationSetUri) return;
 
-      // Update local working copy immediately for instant UI feedback
-      setWorkingCase((prev) => {
-        // If no existing case, create a default one with the changed field
-        if (!prev) {
-          return {
+      // Build the updated case
+      const updatedCase: ValidationCase = caseData
+        ? { ...caseData, [field]: value }
+        : {
             id: transcriptId,
             labels: null,
             predicate: null,
@@ -284,14 +201,57 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
             target: null,
             [field]: value,
           };
-        }
-        return { ...prev, [field]: value };
-      });
 
-      // Debounce the actual server call
-      debouncedSave();
+      // Skip save if target is empty (user selected "Other" but hasn't typed a value)
+      // Update cache for UI but don't save to server yet
+      if (
+        (updatedCase.target == null || updatedCase.target === "") &&
+        updatedCase.labels == null
+      ) {
+        queryClient.setQueryData(
+          validationQueryKeys.case({
+            url: editorValidationSetUri,
+            caseId: transcriptId,
+          }),
+          updatedCase
+        );
+        return;
+      }
+
+      // Fire mutation immediately - optimistic updates handle UI
+      const request: ValidationCaseRequest = {
+        id: updatedCase.id,
+        predicate: updatedCase.predicate,
+        split: updatedCase.split,
+        ...(updatedCase.labels != null
+          ? { labels: updatedCase.labels }
+          : { target: updatedCase.target }),
+      };
+
+      setSaveStatus("saving");
+      setSaveError(null);
+
+      updateValidationCaseMutation.mutate(
+        { caseId: transcriptId, data: request },
+        {
+          onSuccess: () => {
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus("idle"), 1500);
+          },
+          onError: (error) => {
+            setSaveStatus("error");
+            setSaveError(error.message);
+          },
+        }
+      );
     },
-    [editorValidationSetUri, transcriptId, debouncedSave]
+    [
+      editorValidationSetUri,
+      transcriptId,
+      caseData,
+      queryClient,
+      updateValidationCaseMutation,
+    ]
   );
 
   const handleValidationSetSelect = useCallback(
@@ -355,25 +315,31 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
 
   // Handler for deleting the current validation case
   const handleDeleteCase = useCallback(async () => {
-    if (!transcriptId) return;
+    if (!transcriptId || !editorValidationSetUri) return;
     try {
       await deleteCaseMutation.mutateAsync(transcriptId);
       setShowDeleteModal(false);
-      // Reset working case to null after deletion (keeps panel open)
-      setWorkingCase(null);
+      // Reset cache to null after deletion (keeps panel open)
+      queryClient.setQueryData(
+        validationQueryKeys.case({
+          url: editorValidationSetUri,
+          caseId: transcriptId,
+        }),
+        null
+      );
     } catch {
       // Error is handled by mutation state - modal stays open
     }
-  }, [transcriptId, deleteCaseMutation]);
+  }, [transcriptId, editorValidationSetUri, deleteCaseMutation, queryClient]);
 
   const isEditable =
-    workingCase?.target === undefined ||
-    workingCase?.target === null ||
-    (!Array.isArray(workingCase.target) &&
-      typeof workingCase.target !== "object");
+    caseData?.target === undefined ||
+    caseData?.target === null ||
+    (!Array.isArray(caseData.target) &&
+      typeof caseData.target !== "object");
 
   const actions: ReactNode =
-    workingCase?.target != null && workingCase.target !== "" ? (
+    caseData?.target != null && caseData.target !== "" ? (
       <MenuActionButton
         items={[
           {
@@ -428,7 +394,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
             <>
               <Field label="Target" helper="The expected value for this case.">
                 <ValidationCaseTargetEditor
-                  target={workingCase?.target}
+                  target={caseData?.target}
                   onChange={(target) => {
                     if (!isOtherTarget(target)) {
                       // Clear the predicate when switching away from boolean target
@@ -439,13 +405,13 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 />
               </Field>
 
-              {isOtherTarget(workingCase?.target) && (
+              {isOtherTarget(caseData?.target) && (
                 <Field
                   label="Predicate"
                   helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
                 >
                   <ValidationCasePredicateSelector
-                    value={workingCase?.predicate || null}
+                    value={caseData?.predicate || null}
                     onChange={(predicate) =>
                       handleFieldChange("predicate", predicate)
                     }
@@ -458,7 +424,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper='Split for this case (e.g., "dev", "test").'
               >
                 <ValidationSplitSelector
-                  value={workingCase?.split || null}
+                  value={caseData?.split || null}
                   existingSplits={extractUniqueSplits(validationCases || [])}
                   onChange={(split) => handleFieldChange("split", split)}
                 />

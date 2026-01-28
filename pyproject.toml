@@ -166,3 +166,7 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = "pydantic_ai"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.sources.logfire_source.bootstrap"
+disable_error_code = ["misc", "unused-ignore"]

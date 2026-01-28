@@ -741,7 +741,7 @@ async def create_pydantic_ai_tools_trace() -> None:
         system_prompt="You are a helpful weather assistant.",
     )
 
-    @agent.tool_plain
+    @agent.tool_plain  # type: ignore[misc]
     def get_weather(city: str) -> str:
         """Get the current weather for a city.
 
@@ -770,7 +770,7 @@ async def create_pydantic_ai_multiturn_tools_trace() -> None:
         system_prompt="You are a helpful weather assistant.",
     )
 
-    @agent.tool_plain
+    @agent.tool_plain  # type: ignore[misc]
     def get_weather(city: str) -> str:
         """Get the current weather for a city.
 

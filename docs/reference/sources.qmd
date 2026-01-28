@@ -12,20 +12,7 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 :::
 
 ### langsmith
+### logfire
 
-```python
-from datetime import datetime
-from inspect_scout.sources import langsmith
 
-# Import from a LangSmith project
-transcripts = langsmith(project="my-project")
-
-# Import with filters
-transcripts = langsmith(
-    project="my-project",
-    tags=["production"],
-    from_time=datetime(2024, 1, 1),
-    limit=100
-)
-```
 

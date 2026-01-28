@@ -346,3 +346,20 @@ export function SelectField<T extends string>({
     </div>
   );
 }
+
+// ===== Field Component =====
+interface FieldProps {
+  label: string;
+  helper?: ReactNode;
+  children: ReactNode;
+}
+
+export function Field({ label, helper, children }: FieldProps): ReactNode {
+  return (
+    <div className={styles.field}>
+      <VscodeLabel>{label}</VscodeLabel>
+      {helper && <VscodeFormHelper>{helper}</VscodeFormHelper>}
+      {children}
+    </div>
+  );
+}

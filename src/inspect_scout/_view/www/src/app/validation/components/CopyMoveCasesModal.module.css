@@ -1,0 +1,41 @@
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalContent p {
+  margin: 0;
+  color: var(--vscode-foreground);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--vscode-descriptionForeground);
+}
+
+.select {
+  width: 100%;
+}
+
+.textInput {
+  width: 100%;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.error {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9em;
+  margin: 0;
+}

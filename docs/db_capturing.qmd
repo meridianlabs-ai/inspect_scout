@@ -3,7 +3,7 @@ title: Capturing Transcripts
 ---
 
 ::: {.callout-note}
-Note that the transcript capture feature described below ais available only in the development version of Inspect Scout. Install the development version from GitHub with:
+Note that the transcript capture feature described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
 
 ```python
 pip install git+https://github.com/meridianlabs-ai/inspect_scout

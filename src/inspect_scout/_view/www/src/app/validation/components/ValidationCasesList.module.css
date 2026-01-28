@@ -1,0 +1,165 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Grid layout for header and rows */
+.gridContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Grid header - fully enclosed */
+.header {
+  display: grid;
+  /* grid-template-columns set dynamically via inline style */
+  align-items: center;
+  gap: 12px;
+  padding: 0 1rem;
+  height: 28px;
+  background: var(--vscode-sideBarSectionHeader-background);
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 28px;
+  color: var(--vscode-descriptionForeground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  user-select: none;
+}
+
+.headerCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.85);
+}
+
+.headerTranscript {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Bulk actions in header */
+.bulkActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 12px;
+}
+
+.selectedCount {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--vscode-foreground);
+  margin-right: 8px;
+}
+
+.bulkButton {
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 2px 4px !important;
+  font-size: 10px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+}
+
+.bulkActions :global(vscode-button)::part(base) {
+  padding: 2px 6px !important;
+}
+
+.bulkButton i {
+  margin-right: 4px;
+}
+
+/* Responsive: Icons only at narrow widths */
+@media (max-width: 900px) {
+  .buttonText {
+    display: none;
+  }
+
+  .bulkButton i {
+    margin-right: 0;
+  }
+
+  .selectedCount {
+    margin-right: 4px;
+  }
+}
+
+.headerLabels {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
+}
+
+.headerTarget {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
+}
+
+.headerSplit {
+  text-align: center;
+}
+
+.headerActions {
+  display: flex;
+  justify-content: flex-start;
+  min-width: 56px;
+}
+
+/* Scrollable list */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.emptyState {
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
+  padding: 24px 1rem;
+}
+
+/* Modal styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+  color: var(--vscode-foreground);
+}
+
+.splitSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customInput {
+  margin-top: 4px;
+}
+
+.warning {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9em;
+}

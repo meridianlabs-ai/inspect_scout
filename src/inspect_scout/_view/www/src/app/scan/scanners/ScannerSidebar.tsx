@@ -8,7 +8,7 @@ import { LabeledValue } from "../../../components/LabeledValue";
 import { LiveVirtualList } from "../../../components/LiveVirtualList";
 import { updateScannerParam } from "../../../router/url";
 import { useStore } from "../../../state/store";
-import { Status } from "../../../types/api-types";
+import { Status, ValidationResults } from "../../../types/api-types";
 import { formatPercent, formatPrettyDecimal } from "../../../utils/format";
 import { useSelectedScanner } from "../../hooks/useSelectedScanner";
 
@@ -112,18 +112,14 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
 
       {entry.validations !== undefined && (
         <LabeledValue
-          label="Validations"
-          layout={typeof entry.validations === "number" ? "row" : "column"}
+          label="Validation"
+          layout="column"
           className={clsx("text-size-smallest", styles.validations)}
         >
-          {typeof entry.validations === "number" ? (
-            formatPercent(entry.validations)
-          ) : (
-            <NumericResultsTable
-              results={entry.validations}
-              formatter={formatPercent}
-            />
-          )}
+          <NumericResultsTable
+            results={entry.validations}
+            formatter={(value) => formatPercent(value, 1)}
+          />
         </LabeledValue>
       )}
     </div>
@@ -136,7 +132,7 @@ interface ScanResultsOutlineEntry {
   tokens?: number;
   results: number;
   scans: number;
-  validations?: number | Record<string, number>;
+  validations?: Record<string, number>;
   errors?: number;
   params?: string[];
   metrics: Record<string, number>;
@@ -163,9 +159,7 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
       }
     }
 
-    const validations = summary?.validations
-      ? resolveValidations(summary.validations)
-      : undefined;
+    const validations = resolveValidations(summary?.validation);
 
     const metrics =
       summary &&
@@ -189,39 +183,39 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
   return entries;
 };
 
+/**
+ * Extract validation metrics from pre-computed ValidationResults.
+ */
 const resolveValidations = (
-  validations: Array<boolean | Record<string, boolean>>
-): number | Record<string, number> | undefined => {
-  if (validations.length === 0) {
+  validation: ValidationResults | undefined | null
+): Record<string, number> | undefined => {
+  if (!validation?.metrics) {
     return undefined;
   }
 
-  const first = validations[0];
-  if (typeof first === "boolean") {
-    // Count number of true values
-    const correct = validations.reduce((count, v) => count + (v ? 1 : 0), 0);
-    const total = validations.length;
-    return correct / total;
-  } else {
-    // Count per key
-    const counts: Record<string, number> = {};
-    const total = validations.length;
-    for (const validation of validations) {
-      if (typeof validation === "object") {
-        for (const [key, value] of Object.entries(validation)) {
-          if (value) {
-            counts[key] = (counts[key] || 0) + 1;
-          }
-        }
-      }
-    }
+  const m = validation.metrics;
+  const result: Record<string, number> = {};
 
-    // Compute percentages
-    for (const key of Object.keys(counts)) {
-      counts[key] = (counts[key] || 0) / total;
-    }
-    return counts;
+  // Add metrics in display order: accuracy, precision, recall, f1
+  if (m.accuracy !== null && m.accuracy !== undefined) {
+    result["accuracy"] = m.accuracy;
   }
+  if (m.precision !== null && m.precision !== undefined) {
+    result["precision"] = m.precision;
+  }
+  if (m.recall !== null && m.recall !== undefined) {
+    result["recall"] = m.recall;
+  }
+  if (m.f1 !== null && m.f1 !== undefined) {
+    result["f1"] = m.f1;
+  }
+
+  // Return undefined if we couldn't extract any metrics
+  if (Object.keys(result).length === 0) {
+    return undefined;
+  }
+
+  return result;
 };
 
 const NumericResultsTable: FC<{

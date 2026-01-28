@@ -356,6 +356,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/validations/{uri}/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rename a validation file
+         * @description Renames a validation file. Returns the new URI.
+         */
+        put: operations["rename_validation_validations__uri__rename_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/validations/{uri}/{case_id}": {
         parameters: {
             query?: never;
@@ -2206,6 +2226,11 @@ export interface components {
              */
             timestamp: string;
         };
+        /** RenameValidationSetRequest */
+        RenameValidationSetRequest: {
+            /** Name */
+            name: string;
+        };
         /**
          * ResponseSchema
          * @description Schema for model response when using Structured Output.
@@ -2797,10 +2822,7 @@ export interface components {
              * @default 0
              */
             tokens: number;
-            /** Validations */
-            validations: (boolean | {
-                [key: string]: boolean;
-            })[];
+            validation: components["schemas"]["ValidationResults"] | null;
         };
         /** ScannersResponse */
         ScannersResponse: {
@@ -3752,7 +3774,7 @@ export interface components {
              * @default null
              */
             labels: {
-                [key: string]: components["schemas"]["JsonValue"];
+                [key: string]: boolean;
             } | null;
             /**
              * Predicate
@@ -3773,13 +3795,26 @@ export interface components {
             id?: string | string[] | null;
             /** Labels */
             labels?: {
-                [key: string]: components["schemas"]["JsonValue"];
+                [key: string]: boolean;
             } | null;
             /** Predicate */
             predicate?: string | null;
             /** Split */
             split?: string | null;
             target?: components["schemas"]["JsonValue"] | null;
+        };
+        /**
+         * ValidationEntry
+         * @description A single validation result with its target.
+         */
+        ValidationEntry: {
+            /** Id */
+            id: string | string[];
+            target: components["schemas"]["JsonValue"];
+            /** Valid */
+            valid: boolean | {
+                [key: string]: boolean;
+            };
         };
         /** ValidationError */
         ValidationError: {
@@ -3789,6 +3824,72 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * ValidationMetrics
+         * @description Confusion matrix counts for precision/recall.
+         */
+        ValidationMetrics: {
+            /**
+             * Accuracy
+             * @description Balanced accuracy: (Recall + Specificity) / 2.
+             */
+            readonly accuracy: number | null;
+            /**
+             * F1
+             * @description Harmonic mean of precision and recall.
+             */
+            readonly f1: number | null;
+            /**
+             * Fn
+             * @default 0
+             */
+            fn: number;
+            /**
+             * Fp
+             * @default 0
+             */
+            fp: number;
+            /**
+             * Precision
+             * @description TP / (TP + FP). None if no positive predictions.
+             */
+            readonly precision: number | null;
+            /**
+             * Recall
+             * @description TP / (TP + FN). None if no positive targets.
+             */
+            readonly recall: number | null;
+            /**
+             * Specificity
+             * @description TN / (TN + FP). None if no negative targets.
+             */
+            readonly specificity: number | null;
+            /**
+             * Tn
+             * @default 0
+             */
+            tn: number;
+            /** Total */
+            readonly total: number;
+            /**
+             * Tp
+             * @default 0
+             */
+            tp: number;
+        };
+        /**
+         * ValidationResults
+         * @description Validation entries with pre-computed metrics.
+         */
+        ValidationResults: {
+            /** Entries */
+            entries: components["schemas"]["ValidationEntry"][];
+            metrics?: components["schemas"]["ValidationMetrics"] | null;
+            /** Metrics By Key */
+            metrics_by_key?: {
+                [key: string]: components["schemas"]["ValidationMetrics"];
+            } | null;
         };
         /**
          * ValidationSet
@@ -4312,6 +4413,33 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+        };
+    };
+    rename_validation_validations__uri__rename_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Validation file URI (base64url-encoded) */
+                uri: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameValidationSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };

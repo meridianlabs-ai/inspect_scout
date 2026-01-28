@@ -25,28 +25,44 @@ def _has_nested_split_format(data: list[Any]) -> bool:
     return "split" in first_item and "cases" in first_item and "id" not in first_item
 
 
-def _load_raw_data(file_path: Path) -> tuple[list[dict[str, Any]], bool]:
+def _has_valid_columns(columns: list[str]) -> bool:
+    """Check if columns contain required validation file structure."""
+    if "id" not in columns:
+        return False
+    has_target = "target" in columns
+    has_target_cols = any(c.startswith("target_") for c in columns)
+    has_label_cols = any(c.startswith("label_") for c in columns)
+    return has_target or has_target_cols or has_label_cols
+
+
+def _load_raw_data(
+    file_path: Path,
+) -> tuple[list[dict[str, Any]], bool, bool]:
     """Load raw data from a validation file.
 
     Returns:
-        Tuple of (flattened cases, has_nested_splits).
+        Tuple of (flattened cases, has_nested_splits, is_valid).
+        is_valid is True if the file has valid validation columns,
+        or if the file is empty (for JSON/YAML/JSONL formats).
     """
     suffix = file_path.suffix.lower()
 
     if suffix == ".csv":
         df = pd.read_csv(file_path)
         df = _convert_csv_types(df)
+        columns = list(df.columns)
         # Convert DataFrame to list of dicts, handling NaN
-        cases = []
+        cases: list[dict[str, Any]] = []
         for _, row in df.iterrows():
-            case = {}
+            case: dict[str, Any] = {}
             for col in df.columns:
                 val = row[col]
                 if pd.isna(val):
                     continue
                 case[col] = val
             cases.append(case)
-        return cases, False
+        is_valid = _has_valid_columns(columns)
+        return cases, False, is_valid
 
     elif suffix in {".yaml", ".yml"}:
         with open(file_path, "r") as f:
@@ -56,7 +72,10 @@ def _load_raw_data(file_path: Path) -> tuple[list[dict[str, Any]], bool]:
         has_nested = _has_nested_split_format(data)
         data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
-        return data, has_nested
+        if not data:
+            return data, has_nested, False
+        columns = list(data[0].keys()) if isinstance(data[0], dict) else []
+        return data, has_nested, _has_valid_columns(columns)
 
     elif suffix == ".json":
         with open(file_path, "r") as f:
@@ -66,34 +85,50 @@ def _load_raw_data(file_path: Path) -> tuple[list[dict[str, Any]], bool]:
         has_nested = _has_nested_split_format(data)
         data = _flatten_splits_in_data(data)
         data = _flatten_labels_in_data(data)
-        return data, has_nested
+        if not data:
+            return data, has_nested, False
+        columns = list(data[0].keys()) if isinstance(data[0], dict) else []
+        return data, has_nested, _has_valid_columns(columns)
 
     elif suffix == ".jsonl":
         with open(file_path, "r") as f:
             data = [json.loads(line) for line in f if line.strip()]
         data = _flatten_labels_in_data(data)
-        return data, False
+        if not data:
+            return data, False, False
+        columns = list(data[0].keys()) if isinstance(data[0], dict) else []
+        return data, False, _has_valid_columns(columns)
 
     else:
         raise ValueError(f"Unsupported file format: {suffix}")
 
 
-def _unflatten_labels(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Convert label_* keys back to nested labels dict."""
+def _unflatten_columns(
+    cases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Convert prefixed flat keys back to nested dicts.
+
+    For each prefix in prefix_to_key, keys like "label_foo" become
+    {"labels": {"foo": value}} (using the mapped nested key name).
+    """
+    prefix_to_key = {
+        "label_": "labels",
+        "target_": "target",
+    }
     unflattened = []
     for case in cases:
         if not isinstance(case, dict):
             unflattened.append(case)
             continue
 
-        label_cols = {k: v for k, v in case.items() if k.startswith("label_")}
-        if label_cols:
-            new_case = {k: v for k, v in case.items() if not k.startswith("label_")}
-            labels = {k[6:]: v for k, v in label_cols.items()}  # Remove "label_" prefix
-            new_case["labels"] = labels
-            unflattened.append(new_case)
-        else:
-            unflattened.append(case)
+        new_case = dict(case)
+        for prefix, nested_key in prefix_to_key.items():
+            matched = {k: v for k, v in new_case.items() if k.startswith(prefix)}
+            if matched:
+                for k in matched:
+                    del new_case[k]
+                new_case[nested_key] = {k[len(prefix) :]: v for k, v in matched.items()}
+        unflattened.append(new_case)
     return unflattened
 
 
@@ -166,7 +201,7 @@ class ValidationFileWriter:
         Returns:
             List of case dictionaries with flattened structure.
         """
-        cases, self._has_nested_splits = _load_raw_data(self.file_path)
+        cases, self._has_nested_splits, _ = _load_raw_data(self.file_path)
         return cases
 
     def write_cases(
@@ -215,7 +250,7 @@ class ValidationFileWriter:
         fmt: Literal["yaml", "json"],
     ) -> None:
         """Write cases to YAML or JSON format."""
-        data = _unflatten_labels(cases)
+        data = _unflatten_columns(cases)
         if nested_splits:
             data = _nest_by_splits(data)
 
@@ -227,7 +262,7 @@ class ValidationFileWriter:
 
     def _write_jsonl(self, cases: list[dict[str, Any]]) -> None:
         """Write cases to JSONL format."""
-        data = _unflatten_labels(cases)
+        data = _unflatten_columns(cases)
         with open(self.file_path, "w") as f:
             for case in data:
                 f.write(json.dumps(case) + "\n")
@@ -340,7 +375,7 @@ class ValidationFileWriter:
             df.to_csv(file_path, index=False)
 
         elif suffix in {".yaml", ".yml", ".json"}:
-            data = _unflatten_labels(case_dicts)
+            data = _unflatten_columns(case_dicts)
             if nested_splits and data:
                 data = _nest_by_splits(data)
 
@@ -351,7 +386,7 @@ class ValidationFileWriter:
                     json.dump(data, f, indent=2)
 
         elif suffix == ".jsonl":
-            data = _unflatten_labels(case_dicts)
+            data = _unflatten_columns(case_dicts)
             with open(file_path, "w") as f:
                 for case_dict in data:
                     f.write(json.dumps(case_dict) + "\n")

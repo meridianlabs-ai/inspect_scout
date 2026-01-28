@@ -3,6 +3,7 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
+  CreateValidationSetRequest,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -12,6 +13,8 @@ import {
   Status,
   Transcript,
   TranscriptsResponse,
+  ValidationCase,
+  ValidationCaseRequest,
 } from "../types/api-types";
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
@@ -216,6 +219,85 @@ export const apiScoutServer = (
       const result = await requestApi.fetchString("GET", `/scanners`);
       return asyncJsonParse<ScannersResponse>(result.raw);
     },
+
+    // Validation API
+    getValidationSets: async (): Promise<string[]> => {
+      const result = await requestApi.fetchString("GET", `/validations`);
+      return asyncJsonParse<string[]>(result.raw);
+    },
+    getValidationCases: async (uri: string): Promise<ValidationCase[]> => {
+      const result = await requestApi.fetchString(
+        "GET",
+        `/validations/${encodeBase64Url(uri)}`
+      );
+      return asyncJsonParse<ValidationCase[]>(result.raw);
+    },
+    getValidationCase: async (
+      uri: string,
+      caseId: string
+    ): Promise<ValidationCase> => {
+      const result = await requestApi.fetchString(
+        "GET",
+        `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`
+      );
+      return asyncJsonParse<ValidationCase>(result.raw);
+    },
+    createValidationSet: async (
+      request: CreateValidationSetRequest
+    ): Promise<string> => {
+      const result = await requestApi.fetchString(
+        "POST",
+        `/validations`,
+        {},
+        JSON.stringify(request)
+      );
+      return asyncJsonParse<string>(result.raw);
+    },
+    upsertValidationCase: async (
+      uri: string,
+      caseId: string,
+      data: ValidationCaseRequest
+    ): Promise<ValidationCase> => {
+      const result = await requestApi.fetchString(
+        "POST",
+        `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`,
+        {},
+        JSON.stringify(data)
+      );
+      return asyncJsonParse<ValidationCase>(result.raw);
+    },
+    deleteValidationCase: async (
+      uri: string,
+      caseId: string
+    ): Promise<boolean> => {
+      const result = await requestApi.fetchString(
+        "DELETE",
+        `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`
+      );
+      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
+      return response.deleted;
+    },
+    deleteValidationSet: async (uri: string): Promise<boolean> => {
+      const result = await requestApi.fetchString(
+        "DELETE",
+        `/validations/${encodeBase64Url(uri)}`
+      );
+      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
+      return response.deleted;
+    },
+    renameValidationSet: async (
+      uri: string,
+      newName: string
+    ): Promise<string> => {
+      const result = await requestApi.fetchString(
+        "PUT",
+        `/validations/${encodeBase64Url(uri)}/rename`,
+        {},
+        JSON.stringify({ name: newName })
+      );
+      return asyncJsonParse<string>(result.raw);
+    },
+
     connectTopicUpdates: (
       onUpdate: (topVersions: TopicVersions) => void
     ): (() => void) =>

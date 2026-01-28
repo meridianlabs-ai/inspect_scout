@@ -22,25 +22,32 @@ interface MarkdownDivProps {
 
 const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
   ({ markdown, omitMedia, style, className, postProcess, onClick }, ref) => {
-    // Check cache for rendered content
+    // Check cache for rendered content (before post-processing)
     const cacheKey = `${markdown}:${omitMedia ? "1" : "0"}`;
     const cachedHtml = renderCache.get(cacheKey);
+
+    // Apply post-processing to get final HTML
+    const applyPostProcess = (html: string): string => {
+      const processed = postProcess ? postProcess(html) : html;
+      return unescapeSupHtmlEntities(processed);
+    };
 
     // Initialize with content (cached or unrendered markdown)
     const [renderedHtml, setRenderedHtml] = useState<string>(() => {
       if (cachedHtml) {
-        return cachedHtml;
+        return applyPostProcess(cachedHtml);
       }
       return markdown.replace(/\n/g, "<br/>");
     });
 
     useEffect(() => {
-      // If already cached, no need to re-render
+      // If already cached, apply post-processing and use cached content
       if (cachedHtml) {
+        const finalHtml = applyPostProcess(cachedHtml);
         // Only update state if it's different (avoid unnecessary re-render)
-        if (renderedHtml !== cachedHtml) {
+        if (renderedHtml !== finalHtml) {
           startTransition(() => {
-            setRenderedHtml(cachedHtml);
+            setRenderedHtml(finalHtml);
           });
         }
         return;
@@ -80,22 +87,14 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
         // For `code` tags, reverse the escaping if we can
         const finalContent = unescapeCodeHtmlEntities(unescaped);
 
-        // Apply post-processing if provided
-        const processedContent = postProcess
-          ? postProcess(finalContent)
-          : finalContent;
-
-        // For `sup` tags, reverse the escaping if we can
-        const withSup = unescapeSupHtmlEntities(processedContent);
-
         // Wrap in Promise.resolve to satisfy async requirement
-        return Promise.resolve(withSup);
+        return Promise.resolve(finalContent);
       });
 
       // Update state when rendering completes
       promise
         .then((result) => {
-          // Update cache (with simple size limit)
+          // Update cache with pre-post-processed content (with simple size limit)
           if (renderCache.size >= MAX_CACHE_SIZE) {
             // Remove oldest entry (first key)
             const firstKey = renderCache.keys().next().value;
@@ -105,9 +104,12 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
           }
           renderCache.set(cacheKey, result);
 
+          // Apply post-processing after caching
+          const finalHtml = applyPostProcess(result);
+
           // Use startTransition to mark this as a non-urgent update
           startTransition(() => {
-            setRenderedHtml(result);
+            setRenderedHtml(finalHtml);
           });
         })
         .catch((error) => {
@@ -118,7 +120,7 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
         // Cancel rendering if component unmounts
         cancel();
       };
-    }, [markdown, omitMedia, cachedHtml, renderedHtml]);
+    }, [markdown, omitMedia, cachedHtml, renderedHtml, postProcess]);
 
     return (
       <div

@@ -3,6 +3,7 @@ import { ReactElement } from "react";
 import { RunScanPanel } from "../app/runScan/RunScanPanel";
 import { ScansPanel } from "../app/scans/ScansPanel";
 import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
+import { ValidationPanel } from "../app/validation/ValidationPanel";
 import { ApplicationIcons } from "../components/icons";
 
 declare const __SCOUT_RUN_SCAN__: boolean;
@@ -51,6 +52,15 @@ const allActivities: ActivityConfig[] = [
     route: "/run",
     description: "Run scans and view active scans",
     element: <RunScanPanel />,
+  },
+  {
+    id: "validation",
+    label: "Validation",
+    icon: ApplicationIcons.validation,
+    route: "/validation",
+    routePatterns: ["/validation"],
+    description: "Manage validation sets",
+    element: <ValidationPanel />,
   },
 ];
 

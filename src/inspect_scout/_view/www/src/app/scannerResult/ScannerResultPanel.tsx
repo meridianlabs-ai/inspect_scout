@@ -1,5 +1,6 @@
+import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import { clsx } from "clsx";
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, ReactNode, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
@@ -9,7 +10,11 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolButton } from "../../components/ToolButton";
 import { EventNode, EventType } from "../../components/transcript/types";
-import { getScannerParam } from "../../router/url";
+import {
+  getScannerParam,
+  getValidationParam,
+  updateValidationParam,
+} from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useScanRoute } from "../hooks/useScanRoute";
@@ -17,6 +22,7 @@ import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
 import { useScansDir } from "../utils/useScansDir";
+import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { ErrorPanel } from "./error/ErrorPanel";
 import { InfoPanel } from "./info/InfoPanel";
@@ -53,6 +59,16 @@ export const ScannerResultPanel: FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
+
+  // Validation sidebar - URL is the source of truth
+  const validationSidebarCollapsed = !getValidationParam(searchParams);
+
+  const toggleValidationSidebar = useCallback(() => {
+    setSearchParams((prevParams) => {
+      const isCurrentlyOpen = getValidationParam(prevParams);
+      return updateValidationParam(prevParams, !isCurrentlyOpen);
+    });
+  }, [setSearchParams]);
 
   const selectedTab = useStore((state) => state.selectedResultTab);
   const visibleScannerResults = useStore(
@@ -114,24 +130,52 @@ export const ScannerResultPanel: FC = () => {
   }, [highlightLabeled, setHighlightLabeled]);
 
   const tools = useMemo(() => {
+    const toolButtons: ReactNode[] = [];
+
+    // Existing highlight refs button (keep as-is)
     if (
       selectedTab === kTabIdInput &&
       selectedResult?.inputType === "transcript" &&
       selectedResult?.messageReferences.length > 0
     ) {
-      return [
+      toolButtons.push(
         <ToolButton
           icon={ApplicationIcons.highlight}
           key="highlight-labeled"
           latched={!!highlightLabeled}
           onClick={toggleHighlightLabeled}
           label="Highlight Refs"
-        />,
-      ];
-    } else {
-      return [];
+        />
+      );
     }
-  }, [highlightLabeled, toggleHighlightLabeled, selectedTab, selectedResult]);
+
+    // Validation button - only show when transcriptId is available
+    if (selectedResult?.transcriptId) {
+      toolButtons.push(
+        <ToolButton
+          key="validation-sidebar-toggle"
+          label="Validation"
+          icon={ApplicationIcons.edit}
+          onClick={toggleValidationSidebar}
+          title={
+            validationSidebarCollapsed
+              ? "Show validation editor"
+              : "Hide validation editor"
+          }
+          subtle={true}
+        />
+      );
+    }
+
+    return toolButtons;
+  }, [
+    highlightLabeled,
+    toggleHighlightLabeled,
+    selectedTab,
+    selectedResult,
+    toggleValidationSidebar,
+    validationSidebarCollapsed,
+  ]);
 
   return (
     <div className={clsx(styles.root)}>
@@ -147,103 +191,228 @@ export const ScannerResultPanel: FC = () => {
 
       {selectedResult && (
         <ExtendedFindProvider>
-          <TabSet
-            id={"scan-result-tabs"}
-            type="pills"
-            tabPanelsClassName={clsx(styles.tabSet)}
-            tabControlsClassName={clsx(styles.tabControl)}
-            className={clsx(styles.tabs)}
-            tools={tools}
+          <div
+            className={clsx(
+              styles.contentArea,
+              !validationSidebarCollapsed && styles.withValidation
+            )}
           >
-            {hasError ? (
-              <TabPanel
-                id={kTabIdError}
-                selected={
-                  selectedTab === kTabIdError || selectedTab === undefined
-                }
-                title="Error"
-                onSelected={() => {
-                  handleTabChange(kTabIdError);
-                }}
+            {validationSidebarCollapsed || !selectedResult.transcriptId ? (
+              <div className={styles.tabSetWrapper}>
+                <TabSet
+                  id={"scan-result-tabs"}
+                  type="pills"
+                  tabPanelsClassName={clsx(styles.tabSet)}
+                  tabControlsClassName={clsx(styles.tabControl)}
+                  className={clsx(styles.tabs)}
+                  tools={tools}
+                >
+                  {hasError ? (
+                    <TabPanel
+                      id={kTabIdError}
+                      selected={
+                        selectedTab === kTabIdError || selectedTab === undefined
+                      }
+                      title="Error"
+                      onSelected={() => {
+                        handleTabChange(kTabIdError);
+                      }}
+                    >
+                      <ErrorPanel
+                        error={selectedResult.scanError}
+                        traceback={selectedResult.scanErrorTraceback}
+                      />
+                    </TabPanel>
+                  ) : undefined}
+                  {!hasError ? (
+                    <TabPanel
+                      id={kTabIdResult}
+                      selected={
+                        selectedTab === kTabIdResult ||
+                        (!hasError && selectedTab === undefined)
+                      }
+                      title="Result"
+                      scrollable={false}
+                      onSelected={() => {
+                        handleTabChange(kTabIdResult);
+                      }}
+                      className={styles.fullHeight}
+                    >
+                      <ResultPanel
+                        resultData={selectedResult}
+                        inputData={inputData}
+                      />
+                    </TabPanel>
+                  ) : undefined}
+                  {showEvents ? (
+                    <TabPanel
+                      id={kTabIdTranscript}
+                      selected={selectedTab === kTabIdTranscript}
+                      title="Events"
+                      onSelected={() => {
+                        handleTabChange(kTabIdTranscript);
+                      }}
+                    >
+                      <TranscriptPanel
+                        id="scan-transcript"
+                        resultData={selectedResult}
+                        nodeFilter={skipScanSpan}
+                      />
+                    </TabPanel>
+                  ) : undefined}
+                  <TabPanel
+                    id={kTabIdMetadata}
+                    selected={selectedTab === kTabIdMetadata}
+                    title="Metadata"
+                    onSelected={() => {
+                      handleTabChange(kTabIdMetadata);
+                    }}
+                  >
+                    <MetadataPanel resultData={selectedResult} />
+                  </TabPanel>
+                  <TabPanel
+                    id={kTabIdInfo}
+                    selected={selectedTab === kTabIdInfo}
+                    title="Info"
+                    onSelected={() => {
+                      handleTabChange(kTabIdInfo);
+                    }}
+                  >
+                    <InfoPanel resultData={selectedResult} />
+                  </TabPanel>
+                  <TabPanel
+                    id={kTabIdJson}
+                    selected={selectedTab === kTabIdJson}
+                    title="JSON"
+                    onSelected={() => {
+                      handleTabChange(kTabIdJson);
+                    }}
+                  >
+                    <JSONPanel
+                      id="scan-result-json-contents"
+                      data={selectedResult}
+                      simple={true}
+                      className={styles.json}
+                    />
+                  </TabPanel>
+                </TabSet>
+              </div>
+            ) : (
+              <VscodeSplitLayout
+                className={styles.splitLayout}
+                fixedPane="end"
+                initialHandlePosition="80%"
+                minEnd="180px"
+                minStart="200px"
               >
-                <ErrorPanel
-                  error={selectedResult.scanError}
-                  traceback={selectedResult.scanErrorTraceback}
-                />
-              </TabPanel>
-            ) : undefined}
-            {!hasError ? (
-              <TabPanel
-                id={kTabIdResult}
-                selected={
-                  selectedTab === kTabIdResult ||
-                  (!hasError && selectedTab === undefined)
-                }
-                title="Result"
-                scrollable={false}
-                onSelected={() => {
-                  handleTabChange(kTabIdResult);
-                }}
-                className={styles.fullHeight}
-              >
-                <ResultPanel
-                  resultData={selectedResult}
-                  inputData={inputData}
-                />
-              </TabPanel>
-            ) : undefined}
-            {showEvents ? (
-              <TabPanel
-                id={kTabIdTranscript}
-                selected={selectedTab === kTabIdTranscript}
-                title="Events"
-                onSelected={() => {
-                  handleTabChange(kTabIdTranscript);
-                }}
-              >
-                <TranscriptPanel
-                  id="scan-transcript"
-                  resultData={selectedResult}
-                  nodeFilter={skipScanSpan}
-                />
-              </TabPanel>
-            ) : undefined}
-            <TabPanel
-              id={kTabIdMetadata}
-              selected={selectedTab === kTabIdMetadata}
-              title="Metadata"
-              onSelected={() => {
-                handleTabChange(kTabIdMetadata);
-              }}
-            >
-              <MetadataPanel resultData={selectedResult} />
-            </TabPanel>
-            <TabPanel
-              id={kTabIdInfo}
-              selected={selectedTab === kTabIdInfo}
-              title="Info"
-              onSelected={() => {
-                handleTabChange(kTabIdInfo);
-              }}
-            >
-              <InfoPanel resultData={selectedResult} />
-            </TabPanel>
-            <TabPanel
-              id={kTabIdJson}
-              selected={selectedTab === kTabIdJson}
-              title="JSON"
-              onSelected={() => {
-                handleTabChange(kTabIdJson);
-              }}
-            >
-              <JSONPanel
-                id="scan-result-json-contents"
-                data={selectedResult}
-                simple={true}
-                className={styles.json}
-              />
-            </TabPanel>
-          </TabSet>
+                <div slot="start" className={styles.splitStart}>
+                  <TabSet
+                    id={"scan-result-tabs"}
+                    type="pills"
+                    tabPanelsClassName={clsx(styles.tabSet)}
+                    tabControlsClassName={clsx(styles.tabControl)}
+                    className={clsx(styles.tabs)}
+                    tools={tools}
+                  >
+                    {hasError ? (
+                      <TabPanel
+                        id={kTabIdError}
+                        selected={
+                          selectedTab === kTabIdError ||
+                          selectedTab === undefined
+                        }
+                        title="Error"
+                        onSelected={() => {
+                          handleTabChange(kTabIdError);
+                        }}
+                      >
+                        <ErrorPanel
+                          error={selectedResult.scanError}
+                          traceback={selectedResult.scanErrorTraceback}
+                        />
+                      </TabPanel>
+                    ) : undefined}
+                    {!hasError ? (
+                      <TabPanel
+                        id={kTabIdResult}
+                        selected={
+                          selectedTab === kTabIdResult ||
+                          (!hasError && selectedTab === undefined)
+                        }
+                        title="Result"
+                        scrollable={false}
+                        onSelected={() => {
+                          handleTabChange(kTabIdResult);
+                        }}
+                        className={styles.fullHeight}
+                      >
+                        <ResultPanel
+                          resultData={selectedResult}
+                          inputData={inputData}
+                        />
+                      </TabPanel>
+                    ) : undefined}
+                    {showEvents ? (
+                      <TabPanel
+                        id={kTabIdTranscript}
+                        selected={selectedTab === kTabIdTranscript}
+                        title="Events"
+                        onSelected={() => {
+                          handleTabChange(kTabIdTranscript);
+                        }}
+                      >
+                        <TranscriptPanel
+                          id="scan-transcript"
+                          resultData={selectedResult}
+                          nodeFilter={skipScanSpan}
+                        />
+                      </TabPanel>
+                    ) : undefined}
+                    <TabPanel
+                      id={kTabIdMetadata}
+                      selected={selectedTab === kTabIdMetadata}
+                      title="Metadata"
+                      onSelected={() => {
+                        handleTabChange(kTabIdMetadata);
+                      }}
+                    >
+                      <MetadataPanel resultData={selectedResult} />
+                    </TabPanel>
+                    <TabPanel
+                      id={kTabIdInfo}
+                      selected={selectedTab === kTabIdInfo}
+                      title="Info"
+                      onSelected={() => {
+                        handleTabChange(kTabIdInfo);
+                      }}
+                    >
+                      <InfoPanel resultData={selectedResult} />
+                    </TabPanel>
+                    <TabPanel
+                      id={kTabIdJson}
+                      selected={selectedTab === kTabIdJson}
+                      title="JSON"
+                      onSelected={() => {
+                        handleTabChange(kTabIdJson);
+                      }}
+                    >
+                      <JSONPanel
+                        id="scan-result-json-contents"
+                        data={selectedResult}
+                        simple={true}
+                        className={styles.json}
+                      />
+                    </TabPanel>
+                  </TabSet>
+                </div>
+                <div slot="end" className={styles.validationSidebar}>
+                  <ValidationCaseEditor
+                    transcriptId={selectedResult.transcriptId}
+                  />
+                </div>
+              </VscodeSplitLayout>
+            )}
+          </div>
         </ExtendedFindProvider>
       )}
     </div>

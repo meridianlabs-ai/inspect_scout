@@ -26,11 +26,12 @@ class ValidationCase(BaseModel):
     For dict-valued results, this is a dict of expected values.
     """
 
-    labels: dict[str, JsonValue] | None = Field(default=None)
-    """Label-specific target values for resultset validation.
+    labels: dict[str, bool] | None = Field(default=None)
+    """Label presence/absence expectations for resultset validation.
 
-    Maps result labels to their expected values. Used when validating
-    scanners that return multiple labeled results per transcript.
+    Maps label names to boolean expectations:
+    - true: expect at least one result with a positive (non-negative) value
+    - false: expect no results, or all results have negative values
     """
 
     predicate: PredicateType | None = Field(default=None)
@@ -41,6 +42,16 @@ class ValidationCase(BaseModel):
 
     split: str | None = Field(default=None)
     """Optional split name for organizing cases (e.g., 'dev', 'test', 'train')."""
+
+    @field_validator("labels", mode="before")
+    @classmethod
+    def coerce_labels_to_bool(cls, v: Any) -> dict[str, bool] | None:
+        """Coerce label values to boolean for backwards compatibility."""
+        if v is None:
+            return None
+        if not isinstance(v, dict):
+            raise ValueError(f"labels must be a dict, got {type(v).__name__}")
+        return {k: bool(val) for k, val in v.items()}
 
     def model_post_init(self, __context: Any) -> None:
         """Validate that exactly one of target or labels is set."""

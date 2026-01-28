@@ -50,25 +50,8 @@ def is_validation_file(path: Path) -> bool:
         # Import here to avoid circular imports
         from .writer import _load_raw_data
 
-        cases, _ = _load_raw_data(path)
-        if not cases:
-            return False
-
-        # Check the first case for required columns
-        first_case = cases[0]
-        if not isinstance(first_case, dict):
-            return False
-
-        # Must have 'id' key
-        if "id" not in first_case:
-            return False
-
-        # Must have target or labels
-        has_target = "target" in first_case
-        has_target_cols = any(k.startswith("target_") for k in first_case)
-        has_label_cols = any(k.startswith("label_") for k in first_case)
-
-        return has_target or has_target_cols or has_label_cols
+        _, _, is_valid = _load_raw_data(path)
+        return is_valid
 
     except Exception:
         # If we can't read or parse the file, it's not a valid validation file

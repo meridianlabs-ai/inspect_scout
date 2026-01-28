@@ -167,8 +167,8 @@ class ValidationCaseRequest:
     target: JsonValue | None = None
     """Target value for the case (mutually exclusive with labels)."""
 
-    labels: dict[str, JsonValue] | None = None
-    """Label-specific targets for resultset validation (mutually exclusive with target)."""
+    labels: dict[str, bool] | None = None
+    """Label presence/absence expectations for resultset validation (mutually exclusive with target)."""
 
     split: str | None = None
     """Optional split name for organizing cases."""
@@ -186,6 +186,14 @@ class CreateValidationSetRequest:
 
     cases: list[ValidationCaseRequest] = field(default_factory=list)
     """Initial cases to add to the validation set."""
+
+
+@dataclass
+class RenameValidationSetRequest:
+    """Request body for PUT /validations/{uri}/rename endpoint."""
+
+    name: str
+    """New name for the validation set (without extension)."""
 
 
 @dataclass

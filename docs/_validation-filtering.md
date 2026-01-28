@@ -3,15 +3,16 @@ Your validation set will typically be only a subset of all of the transcripts yo
 ``` python
 from inspect_scout import scan, transcripts_from, validation_set
 
-validation = {
-    "ctf_environment": "ctf-validation.csv"
+validation={
+    "ctf_environment": "ctf-environment.csv",
+    "eval_awareness": "eval-awareness.csv"
 }
 
 transcripts = transcripts_from("./logs")
 transcripts = transcripts.for_validation(validation)
 
 scan(
-    scanners=[ctf_environment(), java_tool_usages()],
+    scanners=[ctf_environment(), eval_awareness()],
     transcripts=transcripts,
     validation=validation
 )

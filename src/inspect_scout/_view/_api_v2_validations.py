@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Mapping, cast
 
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as PathParam
 from pydantic import JsonValue
+from send2trash import send2trash
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -17,9 +18,10 @@ from upath import UPath
 from .._validation.file_scanner import scan_validation_files
 from .._validation.predicates import PredicateType
 from .._validation.types import ValidationCase
-from .._validation.writer import ValidationFileWriter
+from .._validation.writer import ValidationFileWriter, _unflatten_columns
 from ._api_v2_types import (
     CreateValidationSetRequest,
+    RenameValidationSetRequest,
     ValidationCaseRequest,
 )
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
@@ -124,7 +126,9 @@ def create_validation_router(
 
         try:
             writer = ValidationFileWriter(file_path)
-            return writer.read_cases()
+            cases = writer.read_cases()
+            # Convert label_* columns to nested labels object for API response
+            return _unflatten_columns(cases)
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
@@ -146,13 +150,75 @@ def create_validation_router(
         # Validate path is within project directory
         _validate_path_within_project(file_path, project_dir)
 
-        try:
-            file_path.unlink()
-            return {"deleted": True}
-        except FileNotFoundError:
+        if not file_path.exists():
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Validation file not found",
+            )
+
+        send2trash(str(file_path))
+        return {"deleted": True}
+
+    @router.put(
+        "/{uri}/rename",
+        response_class=InspectPydanticJSONResponse,
+        summary="Rename a validation file",
+        description="Renames a validation file. Returns the new URI.",
+    )
+    async def rename_validation(
+        body: RenameValidationSetRequest,
+        uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
+    ) -> str:
+        """Rename a validation file."""
+        file_uri = decode_base64url(uri)
+        file_path = _uri_to_path(file_uri)
+
+        # Validate path is within project directory
+        _validate_path_within_project(file_path, project_dir)
+
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Validation file not found",
+            )
+
+        # Validate new name
+        new_name = body.name.strip()
+        if not new_name:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Name cannot be empty",
+            )
+
+        # Check for invalid characters in filename
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        if any(c in new_name for c in invalid_chars):
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Name contains invalid characters: {invalid_chars}",
+            )
+
+        # Construct new path with same extension
+        extension = file_path.suffix
+        new_path = file_path.parent / f"{new_name}{extension}"
+
+        # Validate new path is within project directory
+        _validate_path_within_project(new_path, project_dir)
+
+        # Check if target already exists
+        if new_path.exists():
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail=f"A file with the name '{new_name}{extension}' already exists",
+            )
+
+        try:
+            file_path.rename(new_path)
+            return UPath(new_path).resolve().as_uri()
+        except OSError as e:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Failed to rename file: {e}",
             ) from None
 
     @router.get(
@@ -184,7 +250,7 @@ def create_validation_router(
                     detail="Case not found",
                 )
 
-            return cases[index]
+            return _unflatten_columns([cases[index]])[0]
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
@@ -274,7 +340,7 @@ def create_validation_router(
 
 def _validate_target_or_labels(
     target: JsonValue | None,
-    labels: dict[str, JsonValue] | None,
+    labels: Mapping[str, JsonValue] | None,
     context: str,
 ) -> None:
     """Validate that exactly one of target or labels is provided.
@@ -334,7 +400,10 @@ def _validate_path_within_project(path: Path, project_dir: Path) -> None:
 
 def _uri_to_path(uri: str) -> Path:
     """Convert a file URI to a Path object."""
-    if uri.startswith("file://"):
+    from urllib.parse import unquote
+
+    unquoted = unquote(uri)
+    if unquoted.startswith("file://"):
         # Handle file:// URIs
-        return Path(UPath(uri).path)
-    return Path(uri)
+        return Path(UPath(unquoted).path)
+    return Path(unquoted)

@@ -168,6 +168,39 @@ export const apiVscodeV1 = (vscodeApi: VSCodeApi): ScanApi => {
       callback({ "project-config": "yo" });
       return () => {};
     },
+    // Validation API (not implemented for VSCode)
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationSets: async (): Promise<string[]> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationCases: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    createValidationSet: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    upsertValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteValidationCase: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteValidationSet: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    renameValidationSet: async (): Promise<never> => {
+      throw new Error("Not implemented in VSCode API");
+    },
     storage: createVSCodeStore(vscodeApi),
   };
 };

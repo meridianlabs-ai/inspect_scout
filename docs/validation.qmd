@@ -1,26 +1,27 @@
 ---
 title: "Validation"
+lightbox: true
 ---
 
-## Overview
+{{< include _validation-workflow.md >}}
 
-{{< include _validation-overview.md >}}
+## Validation Splits {#validation-splits}
 
-## Validation Basics
+Validation cases can be organized into named groups called "splits" (e.g., "dev", "test", etc.). This enables you to iterate your scanner prompts on a subset of cases (e.g. "dev") then do final testing on a holdout set (e.g. "test"). Maintaining this separation is often critical to ensure that your scanner prompts aren't overfit to your validation set.
 
-{{< include _validation-basics.md >}}
+### Defining Splits
 
+Use the validation pane to assign splits to validation cases:
 
-## Filtering Transcripts
+![](images/validation-split.png){.border}
 
-{{< include _validation-filtering.md >}}
+Select multiple transcripts to assign several splits at once:
 
+![](images/validation-split-multiple.png){.border}
 
-## Validation Splits
+You can also directly assign splits from within the validation case editor in the transcripts and scan results views.
 
-Validation cases can be organized into named groups called "splits" (e.g., "dev", "test", "train"). This allows you to maintain a single validation file while selecting different subsets of cases for different purposes.
-
-To use splits, add a `split` column to your validation file:
+Splits are then written to validation set CSVs using a `split` column:
 
 ``` {.default filename="validation.csv"}
 id,target,split
@@ -29,7 +30,9 @@ VFkCH7gXWpJYUYonvfHxrG,false,dev
 SiEXpECj7U9nNAvM3H7JqB,true,test
 ```
 
-Then use the `validation_set()` function to filter by split when creating your validation set:
+### Applying Splits
+
+Pass the `split` option to `validation_set()` to filter by split when creating your validation set:
 
 ``` python
 from inspect_scout import validation_set
@@ -43,34 +46,36 @@ validation = validation_set("validation.csv", split=["dev", "test"])
 
 When filtering by split, only cases with matching split values are included. Cases without a split value are excluded when a split filter is applied.
 
+<!----
 
-## IDs and Targets {#ids-and-targets}
+## Validating Labels
 
-In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.qmd#loader)). You can also use any valid JSON value as the `target`
+When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate whether results with specific labels are present or absent. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
 
-For example, imagine we have a scanner that counts the incidences of "backtracking" in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
+### Specifying Labels
 
-``` {.default filename="backtracking.csv"}
-id,target
-Fg3KBpgFr6RSsEWmHBUqeo,2
-VFkCH7gXWpJYUYonvfHxrG,0
-SiEXpECj7U9nNAvM3H7JqB,3
-```
+Use the labels UI within the validation case editor to specify lables that are expected (or not expected) for a transcript:
 
-In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
+![](images/validation-panel-transcripts.png){.border}
 
-``` {.default filename="validation.csv"}
-id,target
-"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG",true
-```
+### Label Validation
 
-### Result Set Validation
+Label validation uses boolean expectations to check for presence or absence of labeled results:
 
-When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate each labeled result separately using label-based validation. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
+-   **`true`**: Validation passes if at least one result with that label has a **positive** (non-negative) value
+-   **`false`**: Validation passes if no results with that label exist, or if all results have **negative** values
 
-#### Format
+**Negative values** are: `false`, `null`/`None`, `0`, `""` (empty string), `"NONE"`, `{}` (empty dict), `[]` (empty list).
 
-For CSV files, use `label_*` columns:
+**Positive values** are: `true`, non-zero numbers, non-empty strings, non-empty dicts/lists.
+
+For example, if your validation expects the `deception` label and the scanner returns a result with `label="deception"` and `value={"confidence": 0.9}`, the validation passes because a non-empty dict is a positive value.
+
+If your validation does not expect the `phishing` label and the scanner returns no results with `label="phishing"`, validation passes because absence is treated as negative.
+
+### Labels in CSV/YAML
+
+If you are editing validation CSV files directly, use `label_*` columns:
 
 ``` {.default filename="security-validation.csv"}
 id, label_deception, label_jailbreak, label_misconfig
@@ -95,29 +100,19 @@ For YAML/JSON files, use a labels key instead of target:
     misconfig: false
 ```
 
-#### Validation Semantics
+---->
 
-Label-based validation uses "at least one" logic: if any result with a given label matches the expected value, validation passes for that label. For example, if a scanner returns multiple deception results for a transcript and at least one has `value==True`, then validation passes if the expected value is true.
-
-Missing labels are treated as negative/absent values. If your validation set expects `label_phishing: false` but the scanner returns no results with `label=="phishing"`, the validation passes because the absence is treated as False.
-
-### Value Dictionary
-
-If our scanner produces a `dict` of values, we can also build a validation dataset which provides ground truth for each distinct field in the `dict`. To do this, we introduce `target_*` column names as follows:
-
-``` {.default filename="validation.csv"}
-id, target_deception, target_backtracks
-Fg3KBpgFr6RSsEWmHBUqeo, true, 2
-VFkCH7gXWpJYUYonvfHxrG, false, 0
-```
-
-## Comparison Predicates
+## Predicates
 
 By default, validation compares scanner results to targets using equality (`eq`). You can specify different comparison predicates either per-case or as a default for all cases.
 
 ### Per-Case Predicates
 
-Add a `predicate` column to specify comparison logic for individual cases:
+When specifying a non-boolean target for a validation case, you can also customize the predicate used for comparison:
+
+![](images/validation-panel-predicate.png){.border width=297}
+
+Within a validation set CSV, add a `predicate` column to specify comparison logic for individual cases:
 
 ``` {.default filename="validation.csv"}
 id,target,predicate
@@ -128,25 +123,25 @@ Fg3KBpgFr6RSsEWmHBUqeo,5,gte
 
 In this example:
 
-- First case passes if scanner result equals `true`
-- Second case passes if scanner result contains "hello"
-- Third case passes if scanner result is ≥ 5
+-   First case passes if scanner result equals `true`
+-   Second case passes if scanner result contains "hello"
+-   Third case passes if scanner result is ≥ 5
 
 ### Available Predicates
 
-| Predicate | Description |
-|-----------|-------------|
-| `eq` | Equal (default) |
-| `ne` | Not equal |
-| `gt` | Greater than |
-| `gte` | Greater than or equal |
-| `lt` | Less than |
-| `lte` | Less than or equal |
-| `contains` | String contains substring |
+| Predicate    | Description               |
+|--------------|---------------------------|
+| `eq`         | Equal (default)           |
+| `ne`         | Not equal                 |
+| `gt`         | Greater than              |
+| `gte`        | Greater than or equal     |
+| `lt`         | Less than                 |
+| `lte`        | Less than or equal        |
+| `contains`   | String contains substring |
 | `startswith` | String starts with prefix |
-| `endswith` | String ends with suffix |
-| `icontains` | Case-insensitive contains |
-| `iequals` | Case-insensitive equals |
+| `endswith`   | String ends with suffix   |
+| `icontains`  | Case-insensitive contains |
+| `iequals`    | Case-insensitive equals   |
 
 ### Default Predicate
 
@@ -170,17 +165,68 @@ SiEXpECj7U9nNAvM3H7JqB,10,
 validation_set(cases="validation.csv", predicate="gte")
 ```
 
+## Advanced
 
-## File Formats {#validation-files}
+### Non-Transcript IDs
 
-You can specify a `ValidationSet` either in code, as a CSV, or as a YAML or JSON file. 
+In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.qmd#loader)).
+
+For example, imagine we have a scanner that counts the incidences of "backtracking" in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
+
+``` {.default filename="backtracking.csv"}
+id,target
+Fg3KBpgFr6RSsEWmHBUqeo,2
+VFkCH7gXWpJYUYonvfHxrG,0
+SiEXpECj7U9nNAvM3H7JqB,3
+```
+
+In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
+
+``` {.default filename="validation.csv"}
+id,target
+"Fg3KBpgFr6RSsEWmHBUqeo,VFkCH7gXWpJYUYonvfHxrG",true
+```
+
+When specifying multiple IDs in CSV format, you can use either:
+
+- **Comma-separated format:** `"id1,id2"` (quote the entire value)
+- **JSON array format:** `"[\"id1\",\"id2\"]"`
+
+Both formats are automatically parsed into a list of IDs.
+
+### Complex Targets
+
+Some scanners yield complex values (e.g. lists or dictionaries). For purposes of validation it's often much better to deal with simple values, however if you want to validate against lists and dicts this is fully supported (although you can't define validation cases with non-scaner targets in the Scout View UI).
+
+One middle ground is that if your scanner is yielding a dict (e.g for [Structured Answers](llm_scanner.qmd#structured-answers)) you can still mark one of the dict fields as the "value" using `alias="value"`. For example:
+
+``` python
+class Refusal(BaseModel):
+    refusal_exists: bool = Field(
+        alias="value",
+        description="Whether the assistant refused or declined to complete the user's requested task.",
+    )
+
+    type: str = Field(
+        alias="label",
+        description=(
+            "The type of refusal: `NO_REFUSAL`, `PARTIAL_REFUSAL`, `INDIRECT_REFUSAL` or `CRITICAL_REFUSAL`"
+        )
+    )
+```
+
+This enables you to combine complex results with more straightforward validation. See the [File Formats](#file-formats) section below for details on specifying dict values as validation targets.
+
+## File Formats {#file-formats}
+
+You can specify a `ValidationSet` either in code, as a CSV, YAML, JSON, or JSONL file.
 
 ### CSV
 
 Here are the various ways you can structure a validation CSV for different scenarios:
 
 | Format | Header Row | Example |
-|--------|------------|---------|
+|--------------------|-----------------------------|-----------------------|
 | Single target | `id,target` | `id,target`<br>`abc123,true` |
 | Dict targets | `id,target_*,...` | `id,target_foo,target_bar`<br>`abc123,true,42` |
 | Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak`<br>`abc123,true,false` |
@@ -256,5 +302,20 @@ You can also use a nested format that groups cases by split:
       target: true
 ```
 
+### JSON
 
+JSON files use the same structure as YAML:
 
+``` {.json filename="validation.json"}
+[
+  {"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true},
+  {"id": "VFkCH7gXWpJYUYonvfHxrG", "target": false}
+]
+```
+
+JSONL (JSON Lines) format has one case per line:
+
+``` {.default filename="validation.jsonl"}
+{"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true}
+{"id": "VFkCH7gXWpJYUYonvfHxrG", "target": false}
+```

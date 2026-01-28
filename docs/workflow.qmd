@@ -202,19 +202,10 @@ scout scan scan.yaml --limit 20
 
 ## Scanner Validation {#scanner-validation}
 
-{{< include _validation-overview.md >}}
+::: {.shift-headings by=1}
+{{< include _validation-workflow.md >}}
+:::
 
-### Validation Basics
-
-{{< include _validation-basics.md >}}
-
-### Filtering Transcripts
-
-{{< include _validation-filtering.md >}}
-
-### Complex Result Values
-
-The above covers the basics of scanner validation using a simple boolean scanner---if your scanners yield more complex values (e.g. structured JSON and/or a list of results) see the additional documentation on validation [IDs and Targets](validation.qmd#ids-and-targets) to learn how to structure your validation set.
 
 ## Analyzing Results {#analyzing-results}
 

@@ -59,6 +59,7 @@ interface TranscriptState {
   collapsed?: boolean;
   outlineCollapsed?: boolean;
   displayMode?: "rendered" | "raw";
+  validationSidebarCollapsed?: boolean;
 }
 
 interface StoreState {
@@ -122,6 +123,15 @@ interface StoreState {
 
   // Transcript Detail Data
   transcriptState: TranscriptState;
+
+  // Validation state
+  selectedValidationSetUri?: string;
+  validationCaseSelection: Record<string, boolean>;
+  validationSplitFilter?: string;
+  validationSearchText?: string;
+
+  // validationEditorState
+  editorSelectedValidationSetUri?: string;
 
   // App initialization
   setShowFind: (show: boolean) => void;
@@ -220,6 +230,16 @@ interface StoreState {
   setTranscriptState: (
     updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
   ) => void;
+
+  // Validation actions
+  setSelectedValidationSetUri: (uri: string | undefined) => void;
+  setValidationCaseSelection: (selection: Record<string, boolean>) => void;
+  toggleValidationCaseSelection: (caseId: string) => void;
+  setValidationSplitFilter: (split: string | undefined) => void;
+  setValidationSearchText: (text: string | undefined) => void;
+  clearValidationState: () => void;
+
+  setEditorSelectedValidationSetUri: (uri: string | undefined) => void;
 }
 
 const createDebouncedPersistStorage = (
@@ -276,6 +296,7 @@ export const createStore = (api: ScanApi) =>
             manuallyResizedColumns: [],
           },
           transcriptState: {},
+          validationCaseSelection: {},
 
           // Actions
           setShowFind(show: boolean) {
@@ -627,6 +648,49 @@ export const createStore = (api: ScanApi) =>
                 typeof updater === "function"
                   ? updater(state.transcriptState)
                   : updater;
+            });
+          },
+
+          // Validation actions
+          setSelectedValidationSetUri: (uri: string | undefined) => {
+            set((state) => {
+              state.selectedValidationSetUri = uri;
+              // Clear case selection when switching validation sets
+              state.validationCaseSelection = {};
+            });
+          },
+          setValidationCaseSelection: (selection: Record<string, boolean>) => {
+            set((state) => {
+              state.validationCaseSelection = selection;
+            });
+          },
+          toggleValidationCaseSelection: (caseId: string) => {
+            set((state) => {
+              const current = state.validationCaseSelection[caseId] ?? false;
+              state.validationCaseSelection[caseId] = !current;
+            });
+          },
+          setValidationSplitFilter: (split: string | undefined) => {
+            set((state) => {
+              state.validationSplitFilter = split;
+            });
+          },
+          setValidationSearchText: (text: string | undefined) => {
+            set((state) => {
+              state.validationSearchText = text;
+            });
+          },
+          clearValidationState: () => {
+            set((state) => {
+              state.selectedValidationSetUri = undefined;
+              state.validationCaseSelection = {};
+              state.validationSplitFilter = undefined;
+              state.validationSearchText = undefined;
+            });
+          },
+          setEditorSelectedValidationSetUri: (uri: string | undefined) => {
+            set((state) => {
+              state.editorSelectedValidationSetUri = uri;
             });
           },
         })),

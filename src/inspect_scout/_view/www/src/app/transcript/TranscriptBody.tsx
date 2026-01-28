@@ -1,3 +1,4 @@
+import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import {
   FC,
@@ -27,9 +28,11 @@ import {
   kCollapsibleEventTypes,
   kTranscriptCollapseScope,
 } from "../../components/transcript/types";
+import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { messagesToStr } from "../utils/messages";
+import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
 import styles from "./TranscriptBody.module.css";
@@ -91,7 +94,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     (tabId: string) => {
       //  update both store and URL
       setSelectedTranscriptTab(tabId);
-      setSearchParams({ tab: tabId });
+      setSearchParams((prevParams) => {
+        const newParams = new URLSearchParams(prevParams);
+        newParams.set("tab", tabId);
+        return newParams;
+      });
     },
     [setSelectedTranscriptTab, setSearchParams]
   );
@@ -170,6 +177,16 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     },
     [setTranscriptState]
   );
+
+  // Validation sidebar - URL is the source of truth
+  const validationSidebarCollapsed = !getValidationParam(searchParams);
+
+  const toggleValidationSidebar = useCallback(() => {
+    setSearchParams((prevParams) => {
+      const isCurrentlyOpen = getValidationParam(prevParams);
+      return updateValidationParam(prevParams, !isCurrentlyOpen);
+    });
+  }, [setSearchParams]);
 
   // Display mode for raw/rendered text
   const displayMode = useStore(
@@ -263,6 +280,22 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   tabTools.push(
     <CopyToolbarButton transcript={transcript} className={styles.tabTool} />
+  );
+
+  tabTools.push(
+    <ToolButton
+      key="validation-sidebar-toggle"
+      label="Validation"
+      icon={ApplicationIcons.edit}
+      onClick={toggleValidationSidebar}
+      className={styles.tabTool}
+      subtle={true}
+      title={
+        validationSidebarCollapsed
+          ? "Show validation editor"
+          : "Hide validation editor"
+      }
+    />
   );
 
   const tabPanels = [
@@ -394,18 +427,39 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     </TabPanel>
   );
 
+  const tabSetContent = (
+    <TabSet
+      id={"transcript-body"}
+      type="pills"
+      tabPanelsClassName={clsx(styles.tabSet)}
+      tabControlsClassName={clsx(styles.tabControl)}
+      className={clsx(styles.tabs)}
+      tools={tabTools}
+    >
+      {tabPanels}
+    </TabSet>
+  );
+
   return (
     <DisplayModeContext.Provider value={displayModeContextValue}>
-      <TabSet
-        id={"transcript-body"}
-        type="pills"
-        tabPanelsClassName={clsx(styles.tabSet)}
-        tabControlsClassName={clsx(styles.tabControl)}
-        className={clsx(styles.tabs)}
-        tools={tabTools}
-      >
-        {tabPanels}
-      </TabSet>
+      {validationSidebarCollapsed ? (
+        tabSetContent
+      ) : (
+        <VscodeSplitLayout
+          className={styles.splitLayout}
+          fixedPane="end"
+          initialHandlePosition="80%"
+          minEnd="180px"
+          minStart="200px"
+        >
+          <div slot="start" className={styles.splitStart}>
+            {tabSetContent}
+          </div>
+          <div slot="end" className={styles.validationSidebar}>
+            <ValidationCaseEditor transcriptId={transcript.transcript_id} />
+          </div>
+        </VscodeSplitLayout>
+      )}
     </DisplayModeContext.Provider>
   );
 };

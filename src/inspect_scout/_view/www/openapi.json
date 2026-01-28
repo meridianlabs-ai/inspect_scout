@@ -5601,6 +5601,19 @@
         "title": "ProvenanceData",
         "type": "object"
       },
+      "RenameValidationSetRequest": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameValidationSetRequest",
+        "type": "object"
+      },
       "ResponseSchema": {
         "description": "Schema for model response when using Structured Output.",
         "properties": {
@@ -7149,29 +7162,22 @@
             "title": "Tokens",
             "type": "integer"
           },
-          "validations": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object"
-                }
-              ]
-            },
-            "title": "Validations",
-            "type": "array"
+          "validation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationResults"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "scans",
           "results",
           "errors",
-          "validations",
+          "validation",
           "tokens",
           "model_usage"
         ],
@@ -9624,7 +9630,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
+                  "type": "boolean"
                 },
                 "type": "object"
               },
@@ -9685,7 +9691,8 @@
           }
         },
         "required": [
-          "id"
+          "id",
+          "labels"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -9713,7 +9720,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
+                  "type": "boolean"
                 },
                 "type": "object"
               },
@@ -9759,6 +9766,49 @@
         "title": "ValidationCaseRequest",
         "type": "object"
       },
+      "ValidationEntry": {
+        "description": "A single validation result with its target.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Id"
+          },
+          "target": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              }
+            ],
+            "title": "Valid"
+          }
+        },
+        "required": [
+          "id",
+          "target",
+          "valid"
+        ],
+        "title": "ValidationEntry",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -9790,6 +9840,156 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationMetrics": {
+        "description": "Confusion matrix counts for precision/recall.",
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Balanced accuracy: (Recall + Specificity) / 2.",
+            "readOnly": true,
+            "title": "Accuracy"
+          },
+          "f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Harmonic mean of precision and recall.",
+            "readOnly": true,
+            "title": "F1"
+          },
+          "fn": {
+            "default": 0,
+            "title": "Fn",
+            "type": "integer"
+          },
+          "fp": {
+            "default": 0,
+            "title": "Fp",
+            "type": "integer"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TP / (TP + FP). None if no positive predictions.",
+            "readOnly": true,
+            "title": "Precision"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TP / (TP + FN). None if no positive targets.",
+            "readOnly": true,
+            "title": "Recall"
+          },
+          "specificity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TN / (TN + FP). None if no negative targets.",
+            "readOnly": true,
+            "title": "Specificity"
+          },
+          "tn": {
+            "default": 0,
+            "title": "Tn",
+            "type": "integer"
+          },
+          "total": {
+            "readOnly": true,
+            "title": "Total",
+            "type": "integer"
+          },
+          "tp": {
+            "default": 0,
+            "title": "Tp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tp",
+          "fp",
+          "tn",
+          "fn",
+          "total",
+          "precision",
+          "recall",
+          "specificity",
+          "f1",
+          "accuracy"
+        ],
+        "title": "ValidationMetrics",
+        "type": "object"
+      },
+      "ValidationResults": {
+        "description": "Validation entries with pre-computed metrics.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metrics_by_key": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ValidationMetrics"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics By Key"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "ValidationResults",
         "type": "object"
       },
       "ValidationSet-Input": {
@@ -10720,6 +10920,52 @@
           }
         },
         "summary": "Get validation cases",
+        "tags": [
+          "validations"
+        ]
+      }
+    },
+    "/validations/{uri}/rename": {
+      "put": {
+        "description": "Renames a validation file. Returns the new URI.",
+        "operationId": "rename_validation_validations__uri__rename_put",
+        "parameters": [
+          {
+            "description": "Validation file URI (base64url-encoded)",
+            "in": "path",
+            "name": "uri",
+            "required": true,
+            "schema": {
+              "description": "Validation file URI (base64url-encoded)",
+              "title": "Uri",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameValidationSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Rename Validation Validations  Uri  Rename Put",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rename a validation file",
         "tags": [
           "validations"
         ]

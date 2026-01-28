@@ -37,7 +37,12 @@ from inspect_scout._display.util import (
     scan_interrupted_message,
     scan_title,
 )
-from inspect_scout._recorder.summary import ScannerSummary, Summary, add_model_usage
+from inspect_scout._recorder.summary import (
+    ScannerSummary,
+    Summary,
+    add_model_usage,
+)
+from inspect_scout._recorder.validation import ValidationResults
 from inspect_scout._scanspec import ScanSpec
 
 from .._concurrency.common import ScanMetrics
@@ -287,8 +292,11 @@ def scan_panel(
             resources.add_row("max age:", format_progress_time(batch_age))
 
     # check if any scanners have validation/metrics
+    def _has_validation(s: ScannerSummary) -> bool:
+        return s.validation is not None and len(s.validation.entries) > 0
+
     have_validation = any(
-        len(summary[scanner].validations) > 0 for scanner in spec.scanners.keys()
+        _has_validation(summary[scanner]) for scanner in spec.scanners.keys()
     )
     have_metric = any(
         summary[scanner].metrics is not None for scanner in spec.scanners.keys()
@@ -300,7 +308,7 @@ def scan_panel(
     if have_metric:
         scanners.add_column(justify="right")  # metric
     if have_validation:
-        scanners.add_column(justify="right")  # validation
+        scanners.add_column(justify="right")  # validation (accuracy)
     scanners.add_column(justify="right")  # results
     scanners.add_column(justify="right")  # errors
     scanners.add_column(justify="right")  # tokens/scan
@@ -326,13 +334,13 @@ def scan_panel(
     NONE = f"[{theme.light}]-[/{theme.light}]"
     for scanner in spec.scanners.keys():
         results = summary[scanner]
-        validation = _summary_validation(results.validations)
+        validation_accuracy = _summary_validation(results.validation)
         row_data: list[str | None] = [scanner]
         if have_metric:
             metric = _summary_metric(results.metrics)
             row_data.append(metric)
         if have_validation:
-            row_data.append(validation or NONE)
+            row_data.append(validation_accuracy or NONE)
         row_data.extend(
             [
                 f"{results.results:,}" if results.results else NONE,
@@ -420,25 +428,20 @@ def bytes_to_gigabytes(input: int) -> str:
     return value
 
 
-def _summary_validation(validations: list[bool | dict[str, bool]]) -> str | None:
-    # no validations is none
-    if len(validations) == 0:
+def _summary_validation(validation: ValidationResults | None) -> str | None:
+    """Return balanced accuracy as a formatted string.
+
+    Uses pre-computed metrics from ValidationResults.
+    Returns None if no validation data or no entries with targets.
+    """
+    if validation is None or validation.metrics is None:
         return None
 
-    # compute based on bool results
-    values = 0.0
-    valid = 0.0
-    for validation in validations:
-        if isinstance(validation, bool):
-            values += 1.0
-            if validation is True:
-                valid += 1.0
-        else:
-            for v in validation.values():
-                values += 1.0
-                if v is True:
-                    valid += 1.0
-    return f"{valid / values:.2f}"
+    return (
+        f"{validation.metrics.accuracy:.2f}"
+        if validation.metrics.accuracy is not None
+        else None
+    )
 
 
 def _summary_metric(metrics: dict[str, dict[str, float]] | None) -> str | None:

@@ -4,7 +4,11 @@ import { ErrorPanel } from "../../components/ErrorPanel";
 import { ApplicationIcons } from "../../components/icons";
 import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
-import { ActiveScanInfo, ScannerSummary } from "../../types/api-types";
+import {
+  ActiveScanInfo,
+  ScannerSummary,
+  ValidationResults,
+} from "../../types/api-types";
 import { useActiveScan } from "../server/useActiveScan";
 
 import styles from "./RunScanPanel.module.css";
@@ -24,24 +28,14 @@ const formatDuration = (seconds: number): string => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
-const calculateValidationScore = (
-  validations: (boolean | Record<string, boolean>)[]
+/**
+ * Get validation accuracy from pre-computed ValidationResults.
+ */
+const getValidationScore = (
+  validation: ValidationResults | null | undefined
 ): number | null => {
-  if (validations.length === 0) return null;
-  let total = 0;
-  let valid = 0;
-  for (const v of validations) {
-    if (typeof v === "boolean") {
-      total += 1;
-      if (v) valid += 1;
-    } else {
-      for (const val of Object.values(v)) {
-        total += 1;
-        if (val) valid += 1;
-      }
-    }
-  }
-  return total > 0 ? valid / total : null;
+  if (validation?.metrics?.accuracy == null) return null;
+  return validation.metrics.accuracy;
 };
 
 const getFirstMetricValue = (
@@ -79,7 +73,7 @@ const ActiveScanCard: FC<{ info: ActiveScanInfo }> = ({ info }) => {
 
   // Check if any scanner has validations or metrics (use scanner_names for iteration)
   const hasValidations = info.scanner_names.some(
-    (name) => (summary.scanners[name]?.validations.length ?? 0) > 0
+    (name) => (summary.scanners[name]?.validation?.entries?.length ?? 0) > 0
   );
   const hasMetrics = info.scanner_names.some(
     (name) => summary.scanners[name]?.metrics !== null
@@ -100,7 +94,7 @@ const ActiveScanCard: FC<{ info: ActiveScanInfo }> = ({ info }) => {
         ? Math.round(totalTokens / scanner.scans)
         : 0;
     const validationScore = scanner
-      ? calculateValidationScore(scanner.validations)
+      ? getValidationScore(scanner.validation)
       : null;
     const metricValue = scanner
       ? getFirstMetricValue(scanner.metrics ?? null)

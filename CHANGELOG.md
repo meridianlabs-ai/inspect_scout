@@ -2,6 +2,7 @@
 
 - Projects: Always read `scout.local.yaml` even if there is no `scout.yaml` file.
 - Projects: Always apply project level `filter` to scans (AND combine with scan filters).
+- Validation: Label validation is now binary: validate `true` if the label is present with a truthy value; validate `false` if the label is not present or has only falsey values.
 - Scan Results: Add `exclude_columns` parameter for reading parquet reuslts to optionally reduce memory usage.
 - Scan Results: Pre-fetch optimization for S3/remote parquet files.
 - Transcript DB: [observe()]([transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html).) decorator/context manager for writing transcripts based on observed LLM generations.

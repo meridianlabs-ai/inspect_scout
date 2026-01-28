@@ -13,6 +13,7 @@ metadata-files:
 filters:
   - at: pre-quarto
     path: reference/filter/interlink.lua
+  - _filters/shift-headings.lua
 
 website:
   title: "Inspect Scout"

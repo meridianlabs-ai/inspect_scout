@@ -16,6 +16,7 @@ import { ScansPanel } from "./app/scans/ScansPanel";
 import { useAppConfig } from "./app/server/useAppConfig";
 import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
 import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
+import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
 import {
   kScansRootRouteUrlPattern,
@@ -27,6 +28,7 @@ import {
   kTranscriptsRouteUrlPattern,
   kTranscriptDetailRoute,
   kProjectRouteUrlPattern,
+  kValidationRouteUrlPattern,
   scanResultRoute,
   scanRoute,
   scansRoute,
@@ -258,6 +260,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kProjectRouteUrlPattern,
             element: <ProjectPanelRoute />,
+          },
+          {
+            path: kValidationRouteUrlPattern,
+            element: <ValidationPanel />,
           },
           {
             path: kTranscriptDetailRoute,

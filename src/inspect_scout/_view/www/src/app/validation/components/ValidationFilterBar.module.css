@@ -1,0 +1,33 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.5rem 1rem;
+  border-bottom: solid var(--bs-light-border-subtle) 1px;
+}
+
+.searchInput {
+  width: 200px;
+  font-size: 0.85rem !important;
+}
+
+.searchInput input {
+  font-size: 0.85rem !important;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+.splitSelect {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+}

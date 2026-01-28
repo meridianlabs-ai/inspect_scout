@@ -1,0 +1,216 @@
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Trigger button (collapsed state) */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: fit-content;
+  padding: 3px 3px;
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.chevron {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.6;
+  line-height: 1;
+  transform: rotate(180deg);
+}
+
+.trigger:hover {
+  background: var(--vscode-dropdown-background);
+  border-color: var(--vscode-focusBorder);
+}
+
+.trigger:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.triggerContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.triggerSizer {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+  height: 0;
+  overflow: hidden;
+  display: block;
+}
+
+.triggerPrimary {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+}
+
+.triggerSecondary {
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+.triggerPlaceholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+/* Dropdown panel - rendered via portal */
+.dropdown {
+  z-index: 10000;
+  background: var(
+    --vscode-dropdown-background,
+    var(--vscode-input-background, #252526)
+  );
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Dropdown items */
+.item {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Selected item - with proper contrast */
+.item.selected {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+.item.selected .primaryText,
+.item.selected .secondaryText {
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.primaryText {
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.secondaryText {
+  color: var(--vscode-descriptionForeground);
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loading {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.error {
+  color: var(--vscode-errorForeground);
+}
+
+/* Divider between sets and create option */
+.divider {
+  height: 1px;
+  background: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  margin: 4px 10px;
+}
+
+/* Remove border from item before divider */
+.item:has(+ .divider) {
+  border-bottom: none;
+}
+
+/* Create option styling */
+.createOption {
+  margin-top: 2px;
+}
+
+.createOption .primaryText {
+  color: var(--vscode-textLink-foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.createOption .primaryText::before {
+  content: "+";
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Modal content styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+/* Modal button styles */
+.modalButton {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalButton:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.modalButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.modalButtonPrimary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.modalButtonPrimary:hover {
+  background: var(--vscode-button-hoverBackground);
+}

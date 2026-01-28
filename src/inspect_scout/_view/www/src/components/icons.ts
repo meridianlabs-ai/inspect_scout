@@ -62,6 +62,7 @@ export const ApplicationIcons = {
   config: "bi bi-gear",
   confirm: "bi bi-check",
   copy: "bi bi-copy",
+  move: "bi bi-box-arrow-right",
   display: "bi bi-card-text",
   download: "bi bi-download",
   epoch: (epoch: string) => {
@@ -160,6 +161,9 @@ export const ApplicationIcons = {
   },
   turns: "bi bi-chat-left-text", // bi bi-repeat
   usage: "bi bi-stopwatch",
+  trash: "bi bi-trash",
+  rename: "bi bi-pencil-square",
+  validation: "bi bi-patch-check",
   wrap: "bi bi-text-wrap",
   x: "bi bi-x",
   xLarge: "bi bi-x-lg",

@@ -8,6 +8,7 @@ import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import Result, Scanner, scanner
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._validation.validate import _validate_labels, is_positive_value
 from inspect_scout._validation.validation import validation_set
 
 # Test data location
@@ -163,3 +164,257 @@ def test_at_least_one_validation() -> None:
 def test_validation_failure() -> None:
     """Test that validation correctly fails when no results match."""
     pass
+
+
+# ============================================================================
+# Tests for is_positive_value helper function
+# ============================================================================
+
+
+class TestIsPositiveValue:
+    """Tests for the is_positive_value helper function."""
+
+    def test_negative_values(self) -> None:
+        """Test that negative values are correctly identified."""
+        # Explicit negatives
+        assert is_positive_value(None) is False
+        assert is_positive_value(False) is False
+        assert is_positive_value(0) is False
+        assert is_positive_value("") is False
+        assert is_positive_value("NONE") is False
+        assert is_positive_value("none") is False
+        assert is_positive_value("None") is False
+        assert is_positive_value({}) is False
+        assert is_positive_value([]) is False
+
+    def test_positive_values(self) -> None:
+        """Test that positive values are correctly identified."""
+        # Explicit positives
+        assert is_positive_value(True) is True
+        assert is_positive_value(1) is True
+        assert is_positive_value(-1) is True
+        assert is_positive_value(0.5) is True
+        assert is_positive_value("hello") is True
+        assert is_positive_value("false") is True  # String "false" is NOT False
+        assert is_positive_value({"key": "value"}) is True
+        assert is_positive_value([1, 2, 3]) is True
+        assert is_positive_value({"confidence": 0.9}) is True
+
+
+# ============================================================================
+# Tests for _validate_labels function with boolean logic
+# ============================================================================
+
+
+class TestValidateLabelsBoolean:
+    """Tests for _validate_labels with boolean presence/absence logic."""
+
+    @pytest.mark.asyncio
+    async def test_expect_true_with_positive_result_passes(self) -> None:
+        """labels: {foo: true} with positive results -> pass."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[{"label": "foo", "value": True}],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is True
+
+    @pytest.mark.asyncio
+    async def test_expect_true_with_no_results_fails(self) -> None:
+        """labels: {foo: true} with no results -> fail."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[],  # Empty resultset
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_expect_true_with_only_negative_results_fails(self) -> None:
+        """labels: {foo: true} with only negative results -> fail."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[
+                {"label": "foo", "value": False},
+                {"label": "foo", "value": None},
+                {"label": "foo", "value": 0},
+            ],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_expect_false_with_no_results_passes(self) -> None:
+        """labels: {foo: false} with no results -> pass."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[],  # Empty resultset
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": False}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is True
+
+    @pytest.mark.asyncio
+    async def test_expect_false_with_negative_results_passes(self) -> None:
+        """labels: {foo: false} with negative results -> pass."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[
+                {"label": "foo", "value": False},
+                {"label": "foo", "value": None},
+            ],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": False}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is True
+
+    @pytest.mark.asyncio
+    async def test_expect_false_with_any_positive_result_fails(self) -> None:
+        """labels: {foo: false} with any positive result -> fail."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[
+                {"label": "foo", "value": False},
+                {"label": "foo", "value": True},  # One positive!
+            ],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": False}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_non_empty_dict_treated_as_positive(self) -> None:
+        """Non-empty dict/list values treated as positive."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[{"label": "foo", "value": {"confidence": 0.9}}],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is True
+
+    @pytest.mark.asyncio
+    async def test_empty_dict_treated_as_negative(self) -> None:
+        """Empty dict {} treated as negative."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[{"label": "foo", "value": {}}],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_empty_list_treated_as_negative(self) -> None:
+        """Empty list [] treated as negative."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[{"label": "foo", "value": []}],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_non_empty_list_treated_as_positive(self) -> None:
+        """Non-empty list treated as positive."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[{"label": "foo", "value": [1, 2, 3]}],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {"foo": True}
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["foo"] is True
+
+    def test_backwards_compat_non_boolean_coercion(self) -> None:
+        """Backwards compat: non-boolean values coerced to boolean at ValidationCase level."""
+        from inspect_scout._validation.types import ValidationCase
+
+        # Non-boolean truthy value should be coerced to True
+        case_truthy = ValidationCase(id="test", labels={"foo": 1})  # type: ignore[dict-item]
+        assert case_truthy.labels is not None
+        assert case_truthy.labels["foo"] is True
+
+        # Non-boolean falsy value should be coerced to False
+        case_falsy = ValidationCase(id="test", labels={"foo": 0})  # type: ignore[dict-item]
+        assert case_falsy.labels is not None
+        assert case_falsy.labels["foo"] is False
+
+        # String "true" should be coerced to True
+        case_str = ValidationCase(id="test", labels={"foo": "true"})  # type: ignore[dict-item]
+        assert case_str.labels is not None
+        assert case_str.labels["foo"] is True
+
+        # Empty string should be coerced to False
+        case_empty = ValidationCase(id="test", labels={"foo": ""})  # type: ignore[dict-item]
+        assert case_empty.labels is not None
+        assert case_empty.labels["foo"] is False
+
+    @pytest.mark.asyncio
+    async def test_multiple_labels(self) -> None:
+        """Test validation with multiple labels."""
+        from inspect_scout._validation.types import ValidationSet
+
+        result = Result(
+            type="resultset",
+            value=[
+                {"label": "deception", "value": True},
+                {"label": "jailbreak", "value": False},
+            ],
+        )
+        validation = ValidationSet(cases=[])
+        labels: dict[str, bool] = {
+            "deception": True,
+            "jailbreak": False,
+            "phishing": False,
+        }
+
+        validation_results = await _validate_labels(validation, result, labels, None)
+        assert validation_results["deception"] is True  # Has positive value
+        assert (
+            validation_results["jailbreak"] is True
+        )  # Has negative value, expected false
+        assert validation_results["phishing"] is True  # Missing label, expected false

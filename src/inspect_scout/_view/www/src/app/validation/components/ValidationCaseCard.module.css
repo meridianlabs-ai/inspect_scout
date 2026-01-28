@@ -1,0 +1,223 @@
+.card {
+  display: grid;
+  /* grid-template-columns set dynamically via inline style */
+  align-items: center;
+  gap: 12px;
+  padding: calc(0.3rem + 1px) 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: solid 1px var(--bs-border-color);
+  cursor: pointer;
+}
+
+.card:hover {
+  background: var(
+    --vscode-list-inactiveSelectionBackground,
+    rgba(128, 128, 128, 0.04)
+  );
+}
+
+.card.selected {
+  /* No special background for selected rows */
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.85);
+}
+
+.transcriptCell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.idLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #5a9bcf;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.idLink:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.idLink:disabled {
+  color: var(--vscode-disabledForeground);
+  cursor: default;
+}
+
+.labelsCell {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+}
+
+.targetCell {
+  text-align: right;
+  min-width: 80px;
+  padding-right: 8px;
+}
+
+.target {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+/* Boolean target badges */
+.targetTrue {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  background-color: var(--bs-success);
+  border: solid var(--bs-success) 1px;
+  color: var(--bs-body-bg);
+  width: 4.5em;
+}
+
+.targetFalse {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  background-color: var(--bs-danger);
+  border: solid var(--bs-danger) 1px;
+  color: var(--bs-body-bg);
+  width: 4.5em;
+}
+
+/* Subtle split selector */
+.splitSelect {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  --vscode-dropdown-border: transparent;
+  --vscode-dropdown-background: transparent;
+}
+
+.splitSelect:hover {
+  --vscode-dropdown-background: var(--vscode-list-hoverBackground);
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 56px;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--vscode-list-hoverBackground);
+}
+
+.actionButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Transcript details (below ID link) */
+.detailsRow {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  padding-bottom: 1px;
+}
+
+/* Warning for missing transcripts */
+.notFoundRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  padding-bottom: 1px;
+}
+
+.notFoundRow i {
+  font-size: 0.75rem;
+}
+
+/* Modal styles */
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalContent p {
+  margin: 0;
+}
+
+.warning {
+  color: var(--vscode-errorForeground);
+  font-size: 0.9rem;
+}
+
+.modalButton {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalButton:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.modalButtonPrimary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.modalButtonPrimary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.modalButtonPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

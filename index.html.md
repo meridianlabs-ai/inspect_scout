@@ -9,17 +9,16 @@ transcripts. With Scout, you can easily:
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
 
-2.  Develop scanners interactively, exploring transcripts and scan
+2.  Analyze transcripts from Inspect Evals, LangSmith, Logfire, or
+    custom sources via the capture and import APIs.
+
+3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 
-3.  Validate scanner accuracy against human-labeled examples.
+4.  Validate scanner accuracy against human-labeled examples.
 
-4.  Scale to thousands of transcripts with parallel processing,
+5.  Scale to thousands of transcripts with parallel processing,
     batching, and fault tolerance.
-
-Scout can directly analyze Inspect AI eval logs or alternatively take
-input from a [transcript database](db_overview.qmd) (which can be
-populated from any source).
 
 ### Installation
 

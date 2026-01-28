@@ -9,17 +9,16 @@ transcripts. With Scout, you can easily:
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
 
-2.  Develop scanners interactively, exploring transcripts and scan
+2.  Analyze transcripts from Inspect Evals, LangSmith, Logfire, or
+    custom sources via the capture and import APIs.
+
+3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 
-3.  Validate scanner accuracy against human-labeled examples.
+4.  Validate scanner accuracy against human-labeled examples.
 
-4.  Scale to thousands of transcripts with parallel processing,
+5.  Scale to thousands of transcripts with parallel processing,
     batching, and fault tolerance.
-
-Scout can directly analyze Inspect AI eval logs or alternatively take
-input from a [transcript database](db_overview.qmd) (which can be
-populated from any source).
 
 ### Installation
 
@@ -4031,30 +4030,25 @@ JSONL (JSON Lines) format has one case per line:
 
 ## Overview
 
-Scout can analyze transcripts from any source (e.g. Agent traces, RL
-rollouts, etc.) so long as the transcripts have been organized into a
+Scout can analyze transcripts from any source (e.g. evals, agent traces,
+RL rollouts, etc.) so long as the transcripts have been organized into a
 transcripts database. Transcript databases use
 [Parquet](https://parquet.apache.org) files for storage and can be
 located in the local filesystem or remote systems like S3.
 
-The purpose of transcript databases is to provide a common baseline
-format for scanners to read from. You might use transcript databases as
-your cannonical storage for transcripts, or you might alternatively
-store them in another system entirely (e.g. a Postgress database) and
-extract them into a Scout database for a given analysis project.
-
-This documentation covers how to create transcript databases. You can
-either capture transcripts from your LLM generation code, or import
-transcripts from various sources. You can also publish transcripts for
-use by others. If you just want to read existing transcript databases
-see the general article on [Transcripts](transcripts.qmd),
+This documentation covers how to create transcript databases. If you
+just want to read existing transcript databases see the general article
+on [Transcripts](transcripts.qmd),
 
 ## Creating a Database
 
-If you have some existing source of transcript data it is
-straightforward to [import](db_importing.qmd) it into a Scout database.
-You can also [capture](db_capturing.qmd) transcripts from your running
-LLM generation code.
+There are several sources you can use for building a transcript
+database:
+
+1.  Inspect evaluation logs.
+2.  LLM observability systems (e.g. LangSmith, Logfire).
+3.  Traces directly captured from agent execution.
+4.  Any other source using the import API.
 
 Transcript databases have very few required fields (minimally just
 `transcript_id` and `messages`) but there are other fields that identify
@@ -4062,14 +4056,19 @@ the source of the transcript that you’ll likely want to populate. You
 can also include arbitrary other columns in the database (`metadata`)
 which can be used for transcript filtering.
 
-To create a transcript database you’ll need to:
+These articles cover transcript databases in more depth:
 
-1.  Understand the [Database Schema](db_schema.qmd) and decide how you
-    want to map your data into it; and
+1.  [Database Schema](db_schema.qmd) — Documents the required and
+    optional fields as well as data formats for transcript messages and
+    events.
 
-2.  Then, pick a method for either [Capturing](db_capturing.qmd) or
-    [Importing](db_importing.qmd) transcripts, and implement the logic
-    for inserting your data.
+2.  [Capturing Transcripts](db_capturing.qmd) — Describes how to capture
+    transcripts from running LLM code using the `@observe` decorator /
+    context-manager.
+
+3.  [Importing Transcripts](db_importing.qmd) — Covers building a
+    database from Inspect Logs, LangSmith, Logfire, and custom sources
+    using the import API.
 
 ## Publishing Transcripts
 
@@ -4516,29 +4515,124 @@ scan(
 You can populate a transcript database in a variety of ways depending on
 where your transcript data lives and how it is managed:
 
-1.  [Transcript API](#transcript-api): Python API for creating and
-    inserting transcripts;
-
-2.  [Arrow Import](#arrow-import): Efficient direct insertion using
-    `RecordBatchReader`;
-
-3.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
-    not created using Inspect Scout; and
-
-4.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
+1.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
     eval log files.
+
+2.  [LangSmith](#langsmith) and [Logfire](#logfire): Read transcript
+    data from LLM observability platforms.
+
+3.  [Transcript API](#transcript-api): Python API for creating and
+    inserting transcripts.
+
+4.  [Arrow Import](#arrow-import): Efficient direct insertion using
+    `RecordBatchReader`.
+
+5.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
+    not created using Inspect Scout.
 
 We’ll cover each of these in turn below. Before proceeding though you
 should be sure to familiarize yourself with the [Database
 Schema](db_schema.qmd) and make a plan for how you want to map your data
 into it.
 
+## Inspect Logs
+
+While Scout can read Inspect logs directly, you might prefer to keep
+them in a transcript database. You can easily import Inspect logs as
+follows:
+
+``` python
+from inspect_scout import transcripts_db, transcripts_from
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(transcripts_from("./logs"))
+```
+
+You could also insert a filtered list of transcripts:
+
+``` python
+from inspect_scout import columns as c
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    transcripts = (
+        transcripts_from("./logs")
+        .where(c.task_set == "cybench")
+        .where(c.model.like("openai/%"))
+    )
+    await db.insert(transcripts)
+```
+
+## LangSmith
+
+[LangSmith](https://smith.langchain.com/) is LangChain’s platform for
+tracing, evaluating, and monitoring LLM applications. Scout can import
+transcripts from LangSmith traces, supporting:
+
+- LangChain agents and chains (via langchain tracing)
+- OpenAI API calls (via `wrap_openai`)
+- Anthropic API calls (via `wrap_anthropic`)
+
+Use the `langsmith()` transcript source to import traces from a
+LangSmith project. You can filter by tags, time range, or using
+LangSmith’s filter syntax:
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import langsmith
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(langsmith(
+        project="my-langsmith-project",
+        tags=["production"],
+    ))
+```
+
+> [!NOTE]
+>
+> ### Authentication
+>
+> Set the `LANGSMITH_API_KEY` environment variable to authenticate with
+> LangSmith. You can create an API key from [LangSmith
+> Settings](https://smith.langchain.com/settings).
+
+## Logfire
+
+[Logfire](https://logfire.pydantic.dev/) is Pydantic’s observability
+platform for Python applications. Scout can import transcripts from
+Logfire traces created by any of the supported instrumentors:
+
+- Pydantic AI (`logfire.instrument_pydantic_ai()`)
+- OpenAI (`logfire.instrument_openai()`)
+- Anthropic (`logfire.instrument_anthropic()`)
+- Google GenAI (`logfire.instrument_google_genai()`)
+
+Use the `logfire()` transcript source to import traces. You can filter
+by time range, specific trace ID, or using SQL WHERE fragments:
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import logfire
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(logfire(
+        filter="tags @> ARRAY['production']",
+    ))
+```
+
+> [!NOTE]
+>
+> ### Authentication
+>
+> Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
+> Logfire. You can create a read token from [Logfire Settings \> Read
+> Tokens](https://logfire.pydantic.dev/).
+
 ## Transcript API
 
-To create a transcripts database, use the `transcripts_db()` function to
-get a `TranscriptsDB` interface and then insert `Transcript` objects. In
-this example imagine we have a `read_weave_transcripts()` function which
-can read transcripts from an external JSON transcript format:
+You can import transcripts from any source so long as you can create
+`Transcript` objects to be imported. In this example imagine we have a
+`read_weave_transcripts()` function which can read transcripts from an
+external JSON transcript format:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -4745,35 +4839,6 @@ You should run this command whenever you add or remove transcripts from
 your data lake (transcripts will not be visible to clients until the
 index is updated). While building an index is not required, it is highly
 reccommend if you want optimal query performance.
-
-## Inspect Logs
-
-If you prefer to keep all of your transcripts (including ones from
-Inspect evals) in a transcript database, you can easily import Inspect
-logs as follows:
-
-``` python
-from inspect_scout import transcripts_db, transcripts_from
-
-async with transcripts_db("s3://my-transcript-db/") as db:
-    await db.insert(transcripts_from("./logs"))
-```
-
-You could also insert a filtered list of transcripts:
-
-``` python
-from inspect_scout import columns as c
-
-async with transcripts_db("s3://my-transcript-db/") as db:
-
-    transcripts = (
-        transcripts_from("./logs")
-        .where(c.task_set == "cybench")
-        .where(c.model.like("openai/%"))
-    )
-
-    await db.insert(transcripts)
-```
 
 # Publishing Transcripts
 

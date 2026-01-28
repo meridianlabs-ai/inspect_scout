@@ -384,18 +384,24 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>Scout can analyze transcripts from any source (e.g.&nbsp;Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
-<p>The purpose of transcript databases is to provide a common baseline format for scanners to read from. You might use transcript databases as your cannonical storage for transcripts, or you might alternatively store them in another system entirely (e.g.&nbsp;a Postgress database) and extract them into a Scout database for a given analysis project.</p>
-<p>This documentation covers how to create transcript databases. You can either capture transcripts from your LLM generation code, or import transcripts from various sources. You can also publish transcripts for use by others. If you just want to read existing transcript databases see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
+<p>Scout can analyze transcripts from any source (e.g.&nbsp;evals, agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use <a href="https://parquet.apache.org">Parquet</a> files for storage and can be located in the local filesystem or remote systems like S3.</p>
+<p>This documentation covers how to create transcript databases. If you just want to read existing transcript databases see the general article on <a href="./transcripts.html">Transcripts</a>,</p>
 </section>
 <section id="creating-a-database" class="level2">
 <h2 class="anchored" data-anchor-id="creating-a-database">Creating a Database</h2>
-<p>If you have some existing source of transcript data it is straightforward to <a href="./db_importing.html">import</a> it into a Scout database. You can also <a href="./db_capturing.html">capture</a> transcripts from your running LLM generation code.</p>
-<p>Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (<code>metadata</code>) which can be used for transcript filtering.</p>
-<p>To create a transcript database you’ll need to:</p>
+<p>There are several sources you can use for building a transcript database:</p>
 <ol type="1">
-<li><p>Understand the <a href="./db_schema.html">Database Schema</a> and decide how you want to map your data into it; and</p></li>
-<li><p>Then, pick a method for either <a href="./db_capturing.html">Capturing</a> or <a href="./db_importing.html">Importing</a> transcripts, and implement the logic for inserting your data.</p></li>
+<li>Inspect evaluation logs.</li>
+<li>LLM observability systems (e.g.&nbsp;LangSmith, Logfire).</li>
+<li>Traces directly captured from agent execution.</li>
+<li>Any other source using the import API.</li>
+</ol>
+<p>Transcript databases have very few required fields (minimally just <code>transcript_id</code> and <code>messages</code>) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (<code>metadata</code>) which can be used for transcript filtering.</p>
+<p>These articles cover transcript databases in more depth:</p>
+<ol type="1">
+<li><p><a href="./db_schema.html">Database Schema</a> — Documents the required and optional fields as well as data formats for transcript messages and events.</p></li>
+<li><p><a href="./db_capturing.html">Capturing Transcripts</a> — Describes how to capture transcripts from running LLM code using the <code>@observe</code> decorator / context-manager.</p></li>
+<li><p><a href="./db_importing.html">Importing Transcripts</a> — Covers building a database from Inspect Logs, LangSmith, Logfire, and custom sources using the import API.</p></li>
 </ol>
 </section>
 <section id="publishing-transcripts" class="level2">

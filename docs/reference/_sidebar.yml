@@ -157,6 +157,8 @@ website:
         contents:
         - text: langsmith
           href: reference/sources.qmd#langsmith
+        - text: logfire
+          href: reference/sources.qmd#logfire
       - section: async
         href: reference/async.qmd
         contents:

@@ -4,6 +4,7 @@ import {
   ActiveScansResponse,
   AppConfig,
   CreateValidationSetRequest,
+  MessagesEventsResponse,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -12,6 +13,7 @@ import {
   ScansResponse,
   Status,
   Transcript,
+  TranscriptInfo,
   TranscriptsResponse,
   ValidationCase,
   ValidationCaseRequest,
@@ -20,7 +22,10 @@ import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
-import { serverRequestApi } from "./request";
+import { resolveAttachments } from "./attachmentsHelpers";
+import { ServerRequestApi, serverRequestApi } from "./request";
+
+const USE_NEW_GET_TRANSCRIPT = false;
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
 
@@ -88,16 +93,10 @@ export const apiScoutServer = (
         throw error;
       }
     },
-    getTranscript: async (
-      transcriptsDir: string,
-      id: string
-    ): Promise<Transcript> => {
-      const result = await requestApi.fetchString(
-        "GET",
-        `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
-      );
-      return asyncJsonParse<Transcript>(result.raw);
-    },
+    getTranscript: (transcriptsDir: string, id: string): Promise<Transcript> =>
+      USE_NEW_GET_TRANSCRIPT
+        ? getTranscriptNew(requestApi, transcriptsDir, id)
+        : getTranscriptOld(requestApi, transcriptsDir, id),
     getTranscriptsColumnValues: async (
       transcriptsDir: string,
       column: string,
@@ -375,5 +374,54 @@ const connectTopicUpdatesViaSSE = (
   return () => {
     clearTimeout(timeoutId);
     eventSource?.close();
+  };
+};
+
+const getTranscriptOld = async (
+  requestApi: ServerRequestApi,
+  transcriptsDir: string,
+  id: string
+): Promise<Transcript> =>
+  asyncJsonParse<Transcript>(
+    (
+      await requestApi.fetchString(
+        "GET",
+        `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
+      )
+    ).raw
+  );
+
+const getTranscriptNew = async (
+  requestApi: ServerRequestApi,
+  transcriptsDir: string,
+  id: string
+): Promise<Transcript> => {
+  const encodedDir = encodeBase64Url(transcriptsDir);
+  const encodedId = encodeURIComponent(id);
+
+  const [infoResult, messagesEventsResult] = await Promise.all([
+    requestApi.fetchString(
+      "GET",
+      `/transcripts/${encodedDir}/${encodedId}/info`
+    ),
+    requestApi.fetchString(
+      "GET",
+      `/transcripts/${encodedDir}/${encodedId}/messages-events`
+    ),
+  ]);
+
+  const [info, { messages, events, attachments }] = await Promise.all([
+    asyncJsonParse<TranscriptInfo>(infoResult.raw),
+    asyncJsonParse<MessagesEventsResponse>(messagesEventsResult.raw),
+  ]);
+
+  return {
+    ...info,
+    ...(attachments && Object.keys(attachments).length > 0
+      ? {
+          messages: resolveAttachments(messages, attachments),
+          events: resolveAttachments(events, attachments),
+        }
+      : { messages, events }),
   };
 };

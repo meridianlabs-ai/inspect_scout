@@ -113,6 +113,15 @@ async def test_concurrent_iteration(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("filename", ["", None])
+async def test_rejects_falsy_filename(filename: str | None) -> None:
+    """Test that AsyncZipReader rejects falsy filenames."""
+    async with AsyncFilesystem() as fs:
+        with pytest.raises(ValueError):
+            AsyncZipReader(fs, filename)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
 async def test_member_not_found(test_zip_file: Path) -> None:
     """Test that KeyError is raised for non-existent member."""
     zip_path = str(test_zip_file)

@@ -290,9 +290,6 @@ def create_scans_router(
     return router
 
 
-# --- Private helpers ---
-
-
 def _build_scans_cursor(
     status: RecorderStatus,
     order_columns: list[OrderBy],

@@ -1,8 +1,10 @@
 """Transcripts REST API endpoints."""
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Path
+from fastapi.responses import StreamingResponse
 from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_413_CONTENT_TOO_LARGE,
@@ -22,6 +24,8 @@ from .._transcript.types import (
 )
 from ._api_v2_types import (
     DistinctRequest,
+    MessagesEventsResponse,
+    StreamMetadata,
     TranscriptsRequest,
     TranscriptsResponse,
 )
@@ -132,6 +136,122 @@ def create_transcripts_router() -> APIRouter:
                     detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
                 ) from None
 
+    @router.get(
+        "/transcripts/{dir}/{id}/info",
+        response_model=TranscriptInfo,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get transcript info",
+        description="Returns transcript metadata without messages or events.",
+    )
+    async def transcript_info(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> TranscriptInfo:
+        """Get transcript info (metadata only) by ID."""
+        transcripts_dir = decode_base64url(dir)
+
+        async with transcripts_view(transcripts_dir) as view:
+            condition = Column("transcript_id") == id
+            infos = [info async for info in view.select(Query(where=[condition]))]
+            if not infos:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
+                )
+            return infos[0]
+
+    async def _stream_messages_events(
+        transcripts_dir: str, transcript_id: str
+    ) -> AsyncIterator[StreamMetadata | bytes]:
+        """Stream transcript messages/events with metadata-first protocol.
+
+        First yield: StreamMetadata with compression info
+        Subsequent yields: raw bytes chunks
+
+        All resources are owned by the generator and cleaned up when
+        Starlette calls aclose().
+        """
+        async with transcripts_view(transcripts_dir) as view:
+            condition = Column("transcript_id") == transcript_id
+            infos = [info async for info in view.select(Query(where=[condition]))]
+            if not infos:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
+                )
+
+            result = await view.read_messages_events(infos[0])
+
+            if (
+                result.uncompressed_size is not None
+                and result.uncompressed_size > MAX_TRANSCRIPT_BYTES
+            ):
+                raise HTTPException(
+                    status_code=HTTP_413_CONTENT_TOO_LARGE,
+                    detail=f"Transcript too large: {result.uncompressed_size} bytes "
+                    f"exceeds {MAX_TRANSCRIPT_BYTES} limit",
+                )
+
+            yield StreamMetadata(
+                compression_method=result.compression_method,
+                uncompressed_size=result.uncompressed_size,
+            )
+
+            async with result.data as data:
+                async for chunk in data:
+                    yield chunk
+
+    @router.get(
+        "/transcripts/{dir}/{id}/messages-events",
+        response_model=MessagesEventsResponse,
+        summary="Get transcript messages and events (raw)",
+        description="Returns raw JSON bytes for transcript messages and events. "
+        "May be DEFLATE-compressed (check Content-Encoding header). "
+        "JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs "
+        "must be resolved client-side.",
+    )
+    async def transcript_messages_and_events(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> StreamingResponse:
+        """Stream raw transcript messages/events JSON.
+
+        Returns the raw JSON bytes from the underlying storage, potentially
+        DEFLATE-compressed. When compressed, the Content-Encoding header is set
+        to 'deflate' so browsers auto-decompress.
+
+        NOTE ON ATTACHMENTS: The JSON may contain an 'attachments' dict at the
+        top level. Strings within 'messages' and 'events' may contain references
+        like 'attachment://<32-char-hex-id>' that must be resolved client-side
+        by looking up the ID in the 'attachments' dict.
+
+        NOTE ON CONTENT-ENCODING: HTTP/1.1 defines 'deflate' as zlib-wrapped
+        (RFC 1950), but ZIP files use raw DEFLATE (RFC 1951). We send raw
+        DEFLATE with Content-Encoding: deflate anyway because:
+        1. All browsers accept raw DEFLATE (they sniff the format)
+        2. IE only accepts raw DEFLATE (not zlib-wrapped)
+        3. This matches what most servers historically sent
+        See: https://en.wikipedia.org/wiki/HTTP_compression#Problems_preventing_the_use_of_HTTP_compression
+        """
+        transcripts_dir = decode_base64url(dir)
+
+        stream = _stream_messages_events(transcripts_dir, id)
+        metadata = await anext(stream)
+        assert isinstance(metadata, StreamMetadata)
+
+        async def bytes_only() -> AsyncIterator[bytes]:
+            async for chunk in stream:
+                assert isinstance(chunk, bytes)
+                yield chunk
+
+        return StreamingResponse(
+            content=bytes_only(),
+            media_type="application/json",
+            headers=(
+                {"Content-Encoding": "deflate"}
+                if metadata.compression_method == 8
+                else None
+            ),
+        )
+
     @router.post(
         "/transcripts/{dir}/distinct",
         summary="Get distinct column values",
@@ -149,9 +269,6 @@ def create_transcripts_router() -> APIRouter:
             return await view.distinct(body.column, body.filter)
 
     return router
-
-
-# --- Private helpers ---
 
 
 def _build_transcripts_cursor(

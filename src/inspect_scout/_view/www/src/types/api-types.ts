@@ -16,6 +16,8 @@ export type ModelUsage = components["schemas"]["ModelUsage"];
 export type ModelConfig = components["schemas"]["ModelConfig-Output"];
 export type TranscriptsResponse = components["schemas"]["TranscriptsResponse"];
 export type Transcript = components["schemas"]["Transcript"];
+export type MessagesEventsResponse =
+  components["schemas"]["MessagesEventsResponse"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
 export type ScansResponse = components["schemas"]["ScansResponse"];

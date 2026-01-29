@@ -117,23 +117,19 @@ export const apiScoutServer = (
         ),
       ]);
 
-      const [info, messagesEvents] = await Promise.all([
+      const [info, { messages, events, attachments }] = await Promise.all([
         asyncJsonParse<TranscriptInfo>(infoResult.raw),
         asyncJsonParse<MessagesEventsPayload>(messagesEventsResult.raw),
       ]);
 
-      const attachments = messagesEvents.attachments;
-      const hasAttachments =
-        attachments !== undefined && Object.keys(attachments).length > 0;
-
       return {
         ...info,
-        messages: hasAttachments
-          ? resolveAttachments(messagesEvents.messages, attachments)
-          : messagesEvents.messages,
-        events: hasAttachments
-          ? resolveAttachments(messagesEvents.events, attachments)
-          : messagesEvents.events,
+        ...(attachments !== undefined && Object.keys(attachments).length > 0
+          ? {
+              messages: resolveAttachments(messages, attachments),
+              events: resolveAttachments(events, attachments),
+            }
+          : { messages, events }),
       };
     },
     getTranscriptsColumnValues: async (

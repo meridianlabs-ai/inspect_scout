@@ -3,6 +3,7 @@
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
 - Add support for Inspect `CompactionEvent`.
 - Add "store" event to `EventType` enumeration.
+- View Server: Add optimized `/transcripts/{dir}/{id}/info` and `/transcripts/{dir}/{id}/messages-events` endpoints for fetching transcript data. The `messages-events` endpoint streams raw (potentially compressed) JSON for improved performance.
 
 ## 0.4.11 (29 January 2026)
 

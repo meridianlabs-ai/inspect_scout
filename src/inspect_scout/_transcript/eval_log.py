@@ -43,6 +43,8 @@ from inspect_ai.log import EvalLog, EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
+from inspect_ai.log._recorders import recorder_type_for_location
+from inspect_ai.log._recorders.eval import EvalRecorder
 from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
@@ -50,7 +52,7 @@ from typing_extensions import override
 from inspect_scout._query.condition import Condition, ScalarValue
 from inspect_scout._query.condition_sql import condition_as_sql, conditions_as_filter
 from inspect_scout._transcript.database.schema import reserved_columns
-from inspect_scout._util.async_zip import AsyncZipReader
+from inspect_scout._util.async_zip import AsyncZipReader, ZipEntry
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 from .._query import Query
@@ -59,12 +61,14 @@ from .._transcript.transcripts import Transcripts
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .json.load_filtered import load_filtered_transcript
-from .local_files_cache import LocalFilesCache, init_task_files_cache
+from .local_files_cache import init_task_files_cache
 from .transcripts import TranscriptsReader
 from .types import (
+    BytesContextManager,
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
     TranscriptTooLargeError,
 )
 from .util import LazyJSONDict
@@ -82,13 +86,55 @@ Logs: TypeAlias = (
 _sqlite_cache: dict[str, sqlite3.Connection] = {}
 
 
+class _OwnedZipStreamContextManager:
+    """Wraps a ZIP stream context manager and takes ownership of both arguments.
+
+    Caller transfers ownership of `fs` and `inner_cm` to this context manager.
+    Both are closed/exited in __aexit__ or aclose(); caller must not use or close them.
+
+    Supports two cleanup patterns:
+    1. Context manager: `async with cm: ...` - cleanup in __aexit__
+    2. Explicit cleanup: `await cm.aclose()` - for when context is never entered
+    """
+
+    def __init__(
+        self,
+        fs: AsyncFilesystem,
+        inner_cm: Any,  # AbstractAsyncContextManager[AsyncIterable[bytes]]
+    ) -> None:
+        self._fs = fs
+        self._inner_cm = inner_cm
+        self._stream: AsyncIterator[bytes] | None = None
+        self._closed = False
+
+    async def __aenter__(self) -> AsyncIterator[bytes]:
+        self._stream = await self._inner_cm.__aenter__()
+        return self._stream
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        await self._inner_cm.__aexit__(*exc_info)
+        await self._fs.close()
+
+    async def aclose(self) -> None:
+        """Explicitly close resources without entering the context manager.
+
+        Safe to call multiple times or after __aexit__.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        # inner_cm was never entered, so just close the filesystem
+        await self._fs.close()
+
+
 class EvalLogTranscripts(Transcripts):
     """Collection of transcripts for scanning."""
 
     def __init__(self, logs: Logs | ScanTranscripts) -> None:
         super().__init__()
-
-        self._files_cache = init_task_files_cache()
 
         if isinstance(logs, ScanTranscripts):
             self._logs: Logs | pd.DataFrame = _logs_df_from_snapshot(logs)
@@ -104,7 +150,7 @@ class EvalLogTranscripts(Transcripts):
                 reader more efficient (e.g. by preventing a full scan to find
                 transcript_id => filename mappings). Not used by EvalLogTranscripts.
         """
-        return EvalLogTranscriptsReader(self._logs, self._query, self._files_cache)
+        return EvalLogTranscriptsReader(self._logs, self._query)
 
     @staticmethod
     @override
@@ -118,9 +164,8 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         self,
         logs: Logs | pd.DataFrame,
         query: Query,
-        files_cache: LocalFilesCache | None = None,
     ) -> None:
-        self._db = EvalLogTranscriptsView(logs, files_cache)
+        self._db = EvalLogTranscriptsView(logs)
         self._query = query
 
     @override
@@ -190,9 +235,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     def __init__(
         self,
         logs: Logs | pd.DataFrame,
-        files_cache: LocalFilesCache | None = None,
     ):
-        self._files_cache = files_cache
+        self._files_cache = init_task_files_cache()
 
         # pandas required
         verify_df_prerequisites()
@@ -399,31 +443,11 @@ class EvalLogTranscriptsView(TranscriptsView):
         content: TranscriptContent,
         max_bytes: int | None = None,
     ) -> Transcript:
-        assert self._conn is not None
-        cursor = self._conn.execute(
-            f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
-            (t.transcript_id,),
-        )
-        row = cursor.fetchone()
-        assert row is not None
-        id_, epoch = row
-        sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
-
-        if not self._fs:
-            self._fs = AsyncFilesystem()
-
-        source_uri = (
-            ""  # always has a source_uri
-            if t.source_uri is None
-            else await self._files_cache.resolve_remote_uri_to_local(
-                self._fs,
-                t.source_uri,
-            )
-            if self._files_cache
-            else t.source_uri
-        )
-        zip_reader = AsyncZipReader(self._fs, source_uri)
-        entry = await zip_reader.get_member_entry(sample_file_name)
+        if not t.source_uri:
+            raise ValueError("source_uri must be set")
+        if recorder_type_for_location(t.source_uri) is not EvalRecorder:
+            raise NotImplementedError("JSON format not yet supported")
+        zip_reader, entry = await self._get_zip_reader_and_entry(t)
         if max_bytes is not None and entry.uncompressed_size > max_bytes:
             raise TranscriptTooLargeError(
                 t.transcript_id, entry.uncompressed_size, max_bytes
@@ -431,7 +455,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         with trace_action(
             logger,
             "Scout Eval Log Read",
-            f"Reading from {t.source_uri} ({sample_file_name})",
+            f"Reading from {t.source_uri} ({entry.filename})",
         ):
             async with await zip_reader.open_member(entry) as json_iterable:
                 return await load_filtered_transcript(
@@ -441,6 +465,43 @@ class EvalLogTranscriptsView(TranscriptsView):
                     content.events,
                 )
 
+    @override
+    async def read_messages_events(
+        self, t: TranscriptInfo
+    ) -> TranscriptMessagesAndEvents:
+        if not t.source_uri:
+            raise ValueError("source_uri must be set")
+
+        id_, epoch = self._get_sample_id_and_epoch(t)
+        sample_filename = f"samples/{id_}_epoch_{epoch}.json"
+
+        recorder_type = recorder_type_for_location(t.source_uri)
+        if recorder_type is EvalRecorder:
+            # Create filesystem - ownership transfers to returned CM
+            fs = AsyncFilesystem()
+            source_uri = (
+                await self._files_cache.resolve_remote_uri_to_local(fs, t.source_uri)
+                if self._files_cache
+                else t.source_uri
+            )
+            zip_reader = AsyncZipReader(fs, source_uri)
+            entry = await zip_reader.get_member_entry(sample_filename)
+            inner_cm = await zip_reader.open_member_raw(entry)
+            return TranscriptMessagesAndEvents(
+                data=_OwnedZipStreamContextManager(fs, inner_cm),
+                compression_method=entry.compression_method,
+                uncompressed_size=entry.uncompressed_size,
+            )
+        else:
+            # JSON format - read sample via inspect_ai and serialize
+            sample = await recorder_type.read_log_sample(t.source_uri, id_, epoch)
+            sample_bytes = sample.model_dump_json().encode("utf-8")
+            return TranscriptMessagesAndEvents(
+                data=BytesContextManager(sample_bytes),
+                compression_method=None,
+                uncompressed_size=len(sample_bytes),
+            )
+
     async def disconnect(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -449,6 +510,40 @@ class EvalLogTranscriptsView(TranscriptsView):
         if self._fs is not None:
             await self._fs.close()
             self._fs = None
+
+    def _get_sample_id_and_epoch(self, t: TranscriptInfo) -> tuple[str, int]:
+        """Get sample id and epoch from database."""
+        assert self._conn is not None
+        cursor = self._conn.execute(
+            f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
+            (t.transcript_id,),
+        )
+        row = cursor.fetchone()
+        assert row is not None
+        return row[0], row[1]
+
+    async def _get_zip_reader_and_entry(
+        self, t: TranscriptInfo
+    ) -> tuple[AsyncZipReader, ZipEntry]:
+        """Get ZIP reader and entry for transcript's sample file."""
+        id_, epoch = self._get_sample_id_and_epoch(t)
+        sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
+
+        if not self._fs:
+            self._fs = AsyncFilesystem()
+
+        assert t.source_uri  # validated by callers
+        source_uri = (
+            await self._files_cache.resolve_remote_uri_to_local(
+                self._fs,
+                t.source_uri,
+            )
+            if self._files_cache
+            else t.source_uri
+        )
+        zip_reader = AsyncZipReader(self._fs, source_uri)
+        entry = await zip_reader.get_member_entry(sample_file_name)
+        return zip_reader, entry
 
 
 def transcripts_from_logs(logs: Logs) -> Transcripts:

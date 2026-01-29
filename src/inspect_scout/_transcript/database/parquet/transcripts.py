@@ -37,9 +37,11 @@ from ...transcripts import (
     TranscriptsReader,
 )
 from ...types import (
+    BytesContextManager,
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
     TranscriptTooLargeError,
 )
 from ..database import TranscriptsDB
@@ -65,6 +67,95 @@ logger = getLogger(__name__)
 
 
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
+CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
+
+
+class _ParquetStreamContextManager:
+    """Streams messages/events JSON from parquet using its own DuckDB connection.
+
+    Creates a fresh DuckDB connection on __aenter__ and closes it on __aexit__.
+    This allows the parent view to close before data is consumed.
+    """
+
+    def __init__(
+        self,
+        parquet_path: str,
+        transcript_id: str,
+        enc_config: str,
+    ) -> None:
+        self._parquet_path = parquet_path
+        self._transcript_id = transcript_id
+        self._enc_config = enc_config
+        self._conn: duckdb.DuckDBPyConnection | None = None
+
+    async def __aenter__(self) -> "_ParquetStreamContextManager":
+        # Create fresh connection for streaming
+        self._conn = duckdb.connect(":memory:")
+        # Re-acquire encryption key from environment (same as connect() does)
+        if self._enc_config:  # enc_config is non-empty only for encrypted dbs
+            key = get_encryption_key_from_env()
+            if key:
+                self._conn.execute(
+                    f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
+                )
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    async def aclose(self) -> None:
+        """Explicitly close resources. Safe to call multiple times or after __aexit__."""
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    def __aiter__(self) -> "_ParquetStreamContextManager":
+        return self
+
+    async def __anext__(self) -> bytes:
+        # This is called repeatedly - we need to yield chunks
+        # Use a generator approach via internal state
+        if not hasattr(self, "_generator"):
+            self._generator = self._stream_chunks()
+        try:
+            return await self._generator.__anext__()
+        except StopAsyncIteration:
+            raise
+
+    async def _stream_chunks(self) -> AsyncIterator[bytes]:
+        """Stream JSON chunks from DuckDB query result."""
+        assert self._conn is not None
+
+        try:
+            sql = f"SELECT messages, events FROM read_parquet(?, union_by_name=true{self._enc_config}) WHERE transcript_id = ?"
+            result = self._conn.execute(
+                sql, [self._parquet_path, self._transcript_id]
+            ).fetchone()
+        except duckdb.BinderException:
+            result = None
+
+        messages_json: str | None = result[0] if result else None
+        events_json: str | None = result[1] if result else None
+
+        yield b'{"messages": '
+        if messages_json:
+            messages_bytes = messages_json.encode("utf-8")
+            for i in range(0, len(messages_bytes), CHUNK_SIZE):
+                yield messages_bytes[i : i + CHUNK_SIZE]
+        else:
+            yield b"[]"
+
+        yield b', "events": '
+        if events_json:
+            events_bytes = events_json.encode("utf-8")
+            for i in range(0, len(events_bytes), CHUNK_SIZE):
+                yield events_bytes[i : i + CHUNK_SIZE]
+        else:
+            yield b"[]"
+
+        yield b"}"
 
 
 class ParquetTranscriptInfo(TranscriptInfo):
@@ -599,31 +690,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Stream combined JSON construction
             async def stream_content_bytes() -> AsyncIterator[bytes]:
                 """Stream construction of combined JSON object."""
-                yield b"{"
+                chunk_size = 64 * 1024
 
-                # Stream messages if we have them
+                yield b'{"messages": '
                 if messages_json:
-                    yield b'"messages": '
-                    # Stream the array directly in 64KB chunks
                     messages_bytes = messages_json.encode("utf-8")
-                    chunk_size = 64 * 1024
                     for i in range(0, len(messages_bytes), chunk_size):
                         yield messages_bytes[i : i + chunk_size]
+                else:
+                    yield b"[]"
 
-                # Add separator if we have both
-                if messages_json and events_json:
-                    yield b", "
-
-                # Stream events if we have them
+                yield b', "events": '
                 if events_json:
-                    yield b'"events": '
-                    # Stream the array directly in 64KB chunks
                     events_bytes = events_json.encode("utf-8")
-                    chunk_size = 64 * 1024
                     for i in range(0, len(events_bytes), chunk_size):
                         yield events_bytes[i : i + chunk_size]
+                else:
+                    yield b"[]"
 
-                # Close the combined JSON object
                 yield b"}"
 
             # Use existing streaming JSON parser with filtering
@@ -633,6 +717,41 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 content.messages,
                 content.events,
             )
+
+    @override
+    async def read_messages_events(
+        self, t: TranscriptInfo
+    ) -> TranscriptMessagesAndEvents:
+        assert self._conn is not None
+
+        # Get filename from index (must happen now while connection is open)
+        filename_result = self._conn.execute(
+            "SELECT filename FROM transcript_index WHERE transcript_id = ?",
+            [t.transcript_id],
+        ).fetchone()
+
+        if not filename_result:
+            empty_json = b'{"messages": [], "events": []}'
+            return TranscriptMessagesAndEvents(
+                data=BytesContextManager(empty_json),
+                compression_method=None,
+                uncompressed_size=len(empty_json),
+            )
+
+        relative_filename = filename_result[0]
+        full_path = self._full_parquet_path(relative_filename)
+
+        # Get size upfront for API limit checks (must happen now)
+        content_size = self._get_content_size(full_path, t.transcript_id)
+
+        # Capture encryption config now (view may close before streaming)
+        enc_config = self._read_parquet_encryption_config()
+
+        return TranscriptMessagesAndEvents(
+            data=_ParquetStreamContextManager(full_path, t.transcript_id, enc_config),
+            compression_method=None,
+            uncompressed_size=content_size,
+        )
 
     async def _insert_from_transcripts(
         self,

@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, JsonValue
+from inspect_ai.event._event import Event
+from inspect_ai.model._chat_message import ChatMessage
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from inspect_scout._project.types import ProjectConfig
 from inspect_scout._query.order_by import OrderBy
@@ -235,3 +237,21 @@ class ScannersResponse:
     """Response body for GET /scanners endpoint."""
 
     items: list[ScannerInfo]
+
+
+class MessagesEventsResponse(BaseModel):
+    """Response for GET /transcripts/{dir}/{id}/messages-events endpoint."""
+
+    messages: list[ChatMessage]
+    events: list[Event]
+    attachments: dict[str, str] | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+@dataclass
+class StreamMetadata:
+    """Metadata yielded first from streaming generators."""
+
+    compression_method: int | None
+    uncompressed_size: int | None

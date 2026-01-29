@@ -109,8 +109,10 @@ REQUIRED_RAW_TRACES = [
     "scout-test-raw-openai-simple-v2",
     "scout-test-raw-openai-tools-v2",
     "scout-test-raw-openai-multiturn-v2",
+    "scout-test-raw-openai-multiturn-tools-v2",
     "scout-test-raw-anthropic-tools-v2",
     "scout-test-raw-anthropic-multiturn-v2",
+    "scout-test-raw-anthropic-multiturn-tools-v2",
     # Note: raw Google trace removed - google.genai API has no LangSmith wrapper
 ]
 
@@ -123,6 +125,9 @@ REQUIRED_LANGCHAIN_TRACES = [
     "scout-test-langchain-openai-multiturn-v2",
     "scout-test-langchain-anthropic-multiturn-v2",
     "scout-test-langchain-google-multiturn-v2",
+    # LangChain multi-turn traces (with tools)
+    "scout-test-langchain-openai-multiturn-tools-v2",
+    "scout-test-langchain-anthropic-multiturn-tools-v2",
 ]
 
 # Combined list for compatibility
@@ -581,6 +586,222 @@ def bootstrap_raw_anthropic_multiturn() -> None:
         )
 
 
+def bootstrap_raw_openai_multiturn_tools() -> None:
+    """Create a multi-turn OpenAI trace with tool calls across turns.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    import langsmith
+    from langsmith.wrappers import wrap_openai
+    from openai import OpenAI
+
+    print("  Creating: scout-test-raw-openai-multiturn-tools-v2")
+
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_PROJECT"] = LANGSMITH_TEST_PROJECT
+
+    client = wrap_openai(OpenAI())
+
+    messages: list[dict[str, Any]] = [
+        {
+            "role": "system",
+            "content": "You are a helpful weather assistant. Use tools when needed.",
+        },
+        {"role": "user", "content": "What's the weather in San Francisco?"},
+    ]
+
+    with langsmith.trace(
+        name="scout-test-raw-openai-multiturn-tools-v2",
+        tags=[SCOUT_TEST_TAG, "provider:openai"],
+    ):
+        # Turn 1: Ask about SF weather
+        response1 = client.chat.completions.create(
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=OPENAI_TOOLS,
+        )
+
+        assistant_msg1 = response1.choices[0].message
+        messages.append(assistant_msg1.model_dump())
+
+        if assistant_msg1.tool_calls:
+            for tool_call in assistant_msg1.tool_calls:
+                result = execute_tool(
+                    tool_call.function.name,
+                    json.loads(tool_call.function.arguments),
+                )
+                messages.append(
+                    {"role": "tool", "tool_call_id": tool_call.id, "content": result}
+                )
+
+            # Get response after tool
+            response1b = client.chat.completions.create(
+                model="gpt-5-mini-2025-08-07",
+                messages=messages,
+                tools=OPENAI_TOOLS,
+            )
+            messages.append(response1b.choices[0].message.model_dump())
+
+        # Turn 2: Ask about NYC weather
+        messages.append({"role": "user", "content": "What about New York?"})
+
+        response2 = client.chat.completions.create(
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=OPENAI_TOOLS,
+        )
+
+        assistant_msg2 = response2.choices[0].message
+        messages.append(assistant_msg2.model_dump())
+
+        if assistant_msg2.tool_calls:
+            for tool_call in assistant_msg2.tool_calls:
+                result = execute_tool(
+                    tool_call.function.name,
+                    json.loads(tool_call.function.arguments),
+                )
+                messages.append(
+                    {"role": "tool", "tool_call_id": tool_call.id, "content": result}
+                )
+
+            # Get response after tool
+            response2b = client.chat.completions.create(
+                model="gpt-5-mini-2025-08-07",
+                messages=messages,
+                tools=OPENAI_TOOLS,
+            )
+            messages.append(response2b.choices[0].message.model_dump())
+
+        # Turn 3: Ask comparison (no tool needed)
+        messages.append({"role": "user", "content": "Which city is warmer?"})
+
+        client.chat.completions.create(
+            model="gpt-5-mini-2025-08-07",
+            messages=messages,
+            tools=OPENAI_TOOLS,
+        )
+
+
+def bootstrap_raw_anthropic_multiturn_tools() -> None:
+    """Create a multi-turn Anthropic trace with tool calls across turns.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    import langsmith
+    from anthropic import Anthropic
+    from langsmith.wrappers import wrap_anthropic
+
+    print("  Creating: scout-test-raw-anthropic-multiturn-tools-v2")
+
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_PROJECT"] = LANGSMITH_TEST_PROJECT
+
+    client = wrap_anthropic(Anthropic())
+
+    messages: list[dict[str, Any]] = [
+        {"role": "user", "content": "What's the weather in San Francisco?"},
+    ]
+
+    with langsmith.trace(
+        name="scout-test-raw-anthropic-multiturn-tools-v2",
+        tags=[SCOUT_TEST_TAG, "provider:anthropic"],
+    ):
+        # Turn 1: Ask about SF weather
+        response1 = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            system="You are a helpful weather assistant. Use tools when needed.",
+            messages=messages,
+            tools=ANTHROPIC_TOOLS,
+        )
+
+        messages.append({"role": "assistant", "content": response1.content})
+
+        tool_results = []
+        for block in response1.content:
+            if block.type == "tool_use":
+                result = execute_tool(block.name, block.input)
+                tool_results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": result}
+                )
+
+        if tool_results:
+            messages.append({"role": "user", "content": tool_results})
+
+            # Get response after tool
+            response1b = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                system="You are a helpful weather assistant. Use tools when needed.",
+                messages=messages,
+                tools=ANTHROPIC_TOOLS,
+            )
+            # Extract text content
+            text_content = ""
+            for block in response1b.content:
+                if hasattr(block, "text"):
+                    text_content = block.text
+                    break
+            messages.append({"role": "assistant", "content": text_content})
+
+        # Turn 2: Ask about NYC weather
+        messages.append({"role": "user", "content": "What about New York?"})
+
+        response2 = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            system="You are a helpful weather assistant. Use tools when needed.",
+            messages=messages,
+            tools=ANTHROPIC_TOOLS,
+        )
+
+        messages.append({"role": "assistant", "content": response2.content})
+
+        tool_results = []
+        for block in response2.content:
+            if block.type == "tool_use":
+                result = execute_tool(block.name, block.input)
+                tool_results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": result}
+                )
+
+        if tool_results:
+            messages.append({"role": "user", "content": tool_results})
+
+            # Get response after tool
+            response2b = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                system="You are a helpful weather assistant. Use tools when needed.",
+                messages=messages,
+                tools=ANTHROPIC_TOOLS,
+            )
+            # Extract text content
+            text_content = ""
+            for block in response2b.content:
+                if hasattr(block, "text"):
+                    text_content = block.text
+                    break
+            messages.append({"role": "assistant", "content": text_content})
+
+        # Turn 3: Ask comparison (no tool needed)
+        messages.append({"role": "user", "content": "Which city is warmer?"})
+
+        client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            system="You are a helpful weather assistant. Use tools when needed.",
+            messages=messages,
+            tools=ANTHROPIC_TOOLS,
+        )
+
+
 # =============================================================================
 # LangChain Agent Bootstrap Functions
 # =============================================================================
@@ -875,6 +1096,151 @@ def bootstrap_langchain_google_multiturn() -> None:
     )
 
 
+# =============================================================================
+# LangChain Multi-turn with Tools Bootstrap Functions
+# =============================================================================
+
+
+def bootstrap_langchain_openai_multiturn_tools() -> None:
+    """Create a LangChain multi-turn trace with OpenAI and tool calls.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    try:
+        from langchain.agents import create_agent
+    except ImportError:
+        print(
+            "  Skipping LangChain OpenAI multi-turn-tools - langchain packages not installed"
+        )
+        return
+
+    print("  Creating: scout-test-langchain-openai-multiturn-tools-v2")
+
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_PROJECT"] = LANGSMITH_TEST_PROJECT
+
+    def get_weather(city: str) -> str:
+        """Get the current weather for a city."""
+        return get_weather_tool(city)
+
+    agent = create_agent(
+        model="openai:gpt-5-mini-2025-08-07",
+        tools=[get_weather],
+        system_prompt="You are a helpful weather assistant. Use tools when needed.",
+    )
+
+    # Build multi-turn conversation with tool calls
+    # Turn 1: Ask about SF, expect tool call
+    result1 = agent.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": "What's the weather in San Francisco?"}
+            ]
+        },
+        config={
+            "run_name": "scout-test-langchain-openai-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:openai", "type:multiturn-tools"],
+        },
+    )
+
+    # Turn 2: Continue conversation asking about NYC
+    messages = result1["messages"] + [
+        {"role": "user", "content": "What about New York?"}
+    ]
+    result2 = agent.invoke(
+        {"messages": messages},
+        config={
+            "run_name": "scout-test-langchain-openai-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:openai", "type:multiturn-tools"],
+        },
+    )
+
+    # Turn 3: Ask comparison (no tool needed)
+    messages = result2["messages"] + [
+        {"role": "user", "content": "Which city is warmer?"}
+    ]
+    agent.invoke(
+        {"messages": messages},
+        config={
+            "run_name": "scout-test-langchain-openai-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:openai", "type:multiturn-tools"],
+        },
+    )
+
+
+def bootstrap_langchain_anthropic_multiturn_tools() -> None:
+    """Create a LangChain multi-turn trace with Anthropic and tool calls.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    try:
+        from langchain.agents import create_agent
+    except ImportError:
+        print(
+            "  Skipping LangChain Anthropic multi-turn-tools - langchain packages not installed"
+        )
+        return
+
+    print("  Creating: scout-test-langchain-anthropic-multiturn-tools-v2")
+
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_PROJECT"] = LANGSMITH_TEST_PROJECT
+
+    def get_weather(city: str) -> str:
+        """Get the current weather for a city."""
+        return get_weather_tool(city)
+
+    agent = create_agent(
+        model="anthropic:claude-haiku-4-5-20251001",
+        tools=[get_weather],
+        system_prompt="You are a helpful weather assistant. Use tools when needed.",
+    )
+
+    # Build multi-turn conversation with tool calls
+    # Turn 1: Ask about SF, expect tool call
+    result1 = agent.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": "What's the weather in San Francisco?"}
+            ]
+        },
+        config={
+            "run_name": "scout-test-langchain-anthropic-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:anthropic", "type:multiturn-tools"],
+        },
+    )
+
+    # Turn 2: Continue conversation asking about NYC
+    messages = result1["messages"] + [
+        {"role": "user", "content": "What about New York?"}
+    ]
+    result2 = agent.invoke(
+        {"messages": messages},
+        config={
+            "run_name": "scout-test-langchain-anthropic-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:anthropic", "type:multiturn-tools"],
+        },
+    )
+
+    # Turn 3: Ask comparison (no tool needed)
+    messages = result2["messages"] + [
+        {"role": "user", "content": "Which city is warmer?"}
+    ]
+    agent.invoke(
+        {"messages": messages},
+        config={
+            "run_name": "scout-test-langchain-anthropic-multiturn-tools-v2",
+            "tags": [SCOUT_TEST_TAG, "provider:anthropic", "type:multiturn-tools"],
+        },
+    )
+
+
 def bootstrap_langchain_traces() -> None:
     """Bootstrap all LangChain traces (agents and multi-turn)."""
     print("\nBootstrapping LangChain traces...")
@@ -911,6 +1277,17 @@ def bootstrap_langchain_traces() -> None:
     except Exception as e:
         print(f"  Failed to create LangChain Google multi-turn: {e}")
 
+    # Multi-turn traces (with tools)
+    try:
+        bootstrap_langchain_openai_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create LangChain OpenAI multi-turn-tools: {e}")
+
+    try:
+        bootstrap_langchain_anthropic_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create LangChain Anthropic multi-turn-tools: {e}")
+
     # Disable tracing after bootstrap
     os.environ.pop("LANGSMITH_TRACING", None)
 
@@ -937,6 +1314,11 @@ def bootstrap_traces() -> None:
     except Exception as e:
         print(f"  Failed to create OpenAI multi-turn trace: {e}")
 
+    try:
+        bootstrap_raw_openai_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create OpenAI multi-turn-tools trace: {e}")
+
     # Anthropic raw traces
     try:
         bootstrap_raw_anthropic_tools()
@@ -947,6 +1329,11 @@ def bootstrap_traces() -> None:
         bootstrap_raw_anthropic_multiturn()
     except Exception as e:
         print(f"  Failed to create Anthropic multi-turn trace: {e}")
+
+    try:
+        bootstrap_raw_anthropic_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create Anthropic multi-turn-tools trace: {e}")
 
     # Note: Raw Google trace removed - google.genai API has no LangSmith wrapper
 
@@ -981,6 +1368,17 @@ def bootstrap_traces() -> None:
         bootstrap_langchain_google_multiturn()
     except Exception as e:
         print(f"  Failed to create LangChain Google multi-turn: {e}")
+
+    # LangChain multi-turn traces (with tools)
+    try:
+        bootstrap_langchain_openai_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create LangChain OpenAI multi-turn-tools: {e}")
+
+    try:
+        bootstrap_langchain_anthropic_multiturn_tools()
+    except Exception as e:
+        print(f"  Failed to create LangChain Anthropic multi-turn-tools: {e}")
 
     # Disable tracing after bootstrap
     os.environ.pop("LANGSMITH_TRACING", None)

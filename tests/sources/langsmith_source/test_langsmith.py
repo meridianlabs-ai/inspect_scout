@@ -560,6 +560,132 @@ async def test_langsmith_raw_anthropic_multiturn() -> None:
 
 @skip_if_no_langsmith
 @pytest.mark.asyncio
+async def test_langsmith_raw_openai_multiturn_tools() -> None:
+    """Test fetching multi-turn OpenAI trace with tool calls across turns.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources._langsmith import langsmith
+
+    async for transcript in langsmith(
+        project=LANGSMITH_TEST_PROJECT,
+        filter='eq(name, "scout-test-raw-openai-multiturn-tools-v2")',
+        limit=1,
+    ):
+        model_events, role_counts = _assert_langsmith_transcript(
+            transcript,
+            expected_name="scout-test-raw-openai-multiturn-tools-v2",
+            model_pattern="gpt",
+            min_model_events=4,  # Multiple LLM calls across turns with tools
+            min_messages=8,  # system + 3 user + 2 tool results + multiple assistant
+        )
+
+        # Verify expected roles
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool result messages"
+
+        # Multiple user messages (3 turns)
+        assert role_counts.get("user", 0) >= 3, (
+            f"Expected at least 3 user messages, got {role_counts.get('user', 0)}"
+        )
+
+        # Verify tool calls exist in assistant messages (at least 2 weather queries)
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 2, (
+            f"Expected at least 2 assistant messages with tool_calls, "
+            f"got {len(tool_call_messages)}"
+        )
+
+        # Verify tool results exist (at least 2 weather results)
+        tool_result_messages = [m for m in transcript.messages if m.role == "tool"]
+        assert len(tool_result_messages) >= 2, (
+            f"Expected at least 2 tool result messages, got {len(tool_result_messages)}"
+        )
+
+        # Verify tool results have content
+        for tool_msg in tool_result_messages:
+            assert hasattr(tool_msg, "content"), "Tool message should have content"
+            assert tool_msg.content, "Tool message content should not be empty"
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-raw-openai-multiturn-tools-v2 - run bootstrap"
+    )
+
+
+@skip_if_no_langsmith
+@pytest.mark.asyncio
+async def test_langsmith_raw_anthropic_multiturn_tools() -> None:
+    """Test fetching multi-turn Anthropic trace with tool calls across turns.
+
+    This trace has 3 conversational turns where tools are used in turns 1 and 2:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources._langsmith import langsmith
+
+    async for transcript in langsmith(
+        project=LANGSMITH_TEST_PROJECT,
+        filter='eq(name, "scout-test-raw-anthropic-multiturn-tools-v2")',
+        limit=1,
+    ):
+        model_events, role_counts = _assert_langsmith_transcript(
+            transcript,
+            expected_name="scout-test-raw-anthropic-multiturn-tools-v2",
+            model_pattern="claude",
+            min_model_events=4,  # Multiple LLM calls across turns with tools
+            min_messages=8,  # 3 user + 2 tool results + multiple assistant
+        )
+
+        # Verify expected roles
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool result messages"
+
+        # Multiple user messages (3 turns)
+        assert role_counts.get("user", 0) >= 3, (
+            f"Expected at least 3 user messages, got {role_counts.get('user', 0)}"
+        )
+
+        # Verify tool calls exist in assistant messages (at least 2 weather queries)
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 2, (
+            f"Expected at least 2 assistant messages with tool_calls, "
+            f"got {len(tool_call_messages)}"
+        )
+
+        # Verify tool results exist (at least 2 weather results)
+        tool_result_messages = [m for m in transcript.messages if m.role == "tool"]
+        assert len(tool_result_messages) >= 2, (
+            f"Expected at least 2 tool result messages, got {len(tool_result_messages)}"
+        )
+
+        # Verify tool results have content
+        for tool_msg in tool_result_messages:
+            assert hasattr(tool_msg, "content"), "Tool message should have content"
+            assert tool_msg.content, "Tool message content should not be empty"
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-raw-anthropic-multiturn-tools-v2 - run bootstrap"
+    )
+
+
+@skip_if_no_langsmith
+@pytest.mark.asyncio
 async def test_langsmith_langchain_openai_agent() -> None:
     """Test fetching LangChain agent trace with OpenAI.
 
@@ -906,6 +1032,112 @@ async def test_langsmith_langchain_google_multiturn() -> None:
 
     pytest.skip(
         "No transcript found for scout-test-langchain-google-multiturn-v2 - run bootstrap"
+    )
+
+
+@skip_if_no_langsmith
+@pytest.mark.asyncio
+async def test_langsmith_langchain_openai_multiturn_tools() -> None:
+    """Test fetching LangChain multi-turn trace with OpenAI and tool calls.
+
+    This trace has multiple turns with tool calls:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources._langsmith import langsmith
+
+    async for transcript in langsmith(
+        project=LANGSMITH_TEST_PROJECT,
+        filter='eq(name, "scout-test-langchain-openai-multiturn-tools-v2")',
+        limit=1,
+    ):
+        model_events, role_counts = _assert_langsmith_transcript(
+            transcript,
+            expected_name="scout-test-langchain-openai-multiturn-tools-v2",
+            model_pattern="gpt",
+            min_model_events=1,
+            min_messages=4,  # At minimum: user + assistant with tool + tool + assistant
+        )
+
+        # Verify expected roles
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool result messages"
+
+        # Verify tool calls exist in assistant messages
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 1, (
+            f"Expected at least 1 assistant message with tool_calls, "
+            f"got {len(tool_call_messages)}"
+        )
+
+        # Verify tool results exist
+        tool_result_messages = [m for m in transcript.messages if m.role == "tool"]
+        assert len(tool_result_messages) >= 1, (
+            f"Expected at least 1 tool result message, got {len(tool_result_messages)}"
+        )
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-langchain-openai-multiturn-tools-v2 - run bootstrap"
+    )
+
+
+@skip_if_no_langsmith
+@pytest.mark.asyncio
+async def test_langsmith_langchain_anthropic_multiturn_tools() -> None:
+    """Test fetching LangChain multi-turn trace with Anthropic and tool calls.
+
+    This trace has multiple turns with tool calls:
+    - Turn 1: Ask weather in SF -> tool call -> response
+    - Turn 2: Ask weather in NYC -> tool call -> response
+    - Turn 3: Ask comparison -> no tool -> response
+    """
+    from inspect_scout.sources._langsmith import langsmith
+
+    async for transcript in langsmith(
+        project=LANGSMITH_TEST_PROJECT,
+        filter='eq(name, "scout-test-langchain-anthropic-multiturn-tools-v2")',
+        limit=1,
+    ):
+        model_events, role_counts = _assert_langsmith_transcript(
+            transcript,
+            expected_name="scout-test-langchain-anthropic-multiturn-tools-v2",
+            model_pattern="claude",
+            min_model_events=1,
+            min_messages=4,  # At minimum: user + assistant with tool + tool + assistant
+        )
+
+        # Verify expected roles
+        assert "user" in role_counts, "Expected user messages"
+        assert "assistant" in role_counts, "Expected assistant messages"
+        assert "tool" in role_counts, "Expected tool result messages"
+
+        # Verify tool calls exist in assistant messages
+        tool_call_messages = [
+            m
+            for m in transcript.messages
+            if m.role == "assistant" and hasattr(m, "tool_calls") and m.tool_calls
+        ]
+        assert len(tool_call_messages) >= 1, (
+            f"Expected at least 1 assistant message with tool_calls, "
+            f"got {len(tool_call_messages)}"
+        )
+
+        # Verify tool results exist
+        tool_result_messages = [m for m in transcript.messages if m.role == "tool"]
+        assert len(tool_result_messages) >= 1, (
+            f"Expected at least 1 tool result message, got {len(tool_result_messages)}"
+        )
+        return
+
+    pytest.skip(
+        "No transcript found for scout-test-langchain-anthropic-multiturn-tools-v2 - run bootstrap"
     )
 
 

@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Path
+from fastapi.responses import StreamingResponse
 from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_413_CONTENT_TOO_LARGE,
@@ -131,6 +132,83 @@ def create_transcripts_router() -> APIRouter:
                     status_code=HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"Transcript too large: {e.size} bytes exceeds {e.max_size} limit",
                 ) from None
+
+    @router.get(
+        "/transcripts/{dir}/{id}/info",
+        response_model=TranscriptInfo,
+        response_class=InspectPydanticJSONResponse,
+        summary="Get transcript info",
+        description="Returns transcript metadata without messages or events.",
+    )
+    async def transcript_info(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> TranscriptInfo:
+        """Get transcript info (metadata only) by ID."""
+        transcripts_dir = decode_base64url(dir)
+
+        async with transcripts_view(transcripts_dir) as view:
+            condition = Column("transcript_id") == id
+            infos = [info async for info in view.select(Query(where=[condition]))]
+            if not infos:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
+                )
+            return infos[0]
+
+    @router.get(
+        "/transcripts/{dir}/{id}/messages-events",
+        summary="Get transcript messages and events (raw)",
+        description="Returns raw JSON bytes for transcript messages and events. "
+        "May be DEFLATE-compressed (check Content-Encoding header). "
+        "JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs "
+        "must be resolved client-side.",
+    )
+    async def transcript_messages_and_events(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> StreamingResponse:
+        """Stream raw transcript messages/events JSON.
+
+        Returns the raw JSON bytes from the underlying storage, potentially
+        DEFLATE-compressed. When compressed, the Content-Encoding header is set
+        to 'deflate' so browsers auto-decompress.
+
+        NOTE ON ATTACHMENTS: The JSON may contain an 'attachments' dict at the
+        top level. Strings within 'messages' and 'events' may contain references
+        like 'attachment://<32-char-hex-id>' that must be resolved client-side
+        by looking up the ID in the 'attachments' dict.
+
+        NOTE ON CONTENT-ENCODING: HTTP/1.1 defines 'deflate' as zlib-wrapped
+        (RFC 1950), but ZIP files use raw DEFLATE (RFC 1951). We send raw
+        DEFLATE with Content-Encoding: deflate anyway because:
+        1. All browsers accept raw DEFLATE (they sniff the format)
+        2. IE only accepts raw DEFLATE (not zlib-wrapped)
+        3. This matches what most servers historically sent
+        See: https://en.wikipedia.org/wiki/HTTP_compression#Problems_preventing_the_use_of_HTTP_compression
+        """
+        transcripts_dir = decode_base64url(dir)
+
+        async with transcripts_view(transcripts_dir) as view:
+            condition = Column("transcript_id") == id
+            infos = [info async for info in view.select(Query(where=[condition]))]
+            if not infos:
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND, detail="Transcript not found"
+                )
+
+            result = await view.read_messages_events(infos[0])
+
+            headers: dict[str, str] = {}
+            # ZIP compression method 8 = DEFLATE
+            if result.compression_method == 8:
+                headers["Content-Encoding"] = "deflate"
+
+            return StreamingResponse(
+                content=result.data,
+                media_type="application/json",
+                headers=headers or None,
+            )
 
     @router.post(
         "/transcripts/{dir}/distinct",

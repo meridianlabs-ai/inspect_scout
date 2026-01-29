@@ -13,6 +13,7 @@ from ..types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
 )
 
 
@@ -93,6 +94,28 @@ class TranscriptsView(abc.ABC):
             t: Transcript to read.
             content: Content to read (messages, events, etc.)
             max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
+        """
+        ...
+
+    @abc.abstractmethod
+    async def read_messages_events(
+        self, t: TranscriptInfo
+    ) -> TranscriptMessagesAndEvents:
+        """Read raw messages/events JSON bytes.
+
+        Returns raw UTF-8 JSON bytes, possibly compressed. The JSON contains
+        at least 'messages' and 'events' fields but may include additional data.
+
+        Note: The JSON may contain an 'attachments' dict at the top level.
+        Strings within 'messages' and 'events' may contain references like
+        'attachment://<32-char-hex-id>' that must be resolved by looking up
+        the ID in the 'attachments' dict.
+
+        Args:
+            t: Transcript to read.
+
+        Returns:
+            TranscriptMessagesAndEvents with data stream and compression method.
         """
         ...
 

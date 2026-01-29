@@ -40,6 +40,7 @@ from ...types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
     TranscriptTooLargeError,
 )
 from ..database import TranscriptsDB
@@ -633,6 +634,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 content.messages,
                 content.events,
             )
+
+    @override
+    async def read_messages_events(
+        self, t: TranscriptInfo
+    ) -> TranscriptMessagesAndEvents:
+        # NYI: Parquet stores messages/events as separate JSON string columns.
+        # Implementation would synthesize {"messages": ..., "events": ...} JSON
+        # and stream it uncompressed (compression_method=None).
+        raise NotImplementedError(
+            "read_messages_events not yet implemented for Parquet backend"
+        )
 
     async def _insert_from_transcripts(
         self,

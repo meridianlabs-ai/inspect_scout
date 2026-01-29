@@ -3,7 +3,9 @@ import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
   AppConfig,
+  ChatMessage,
   CreateValidationSetRequest,
+  Event,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -12,6 +14,7 @@ import {
   ScansResponse,
   Status,
   Transcript,
+  TranscriptInfo,
   TranscriptsResponse,
   ValidationCase,
   ValidationCaseRequest,
@@ -20,7 +23,15 @@ import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
+import { resolveDictAttachments } from "./attachmentsHelpers";
 import { serverRequestApi } from "./request";
+
+/** Raw JSON structure from /messages-events endpoint */
+interface MessagesEventsPayload {
+  messages: ChatMessage[];
+  events: Event[];
+  attachments?: Record<string, string>;
+}
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
 
@@ -92,11 +103,38 @@ export const apiScoutServer = (
       transcriptsDir: string,
       id: string
     ): Promise<Transcript> => {
-      const result = await requestApi.fetchString(
-        "GET",
-        `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
-      );
-      return asyncJsonParse<Transcript>(result.raw);
+      const encodedDir = encodeBase64Url(transcriptsDir);
+      const encodedId = encodeURIComponent(id);
+
+      const [infoResult, messagesEventsResult] = await Promise.all([
+        requestApi.fetchString(
+          "GET",
+          `/transcripts/${encodedDir}/${encodedId}/info`
+        ),
+        requestApi.fetchString(
+          "GET",
+          `/transcripts/${encodedDir}/${encodedId}/messages-events`
+        ),
+      ]);
+
+      const [info, messagesEvents] = await Promise.all([
+        asyncJsonParse<TranscriptInfo>(infoResult.raw),
+        asyncJsonParse<MessagesEventsPayload>(messagesEventsResult.raw),
+      ]);
+
+      const attachments = messagesEvents.attachments;
+      const hasAttachments =
+        attachments !== undefined && Object.keys(attachments).length > 0;
+
+      return {
+        ...info,
+        messages: hasAttachments
+          ? resolveDictAttachments(messagesEvents.messages, attachments)
+          : messagesEvents.messages,
+        events: hasAttachments
+          ? resolveDictAttachments(messagesEvents.events, attachments)
+          : messagesEvents.events,
+      };
     },
     getTranscriptsColumnValues: async (
       transcriptsDir: string,

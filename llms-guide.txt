@@ -1195,16 +1195,6 @@ scout scan scan.yaml --limit 20
 
 ## Scanner Validation
 
-> [!NOTE]
->
-> The validation features described below are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ## Overview
 
 When developing scanners, it’s often desirable to create a feedback loop
@@ -3461,16 +3451,6 @@ included embedded JSON data, these are all noted below):
 # Validation
 
 
-> [!NOTE]
->
-> The validation features described below are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ## Overview
 
 When developing scanners, it’s often desirable to create a feedback loop
@@ -4223,16 +4203,6 @@ database:
 
 # Capturing Transcripts
 
-
-> [!NOTE]
->
-> Note that the transcript capture feature described below are available
-> only in the development version of Inspect Scout. Install the
-> development version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
 
 ## Overview
 

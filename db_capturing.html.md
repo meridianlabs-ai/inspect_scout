@@ -1,16 +1,6 @@
 # Capturing Transcripts
 
 
-> [!NOTE]
->
-> Note that the transcript capture feature described below are available
-> only in the development version of Inspect Scout. Install the
-> development version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ## Overview
 
 The `observe()` decorator and context manager captures LLM calls and

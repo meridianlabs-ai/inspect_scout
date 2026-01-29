@@ -2,14 +2,6 @@
 title: Capturing Transcripts
 ---
 
-::: {.callout-note}
-Note that the transcript capture feature described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 ## Overview
 
 The `observe()` decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.

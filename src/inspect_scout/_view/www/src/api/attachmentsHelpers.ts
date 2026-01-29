@@ -12,26 +12,25 @@ const resolveString = (
       )
     : text;
 
-const resolveDictAttachmentsImpl = (
+const resolveAttachmentsImpl = (
   obj: unknown,
   resolveFunc: (s: string) => string
 ): unknown => {
   if (typeof obj === "string") return resolveFunc(obj);
   if (typeof obj === "object" && obj !== null) {
     if (Array.isArray(obj))
-      return obj.map((item) => resolveDictAttachmentsImpl(item, resolveFunc));
+      return obj.map((item) => resolveAttachmentsImpl(item, resolveFunc));
     return Object.fromEntries(
       Object.entries(obj).map(([k, v]) => [
         k,
-        resolveDictAttachmentsImpl(v, resolveFunc),
+        resolveAttachmentsImpl(v, resolveFunc),
       ])
     );
   }
   return obj;
 };
 
-export const resolveDictAttachments = <T>(
+export const resolveAttachments = <T>(
   obj: T,
   attachments: Record<string, string>
-): T =>
-  resolveDictAttachmentsImpl(obj, (s) => resolveString(s, attachments)) as T;
+): T => resolveAttachmentsImpl(obj, (s) => resolveString(s, attachments)) as T;

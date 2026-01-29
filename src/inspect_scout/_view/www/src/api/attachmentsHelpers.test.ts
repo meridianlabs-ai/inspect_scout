@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveDictAttachments } from "./attachmentsHelpers";
+import { resolveAttachments } from "./attachmentsHelpers";
 
 const attachments: Record<string, string> = {
   "00000000000000000000000000000001": "resolved_value_1",
@@ -8,7 +8,7 @@ const attachments: Record<string, string> = {
   abcdef01234567890abcdef012345678: "another_resolved",
 };
 
-describe("resolveDictAttachments", () => {
+describe("resolveAttachments", () => {
   describe("primitives", () => {
     it.each([
       ["null", null, null],
@@ -17,7 +17,7 @@ describe("resolveDictAttachments", () => {
       ["boolean true", true, true],
       ["boolean false", false, false],
     ])("passes through %s unchanged", (_, input, expected) => {
-      expect(resolveDictAttachments(input, attachments)).toBe(expected);
+      expect(resolveAttachments(input, attachments)).toBe(expected);
     });
   });
 
@@ -51,7 +51,7 @@ describe("resolveDictAttachments", () => {
         "resolved_value_1 attachment://ffffffffffffffffffffffffffffffff",
       ],
     ])("%s", (_, input, expected) => {
-      expect(resolveDictAttachments(input, attachments)).toBe(expected);
+      expect(resolveAttachments(input, attachments)).toBe(expected);
     });
   });
 
@@ -62,7 +62,7 @@ describe("resolveDictAttachments", () => {
         "plain",
         "attachment://00000000000000000000000000000002",
       ];
-      expect(resolveDictAttachments(input, attachments)).toEqual([
+      expect(resolveAttachments(input, attachments)).toEqual([
         "resolved_value_1",
         "plain",
         "resolved_value_2",
@@ -71,7 +71,7 @@ describe("resolveDictAttachments", () => {
 
     it("preserves non-string elements", () => {
       const input = [1, true, null, "text"];
-      expect(resolveDictAttachments(input, attachments)).toEqual([
+      expect(resolveAttachments(input, attachments)).toEqual([
         1,
         true,
         null,
@@ -81,7 +81,7 @@ describe("resolveDictAttachments", () => {
 
     it("handles nested arrays", () => {
       const input = [["attachment://00000000000000000000000000000001"]];
-      expect(resolveDictAttachments(input, attachments)).toEqual([
+      expect(resolveAttachments(input, attachments)).toEqual([
         ["resolved_value_1"],
       ]);
     });
@@ -92,14 +92,14 @@ describe("resolveDictAttachments", () => {
       const input = {
         key: "attachment://00000000000000000000000000000001",
       };
-      expect(resolveDictAttachments(input, attachments)).toEqual({
+      expect(resolveAttachments(input, attachments)).toEqual({
         key: "resolved_value_1",
       });
     });
 
     it("preserves non-string values", () => {
       const input = { num: 42, bool: true, nil: null };
-      expect(resolveDictAttachments(input, attachments)).toEqual({
+      expect(resolveAttachments(input, attachments)).toEqual({
         num: 42,
         bool: true,
         nil: null,
@@ -112,7 +112,7 @@ describe("resolveDictAttachments", () => {
           inner: "attachment://00000000000000000000000000000001",
         },
       };
-      expect(resolveDictAttachments(input, attachments)).toEqual({
+      expect(resolveAttachments(input, attachments)).toEqual({
         outer: { inner: "resolved_value_1" },
       });
     });
@@ -121,7 +121,7 @@ describe("resolveDictAttachments", () => {
       const input = {
         items: ["attachment://00000000000000000000000000000001", "plain"],
       };
-      expect(resolveDictAttachments(input, attachments)).toEqual({
+      expect(resolveAttachments(input, attachments)).toEqual({
         items: ["resolved_value_1", "plain"],
       });
     });
@@ -131,7 +131,7 @@ describe("resolveDictAttachments", () => {
         { text: "attachment://00000000000000000000000000000001" },
         { text: "plain" },
       ];
-      expect(resolveDictAttachments(input, attachments)).toEqual([
+      expect(resolveAttachments(input, attachments)).toEqual([
         { text: "resolved_value_1" },
         { text: "plain" },
       ]);
@@ -151,7 +151,7 @@ describe("resolveDictAttachments", () => {
           },
         },
       };
-      expect(resolveDictAttachments(input, attachments)).toEqual({
+      expect(resolveAttachments(input, attachments)).toEqual({
         a: { b: { c: [{ d: "resolved_value_1" }] } },
       });
     });
@@ -162,7 +162,7 @@ describe("resolveDictAttachments", () => {
       const input = {
         text: "attachment://00000000000000000000000000000001",
       };
-      expect(resolveDictAttachments(input, {})).toEqual({
+      expect(resolveAttachments(input, {})).toEqual({
         text: "attachment://00000000000000000000000000000001",
       });
     });
@@ -171,13 +171,13 @@ describe("resolveDictAttachments", () => {
   describe("type preservation", () => {
     it("preserves array type", () => {
       const input = ["a", "b"];
-      const result = resolveDictAttachments(input, attachments);
+      const result = resolveAttachments(input, attachments);
       expect(Array.isArray(result)).toBe(true);
     });
 
     it("preserves object shape", () => {
       const input = { a: 1, b: "text" };
-      const result = resolveDictAttachments(input, attachments);
+      const result = resolveAttachments(input, attachments);
       expect(Object.keys(result)).toEqual(["a", "b"]);
     });
   });

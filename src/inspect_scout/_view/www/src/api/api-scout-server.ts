@@ -23,7 +23,7 @@ import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
-import { resolveDictAttachments } from "./attachmentsHelpers";
+import { resolveAttachments } from "./attachmentsHelpers";
 import { serverRequestApi } from "./request";
 
 /** Raw JSON structure from /messages-events endpoint */
@@ -129,10 +129,10 @@ export const apiScoutServer = (
       return {
         ...info,
         messages: hasAttachments
-          ? resolveDictAttachments(messagesEvents.messages, attachments)
+          ? resolveAttachments(messagesEvents.messages, attachments)
           : messagesEvents.messages,
         events: hasAttachments
-          ? resolveDictAttachments(messagesEvents.events, attachments)
+          ? resolveAttachments(messagesEvents.events, attachments)
           : messagesEvents.events,
       };
     },

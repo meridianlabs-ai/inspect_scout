@@ -8,7 +8,7 @@ from inspect_ai.model import (
     GenerateConfig,
     ModelOutput,
 )
-from inspect_scout._observe.message_ids import (
+from inspect_scout._util.message_ids import (
     MessageIdManager,
     apply_message_ids_to_event,
 )

@@ -29,6 +29,7 @@ from inspect_scout._project import read_project
 from inspect_scout._transcript.database.database import TranscriptsDB
 from inspect_scout._transcript.database.factory import transcripts_db
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._util.message_ids import MessageIdManager, apply_message_ids_to_event
 
 from .context import (
     OP,
@@ -37,7 +38,6 @@ from .context import (
     _current_context,
     _ObserveContextManager,
 )
-from .message_ids import MessageIdManager, apply_message_ids_to_event
 from .providers import (
     ObserveProvider,
     ObserveProviderName,

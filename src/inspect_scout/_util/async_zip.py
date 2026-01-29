@@ -410,6 +410,22 @@ class AsyncZipReader:
             raise KeyError(member_name)
         return entry
 
+    async def open_member_raw(self, member: str | ZipEntry) -> ByteReceiveStream:
+        """Open a ZIP member and stream its raw (likely compressed) bytes.
+
+        Unlike open_member(), this does NOT decompress the data. Use this when
+        you want to pass through the raw bytes (e.g., for HTTP streaming with
+        Content-Encoding: deflate).
+
+        Args:
+            member: Name or ZipEntry of the member file within the archive
+
+        Returns:
+            ByteReceiveStream of raw bytes (may be compressed)
+        """
+        offset, end, _ = await self._get_member_range_and_method(member)
+        return await self._filesystem.read_file_bytes(self._filename, offset, end)
+
     async def open_member(self, member: str | ZipEntry) -> _ZipMemberBytes:
         """Open a ZIP member and stream its decompressed contents.
 

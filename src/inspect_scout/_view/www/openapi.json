@@ -10835,6 +10835,96 @@
         ]
       }
     },
+    "/transcripts/{dir}/{id}/info": {
+      "get": {
+        "description": "Returns transcript metadata without messages or events.",
+        "operationId": "transcript_info_transcripts__dir___id__info_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get transcript info",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/messages-events": {
+      "get": {
+        "description": "Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.",
+        "operationId": "transcript_messages_and_events_transcripts__dir___id__messages_events_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get transcript messages and events (raw)",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
     "/validations": {
       "get": {
         "description": "Scans the project directory for validation files (.csv, .yaml, .json, .jsonl) and returns their URIs.",

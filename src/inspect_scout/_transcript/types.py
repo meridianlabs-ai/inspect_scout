@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterable
 from dataclasses import dataclass, field
 from os import PathLike
 from typing import Any, Literal, Sequence, TypeAlias
@@ -48,6 +49,29 @@ LogPaths: TypeAlias = (
 class TranscriptContent:
     messages: MessageFilter = field(default=None)
     events: EventFilter = field(default=None)
+
+
+@dataclass
+class TranscriptMessagesAndEvents:
+    """Raw UTF-8 JSON bytes for transcript messages/events.
+
+    The JSON contains at least 'messages' and 'events' fields but may
+    include additional data depending on the source.
+    """
+
+    data: AsyncIterable[bytes]
+    """Raw UTF-8 JSON bytes, possibly compressed.
+
+    TODO: Caller must use as async context manager for proper cleanup.
+    Currently typed as AsyncIterable but may hold resources requiring cleanup.
+    """
+
+    compression_method: int | None
+    """ZIP compression method per PKWARE APPNOTE spec, or None if uncompressed.
+
+    See: https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.9.TXT (section 4.4.5)
+    Common values: 0 = stored (no compression), 8 = DEFLATE
+    """
 
 
 class TranscriptInfo(BaseModel):

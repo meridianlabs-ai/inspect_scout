@@ -50,7 +50,7 @@ from typing_extensions import override
 from inspect_scout._query.condition import Condition, ScalarValue
 from inspect_scout._query.condition_sql import condition_as_sql, conditions_as_filter
 from inspect_scout._transcript.database.schema import reserved_columns
-from inspect_scout._util.async_zip import AsyncZipReader
+from inspect_scout._util.async_zip import AsyncZipReader, ZipEntry
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 
 from .._query import Query
@@ -65,6 +65,7 @@ from .types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
     TranscriptTooLargeError,
 )
 from .util import LazyJSONDict
@@ -399,6 +400,48 @@ class EvalLogTranscriptsView(TranscriptsView):
         content: TranscriptContent,
         max_bytes: int | None = None,
     ) -> Transcript:
+        zip_reader, entry = await self._get_zip_reader_and_entry(t)
+        if max_bytes is not None and entry.uncompressed_size > max_bytes:
+            raise TranscriptTooLargeError(
+                t.transcript_id, entry.uncompressed_size, max_bytes
+            )
+        with trace_action(
+            logger,
+            "Scout Eval Log Read",
+            f"Reading from {t.source_uri} ({entry.filename})",
+        ):
+            async with await zip_reader.open_member(entry) as json_iterable:
+                return await load_filtered_transcript(
+                    json_iterable,
+                    t,
+                    content.messages,
+                    content.events,
+                )
+
+    @override
+    async def read_messages_events(
+        self, t: TranscriptInfo
+    ) -> TranscriptMessagesAndEvents:
+        zip_reader, entry = await self._get_zip_reader_and_entry(t)
+        raw_stream = await zip_reader.open_member_raw(entry)
+        return TranscriptMessagesAndEvents(
+            data=raw_stream,
+            compression_method=entry.compression_method,
+        )
+
+    async def disconnect(self) -> None:
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
+        if self._fs is not None:
+            await self._fs.close()
+            self._fs = None
+
+    async def _get_zip_reader_and_entry(
+        self, t: TranscriptInfo
+    ) -> tuple[AsyncZipReader, ZipEntry]:
+        """Get ZIP reader and entry for transcript's sample file."""
         assert self._conn is not None
         cursor = self._conn.execute(
             f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
@@ -413,7 +456,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             self._fs = AsyncFilesystem()
 
         source_uri = (
-            ""  # always has a source_uri
+            ""
             if t.source_uri is None
             else await self._files_cache.resolve_remote_uri_to_local(
                 self._fs,
@@ -424,31 +467,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         )
         zip_reader = AsyncZipReader(self._fs, source_uri)
         entry = await zip_reader.get_member_entry(sample_file_name)
-        if max_bytes is not None and entry.uncompressed_size > max_bytes:
-            raise TranscriptTooLargeError(
-                t.transcript_id, entry.uncompressed_size, max_bytes
-            )
-        with trace_action(
-            logger,
-            "Scout Eval Log Read",
-            f"Reading from {t.source_uri} ({sample_file_name})",
-        ):
-            async with await zip_reader.open_member(entry) as json_iterable:
-                return await load_filtered_transcript(
-                    json_iterable,
-                    t,
-                    content.messages,
-                    content.events,
-                )
-
-    async def disconnect(self) -> None:
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
-
-        if self._fs is not None:
-            await self._fs.close()
-            self._fs = None
+        return zip_reader, entry
 
 
 def transcripts_from_logs(logs: Logs) -> Transcripts:

@@ -1,64 +1,95 @@
-import type {
-  ColDef,
-  FilterChangedEvent,
-  RowClickedEvent,
-  StateUpdatedEvent,
-} from "ag-grid-community";
 import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeBalham,
-} from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
-import { clsx } from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef } from "react";
-import { useParams } from "react-router-dom";
+  flexRender,
+  getCoreRowModel,
+  OnChangeFn,
+  SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import clsx from "clsx";
+import { FC, MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
-import { getRelativePathFromParams, scanRoute } from "../../router/url";
-import { useStore } from "../../state/store";
+import type { SimpleCondition } from "../../query/types";
+import { openRouteInNewTab, scanRoute } from "../../router/url";
+import { useStore, FilterType } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
-import { debounce } from "../../utils/sync";
+import { ColumnFilterControl } from "../components/columnFilter";
 
+import {
+  DEFAULT_COLUMN_ORDER,
+  getScanColumns,
+  ScanColumn,
+  ScanRow,
+} from "./columns";
 import styles from "./ScansGrid.module.css";
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Generate a stable key for a scan item
+function scanItemKey(index: number, item?: ScanRow): string {
+  if (!item) {
+    return String(index);
+  }
+  return item.spec.scan_id;
+}
 
-const GRID_STATE_NAME = "ScanJobsGrid";
+// Get the empty state message based on loading state and configuration
+function getEmptyStateMessage(
+  loading: boolean,
+  resultsDir: string | undefined
+): string {
+  if (loading) return "Loading...";
+  if (!resultsDir) return "No scans directory configured.";
+  return "No matching scans";
+}
 
-// Extends API type with computed relativeLocation for grid display
-type ScanRow = ScanStatusWithActiveInfo & { relativeLocation: string };
-
-export const ScansGrid: FC<{
+interface ScansGridProps {
   scans: ScanStatusWithActiveInfo[];
   resultsDir: string | undefined;
-}> = ({ scans, resultsDir }) => {
-  const params = useParams<{ "*": string }>();
-  const paramsRelativePath = getRelativePathFromParams(params);
+  className?: string | string[];
+  loading?: boolean;
+  /** Called when scroll position nears end */
+  onScrollNearEnd?: () => void;
+  /** Whether more data is available to fetch */
+  hasMore?: boolean;
+  /** Distance from bottom (in px) at which to trigger callback */
+  fetchThreshold?: number;
+  /** Autocomplete suggestions for the currently editing filter column */
+  filterSuggestions?: ScalarValue[];
+  /** Called when a filter column starts/stops being edited */
+  onFilterColumnChange?: (columnId: string | null) => void;
+}
+
+export const ScansGrid: FC<ScansGridProps> = ({
+  scans,
+  resultsDir,
+  className,
+  loading,
+  onScrollNearEnd,
+  hasMore = false,
+  fetchThreshold = 500,
+  filterSuggestions = [],
+  onFilterColumnChange,
+}) => {
+  // The table container which provides the scrollable region
+  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useLoggingNavigate("ScansGrid");
 
-  const gridStates = useStore((state) => state.gridStates);
-  const setGridState = useStore((state) => state.setGridState);
-
+  // Table state from store
+  const sorting = useStore((state) => state.scansTableState.sorting);
+  const columnOrder = useStore((state) => state.scansTableState.columnOrder);
+  const columnFilters = useStore(
+    (state) => state.scansTableState.columnFilters
+  );
+  const visibleColumns = useStore(
+    (state) => state.scansTableState.visibleColumns
+  );
+  const setTableState = useStore((state) => state.setScansTableState);
   const setVisibleScanJobCount = useStore(
     (state) => state.setVisibleScanJobCount
   );
-
-  const gridState = useMemo(() => {
-    const savedState = gridStates[GRID_STATE_NAME];
-    // If no saved state, apply default sorting
-    if (!savedState?.sort) {
-      return {
-        sort: {
-          sortModel: [{ colId: "timestamp", sort: "desc" as const }],
-        },
-      };
-    }
-    return savedState;
-  }, [gridStates]);
 
   // Add computed relativeLocation to each scan
   const data = useMemo(
@@ -67,204 +98,288 @@ export const ScansGrid: FC<{
         ...scan,
         relativeLocation: toRelativePath(scan.location, resultsDir),
       })),
-    [scans, resultsDir, paramsRelativePath]
+    [scans, resultsDir]
   );
 
+  // Update visible count
   useEffect(() => {
     setVisibleScanJobCount(data.length);
   }, [data.length, setVisibleScanJobCount]);
 
-  // Create column definitions
-  const columnDefs = useMemo((): ColDef<ScanRow>[] => {
-    const baseColumns: ColDef<ScanRow>[] = [
-      {
-        colId: "status",
-        headerName: "✓",
-        initialWidth: 70,
-        minWidth: 70,
-        maxWidth: 70,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => {
-          const scan = params.data;
-          if (!scan) return "";
-          if (scan.active_scan_info) return "active";
-          if (scan.errors.length > 0) return "error";
-          return scan.complete ? "complete" : "incomplete";
-        },
-        cellRenderer: (params: {
-          value: string;
-          data: ScanRow | undefined;
-        }) => {
-          const scan = params.data;
-          if (!scan) return null;
-
-          const activeScan = scan.active_scan_info;
-          if (activeScan) {
-            const pct =
-              activeScan.total_scans > 0
-                ? Math.round(
-                    (activeScan.metrics.completed_scans /
-                      activeScan.total_scans) *
-                      100
-                  )
-                : 0;
-            return (
-              <span className={classNameForColor("blue")}>
-                <i className={ApplicationIcons["play-circle"]}></i> {pct}%
-              </span>
-            );
-          }
-
-          const hasErrors = scan.errors.length > 0;
-          const icon = scan.complete
-            ? ApplicationIcons.success
-            : hasErrors
-              ? ApplicationIcons.error
-              : ApplicationIcons.pendingTask;
-          const color = scan.complete ? "green" : hasErrors ? "red" : "yellow";
-
-          return <i className={clsx(icon, classNameForColor(color))}></i>;
-        },
-      },
-      {
-        colId: "name",
-        headerName: "Name",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.scan_name ?? "-",
-      },
-      {
-        colId: "scanners",
-        headerName: "Scanners",
-        initialWidth: 120,
-        minWidth: 120,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => {
-          const scanners = params.data?.spec.scanners;
-          return scanners ? Object.keys(scanners).join(", ") : "-";
-        },
-      },
-      {
-        colId: "scanId",
-        headerName: "Scan Id",
-        initialWidth: 150,
-        minWidth: 100,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.scan_id ?? "-",
-      },
-      {
-        colId: "model",
-        headerName: "Model",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.model?.model ?? "-",
-      },
-      {
-        field: "relativeLocation",
-        headerName: "Path",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-      },
-      {
-        colId: "timestamp",
-        headerName: "Time",
-        initialWidth: 150,
-        minWidth: 100,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.timestamp ?? "",
-        valueFormatter: (params) => {
-          const timestamp = params.value;
-          return timestamp ? new Date(timestamp).toLocaleString() : "-";
-        },
-        comparator: (valueA: string, valueB: string) => {
-          if (!valueA) return 1;
-          if (!valueB) return -1;
-          return new Date(valueA).getTime() - new Date(valueB).getTime();
-        },
-      },
-    ];
-
-    return baseColumns;
-  }, []);
-
-  const gridRef = useRef<AgGridReact>(null);
-  const resizeGridColumns = useCallback(
-    debounce(() => {
-      gridRef.current?.api?.sizeColumnsToFit();
-    }, 10),
-    []
+  // Define table columns based on visible columns from store
+  const columns = useMemo<ScanColumn[]>(
+    () => getScanColumns(visibleColumns),
+    [visibleColumns]
   );
 
-  const onFilterChanged = useCallback(
-    (event: FilterChangedEvent<ScanRow>) => {
-      const displayedRowCount = event.api.getDisplayedRowCount();
-      setVisibleScanJobCount(displayedRowCount);
+  // Compute effective column order
+  const effectiveColumnOrder = useMemo(() => {
+    if (columnOrder && columnOrder.length > 0) {
+      return columnOrder;
+    }
+    return DEFAULT_COLUMN_ORDER;
+  }, [columnOrder]);
+
+  // Column filter change handler
+  const handleColumnFilterChange = useCallback(
+    (
+      columnId: string,
+      filterType: FilterType,
+      condition: SimpleCondition | null
+    ) => {
+      setTableState((prev) => {
+        if (condition === null) {
+          // Remove the filter entirely
+          const newFilters = { ...prev.columnFilters };
+          delete newFilters[columnId];
+          return {
+            ...prev,
+            columnFilters: newFilters,
+          };
+        }
+        // Add or update the filter
+        return {
+          ...prev,
+          columnFilters: {
+            ...prev.columnFilters,
+            [columnId]: {
+              columnId,
+              filterType,
+              condition,
+            },
+          },
+        };
+      });
     },
-    [setVisibleScanJobCount]
+    [setTableState]
+  );
+
+  // Sorting
+  const handleSortingChange: OnChangeFn<SortingState> = useCallback(
+    (updaterOrValue) => {
+      const newValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(sorting)
+          : updaterOrValue;
+      setTableState((prev) => ({ ...prev, sorting: newValue }));
+    },
+    [sorting, setTableState]
+  );
+
+  // Create table instance
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    manualSorting: true,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    enableSorting: true,
+    enableMultiSort: true,
+    enableSortingRemoval: true,
+    maxMultiSortColCount: 3,
+    getRowId: (row) => row.spec.scan_id,
+    state: {
+      columnOrder: effectiveColumnOrder,
+      sorting,
+    },
+    onSortingChange: handleSortingChange,
+  });
+
+  const { rows } = table.getRowModel();
+
+  // Row click handler - navigate to scan
+  const handleRowClick = useCallback(
+    (e: MouseEvent<HTMLTableRowElement>, row: ScanRow) => {
+      if (!resultsDir) return;
+
+      const route = scanRoute(resultsDir, row.relativeLocation);
+
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl + Click: Open in new tab
+        openRouteInNewTab(route);
+      } else {
+        // Normal click: Navigate in current tab
+        void navigate(route);
+      }
+    },
+    [navigate, resultsDir]
+  );
+
+  // Create virtualizer
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => containerRef.current,
+    // Estimated row height in pixels
+    estimateSize: () => 29,
+    // Number of items to render outside visible area
+    overscan: 10,
+    // Item keys
+    getItemKey: (index) => scanItemKey(index, rows[index]?.original),
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
+  // Infinite scroll: notify parent when scrolled near bottom
+  const checkScrollNearEnd = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      if (!containerRefElement || !hasMore || !onScrollNearEnd) return;
+
+      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (distanceFromBottom < fetchThreshold) {
+        onScrollNearEnd();
+      }
+    },
+    [onScrollNearEnd, hasMore, fetchThreshold]
+  );
+
+  // Check on mount if we need to fetch more
+  useEffect(() => {
+    checkScrollNearEnd(containerRef.current);
+  }, [checkScrollNearEnd]);
+
+  const onScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) =>
+      checkScrollNearEnd(e.currentTarget as HTMLDivElement),
+    [checkScrollNearEnd]
   );
 
   return (
-    <div className={styles.gridWrapper}>
-      <AgGridReact<ScanRow>
-        ref={gridRef}
-        rowData={data}
-        columnDefs={columnDefs}
-        defaultColDef={{
-          sortable: true,
-          filter: true,
-          resizable: true,
-        }}
-        animateRows={false}
-        suppressColumnMoveAnimation={true}
-        suppressCellFocus={true}
-        theme={themeBalham}
-        enableCellTextSelection={true}
-        autoSizeStrategy={{ type: "fitGridWidth" }}
-        initialState={gridState}
-        onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
-          setGridState(GRID_STATE_NAME, e.state);
-        }}
-        rowClass={styles.row}
-        onRowClicked={(e: RowClickedEvent<ScanRow>) => {
-          if (e.data && resultsDir) {
-            void navigate(scanRoute(resultsDir, e.data.relativeLocation));
-          }
-        }}
-        onGridSizeChanged={resizeGridColumns}
-        onFilterChanged={onFilterChanged}
-      />
+    <div
+      ref={containerRef}
+      className={clsx(className, styles.container)}
+      onScroll={onScroll}
+    >
+      <table className={styles.table}>
+        <thead className={styles.thead}>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id} className={styles.headerRow}>
+              {headerGroup.headers.map((header) => {
+                const columnDef = header.column.columnDef as ScanColumn;
+                const columnMeta = columnDef.meta;
+                const align = columnMeta?.align;
+                const filterType = columnMeta?.filterType;
+                return (
+                  <th
+                    key={header.id}
+                    className={styles.headerCell}
+                    style={{ width: header.getSize() }}
+                    title={columnDef.headerTitle}
+                  >
+                    <div
+                      className={clsx(
+                        styles.headerContent,
+                        align === "center" && styles.headerCellCenter
+                      )}
+                      onClick={header.column.getToggleSortingHandler()}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <span className={styles.headerText}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </span>
+                      {{
+                        asc: (
+                          <i
+                            className={clsx(
+                              ApplicationIcons.arrows.up,
+                              styles.sortIcon
+                            )}
+                          />
+                        ),
+                        desc: (
+                          <i
+                            className={clsx(
+                              ApplicationIcons.arrows.down,
+                              styles.sortIcon
+                            )}
+                          />
+                        ),
+                      }[header.column.getIsSorted() as string] ?? null}
+                    </div>
+                    {columnMeta?.filterable && filterType ? (
+                      <ColumnFilterControl
+                        columnId={header.column.id}
+                        filterType={filterType}
+                        condition={
+                          columnFilters[header.column.id]?.condition ?? null
+                        }
+                        onChange={(condition) =>
+                          handleColumnFilterChange(
+                            header.column.id,
+                            filterType,
+                            condition
+                          )
+                        }
+                        suggestions={filterSuggestions}
+                        onOpenChange={onFilterColumnChange}
+                      />
+                    ) : null}
+                    <div
+                      className={clsx(
+                        styles.resizer,
+                        header.column.getIsResizing() && styles.resizerActive
+                      )}
+                      onMouseDown={header.getResizeHandler()}
+                      onTouchStart={header.getResizeHandler()}
+                    />
+                  </th>
+                );
+              })}
+            </tr>
+          ))}
+        </thead>
+        <tbody className={styles.tbody} style={{ height: `${totalSize}px` }}>
+          {virtualItems.length > 0 ? (
+            virtualItems.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              if (!row) return null;
+
+              const rowKey = scanItemKey(virtualRow.index, row.original);
+
+              return (
+                <tr
+                  key={rowKey}
+                  className={styles.row}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  onClick={(e) => handleRowClick(e, row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const columnDef = cell.column.columnDef as ScanColumn;
+                    const align = columnDef.meta?.align;
+                    return (
+                      <td
+                        key={cell.id}
+                        className={clsx(
+                          styles.cell,
+                          align === "center" && styles.cellCenter
+                        )}
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })
+          ) : (
+            <tr className={clsx(styles.noMatching, "text-size-smaller")}>
+              <td>{getEmptyStateMessage(loading ?? false, resultsDir)}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
-};
-
-const classNameForColor = (color: string): string | undefined => {
-  switch (color) {
-    case "green":
-      return styles.green;
-    case "yellow":
-      return styles.yellow;
-    case "red":
-      return styles.red;
-    case "blue":
-      return styles.blue;
-    default:
-      return "";
-  }
 };

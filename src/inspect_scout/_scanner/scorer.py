@@ -2,7 +2,9 @@ from typing import Any, Mapping, Sequence, cast
 
 from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.registry import is_registry_object, registry_unqualified_name
+from inspect_ai.event import Event
 from inspect_ai.log import transcript as sample_transcript
+from inspect_ai.model import ChatMessage
 from inspect_ai.scorer import (
     Metric,
     Score,
@@ -17,7 +19,7 @@ from pydantic import JsonValue
 
 from inspect_scout._scanner.metrics import as_score_value, metrics_for_scanner
 from inspect_scout._scanner.result import Result, as_resultset
-from inspect_scout._scanner.scanner import Scanner
+from inspect_scout._scanner.scanner import Scanner, ScannerConfig, config_for_scanner
 from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
 from inspect_scout._transcript.types import Transcript
 
@@ -50,6 +52,12 @@ def as_scorer(
     @scorer(name=scanner_name, metrics=metrics)
     def scanner_to_scorer() -> Scorer:
         async def score(state: TaskState, target: Target) -> Score | None:
+            # filter transcript messages and events
+            config = config_for_scanner(scanner)
+            messages, events = _scanner_messages_and_events(
+                config, state.messages, list(sample_transcript().events)
+            )
+
             # prepare transcript from state
             transcript = Transcript(
                 transcript_id=state.uuid,
@@ -59,8 +67,8 @@ def as_scorer(
                     "epoch": state.epoch,
                     "sample_metadata": state.metadata,
                 },
-                messages=state.messages,
-                events=list(sample_transcript().events),
+                messages=messages,
+                events=events,
             )
 
             # call scanner
@@ -125,3 +133,29 @@ def _metadata_from_result(result: Result) -> dict[str, Any] | None:
         return metadata
     else:
         return None
+
+
+def _scanner_messages_and_events(
+    config: ScannerConfig, messages: list[ChatMessage], events: list[Event]
+) -> tuple[list[ChatMessage], list[Event]]:
+    if config.content.messages == "all":
+        scanner_messages = list(messages)
+    elif isinstance(config.content.messages, list):
+        scanner_messages = [m for m in messages if m.role in config.content.messages]
+    elif config.content.messages is None:
+        scanner_messages = []
+    else:
+        raise TypeError(
+            f"Unexpected type for messages: {type(config.content.messages)}"
+        )
+
+    if config.content.events == "all":
+        scanner_events = list(events)
+    elif isinstance(config.content.events, list):
+        scanner_events = [e for e in events if e.event in config.content.events]
+    elif config.content.events is None:
+        scanner_events = []
+    else:
+        raise TypeError(f"Unexpected type for events: {type(config.content.events)}")
+
+    return scanner_messages, scanner_events

@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scoring: Apply content filter for scanners when using them as Inspect scorers.
+
 ## 0.4.11 (29 January 2026)
 
 - Projects: Always read `scout.local.yaml` even if there is no `scout.yaml` file.

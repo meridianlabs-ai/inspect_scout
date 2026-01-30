@@ -1,6 +1,16 @@
+from datetime import datetime
+
 from inspect_ai import Task, eval
-from inspect_ai.event import ModelEvent, ToolEvent
-from inspect_ai.model import ChatMessage, ChatMessageAssistant, ChatMessageUser
+from inspect_ai.event import Event, ModelEvent, ToolEvent
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageAssistant,
+    ChatMessageSystem,
+    ChatMessageTool,
+    ChatMessageUser,
+    GenerateConfig,
+    ModelOutput,
+)
 from inspect_ai.scorer import mean
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
@@ -203,18 +213,6 @@ def test_resultset_unlabeled_result_raises_error() -> None:
 # Tests for _scanner_messages_and_events filtering
 
 
-from datetime import datetime
-
-from inspect_ai.event._model import ModelEvent
-from inspect_ai.event._tool import ToolEvent
-from inspect_ai.model import (
-    ChatMessageSystem,
-    ChatMessageTool,
-    GenerateConfig,
-    ModelOutput,
-)
-
-
 def _make_messages() -> list[ChatMessage]:
     """Create a sample list of messages for testing."""
     return [
@@ -255,7 +253,7 @@ def _make_tool_event(uuid: str) -> ToolEvent:
     )
 
 
-def _make_events() -> list[ModelEvent | ToolEvent]:
+def _make_events() -> list[Event]:
     """Create a sample list of events for testing."""
     return [
         _make_model_event("model-1"),
@@ -410,7 +408,7 @@ class TestScannerMessagesAndEvents:
         """Test with empty message and event lists."""
         config = ScannerConfig(content=TranscriptContent(messages="all", events="all"))
         messages: list[ChatMessage] = []
-        events: list[ModelEvent | ToolEvent] = []
+        events: list[Event] = []
 
         result_messages, result_events = _scanner_messages_and_events(
             config, messages, events
@@ -425,7 +423,7 @@ class TestScannerMessagesAndEvents:
             content=TranscriptContent(messages=["system"], events=None)
         )
         # Create messages without system role
-        messages = [
+        messages: list[ChatMessage] = [
             ChatMessageUser(content="Hello"),
             ChatMessageAssistant(content="Hi"),
         ]
@@ -471,7 +469,11 @@ def user_assistant_scanner() -> Scanner[Transcript]:
         )
         return Result(
             value=user_count + assistant_count if other_count == 0 else -1,
-            metadata={"user": user_count, "assistant": assistant_count, "other": other_count},
+            metadata={
+                "user": user_count,
+                "assistant": assistant_count,
+                "other": other_count,
+            },
         )
 
     return scan

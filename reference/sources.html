@@ -865,7 +865,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>dataset</code> - Import examples from a dataset</li>
 </ul>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f556baa3f7cd9db0e85fbe7976eaab7bf6e9c5c/src/inspect_scout/sources/_langsmith/__init__.py#L48">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/sources/_langsmith/__init__.py#L52">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> langsmith(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -932,7 +932,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts from <a href="https://logfire.pydantic.dev/">Logfire</a> traces.</p>
 <p>Each Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0f556baa3f7cd9db0e85fbe7976eaab7bf6e9c5c/src/inspect_scout/sources/_logfire/__init__.py#L44">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/sources/_logfire/__init__.py#L48">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> logfire(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>

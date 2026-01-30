@@ -1127,14 +1127,21 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Projects: Always read scout.local.yaml even if there is no scout.yaml file.\nProjects: Always apply project level filter to scans (AND combine with scan filters).\nValidation: Label validation is now binary: validate true if the label is present with a truthy value; validate false if the label is not present or has only falsey values.\nScan Results: Add exclude_columns parameter for reading parquet reuslts to optionally reduce memory usage.\nScan Results: Pre-fetch optimization for S3/remote parquet files.\nTranscript DB: observe() decorator/context manager for writing transcripts based on observed LLM generations.\nTranscript DB: langsmith() and logfire() transcript sources for importing transcripts from LLM observability systems."
+    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers."
+  },
+  {
+    "objectID": "CHANGELOG.html#unreleased",
+    "href": "CHANGELOG.html#unreleased",
+    "title": "Inspect Scout",
+    "section": "",
+    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers."
   },
   {
     "objectID": "CHANGELOG.html#january-2026",
     "href": "CHANGELOG.html#january-2026",
     "title": "Inspect Scout",
-    "section": "",
-    "text": "Projects: Always read scout.local.yaml even if there is no scout.yaml file.\nProjects: Always apply project level filter to scans (AND combine with scan filters).\nValidation: Label validation is now binary: validate true if the label is present with a truthy value; validate false if the label is not present or has only falsey values.\nScan Results: Add exclude_columns parameter for reading parquet reuslts to optionally reduce memory usage.\nScan Results: Pre-fetch optimization for S3/remote parquet files.\nTranscript DB: observe() decorator/context manager for writing transcripts based on observed LLM generations.\nTranscript DB: langsmith() and logfire() transcript sources for importing transcripts from LLM observability systems."
+    "section": "0.4.11 (29 January 2026)",
+    "text": "0.4.11 (29 January 2026)\n\nProjects: Always read scout.local.yaml even if there is no scout.yaml file.\nProjects: Always apply project level filter to scans (AND combine with scan filters).\nValidation: Label validation is now binary: validate true if the label is present with a truthy value; validate false if the label is not present or has only falsey values.\nScan Results: Add exclude_columns parameter for reading parquet reuslts to optionally reduce memory usage.\nScan Results: Pre-fetch optimization for S3/remote parquet files.\nTranscript DB: observe() decorator/context manager for writing transcripts based on observed LLM generations.\nTranscript DB: langsmith() and logfire() transcript sources for importing transcripts from LLM observability systems."
   },
   {
     "objectID": "CHANGELOG.html#january-2026-1",

@@ -7,9 +7,9 @@ import { PopOver } from "../../components/PopOver";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import type { SimpleCondition } from "../../query/types";
 import type { ColumnFilter } from "../../state/store";
+
 import { Chip } from "./Chip";
 import { ChipGroup } from "./ChipGroup";
-
 import {
   ColumnFilterEditor,
   useColumnFilterPopover,

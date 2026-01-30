@@ -1,14 +1,15 @@
 import { clsx } from "clsx";
-import { FC, useCallback, useRef, useState } from "react";
+import { FC, useRef, useState } from "react";
 
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
-import { ColumnFilter, useStore } from "../../state/store";
+import { useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
 import { Chip } from "../components/Chip";
-import { FilterBar } from "../components/FilterBar";
 import { ColumnFilterEditor } from "../components/columnFilter";
+import { FilterBar } from "../components/FilterBar";
+import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
 import { useAddFilterPopover } from "./columnFilter";
 import { DEFAULT_VISIBLE_COLUMNS } from "./columns";
@@ -35,81 +36,12 @@ export const TranscriptFilterBar: FC<{
     (state) => state.setTranscriptsTableState
   );
 
-  const handleFilterChange = useCallback(
-    (columnId: string, condition: import("../../query/types").SimpleCondition | null) => {
-      setTranscriptsTableState((prevState) => {
-        const newFilters = { ...prevState.columnFilters };
-        if (condition === null) {
-          delete newFilters[columnId];
-        } else {
-          const existingFilter = newFilters[columnId];
-          if (existingFilter) {
-            newFilters[columnId] = {
-              ...existingFilter,
-              condition,
-            };
-          }
-        }
-        return {
-          ...prevState,
-          columnFilters: newFilters,
-        };
-      });
-    },
-    [setTranscriptsTableState]
-  );
-
-  const removeFilter = useCallback(
-    (column: string) => {
-      setTranscriptsTableState((prevState) => {
-        const newFilters = { ...prevState.columnFilters };
-        delete newFilters[column];
-        return {
-          ...prevState,
-          columnFilters: newFilters,
-        };
-      });
-    },
-    [setTranscriptsTableState]
-  );
-
-  // Add filter handler - also ensures the filtered column is visible
-  const handleAddFilter = useCallback(
-    (filter: ColumnFilter) => {
-      setTranscriptsTableState((prevState) => {
-        const columnKey = filter.columnId as keyof TranscriptInfo;
-
-        // Use default visible columns if not set in state
-        const currentVisibleColumns =
-          prevState.visibleColumns ?? DEFAULT_VISIBLE_COLUMNS;
-
-        // Check if we need to add this column to visible columns
-        const needsColumnVisible = !currentVisibleColumns.includes(columnKey);
-
-        // Check if we need to add this column to column order
-        const needsColumnOrder =
-          prevState.columnOrder.length > 0 &&
-          !prevState.columnOrder.includes(columnKey);
-
-        return {
-          ...prevState,
-          columnFilters: {
-            ...prevState.columnFilters,
-            [filter.columnId]: filter,
-          },
-          // Add the column to visible columns if it's not already there
-          ...(needsColumnVisible && {
-            visibleColumns: [...currentVisibleColumns, columnKey],
-          }),
-          // Add the column to column order if it's not already there
-          ...(needsColumnOrder && {
-            columnOrder: [...prevState.columnOrder, columnKey],
-          }),
-        };
-      });
-    },
-    [setTranscriptsTableState]
-  );
+  // Use shared filter bar handlers
+  const { handleFilterChange, removeFilter, handleAddFilter } =
+    useFilterBarHandlers<keyof TranscriptInfo>({
+      setTableState: setTranscriptsTableState,
+      defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
+    });
 
   // Add filter popover
   const addFilterChipRef = useRef<HTMLDivElement | null>(null);

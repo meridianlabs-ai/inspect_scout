@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo } from "react";
+import { FC, useCallback } from "react";
 
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
@@ -47,15 +47,8 @@ export const TranscriptColumnsPopover: FC<TranscriptColumnsPopoverProps> = ({
   );
 
   // Convert typed array to string array for the generic component
-  const visibleColumnIds = useMemo(
-    () => visibleColumns as string[],
-    [visibleColumns]
-  );
-
-  const defaultVisibleColumnIds = useMemo(
-    () => DEFAULT_VISIBLE_COLUMNS as string[],
-    []
-  );
+  const visibleColumnIds = visibleColumns as string[];
+  const defaultVisibleColumnIds = DEFAULT_VISIBLE_COLUMNS as string[];
 
   return (
     <ColumnsPopover

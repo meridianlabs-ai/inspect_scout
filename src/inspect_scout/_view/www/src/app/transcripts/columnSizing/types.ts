@@ -27,8 +27,10 @@ import { TranscriptColumn } from "../columns";
  * Context provided to sizing strategies for computing column sizes.
  * Uses transcript-specific column and data types.
  */
-export interface SizingStrategyContext
-  extends Omit<GenericSizingStrategyContext<TranscriptInfo>, "columns"> {
+export interface SizingStrategyContext extends Omit<
+  GenericSizingStrategyContext<TranscriptInfo>,
+  "columns"
+> {
   /** Column definitions */
   columns: TranscriptColumn[];
 }

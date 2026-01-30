@@ -18,7 +18,10 @@ export interface BaseColumnMeta {
  * Extended column definition with custom properties for data grids.
  * Extends TanStack Table's ColumnDef with additional rendering helpers.
  */
-export type ExtendedColumnDef<TData, TMeta extends BaseColumnMeta = BaseColumnMeta> = ColumnDef<TData> & {
+export type ExtendedColumnDef<
+  TData,
+  TMeta extends BaseColumnMeta = BaseColumnMeta,
+> = ColumnDef<TData> & {
   meta?: TMeta;
   /** Returns string for tooltip display */
   titleValue?: (value: unknown) => string;

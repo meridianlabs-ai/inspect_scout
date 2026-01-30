@@ -3,14 +3,15 @@ import { FC, useCallback, useRef, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
-import { ColumnFilter, useStore } from "../../state/store";
-import type { SimpleCondition } from "../../query/types";
+import { useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
-import { FilterBar } from "../components/FilterBar";
 import { ColumnFilterEditor } from "../components/columnFilter";
 import { ColumnsButton } from "../components/ColumnsButton";
 import { ColumnsPopover, ColumnInfo } from "../components/ColumnsPopover";
+import { FilterBar } from "../components/FilterBar";
+import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
+import { useAddFilterPopover } from "./columnFilter";
 import {
   COLUMN_LABELS,
   COLUMN_HEADER_TITLES,
@@ -18,7 +19,6 @@ import {
   DEFAULT_VISIBLE_COLUMNS,
   ScanColumnKey,
 } from "./columns";
-import { useAddFilterPopover } from "./columnFilter";
 import styles from "./ScansFilterBar.module.css";
 
 // Convert column definitions to ColumnInfo array
@@ -38,81 +38,12 @@ export const ScansFilterBar: FC<{
   );
   const setScansTableState = useStore((state) => state.setScansTableState);
 
-  const handleFilterChange = useCallback(
-    (columnId: string, condition: SimpleCondition | null) => {
-      setScansTableState((prevState) => {
-        const newFilters = { ...prevState.columnFilters };
-        if (condition === null) {
-          delete newFilters[columnId];
-        } else {
-          const existingFilter = newFilters[columnId];
-          if (existingFilter) {
-            newFilters[columnId] = {
-              ...existingFilter,
-              condition,
-            };
-          }
-        }
-        return {
-          ...prevState,
-          columnFilters: newFilters,
-        };
-      });
-    },
-    [setScansTableState]
-  );
-
-  const removeFilter = useCallback(
-    (column: string) => {
-      setScansTableState((prevState) => {
-        const newFilters = { ...prevState.columnFilters };
-        delete newFilters[column];
-        return {
-          ...prevState,
-          columnFilters: newFilters,
-        };
-      });
-    },
-    [setScansTableState]
-  );
-
-  // Add filter handler - also ensures the filtered column is visible
-  const handleAddFilter = useCallback(
-    (filter: ColumnFilter) => {
-      setScansTableState((prevState) => {
-        const columnKey = filter.columnId as ScanColumnKey;
-
-        // Use default visible columns if not set in state
-        const currentVisibleColumns =
-          prevState.visibleColumns ?? DEFAULT_VISIBLE_COLUMNS;
-
-        // Check if we need to add this column to visible columns
-        const needsColumnVisible = !currentVisibleColumns.includes(columnKey);
-
-        // Check if we need to add this column to column order
-        const needsColumnOrder =
-          prevState.columnOrder.length > 0 &&
-          !prevState.columnOrder.includes(columnKey);
-
-        return {
-          ...prevState,
-          columnFilters: {
-            ...prevState.columnFilters,
-            [filter.columnId]: filter,
-          },
-          // Add the column to visible columns if it's not already there
-          ...(needsColumnVisible && {
-            visibleColumns: [...currentVisibleColumns, columnKey],
-          }),
-          // Add the column to column order if it's not already there
-          ...(needsColumnOrder && {
-            columnOrder: [...prevState.columnOrder, columnKey],
-          }),
-        };
-      });
-    },
-    [setScansTableState]
-  );
+  // Use shared filter bar handlers
+  const { handleFilterChange, removeFilter, handleAddFilter } =
+    useFilterBarHandlers<ScanColumnKey>({
+      setTableState: setScansTableState,
+      defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
+    });
 
   // Add filter popover
   const addFilterChipRef = useRef<HTMLDivElement | null>(null);

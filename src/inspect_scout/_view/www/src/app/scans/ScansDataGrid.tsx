@@ -32,6 +32,16 @@ function scanItemKey(index: number, item?: ScanRow): string {
   return item.spec.scan_id;
 }
 
+// Get the empty state message based on loading state and configuration
+function getEmptyStateMessage(
+  loading: boolean,
+  resultsDir: string | undefined
+): string {
+  if (loading) return "Loading...";
+  if (!resultsDir) return "No scans directory configured.";
+  return "No matching scans";
+}
+
 interface ScansDataGridProps {
   scans: ScanStatusWithActiveInfo[];
   resultsDir: string | undefined;
@@ -56,7 +66,6 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
   const navigate = useLoggingNavigate("ScansDataGrid");
 
   // Table state from store
@@ -87,7 +96,7 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
 
   // Define table columns based on visible columns from store
   const columns = useMemo<ScanColumn[]>(
-    () => getScanColumns(visibleColumns ?? undefined),
+    () => getScanColumns(visibleColumns),
     [visibleColumns]
   );
 
@@ -190,19 +199,19 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
       className={clsx(className, styles.container)}
       onScroll={onScroll}
     >
-      <table ref={tableRef} className={styles.table}>
+      <table className={styles.table}>
         <thead className={styles.thead}>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className={styles.headerRow}>
               {headerGroup.headers.map((header) => {
-                const columnMeta = (header.column.columnDef as ScanColumn).meta;
-                const align = columnMeta?.align;
+                const columnDef = header.column.columnDef as ScanColumn;
+                const align = columnDef.meta?.align;
                 return (
                   <th
                     key={header.id}
                     className={styles.headerCell}
                     style={{ width: header.getSize() }}
-                    title={(header.column.columnDef as ScanColumn).headerTitle}
+                    title={columnDef.headerTitle}
                   >
                     <div
                       className={clsx(
@@ -292,13 +301,7 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
             })
           ) : (
             <tr className={clsx(styles.noMatching, "text-size-smaller")}>
-              <td>
-                {loading
-                  ? "Loading..."
-                  : !resultsDir
-                    ? "No scans directory configured."
-                    : "No matching scans"}
-              </td>
+              <td>{getEmptyStateMessage(loading ?? false, resultsDir)}</td>
             </tr>
           )}
         </tbody>

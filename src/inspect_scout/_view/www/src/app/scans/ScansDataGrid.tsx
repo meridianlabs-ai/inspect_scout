@@ -7,13 +7,13 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef } from "react";
+import { FC, MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import type { SimpleCondition } from "../../query/types";
-import { scanRoute } from "../../router/url";
+import { openRouteInNewTab, scanRoute } from "../../router/url";
 import { useStore, FilterType } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
@@ -190,9 +190,17 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
 
   // Row click handler - navigate to scan
   const handleRowClick = useCallback(
-    (row: ScanRow) => {
-      if (resultsDir) {
-        void navigate(scanRoute(resultsDir, row.relativeLocation));
+    (e: MouseEvent<HTMLTableRowElement>, row: ScanRow) => {
+      if (!resultsDir) return;
+
+      const route = scanRoute(resultsDir, row.relativeLocation);
+
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl + Click: Open in new tab
+        openRouteInNewTab(route);
+      } else {
+        // Normal click: Navigate in current tab
+        void navigate(route);
       }
     },
     [navigate, resultsDir]
@@ -343,7 +351,7 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
                   key={rowKey}
                   className={styles.row}
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
-                  onClick={() => handleRowClick(row.original)}
+                  onClick={(e) => handleRowClick(e, row.original)}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const columnDef = cell.column.columnDef as ScanColumn;

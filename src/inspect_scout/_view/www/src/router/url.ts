@@ -270,3 +270,11 @@ export const isHostedEnvironment = () => {
     location.protocol !== "vscode-webview:"
   );
 };
+
+/**
+ * Opens a route in a new browser tab.
+ * Handles the hash router URL format.
+ */
+export const openRouteInNewTab = (route: string): void => {
+  window.open(`#${route}`, "_blank");
+};

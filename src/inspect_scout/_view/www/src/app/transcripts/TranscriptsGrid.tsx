@@ -24,7 +24,7 @@ import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
 import type { SimpleCondition } from "../../query/types";
-import { transcriptRoute } from "../../router/url";
+import { openRouteInNewTab, transcriptRoute } from "../../router/url";
 import { useStore, FilterType } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 
@@ -352,14 +352,10 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       setTableState((prev) => ({ ...prev, focusedRowId: rowId }));
 
       if (e.metaKey || e.ctrlKey) {
-        // Cmd/Ctrl + Click: Toggle individual row selection
-        setTableState((prev) => ({
-          ...prev,
-          rowSelection: {
-            ...prev.rowSelection,
-            [rowId]: !prev.rowSelection[rowId],
-          },
-        }));
+        // Cmd/Ctrl + Click: Open in new tab
+        if (transcriptsDir) {
+          openRouteInNewTab(transcriptRoute(transcriptsDir, rowId));
+        }
       } else if (e.shiftKey) {
         // Shift + Click: Range selection
         const currentSelectedRows = Object.keys(rowSelection).filter(

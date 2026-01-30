@@ -8,6 +8,7 @@ import { useBlocker } from "react-router-dom";
 
 import { ApiError } from "../../api/request";
 import { Modal } from "../../components/Modal";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { AppConfig, ProjectConfigInput } from "../../types/api-types";
 import { appAliasedPath } from "../server/useAppConfig";
 import {
@@ -63,6 +64,8 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
+  useDocumentTitle("Project");
+
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContentRef = useRef<HTMLDivElement>(null);
   const focusedFieldIdRef = useRef<string | null>(null);

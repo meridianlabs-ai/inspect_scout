@@ -6,6 +6,7 @@ import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { ApplicationIcons } from "../../components/icons";
 import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useStore } from "../../state/store";
 import { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
@@ -22,6 +23,8 @@ import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
+  useDocumentTitle("Scans");
+
   const config = useAppConfig();
   const scanDir = config.scans.dir;
   const {

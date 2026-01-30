@@ -4,12 +4,14 @@ import { useSearchParams } from "react-router-dom";
 
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { getScannerParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useSelectedScan } from "../hooks/useSelectedScan";
 import { useAppConfig } from "../server/useAppConfig";
 import { useScans } from "../server/useScans";
+import { getScanDisplayName } from "../utils/scan";
 import { useScansDir } from "../utils/useScansDir";
 
 import styles from "./ScanPanel.module.css";
@@ -30,6 +32,9 @@ export const ScanPanel: React.FC = () => {
   const { loading: scanLoading, data: selectedScan } = useSelectedScan();
 
   const loading = scansLoading || scanLoading;
+
+  // Set document title with scan location
+  useDocumentTitle(getScanDisplayName(selectedScan, scansDir), "Scans");
 
   // Clear scan state from the store on mount
   const clearScanState = useStore((state) => state.clearScanState);

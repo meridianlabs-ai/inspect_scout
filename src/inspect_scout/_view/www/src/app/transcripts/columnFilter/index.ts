@@ -1,10 +1,18 @@
-export { ColumnFilterControl } from "./ColumnFilterControl";
-export { ColumnFilterButton } from "./ColumnFilterButton";
-export { ColumnFilterEditor } from "./ColumnFilterEditor";
-export { useColumnFilter } from "./useColumnFilter";
+// Re-export shared columnFilter components from common location
+export {
+  ColumnFilterControl,
+  ColumnFilterButton,
+  ColumnFilterEditor,
+  useColumnFilter,
+  useColumnFilterPopover,
+} from "../../components/columnFilter";
 export type {
   UseColumnFilterParams,
   UseColumnFilterReturn,
-} from "./useColumnFilter";
-export type { ColumnFilterEditorProps } from "./ColumnFilterEditor";
-export type { ColumnFilterButtonProps } from "./ColumnFilterButton";
+  ColumnFilterEditorProps,
+  ColumnFilterButtonProps,
+  AvailableColumn,
+} from "../../components/columnFilter";
+
+// Transcript-specific hook (depends on transcript columns)
+export { useAddFilterPopover } from "./useAddFilterPopover";

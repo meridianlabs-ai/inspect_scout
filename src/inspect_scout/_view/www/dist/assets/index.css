@@ -4232,6 +4232,30 @@ so disabling selection can break that functionality */
   column-gap: 0.3rem;
   row-gap: 0.3rem;
 }
+._filterButton_fuk0s_1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary);
+  cursor: pointer;
+}
+
+._filterButtonActive_fuk0s_12 {
+  color: var(--bs-primary);
+}
+._headerActions_uh0qk_1 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+}
+
+._filterPopover_uh0qk_8 {
+  min-width: 180px;
+}
 ._container_1qaxn_1 {
   position: relative;
   width: 100%;
@@ -4629,30 +4653,6 @@ so disabling selection can break that functionality */
   grid-template-rows: max-content max-content 1fr max-content;
   height: 100%;
   row-gap: 0;
-}
-._filterButton_fuk0s_1 {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  border: none;
-  background: transparent;
-  color: var(--bs-secondary);
-  cursor: pointer;
-}
-
-._filterButtonActive_fuk0s_12 {
-  color: var(--bs-primary);
-}
-._headerActions_uh0qk_1 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 6px;
-}
-
-._filterPopover_uh0qk_8 {
-  min-width: 180px;
 }
 ._container_1b6j7_1 {
   overflow: auto;

@@ -65,6 +65,20 @@ function getScannersValue(scan: ScanRow): string {
   return scanners ? Object.keys(scanners).join(", ") : "-";
 }
 
+// Helper to get status display (icon and color) for a scan
+function getStatusDisplay(scan: ScanRow): {
+  icon: string;
+  colorClass: string | undefined;
+} {
+  if (scan.complete) {
+    return { icon: ApplicationIcons.success, colorClass: styles.green };
+  }
+  if (scan.errors.length > 0) {
+    return { icon: ApplicationIcons.error, colorClass: styles.red };
+  }
+  return { icon: ApplicationIcons.pendingTask, colorClass: styles.yellow };
+}
+
 // All available columns, keyed by their ID (using database column names)
 const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   complete: {
@@ -99,18 +113,7 @@ const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
         );
       }
 
-      const hasErrors = scan.errors.length > 0;
-      const icon = scan.complete
-        ? ApplicationIcons.success
-        : hasErrors
-          ? ApplicationIcons.error
-          : ApplicationIcons.pendingTask;
-      const colorClass = scan.complete
-        ? styles.green
-        : hasErrors
-          ? styles.red
-          : styles.yellow;
-
+      const { icon, colorClass } = getStatusDisplay(scan);
       return <i className={clsx(icon, colorClass)}></i>;
     },
     textValue: () => null,
@@ -215,16 +218,8 @@ export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
   "timestamp",
 ];
 
-// Default visible columns
-export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = [
-  "complete",
-  "scan_name",
-  "scanners",
-  "scan_id",
-  "model",
-  "location",
-  "timestamp",
-];
+// Default visible columns - currently matches column order; can be subset if needed
+export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = DEFAULT_COLUMN_ORDER;
 
 /**
  * Get columns for the ScansGrid.

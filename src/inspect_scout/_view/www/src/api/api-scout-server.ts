@@ -81,7 +81,6 @@ export const apiScoutServer = (
         );
         return true;
       } catch (error) {
-        console.log({ error });
         if (error instanceof Error && error.message.includes("404")) {
           return false;
         }

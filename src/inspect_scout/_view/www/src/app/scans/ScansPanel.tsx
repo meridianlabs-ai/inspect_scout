@@ -17,8 +17,8 @@ import { useScansInfinite } from "../server/useScansInfinite";
 import { useScansDir } from "../utils/useScansDir";
 
 import { SCANS_INFINITE_SCROLL_CONFIG } from "./constants";
-import { ScansDataGrid } from "./ScansDataGrid";
 import { ScansFilterBar } from "./ScansFilterBar";
+import { ScansGrid } from "./ScansGrid";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
@@ -90,7 +90,7 @@ export const ScansPanel: FC = () => {
               filterSuggestions={filterSuggestions}
               onFilterColumnChange={onFilterColumnChange}
             />
-            <ScansDataGrid
+            <ScansGrid
               scans={scans}
               resultsDir={scanDir}
               loading={isFetching && scans.length === 0}

@@ -4108,6 +4108,35 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   cursor: default;
 }
+._chip_4n1t8_1 {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0rem 0;
+  padding: 2px 6px;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+._label_4n1t8_12 {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+
+._icon_4n1t8_17 {
+  margin-right: 0.2rem;
+  font-size: 0.9em;
+}
+
+._closeIcon_4n1t8_22 {
+  margin-left: 0.3rem;
+  font-size: 0.9em;
+}
+
+._clickable_4n1t8_27 {
+  cursor: pointer;
+}
 ._dropdownContainer_1fize_1 {
   position: relative;
   display: inline-flex;
@@ -4195,35 +4224,6 @@ so disabling selection can break that functionality */
 
 ._dropdownItem_1fize_69:active {
   background-color: var(--bs-secondary-bg);
-}
-._chip_4n1t8_1 {
-  display: inline-flex;
-  flex-direction: row;
-  margin: 0rem 0;
-  padding: 2px 6px;
-  border: solid 1px var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  align-items: baseline;
-  white-space: nowrap;
-}
-
-._label_4n1t8_12 {
-  font-weight: 600;
-  margin-right: 0.5em;
-}
-
-._icon_4n1t8_17 {
-  margin-right: 0.2rem;
-  font-size: 0.9em;
-}
-
-._closeIcon_4n1t8_22 {
-  margin-left: 0.3rem;
-  font-size: 0.9em;
-}
-
-._clickable_4n1t8_27 {
-  cursor: pointer;
 }
 ._chipGroup_1de1s_1 {
   display: flex;
@@ -4392,6 +4392,68 @@ so disabling selection can break that functionality */
   font-size: 11px;
   color: var(--bs-secondary);
   padding-left: 2px;
+}
+._container_15jao_1 {
+  display: flex;
+  flex-direction: row;
+  background: var(--bs-light-bg-subtle);
+  border-bottom: solid var(--bs-border-color) 1px;
+  padding: 0rem 0.5rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+._filterBar_15jao_11 {
+  margin: 1px 0;
+}
+
+._filterLabel_15jao_15 {
+  margin-right: 0.3rem;
+  margin-top: 3px;
+}
+
+._filterNone_15jao_20 {
+  margin-top: 2px;
+}
+
+._actionButtons_15jao_24 {
+  margin-left: auto;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-direction: row;
+  font-size: var(--inspect-font-size-smallest);
+  height: calc(100% - 4px);
+}
+
+._actionButton_15jao_24 {
+  padding: 0.1rem 0.4rem;
+  margin: 0;
+  font-size: var(--inspect-font-size-smallest);
+}
+
+._actionButtonDropDown_15jao_42 {
+  font-size: var(--inspect-font-size-smallest);
+}
+
+._actionButton_15jao_24._chipButton_15jao_46 {
+  background-color: unset;
+  margin-left: 0.3rem;
+}
+
+._sep_15jao_51 {
+  width: 1px;
+  height: calc(100% - 2px);
+  margin: 2px 0.3rem;
+
+  background-color: var(--bs-border-color);
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+._filterChip_15jao_60 {
+  /* Filter chip specific styles can go here */
 }
 ._success_1mf4d_1 {
   color: var(--bs-success) !important;

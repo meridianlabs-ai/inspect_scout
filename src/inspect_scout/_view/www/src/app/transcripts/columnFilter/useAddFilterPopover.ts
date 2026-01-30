@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import type { OperatorModel } from "../../../query";
 import type { ColumnFilter } from "../../../state/store";
 import { TranscriptInfo } from "../../../types/api-types";
 import {
-  useColumnFilter,
+  useAddFilterPopover as useAddFilterPopoverBase,
   type AvailableColumn,
 } from "../../components/columnFilter";
 import {
@@ -13,7 +10,7 @@ import {
   getFilterTypeForColumn,
 } from "../columns";
 
-interface UseAddFilterPopoverParams {
+interface UseTranscriptAddFilterPopoverParams {
   filters: Record<string, ColumnFilter>;
   onAddFilter: (filter: ColumnFilter) => void;
   onFilterColumnChange?: (columnId: string | null) => void;
@@ -28,103 +25,19 @@ const AVAILABLE_COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
 );
 
 /**
- * Hook for managing the "Add Filter" popover state.
- * Wraps useColumnFilter with column selection and open/close logic.
+ * Transcript-specific hook for the "Add Filter" popover.
+ * Pre-configures useAddFilterPopover with transcript column definitions.
  */
 export function useAddFilterPopover({
   filters,
   onAddFilter,
   onFilterColumnChange,
-}: UseAddFilterPopoverParams) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
-  const prevOpenRef = useRef(false);
-
-  const filterType = selectedColumnId
-    ? getFilterTypeForColumn(selectedColumnId)
-    : "string";
-
-  const existingFilter = selectedColumnId ? filters[selectedColumnId] : null;
-
-  const {
-    operator,
-    setOperator,
-    value,
-    setValue,
-    value2,
-    setValue2,
-    operatorOptions,
-    usesValue: isValueDisabled,
-    usesRangeValue: isRangeOperator,
-    buildCondition,
-  } = useColumnFilter({
-    columnId: selectedColumnId ?? "",
-    filterType,
-    condition: existingFilter?.condition ?? null,
-    isOpen,
-  });
-
-  // Reset column selection when popover opens
-  useEffect(() => {
-    if (isOpen && !prevOpenRef.current) {
-      setSelectedColumnId(null);
-    }
-    prevOpenRef.current = isOpen;
-  }, [isOpen]);
-
-  // Notify parent when popover closes
-  useEffect(() => {
-    if (prevOpenRef.current && !isOpen) {
-      onFilterColumnChange?.(null);
-    }
-  }, [isOpen, onFilterColumnChange]);
-
-  const handleColumnChange = useCallback(
-    (newColumnId: string) => {
-      setSelectedColumnId(newColumnId || null);
-      if (newColumnId) {
-        onFilterColumnChange?.(newColumnId);
-      }
-    },
-    [onFilterColumnChange]
-  );
-
-  const commitAndClose = useCallback(() => {
-    if (!selectedColumnId) return;
-
-    const condition = buildCondition(operator, value, value2);
-    if (condition === undefined) return;
-
-    onAddFilter({ columnId: selectedColumnId, filterType, condition });
-    setIsOpen(false);
-  }, [
-    selectedColumnId,
-    buildCondition,
-    operator,
-    value,
-    value2,
-    onAddFilter,
-    filterType,
-  ]);
-
-  const cancelAndClose = useCallback(() => setIsOpen(false), []);
-
-  return {
-    isOpen,
-    setIsOpen,
-    selectedColumnId,
+}: UseTranscriptAddFilterPopoverParams) {
+  return useAddFilterPopoverBase({
     availableColumns: AVAILABLE_COLUMNS,
-    operator,
-    setOperator: setOperator as (op: OperatorModel) => void,
-    operatorOptions,
-    value,
-    setValue,
-    value2,
-    setValue2,
-    isValueDisabled,
-    isRangeOperator,
-    handleColumnChange,
-    commitAndClose,
-    cancelAndClose,
-  };
+    getFilterTypeForColumn,
+    filters,
+    onAddFilter,
+    onFilterColumnChange,
+  });
 }

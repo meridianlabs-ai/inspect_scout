@@ -188,7 +188,7 @@ export const FilterBar: FC<FilterBarProps> = ({
       )}
 
       <div className={clsx(styles.actionButtons)}>
-        {filterEntries.length > 0 && (
+        {filterCodeValues !== undefined && (
           <CopyQueryButton itemValues={filterCodeValues} />
         )}
         {rightContent && (

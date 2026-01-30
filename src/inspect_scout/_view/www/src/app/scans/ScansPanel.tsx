@@ -11,6 +11,7 @@ import { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useScanFilterConditions } from "../hooks/useScanFilterConditions";
+import { useScansFilterBarProps } from "../hooks/useScansFilterBarProps";
 import { useAppConfig } from "../server/useAppConfig";
 import { useScansInfinite } from "../server/useScansInfinite";
 import { useScansDir } from "../utils/useScansDir";
@@ -33,6 +34,10 @@ export const ScansPanel: FC = () => {
   // Get filter condition and sorting from store
   const condition = useScanFilterConditions();
   const sorting = useStore((state) => state.scansTableState.sorting);
+
+  // Get autocomplete props for filter bar
+  const { filterSuggestions, onFilterColumnChange } =
+    useScansFilterBarProps(resolvedScansDir);
 
   // Load scans data with filtering and sorting
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
@@ -81,7 +86,10 @@ export const ScansPanel: FC = () => {
         )}
         {data && !error && (
           <div className={styles.gridContainer}>
-            <ScansFilterBar />
+            <ScansFilterBar
+              filterSuggestions={filterSuggestions}
+              onFilterColumnChange={onFilterColumnChange}
+            />
             <ScansDataGrid
               scans={scans}
               resultsDir={scanDir}

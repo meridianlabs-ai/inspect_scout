@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { FC, useCallback, useRef, useState } from "react";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
 import { useStore } from "../../state/store";
@@ -30,7 +31,13 @@ const COLUMNS_INFO: ColumnInfo[] = DEFAULT_COLUMN_ORDER.map((key) => ({
 
 export const ScansFilterBar: FC<{
   includeColumnPicker?: boolean;
-}> = ({ includeColumnPicker = true }) => {
+  filterSuggestions?: ScalarValue[];
+  onFilterColumnChange?: (columnId: string | null) => void;
+}> = ({
+  includeColumnPicker = true,
+  filterSuggestions = [],
+  onFilterColumnChange,
+}) => {
   // Scans Filter State
   const filters = useStore((state) => state.scansTableState.columnFilters);
   const visibleColumns = useStore(
@@ -68,6 +75,7 @@ export const ScansFilterBar: FC<{
   } = useAddFilterPopover({
     filters,
     onAddFilter: handleAddFilter,
+    onFilterColumnChange,
   });
 
   // Column picker state
@@ -126,6 +134,7 @@ export const ScansFilterBar: FC<{
           onValue2Change={setAddFilterValue2}
           onCommit={commitAddFilterAndClose}
           onCancel={cancelAddFilterAndClose}
+          suggestions={filterSuggestions}
           availableColumns={availableColumns}
           onColumnChange={handleAddFilterColumnChange}
         />
@@ -159,6 +168,8 @@ export const ScansFilterBar: FC<{
       filters={filters}
       onFilterChange={handleFilterChange}
       onRemoveFilter={removeFilter}
+      filterSuggestions={filterSuggestions}
+      onFilterColumnChange={onFilterColumnChange}
       popoverIdPrefix="scans-filter"
       addFilterSlot={addFilterSlot}
       rightContent={columnPickerContent}

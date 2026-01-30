@@ -316,7 +316,7 @@ export const createStore = (api: ScanApi) =>
           scansTableState: {
             columnSizing: {},
             columnOrder: [],
-            sorting: [{ id: "time", desc: true }],
+            sorting: [{ id: "timestamp", desc: true }],
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},

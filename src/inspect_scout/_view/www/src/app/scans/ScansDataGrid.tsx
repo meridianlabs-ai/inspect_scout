@@ -37,6 +37,12 @@ interface ScansDataGridProps {
   resultsDir: string | undefined;
   className?: string | string[];
   loading?: boolean;
+  /** Called when scroll position nears end */
+  onScrollNearEnd?: () => void;
+  /** Whether more data is available to fetch */
+  hasMore?: boolean;
+  /** Distance from bottom (in px) at which to trigger callback */
+  fetchThreshold?: number;
 }
 
 export const ScansDataGrid: FC<ScansDataGridProps> = ({
@@ -44,6 +50,9 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
   resultsDir,
   className,
   loading,
+  onScrollNearEnd,
+  hasMore = false,
+  fetchThreshold = 500,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -149,8 +158,38 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Infinite scroll: notify parent when scrolled near bottom
+  const checkScrollNearEnd = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      if (!containerRefElement || !hasMore || !onScrollNearEnd) return;
+
+      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      if (distanceFromBottom < fetchThreshold) {
+        onScrollNearEnd();
+      }
+    },
+    [onScrollNearEnd, hasMore, fetchThreshold]
+  );
+
+  // Check on mount if we need to fetch more
+  useEffect(() => {
+    checkScrollNearEnd(containerRef.current);
+  }, [checkScrollNearEnd]);
+
+  const onScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) =>
+      checkScrollNearEnd(e.currentTarget as HTMLDivElement),
+    [checkScrollNearEnd]
+  );
+
   return (
-    <div ref={containerRef} className={clsx(className, styles.container)}>
+    <div
+      ref={containerRef}
+      className={clsx(className, styles.container)}
+      onScroll={onScroll}
+    >
       <table ref={tableRef} className={styles.table}>
         <thead className={styles.thead}>
           {table.getHeaderGroups().map((headerGroup) => (

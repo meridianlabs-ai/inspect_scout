@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, useEffect } from "react";
+import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
@@ -7,12 +7,15 @@ import { ApplicationIcons } from "../../components/icons";
 import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useStore } from "../../state/store";
+import { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
+import { useScanFilterConditions } from "../hooks/useScanFilterConditions";
 import { useAppConfig } from "../server/useAppConfig";
-import { useScans } from "../server/useScans";
+import { useScansInfinite } from "../server/useScansInfinite";
 import { useScansDir } from "../utils/useScansDir";
 
+import { SCANS_INFINITE_SCROLL_CONFIG } from "./constants";
 import { ScansDataGrid } from "./ScansDataGrid";
 import { ScansFilterBar } from "./ScansFilterBar";
 import styles from "./ScansPanel.module.css";
@@ -20,21 +23,42 @@ import styles from "./ScansPanel.module.css";
 export const ScansPanel: FC = () => {
   const config = useAppConfig();
   const scanDir = config.scans.dir;
-  const visibleScanJobCount = useStore((state) => state.visibleScanJobCount);
   const {
     displayScansDir,
     resolvedScansDir,
     resolvedScansDirSource,
     setScansDir,
   } = useScansDir();
-  // Load scans data
-  const { loading, error, data: scans } = useScans(resolvedScansDir);
+
+  // Get filter condition and sorting from store
+  const condition = useScanFilterConditions();
+  const sorting = useStore((state) => state.scansTableState.sorting);
+
+  // Load scans data with filtering and sorting
+  const { data, error, fetchNextPage, hasNextPage, isFetching } =
+    useScansInfinite(
+      resolvedScansDir,
+      SCANS_INFINITE_SCROLL_CONFIG.pageSize,
+      condition,
+      sorting
+    );
+
+  // Flatten pages into scans array
+  const scans: ScanStatusWithActiveInfo[] = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data]
+  );
+
+  // Handle infinite scroll
+  const handleScrollNearEnd = useCallback(() => {
+    fetchNextPage({ cancelRefetch: false }).catch(console.error);
+  }, [fetchNextPage]);
 
   // Clear scan state from store on mount
   const clearScansState = useStore((state) => state.clearScansState);
   useEffect(() => {
     clearScansState();
-  }, []);
+  }, [clearScansState]);
 
   return (
     <div className={clsx(styles.container)}>
@@ -44,7 +68,7 @@ export const ScansPanel: FC = () => {
         setScansDir={setScansDir}
         bordered={false}
       />
-      <LoadingBar loading={!!loading} />
+      <LoadingBar loading={isFetching} />
       <ExtendedFindProvider>
         {error && (
           <ErrorPanel
@@ -52,23 +76,26 @@ export const ScansPanel: FC = () => {
             error={{ message: error.message }}
           />
         )}
-        {!scans && !error && (
+        {!data && !error && (
           <NoContentsPanel icon={ApplicationIcons.running} text="Loading..." />
         )}
-        {scans && !error && (
+        {data && !error && (
           <div className={styles.gridContainer}>
             <ScansFilterBar />
             <ScansDataGrid
               scans={scans}
               resultsDir={scanDir}
-              loading={loading}
+              loading={isFetching && scans.length === 0}
               className={styles.grid}
+              onScrollNearEnd={handleScrollNearEnd}
+              hasMore={hasNextPage}
+              fetchThreshold={SCANS_INFINITE_SCROLL_CONFIG.threshold}
             />
           </div>
         )}
         <Footer
           id={"scan-job-footer"}
-          itemCount={visibleScanJobCount || 0}
+          itemCount={data?.pages[0]?.total_count ?? 0}
           paginated={false}
         />
       </ExtendedFindProvider>

@@ -1,31 +1,13 @@
-import clsx from "clsx";
 import { forwardRef } from "react";
 
-import { ApplicationIcons } from "../../components/icons";
-import { ToolButton } from "../../components/ToolButton";
+import { ColumnsButton, ColumnsButtonProps } from "../components/ColumnsButton";
 
-import styles from "./TranscriptColumnsButton.module.css";
-
-interface TranscriptColumnsButtonProps {
-  isOpen: boolean;
-  onClick: () => void;
-}
-
+// Re-export the shared component with transcript-specific defaults
 export const TranscriptColumnsButton = forwardRef<
   HTMLButtonElement,
-  TranscriptColumnsButtonProps
->(({ isOpen, onClick }, ref) => {
-  return (
-    <ToolButton
-      title="Choose columns"
-      label="Choose columns"
-      icon={ApplicationIcons.checkbox.checked}
-      onClick={onClick}
-      latched={isOpen}
-      className={clsx("text-size-smallest", styles.button)}
-      ref={ref}
-    />
-  );
+  ColumnsButtonProps
+>((props, ref) => {
+  return <ColumnsButton {...props} ref={ref} />;
 });
 
 TranscriptColumnsButton.displayName = "TranscriptColumnsButton";

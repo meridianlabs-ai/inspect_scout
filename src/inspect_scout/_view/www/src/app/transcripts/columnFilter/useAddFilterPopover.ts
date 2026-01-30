@@ -3,13 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { OperatorModel } from "../../../query";
 import type { ColumnFilter } from "../../../state/store";
 import { TranscriptInfo } from "../../../types/api-types";
-import { useColumnFilter, type AvailableColumn } from "../../components/columnFilter";
+import {
+  useColumnFilter,
+  type AvailableColumn,
+} from "../../components/columnFilter";
 import {
   COLUMN_LABELS,
   DEFAULT_COLUMN_ORDER,
   getFilterTypeForColumn,
 } from "../columns";
-
 
 interface UseAddFilterPopoverParams {
   filters: Record<string, ColumnFilter>;

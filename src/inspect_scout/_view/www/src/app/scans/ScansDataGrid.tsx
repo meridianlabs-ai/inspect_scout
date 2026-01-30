@@ -9,12 +9,15 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import clsx from "clsx";
 import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 
+import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
+import type { SimpleCondition } from "../../query/types";
 import { scanRoute } from "../../router/url";
-import { useStore } from "../../state/store";
+import { useStore, FilterType } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
+import { ColumnFilterControl } from "../components/columnFilter";
 
 import {
   DEFAULT_COLUMN_ORDER,
@@ -53,6 +56,10 @@ interface ScansDataGridProps {
   hasMore?: boolean;
   /** Distance from bottom (in px) at which to trigger callback */
   fetchThreshold?: number;
+  /** Autocomplete suggestions for the currently editing filter column */
+  filterSuggestions?: ScalarValue[];
+  /** Called when a filter column starts/stops being edited */
+  onFilterColumnChange?: (columnId: string | null) => void;
 }
 
 export const ScansDataGrid: FC<ScansDataGridProps> = ({
@@ -63,6 +70,8 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
   onScrollNearEnd,
   hasMore = false,
   fetchThreshold = 500,
+  filterSuggestions = [],
+  onFilterColumnChange,
 }) => {
   // The table container which provides the scrollable region
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +80,9 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
   // Table state from store
   const sorting = useStore((state) => state.scansTableState.sorting);
   const columnOrder = useStore((state) => state.scansTableState.columnOrder);
+  const columnFilters = useStore(
+    (state) => state.scansTableState.columnFilters
+  );
   const visibleColumns = useStore(
     (state) => state.scansTableState.visibleColumns
   );
@@ -107,6 +119,40 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
     }
     return DEFAULT_COLUMN_ORDER;
   }, [columnOrder]);
+
+  // Column filter change handler
+  const handleColumnFilterChange = useCallback(
+    (
+      columnId: string,
+      filterType: FilterType,
+      condition: SimpleCondition | null
+    ) => {
+      setTableState((prev) => {
+        if (condition === null) {
+          // Remove the filter entirely
+          const newFilters = { ...prev.columnFilters };
+          delete newFilters[columnId];
+          return {
+            ...prev,
+            columnFilters: newFilters,
+          };
+        }
+        // Add or update the filter
+        return {
+          ...prev,
+          columnFilters: {
+            ...prev.columnFilters,
+            [columnId]: {
+              columnId,
+              filterType,
+              condition,
+            },
+          },
+        };
+      });
+    },
+    [setTableState]
+  );
 
   // Sorting
   const handleSortingChange: OnChangeFn<SortingState> = useCallback(
@@ -205,7 +251,11 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
             <tr key={headerGroup.id} className={styles.headerRow}>
               {headerGroup.headers.map((header) => {
                 const columnDef = header.column.columnDef as ScanColumn;
-                const align = columnDef.meta?.align;
+                const columnMeta = columnDef.meta;
+                const align = columnMeta?.align;
+                const filterType = columnMeta?.filterType as
+                  | FilterType
+                  | undefined;
                 return (
                   <th
                     key={header.id}
@@ -248,6 +298,24 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
                         ),
                       }[header.column.getIsSorted() as string] ?? null}
                     </div>
+                    {columnMeta?.filterable && filterType ? (
+                      <ColumnFilterControl
+                        columnId={header.column.id}
+                        filterType={filterType}
+                        condition={
+                          columnFilters[header.column.id]?.condition ?? null
+                        }
+                        onChange={(condition) =>
+                          handleColumnFilterChange(
+                            header.column.id,
+                            filterType,
+                            condition
+                          )
+                        }
+                        suggestions={filterSuggestions}
+                        onOpenChange={onFilterColumnChange}
+                      />
+                    ) : null}
                     <div
                       className={clsx(
                         styles.resizer,

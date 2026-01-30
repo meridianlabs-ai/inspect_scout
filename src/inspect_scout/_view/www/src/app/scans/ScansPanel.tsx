@@ -71,7 +71,7 @@ export const ScansPanel: FC = () => {
         scansDir={displayScansDir}
         scansDirSource={resolvedScansDirSource}
         setScansDir={setScansDir}
-        bordered={false}
+        bordered={true}
       />
       <LoadingBar loading={isFetching} />
       <ExtendedFindProvider>
@@ -98,6 +98,8 @@ export const ScansPanel: FC = () => {
               onScrollNearEnd={handleScrollNearEnd}
               hasMore={hasNextPage}
               fetchThreshold={SCANS_INFINITE_SCROLL_CONFIG.threshold}
+              filterSuggestions={filterSuggestions}
+              onFilterColumnChange={onFilterColumnChange}
             />
           </div>
         )}

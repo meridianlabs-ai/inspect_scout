@@ -11,6 +11,7 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
+import type { ScanColumnKey } from "../app/scans/columns";
 import { ColumnSizingStrategyKey } from "../app/transcripts/columnSizing/types";
 import {
   ErrorScope,
@@ -52,6 +53,17 @@ interface TranscriptsTableState {
   sizingStrategy: ColumnSizingStrategyKey;
   /** Column IDs that have been manually resized by the user */
   manuallyResizedColumns: string[];
+}
+
+// Scans table UI state
+interface ScansTableState {
+  columnSizing: ColumnSizingState;
+  columnOrder: ScanColumnKey[];
+  sorting: SortingState;
+  rowSelection: RowSelectionState;
+  focusedRowId: string | null;
+  columnFilters: Record<string, ColumnFilter>;
+  visibleColumns?: ScanColumnKey[];
 }
 
 interface TranscriptState {
@@ -120,6 +132,9 @@ interface StoreState {
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
   transcriptsTableState: TranscriptsTableState;
+
+  // Scans table state
+  scansTableState: ScansTableState;
 
   // Transcript Detail Data
   transcriptState: TranscriptState;
@@ -230,6 +245,9 @@ interface StoreState {
   setTranscriptState: (
     updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
   ) => void;
+  setScansTableState: (
+    updater: ScansTableState | ((prev: ScansTableState) => ScansTableState)
+  ) => void;
 
   // Validation actions
   setSelectedValidationSetUri: (uri: string | undefined) => void;
@@ -294,6 +312,14 @@ export const createStore = (api: ScanApi) =>
             columnFilters: {},
             sizingStrategy: "fit-content",
             manuallyResizedColumns: [],
+          },
+          scansTableState: {
+            columnSizing: {},
+            columnOrder: [],
+            sorting: [{ id: "time", desc: true }],
+            rowSelection: {},
+            focusedRowId: null,
+            columnFilters: {},
           },
           transcriptState: {},
           validationCaseSelection: {},
@@ -647,6 +673,14 @@ export const createStore = (api: ScanApi) =>
               state.transcriptState =
                 typeof updater === "function"
                   ? updater(state.transcriptState)
+                  : updater;
+            });
+          },
+          setScansTableState(updater) {
+            set((state) => {
+              state.scansTableState =
+                typeof updater === "function"
+                  ? updater(state.scansTableState)
                   : updater;
             });
           },

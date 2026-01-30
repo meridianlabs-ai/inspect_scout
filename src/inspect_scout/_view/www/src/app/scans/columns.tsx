@@ -1,0 +1,251 @@
+import { clsx } from "clsx";
+
+import { ApplicationIcons } from "../../components/icons";
+import { FilterType } from "../../state/store";
+import type { ScanStatusWithActiveInfo } from "../../types/api-types";
+import { ExtendedColumnDef, BaseColumnMeta } from "../components/columnTypes";
+
+import styles from "./columns.module.css";
+
+/**
+ * Extended scan row type with computed fields for grid display.
+ * Adds flattened/computed values for columns that need them.
+ */
+export type ScanRow = ScanStatusWithActiveInfo & {
+  /** Relative path from results directory */
+  relativeLocation: string;
+};
+
+// Define the keys that correspond to our scan columns
+export type ScanColumnKey =
+  | "status"
+  | "name"
+  | "scanners"
+  | "scan_id"
+  | "model"
+  | "path"
+  | "time";
+
+// Column type for scan grid
+export type ScanColumn = ExtendedColumnDef<ScanRow, BaseColumnMeta>;
+
+// Column headers for display (used in column picker and add filter dropdown)
+export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
+  status: "Status",
+  name: "Name",
+  scanners: "Scanners",
+  scan_id: "Scan ID",
+  model: "Model",
+  path: "Path",
+  time: "Time",
+};
+
+// Column header tooltips
+export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
+  status: "Scan completion status (complete, in progress, or error)",
+  name: "Name of the scan configuration",
+  scanners: "List of scanners used in this scan",
+  scan_id: "Unique identifier for the scan",
+  model: "Model used for scanning",
+  path: "Path to the scan results",
+  time: "Timestamp when the scan was started",
+};
+
+// Helper to get status value from scan row
+function getStatusValue(scan: ScanRow): string {
+  if (scan.active_scan_info) return "active";
+  if (scan.errors.length > 0) return "error";
+  return scan.complete ? "complete" : "incomplete";
+}
+
+// Helper to get scanners as comma-separated string
+function getScannersValue(scan: ScanRow): string {
+  const scanners = scan.spec.scanners;
+  return scanners ? Object.keys(scanners).join(", ") : "-";
+}
+
+// All available columns, keyed by their ID
+const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
+  status: {
+    id: "status",
+    accessorFn: getStatusValue,
+    header: "✓",
+    headerTitle: COLUMN_HEADER_TITLES.status,
+    size: 70,
+    minSize: 70,
+    maxSize: 70,
+    meta: {
+      align: "center",
+      filterable: true,
+      filterType: "string",
+    },
+    cell: (info) => {
+      const scan = info.row.original;
+      const activeScan = scan.active_scan_info;
+
+      if (activeScan) {
+        const pct =
+          activeScan.total_scans > 0
+            ? Math.round(
+                (activeScan.metrics.completed_scans / activeScan.total_scans) *
+                  100
+              )
+            : 0;
+        return (
+          <span className={styles.blue}>
+            <i className={ApplicationIcons["play-circle"]}></i> {pct}%
+          </span>
+        );
+      }
+
+      const hasErrors = scan.errors.length > 0;
+      const icon = scan.complete
+        ? ApplicationIcons.success
+        : hasErrors
+          ? ApplicationIcons.error
+          : ApplicationIcons.pendingTask;
+      const colorClass = scan.complete
+        ? styles.green
+        : hasErrors
+          ? styles.red
+          : styles.yellow;
+
+      return <i className={clsx(icon, colorClass)}></i>;
+    },
+    textValue: () => null,
+  },
+  name: {
+    id: "name",
+    accessorFn: (row) => row.spec.scan_name ?? "-",
+    header: "Name",
+    headerTitle: COLUMN_HEADER_TITLES.name,
+    size: 120,
+    minSize: 80,
+    maxSize: 300,
+    meta: {
+      filterable: true,
+      filterType: "string",
+    },
+  },
+  scanners: {
+    id: "scanners",
+    accessorFn: getScannersValue,
+    header: "Scanners",
+    headerTitle: COLUMN_HEADER_TITLES.scanners,
+    size: 120,
+    minSize: 80,
+    maxSize: 400,
+    meta: {
+      filterable: true,
+      filterType: "string",
+    },
+  },
+  scan_id: {
+    id: "scan_id",
+    accessorFn: (row) => row.spec.scan_id ?? "-",
+    header: "Scan ID",
+    headerTitle: COLUMN_HEADER_TITLES.scan_id,
+    size: 150,
+    minSize: 100,
+    maxSize: 400,
+    meta: {
+      filterable: true,
+      filterType: "string",
+    },
+  },
+  model: {
+    id: "model",
+    accessorFn: (row) => row.spec.model?.model ?? "-",
+    header: "Model",
+    headerTitle: COLUMN_HEADER_TITLES.model,
+    size: 150,
+    minSize: 80,
+    maxSize: 400,
+    meta: {
+      filterable: true,
+      filterType: "string",
+    },
+  },
+  path: {
+    id: "path",
+    accessorKey: "relativeLocation",
+    header: "Path",
+    headerTitle: COLUMN_HEADER_TITLES.path,
+    size: 200,
+    minSize: 100,
+    maxSize: 500,
+    meta: {
+      filterable: true,
+      filterType: "string",
+    },
+  },
+  time: {
+    id: "time",
+    accessorFn: (row) => row.spec.timestamp ?? "",
+    header: "Time",
+    headerTitle: COLUMN_HEADER_TITLES.time,
+    size: 180,
+    minSize: 120,
+    maxSize: 300,
+    meta: {
+      filterable: true,
+      filterType: "datetime",
+    },
+    cell: (info) => {
+      const timestamp = info.getValue() as string;
+      if (!timestamp) return "-";
+      return new Date(timestamp).toLocaleString();
+    },
+    textValue: (value) => {
+      if (!value) return "-";
+      return new Date(value as string).toLocaleString();
+    },
+  },
+};
+
+// Default column order
+export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
+  "status",
+  "name",
+  "scanners",
+  "scan_id",
+  "model",
+  "path",
+  "time",
+];
+
+// Default visible columns
+export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = [
+  "status",
+  "name",
+  "scanners",
+  "scan_id",
+  "model",
+  "path",
+  "time",
+];
+
+/**
+ * Get columns for the ScansGrid.
+ * @param visibleColumnKeys - Optional list of column keys to display. If not provided, returns all columns in default order.
+ * @returns Array of column definitions in the order specified or default order.
+ */
+export function getScanColumns(
+  visibleColumnKeys?: ScanColumnKey[]
+): ScanColumn[] {
+  if (!visibleColumnKeys) {
+    return DEFAULT_COLUMN_ORDER.map((key) => ALL_COLUMNS[key]);
+  }
+
+  return visibleColumnKeys.map((key) => ALL_COLUMNS[key]);
+}
+
+/**
+ * Get the filter type for a given column ID.
+ * @param columnId - The column ID to look up
+ * @returns The filter type for the column, or "string" as default
+ */
+export function getFilterTypeForColumn(columnId: string): FilterType {
+  const column = ALL_COLUMNS[columnId as ScanColumnKey];
+  return column?.meta?.filterType ?? "string";
+}

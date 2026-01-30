@@ -11,9 +11,11 @@ import type { TranscriptInfo } from "../../types/api-types";
 import { Chip } from "../components/Chip";
 import { ChipGroup } from "../components/ChipGroup";
 
-import { ColumnFilterEditor } from "./columnFilter/ColumnFilterEditor";
-import { useAddFilterPopover } from "./columnFilter/useAddFilterPopover";
-import { useColumnFilterPopover } from "./columnFilter/useColumnFilterPopover";
+import {
+  ColumnFilterEditor,
+  useAddFilterPopover,
+  useColumnFilterPopover,
+} from "./columnFilter";
 import { DEFAULT_VISIBLE_COLUMNS, getFilterTypeForColumn } from "./columns";
 import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
 import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";

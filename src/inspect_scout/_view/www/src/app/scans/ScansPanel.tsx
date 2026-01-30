@@ -13,7 +13,8 @@ import { useAppConfig } from "../server/useAppConfig";
 import { useScans } from "../server/useScans";
 import { useScansDir } from "../utils/useScansDir";
 
-import { ScansGrid } from "./ScansGrid";
+import { ScansDataGrid } from "./ScansDataGrid";
+import { ScansFilterBar } from "./ScansFilterBar";
 import styles from "./ScansPanel.module.css";
 
 export const ScansPanel: FC = () => {
@@ -54,7 +55,17 @@ export const ScansPanel: FC = () => {
         {!scans && !error && (
           <NoContentsPanel icon={ApplicationIcons.running} text="Loading..." />
         )}
-        {scans && !error && <ScansGrid scans={scans} resultsDir={scanDir} />}
+        {scans && !error && (
+          <div className={styles.gridContainer}>
+            <ScansFilterBar />
+            <ScansDataGrid
+              scans={scans}
+              resultsDir={scanDir}
+              loading={loading}
+              className={styles.grid}
+            />
+          </div>
+        )}
         <Footer
           id={"scan-job-footer"}
           itemCount={visibleScanJobCount || 0}

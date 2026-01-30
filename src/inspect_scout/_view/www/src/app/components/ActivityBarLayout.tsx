@@ -35,7 +35,7 @@ export const ActivityBarLayout: FC<ActivityBarLayoutProps> = ({
 
   const handleSelectActivity = (
     activityId: string,
-    e: MouseEvent<HTMLDivElement>,
+    e: MouseEvent<HTMLDivElement>
   ) => {
     const activity = getActivityById(activityId);
     if (activity) {

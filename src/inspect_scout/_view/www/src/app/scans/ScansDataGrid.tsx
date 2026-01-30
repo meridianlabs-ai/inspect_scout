@@ -261,9 +261,7 @@ export const ScansDataGrid: FC<ScansDataGridProps> = ({
                 const columnDef = header.column.columnDef as ScanColumn;
                 const columnMeta = columnDef.meta;
                 const align = columnMeta?.align;
-                const filterType = columnMeta?.filterType as
-                  | FilterType
-                  | undefined;
+                const filterType = columnMeta?.filterType;
                 return (
                   <th
                     key={header.id}

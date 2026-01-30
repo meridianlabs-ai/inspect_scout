@@ -1,59 +1,40 @@
 /**
  * Column sizing types for TranscriptsGrid.
+ * Re-exports shared types and provides transcript-specific type aliases.
  */
 
-import { ColumnSizingState } from "@tanstack/react-table";
+// Re-export shared types and utilities
+export {
+  DEFAULT_MAX_SIZE,
+  DEFAULT_MIN_SIZE,
+  DEFAULT_SIZE,
+} from "../../components/columnSizing";
 
+export type {
+  ColumnSizeConstraints,
+  ColumnSizingStrategyKey,
+} from "../../components/columnSizing";
+
+// Import for transcript-specific types
 import { TranscriptInfo } from "../../../types/api-types";
+import {
+  SizingStrategy as GenericSizingStrategy,
+  SizingStrategyContext as GenericSizingStrategyContext,
+} from "../../components/columnSizing";
 import { TranscriptColumn } from "../columns";
 
 /**
- * Size constraints for a column.
- */
-export interface ColumnSizeConstraints {
-  /** Default size in pixels */
-  size: number;
-  /** Minimum allowed size in pixels */
-  minSize: number;
-  /** Maximum allowed size in pixels */
-  maxSize: number;
-}
-
-/** Default minimum column size in pixels */
-export const DEFAULT_MIN_SIZE = 40;
-
-/** Default maximum column size in pixels */
-export const DEFAULT_MAX_SIZE = 600;
-
-/** Default column size in pixels when not specified */
-export const DEFAULT_SIZE = 150;
-
-/**
  * Context provided to sizing strategies for computing column sizes.
+ * Uses transcript-specific column and data types.
  */
-export interface SizingStrategyContext {
-  /** The table element for DOM measurements (may be null) */
-  tableElement: HTMLTableElement | null;
+export interface SizingStrategyContext
+  extends Omit<GenericSizingStrategyContext<TranscriptInfo>, "columns"> {
   /** Column definitions */
   columns: TranscriptColumn[];
-  /** Current data for content measurement */
-  data: TranscriptInfo[];
-  /** Pre-computed constraints for each column */
-  constraints: Map<string, ColumnSizeConstraints>;
 }
 
 /**
  * Interface for column sizing strategies.
  * Each strategy computes column sizes differently.
  */
-export interface SizingStrategy {
-  /** Compute sizes for all columns */
-  computeSizes(context: SizingStrategyContext): ColumnSizingState;
-}
-
-/**
- * Available sizing strategy keys.
- * - "default": Uses the column's defined `size` property
- * - "fit-content": Measures content and sizes columns to fit within min/max constraints
- */
-export type ColumnSizingStrategyKey = "default" | "fit-content";
+export type SizingStrategy = GenericSizingStrategy<TranscriptInfo>;

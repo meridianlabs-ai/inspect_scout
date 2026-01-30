@@ -48,6 +48,11 @@ export interface ScanApi {
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
   ): Promise<ScansResponse>;
+  getScansColumnValues(
+    scansDir: string,
+    column: string,
+    filter: Condition | undefined
+  ): Promise<ScalarValue[]>;
   getScan(scansDir: string, scanPath: string): Promise<Status>;
   getScannerDataframe(
     scansDir: string,

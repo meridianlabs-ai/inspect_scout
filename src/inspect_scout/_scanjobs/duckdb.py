@@ -6,7 +6,9 @@ import duckdb
 import pandas as pd
 from typing_extensions import override
 
-from .._query import Query
+from .._query import Query, ScalarValue
+from .._query.condition import Condition
+from .._query.condition_sql import condition_as_sql
 from .._recorder.recorder import Status
 from .view import ScanJobsView
 
@@ -90,6 +92,23 @@ class DuckDBScanJobsView(ScanJobsView):
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
+
+    @override
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        """Get distinct values of a column, sorted ascending."""
+        assert self._conn is not None, "Not connected"
+
+        if condition is not None:
+            where_sql, params = condition_as_sql(condition, "duckdb")
+            sql = f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} WHERE {where_sql} ORDER BY "{column}" ASC'
+        else:
+            params = []
+            sql = f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} ORDER BY "{column}" ASC'
+
+        result = self._conn.execute(sql, params).fetchall()
+        return [row[0] for row in result]
 
     def _statuses_to_dataframe(self, statuses: list[Status]) -> pd.DataFrame:
         """Convert Status objects to a DataFrame for DuckDB."""

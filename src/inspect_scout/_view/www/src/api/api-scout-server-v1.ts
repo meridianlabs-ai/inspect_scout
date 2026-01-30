@@ -95,6 +95,10 @@ export const apiScoutServerV1 = (
         next_cursor: null,
       };
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getScansColumnValues: async (): Promise<never> => {
+      throw new Error("Not implemented in API v1");
+    },
     getScannerDataframe: async (
       scansDir: string,
       scanPath: string,

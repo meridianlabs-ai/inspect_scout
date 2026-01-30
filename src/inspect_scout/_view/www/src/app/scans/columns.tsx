@@ -17,38 +17,39 @@ export type ScanRow = ScanStatusWithActiveInfo & {
 };
 
 // Define the keys that correspond to our scan columns
+// These match the database column names for filtering to work
 export type ScanColumnKey =
-  | "status"
-  | "name"
+  | "complete" // Status column (computed display, but can filter on complete)
+  | "scan_name" // Name column
   | "scanners"
   | "scan_id"
   | "model"
-  | "path"
-  | "time";
+  | "location" // Path column
+  | "timestamp"; // Time column
 
 // Column type for scan grid
 export type ScanColumn = ExtendedColumnDef<ScanRow, BaseColumnMeta>;
 
 // Column headers for display (used in column picker and add filter dropdown)
 export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
-  status: "Status",
-  name: "Name",
+  complete: "Status",
+  scan_name: "Name",
   scanners: "Scanners",
   scan_id: "Scan ID",
   model: "Model",
-  path: "Path",
-  time: "Time",
+  location: "Path",
+  timestamp: "Time",
 };
 
 // Column header tooltips
 export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
-  status: "Scan completion status (complete, in progress, or error)",
-  name: "Name of the scan configuration",
+  complete: "Scan completion status (complete, in progress, or error)",
+  scan_name: "Name of the scan configuration",
   scanners: "List of scanners used in this scan",
   scan_id: "Unique identifier for the scan",
   model: "Model used for scanning",
-  path: "Path to the scan results",
-  time: "Timestamp when the scan was started",
+  location: "Path to the scan results",
+  timestamp: "Timestamp when the scan was started",
 };
 
 // Helper to get status value from scan row
@@ -64,20 +65,20 @@ function getScannersValue(scan: ScanRow): string {
   return scanners ? Object.keys(scanners).join(", ") : "-";
 }
 
-// All available columns, keyed by their ID
+// All available columns, keyed by their ID (using database column names)
 const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
-  status: {
-    id: "status",
+  complete: {
+    id: "complete",
     accessorFn: getStatusValue,
     header: "✓",
-    headerTitle: COLUMN_HEADER_TITLES.status,
+    headerTitle: COLUMN_HEADER_TITLES.complete,
     size: 70,
     minSize: 70,
     maxSize: 70,
     meta: {
       align: "center",
       filterable: true,
-      filterType: "string",
+      filterType: "boolean",
     },
     cell: (info) => {
       const scan = info.row.original;
@@ -114,11 +115,11 @@ const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     },
     textValue: () => null,
   },
-  name: {
-    id: "name",
+  scan_name: {
+    id: "scan_name",
     accessorFn: (row) => row.spec.scan_name ?? "-",
     header: "Name",
-    headerTitle: COLUMN_HEADER_TITLES.name,
+    headerTitle: COLUMN_HEADER_TITLES.scan_name,
     size: 120,
     minSize: 80,
     maxSize: 300,
@@ -166,11 +167,11 @@ const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
   },
-  path: {
-    id: "path",
+  location: {
+    id: "location",
     accessorKey: "relativeLocation",
     header: "Path",
-    headerTitle: COLUMN_HEADER_TITLES.path,
+    headerTitle: COLUMN_HEADER_TITLES.location,
     size: 200,
     minSize: 100,
     maxSize: 500,
@@ -179,11 +180,11 @@ const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
   },
-  time: {
-    id: "time",
+  timestamp: {
+    id: "timestamp",
     accessorFn: (row) => row.spec.timestamp ?? "",
     header: "Time",
-    headerTitle: COLUMN_HEADER_TITLES.time,
+    headerTitle: COLUMN_HEADER_TITLES.timestamp,
     size: 180,
     minSize: 120,
     maxSize: 300,
@@ -205,24 +206,24 @@ const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
 
 // Default column order
 export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
-  "status",
-  "name",
+  "complete",
+  "scan_name",
   "scanners",
   "scan_id",
   "model",
-  "path",
-  "time",
+  "location",
+  "timestamp",
 ];
 
 // Default visible columns
 export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = [
-  "status",
-  "name",
+  "complete",
+  "scan_name",
   "scanners",
   "scan_id",
   "model",
-  "path",
-  "time",
+  "location",
+  "timestamp",
 ];
 
 /**

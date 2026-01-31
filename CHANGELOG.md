@@ -1,7 +1,7 @@
 ## Unreleased
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
-- Transcripts: Add `EvalLogMetadata` class for typed access to Inspect eval log metadata fields (scores, eval_metadata, sample_metadata, etc.).
+- Transcripts: Add `SampleMetadata` class for typed access to Inspect eval log metadata fields (scores, eval_metadata, sample_metadata, etc.).
 
 ## 0.4.11 (29 January 2026)
 

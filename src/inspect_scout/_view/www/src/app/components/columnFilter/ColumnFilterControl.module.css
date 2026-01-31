@@ -1,0 +1,10 @@
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+}
+
+.filterPopover {
+  min-width: 180px;
+}

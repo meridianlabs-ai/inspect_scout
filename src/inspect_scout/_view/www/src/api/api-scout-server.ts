@@ -137,6 +137,19 @@ export const apiScoutServer = (
       );
       return asyncJsonParse<ScansResponse>(result.raw);
     },
+    getScansColumnValues: async (
+      scansDir: string,
+      column: string,
+      filter: Condition | undefined
+    ): Promise<ScalarValue[]> => {
+      const result = await requestApi.fetchString(
+        "POST",
+        `/scans/${encodeBase64Url(scansDir)}/distinct`,
+        {},
+        JSON.stringify({ column, filter: filter ?? null })
+      );
+      return asyncJsonParse<ScalarValue[]>(result.raw);
+    },
     getScannerDataframe: async (
       scansDir: string,
       scanPath: string,

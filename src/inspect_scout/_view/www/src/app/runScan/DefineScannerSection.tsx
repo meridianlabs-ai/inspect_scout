@@ -9,7 +9,7 @@ import { FC, useState } from "react";
 import { ApplicationIcons } from "../../components/icons";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useFilterBarProps } from "../hooks/useFilterBarProps";
+import { useTranscriptsFilterBarProps } from "../hooks/useTranscriptsFilterBarProps";
 import { useAppConfig } from "../server/useAppConfig";
 import { useScanners } from "../server/useScanners";
 import { useStartScan } from "../server/useStartScan";
@@ -58,7 +58,7 @@ export const DefineScannerSection: FC<Props> = ({ onScanStarted }) => {
     useScansDir(true);
 
   const { filterCodeValues, filterSuggestions, onFilterColumnChange } =
-    useFilterBarProps(resolvedTranscriptsDir);
+    useTranscriptsFilterBarProps(resolvedTranscriptsDir);
 
   const effectiveScanner = selectedScanner ?? scanners?.[0]?.name;
   const selectedScannerInfo = scanners?.find(

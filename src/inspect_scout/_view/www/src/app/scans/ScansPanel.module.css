@@ -4,3 +4,16 @@
   height: 100%;
   row-gap: 0;
 }
+
+.gridContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}

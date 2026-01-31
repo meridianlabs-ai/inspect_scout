@@ -100,13 +100,15 @@ export const ScansGrid: FC<ScansGridProps> = ({
       columns={columns}
       getRowId={getRowId}
       getRowKey={scanItemKey}
-      sorting={sorting}
-      columnOrder={effectiveColumnOrder}
-      columnFilters={columnFilters}
-      columnSizing={columnSizing}
-      rowSelection={rowSelection}
-      focusedRowId={focusedRowId}
-      setTableState={setTableState}
+      state={{
+        sorting,
+        columnOrder: effectiveColumnOrder,
+        columnFilters,
+        columnSizing,
+        rowSelection,
+        focusedRowId,
+      }}
+      onStateChange={setTableState}
       getRowRoute={getRowRoute}
       onScrollNearEnd={onScrollNearEnd}
       hasMore={hasMore}

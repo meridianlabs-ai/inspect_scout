@@ -47,16 +47,11 @@ export function DataGrid<
   getRowId,
   getRowKey,
 
-  // State
-  sorting,
-  columnOrder,
-  columnFilters,
-  columnSizing,
-  rowSelection,
-  focusedRowId,
+  // State (consolidated)
+  state,
 
   // State setter
-  setTableState,
+  onStateChange,
 
   // Navigation
   getRowRoute,
@@ -80,6 +75,9 @@ export function DataGrid<
   emptyMessage = "No matching items",
   noConfigMessage = "No directory configured.",
 }: DataGridProps<TData, TColumn, TState>): ReactElement {
+  // Destructure state for convenience
+  const { sorting, columnOrder, columnFilters, columnSizing, rowSelection, focusedRowId } = state;
+
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
@@ -106,7 +104,7 @@ export function DataGrid<
       filterType: FilterType,
       condition: SimpleCondition | null
     ) => {
-      setTableState((prev) => {
+      onStateChange((prev) => {
         if (condition === null) {
           // Remove the filter entirely
           const newFilters = { ...prev.columnFilters };
@@ -130,13 +128,13 @@ export function DataGrid<
         };
       });
     },
-    [setTableState]
+    [onStateChange]
   );
 
   // Column ordering handler
   const handleColumnOrderChange: OnChangeFn<string[]> = useCallback(
     (updaterOrValue) => {
-      setTableState((prev) => {
+      onStateChange((prev) => {
         const newValue =
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev.columnOrder)
@@ -144,13 +142,13 @@ export function DataGrid<
         return { ...prev, columnOrder: newValue };
       });
     },
-    [setTableState]
+    [onStateChange]
   );
 
   // Sorting handler
   const handleSortingChange: OnChangeFn<SortingState> = useCallback(
     (updaterOrValue) => {
-      setTableState((prev) => {
+      onStateChange((prev) => {
         const newValue =
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev.sorting)
@@ -158,13 +156,13 @@ export function DataGrid<
         return { ...prev, sorting: newValue };
       });
     },
-    [setTableState]
+    [onStateChange]
   );
 
   // Row selection handler
   const handleRowSelectionChange: OnChangeFn<RowSelectionState> = useCallback(
     (updaterOrValue) => {
-      setTableState((prev) => {
+      onStateChange((prev) => {
         const newValue =
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev.rowSelection)
@@ -172,13 +170,13 @@ export function DataGrid<
         return { ...prev, rowSelection: newValue };
       });
     },
-    [setTableState]
+    [onStateChange]
   );
 
   // Column sizing handler
   const handleColumnSizingChange: OnChangeFn<ColumnSizingState> = useCallback(
     (updaterOrValue) => {
-      setTableState((prev) => {
+      onStateChange((prev) => {
         const newValue =
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev.columnSizing)
@@ -195,7 +193,7 @@ export function DataGrid<
         onColumnSizingChange(newValue);
       }
     },
-    [setTableState, onColumnSizingChange, columnSizing]
+    [onStateChange, onColumnSizingChange, columnSizing]
   );
 
   // Compute effective column order
@@ -273,10 +271,10 @@ export function DataGrid<
       newOrder.splice(draggedIndex, 1);
       newOrder.splice(targetIndex, 0, draggedColumn);
 
-      setTableState((prev) => ({ ...prev, columnOrder: newOrder }));
+      onStateChange((prev) => ({ ...prev, columnOrder: newOrder }));
       resetDragState();
     },
-    [draggedColumn, effectiveColumnOrder, setTableState, resetDragState]
+    [draggedColumn, effectiveColumnOrder, onStateChange, resetDragState]
   );
 
   const handleDragEnd = useCallback(() => {
@@ -320,7 +318,7 @@ export function DataGrid<
       }
 
       // Update focused row
-      setTableState((prev) => ({ ...prev, focusedRowId: rowId }));
+      onStateChange((prev) => ({ ...prev, focusedRowId: rowId }));
 
       const row = rows[rowIndex];
       if (!row) return;
@@ -350,14 +348,14 @@ export function DataGrid<
               }
             }
 
-            setTableState((prev) => ({
+            onStateChange((prev) => ({
               ...prev,
               rowSelection: newSelection,
             }));
           }
         } else {
           // No previous selection, just select this row
-          setTableState((prev) => ({
+          onStateChange((prev) => ({
             ...prev,
             rowSelection: { [rowId]: true },
           }));
@@ -367,7 +365,7 @@ export function DataGrid<
         void navigate(getRowRoute(row.original));
       }
     },
-    [rows, rowSelection, setTableState, navigate, getRowRoute]
+    [rows, rowSelection, onStateChange, navigate, getRowRoute]
   );
 
   // Keyboard navigation handler
@@ -424,7 +422,7 @@ export function DataGrid<
           if (focusedIndex !== -1) {
             const row = rows[focusedIndex];
             if (row) {
-              setTableState((prev) => ({
+              onStateChange((prev) => ({
                 ...prev,
                 rowSelection: {
                   ...prev.rowSelection,
@@ -443,7 +441,7 @@ export function DataGrid<
             rows.forEach((row) => {
               allSelected[row.id] = true;
             });
-            setTableState((prev) => ({
+            onStateChange((prev) => ({
               ...prev,
               rowSelection: allSelected,
             }));
@@ -453,7 +451,7 @@ export function DataGrid<
         case "Escape":
           e.preventDefault();
           // Clear selection
-          setTableState((prev) => ({
+          onStateChange((prev) => ({
             ...prev,
             rowSelection: {},
           }));
@@ -468,14 +466,14 @@ export function DataGrid<
         const newRow = rows[newFocusedIndex];
         if (!newRow) return;
 
-        setTableState((prev) => ({
+        onStateChange((prev) => ({
           ...prev,
           focusedRowId: newRow.id,
         }));
 
         if (shouldUpdateSelection) {
           // Normal arrow: move selection
-          setTableState((prev) => ({
+          onStateChange((prev) => ({
             ...prev,
             rowSelection: { [newRow.id]: true },
           }));
@@ -501,14 +499,14 @@ export function DataGrid<
                 }
               }
 
-              setTableState((prev) => ({
+              onStateChange((prev) => ({
                 ...prev,
                 rowSelection: newSelection,
               }));
             }
           } else {
             // No selection, start new one
-            setTableState((prev) => ({
+            onStateChange((prev) => ({
               ...prev,
               rowSelection: { [newRow.id]: true },
             }));
@@ -516,7 +514,7 @@ export function DataGrid<
         }
       }
     },
-    [rows, focusedRowId, rowSelection, setTableState, navigate, getRowRoute]
+    [rows, focusedRowId, rowSelection, onStateChange, navigate, getRowRoute]
   );
 
   // Create virtualizer

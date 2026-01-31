@@ -139,13 +139,15 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
       columns={columns}
       getRowId={getRowId}
       getRowKey={transcriptItemKey}
-      sorting={sorting}
-      columnOrder={effectiveColumnOrder}
-      columnFilters={columnFilters}
-      columnSizing={columnSizing}
-      rowSelection={rowSelection}
-      focusedRowId={focusedRowId}
-      setTableState={setTableState}
+      state={{
+        sorting,
+        columnOrder: effectiveColumnOrder,
+        columnFilters,
+        columnSizing,
+        rowSelection,
+        focusedRowId,
+      }}
+      onStateChange={setTableState}
       getRowRoute={getRowRoute}
       onScrollNearEnd={onScrollNearEnd}
       hasMore={hasMore}

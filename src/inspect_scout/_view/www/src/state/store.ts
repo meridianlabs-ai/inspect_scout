@@ -41,7 +41,7 @@ export interface ColumnFilter {
 }
 
 // Transcripts table UI state
-interface TranscriptsTableState {
+export interface TranscriptsTableState {
   columnSizing: ColumnSizingState;
   columnOrder: string[];
   sorting: SortingState;
@@ -56,7 +56,7 @@ interface TranscriptsTableState {
 }
 
 // Scans table UI state
-interface ScansTableState {
+export interface ScansTableState {
   columnSizing: ColumnSizingState;
   columnOrder: ScanColumnKey[];
   sorting: SortingState;

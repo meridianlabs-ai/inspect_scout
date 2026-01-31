@@ -4,7 +4,7 @@ import { FC, useCallback, useRef, useState } from "react";
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
-import { useStore } from "../../state/store";
+import { ScansTableState, useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
 import { ColumnFilterEditor } from "../components/columnFilter";
 import { ColumnsButton } from "../components/ColumnsButton";
@@ -47,7 +47,7 @@ export const ScansFilterBar: FC<{
 
   // Use shared filter bar handlers
   const { handleFilterChange, removeFilter, handleAddFilter } =
-    useFilterBarHandlers<ScanColumnKey>({
+    useFilterBarHandlers<ScanColumnKey, ScansTableState>({
       setTableState: setScansTableState,
       defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
     });

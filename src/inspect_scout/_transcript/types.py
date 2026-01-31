@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from os import PathLike
 from typing import Any, Literal, Sequence, TypeAlias
@@ -48,6 +50,59 @@ LogPaths: TypeAlias = (
 class TranscriptContent:
     messages: MessageFilter = field(default=None)
     events: EventFilter = field(default=None)
+
+
+class BytesContextManager:
+    """Wraps raw bytes as AsyncContextManager[AsyncIterable[bytes]].
+
+    This adapter satisfies TranscriptMessagesAndEvents.data's type signature.
+    For raw bytes, the context manager is a no-op - nothing to clean up.
+    """
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    async def __aenter__(self) -> "BytesContextManager":
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        pass
+
+    def __aiter__(self) -> "BytesContextManager":
+        return self
+
+    async def __anext__(self) -> bytes:
+        if self._data:
+            data = self._data
+            self._data = b""
+            return data
+        raise StopAsyncIteration
+
+
+@dataclass
+class TranscriptMessagesAndEvents:
+    """Raw UTF-8 JSON bytes for transcript messages/events.
+
+    The JSON contains at least 'messages' and 'events' fields but may
+    include additional data depending on the source.
+    """
+
+    data: AbstractAsyncContextManager[AsyncIterable[bytes]]
+    """Raw UTF-8 JSON bytes, possibly compressed.
+
+    This is a "cold" iterable - the underlying stream is not opened until
+    iteration begins. Caller should use as async context manager for cleanup.
+    """
+
+    compression_method: int | None
+    """ZIP compression method per PKWARE APPNOTE spec, or None if uncompressed.
+
+    See: https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.9.TXT (section 4.4.5)
+    Common values: 0 = stored (no compression), 8 = DEFLATE
+    """
+
+    uncompressed_size: int | None
+    """Uncompressed size in bytes, or None if unknown."""
 
 
 class TranscriptInfo(BaseModel):

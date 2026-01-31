@@ -54,15 +54,17 @@ class _DecompressStream(AsyncIterator[bytes]):
     during event loop shutdown.
     """
 
-    def __init__(self, compressed_stream: ByteReceiveStream, compression_method: int):
+    def __init__(self, compressed_stream: ByteReceiveStream, decompression_mode: int):
         """Initialize the decompression stream.
 
         Args:
             compressed_stream: The input byte stream to decompress
-            compression_method: ZIP compression method (0=none, 8=DEFLATE)
+            decompression_mode: How to process the stream (0=pass-through, 8=DEFLATE).
+                This controls decompression behavior, not the actual compression
+                of the underlying data. Use 0 to stream raw bytes unchanged.
         """
         self._compressed_stream = compressed_stream
-        self._compression_method = compression_method
+        self._decompression_mode = decompression_mode
         self._decompressor: zlib._Decompress | None = None
         self._stream_iterator: AsyncIterator[bytes] | None = None
         self._exhausted = False
@@ -92,11 +94,11 @@ class _DecompressStream(AsyncIterator[bytes]):
             self._stream_iterator = self._compressed_stream.__aiter__()
 
         try:
-            if self._compression_method == 0:
-                # No compression - pass through
+            if self._decompression_mode == 0:
+                # Pass through raw bytes unchanged
                 return await self._stream_iterator.__anext__()
 
-            elif self._compression_method == 8:
+            elif self._decompression_mode == 8:
                 # DEFLATE compression
                 if self._decompressor is None:
                     self._decompressor = zlib.decompressobj(-15)  # Raw DEFLATE
@@ -121,7 +123,7 @@ class _DecompressStream(AsyncIterator[bytes]):
 
             else:
                 raise NotImplementedError(
-                    f"Unsupported compression method {self._compression_method}"
+                    f"Unsupported decompression mode {self._decompression_mode}"
                 )
 
         except StopAsyncIteration:
@@ -338,18 +340,23 @@ class _ZipMemberBytes:
         filesystem: AsyncFilesystem,
         filename: str,
         range_and_method: tuple[int, int, int],
+        *,
+        raw: bool = False,
     ):
         self._filesystem = filesystem
         self._filename = filename
         self._offset, self._end, self._method = range_and_method
+        self._raw = raw
         self._active_streams: set[_DecompressStream] = set()
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
+        # When raw=True, use decompression_mode=0 to pass through bytes unchanged
+        decompression_mode = 0 if self._raw else self._method
         stream = _DecompressStream(
             await self._filesystem.read_file_bytes(
                 self._filename, self._offset, self._end
             ),
-            self._method,
+            decompression_mode,
         )
         self._active_streams.add(stream)
         try:
@@ -396,7 +403,12 @@ class AsyncZipReader:
             filesystem: AsyncFilesystem instance for reading files
             filename: Path or URL to ZIP file (local path or s3:// URL)
             chunk_size: Size of chunks for streaming compressed data
+
+        Raises:
+            ValueError: If filename is empty or None
         """
+        if not filename:
+            raise ValueError("filename must not be empty")
         self._filesystem = filesystem
         self._filename = filename
         self._chunk_size = chunk_size
@@ -409,6 +421,28 @@ class AsyncZipReader:
         if entry is None:
             raise KeyError(member_name)
         return entry
+
+    async def open_member_raw(self, member: str | ZipEntry) -> _ZipMemberBytes:
+        """Open a ZIP member for streaming its raw (likely compressed) bytes.
+
+        Unlike open_member(), this does NOT decompress the data. Use this when
+        you want to pass through the raw bytes (e.g., for HTTP streaming with
+        Content-Encoding: deflate).
+
+        Returns a "cold" iterable - the stream is not opened until iteration.
+
+        Args:
+            member: Name or ZipEntry of the member file within the archive
+
+        Returns:
+            _ZipMemberBytes that yields raw bytes (may be compressed)
+        """
+        return _ZipMemberBytes(
+            self._filesystem,
+            self._filename,
+            await self._get_member_range_and_method(member),
+            raw=True,
+        )
 
     async def open_member(self, member: str | ZipEntry) -> _ZipMemberBytes:
         """Open a ZIP member and stream its decompressed contents.

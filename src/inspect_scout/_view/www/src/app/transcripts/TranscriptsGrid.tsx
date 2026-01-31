@@ -6,7 +6,11 @@ import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { DataGrid } from "../components/dataGrid";
 
-import { TranscriptColumn, getTranscriptColumns, DEFAULT_COLUMN_ORDER } from "./columns";
+import {
+  TranscriptColumn,
+  getTranscriptColumns,
+  DEFAULT_COLUMN_ORDER,
+} from "./columns";
 import { useColumnSizing } from "./columnSizing";
 
 // Default visible columns (stable reference)
@@ -63,13 +67,21 @@ export const TranscriptsGrid: FC<TranscriptGridProps> = ({
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Table state from store
-  const columnOrder = useStore((state) => state.transcriptsTableState.columnOrder);
+  const columnOrder = useStore(
+    (state) => state.transcriptsTableState.columnOrder
+  );
   const sorting = useStore((state) => state.transcriptsTableState.sorting);
-  const rowSelection = useStore((state) => state.transcriptsTableState.rowSelection);
-  const columnFilters = useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
-  const focusedRowId = useStore((state) => state.transcriptsTableState.focusedRowId);
+  const rowSelection = useStore(
+    (state) => state.transcriptsTableState.rowSelection
+  );
+  const columnFilters =
+    useStore((state) => state.transcriptsTableState.columnFilters) ?? {};
+  const focusedRowId = useStore(
+    (state) => state.transcriptsTableState.focusedRowId
+  );
   const visibleColumns =
-    useStore((state) => state.transcriptsTableState.visibleColumns) ?? DEFAULT_VISIBLE_COLUMNS;
+    useStore((state) => state.transcriptsTableState.visibleColumns) ??
+    DEFAULT_VISIBLE_COLUMNS;
   const setTableState = useStore((state) => state.setTranscriptsTableState);
 
   // Define table columns based on visible columns from store

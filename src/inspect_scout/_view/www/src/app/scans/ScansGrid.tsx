@@ -1,31 +1,13 @@
-import {
-  flexRender,
-  getCoreRowModel,
-  OnChangeFn,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
-import { FC, MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
+import { FC, useEffect, useMemo } from "react";
 
 import { ScalarValue } from "../../api/api";
-import { ApplicationIcons } from "../../components/icons";
-import { useLoggingNavigate } from "../../debugging/navigationDebugging";
-import type { SimpleCondition } from "../../query/types";
-import { openRouteInNewTab, scanRoute } from "../../router/url";
-import { useStore, FilterType } from "../../state/store";
+import { scanRoute } from "../../router/url";
+import { useStore } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
-import { ColumnFilterControl } from "../components/columnFilter";
+import { DataGrid } from "../components/dataGrid";
 
-import {
-  DEFAULT_COLUMN_ORDER,
-  getScanColumns,
-  ScanColumn,
-  ScanRow,
-} from "./columns";
-import styles from "./ScansGrid.module.css";
+import { DEFAULT_COLUMN_ORDER, getScanColumns, ScanColumn, ScanRow } from "./columns";
 
 // Generate a stable key for a scan item
 function scanItemKey(index: number, item?: ScanRow): string {
@@ -35,23 +17,13 @@ function scanItemKey(index: number, item?: ScanRow): string {
   return item.spec.scan_id;
 }
 
-// Get the empty state message based on loading state and configuration
-function getEmptyStateMessage(
-  loading: boolean,
-  resultsDir: string | undefined
-): string {
-  if (loading) return "Loading...";
-  if (!resultsDir) return "No scans directory configured.";
-  return "No matching scans";
-}
-
 interface ScansGridProps {
   scans: ScanStatusWithActiveInfo[];
   resultsDir: string | undefined;
   className?: string | string[];
   loading?: boolean;
   /** Called when scroll position nears end */
-  onScrollNearEnd?: () => void;
+  onScrollNearEnd?: (distanceFromBottom?: number) => void;
   /** Whether more data is available to fetch */
   hasMore?: boolean;
   /** Distance from bottom (in px) at which to trigger callback */
@@ -73,23 +45,16 @@ export const ScansGrid: FC<ScansGridProps> = ({
   filterSuggestions = [],
   onFilterColumnChange,
 }) => {
-  // The table container which provides the scrollable region
-  const containerRef = useRef<HTMLDivElement>(null);
-  const navigate = useLoggingNavigate("ScansGrid");
-
   // Table state from store
   const sorting = useStore((state) => state.scansTableState.sorting);
   const columnOrder = useStore((state) => state.scansTableState.columnOrder);
-  const columnFilters = useStore(
-    (state) => state.scansTableState.columnFilters
-  );
-  const visibleColumns = useStore(
-    (state) => state.scansTableState.visibleColumns
-  );
+  const columnFilters = useStore((state) => state.scansTableState.columnFilters);
+  const columnSizing = useStore((state) => state.scansTableState.columnSizing);
+  const rowSelection = useStore((state) => state.scansTableState.rowSelection);
+  const focusedRowId = useStore((state) => state.scansTableState.focusedRowId);
+  const visibleColumns = useStore((state) => state.scansTableState.visibleColumns);
   const setTableState = useStore((state) => state.setScansTableState);
-  const setVisibleScanJobCount = useStore(
-    (state) => state.setVisibleScanJobCount
-  );
+  const setVisibleScanJobCount = useStore((state) => state.setVisibleScanJobCount);
 
   // Add computed relativeLocation to each scan
   const data = useMemo(
@@ -120,266 +85,38 @@ export const ScansGrid: FC<ScansGridProps> = ({
     return DEFAULT_COLUMN_ORDER;
   }, [columnOrder]);
 
-  // Column filter change handler
-  const handleColumnFilterChange = useCallback(
-    (
-      columnId: string,
-      filterType: FilterType,
-      condition: SimpleCondition | null
-    ) => {
-      setTableState((prev) => {
-        if (condition === null) {
-          // Remove the filter entirely
-          const newFilters = { ...prev.columnFilters };
-          delete newFilters[columnId];
-          return {
-            ...prev,
-            columnFilters: newFilters,
-          };
-        }
-        // Add or update the filter
-        return {
-          ...prev,
-          columnFilters: {
-            ...prev.columnFilters,
-            [columnId]: {
-              columnId,
-              filterType,
-              condition,
-            },
-          },
-        };
-      });
-    },
-    [setTableState]
-  );
+  // Get row ID
+  const getRowId = (row: ScanRow): string => row.spec.scan_id;
 
-  // Sorting
-  const handleSortingChange: OnChangeFn<SortingState> = useCallback(
-    (updaterOrValue) => {
-      const newValue =
-        typeof updaterOrValue === "function"
-          ? updaterOrValue(sorting)
-          : updaterOrValue;
-      setTableState((prev) => ({ ...prev, sorting: newValue }));
-    },
-    [sorting, setTableState]
-  );
-
-  // Create table instance
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    manualSorting: true,
-    columnResizeMode: "onChange",
-    enableColumnResizing: true,
-    enableSorting: true,
-    enableMultiSort: true,
-    enableSortingRemoval: true,
-    maxMultiSortColCount: 3,
-    getRowId: (row) => row.spec.scan_id,
-    state: {
-      columnOrder: effectiveColumnOrder,
-      sorting,
-    },
-    onSortingChange: handleSortingChange,
-  });
-
-  const { rows } = table.getRowModel();
-
-  // Row click handler - navigate to scan
-  const handleRowClick = useCallback(
-    (e: MouseEvent<HTMLTableRowElement>, row: ScanRow) => {
-      if (!resultsDir) return;
-
-      const route = scanRoute(resultsDir, row.relativeLocation);
-
-      if (e.metaKey || e.ctrlKey) {
-        // Cmd/Ctrl + Click: Open in new tab
-        openRouteInNewTab(route);
-      } else {
-        // Normal click: Navigate in current tab
-        void navigate(route);
-      }
-    },
-    [navigate, resultsDir]
-  );
-
-  // Create virtualizer
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => containerRef.current,
-    // Estimated row height in pixels
-    estimateSize: () => 29,
-    // Number of items to render outside visible area
-    overscan: 10,
-    // Item keys
-    getItemKey: (index) => scanItemKey(index, rows[index]?.original),
-  });
-
-  const virtualItems = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
-
-  // Infinite scroll: notify parent when scrolled near bottom
-  const checkScrollNearEnd = useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      if (!containerRefElement || !hasMore || !onScrollNearEnd) return;
-
-      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-      if (distanceFromBottom < fetchThreshold) {
-        onScrollNearEnd();
-      }
-    },
-    [onScrollNearEnd, hasMore, fetchThreshold]
-  );
-
-  // Check on mount if we need to fetch more
-  useEffect(() => {
-    checkScrollNearEnd(containerRef.current);
-  }, [checkScrollNearEnd]);
-
-  const onScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) =>
-      checkScrollNearEnd(e.currentTarget as HTMLDivElement),
-    [checkScrollNearEnd]
-  );
+  // Get route for navigation
+  const getRowRoute = (row: ScanRow): string => {
+    if (!resultsDir) return "";
+    return scanRoute(resultsDir, row.relativeLocation);
+  };
 
   return (
-    <div
-      ref={containerRef}
-      className={clsx(className, styles.container)}
-      onScroll={onScroll}
-    >
-      <table className={styles.table}>
-        <thead className={styles.thead}>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className={styles.headerRow}>
-              {headerGroup.headers.map((header) => {
-                const columnDef = header.column.columnDef as ScanColumn;
-                const columnMeta = columnDef.meta;
-                const align = columnMeta?.align;
-                const filterType = columnMeta?.filterType;
-                return (
-                  <th
-                    key={header.id}
-                    className={styles.headerCell}
-                    style={{ width: header.getSize() }}
-                    title={columnDef.headerTitle}
-                  >
-                    <div
-                      className={clsx(
-                        styles.headerContent,
-                        align === "center" && styles.headerCellCenter
-                      )}
-                      onClick={header.column.getToggleSortingHandler()}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <span className={styles.headerText}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </span>
-                      {{
-                        asc: (
-                          <i
-                            className={clsx(
-                              ApplicationIcons.arrows.up,
-                              styles.sortIcon
-                            )}
-                          />
-                        ),
-                        desc: (
-                          <i
-                            className={clsx(
-                              ApplicationIcons.arrows.down,
-                              styles.sortIcon
-                            )}
-                          />
-                        ),
-                      }[header.column.getIsSorted() as string] ?? null}
-                    </div>
-                    {columnMeta?.filterable && filterType ? (
-                      <ColumnFilterControl
-                        columnId={header.column.id}
-                        filterType={filterType}
-                        condition={
-                          columnFilters[header.column.id]?.condition ?? null
-                        }
-                        onChange={(condition) =>
-                          handleColumnFilterChange(
-                            header.column.id,
-                            filterType,
-                            condition
-                          )
-                        }
-                        suggestions={filterSuggestions}
-                        onOpenChange={onFilterColumnChange}
-                      />
-                    ) : null}
-                    <div
-                      className={clsx(
-                        styles.resizer,
-                        header.column.getIsResizing() && styles.resizerActive
-                      )}
-                      onMouseDown={header.getResizeHandler()}
-                      onTouchStart={header.getResizeHandler()}
-                    />
-                  </th>
-                );
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody className={styles.tbody} style={{ height: `${totalSize}px` }}>
-          {virtualItems.length > 0 ? (
-            virtualItems.map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              if (!row) return null;
-
-              const rowKey = scanItemKey(virtualRow.index, row.original);
-
-              return (
-                <tr
-                  key={rowKey}
-                  className={styles.row}
-                  style={{ transform: `translateY(${virtualRow.start}px)` }}
-                  onClick={(e) => handleRowClick(e, row.original)}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const columnDef = cell.column.columnDef as ScanColumn;
-                    const align = columnDef.meta?.align;
-                    return (
-                      <td
-                        key={cell.id}
-                        className={clsx(
-                          styles.cell,
-                          align === "center" && styles.cellCenter
-                        )}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })
-          ) : (
-            <tr className={clsx(styles.noMatching, "text-size-smaller")}>
-              <td>{getEmptyStateMessage(loading ?? false, resultsDir)}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataGrid
+      data={data}
+      columns={columns}
+      getRowId={getRowId}
+      getRowKey={scanItemKey}
+      sorting={sorting}
+      columnOrder={effectiveColumnOrder}
+      columnFilters={columnFilters}
+      columnSizing={columnSizing}
+      rowSelection={rowSelection}
+      focusedRowId={focusedRowId}
+      setTableState={setTableState}
+      getRowRoute={getRowRoute}
+      onScrollNearEnd={onScrollNearEnd}
+      hasMore={hasMore}
+      fetchThreshold={fetchThreshold}
+      filterSuggestions={filterSuggestions}
+      onFilterColumnChange={onFilterColumnChange}
+      className={className}
+      loading={loading}
+      emptyMessage="No matching scans"
+      noConfigMessage="No scans directory configured."
+    />
   );
 };

@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
@@ -58,7 +57,9 @@ async def mock_scan_jobs_view() -> AsyncIterator[DuckDBScanJobsView]:
         _create_test_status("scan-001", scan_name="math_eval", scanners=["refusal"]),
         _create_test_status("scan-002", scan_name="math_eval", scanners=["deception"]),
         _create_test_status("scan-003", scan_name="coding_eval", scanners=["refusal"]),
-        _create_test_status("scan-004", scan_name="coding_eval", scanners=["efficiency"]),
+        _create_test_status(
+            "scan-004", scan_name="coding_eval", scanners=["efficiency"]
+        ),
         _create_test_status("scan-005", scan_name="qa_eval", scanners=["refusal"]),
     ]
     view = DuckDBScanJobsView(statuses)

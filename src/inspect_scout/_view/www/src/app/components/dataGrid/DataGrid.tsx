@@ -27,7 +27,11 @@ import type { SimpleCondition } from "../../../query/types";
 import { openRouteInNewTab } from "../../../router/url";
 import { FilterType } from "../../../state/store";
 import { ColumnFilterControl } from "../columnFilter";
-import { getCellTitleValue, ExtendedColumnDef, BaseColumnMeta } from "../columnTypes";
+import {
+  getCellTitleValue,
+  ExtendedColumnDef,
+  BaseColumnMeta,
+} from "../columnTypes";
 
 import styles from "./DataGrid.module.css";
 import type { DataGridProps, DataGridTableState } from "./types";
@@ -76,7 +80,14 @@ export function DataGrid<
   noConfigMessage = "No directory configured.",
 }: DataGridProps<TData, TColumn, TState>): ReactElement {
   // Destructure state for convenience
-  const { sorting, columnOrder, columnFilters, columnSizing, rowSelection, focusedRowId } = state;
+  const {
+    sorting,
+    columnOrder,
+    columnFilters,
+    columnSizing,
+    rowSelection,
+    focusedRowId,
+  } = state;
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -202,13 +213,18 @@ export function DataGrid<
       return columnOrder;
     }
     // Default to column order from column definitions
-    return columns.map((col) => (col.id ?? (col as { accessorKey?: string }).accessorKey) as string);
+    return columns.map(
+      (col) =>
+        (col.id ?? (col as { accessorKey?: string }).accessorKey) as string
+    );
   }, [columnOrder, columns]);
 
   // Drag and drop state
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-  const [dropPosition, setDropPosition] = useState<"left" | "right" | null>(null);
+  const [dropPosition, setDropPosition] = useState<"left" | "right" | null>(
+    null
+  );
 
   const resetDragState = useCallback(() => {
     setDraggedColumn(null);
@@ -333,8 +349,11 @@ export function DataGrid<
         );
         if (currentSelectedRows.length > 0) {
           // Find the last selected row
-          const lastSelectedId = currentSelectedRows[currentSelectedRows.length - 1];
-          const lastSelectedIndex = rows.findIndex((r) => r.id === lastSelectedId);
+          const lastSelectedId =
+            currentSelectedRows[currentSelectedRows.length - 1];
+          const lastSelectedIndex = rows.findIndex(
+            (r) => r.id === lastSelectedId
+          );
 
           if (lastSelectedIndex !== -1) {
             const start = Math.min(lastSelectedIndex, rowIndex);
@@ -601,7 +620,8 @@ export function DataGrid<
                     key={header.id}
                     className={clsx(
                       styles.headerCell,
-                      draggedColumn === header.column.id && styles.headerCellDragging,
+                      draggedColumn === header.column.id &&
+                        styles.headerCellDragging,
                       dragOverColumn === header.column.id &&
                         dropPosition === "left" &&
                         styles.headerCellDragOverLeft,
@@ -613,10 +633,7 @@ export function DataGrid<
                     onDragOver={(e) => handleDragOver(e, header.column.id)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, header.column.id)}
-                    title={[
-                      header.column.id,
-                      columnDef.headerTitle,
-                    ]
+                    title={[header.column.id, columnDef.headerTitle]
                       .filter(Boolean)
                       .join("\n")}
                   >
@@ -665,9 +682,15 @@ export function DataGrid<
                       <ColumnFilterControl
                         columnId={header.column.id}
                         filterType={filterType}
-                        condition={columnFilters[header.column.id]?.condition ?? null}
+                        condition={
+                          columnFilters[header.column.id]?.condition ?? null
+                        }
                         onChange={(condition) =>
-                          handleColumnFilterChange(header.column.id, filterType, condition)
+                          handleColumnFilterChange(
+                            header.column.id,
+                            filterType,
+                            condition
+                          )
                         }
                         suggestions={filterSuggestions}
                         onOpenChange={onFilterColumnChange}
@@ -680,7 +703,9 @@ export function DataGrid<
                       )}
                       onMouseDown={header.getResizeHandler()}
                       onTouchStart={header.getResizeHandler()}
-                      onDoubleClick={() => onResetColumnSize?.(header.column.id)}
+                      onDoubleClick={() =>
+                        onResetColumnSize?.(header.column.id)
+                      }
                     />
                   </th>
                 );
@@ -712,7 +737,10 @@ export function DataGrid<
                   {row.getVisibleCells().map((cell) => {
                     const cellColumnDef = cell.column.columnDef as TColumn;
                     const cellAlign = cellColumnDef.meta?.align;
-                    const titleValue = getCellTitleValue(cell.getValue(), cellColumnDef);
+                    const titleValue = getCellTitleValue(
+                      cell.getValue(),
+                      cellColumnDef
+                    );
                     return (
                       <td
                         key={cell.id}
@@ -723,7 +751,10 @@ export function DataGrid<
                         style={{ width: cell.column.getSize() }}
                         title={titleValue}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </td>
                     );
                   })}

@@ -7,7 +7,12 @@ import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
 import { DataGrid } from "../components/dataGrid";
 
-import { DEFAULT_COLUMN_ORDER, getScanColumns, ScanColumn, ScanRow } from "./columns";
+import {
+  DEFAULT_COLUMN_ORDER,
+  getScanColumns,
+  ScanColumn,
+  ScanRow,
+} from "./columns";
 
 // Generate a stable key for a scan item
 function scanItemKey(index: number, item?: ScanRow): string {
@@ -48,13 +53,19 @@ export const ScansGrid: FC<ScansGridProps> = ({
   // Table state from store
   const sorting = useStore((state) => state.scansTableState.sorting);
   const columnOrder = useStore((state) => state.scansTableState.columnOrder);
-  const columnFilters = useStore((state) => state.scansTableState.columnFilters);
+  const columnFilters = useStore(
+    (state) => state.scansTableState.columnFilters
+  );
   const columnSizing = useStore((state) => state.scansTableState.columnSizing);
   const rowSelection = useStore((state) => state.scansTableState.rowSelection);
   const focusedRowId = useStore((state) => state.scansTableState.focusedRowId);
-  const visibleColumns = useStore((state) => state.scansTableState.visibleColumns);
+  const visibleColumns = useStore(
+    (state) => state.scansTableState.visibleColumns
+  );
   const setTableState = useStore((state) => state.setScansTableState);
-  const setVisibleScanJobCount = useStore((state) => state.setVisibleScanJobCount);
+  const setVisibleScanJobCount = useStore(
+    (state) => state.setVisibleScanJobCount
+  );
 
   // Add computed relativeLocation to each scan
   const data = useMemo(

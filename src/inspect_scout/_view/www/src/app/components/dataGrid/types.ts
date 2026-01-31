@@ -32,23 +32,13 @@ export interface DataGridProps<
   /** Get stable key for virtualizer (defaults to getRowId) */
   getRowKey?: (index: number, row?: TData) => string;
 
-  // State (from parent's store)
-  /** Current sorting state */
-  sorting: SortingState;
-  /** Column order (array of column IDs) */
-  columnOrder: string[];
-  /** Active column filters */
-  columnFilters: Record<string, ColumnFilter>;
-  /** Column sizing state */
-  columnSizing: ColumnSizingState;
-  /** Selected rows */
-  rowSelection: RowSelectionState;
-  /** Currently focused row ID */
-  focusedRowId: string | null;
+  // State (consolidated into single object)
+  /** All table state managed by parent store */
+  state: DataGridTableState;
 
   // State setter (single update function for all state)
   // Uses generic TState to allow specific store types
-  setTableState: (updater: TState | ((prev: TState) => TState)) => void;
+  onStateChange: (updater: TState | ((prev: TState) => TState)) => void;
 
   // Navigation
   /** Get the route for a row (for navigation) */

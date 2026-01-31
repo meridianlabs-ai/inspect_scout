@@ -74,8 +74,6 @@ def test_typed_properties_exist() -> None:
             "sample_metadata": {"difficulty": "easy"},
             "working_time": 1.5,
             "score_accuracy": 0.9,
-            "solver": "cot",
-            "solver_args": {"depth": 3},
         }
     )
     metadata = SampleMetadata(transcript)
@@ -105,10 +103,6 @@ def test_typed_properties_exist() -> None:
     assert isinstance(metadata.scores["accuracy"], Score)
     assert metadata.scores["accuracy"].value == 0.9
 
-    # Legacy properties
-    assert metadata.solver == "cot"
-    assert metadata.solver_args == {"depth": 3}
-
 
 def test_empty_metadata_defaults() -> None:
     """Test that properties return appropriate defaults when metadata is empty."""
@@ -124,7 +118,6 @@ def test_empty_metadata_defaults() -> None:
     assert metadata.input is None
     assert metadata.target is None
     assert metadata.working_time is None
-    assert metadata.solver is None
 
     # Collection fields return empty collections
     assert metadata.eval_tags == []
@@ -134,7 +127,6 @@ def test_empty_metadata_defaults() -> None:
     assert metadata.model_roles == {}
     assert metadata.sample_metadata == {}
     assert metadata.scores == {}
-    assert metadata.solver_args == {}
 
 
 def test_typed_properties_have_docstrings() -> None:

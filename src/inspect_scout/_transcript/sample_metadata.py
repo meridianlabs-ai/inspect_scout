@@ -137,15 +137,3 @@ class SampleMetadata:
             for k, v in self._metadata.items()
             if k.startswith("score_")
         }
-
-    # ===== Legacy/deprecated field accessors =====
-
-    @property
-    def solver(self) -> str | None:
-        """Solver name (deprecated, use 'agent' on TranscriptInfo)."""
-        return self._metadata.get("solver")
-
-    @property
-    def solver_args(self) -> dict[str, Any]:
-        """Solver arguments (deprecated, use 'agent_args' on TranscriptInfo)."""
-        return self._metadata.get("solver_args") or {}

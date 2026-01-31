@@ -39,8 +39,11 @@ interface FilterBarHandlers {
  * @param defaultVisibleColumns - Default columns when state doesn't have them
  * @returns Object with handler functions
  */
-function createFilterBarHandlers<TColumnKey extends string>(
-  setTableState: (updater: (prev: BaseTableState) => BaseTableState) => void,
+function createFilterBarHandlers<
+  TColumnKey extends string,
+  TState extends BaseTableState = BaseTableState,
+>(
+  setTableState: (updater: TState | ((prev: TState) => TState)) => void,
   defaultVisibleColumns: readonly TColumnKey[]
 ): FilterBarHandlers {
   const handleFilterChange = (
@@ -120,12 +123,14 @@ function createFilterBarHandlers<TColumnKey extends string>(
   };
 }
 
-interface UseFilterBarHandlersOptions<TColumnKey extends string> {
+interface UseFilterBarHandlersOptions<
+  TColumnKey extends string,
+  TState extends BaseTableState = BaseTableState,
+> {
   /**
    * Store setter function that accepts an updater
    */
-
-  setTableState: (updater: any) => void;
+  setTableState: (updater: TState | ((prev: TState) => TState)) => void;
   /**
    * Default visible columns to use when state doesn't have them set
    */
@@ -136,10 +141,13 @@ interface UseFilterBarHandlersOptions<TColumnKey extends string> {
  * Hook that provides common filter bar handlers for both scans and transcripts tables.
  * Extracts the duplicated logic from ScansFilterBar and TranscriptFilterBar.
  */
-export function useFilterBarHandlers<TColumnKey extends string>({
+export function useFilterBarHandlers<
+  TColumnKey extends string,
+  TState extends BaseTableState = BaseTableState,
+>({
   setTableState,
   defaultVisibleColumns,
-}: UseFilterBarHandlersOptions<TColumnKey>): FilterBarHandlers {
+}: UseFilterBarHandlersOptions<TColumnKey, TState>): FilterBarHandlers {
   // Memoize the handlers to maintain referential stability
   const handlers = useMemo(
     () => createFilterBarHandlers(setTableState, defaultVisibleColumns),

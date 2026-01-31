@@ -4,7 +4,7 @@ import { FC, useRef, useState } from "react";
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
-import { useStore } from "../../state/store";
+import { TranscriptsTableState, useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
 import { Chip } from "../components/Chip";
 import { ColumnFilterEditor } from "../components/columnFilter";
@@ -38,7 +38,7 @@ export const TranscriptFilterBar: FC<{
 
   // Use shared filter bar handlers
   const { handleFilterChange, removeFilter, handleAddFilter } =
-    useFilterBarHandlers<keyof TranscriptInfo>({
+    useFilterBarHandlers<keyof TranscriptInfo, TranscriptsTableState>({
       setTableState: setTranscriptsTableState,
       defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
     });

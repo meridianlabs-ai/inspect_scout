@@ -1,0 +1,236 @@
+"""Claude Code file discovery and reading utilities.
+
+Claude Code stores session files in ~/.claude/projects/[encoded-path]/.
+Each session is a JSONL file with UUID filename.
+Agent sessions are stored as agent-{agentId}.jsonl in the same directory.
+"""
+
+from datetime import datetime
+from logging import getLogger
+from os import PathLike
+from pathlib import Path
+from typing import Any
+
+logger = getLogger(__name__)
+
+# Claude Code source type constant
+CLAUDE_CODE_SOURCE_TYPE = "claude_code"
+
+# Default Claude Code projects directory
+DEFAULT_CLAUDE_DIR = Path.home() / ".claude" / "projects"
+
+
+def decode_project_path(encoded: str) -> str:
+    """Decode a Claude Code project path encoding.
+
+    Claude Code encodes paths by replacing / with -.
+    E.g., "-Users-jjallaire-dev-project" -> "/Users/jjallaire/dev/project"
+
+    Args:
+        encoded: The encoded project path (directory name)
+
+    Returns:
+        The decoded file system path
+    """
+    if not encoded.startswith("-"):
+        return encoded
+
+    # Replace leading - and all subsequent - with /
+    # But be careful: some directory names legitimately have hyphens
+    # The encoding is: / -> -, so we replace - with /
+    return encoded.replace("-", "/")
+
+
+def encode_project_path(path: str) -> str:
+    """Encode a file system path for Claude Code directory naming.
+
+    Args:
+        path: The file system path
+
+    Returns:
+        The encoded directory name
+    """
+    return path.replace("/", "-")
+
+
+def discover_session_files(
+    path: str | PathLike[str] | None = None,
+    session_id: str | None = None,
+    from_time: datetime | None = None,
+    to_time: datetime | None = None,
+) -> list[Path]:
+    """Discover Claude Code session files.
+
+    Args:
+        path: Path to search. Can be:
+            - None: Scan all projects in ~/.claude/projects/
+            - A project directory (e.g., ~/.claude/projects/-Users-foo-bar/)
+            - A specific .jsonl file
+        session_id: If provided, only return files matching this session UUID
+        from_time: Only return files modified on or after this time
+        to_time: Only return files modified before this time
+
+    Returns:
+        List of session file paths, sorted by modification time (newest first)
+    """
+    session_files: list[Path] = []
+
+    if path is None:
+        # Scan all projects
+        if not DEFAULT_CLAUDE_DIR.exists():
+            logger.warning(f"Claude Code directory not found: {DEFAULT_CLAUDE_DIR}")
+            return []
+
+        for project_dir in DEFAULT_CLAUDE_DIR.iterdir():
+            if project_dir.is_dir():
+                session_files.extend(
+                    _find_sessions_in_directory(project_dir, session_id)
+                )
+    else:
+        search_path = Path(path)
+
+        if not search_path.exists():
+            logger.warning(f"Path does not exist: {search_path}")
+            return []
+
+        if search_path.is_file():
+            # Specific file
+            if search_path.suffix == ".jsonl":
+                session_files.append(search_path)
+        elif search_path.is_dir():
+            # Project directory or parent directory
+            if any(search_path.glob("*.jsonl")):
+                # It's a project directory with session files
+                session_files.extend(
+                    _find_sessions_in_directory(search_path, session_id)
+                )
+            else:
+                # It might be a parent containing project directories
+                for project_dir in search_path.iterdir():
+                    if project_dir.is_dir():
+                        session_files.extend(
+                            _find_sessions_in_directory(project_dir, session_id)
+                        )
+
+    # Filter by session_id if specified and not already filtered
+    if session_id:
+        session_files = [f for f in session_files if f.stem == session_id]
+
+    # Filter by time range
+    if from_time or to_time:
+        filtered = []
+        for f in session_files:
+            mtime = datetime.fromtimestamp(f.stat().st_mtime)
+            if from_time and mtime < from_time:
+                continue
+            if to_time and mtime >= to_time:
+                continue
+            filtered.append(f)
+        session_files = filtered
+
+    # Sort by modification time (newest first)
+    session_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+
+    return session_files
+
+
+def _find_sessions_in_directory(
+    directory: Path, session_id: str | None = None
+) -> list[Path]:
+    """Find session files in a project directory.
+
+    Excludes agent-*.jsonl files (those are loaded separately when needed).
+
+    Args:
+        directory: The project directory to search
+        session_id: Optional specific session to find
+
+    Returns:
+        List of main session file paths
+    """
+    sessions = []
+
+    for jsonl_file in directory.glob("*.jsonl"):
+        # Skip agent files - they're loaded separately
+        if jsonl_file.name.startswith("agent-"):
+            continue
+
+        # If looking for specific session, match by stem (UUID)
+        if session_id:
+            if jsonl_file.stem == session_id:
+                sessions.append(jsonl_file)
+        else:
+            sessions.append(jsonl_file)
+
+    return sessions
+
+
+def find_agent_file(project_dir: Path, agent_id: str) -> Path | None:
+    """Find an agent session file by ID.
+
+    Args:
+        project_dir: The project directory containing session files
+        agent_id: The agent ID (e.g., "a038f97")
+
+    Returns:
+        Path to agent file, or None if not found
+    """
+    agent_file = project_dir / f"agent-{agent_id}.jsonl"
+    if agent_file.exists():
+        return agent_file
+    return None
+
+
+def read_jsonl_events(path: Path) -> list[dict[str, Any]]:
+    """Read all events from a JSONL file.
+
+    Args:
+        path: Path to the JSONL file
+
+    Returns:
+        List of parsed JSON events
+    """
+    import json
+
+    events = []
+    with open(path, encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid JSON at {path}:{line_num}: {e}")
+                continue
+    return events
+
+
+def get_project_path_from_file(session_file: Path) -> str:
+    """Extract the project path from a session file location.
+
+    Args:
+        session_file: Path to a session file
+
+    Returns:
+        The decoded project path
+    """
+    # The parent directory name is the encoded project path
+    encoded = session_file.parent.name
+    return decode_project_path(encoded)
+
+
+def get_source_uri(session_file: Path, session_id: str | None = None) -> str:
+    """Generate a source URI for a session file.
+
+    Args:
+        session_file: Path to the session file
+        session_id: Optional specific session within the file (for split sessions)
+
+    Returns:
+        A file:// URI pointing to the session
+    """
+    uri = f"file://{session_file}"
+    if session_id:
+        uri += f"#{session_id}"
+    return uri

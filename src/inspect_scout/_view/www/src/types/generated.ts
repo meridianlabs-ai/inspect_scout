@@ -128,6 +128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scans/{dir}/distinct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get distinct column values
+         * @description Returns distinct values for a column, optionally filtered.
+         */
+        post: operations["scans_distinct_scans__dir__distinct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans/{dir}/{scan}": {
         parameters: {
             query?: never;
@@ -4097,6 +4117,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScansResponse"];
+                };
+            };
+        };
+    };
+    scans_distinct_scans__dir__distinct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DistinctRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (string | number | boolean | null)[];
                 };
             };
         };

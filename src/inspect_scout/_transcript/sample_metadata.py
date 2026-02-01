@@ -67,20 +67,17 @@ class SampleMetadata:
         return cast(EvalStatus, self._metadata["eval_status"])
 
     @property
-    def eval_tags(self) -> list[str]:
-        """Tags associated with evaluation run. Same as EvalLog.eval.tags.
-
-        Returns empty list (not None) for SQL query compatibility.
-        """
+    def eval_tags(self) -> list[str] | None:
+        """Tags associated with evaluation run. Same as EvalLog.eval.tags."""
         tags = self._metadata.get("eval_tags")
         if not tags:
-            return []
+            return None
         return [tag.strip() for tag in tags.split(",") if tag.strip()]
 
     @property
-    def eval_metadata(self) -> dict[str, Any]:
+    def eval_metadata(self) -> dict[str, Any] | None:
         """Additional eval metadata. Same as EvalLog.eval.metadata."""
-        return self._metadata.get("eval_metadata") or {}
+        return self._metadata.get("eval_metadata") or None
 
     @property
     def task_args(self) -> dict[str, Any]:
@@ -95,9 +92,9 @@ class SampleMetadata:
         return GenerateConfig(**(self._metadata.get("generate_config") or {}))
 
     @property
-    def model_roles(self) -> dict[str, Any]:
+    def model_roles(self) -> dict[str, Any] | None:
         """Model roles. Same as EvalLog.eval.model_roles."""
-        return self._metadata.get("model_roles") or {}
+        return self._metadata.get("model_roles") or None
 
     # ===== Sample properties =====
 

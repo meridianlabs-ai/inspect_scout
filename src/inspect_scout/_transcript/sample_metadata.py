@@ -72,7 +72,7 @@ class SampleMetadata:
 
         Returns empty list (not None) for SQL query compatibility.
         """
-        tags = self._metadata.get("eval_tags", "")
+        tags = self._metadata.get("eval_tags")
         if not tags:
             return []
         return [tag.strip() for tag in tags.split(",") if tag.strip()]

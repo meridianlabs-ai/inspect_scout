@@ -14,6 +14,7 @@ split by /clear commands into multiple transcripts.
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
+from pathlib import Path
 from typing import AsyncIterator
 
 from inspect_ai.event import Event, ModelEvent
@@ -95,7 +96,7 @@ async def claude_code_transcripts(
 
 
 async def _process_session_file(
-    session_file: PathLike[str],
+    session_file: Path,
 ) -> AsyncIterator[Transcript]:
     """Process a single session file into transcripts.
 
@@ -107,9 +108,7 @@ async def _process_session_file(
     Yields:
         Transcript objects
     """
-    from pathlib import Path
-
-    session_path = Path(session_file)
+    session_path = session_file
 
     raw_events = read_jsonl_events(session_path)
     if not raw_events:
@@ -161,7 +160,7 @@ async def _process_session_file(
 
 async def _create_transcript(
     events: list[BaseEvent],
-    session_file: PathLike[str],
+    session_file: Path,
     base_session_id: str,
     segment_index: int | None,
 ) -> Transcript | None:
@@ -176,9 +175,7 @@ async def _create_transcript(
     Returns:
         Transcript object, or None if creation fails
     """
-    from pathlib import Path
-
-    session_path = Path(session_file)
+    session_path = session_file
     project_dir = session_path.parent
 
     # Generate transcript ID

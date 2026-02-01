@@ -62,8 +62,9 @@ def decode_project_path(encoded: str, validate: bool = True) -> str:
 def _find_valid_path(parts: list[str]) -> str | None:
     """Find a valid filesystem path by testing different hyphen interpretations.
 
-    Uses depth-first search to try different ways of combining parts with
-    either "/" (path separator) or "-" (literal hyphen in directory name).
+    First tries the simple interpretation (all hyphens are path separators).
+    If that doesn't exist, uses DFS to try different combinations where some
+    hyphens are literal characters in directory names.
 
     Args:
         parts: List of path components split on hyphens
@@ -74,10 +75,15 @@ def _find_valid_path(parts: list[str]) -> str | None:
     if not parts:
         return None
 
+    # Fast path: try naive interpretation first (most common case)
+    naive_path = "/" + "/".join(parts)
+    if Path(naive_path).exists():
+        return naive_path
+
+    # Slow path: DFS to find valid path when directories contain hyphens
     def search(index: int, current_path: Path, current_str: str) -> str | None:
         """Recursively search for valid paths."""
         if index >= len(parts):
-            # Check if the complete path exists
             if current_path.exists():
                 return current_str
             return None
@@ -87,8 +93,9 @@ def _find_valid_path(parts: list[str]) -> str | None:
         # Option 1: Add as new path component (use /)
         new_path_slash = current_path / part
         new_str_slash = current_str + "/" + part
-        # Check if this path or any deeper path could exist
-        if new_path_slash.exists() or (index < len(parts) - 1):
+        # Continue if path exists OR we're not at the last segment
+        # (we need to explore full paths before determining validity)
+        if new_path_slash.exists() or index < len(parts) - 1:
             result = search(index + 1, new_path_slash, new_str_slash)
             if result:
                 return result
@@ -96,17 +103,15 @@ def _find_valid_path(parts: list[str]) -> str | None:
         # Option 2: Merge with previous component using hyphen
         # Only if we have a previous component to merge with
         if current_str:
-            # Get the last component
             parent_path = current_path.parent
             last_component = current_path.name
             merged_component = last_component + "-" + part
             new_path_hyphen = parent_path / merged_component
-            new_str_hyphen = current_str.rsplit("/", 1)[0] + "/" + merged_component
-            if new_str_hyphen.startswith("//"):
-                new_str_hyphen = new_str_hyphen[1:]
+            # Reconstruct string: replace last component with merged one
+            last_slash = current_str.rfind("/")
+            new_str_hyphen = current_str[:last_slash] + "/" + merged_component
 
-            # Check if merged path exists or could lead to valid paths
-            if new_path_hyphen.exists() or (index < len(parts) - 1):
+            if new_path_hyphen.exists() or index < len(parts) - 1:
                 result = search(index + 1, new_path_hyphen, new_str_hyphen)
                 if result:
                     return result
@@ -114,8 +119,7 @@ def _find_valid_path(parts: list[str]) -> str | None:
         return None
 
     # Start search from root
-    root = Path("/")
-    return search(0, root, "")
+    return search(0, Path("/"), "")
 
 
 def encode_project_path(path: str) -> str:

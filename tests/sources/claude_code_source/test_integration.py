@@ -15,7 +15,7 @@ def fixtures_dir() -> Path:
 async def test_simple_conversation(fixtures_dir: Path) -> None:
     """Test importing a simple user/assistant conversation."""
     from inspect_scout._transcript.types import Transcript
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
     from inspect_scout.sources._claude_code.client import CLAUDE_CODE_SOURCE_TYPE
 
     session_file = fixtures_dir / "simple_conversation.jsonl"
@@ -23,7 +23,7 @@ async def test_simple_conversation(fixtures_dir: Path) -> None:
         pytest.skip("Test fixture not available")
 
     transcripts = []
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         transcripts.append(transcript)
 
     assert len(transcripts) == 1
@@ -49,14 +49,14 @@ async def test_tool_call_conversation(fixtures_dir: Path) -> None:
     """Test importing a conversation with tool calls."""
     from inspect_ai.model import ContentReasoning
     from inspect_ai.model._chat_message import ChatMessageAssistant
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "tool_call_conversation.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
     transcripts = []
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         transcripts.append(transcript)
 
     assert len(transcripts) == 1
@@ -88,14 +88,14 @@ async def test_tool_call_conversation(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_clear_split_session(fixtures_dir: Path) -> None:
     """Test that /clear command splits session into multiple transcripts."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "clear_split_session.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
     transcripts = []
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         transcripts.append(transcript)
 
     # Should produce 2 transcripts (split on /clear)
@@ -115,14 +115,14 @@ async def test_clear_split_session(fixtures_dir: Path) -> None:
 async def test_agent_session(fixtures_dir: Path) -> None:
     """Test importing a session with Task agent spawn."""
     from inspect_ai.model._chat_message import ChatMessageAssistant
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "agent_session.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
     transcripts = []
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         transcripts.append(transcript)
 
     assert len(transcripts) == 1
@@ -147,14 +147,14 @@ async def test_agent_session(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_compaction_session(fixtures_dir: Path) -> None:
     """Test importing a session with compaction boundary."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "compaction_session.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
     transcripts = []
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         transcripts.append(transcript)
 
     assert len(transcripts) == 1
@@ -176,13 +176,13 @@ async def test_compaction_session(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_import_from_directory(fixtures_dir: Path) -> None:
     """Test importing from a directory of session files."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     if not fixtures_dir.exists():
         pytest.skip("Test fixtures directory not available")
 
     count = 0
-    async for transcript in claude_code(path=fixtures_dir, limit=10):
+    async for transcript in claude_code_transcripts(path=fixtures_dir, limit=10):
         assert transcript.transcript_id is not None
         count += 1
 
@@ -194,13 +194,13 @@ async def test_import_from_directory(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_import_with_limit(fixtures_dir: Path) -> None:
     """Test that limit parameter works."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     if not fixtures_dir.exists():
         pytest.skip("Test fixtures directory not available")
 
     count = 0
-    async for _transcript in claude_code(path=fixtures_dir, limit=2):
+    async for _transcript in claude_code_transcripts(path=fixtures_dir, limit=2):
         count += 1
 
     # Should respect limit
@@ -210,13 +210,13 @@ async def test_import_with_limit(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_model_extraction(fixtures_dir: Path) -> None:
     """Test that model name is correctly extracted."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "simple_conversation.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         assert transcript.model == "claude-opus-4-5-20251101"
         break
 
@@ -224,13 +224,13 @@ async def test_model_extraction(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_token_counting(fixtures_dir: Path) -> None:
     """Test that tokens are correctly counted."""
-    from inspect_scout.sources import claude_code
+    from inspect_scout.sources import claude_code_transcripts
 
     session_file = fixtures_dir / "simple_conversation.jsonl"
     if not session_file.exists():
         pytest.skip("Test fixture not available")
 
-    async for transcript in claude_code(path=session_file):
+    async for transcript in claude_code_transcripts(path=session_file):
         # Should have token counts
         assert transcript.total_tokens is not None
         assert transcript.total_tokens > 0

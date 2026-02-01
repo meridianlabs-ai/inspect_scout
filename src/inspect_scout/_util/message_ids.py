@@ -9,11 +9,8 @@ from inspect_ai.model import ChatMessage
 from inspect_ai.model._model_output import ModelOutput
 from shortuuid import uuid as shortuuid
 
-# Type alias for the returned function
-ApplyIds = Callable[[Sequence[ChatMessage] | ModelEvent], None]
 
-
-def stable_message_ids() -> ApplyIds:
+def stable_message_ids() -> Callable[[Sequence[ChatMessage] | ModelEvent], None]:
     """Create a function that applies stable message IDs based on content hash.
 
     Messages with identical content receive the same ID within a transcript,

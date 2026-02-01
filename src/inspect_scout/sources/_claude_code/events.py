@@ -8,7 +8,7 @@ Converts Claude Code events to Scout event types:
 """
 
 import re
-from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from logging import getLogger
@@ -58,14 +58,21 @@ logger = getLogger(__name__)
 T = TypeVar("T")
 
 
-def _parse_timestamp(ts_str: str | None) -> datetime:
-    """Parse an ISO timestamp string to datetime."""
+def _parse_timestamp(ts_str: str | None) -> datetime | None:
+    """Parse an ISO timestamp string to datetime.
+
+    Args:
+        ts_str: ISO format timestamp string (with optional 'Z' suffix)
+
+    Returns:
+        Parsed datetime, or None if parsing fails or input is empty
+    """
     if not ts_str:
-        return datetime.min
+        return None
     try:
         return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
     except ValueError:
-        return datetime.min
+        return None
 
 
 def to_model_event(
@@ -133,7 +140,7 @@ def to_model_event(
         tool_choice="auto",
         config=GenerateConfig(),
         output=output,
-        timestamp=_parse_timestamp(get_timestamp(event)),
+        timestamp=_parse_timestamp(get_timestamp(event)) or datetime.now(),
     )
 
 
@@ -384,7 +391,7 @@ async def claude_code_events(
             logger.warning(f"Failed to parse event: {e}")
             continue
 
-        timestamp = _parse_timestamp(get_timestamp(pydantic_event))
+        timestamp = _parse_timestamp(get_timestamp(pydantic_event)) or datetime.now()
 
         if isinstance(pydantic_event, AssistantEvent):
             # Yield ModelEvent immediately
@@ -449,7 +456,7 @@ async def claude_code_events(
                                     subagent_events_dict.setdefault(sid, []).append(evt)
 
                             # Yield complete tool span
-                            span_events = _create_tool_span_events(
+                            span_events = await _create_tool_span_events(
                                 tool_use_block=pending.tool_use_block,
                                 tool_result=block,
                                 tool_timestamp=pending.timestamp,
@@ -473,7 +480,7 @@ async def claude_code_events(
 
     # Handle any remaining pending tool calls without results
     for pending in state.pending_tools.values():
-        remaining_events = _create_tool_span_events(
+        remaining_events = await _create_tool_span_events(
             tool_use_block=pending.tool_use_block,
             tool_result=None,
             tool_timestamp=pending.timestamp,
@@ -487,41 +494,27 @@ async def claude_code_events(
             yield remaining_evt
 
 
-def events_to_scout_events(
-    events: list[BaseEvent],
+async def process_parsed_events(
+    events: Sequence[BaseEvent],
     project_dir: Path | None = None,
-) -> list[Event]:
-    """Convert Claude Code events to Scout events.
+) -> AsyncIterator[Event]:
+    """Convert parsed Claude Code events to Scout events.
 
-    This is the main conversion function. It processes events in order,
-    creating ModelEvent, ToolEvent, InfoEvent, and span events as needed.
+    This is the core conversion function for already-parsed Pydantic models.
+    Use this when you have pre-validated events (e.g., from transcript processing).
 
-    Event ordering follows Inspect's pattern where ToolEvent is recorded
-    inside the tool span:
-      SpanBeginEvent(type="tool", name="Bash")
-        ToolEvent(function="Bash", ...)
-      SpanEndEvent
-
-    For Task tools (agent spawns):
-      SpanBeginEvent(type="tool", name="Task")
-        ToolEvent(function="Task", ...)
-        SpanBeginEvent(type="agent", name="Explore")
-          InfoEvent (task description)
-          [nested agent events...]
-        SpanEndEvent  # agent span
-      SpanEndEvent  # tool span
+    For raw dict streams (e.g., from stdout), use claude_code_events() instead.
 
     Args:
         events: Chronologically ordered Claude Code events (Pydantic models)
         project_dir: Path to project directory (for loading agent files)
 
-    Returns:
-        List of Scout Event objects
+    Yields:
+        Scout Event objects (ModelEvent, ToolEvent, SpanBeginEvent, etc.)
     """
-    scout_events: list[Event] = []
+    from .models import parse_content_block
 
     # Track pending tool calls to match with results
-    # Maps tool_use_id -> (ContentToolUse, timestamp, is_task_tool, agent_info)
     pending_tool_calls: dict[
         str, tuple[ContentToolUse, datetime, bool, dict[str, Any] | None]
     ] = {}
@@ -531,39 +524,32 @@ def events_to_scout_events(
 
     for event in events:
         event_type = get_event_type(event)
-        timestamp = _parse_timestamp(get_timestamp(event))
+        timestamp = _parse_timestamp(get_timestamp(event)) or datetime.now()
 
         if isinstance(event, AssistantEvent):
-            # Create ModelEvent
+            # Yield ModelEvent
             model_event = to_model_event(event, accumulated_messages)
-            scout_events.append(model_event)
+            yield model_event
 
             # Add assistant message to accumulated
             if model_event.output and model_event.output.message:
                 accumulated_messages.append(model_event.output.message)
 
-            # Process tool_use blocks - just track them, don't create spans yet
+            # Process tool_use blocks - track them for later
             message_content = event.message.content
             for block in message_content:
                 if not isinstance(block, dict):
                     continue
 
                 if block.get("type") == "tool_use":
-                    # Parse to ContentToolUse
-                    from .models import parse_content_block
-
                     parsed_block = parse_content_block(block)
                     if not isinstance(parsed_block, ContentToolUse):
                         continue
 
-                    tool_id = parsed_block.id
-
-                    # Check if this is a Task tool call (agent spawn)
                     is_task = is_task_tool_call(parsed_block)
                     agent_info = get_task_agent_info(parsed_block) if is_task else None
 
-                    # Track for result matching - spans created at result time
-                    pending_tool_calls[tool_id] = (
+                    pending_tool_calls[parsed_block.id] = (
                         parsed_block,
                         timestamp,
                         is_task,
@@ -576,12 +562,10 @@ def events_to_scout_events(
             # Check for skill commands
             skill_name = is_skill_command(event)
             if skill_name:
-                scout_events.append(
-                    to_info_event(
-                        source="skill_command",
-                        data={"skill": skill_name},
-                        timestamp=timestamp,
-                    )
+                yield to_info_event(
+                    source="skill_command",
+                    data={"skill": skill_name},
+                    timestamp=timestamp,
                 )
 
             # Process tool results
@@ -590,16 +574,12 @@ def events_to_scout_events(
                     if isinstance(block, dict) and block.get("type") == "tool_result":
                         tool_use_id = str(block.get("tool_use_id", ""))
 
-                        # Match with pending tool call
                         if tool_use_id in pending_tool_calls:
                             tool_use_block, tool_timestamp, is_task, agent_info = (
                                 pending_tool_calls.pop(tool_use_id)
                             )
 
-                            # Create span structure with ToolEvent inside
-                            # All events emitted at tool_result time when we have
-                            # the complete picture
-                            tool_events = _create_tool_span_events(
+                            tool_events = await _create_tool_span_events(
                                 tool_use_block=tool_use_block,
                                 tool_result=block,
                                 tool_timestamp=tool_timestamp,
@@ -608,7 +588,8 @@ def events_to_scout_events(
                                 agent_info=agent_info,
                                 project_dir=project_dir,
                             )
-                            scout_events.extend(tool_events)
+                            for tool_evt in tool_events:
+                                yield tool_evt
 
             # Extract user message for accumulation
             user_msg = extract_user_message(event)
@@ -624,40 +605,28 @@ def events_to_scout_events(
             if is_compact_boundary(event):
                 compaction_info = extract_compaction_info(event)
                 if compaction_info:
-                    scout_events.append(
-                        to_info_event(
-                            source="compaction",
-                            data=compaction_info,
-                            timestamp=timestamp,
-                        )
+                    yield to_info_event(
+                        source="compaction",
+                        data=compaction_info,
+                        timestamp=timestamp,
                     )
 
     # Handle any remaining tool calls without results
-    for _tool_id, (
-        tool_use_block,
-        tool_timestamp,
-        is_task,
-        agent_info,
-    ) in pending_tool_calls.items():
-        # Create span structure even without result
-        tool_events = _create_tool_span_events(
+    for tool_use_block, tool_timestamp, is_task, agent_info in pending_tool_calls.values():
+        tool_events = await _create_tool_span_events(
             tool_use_block=tool_use_block,
             tool_result=None,
             tool_timestamp=tool_timestamp,
             result_timestamp=datetime.now(),
             is_task=is_task,
             agent_info=agent_info,
-            project_dir=None,  # Don't load agents for incomplete tools
+            project_dir=None,
         )
-        scout_events.extend(tool_events)
-
-    # Sort by timestamp
-    scout_events.sort(key=lambda e: e.timestamp or datetime.min)
-
-    return scout_events
+        for tool_evt in tool_events:
+            yield tool_evt
 
 
-def _create_tool_span_events(
+async def _create_tool_span_events(
     tool_use_block: ContentToolUse,
     tool_result: dict[str, Any] | None,
     tool_timestamp: datetime,
@@ -752,7 +721,9 @@ def _create_tool_span_events(
 
         # Load and process nested agent events
         if tool_result:
-            agent_events = _load_agent_events(project_dir, tool_result, subagent_events)
+            agent_events = await _load_agent_events(
+                project_dir, tool_result, subagent_events
+            )
             events.extend(agent_events)
 
         # SpanEndEvent for agent
@@ -764,7 +735,39 @@ def _create_tool_span_events(
     return events
 
 
-def _load_agent_events(
+def _extract_agent_id_from_result(tool_result: dict[str, Any]) -> str | None:
+    """Extract agent ID from a Task tool result using JSON parsing.
+
+    Args:
+        tool_result: The tool_result block containing agent response
+
+    Returns:
+        The agent ID if found, None otherwise
+    """
+    import json
+
+    content = tool_result.get("content", [])
+
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                text = str(item.get("text", ""))
+                # Try to parse as JSON first (more robust)
+                try:
+                    parsed = json.loads(text)
+                    if isinstance(parsed, dict) and "agentId" in parsed:
+                        return str(parsed["agentId"])
+                except json.JSONDecodeError:
+                    pass
+                # Fallback: regex for partial JSON or embedded JSON
+                match = re.search(r'"agentId"\s*:\s*"([^"]+)"', text)
+                if match:
+                    return match.group(1)
+
+    return None
+
+
+async def _load_agent_events(
     project_dir: Path | None,
     tool_result: dict[str, Any],
     subagent_events: dict[str, list[dict[str, Any]]] | None = None,
@@ -774,7 +777,8 @@ def _load_agent_events(
     Args:
         project_dir: Path to project directory (for file-based loading)
         tool_result: The tool_result block that completed the agent
-        subagent_events: Pre-grouped subagent events by sessionId (streaming mode)
+        subagent_events: Pre-grouped subagent events by sessionId (streaming mode).
+            Note: In streaming mode, events are keyed by sessionId (not agentId).
 
     Returns:
         List of Scout events from the agent session
@@ -782,28 +786,24 @@ def _load_agent_events(
     from .client import find_agent_file, read_jsonl_events
 
     # Try to extract agent ID from the tool result content
-    content = tool_result.get("content", [])
-    agent_id = None
+    agent_id = _extract_agent_id_from_result(tool_result)
 
-    if isinstance(content, list):
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text":
-                text = str(item.get("text", ""))
-                # Look for agentId in the response
-                match = re.search(r'"agentId"\s*:\s*"([^"]+)"', text)
-                if match:
-                    agent_id = match.group(1)
-                    break
-
-    if not agent_id:
-        return []
+    raw_events: list[dict[str, Any]] | None = None
 
     # Try stream-provided events first
-    raw_events: list[dict[str, Any]] | None = None
-    if subagent_events and agent_id in subagent_events:
-        raw_events = subagent_events[agent_id]
-    elif project_dir:
-        # Fall back to file loading
+    # Note: subagent_events is keyed by sessionId, not agentId
+    # In streaming mode, we collect all buffered events for this tool since
+    # they all belong to this agent (one subagent session per Task tool)
+    if subagent_events:
+        # Flatten all events from all sessions - they all belong to this agent
+        all_events = []
+        for session_events in subagent_events.values():
+            all_events.extend(session_events)
+        if all_events:
+            raw_events = all_events
+
+    # Fall back to file loading if we have an agent_id and project_dir
+    if not raw_events and agent_id and project_dir:
         agent_file = find_agent_file(project_dir, agent_id)
         if not agent_file:
             logger.debug(f"Agent file not found for ID: {agent_id}")
@@ -824,5 +824,7 @@ def _load_agent_events(
     conversation_events = get_conversation_events(flat_events)
 
     # Convert to Scout events (recursive, but without loading nested agents to avoid loops)
-    # For nested agents, we could pass project_dir=None or implement depth limiting
-    return events_to_scout_events(conversation_events, project_dir=None)
+    result: list[Event] = []
+    async for event in process_parsed_events(conversation_events, project_dir=None):
+        result.append(event)
+    return result

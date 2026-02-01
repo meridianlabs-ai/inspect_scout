@@ -16,7 +16,7 @@ from logging import getLogger
 from os import PathLike
 from typing import AsyncIterator
 
-from inspect_ai.event import ModelEvent
+from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model._chat_message import ChatMessage
 
 from inspect_scout._transcript.types import Transcript
@@ -30,7 +30,7 @@ from .client import (
     read_jsonl_events,
 )
 from .detection import get_session_id
-from .events import events_to_scout_events
+from .events import process_parsed_events
 from .extraction import (
     extract_messages_from_scout_events,
     extract_model_name,
@@ -149,7 +149,7 @@ async def _process_session_file(
         if not conversation_events:
             continue
 
-        transcript = _create_transcript(
+        transcript = await _create_transcript(
             conversation_events,
             session_path,
             base_session_id,
@@ -159,7 +159,7 @@ async def _process_session_file(
             yield transcript
 
 
-def _create_transcript(
+async def _create_transcript(
     events: list[BaseEvent],
     session_file: PathLike[str],
     base_session_id: str,
@@ -187,8 +187,10 @@ def _create_transcript(
     else:
         transcript_id = base_session_id
 
-    # Convert to Scout events
-    scout_events = events_to_scout_events(events, project_dir)
+    # Convert to Scout events using process_parsed_events (already Pydantic models)
+    scout_events: list[Event] = []
+    async for event in process_parsed_events(events, project_dir):
+        scout_events.append(event)
 
     # Extract messages from Scout events
     messages: list[ChatMessage] = extract_messages_from_scout_events(scout_events)

@@ -20,25 +20,102 @@ CLAUDE_CODE_SOURCE_TYPE = "claude_code"
 DEFAULT_CLAUDE_DIR = Path.home() / ".claude" / "projects"
 
 
-def decode_project_path(encoded: str) -> str:
+def decode_project_path(encoded: str, validate: bool = True) -> str:
     """Decode a Claude Code project path encoding.
 
     Claude Code encodes paths by replacing / with -.
     E.g., "-Users-jjallaire-dev-project" -> "/Users/jjallaire/dev/project"
 
+    The encoding is lossy when directory names contain hyphens. When validate=True,
+    this function tries different interpretations and returns the first one that
+    exists on the filesystem. For example, "-Users-my-project-foo" could decode to:
+    - /Users/my-project/foo (if /Users/my-project exists)
+    - /Users/my/project-foo (if /Users/my/project-foo exists)
+
     Args:
         encoded: The encoded project path (directory name)
+        validate: If True, validate against filesystem to handle hyphenated dirs.
+            If False, use naive replacement (faster but may be wrong).
 
     Returns:
-        The decoded file system path
+        The decoded file system path (best guess if validation fails)
     """
     if not encoded.startswith("-"):
         return encoded
 
-    # Replace leading - and all subsequent - with /
-    # But be careful: some directory names legitimately have hyphens
-    # The encoding is: / -> -, so we replace - with /
-    return encoded.replace("-", "/")
+    # Remove leading dash and split on remaining dashes
+    parts = encoded[1:].split("-")
+
+    if not validate:
+        # Fast path: naive replacement
+        return "/" + "/".join(parts)
+
+    # Try to find a valid path by testing different split points
+    decoded = _find_valid_path(parts)
+    if decoded:
+        return decoded
+
+    # Fallback: naive replacement if no valid path found
+    return "/" + "/".join(parts)
+
+
+def _find_valid_path(parts: list[str]) -> str | None:
+    """Find a valid filesystem path by testing different hyphen interpretations.
+
+    Uses depth-first search to try different ways of combining parts with
+    either "/" (path separator) or "-" (literal hyphen in directory name).
+
+    Args:
+        parts: List of path components split on hyphens
+
+    Returns:
+        A valid path if found, None otherwise
+    """
+    if not parts:
+        return None
+
+    def search(index: int, current_path: Path, current_str: str) -> str | None:
+        """Recursively search for valid paths."""
+        if index >= len(parts):
+            # Check if the complete path exists
+            if current_path.exists():
+                return current_str
+            return None
+
+        part = parts[index]
+
+        # Option 1: Add as new path component (use /)
+        new_path_slash = current_path / part
+        new_str_slash = current_str + "/" + part
+        # Check if this path or any deeper path could exist
+        if new_path_slash.exists() or (index < len(parts) - 1):
+            result = search(index + 1, new_path_slash, new_str_slash)
+            if result:
+                return result
+
+        # Option 2: Merge with previous component using hyphen
+        # Only if we have a previous component to merge with
+        if current_str:
+            # Get the last component
+            parent_path = current_path.parent
+            last_component = current_path.name
+            merged_component = last_component + "-" + part
+            new_path_hyphen = parent_path / merged_component
+            new_str_hyphen = current_str.rsplit("/", 1)[0] + "/" + merged_component
+            if new_str_hyphen.startswith("//"):
+                new_str_hyphen = new_str_hyphen[1:]
+
+            # Check if merged path exists or could lead to valid paths
+            if new_path_hyphen.exists() or (index < len(parts) - 1):
+                result = search(index + 1, new_path_hyphen, new_str_hyphen)
+                if result:
+                    return result
+
+        return None
+
+    # Start search from root
+    root = Path("/")
+    return search(0, root, "")
 
 
 def encode_project_path(path: str) -> str:

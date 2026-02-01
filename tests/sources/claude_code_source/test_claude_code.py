@@ -50,11 +50,55 @@ class TestPathEncoding:
 
     def test_decode_project_path(self) -> None:
         """Test decoding Claude Code project paths."""
+        # With validate=False, uses naive replacement
+        assert (
+            decode_project_path("-Users-jjallaire-dev-project", validate=False)
+            == "/Users/jjallaire/dev/project"
+        )
+        assert decode_project_path("-Users-foo-bar", validate=False) == "/Users/foo/bar"
+
+    def test_decode_project_path_with_validation(self) -> None:
+        """Test decoding with filesystem validation."""
+        # With validate=True (default), falls back to naive if path doesn't exist
+        # Since /Users/jjallaire/dev/project likely doesn't exist in test env,
+        # it should fall back to naive replacement
         assert (
             decode_project_path("-Users-jjallaire-dev-project")
             == "/Users/jjallaire/dev/project"
         )
-        assert decode_project_path("-Users-foo-bar") == "/Users/foo/bar"
+
+    def test_decode_project_path_real_paths(self) -> None:
+        """Test that validation finds real paths on the filesystem."""
+        import shutil
+        from pathlib import Path
+
+        # Create a temporary directory with hyphens in the name
+        tmp_base = Path("/tmp/test-claude-code-paths")
+        hyphenated_dir = tmp_base / "my-project"
+        nested_dir = hyphenated_dir / "src"
+
+        try:
+            nested_dir.mkdir(parents=True, exist_ok=True)
+
+            # Encode the path: /tmp/test-claude-code-paths/my-project/src
+            # becomes: -tmp-test-claude-code-paths-my-project-src
+            encoded = "-tmp-test-claude-code-paths-my-project-src"
+
+            # Without validation, would incorrectly decode to:
+            # /tmp/test/claude/code/paths/my/project/src
+            assert (
+                decode_project_path(encoded, validate=False)
+                == "/tmp/test/claude/code/paths/my/project/src"
+            )
+
+            # With validation (default), should find the correct path
+            decoded = decode_project_path(encoded, validate=True)
+            assert decoded == "/tmp/test-claude-code-paths/my-project/src"
+
+        finally:
+            # Cleanup
+            if tmp_base.exists():
+                shutil.rmtree(tmp_base)
 
     def test_encode_project_path(self) -> None:
         """Test encoding file system paths."""
@@ -68,12 +112,12 @@ class TestPathEncoding:
         """Test that encoding and decoding are inverses.
 
         Note: This is a lossy encoding - hyphens in directory names cannot
-        be distinguished from path separators. This test uses a path without
-        hyphens in directory names.
+        be distinguished from path separators without filesystem validation.
+        This test uses a path without hyphens in directory names.
         """
         original = "/Users/jjallaire/dev/project"
         encoded = encode_project_path(original)
-        decoded = decode_project_path(encoded)
+        decoded = decode_project_path(encoded, validate=False)
         assert decoded == original
 
 

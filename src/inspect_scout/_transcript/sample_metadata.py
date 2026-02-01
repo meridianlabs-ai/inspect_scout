@@ -78,9 +78,9 @@ class SampleMetadata:
         return [tag.strip() for tag in tags.split(",") if tag.strip()]
 
     @property
-    def eval_metadata(self) -> dict[str, Any] | None:
+    def eval_metadata(self) -> dict[str, Any]:
         """Additional eval metadata. Same as EvalLog.eval.metadata."""
-        return self._metadata.get("eval_metadata")
+        return self._metadata.get("eval_metadata") or {}
 
     @property
     def task_args(self) -> dict[str, Any]:
@@ -95,9 +95,9 @@ class SampleMetadata:
         return GenerateConfig(**(self._metadata.get("generate_config") or {}))
 
     @property
-    def model_roles(self) -> dict[str, Any] | None:
+    def model_roles(self) -> dict[str, Any]:
         """Model roles. Same as EvalLog.eval.model_roles."""
-        return self._metadata.get("model_roles")
+        return self._metadata.get("model_roles") or {}
 
     # ===== Sample properties =====
 

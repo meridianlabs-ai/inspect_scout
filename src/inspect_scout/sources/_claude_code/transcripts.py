@@ -20,7 +20,7 @@ from inspect_ai.event import ModelEvent
 from inspect_ai.model._chat_message import ChatMessage
 
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util.message_ids import MessageIdManager, apply_message_ids_to_event
+from inspect_scout._util.message_ids import stable_message_ids
 
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
@@ -194,11 +194,11 @@ def _create_transcript(
     messages: list[ChatMessage] = extract_messages_from_scout_events(scout_events)
 
     # Apply stable message IDs
-    id_manager = MessageIdManager()
+    apply_ids = stable_message_ids()
     for event in scout_events:
         if isinstance(event, ModelEvent):
-            apply_message_ids_to_event(event, id_manager)
-    id_manager.apply_ids(messages)
+            apply_ids(event)
+    apply_ids(messages)
 
     # Extract metadata
     metadata = extract_session_metadata(events)

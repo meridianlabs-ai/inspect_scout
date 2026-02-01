@@ -1,5 +1,7 @@
 """Tests for Claude Code import source."""
 
+from typing import Any
+
 from inspect_scout.sources._claude_code.client import (
     CLAUDE_CODE_SOURCE_TYPE,
     decode_project_path,
@@ -573,7 +575,7 @@ class TestMessageExtraction:
 
     def test_extract_assistant_content(self) -> None:
         """Test extracting assistant content blocks."""
-        content = [
+        content: list[dict[str, Any]] = [
             {"type": "text", "text": "Here's my response."},
             {
                 "type": "thinking",

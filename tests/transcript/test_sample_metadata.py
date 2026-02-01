@@ -86,7 +86,7 @@ def test_typed_properties_exist() -> None:
     assert metadata.eval_tags == ["tag1", "tag2"]
     assert metadata.target == ["4"]
 
-    # Dict properties with or {} default
+    # Dict properties
     assert metadata.eval_metadata == {"key": "value"}
     assert metadata.task_args == {"temperature": 0.7}
     assert metadata.model_roles == {"system": "You are helpful"}
@@ -108,12 +108,12 @@ def test_optional_fields_defaults() -> None:
     # Optional fields return None
     assert metadata.working_time is None
     assert metadata.generate_config.max_tokens is None
+    assert metadata.eval_metadata is None
+    assert metadata.model_roles is None
 
     # Collection fields return empty collections
     assert metadata.eval_tags == []
-    assert metadata.eval_metadata == {}
     assert metadata.task_args == {}
-    assert metadata.model_roles == {}
     assert metadata.sample_metadata == {}
     assert metadata.score_values == {}
 

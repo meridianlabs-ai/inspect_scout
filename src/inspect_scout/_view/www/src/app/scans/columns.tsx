@@ -474,8 +474,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: true,
-      filterType: "number",
+      filterable: false,
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -494,8 +493,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: true,
-      filterType: "number",
+      filterable: false,
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -514,8 +512,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: true,
-      filterType: "number",
+      filterable: false,
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -538,8 +535,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     minSize: 60,
     maxSize: 150,
     meta: {
-      filterable: true,
-      filterType: "number",
+      filterable: false,
     },
     cell: (info) => {
       const value = info.getValue() as number;

@@ -4,11 +4,7 @@ import {
   useAddFilterPopover as useAddFilterPopoverBase,
   type AvailableColumn,
 } from "../../components/columnFilter";
-import {
-  COLUMN_LABELS,
-  DEFAULT_COLUMN_ORDER,
-  getFilterTypeForColumn,
-} from "../columns";
+import { ALL_COLUMNS, COLUMN_LABELS, DEFAULT_COLUMN_ORDER } from "../columns";
 
 interface UseTranscriptAddFilterPopoverParams {
   filters: Record<string, ColumnFilter>;
@@ -16,11 +12,12 @@ interface UseTranscriptAddFilterPopoverParams {
   onFilterColumnChange?: (columnId: string | null) => void;
 }
 
-// Static list of available columns - computed once
-const AVAILABLE_COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
+// Static list of columns for filtering - computed once
+const COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
   (columnId: keyof TranscriptInfo) => ({
     id: columnId,
     label: COLUMN_LABELS[columnId],
+    filterType: ALL_COLUMNS[columnId].meta?.filterType ?? "string",
   })
 );
 
@@ -34,8 +31,7 @@ export function useAddFilterPopover({
   onFilterColumnChange,
 }: UseTranscriptAddFilterPopoverParams) {
   return useAddFilterPopoverBase({
-    availableColumns: AVAILABLE_COLUMNS,
-    getFilterTypeForColumn,
+    columns: COLUMNS,
     filters,
     onAddFilter,
     onFilterColumnChange,

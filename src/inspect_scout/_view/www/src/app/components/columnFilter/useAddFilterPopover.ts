@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { OperatorModel } from "../../../query";
-import type { ColumnFilter, FilterType } from "../../../state/store";
+import type { ColumnFilter } from "../../../state/store";
 
 import type { AvailableColumn } from "./ColumnFilterEditor";
 import { useColumnFilter } from "./useColumnFilter";
 
 export interface UseAddFilterPopoverParams {
-  /** Available columns for filtering */
-  availableColumns: AvailableColumn[];
-  /** Function to get filter type for a column */
-  getFilterTypeForColumn: (columnId: string) => FilterType;
+  /** Columns available for filtering */
+  columns: AvailableColumn[];
   /** Current filters */
   filters: Record<string, ColumnFilter>;
   /** Callback when a filter is added */
@@ -24,8 +22,7 @@ export interface UseAddFilterPopoverParams {
  * Wraps useColumnFilter with column selection and open/close logic.
  */
 export function useAddFilterPopover({
-  availableColumns,
-  getFilterTypeForColumn,
+  columns,
   filters,
   onAddFilter,
   onFilterColumnChange,
@@ -34,9 +31,10 @@ export function useAddFilterPopover({
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const prevOpenRef = useRef(false);
 
-  const filterType = selectedColumnId
-    ? getFilterTypeForColumn(selectedColumnId)
-    : "string";
+  const selectedColumn = selectedColumnId
+    ? columns.find((c) => c.id === selectedColumnId)
+    : null;
+  const filterType = selectedColumn?.filterType ?? "string";
 
   const existingFilter = selectedColumnId ? filters[selectedColumnId] : null;
 
@@ -107,7 +105,7 @@ export function useAddFilterPopover({
     isOpen,
     setIsOpen,
     selectedColumnId,
-    availableColumns,
+    columns,
     filterType,
     operator,
     setOperator: setOperator as (op: OperatorModel) => void,

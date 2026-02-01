@@ -49,7 +49,7 @@ export const TranscriptFilterBar: FC<{
     isOpen: isAddFilterOpen,
     setIsOpen: setIsAddFilterOpen,
     selectedColumnId: addFilterColumnId,
-    availableColumns,
+    columns,
     filterType: addFilterType,
     operator: addFilterOperator,
     setOperator: setAddFilterOperator,
@@ -115,7 +115,7 @@ export const TranscriptFilterBar: FC<{
           onCommit={commitAddFilterAndClose}
           onCancel={cancelAddFilterAndClose}
           suggestions={filterSuggestions}
-          availableColumns={availableColumns}
+          columns={columns}
           onColumnChange={handleAddFilterColumnChange}
         />
       </PopOver>

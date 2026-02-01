@@ -1,7 +1,6 @@
 import clsx from "clsx";
 
 import { ApplicationIcons } from "../../components/icons";
-import { FilterType } from "../../state/store";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { formatNumber } from "../../utils/format";
 import { printObject } from "../../utils/object";
@@ -173,7 +172,7 @@ function getObjectTitleValue(
 }
 
 // All available columns, keyed by their ID (using database column names)
-const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
+export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   // ============================================
   // Original columns
   // ============================================
@@ -606,12 +605,3 @@ export function getScanColumns(
   return visibleColumnKeys.map((key) => ALL_COLUMNS[key]);
 }
 
-/**
- * Get the filter type for a given column ID.
- * @param columnId - The column ID to look up
- * @returns The filter type for the column, or "string" as default
- */
-export function getFilterTypeForColumn(columnId: string): FilterType {
-  const column = ALL_COLUMNS[columnId as ScanColumnKey];
-  return column?.meta?.filterType ?? "string";
-}

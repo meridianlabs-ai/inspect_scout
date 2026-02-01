@@ -58,7 +58,7 @@ export const ScansFilterBar: FC<{
     isOpen: isAddFilterOpen,
     setIsOpen: setIsAddFilterOpen,
     selectedColumnId: addFilterColumnId,
-    availableColumns,
+    columns,
     filterType: addFilterType,
     operator: addFilterOperator,
     setOperator: setAddFilterOperator,
@@ -135,7 +135,7 @@ export const ScansFilterBar: FC<{
           onCommit={commitAddFilterAndClose}
           onCancel={cancelAddFilterAndClose}
           suggestions={filterSuggestions}
-          availableColumns={availableColumns}
+          columns={columns}
           onColumnChange={handleAddFilterColumnChange}
         />
       </PopOver>

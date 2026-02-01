@@ -4,9 +4,9 @@ import {
   type AvailableColumn,
 } from "../../components/columnFilter";
 import {
+  ALL_COLUMNS,
   COLUMN_LABELS,
   DEFAULT_COLUMN_ORDER,
-  getFilterTypeForColumn,
   ScanColumnKey,
 } from "../columns";
 
@@ -16,11 +16,12 @@ interface UseScanAddFilterPopoverParams {
   onFilterColumnChange?: (columnId: string | null) => void;
 }
 
-// Static list of available columns - computed once
-const AVAILABLE_COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
+// Static list of columns for filtering - computed once
+const COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
   (columnId: ScanColumnKey) => ({
     id: columnId,
     label: COLUMN_LABELS[columnId],
+    filterType: ALL_COLUMNS[columnId].meta?.filterType ?? "string",
   })
 );
 
@@ -34,8 +35,7 @@ export function useAddFilterPopover({
   onFilterColumnChange,
 }: UseScanAddFilterPopoverParams) {
   return useAddFilterPopoverBase({
-    availableColumns: AVAILABLE_COLUMNS,
-    getFilterTypeForColumn,
+    columns: COLUMNS,
     filters,
     onAddFilter,
     onFilterColumnChange,

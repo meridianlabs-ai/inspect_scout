@@ -12,6 +12,7 @@ import { DurationInput } from "./DurationInput";
 export interface AvailableColumn {
   id: string;
   label: string;
+  filterType: FilterType;
 }
 
 export interface ColumnFilterEditorProps {
@@ -34,7 +35,7 @@ export interface ColumnFilterEditorProps {
   suggestions?: ScalarValue[];
   // Add mode props
   mode?: "add" | "edit";
-  availableColumns?: AvailableColumn[];
+  columns?: AvailableColumn[];
   onColumnChange?: (columnId: string) => void;
 }
 
@@ -54,7 +55,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
   onCancel,
   suggestions = [],
   mode = "edit",
-  availableColumns,
+  columns,
   onColumnChange,
 }) => {
   const isAddMode = mode === "add";
@@ -64,7 +65,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
 
   // Get the display label for the selected column
   const selectedColumnLabel = columnId
-    ? (availableColumns?.find((col) => col.id === columnId)?.label ?? columnId)
+    ? (columns?.find((col) => col.id === columnId)?.label ?? columnId)
     : "";
 
   const handleColumnSelectChange = useCallback(
@@ -134,7 +135,7 @@ export const ColumnFilterEditor: FC<ColumnFilterEditorProps> = ({
             autoFocus
           >
             <option value="">Select column...</option>
-            {availableColumns?.map((col) => (
+            {columns?.map((col) => (
               <option key={col.id} value={col.id}>
                 {col.label}
               </option>

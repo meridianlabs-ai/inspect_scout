@@ -190,7 +190,7 @@ function createObjectColumn<K extends keyof TranscriptInfo>(config: {
 }
 
 // All available columns, keyed by their accessor key
-const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
+export const ALL_COLUMNS: Record<keyof TranscriptInfo, TranscriptColumn> = {
   success: createColumn({
     accessorKey: "success",
     header: "✓",
@@ -646,12 +646,3 @@ export function getCellTitleValue(
   return String(value);
 }
 
-/**
- * Get the filter type for a given column ID.
- * @param columnId - The column ID to look up
- * @returns The filter type for the column, or "string" as default
- */
-export function getFilterTypeForColumn(columnId: string): FilterType {
-  const column = ALL_COLUMNS[columnId as keyof TranscriptInfo];
-  return column?.meta?.filterType ?? "string";
-}

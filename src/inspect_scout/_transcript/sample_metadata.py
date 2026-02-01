@@ -4,12 +4,15 @@ This module provides a wrapper class that gives typed access to
 sample metadata fields from Inspect eval logs.
 """
 
-from typing import Any
+from typing import Any, Literal, cast
 
-from inspect_ai.scorer._metric import Score
+from inspect_ai.model import GenerateConfig
+from inspect_ai.scorer._metric import Value
 
 from .eval_log import EVAL_LOG_SOURCE_TYPE
 from .types import Transcript
+
+EvalStatus = Literal["started", "success", "cancelled", "error"]
 
 
 class SampleMetadata:
@@ -26,7 +29,7 @@ class SampleMetadata:
         def my_scanner(transcript: Transcript) -> ...:
             metadata = SampleMetadata(transcript)
             print(metadata.eval_status)
-            print(metadata.scores)
+            print(metadata.score_values)
     """
 
     def __init__(self, transcript: Transcript) -> None:
@@ -49,23 +52,26 @@ class SampleMetadata:
     # ===== Eval Info properties =====
 
     @property
-    def eval_id(self) -> str | None:
-        """Globally unique id for eval."""
-        return self._metadata.get("eval_id")
+    def eval_id(self) -> str:
+        """Globally unique id for eval. Same as EvalLog.eval.eval_id."""
+        return cast(str, self._metadata["eval_id"])
 
     @property
-    def log(self) -> str | None:
-        """Location that the log file was read from."""
-        return self._metadata.get("log")
+    def log(self) -> str:
+        """Location that the log file was read from. Same as EvalLog.location."""
+        return cast(str, self._metadata["log"])
 
     @property
-    def eval_status(self) -> str | None:
-        """Status of eval (e.g., 'success', 'error', 'cancelled')."""
-        return self._metadata.get("eval_status")
+    def eval_status(self) -> EvalStatus:
+        """Status of eval. Same as EvalLog.status."""
+        return cast(EvalStatus, self._metadata["eval_status"])
 
     @property
     def eval_tags(self) -> list[str]:
-        """Tags associated with evaluation run."""
+        """Tags associated with evaluation run. Same as EvalLog.eval.tags.
+
+        Returns empty list (not None) for SQL query compatibility.
+        """
         tags = self._metadata.get("eval_tags", "")
         if not tags:
             return []
@@ -73,67 +79,76 @@ class SampleMetadata:
 
     @property
     def eval_metadata(self) -> dict[str, Any]:
-        """Additional eval metadata."""
+        """Additional eval metadata. Same as EvalLog.eval.metadata."""
         return self._metadata.get("eval_metadata") or {}
 
     @property
     def task_args(self) -> dict[str, Any]:
-        """Task arguments."""
+        """Task arguments. Same as EvalLog.eval.task_args."""
         return self._metadata.get("task_args") or {}
 
     # ===== Model properties =====
 
     @property
-    def generate_config(self) -> dict[str, Any]:
-        """Generate config specified for model instance."""
-        return self._metadata.get("generate_config") or {}
+    def generate_config(self) -> GenerateConfig:
+        """Generate config for model instance. Same as EvalLog.eval.model_generate_config."""
+        return GenerateConfig(**(self._metadata.get("generate_config") or {}))
 
     @property
     def model_roles(self) -> dict[str, Any]:
-        """Model roles."""
+        """Model roles. Same as EvalLog.eval.model_roles."""
         return self._metadata.get("model_roles") or {}
 
     # ===== Sample properties =====
 
     @property
-    def id(self) -> str | None:
-        """Unique id for sample."""
-        return self._metadata.get("id")
+    def id(self) -> str:
+        """Unique id for sample. Same as EvalSampleSummary.id."""
+        return str(self._metadata["id"])
 
     @property
-    def epoch(self) -> int | None:
-        """Epoch number for sample."""
-        epoch = self._metadata.get("epoch")
-        return int(epoch) if epoch is not None else None
+    def epoch(self) -> int:
+        """Epoch number for sample. Same as EvalSampleSummary.epoch."""
+        return int(self._metadata["epoch"])
 
     @property
-    def input(self) -> str | None:
-        """Sample input."""
-        return self._metadata.get("input")
+    def input(self) -> str:
+        """Sample input. Derived from EvalSampleSummary.input (converted to string)."""
+        return cast(str, self._metadata["input"])
 
     @property
-    def target(self) -> str | None:
-        """Sample target."""
-        return self._metadata.get("target")
+    def target(self) -> list[str]:
+        """Sample target value(s). Derived from EvalSampleSummary.target.
+
+        Stored as comma-separated string; parsed back to list.
+        """
+        target = self._metadata["target"]
+        if not target:
+            return []
+        return [t.strip() for t in target.split(",") if t.strip()]
 
     @property
     def sample_metadata(self) -> dict[str, Any]:
-        """Sample metadata."""
+        """Sample metadata. Same as EvalSampleSummary.metadata."""
         return self._metadata.get("sample_metadata") or {}
 
     @property
     def working_time(self) -> float | None:
-        """Time spent working (model generation, sandbox calls, etc.)."""
+        """Total time the sample was running. Same as EvalSampleSummary.total_time."""
         working_time = self._metadata.get("working_time")
         return float(working_time) if working_time is not None else None
 
     # ===== Score properties =====
 
     @property
-    def scores(self) -> dict[str, Score]:
-        """Scores dict reconstructed from score_* metadata fields."""
+    def score_values(self) -> dict[str, Value]:
+        """Score values for this sample. Derived from EvalSampleSummary.scores.
+
+        Note: Only score values are stored in transcript metadata,
+        not full Score objects (answer, explanation, metadata are not available).
+        """
         return {
-            k.removeprefix("score_"): Score(value=v)
+            k.removeprefix("score_"): v
             for k, v in self._metadata.items()
             if k.startswith("score_")
         }

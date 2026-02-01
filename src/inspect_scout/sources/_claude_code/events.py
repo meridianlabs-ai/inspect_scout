@@ -277,6 +277,21 @@ def events_to_scout_events(
     This is the main conversion function. It processes events in order,
     creating ModelEvent, ToolEvent, InfoEvent, and span events as needed.
 
+    Event ordering follows Inspect's pattern where ToolEvent is recorded
+    inside the tool span:
+      SpanBeginEvent(type="tool", name="Bash")
+        ToolEvent(function="Bash", ...)
+      SpanEndEvent
+
+    For Task tools (agent spawns):
+      SpanBeginEvent(type="tool", name="Task")
+        ToolEvent(function="Task", ...)
+        SpanBeginEvent(type="agent", name="Explore")
+          InfoEvent (task description)
+          [nested agent events...]
+        SpanEndEvent  # agent span
+      SpanEndEvent  # tool span
+
     Args:
         events: Chronologically ordered Claude Code events (Pydantic models)
         project_dir: Path to project directory (for loading agent files)
@@ -287,14 +302,13 @@ def events_to_scout_events(
     scout_events: list[Event] = []
 
     # Track pending tool calls to match with results
-    pending_tool_calls: dict[str, tuple[ContentToolUse, datetime]] = {}
+    # Maps tool_use_id -> (ContentToolUse, timestamp, is_task_tool, agent_info)
+    pending_tool_calls: dict[
+        str, tuple[ContentToolUse, datetime, bool, dict[str, Any] | None]
+    ] = {}
 
     # Track messages for ModelEvent input
     accumulated_messages: list[Any] = []
-
-    # Track active spans
-    active_agent_spans: dict[str, str] = {}  # tool_use_id -> span_id (for Task tools)
-    active_tool_spans: dict[str, str] = {}  # tool_use_id -> span_id (for regular tools)
 
     for event in events:
         event_type = get_event_type(event)
@@ -309,7 +323,7 @@ def events_to_scout_events(
             if model_event.output and model_event.output.message:
                 accumulated_messages.append(model_event.output.message)
 
-            # Process tool_use blocks
+            # Process tool_use blocks - just track them, don't create spans yet
             message_content = event.message.content
             for block in message_content:
                 if not isinstance(block, dict):
@@ -326,53 +340,16 @@ def events_to_scout_events(
                     tool_id = parsed_block.id
 
                     # Check if this is a Task tool call (agent spawn)
-                    if is_task_tool_call(parsed_block):
-                        agent_info = get_task_agent_info(parsed_block)
-                        if agent_info:
-                            # Create agent span
-                            span_id = f"agent-{tool_id}"
-                            agent_name = agent_info.get("subagent_type", "agent")
+                    is_task = is_task_tool_call(parsed_block)
+                    agent_info = get_task_agent_info(parsed_block) if is_task else None
 
-                            scout_events.append(
-                                to_span_begin_event(
-                                    span_id=span_id,
-                                    name=agent_name or "agent",
-                                    span_type="agent",
-                                    timestamp=timestamp,
-                                    metadata={
-                                        "description": agent_info.get(
-                                            "description", ""
-                                        ),
-                                    },
-                                )
-                            )
-
-                            # Create info event with task description
-                            if agent_info.get("description"):
-                                scout_events.append(
-                                    to_info_event(
-                                        source="agent_task",
-                                        data=agent_info.get("description"),
-                                        timestamp=timestamp,
-                                    )
-                                )
-
-                            active_agent_spans[tool_id] = span_id
-                    else:
-                        # Regular tool call - create tool span
-                        span_id = f"tool-{tool_id}"
-                        scout_events.append(
-                            to_span_begin_event(
-                                span_id=span_id,
-                                name=parsed_block.name,
-                                span_type="tool",
-                                timestamp=timestamp,
-                            )
-                        )
-                        active_tool_spans[tool_id] = span_id
-
-                    # Track all tool calls for result matching
-                    pending_tool_calls[tool_id] = (parsed_block, timestamp)
+                    # Track for result matching - spans created at result time
+                    pending_tool_calls[tool_id] = (
+                        parsed_block,
+                        timestamp,
+                        is_task,
+                        agent_info,
+                    )
 
         elif isinstance(event, UserEvent):
             content = event.message.content
@@ -396,41 +373,23 @@ def events_to_scout_events(
 
                         # Match with pending tool call
                         if tool_use_id in pending_tool_calls:
-                            tool_use_block, tool_timestamp = pending_tool_calls.pop(
-                                tool_use_id
+                            tool_use_block, tool_timestamp, is_task, agent_info = (
+                                pending_tool_calls.pop(tool_use_id)
                             )
 
-                            # Create ToolEvent
-                            tool_event = to_tool_event(
-                                tool_use_block,
-                                block,
-                                tool_timestamp,
-                                completed=timestamp,
+                            # Create span structure with ToolEvent inside
+                            # All events emitted at tool_result time when we have
+                            # the complete picture
+                            tool_events = _create_tool_span_events(
+                                tool_use_block=tool_use_block,
+                                tool_result=block,
+                                tool_timestamp=tool_timestamp,
+                                result_timestamp=timestamp,
+                                is_task=is_task,
+                                agent_info=agent_info,
+                                project_dir=project_dir,
                             )
-                            scout_events.append(tool_event)
-
-                            # Check if this completes a tool span
-                            if tool_use_id in active_tool_spans:
-                                span_id = active_tool_spans.pop(tool_use_id)
-                                scout_events.append(
-                                    to_span_end_event(span_id, timestamp)
-                                )
-
-                            # Check if this completes an agent span
-                            elif tool_use_id in active_agent_spans:
-                                span_id = active_agent_spans.pop(tool_use_id)
-
-                                # Try to load and process agent events
-                                if project_dir:
-                                    agent_events = _load_agent_events(
-                                        project_dir, block, timestamp
-                                    )
-                                    scout_events.extend(agent_events)
-
-                                # End the agent span
-                                scout_events.append(
-                                    to_span_end_event(span_id, timestamp)
-                                )
+                            scout_events.extend(tool_events)
 
             # Extract user message for accumulation
             user_msg = extract_user_message(event)
@@ -454,23 +413,24 @@ def events_to_scout_events(
                         )
                     )
 
-    # Close any remaining tool calls without results
-    for tool_id, (tool_use_block, tool_timestamp) in pending_tool_calls.items():
-        tool_event = to_tool_event(tool_use_block, None, tool_timestamp)
-        scout_events.append(tool_event)
-
-        # Close associated tool span if any
-        if tool_id in active_tool_spans:
-            span_id = active_tool_spans.pop(tool_id)
-            scout_events.append(to_span_end_event(span_id, datetime.now()))
-
-    # Close any remaining tool spans
-    for span_id in active_tool_spans.values():
-        scout_events.append(to_span_end_event(span_id, datetime.now()))
-
-    # Close any remaining agent spans
-    for span_id in active_agent_spans.values():
-        scout_events.append(to_span_end_event(span_id, datetime.now()))
+    # Handle any remaining tool calls without results
+    for _tool_id, (
+        tool_use_block,
+        tool_timestamp,
+        is_task,
+        agent_info,
+    ) in pending_tool_calls.items():
+        # Create span structure even without result
+        tool_events = _create_tool_span_events(
+            tool_use_block=tool_use_block,
+            tool_result=None,
+            tool_timestamp=tool_timestamp,
+            result_timestamp=datetime.now(),
+            is_task=is_task,
+            agent_info=agent_info,
+            project_dir=None,  # Don't load agents for incomplete tools
+        )
+        scout_events.extend(tool_events)
 
     # Sort by timestamp
     scout_events.sort(key=lambda e: e.timestamp or datetime.min)
@@ -478,17 +438,120 @@ def events_to_scout_events(
     return scout_events
 
 
+def _create_tool_span_events(
+    tool_use_block: ContentToolUse,
+    tool_result: dict[str, Any] | None,
+    tool_timestamp: datetime,
+    result_timestamp: datetime,
+    is_task: bool,
+    agent_info: dict[str, Any] | None,
+    project_dir: Path | None,
+) -> list[Event]:
+    """Create the complete span structure for a tool call.
+
+    Follows Inspect's pattern where ToolEvent is inside the span:
+
+    Regular tools:
+      SpanBeginEvent(type="tool", name="Bash")
+        ToolEvent(function="Bash", ...)
+      SpanEndEvent
+
+    Task tools (agent spawns):
+      SpanBeginEvent(type="tool", name="Task")
+        ToolEvent(function="Task", ...)
+        SpanBeginEvent(type="agent", name="Explore")
+          InfoEvent (task description)
+          [nested agent events...]
+        SpanEndEvent  # agent span
+      SpanEndEvent  # tool span
+
+    Args:
+        tool_use_block: The tool_use content block
+        tool_result: The tool_result content block (may be None)
+        tool_timestamp: When the tool was called
+        result_timestamp: When the result was received
+        is_task: Whether this is a Task tool call (agent spawn)
+        agent_info: Agent info if is_task is True
+        project_dir: Project directory for loading agent files
+
+    Returns:
+        List of events in correct order
+    """
+    events: list[Event] = []
+    tool_id = tool_use_block.id
+    tool_span_id = f"tool-{tool_id}"
+
+    # 1. SpanBeginEvent for tool
+    events.append(
+        to_span_begin_event(
+            span_id=tool_span_id,
+            name=tool_use_block.name,
+            span_type="tool",
+            timestamp=tool_timestamp,
+        )
+    )
+
+    # 2. ToolEvent (inside the span)
+    tool_event = to_tool_event(
+        tool_use_block,
+        tool_result,
+        tool_timestamp,
+        completed=result_timestamp,
+    )
+    events.append(tool_event)
+
+    # 3. For Task tools, create nested agent span
+    if is_task and agent_info:
+        agent_span_id = f"agent-{tool_id}"
+        agent_name = agent_info.get("subagent_type", "agent")
+
+        # SpanBeginEvent for agent
+        events.append(
+            to_span_begin_event(
+                span_id=agent_span_id,
+                name=agent_name or "agent",
+                span_type="agent",
+                timestamp=tool_timestamp,
+                parent_id=tool_span_id,
+                metadata={
+                    "description": agent_info.get("description", ""),
+                },
+            )
+        )
+
+        # InfoEvent with task description
+        if agent_info.get("description"):
+            events.append(
+                to_info_event(
+                    source="agent_task",
+                    data=agent_info.get("description"),
+                    timestamp=tool_timestamp,
+                )
+            )
+
+        # Load and process nested agent events
+        if project_dir and tool_result:
+            agent_events = _load_agent_events(project_dir, tool_result)
+            events.extend(agent_events)
+
+        # SpanEndEvent for agent
+        events.append(to_span_end_event(agent_span_id, result_timestamp))
+
+    # 4. SpanEndEvent for tool
+    events.append(to_span_end_event(tool_span_id, result_timestamp))
+
+    return events
+
+
 def _load_agent_events(
     project_dir: Path,
     tool_result: dict[str, Any],
-    result_timestamp: datetime,
 ) -> list[Event]:
     """Load and process events from an agent session file.
 
     Args:
         project_dir: Path to project directory
         tool_result: The tool_result block that completed the agent
-        result_timestamp: When the result was received
 
     Returns:
         List of Scout events from the agent session

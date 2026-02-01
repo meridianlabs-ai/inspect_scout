@@ -79,6 +79,8 @@ website:
           href: reference/transcript.qmd#transcripts_from
         - text: Transcript
           href: reference/transcript.qmd#transcript
+        - text: SampleMetadata
+          href: reference/transcript.qmd#samplemetadata
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
         - text: TranscriptsReader
@@ -109,8 +111,6 @@ website:
           href: reference/transcript.qmd#observeprovider
         - text: ObserveEmit
           href: reference/transcript.qmd#observeemit
-        - text: SampleMetadata
-          href: reference/transcript.qmd#samplemetadata
       - section: scanner
         href: reference/scanner.qmd
         contents:

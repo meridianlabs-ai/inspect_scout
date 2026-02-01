@@ -134,7 +134,7 @@ class SampleMetadata:
 
     @property
     def working_time(self) -> float | None:
-        """Total time the sample was running. Same as EvalSampleSummary.total_time."""
+        """Working time for the sample. Same as EvalSampleSummary.working_time."""
         working_time = self._metadata.get("working_time")
         return float(working_time) if working_time is not None else None
 

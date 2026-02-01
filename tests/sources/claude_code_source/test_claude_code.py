@@ -22,6 +22,19 @@ from inspect_scout.sources._claude_code.extraction import (
     extract_user_message,
     sum_tokens,
 )
+from inspect_scout.sources._claude_code.models import (
+    AssistantEvent,
+    AssistantMessage,
+    CompactMetadata,
+    FileHistoryEvent,
+    ProgressEvent,
+    QueueOperationEvent,
+    SystemEvent,
+    Usage,
+    UserEvent,
+    UserMessage,
+    parse_event,
+)
 from inspect_scout.sources._claude_code.tree import (
     build_event_tree,
     find_clear_indices,
@@ -67,107 +80,248 @@ class TestEventDetection:
 
     def test_get_event_type(self) -> None:
         """Test getting event type."""
-        assert get_event_type({"type": "user"}) == "user"
-        assert get_event_type({"type": "assistant"}) == "assistant"
-        assert get_event_type({"type": "progress"}) == "progress"
-        assert get_event_type({}) == "unknown"
+        user_event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
+        assert get_event_type(user_event) == "user"
+
+        assistant_event = AssistantEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
+        assert get_event_type(assistant_event) == "assistant"
+
+        progress_event = ProgressEvent(
+            uuid="3",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="progress",
+        )
+        assert get_event_type(progress_event) == "progress"
 
     def test_is_user_event(self) -> None:
         """Test user event detection."""
-        assert is_user_event({"type": "user"})
-        assert not is_user_event({"type": "assistant"})
+        user_event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
+        assert is_user_event(user_event)
+
+        assistant_event = AssistantEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
+        assert not is_user_event(assistant_event)
 
     def test_is_assistant_event(self) -> None:
         """Test assistant event detection."""
-        assert is_assistant_event({"type": "assistant"})
-        assert not is_assistant_event({"type": "user"})
+        assistant_event = AssistantEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
+        assert is_assistant_event(assistant_event)
+
+        user_event = UserEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
+        assert not is_assistant_event(user_event)
 
     def test_is_clear_command(self) -> None:
         """Test /clear command detection."""
-        clear_event = {
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": "<command-name>/clear</command-name>\n<command-args></command-args>",
-            },
-        }
+        clear_event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(
+                content="<command-name>/clear</command-name>\n<command-args></command-args>"
+            ),
+        )
         assert is_clear_command(clear_event)
 
-        regular_user = {
-            "type": "user",
-            "message": {"role": "user", "content": "Hello there"},
-        }
+        regular_user = UserEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello there"),
+        )
         assert not is_clear_command(regular_user)
 
-        assistant = {"type": "assistant"}
+        assistant = AssistantEvent(
+            uuid="3",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
         assert not is_clear_command(assistant)
 
     def test_is_compact_boundary(self) -> None:
         """Test compaction boundary detection."""
-        compact_event = {
-            "type": "system",
-            "subtype": "compact_boundary",
-            "compactMetadata": {"trigger": "auto", "preTokens": 155660},
-        }
+        compact_event = SystemEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="system",
+            subtype="compact_boundary",
+            compactMetadata=CompactMetadata(trigger="auto", preTokens=155660),
+        )
         assert is_compact_boundary(compact_event)
 
-        other_system = {"type": "system", "subtype": "turn_duration"}
+        other_system = SystemEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="system",
+            subtype="turn_duration",
+        )
         assert not is_compact_boundary(other_system)
 
     def test_is_compact_summary(self) -> None:
         """Test compaction summary detection."""
-        summary_event = {
-            "type": "user",
-            "isCompactSummary": True,
-            "message": {
-                "role": "user",
-                "content": "Summary of previous conversation...",
-            },
-        }
+        summary_event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            isCompactSummary=True,
+            message=UserMessage(content="Summary of previous conversation..."),
+        )
         assert is_compact_summary(summary_event)
 
-        regular_user = {"type": "user", "message": {"role": "user", "content": "Hello"}}
+        regular_user = UserEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
         assert not is_compact_summary(regular_user)
 
     def test_should_skip_event(self) -> None:
         """Test event skip detection."""
-        assert should_skip_event({"type": "progress"})
-        assert should_skip_event({"type": "queue-operation"})
-        assert should_skip_event({"type": "file-history-snapshot"})
-        assert should_skip_event({"type": "system", "subtype": "turn_duration"})
+        progress = ProgressEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="progress",
+        )
+        assert should_skip_event(progress)
+
+        queue_op = QueueOperationEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="queue-operation",
+        )
+        assert should_skip_event(queue_op)
+
+        file_history = FileHistoryEvent(
+            uuid="3",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="file-history-snapshot",
+        )
+        assert should_skip_event(file_history)
+
+        turn_duration = SystemEvent(
+            uuid="4",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="system",
+            subtype="turn_duration",
+        )
+        assert should_skip_event(turn_duration)
 
         # /clear should be skipped
-        clear_event = {
-            "type": "user",
-            "message": {"content": "<command-name>/clear</command-name>"},
-        }
+        clear_event = UserEvent(
+            uuid="5",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="<command-name>/clear</command-name>"),
+        )
         assert should_skip_event(clear_event)
 
         # Regular user/assistant should not be skipped
-        assert not should_skip_event({"type": "user", "message": {"content": "Hello"}})
-        assert not should_skip_event({"type": "assistant"})
+        regular_user = UserEvent(
+            uuid="6",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
+        assert not should_skip_event(regular_user)
+
+        assistant = AssistantEvent(
+            uuid="7",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
+        assert not should_skip_event(assistant)
 
     def test_get_model_name(self) -> None:
         """Test model name extraction."""
-        event = {
-            "type": "assistant",
-            "message": {"model": "claude-opus-4-5-20251101"},
-        }
+        event = AssistantEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(model="claude-opus-4-5-20251101", content=[]),
+        )
         assert get_model_name(event) == "claude-opus-4-5-20251101"
 
-        no_model = {"type": "assistant", "message": {}}
+        no_model = AssistantEvent(
+            uuid="2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(content=[]),
+        )
         assert get_model_name(no_model) is None
 
-        user_event = {"type": "user"}
+        user_event = UserEvent(
+            uuid="3",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
         assert get_model_name(user_event) is None
 
     def test_get_timestamp(self) -> None:
         """Test timestamp extraction."""
-        event = {"timestamp": "2026-01-31T21:46:52.807Z"}
+        event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-31T21:46:52.807Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
         assert get_timestamp(event) == "2026-01-31T21:46:52.807Z"
-
-        no_ts = {}
-        assert get_timestamp(no_ts) is None
 
 
 class TestTreeBuilding:
@@ -176,9 +330,36 @@ class TestTreeBuilding:
     def test_build_simple_tree(self) -> None:
         """Test building a simple conversation tree."""
         events = [
-            {"uuid": "1", "parentUuid": None, "timestamp": "2026-01-01T00:00:00Z"},
-            {"uuid": "2", "parentUuid": "1", "timestamp": "2026-01-01T00:01:00Z"},
-            {"uuid": "3", "parentUuid": "2", "timestamp": "2026-01-01T00:02:00Z"},
+            parse_event(
+                {
+                    "uuid": "1",
+                    "parentUuid": None,
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Hello"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "2",
+                    "parentUuid": "1",
+                    "timestamp": "2026-01-01T00:01:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "3",
+                    "parentUuid": "2",
+                    "timestamp": "2026-01-01T00:02:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Thanks"},
+                }
+            ),
         ]
 
         roots = build_event_tree(events)
@@ -192,29 +373,85 @@ class TestTreeBuilding:
     def test_flatten_tree_chronological(self) -> None:
         """Test flattening tree to chronological order."""
         events = [
-            {"uuid": "1", "parentUuid": None, "timestamp": "2026-01-01T00:00:00Z"},
-            {"uuid": "2", "parentUuid": "1", "timestamp": "2026-01-01T00:01:00Z"},
-            {"uuid": "3", "parentUuid": "2", "timestamp": "2026-01-01T00:02:00Z"},
+            parse_event(
+                {
+                    "uuid": "1",
+                    "parentUuid": None,
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Hello"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "2",
+                    "parentUuid": "1",
+                    "timestamp": "2026-01-01T00:01:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "3",
+                    "parentUuid": "2",
+                    "timestamp": "2026-01-01T00:02:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Thanks"},
+                }
+            ),
         ]
 
         roots = build_event_tree(events)
         flat = flatten_tree_chronological(roots)
 
         assert len(flat) == 3
-        assert flat[0]["uuid"] == "1"
-        assert flat[1]["uuid"] == "2"
-        assert flat[2]["uuid"] == "3"
+        assert flat[0].uuid == "1"
+        assert flat[1].uuid == "2"
+        assert flat[2].uuid == "3"
 
     def test_find_clear_indices(self) -> None:
         """Test finding /clear command indices."""
         events = [
-            {"type": "user", "message": {"content": "Hello"}},
-            {"type": "assistant"},
-            {
-                "type": "user",
-                "message": {"content": "<command-name>/clear</command-name>"},
-            },
-            {"type": "user", "message": {"content": "New conversation"}},
+            parse_event(
+                {
+                    "uuid": "1",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Hello"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "2",
+                    "timestamp": "2026-01-01T00:01:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "3",
+                    "timestamp": "2026-01-01T00:02:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "<command-name>/clear</command-name>"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "4",
+                    "timestamp": "2026-01-01T00:03:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "New conversation"},
+                }
+            ),
         ]
 
         indices = find_clear_indices(events)
@@ -223,14 +460,51 @@ class TestTreeBuilding:
     def test_split_on_clear(self) -> None:
         """Test splitting events on /clear boundaries."""
         events = [
-            {"type": "user", "message": {"content": "Hello"}},
-            {"type": "assistant"},
-            {
-                "type": "user",
-                "message": {"content": "<command-name>/clear</command-name>"},
-            },
-            {"type": "user", "message": {"content": "New conversation"}},
-            {"type": "assistant"},
+            parse_event(
+                {
+                    "uuid": "1",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Hello"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "2",
+                    "timestamp": "2026-01-01T00:01:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "3",
+                    "timestamp": "2026-01-01T00:02:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "<command-name>/clear</command-name>"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "4",
+                    "timestamp": "2026-01-01T00:03:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "New conversation"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "5",
+                    "timestamp": "2026-01-01T00:04:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
         ]
 
         segments = split_on_clear(events)
@@ -241,8 +515,24 @@ class TestTreeBuilding:
     def test_split_on_clear_no_splits(self) -> None:
         """Test that no splits returns single segment."""
         events = [
-            {"type": "user", "message": {"content": "Hello"}},
-            {"type": "assistant"},
+            parse_event(
+                {
+                    "uuid": "1",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "sessionId": "test",
+                    "type": "user",
+                    "message": {"content": "Hello"},
+                }
+            ),
+            parse_event(
+                {
+                    "uuid": "2",
+                    "timestamp": "2026-01-01T00:01:00Z",
+                    "sessionId": "test",
+                    "type": "assistant",
+                    "message": {"content": []},
+                }
+            ),
         ]
 
         segments = split_on_clear(events)
@@ -255,10 +545,13 @@ class TestMessageExtraction:
 
     def test_extract_user_message(self) -> None:
         """Test extracting user messages."""
-        event = {
-            "type": "user",
-            "message": {"role": "user", "content": "Hello, how are you?"},
-        }
+        event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello, how are you?"),
+        )
 
         msg = extract_user_message(event)
         assert msg is not None
@@ -267,10 +560,13 @@ class TestMessageExtraction:
 
     def test_extract_user_message_skips_commands(self) -> None:
         """Test that command messages are skipped."""
-        event = {
-            "type": "user",
-            "message": {"content": "<command-name>/clear</command-name>"},
-        }
+        event = UserEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="<command-name>/clear</command-name>"),
+        )
 
         msg = extract_user_message(event)
         assert msg is None
@@ -308,17 +604,21 @@ class TestUsageExtraction:
 
     def test_extract_usage(self) -> None:
         """Test extracting token usage."""
-        event = {
-            "type": "assistant",
-            "message": {
-                "usage": {
-                    "input_tokens": 1000,
-                    "output_tokens": 500,
-                    "cache_creation_input_tokens": 200,
-                    "cache_read_input_tokens": 100,
-                }
-            },
-        }
+        event = AssistantEvent(
+            uuid="1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(
+                content=[],
+                usage=Usage(
+                    input_tokens=1000,
+                    output_tokens=500,
+                    cache_creation_input_tokens=200,
+                    cache_read_input_tokens=100,
+                ),
+            ),
+        )
 
         usage = extract_usage(event)
         assert usage["input_tokens"] == 1000
@@ -329,15 +629,31 @@ class TestUsageExtraction:
     def test_sum_tokens(self) -> None:
         """Test summing tokens across events."""
         events = [
-            {
-                "type": "assistant",
-                "message": {"usage": {"input_tokens": 100, "output_tokens": 50}},
-            },
-            {
-                "type": "assistant",
-                "message": {"usage": {"input_tokens": 200, "output_tokens": 100}},
-            },
-            {"type": "user"},  # No usage
+            AssistantEvent(
+                uuid="1",
+                timestamp="2026-01-01T00:00:00Z",
+                sessionId="test",
+                type="assistant",
+                message=AssistantMessage(
+                    content=[], usage=Usage(input_tokens=100, output_tokens=50)
+                ),
+            ),
+            AssistantEvent(
+                uuid="2",
+                timestamp="2026-01-01T00:01:00Z",
+                sessionId="test",
+                type="assistant",
+                message=AssistantMessage(
+                    content=[], usage=Usage(input_tokens=200, output_tokens=100)
+                ),
+            ),
+            UserEvent(
+                uuid="3",
+                timestamp="2026-01-01T00:02:00Z",
+                sessionId="test",
+                type="user",
+                message=UserMessage(content="Hello"),
+            ),  # No usage
         ]
 
         total = sum_tokens(events)

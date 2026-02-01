@@ -7,10 +7,11 @@ Converts Claude Code events to Scout event types:
 - System events -> InfoEvent
 """
 
+import re
 from datetime import datetime
 from logging import getLogger
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from inspect_ai.event import (
     Event,
@@ -20,12 +21,12 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import ModelOutput
+from inspect_ai.model import ContentText, ModelOutput
 from inspect_ai.model._chat_message import ChatMessageAssistant
+from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage
 from inspect_ai.tool._tool_call import ToolCallError
 
-from .client import find_agent_file, read_jsonl_events
 from .detection import (
     get_event_type,
     get_task_agent_info,
@@ -37,7 +38,16 @@ from .detection import (
 from .extraction import (
     extract_assistant_content,
     extract_compaction_info,
+    extract_tool_result_messages,
     extract_usage,
+    extract_user_message,
+)
+from .models import (
+    AssistantEvent,
+    BaseEvent,
+    ContentToolUse,
+    UserEvent,
+    parse_events,
 )
 from .tree import build_event_tree, flatten_tree_chronological, get_conversation_events
 
@@ -55,7 +65,7 @@ def _parse_timestamp(ts_str: str | None) -> datetime:
 
 
 def to_model_event(
-    event: dict[str, Any],
+    event: AssistantEvent,
     input_messages: list[Any],
 ) -> ModelEvent:
     """Convert a Claude Code assistant event to ModelEvent.
@@ -67,16 +77,13 @@ def to_model_event(
     Returns:
         ModelEvent object
     """
-    message = event.get("message", {})
-    message_content = message.get("content", [])
-    model_name = message.get("model", "unknown")
+    message_content = event.message.content
+    model_name = event.message.model or "unknown"
 
     # Extract content and tool calls
     content, tool_calls = extract_assistant_content(message_content)
 
     # Build output message
-    from inspect_ai.model import ContentText
-
     if len(content) == 1 and isinstance(content[0], ContentText):
         output_content: str | list[Any] = content[0].text
     else:
@@ -102,8 +109,6 @@ def to_model_event(
         )
 
     # Determine stop reason
-    from typing import Literal
-
     stop_reason: Literal["stop", "tool_calls"] = "tool_calls" if tool_calls else "stop"
 
     output = ModelOutput(
@@ -117,8 +122,6 @@ def to_model_event(
         usage=usage,
     )
 
-    from inspect_ai.model._generate_config import GenerateConfig
-
     return ModelEvent(
         model=model_name,
         input=list(input_messages),
@@ -131,7 +134,7 @@ def to_model_event(
 
 
 def to_tool_event(
-    tool_use_block: dict[str, Any],
+    tool_use_block: ContentToolUse,
     tool_result: dict[str, Any] | None,
     timestamp: datetime,
     completed: datetime | None = None,
@@ -139,7 +142,7 @@ def to_tool_event(
     """Create a ToolEvent from a tool_use block and its result.
 
     Args:
-        tool_use_block: The tool_use content block from assistant message
+        tool_use_block: The ContentToolUse from assistant message
         tool_result: The tool_result content block from user message, or None
         timestamp: When the tool call started
         completed: When the tool call completed, or None
@@ -147,9 +150,9 @@ def to_tool_event(
     Returns:
         ToolEvent object
     """
-    tool_id = tool_use_block.get("id", "")
-    function_name = tool_use_block.get("name", "unknown")
-    arguments = tool_use_block.get("input", {})
+    tool_id = tool_use_block.id
+    function_name = tool_use_block.name
+    arguments = tool_use_block.input
 
     # Extract result if available
     result = ""
@@ -164,7 +167,7 @@ def to_tool_event(
             text_parts = []
             for item in result_content:
                 if isinstance(item, dict) and item.get("type") == "text":
-                    text_parts.append(item.get("text", ""))
+                    text_parts.append(str(item.get("text", "")))
             result = "\n".join(text_parts)
         elif isinstance(result_content, str):
             result = result_content
@@ -266,7 +269,7 @@ def to_span_end_event(
 
 
 def events_to_scout_events(
-    events: list[dict[str, Any]],
+    events: list[BaseEvent],
     project_dir: Path | None = None,
 ) -> list[Event]:
     """Convert Claude Code events to Scout events.
@@ -275,7 +278,7 @@ def events_to_scout_events(
     creating ModelEvent, ToolEvent, InfoEvent, and span events as needed.
 
     Args:
-        events: Chronologically ordered Claude Code events
+        events: Chronologically ordered Claude Code events (Pydantic models)
         project_dir: Path to project directory (for loading agent files)
 
     Returns:
@@ -284,7 +287,7 @@ def events_to_scout_events(
     scout_events: list[Event] = []
 
     # Track pending tool calls to match with results
-    pending_tool_calls: dict[str, tuple[dict[str, Any], datetime]] = {}
+    pending_tool_calls: dict[str, tuple[ContentToolUse, datetime]] = {}
 
     # Track messages for ModelEvent input
     accumulated_messages: list[Any] = []
@@ -296,7 +299,7 @@ def events_to_scout_events(
         event_type = get_event_type(event)
         timestamp = _parse_timestamp(get_timestamp(event))
 
-        if event_type == "assistant":
+        if isinstance(event, AssistantEvent):
             # Create ModelEvent
             model_event = to_model_event(event, accumulated_messages)
             scout_events.append(model_event)
@@ -306,17 +309,24 @@ def events_to_scout_events(
                 accumulated_messages.append(model_event.output.message)
 
             # Process tool_use blocks
-            message_content = event.get("message", {}).get("content", [])
+            message_content = event.message.content
             for block in message_content:
                 if not isinstance(block, dict):
                     continue
 
                 if block.get("type") == "tool_use":
-                    tool_id = block.get("id", "")
+                    # Parse to ContentToolUse
+                    from .models import parse_content_block
+
+                    parsed_block = parse_content_block(block)
+                    if not isinstance(parsed_block, ContentToolUse):
+                        continue
+
+                    tool_id = parsed_block.id
 
                     # Check if this is a Task tool call (agent spawn)
-                    if is_task_tool_call(block):
-                        agent_info = get_task_agent_info(block)
+                    if is_task_tool_call(parsed_block):
+                        agent_info = get_task_agent_info(parsed_block)
                         if agent_info:
                             # Create agent span
                             span_id = f"agent-{tool_id}"
@@ -325,7 +335,7 @@ def events_to_scout_events(
                             scout_events.append(
                                 to_span_begin_event(
                                     span_id=span_id,
-                                    name=agent_name,
+                                    name=agent_name or "agent",
                                     span_type="agent",
                                     timestamp=timestamp,
                                     metadata={
@@ -349,11 +359,10 @@ def events_to_scout_events(
                             active_agent_spans[tool_id] = span_id
 
                     # Track all tool calls for result matching
-                    pending_tool_calls[tool_id] = (block, timestamp)
+                    pending_tool_calls[tool_id] = (parsed_block, timestamp)
 
-        elif event_type == "user":
-            message = event.get("message", {})
-            content = message.get("content", [])
+        elif isinstance(event, UserEvent):
+            content = event.message.content
 
             # Check for skill commands
             skill_name = is_skill_command(event)
@@ -370,7 +379,7 @@ def events_to_scout_events(
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_result":
-                        tool_use_id = block.get("tool_use_id", "")
+                        tool_use_id = str(block.get("tool_use_id", ""))
 
                         # Match with pending tool call
                         if tool_use_id in pending_tool_calls:
@@ -404,15 +413,11 @@ def events_to_scout_events(
                                 )
 
             # Extract user message for accumulation
-            from .extraction import extract_user_message
-
             user_msg = extract_user_message(event)
             if user_msg:
                 accumulated_messages.append(user_msg)
 
             # Extract tool result messages for accumulation
-            from .extraction import extract_tool_result_messages
-
             tool_msgs = extract_tool_result_messages(event)
             accumulated_messages.extend(tool_msgs)
 
@@ -459,6 +464,8 @@ def _load_agent_events(
     Returns:
         List of Scout events from the agent session
     """
+    from .client import find_agent_file, read_jsonl_events
+
     # Try to extract agent ID from the tool result content
     content = tool_result.get("content", [])
     agent_id = None
@@ -466,11 +473,8 @@ def _load_agent_events(
     if isinstance(content, list):
         for item in content:
             if isinstance(item, dict) and item.get("type") == "text":
-                text = item.get("text", "")
+                text = str(item.get("text", ""))
                 # Look for agentId in the response
-                # The agent result may contain structured info
-                import re
-
                 match = re.search(r'"agentId"\s*:\s*"([^"]+)"', text)
                 if match:
                     agent_id = match.group(1)
@@ -485,11 +489,10 @@ def _load_agent_events(
         logger.debug(f"Agent file not found for ID: {agent_id}")
         return []
 
-    try:
-        agent_events = read_jsonl_events(agent_file)
-    except Exception as e:
-        logger.warning(f"Failed to read agent file {agent_file}: {e}")
-        return []
+    raw_events = read_jsonl_events(agent_file)
+
+    # Parse to Pydantic models
+    agent_events = parse_events(raw_events)
 
     # Build tree and flatten
     tree = build_event_tree(agent_events)

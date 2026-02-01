@@ -7,31 +7,31 @@ event ordering.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+
+from .models import BaseEvent
 
 
 @dataclass
 class EventNode:
     """A node in the conversation tree."""
 
-    event: dict[str, Any]
+    event: BaseEvent
     children: list["EventNode"] = field(default_factory=list)
 
     @property
     def uuid(self) -> str:
         """Get the event's UUID."""
-        return str(self.event.get("uuid", ""))
+        return self.event.uuid
 
     @property
     def parent_uuid(self) -> str | None:
         """Get the parent UUID, or None for root events."""
-        parent = self.event.get("parentUuid")
-        return str(parent) if parent else None
+        return self.event.parentUuid
 
     @property
     def timestamp(self) -> datetime | None:
         """Get the event timestamp as datetime."""
-        ts = self.event.get("timestamp")
+        ts = self.event.timestamp
         if isinstance(ts, datetime):
             return ts
         if isinstance(ts, str):
@@ -45,10 +45,10 @@ class EventNode:
     @property
     def event_type(self) -> str:
         """Get the event type."""
-        return str(self.event.get("type", "unknown"))
+        return self.event.type
 
 
-def build_event_tree(events: list[dict[str, Any]]) -> list[EventNode]:
+def build_event_tree(events: list[BaseEvent]) -> list[EventNode]:
     """Build a tree structure from flat list of events.
 
     Args:
@@ -60,9 +60,9 @@ def build_event_tree(events: list[dict[str, Any]]) -> list[EventNode]:
     # Create nodes for all events with UUIDs
     nodes: dict[str, EventNode] = {}
     for event in events:
-        uuid = event.get("uuid")
+        uuid = event.uuid
         if uuid:
-            nodes[str(uuid)] = EventNode(event=event)
+            nodes[uuid] = EventNode(event=event)
 
     # Build parent-child relationships
     roots: list[EventNode] = []
@@ -88,7 +88,7 @@ def build_event_tree(events: list[dict[str, Any]]) -> list[EventNode]:
     return roots
 
 
-def flatten_tree_chronological(roots: list[EventNode]) -> list[dict[str, Any]]:
+def flatten_tree_chronological(roots: list[EventNode]) -> list[BaseEvent]:
     """Flatten tree to chronologically ordered list of events.
 
     Performs a depth-first traversal, emitting events in the order
@@ -100,7 +100,7 @@ def flatten_tree_chronological(roots: list[EventNode]) -> list[dict[str, Any]]:
     Returns:
         Chronologically ordered list of events
     """
-    result: list[dict[str, Any]] = []
+    result: list[BaseEvent] = []
 
     def visit(node: EventNode) -> None:
         result.append(node.event)
@@ -113,7 +113,7 @@ def flatten_tree_chronological(roots: list[EventNode]) -> list[dict[str, Any]]:
     return result
 
 
-def find_clear_indices(events: list[dict[str, Any]]) -> list[int]:
+def find_clear_indices(events: list[BaseEvent]) -> list[int]:
     """Find indices where /clear commands occur.
 
     Args:
@@ -128,8 +128,8 @@ def find_clear_indices(events: list[dict[str, Any]]) -> list[int]:
 
 
 def split_on_clear(
-    events: list[dict[str, Any]],
-) -> list[list[dict[str, Any]]]:
+    events: list[BaseEvent],
+) -> list[list[BaseEvent]]:
     """Split events into segments at /clear boundaries.
 
     Each /clear command starts a new conversation segment.
@@ -147,7 +147,7 @@ def split_on_clear(
         # No splits - return all events as single segment
         return [events]
 
-    segments: list[list[dict[str, Any]]] = []
+    segments: list[list[BaseEvent]] = []
     start_idx = 0
 
     for clear_idx in clear_indices:
@@ -166,7 +166,7 @@ def split_on_clear(
     return [seg for seg in segments if seg]
 
 
-def get_conversation_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def get_conversation_events(events: list[BaseEvent]) -> list[BaseEvent]:
     """Filter events to only conversation-relevant ones.
 
     Removes progress events, file history, and other internal events,
@@ -184,7 +184,7 @@ def get_conversation_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
     return [e for e in events if not should_skip_event(e)]
 
 
-def find_root_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+def find_root_event(events: list[BaseEvent]) -> BaseEvent | None:
     """Find the root event in a list of events.
 
     The root event is typically the first user message with parentUuid=None.
@@ -196,14 +196,14 @@ def find_root_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
         The root event, or None if not found
     """
     for event in events:
-        if event.get("parentUuid") is None:
+        if event.parentUuid is None:
             return event
     return events[0] if events else None
 
 
 def group_by_parent(
-    events: list[dict[str, Any]],
-) -> dict[str | None, list[dict[str, Any]]]:
+    events: list[BaseEvent],
+) -> dict[str | None, list[BaseEvent]]:
     """Group events by their parent UUID.
 
     Args:
@@ -212,10 +212,10 @@ def group_by_parent(
     Returns:
         Dict mapping parent UUID to list of child events
     """
-    groups: dict[str | None, list[dict[str, Any]]] = {}
+    groups: dict[str | None, list[BaseEvent]] = {}
 
     for event in events:
-        parent = event.get("parentUuid")
+        parent = event.parentUuid
         if parent not in groups:
             groups[parent] = []
         groups[parent].append(event)

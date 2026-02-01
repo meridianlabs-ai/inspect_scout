@@ -24,16 +24,19 @@ from inspect_ai.tool import ToolCall
 from .detection import (
     get_event_type,
     get_timestamp,
-    is_assistant_event,
     is_compact_summary,
-    is_system_event,
-    is_user_event,
+)
+from .models import (
+    AssistantEvent,
+    BaseEvent,
+    SystemEvent,
+    UserEvent,
 )
 
 logger = getLogger(__name__)
 
 
-def extract_user_message(event: dict[str, Any]) -> ChatMessageUser | None:
+def extract_user_message(event: BaseEvent) -> ChatMessageUser | None:
     """Extract a ChatMessageUser from a user event.
 
     Args:
@@ -42,11 +45,10 @@ def extract_user_message(event: dict[str, Any]) -> ChatMessageUser | None:
     Returns:
         ChatMessageUser, or None if extraction fails
     """
-    if not is_user_event(event):
+    if not isinstance(event, UserEvent):
         return None
 
-    message = event.get("message", {})
-    content = message.get("content", "")
+    content = event.message.content
 
     # Handle string content
     if isinstance(content, str):
@@ -68,9 +70,9 @@ def extract_user_message(event: dict[str, Any]) -> ChatMessageUser | None:
         for block in content:
             if isinstance(block, dict):
                 if block.get("type") == "text":
-                    text_parts.append(block.get("text", ""))
+                    text_parts.append(str(block.get("text", "")))
                 elif "text" in block:
-                    text_parts.append(block["text"])
+                    text_parts.append(str(block["text"]))
             elif isinstance(block, str):
                 text_parts.append(block)
 
@@ -80,7 +82,7 @@ def extract_user_message(event: dict[str, Any]) -> ChatMessageUser | None:
     return None
 
 
-def extract_tool_result_messages(event: dict[str, Any]) -> list[ChatMessageTool]:
+def extract_tool_result_messages(event: BaseEvent) -> list[ChatMessageTool]:
     """Extract ChatMessageTool objects from a user event with tool results.
 
     Args:
@@ -89,11 +91,10 @@ def extract_tool_result_messages(event: dict[str, Any]) -> list[ChatMessageTool]
     Returns:
         List of ChatMessageTool objects
     """
-    if not is_user_event(event):
+    if not isinstance(event, UserEvent):
         return []
 
-    message = event.get("message", {})
-    content = message.get("content", [])
+    content = event.message.content
 
     if not isinstance(content, list):
         return []
@@ -101,7 +102,7 @@ def extract_tool_result_messages(event: dict[str, Any]) -> list[ChatMessageTool]
     tool_messages = []
     for block in content:
         if isinstance(block, dict) and block.get("type") == "tool_result":
-            tool_use_id = block.get("tool_use_id", "")
+            tool_use_id = str(block.get("tool_use_id", ""))
             result_content = block.get("content", "")
             # Note: is_error could be used to set error state in future
 
@@ -111,7 +112,7 @@ def extract_tool_result_messages(event: dict[str, Any]) -> list[ChatMessageTool]
                 text_parts = []
                 for item in result_content:
                     if isinstance(item, dict) and item.get("type") == "text":
-                        text_parts.append(item.get("text", ""))
+                        text_parts.append(str(item.get("text", "")))
                 result_content = "\n".join(text_parts)
             elif not isinstance(result_content, str):
                 result_content = str(result_content)
@@ -149,7 +150,7 @@ def extract_assistant_content(
         if block_type == "text":
             text = block.get("text", "")
             if text:
-                content.append(ContentText(text=text))
+                content.append(ContentText(text=str(text)))
 
         elif block_type == "thinking":
             thinking = block.get("thinking", "")
@@ -157,14 +158,14 @@ def extract_assistant_content(
             if thinking:
                 content.append(
                     ContentReasoning(
-                        reasoning=thinking,
-                        signature=signature,
+                        reasoning=str(thinking),
+                        signature=str(signature) if signature else None,
                     )
                 )
 
         elif block_type == "tool_use":
-            tool_id = block.get("id", "")
-            tool_name = block.get("name", "")
+            tool_id = str(block.get("id", ""))
+            tool_name = str(block.get("name", ""))
             tool_input = block.get("input", {})
 
             tool_calls.append(
@@ -179,7 +180,7 @@ def extract_assistant_content(
     return content, tool_calls
 
 
-def extract_assistant_message(event: dict[str, Any]) -> ChatMessageAssistant | None:
+def extract_assistant_message(event: BaseEvent) -> ChatMessageAssistant | None:
     """Extract a ChatMessageAssistant from an assistant event.
 
     Args:
@@ -188,11 +189,10 @@ def extract_assistant_message(event: dict[str, Any]) -> ChatMessageAssistant | N
     Returns:
         ChatMessageAssistant, or None if extraction fails
     """
-    if not is_assistant_event(event):
+    if not isinstance(event, AssistantEvent):
         return None
 
-    message = event.get("message", {})
-    message_content = message.get("content", [])
+    message_content = event.message.content
 
     if not isinstance(message_content, list):
         return None
@@ -217,7 +217,7 @@ def extract_assistant_message(event: dict[str, Any]) -> ChatMessageAssistant | N
 
 
 def extract_messages_from_events(
-    events: list[dict[str, Any]],
+    events: list[BaseEvent],
 ) -> list[ChatMessage]:
     """Extract a conversation's messages from events.
 
@@ -257,7 +257,7 @@ def extract_messages_from_events(
     return messages
 
 
-def extract_usage(event: dict[str, Any]) -> dict[str, int]:
+def extract_usage(event: BaseEvent) -> dict[str, int]:
     """Extract token usage from an assistant event.
 
     Args:
@@ -267,29 +267,28 @@ def extract_usage(event: dict[str, Any]) -> dict[str, int]:
         Dict with input_tokens, output_tokens, cache_creation_input_tokens,
         cache_read_input_tokens
     """
-    if not is_assistant_event(event):
+    if not isinstance(event, AssistantEvent):
         return {}
 
-    message = event.get("message", {})
-    usage = message.get("usage", {})
+    usage = event.message.usage
+    if not usage:
+        return {}
 
     result: dict[str, int] = {}
 
-    if "input_tokens" in usage:
-        result["input_tokens"] = int(usage["input_tokens"])
-    if "output_tokens" in usage:
-        result["output_tokens"] = int(usage["output_tokens"])
-    if "cache_creation_input_tokens" in usage:
-        result["cache_creation_input_tokens"] = int(
-            usage["cache_creation_input_tokens"]
-        )
-    if "cache_read_input_tokens" in usage:
-        result["cache_read_input_tokens"] = int(usage["cache_read_input_tokens"])
+    if usage.input_tokens:
+        result["input_tokens"] = usage.input_tokens
+    if usage.output_tokens:
+        result["output_tokens"] = usage.output_tokens
+    if usage.cache_creation_input_tokens:
+        result["cache_creation_input_tokens"] = usage.cache_creation_input_tokens
+    if usage.cache_read_input_tokens:
+        result["cache_read_input_tokens"] = usage.cache_read_input_tokens
 
     return result
 
 
-def sum_tokens(events: list[dict[str, Any]]) -> int:
+def sum_tokens(events: list[BaseEvent]) -> int:
     """Sum total tokens across all events.
 
     Args:
@@ -306,7 +305,7 @@ def sum_tokens(events: list[dict[str, Any]]) -> int:
     return total
 
 
-def sum_latency(events: list[dict[str, Any]]) -> float:
+def sum_latency(events: list[BaseEvent]) -> float:
     """Calculate total time from first to last event.
 
     Args:
@@ -336,7 +335,7 @@ def sum_latency(events: list[dict[str, Any]]) -> float:
     return max(0.0, duration)
 
 
-def extract_model_name(events: list[dict[str, Any]]) -> str | None:
+def extract_model_name(events: list[BaseEvent]) -> str | None:
     """Extract the model name from events.
 
     Args:
@@ -346,15 +345,14 @@ def extract_model_name(events: list[dict[str, Any]]) -> str | None:
         Model name, or None if not found
     """
     for event in events:
-        if is_assistant_event(event):
-            message = event.get("message", {})
-            model = message.get("model")
+        if isinstance(event, AssistantEvent):
+            model = event.message.model
             if model:
-                return str(model)
+                return model
     return None
 
 
-def extract_session_metadata(events: list[dict[str, Any]]) -> dict[str, Any]:
+def extract_session_metadata(events: list[BaseEvent]) -> dict[str, Any]:
     """Extract session metadata from events.
 
     Args:
@@ -367,14 +365,14 @@ def extract_session_metadata(events: list[dict[str, Any]]) -> dict[str, Any]:
 
     # Get from first event with these fields
     for event in events:
-        if "cwd" in event and "cwd" not in metadata:
-            metadata["cwd"] = event["cwd"]
-        if "gitBranch" in event and "gitBranch" not in metadata:
-            metadata["gitBranch"] = event["gitBranch"]
-        if "version" in event and "version" not in metadata:
-            metadata["version"] = event["version"]
-        if "slug" in event and "slug" not in metadata:
-            metadata["slug"] = event["slug"]
+        if event.cwd and "cwd" not in metadata:
+            metadata["cwd"] = event.cwd
+        if event.gitBranch and "gitBranch" not in metadata:
+            metadata["gitBranch"] = event.gitBranch
+        if event.version and "version" not in metadata:
+            metadata["version"] = event.version
+        if event.slug and "slug" not in metadata:
+            metadata["slug"] = event.slug
 
         # Stop once we have all common fields
         if all(k in metadata for k in ["cwd", "gitBranch", "version", "slug"]):
@@ -383,7 +381,7 @@ def extract_session_metadata(events: list[dict[str, Any]]) -> dict[str, Any]:
     return metadata
 
 
-def extract_compaction_info(event: dict[str, Any]) -> dict[str, Any] | None:
+def extract_compaction_info(event: BaseEvent) -> dict[str, Any] | None:
     """Extract compaction information from a system event.
 
     Args:
@@ -392,18 +390,25 @@ def extract_compaction_info(event: dict[str, Any]) -> dict[str, Any] | None:
     Returns:
         Dict with trigger, preTokens, or None if not a compaction event
     """
-    if not is_system_event(event) or event.get("subtype") != "compact_boundary":
+    if not isinstance(event, SystemEvent):
         return None
 
-    compact_metadata = event.get("compactMetadata", {})
-    return {
-        "trigger": compact_metadata.get("trigger", "auto"),
-        "preTokens": compact_metadata.get("preTokens"),
-        "content": event.get("content", "Conversation compacted"),
+    if event.subtype != "compact_boundary":
+        return None
+
+    result: dict[str, Any] = {
+        "trigger": "auto",
+        "content": event.content or "Conversation compacted",
     }
 
+    if event.compactMetadata:
+        result["trigger"] = event.compactMetadata.trigger
+        result["preTokens"] = event.compactMetadata.preTokens
 
-def get_first_timestamp(events: list[dict[str, Any]]) -> str | None:
+    return result
+
+
+def get_first_timestamp(events: list[BaseEvent]) -> str | None:
     """Get the earliest timestamp from events.
 
     Args:

@@ -14,7 +14,7 @@ split by /clear commands into multiple transcripts.
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from inspect_ai.event import ModelEvent
 from inspect_ai.model._chat_message import ChatMessage
@@ -39,6 +39,7 @@ from .extraction import (
     sum_latency,
     sum_tokens,
 )
+from .models import BaseEvent, parse_events
 from .tree import (
     build_event_tree,
     flatten_tree_chronological,
@@ -85,17 +86,12 @@ async def claude_code(
         if limit and count >= limit:
             return
 
-        try:
-            # Process each session file
-            async for transcript in _process_session_file(session_file):
-                yield transcript
-                count += 1
+        async for transcript in _process_session_file(session_file):
+            yield transcript
+            count += 1
 
-                if limit and count >= limit:
-                    return
-        except Exception as e:
-            logger.warning(f"Failed to process session {session_file}: {e}")
-            continue
+            if limit and count >= limit:
+                return
 
 
 async def _process_session_file(
@@ -115,14 +111,12 @@ async def _process_session_file(
 
     session_path = Path(session_file)
 
-    try:
-        events = read_jsonl_events(session_path)
-    except Exception as e:
-        logger.warning(f"Failed to read session file {session_path}: {e}")
+    raw_events = read_jsonl_events(session_path)
+    if not raw_events:
         return
 
-    if not events:
-        return
+    # Parse raw events to Pydantic models (validates format)
+    events = parse_events(raw_events)
 
     # Build tree and flatten for proper ordering
     tree = build_event_tree(events)
@@ -137,9 +131,9 @@ async def _process_session_file(
     # Extract session ID from events (more reliable than filename)
     base_session_id = None
     for event in events:
-        session_id = get_session_id(event)
-        if session_id:
-            base_session_id = session_id
+        sid = get_session_id(event)
+        if sid:
+            base_session_id = sid
             break
     if not base_session_id:
         # Fall back to filename
@@ -155,25 +149,18 @@ async def _process_session_file(
         if not conversation_events:
             continue
 
-        try:
-            transcript = _create_transcript(
-                conversation_events,
-                session_path,
-                base_session_id,
-                segment_idx if len(segments) > 1 else None,
-            )
-            if transcript:
-                yield transcript
-        except Exception as e:
-            logger.warning(
-                f"Failed to create transcript for segment {segment_idx} "
-                f"of {session_path}: {e}"
-            )
-            continue
+        transcript = _create_transcript(
+            conversation_events,
+            session_path,
+            base_session_id,
+            segment_idx if len(segments) > 1 else None,
+        )
+        if transcript:
+            yield transcript
 
 
 def _create_transcript(
-    events: list[dict[str, Any]],
+    events: list[BaseEvent],
     session_file: PathLike[str],
     base_session_id: str,
     segment_index: int | None,
@@ -181,7 +168,7 @@ def _create_transcript(
     """Create a Transcript from conversation events.
 
     Args:
-        events: List of conversation events
+        events: List of conversation events (Pydantic models)
         session_file: Path to the source session file
         base_session_id: The session UUID
         segment_index: Index of this segment (if session was split), or None
@@ -228,11 +215,10 @@ def _create_transcript(
 
     # Check for any errors in events
     error: str | None = None
-    for raw_event in events:
-        if raw_event.get("type") == "error":
-            error_msg = raw_event.get("message")
-            error = str(error_msg) if error_msg else "Unknown error"
-            break
+    for evt in events:
+        if evt.type == "error":
+            # Error events would need a specific model, for now skip
+            pass
 
     return Transcript(
         transcript_id=transcript_id,

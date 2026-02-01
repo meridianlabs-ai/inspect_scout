@@ -645,4 +645,3 @@ export function getCellTitleValue(
   }
   return String(value);
 }
-

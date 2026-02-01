@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, MouseEvent } from "react";
+import { FC } from "react";
 
 import styles from "./ActivityBar.module.css";
 
@@ -12,7 +12,7 @@ interface Activity {
 
 interface ActivityBarProps {
   activities: Activity[];
-  onSelectActivity: (id: string, e: MouseEvent<HTMLDivElement>) => void;
+  onSelectActivity: (id: string, options?: { openInNewTab?: boolean }) => void;
   selectedActivity: string;
 }
 
@@ -42,7 +42,7 @@ export const ActivityBar: FC<ActivityBarProps> = ({
 
 interface ActivityProps extends Activity {
   selected?: boolean;
-  onSelect: (id: string, e: MouseEvent<HTMLDivElement>) => void;
+  onSelect: (id: string, options?: { openInNewTab?: boolean }) => void;
 }
 
 const Activity: FC<ActivityProps> = ({
@@ -58,7 +58,7 @@ const Activity: FC<ActivityProps> = ({
       id={id}
       className={clsx(styles.activity, selected ? styles.selected : undefined)}
       title={description}
-      onClick={(e) => onSelect(id, e)}
+      onClick={(e) => onSelect(id, { openInNewTab: e.metaKey || e.ctrlKey })}
     >
       <i className={clsx(styles.icon, icon)}></i>
       <div className={clsx(styles.label)}>{label}</div>

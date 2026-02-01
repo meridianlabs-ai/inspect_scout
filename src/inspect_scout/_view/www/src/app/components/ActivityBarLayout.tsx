@@ -1,4 +1,4 @@
-import { FC, MouseEvent, ReactNode } from "react";
+import { FC, ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
@@ -35,11 +35,11 @@ export const ActivityBarLayout: FC<ActivityBarLayoutProps> = ({
 
   const handleSelectActivity = (
     activityId: string,
-    e: MouseEvent<HTMLDivElement>
+    options?: { openInNewTab?: boolean }
   ) => {
     const activity = getActivityById(activityId);
     if (activity) {
-      if (e.metaKey || e.ctrlKey) {
+      if (options?.openInNewTab) {
         openRouteInNewTab(activity.route);
       } else {
         void navigate(activity.route);

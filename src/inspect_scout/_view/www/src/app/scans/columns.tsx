@@ -600,4 +600,3 @@ export function getScanColumns(
 
   return visibleColumnKeys.map((key) => ALL_COLUMNS[key]);
 }
-

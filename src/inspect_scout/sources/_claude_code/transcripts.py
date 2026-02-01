@@ -32,7 +32,7 @@ from .client import (
 from .detection import get_session_id
 from .events import events_to_scout_events
 from .extraction import (
-    extract_messages_from_events,
+    extract_messages_from_scout_events,
     extract_model_name,
     extract_session_metadata,
     get_first_timestamp,
@@ -187,11 +187,11 @@ def _create_transcript(
     else:
         transcript_id = base_session_id
 
-    # Extract messages
-    messages: list[ChatMessage] = extract_messages_from_events(events)
-
     # Convert to Scout events
     scout_events = events_to_scout_events(events, project_dir)
+
+    # Extract messages from Scout events
+    messages: list[ChatMessage] = extract_messages_from_scout_events(scout_events)
 
     # Apply stable message IDs
     id_manager = MessageIdManager()

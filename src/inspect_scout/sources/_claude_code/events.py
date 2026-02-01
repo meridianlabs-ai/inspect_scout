@@ -8,10 +8,12 @@ Converts Claude Code events to Scout event types:
 """
 
 import re
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from dataclasses import dataclass, field
 from datetime import datetime
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from inspect_ai.event import (
     Event,
@@ -52,6 +54,8 @@ from .models import (
 from .tree import build_event_tree, flatten_tree_chronological, get_conversation_events
 
 logger = getLogger(__name__)
+
+T = TypeVar("T")
 
 
 def _parse_timestamp(ts_str: str | None) -> datetime:
@@ -268,6 +272,221 @@ def to_span_end_event(
     )
 
 
+# =============================================================================
+# Streaming Event Processing
+# =============================================================================
+
+
+@dataclass
+class PendingTool:
+    """Tracks a pending tool call being buffered."""
+
+    tool_id: str
+    tool_use_block: ContentToolUse
+    timestamp: datetime
+    is_task: bool
+    agent_info: dict[str, Any] | None
+    buffered_subagent_events: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class ProcessingState:
+    """State for incremental event processing."""
+
+    main_session_id: str | None = None
+    accumulated_messages: list[Any] = field(default_factory=list)
+    pending_tools: dict[str, PendingTool] = field(default_factory=dict)
+    session_to_tool: dict[str, str] = field(default_factory=dict)
+
+
+async def _to_async_iter(items: Iterable[T]) -> AsyncIterator[T]:
+    """Convert a sync iterable to an async iterator."""
+    for item in items:
+        yield item
+
+
+async def claude_code_events(
+    raw_events: Iterable[dict[str, Any]] | AsyncIterable[dict[str, Any]],
+    project_dir: Path | None = None,
+) -> AsyncIterator[Event]:
+    """Convert raw Claude Code JSONL events to Inspect AI events.
+
+    Processes events incrementally - yields Inspect AI events as soon as
+    possible rather than buffering all input first. This enables real-time
+    streaming from stdout in headless mode.
+
+    Handles:
+    - Parsing raw dicts to Pydantic models (validation)
+    - Filtering to conversation events (user/assistant)
+    - Converting to Inspect AI event types incrementally
+    - Subagent event inlining (buffers by sessionId, yields when Task completes)
+
+    Does NOT handle:
+    - File discovery
+    - /clear command splitting (yields continuous event stream)
+    - Transcript creation
+    - Complex tree building (assumes events arrive in chronological order)
+
+    Args:
+        raw_events: Iterable or AsyncIterable of raw event dictionaries.
+            Accepts both sync sequences (list, generator) and async streams.
+            May include subagent events with different sessionIds.
+        project_dir: Path to project directory for loading nested agent files.
+            If None, relies on subagent events being in the raw_events stream.
+
+    Yields:
+        Inspect AI Event objects (ModelEvent, ToolEvent, SpanBeginEvent, etc.)
+        as they become available.
+    """
+    from .models import parse_content_block, parse_event
+
+    # Convert sync iterable to async if needed
+    if isinstance(raw_events, AsyncIterable):
+        event_stream = raw_events
+    else:
+        event_stream = _to_async_iter(raw_events)
+
+    state = ProcessingState()
+
+    async for raw_event in event_stream:
+        session_id = raw_event.get("sessionId", "")
+
+        # First event determines main session
+        if state.main_session_id is None:
+            state.main_session_id = session_id
+
+        # Is this a subagent event? Buffer it for later
+        if session_id != state.main_session_id:
+            # Associate with pending Task tool if not already
+            if session_id not in state.session_to_tool:
+                # Find pending Task without assigned subagent
+                for tool_id, tool in state.pending_tools.items():
+                    if tool.is_task:
+                        state.session_to_tool[session_id] = tool_id
+                        break
+
+            pending_tool_id = state.session_to_tool.get(session_id)
+            if pending_tool_id and pending_tool_id in state.pending_tools:
+                state.pending_tools[pending_tool_id].buffered_subagent_events.append(
+                    raw_event
+                )
+            continue
+
+        # Skip non-conversation events
+        event_type = raw_event.get("type")
+        if event_type not in ("user", "assistant"):
+            continue
+
+        # Parse to Pydantic model
+        try:
+            pydantic_event = parse_event(raw_event)
+        except Exception as e:
+            logger.warning(f"Failed to parse event: {e}")
+            continue
+
+        timestamp = _parse_timestamp(get_timestamp(pydantic_event))
+
+        if isinstance(pydantic_event, AssistantEvent):
+            # Yield ModelEvent immediately
+            model_event = to_model_event(pydantic_event, state.accumulated_messages)
+            yield model_event
+
+            # Add assistant message to accumulated
+            if model_event.output and model_event.output.message:
+                state.accumulated_messages.append(model_event.output.message)
+
+            # Track tool_use blocks (start buffering)
+            message_content = pydantic_event.message.content
+            for block in message_content:
+                if not isinstance(block, dict):
+                    continue
+
+                if block.get("type") == "tool_use":
+                    parsed_block = parse_content_block(block)
+                    if not isinstance(parsed_block, ContentToolUse):
+                        continue
+
+                    is_task = is_task_tool_call(parsed_block)
+                    agent_info = get_task_agent_info(parsed_block) if is_task else None
+
+                    state.pending_tools[parsed_block.id] = PendingTool(
+                        tool_id=parsed_block.id,
+                        tool_use_block=parsed_block,
+                        timestamp=timestamp,
+                        is_task=is_task,
+                        agent_info=agent_info,
+                    )
+
+        elif isinstance(pydantic_event, UserEvent):
+            content = pydantic_event.message.content
+
+            # Check for skill commands
+            skill_name = is_skill_command(pydantic_event)
+            if skill_name:
+                yield to_info_event(
+                    source="skill_command",
+                    data={"skill": skill_name},
+                    timestamp=timestamp,
+                )
+
+            # Process tool results - yield complete spans
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        tool_use_id = str(block.get("tool_use_id", ""))
+
+                        if tool_use_id in state.pending_tools:
+                            pending = state.pending_tools.pop(tool_use_id)
+
+                            # Build subagent_events dict from buffered events
+                            subagent_events_dict: (
+                                dict[str, list[dict[str, Any]]] | None
+                            ) = None
+                            if pending.buffered_subagent_events:
+                                subagent_events_dict = {}
+                                for evt in pending.buffered_subagent_events:
+                                    sid = evt.get("sessionId", "")
+                                    subagent_events_dict.setdefault(sid, []).append(evt)
+
+                            # Yield complete tool span
+                            span_events = _create_tool_span_events(
+                                tool_use_block=pending.tool_use_block,
+                                tool_result=block,
+                                tool_timestamp=pending.timestamp,
+                                result_timestamp=timestamp,
+                                is_task=pending.is_task,
+                                agent_info=pending.agent_info,
+                                project_dir=project_dir,
+                                subagent_events=subagent_events_dict,
+                            )
+                            for span_evt in span_events:
+                                yield span_evt
+
+            # Extract user message for accumulation
+            user_msg = extract_user_message(pydantic_event)
+            if user_msg:
+                state.accumulated_messages.append(user_msg)
+
+            # Extract tool result messages for accumulation
+            tool_msgs = extract_tool_result_messages(pydantic_event)
+            state.accumulated_messages.extend(tool_msgs)
+
+    # Handle any remaining pending tool calls without results
+    for pending in state.pending_tools.values():
+        remaining_events = _create_tool_span_events(
+            tool_use_block=pending.tool_use_block,
+            tool_result=None,
+            tool_timestamp=pending.timestamp,
+            result_timestamp=datetime.now(),
+            is_task=pending.is_task,
+            agent_info=pending.agent_info,
+            project_dir=None,  # Don't load agents for incomplete tools
+            subagent_events=None,
+        )
+        for remaining_evt in remaining_events:
+            yield remaining_evt
+
+
 def events_to_scout_events(
     events: list[BaseEvent],
     project_dir: Path | None = None,
@@ -446,6 +665,7 @@ def _create_tool_span_events(
     is_task: bool,
     agent_info: dict[str, Any] | None,
     project_dir: Path | None,
+    subagent_events: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[Event]:
     """Create the complete span structure for a tool call.
 
@@ -473,6 +693,7 @@ def _create_tool_span_events(
         is_task: Whether this is a Task tool call (agent spawn)
         agent_info: Agent info if is_task is True
         project_dir: Project directory for loading agent files
+        subagent_events: Pre-grouped subagent events by sessionId (streaming mode)
 
     Returns:
         List of events in correct order
@@ -530,8 +751,8 @@ def _create_tool_span_events(
             )
 
         # Load and process nested agent events
-        if project_dir and tool_result:
-            agent_events = _load_agent_events(project_dir, tool_result)
+        if tool_result:
+            agent_events = _load_agent_events(project_dir, tool_result, subagent_events)
             events.extend(agent_events)
 
         # SpanEndEvent for agent
@@ -544,14 +765,16 @@ def _create_tool_span_events(
 
 
 def _load_agent_events(
-    project_dir: Path,
+    project_dir: Path | None,
     tool_result: dict[str, Any],
+    subagent_events: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[Event]:
-    """Load and process events from an agent session file.
+    """Load and process events from an agent session file or stream.
 
     Args:
-        project_dir: Path to project directory
+        project_dir: Path to project directory (for file-based loading)
         tool_result: The tool_result block that completed the agent
+        subagent_events: Pre-grouped subagent events by sessionId (streaming mode)
 
     Returns:
         List of Scout events from the agent session
@@ -575,13 +798,20 @@ def _load_agent_events(
     if not agent_id:
         return []
 
-    # Find and load agent file
-    agent_file = find_agent_file(project_dir, agent_id)
-    if not agent_file:
-        logger.debug(f"Agent file not found for ID: {agent_id}")
-        return []
+    # Try stream-provided events first
+    raw_events: list[dict[str, Any]] | None = None
+    if subagent_events and agent_id in subagent_events:
+        raw_events = subagent_events[agent_id]
+    elif project_dir:
+        # Fall back to file loading
+        agent_file = find_agent_file(project_dir, agent_id)
+        if not agent_file:
+            logger.debug(f"Agent file not found for ID: {agent_id}")
+            return []
+        raw_events = read_jsonl_events(agent_file)
 
-    raw_events = read_jsonl_events(agent_file)
+    if not raw_events:
+        return []
 
     # Parse to Pydantic models
     agent_events = parse_events(raw_events)

@@ -209,7 +209,12 @@ class QueueOperationEvent(BaseEvent):
 
 # Union of all event types
 Event = Annotated[
-    UserEvent | AssistantEvent | SystemEvent | ProgressEvent | FileHistoryEvent | QueueOperationEvent,
+    UserEvent
+    | AssistantEvent
+    | SystemEvent
+    | ProgressEvent
+    | FileHistoryEvent
+    | QueueOperationEvent,
     Field(discriminator="type"),
 ]
 
@@ -262,7 +267,9 @@ def parse_events(raw_events: list[dict[str, Any]]) -> list[BaseEvent]:
     return [parse_event(e) for e in raw_events]
 
 
-def parse_content_block(raw: dict[str, Any]) -> ContentText | ContentThinking | ContentToolUse | dict[str, Any]:
+def parse_content_block(
+    raw: dict[str, Any],
+) -> ContentText | ContentThinking | ContentToolUse | dict[str, Any]:
     """Parse a content block from assistant message.
 
     Args:

@@ -22,10 +22,7 @@ from inspect_ai.model._chat_message import (
 )
 
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util.message_ids import (
-    MessageIdManager,
-    apply_message_ids_to_event,
-)
+from inspect_scout._util.message_ids import stable_message_ids
 
 from .client import (
     LANGSMITH_SOURCE_TYPE,
@@ -320,11 +317,11 @@ async def _trace_to_transcript(
                             messages.append(ChatMessageAssistant(content=str(content)))
 
     # Apply stable message IDs
-    id_manager = MessageIdManager()
+    apply_ids = stable_message_ids()
     for event in events:
         if isinstance(event, ModelEvent):
-            apply_message_ids_to_event(event, id_manager)
-    id_manager.apply_ids(messages)
+            apply_ids(event)
+    apply_ids(messages)
 
     # Extract metadata from root run
     metadata = extract_metadata(root_run)
@@ -427,8 +424,8 @@ def _example_to_transcript(
         return None
 
     # Apply stable message IDs (no events for dataset examples)
-    id_manager = MessageIdManager()
-    id_manager.apply_ids(messages)
+    apply_ids = stable_message_ids()
+    apply_ids(messages)
 
     # Extract metadata
     metadata: dict[str, Any] = {}

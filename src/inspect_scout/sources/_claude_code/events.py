@@ -292,8 +292,9 @@ def events_to_scout_events(
     # Track messages for ModelEvent input
     accumulated_messages: list[Any] = []
 
-    # Track active agent spans
-    active_agent_spans: dict[str, str] = {}  # tool_use_id -> span_id
+    # Track active spans
+    active_agent_spans: dict[str, str] = {}  # tool_use_id -> span_id (for Task tools)
+    active_tool_spans: dict[str, str] = {}  # tool_use_id -> span_id (for regular tools)
 
     for event in events:
         event_type = get_event_type(event)
@@ -357,6 +358,18 @@ def events_to_scout_events(
                                 )
 
                             active_agent_spans[tool_id] = span_id
+                    else:
+                        # Regular tool call - create tool span
+                        span_id = f"tool-{tool_id}"
+                        scout_events.append(
+                            to_span_begin_event(
+                                span_id=span_id,
+                                name=parsed_block.name,
+                                span_type="tool",
+                                timestamp=timestamp,
+                            )
+                        )
+                        active_tool_spans[tool_id] = span_id
 
                     # Track all tool calls for result matching
                     pending_tool_calls[tool_id] = (parsed_block, timestamp)
@@ -396,8 +409,15 @@ def events_to_scout_events(
                             )
                             scout_events.append(tool_event)
 
+                            # Check if this completes a tool span
+                            if tool_use_id in active_tool_spans:
+                                span_id = active_tool_spans.pop(tool_use_id)
+                                scout_events.append(
+                                    to_span_end_event(span_id, timestamp)
+                                )
+
                             # Check if this completes an agent span
-                            if tool_use_id in active_agent_spans:
+                            elif tool_use_id in active_agent_spans:
                                 span_id = active_agent_spans.pop(tool_use_id)
 
                                 # Try to load and process agent events
@@ -435,12 +455,21 @@ def events_to_scout_events(
                     )
 
     # Close any remaining tool calls without results
-    for _tool_id, (tool_use_block, tool_timestamp) in pending_tool_calls.items():
+    for tool_id, (tool_use_block, tool_timestamp) in pending_tool_calls.items():
         tool_event = to_tool_event(tool_use_block, None, tool_timestamp)
         scout_events.append(tool_event)
 
+        # Close associated tool span if any
+        if tool_id in active_tool_spans:
+            span_id = active_tool_spans.pop(tool_id)
+            scout_events.append(to_span_end_event(span_id, datetime.now()))
+
+    # Close any remaining tool spans
+    for span_id in active_tool_spans.values():
+        scout_events.append(to_span_end_event(span_id, datetime.now()))
+
     # Close any remaining agent spans
-    for _tool_id, span_id in active_agent_spans.items():
+    for span_id in active_agent_spans.values():
         scout_events.append(to_span_end_event(span_id, datetime.now()))
 
     # Sort by timestamp

@@ -4,10 +4,10 @@ import { FC, useCallback, useRef, useState } from "react";
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
+import { ToolButton } from "../../components/ToolButton";
 import { ScansTableState, useStore } from "../../state/store";
 import { Chip } from "../components/Chip";
 import { ColumnFilterEditor } from "../components/columnFilter";
-import { ColumnsButton } from "../components/ColumnsButton";
 import { ColumnsPopover, ColumnInfo } from "../components/ColumnsPopover";
 import { FilterBar } from "../components/FilterBar";
 import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
@@ -145,10 +145,15 @@ export const ScansFilterBar: FC<{
   // Column picker content
   const columnPickerContent = includeColumnPicker ? (
     <>
-      <ColumnsButton
+      <ToolButton
         ref={columnButtonRef}
-        isOpen={showColumnPicker}
+        icon={ApplicationIcons.checkbox.checked}
+        label="Choose columns"
+        title="Choose columns"
+        latched={showColumnPicker}
         onClick={() => setShowColumnPicker(!showColumnPicker)}
+        subtle
+        className={clsx("text-size-smallest", styles.columnsButton)}
       />
       <ColumnsPopover
         positionEl={columnButtonRef.current}

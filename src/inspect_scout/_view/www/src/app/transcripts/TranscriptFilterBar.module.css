@@ -56,3 +56,7 @@
   background-color: var(--bs-border-color);
   font-size: var(--inspect-font-size-smallestest);
 }
+
+.columnsButton {
+  padding: 0.1rem 0.3rem;
+}

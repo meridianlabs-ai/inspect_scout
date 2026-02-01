@@ -4,6 +4,7 @@ import { FC, useRef, useState } from "react";
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
+import { ToolButton } from "../../components/ToolButton";
 import { TranscriptsTableState, useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
 import { Chip } from "../components/Chip";
@@ -13,7 +14,6 @@ import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
 import { useAddFilterPopover } from "./columnFilter";
 import { DEFAULT_VISIBLE_COLUMNS } from "./columns";
-import { TranscriptColumnsButton } from "./TranscriptColumnsButton";
 import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
 import styles from "./TranscriptFilterBar.module.css";
 
@@ -125,10 +125,15 @@ export const TranscriptFilterBar: FC<{
   // Column picker content
   const columnPickerContent = includeColumnPicker ? (
     <>
-      <TranscriptColumnsButton
+      <ToolButton
         ref={columnButtonRef}
-        isOpen={showColumnPicker}
+        icon={ApplicationIcons.checkbox.checked}
+        label="Choose columns"
+        title="Choose columns"
+        latched={showColumnPicker}
         onClick={() => setShowColumnPicker(!showColumnPicker)}
+        subtle
+        className={clsx("text-size-smallest", styles.columnsButton)}
       />
       <TranscriptColumnsPopover
         positionEl={columnButtonRef.current}

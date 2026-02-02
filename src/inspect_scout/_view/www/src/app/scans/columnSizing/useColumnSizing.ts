@@ -46,9 +46,7 @@ export function useColumnSizing({
   tableRef,
   data,
 }: UseColumnSizingOptions): UseColumnSizingResult {
-  const columnSizing = useStore(
-    (state) => state.scansTableState.columnSizing
-  );
+  const columnSizing = useStore((state) => state.scansTableState.columnSizing);
   const sizingStrategy = useStore(
     (state) => state.scansTableState.sizingStrategy
   );
@@ -164,7 +162,9 @@ export function useColumnSizing({
         columnSizing: currentSizing,
       } = latestRef.current;
 
-      const strategy = getSizingStrategy(strategyKey) as SizingStrategy<ScanRow>;
+      const strategy = getSizingStrategy(
+        strategyKey
+      ) as SizingStrategy<ScanRow>;
       const calculatedSizing = strategy.computeSizes({
         tableElement: tableRef.current,
         columns: cols,
@@ -207,7 +207,9 @@ export function useColumnSizing({
           columnConstraints: constraints,
         } = latestRef.current;
 
-        const strategy = getSizingStrategy(strategyKey) as SizingStrategy<ScanRow>;
+        const strategy = getSizingStrategy(
+          strategyKey
+        ) as SizingStrategy<ScanRow>;
         const allSizes = strategy.computeSizes({
           tableElement: tableRef.current,
           columns: cols,

@@ -5,6 +5,7 @@ import { FC, useRef } from "react";
 import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
@@ -13,6 +14,7 @@ import { useAdjacentTranscriptIds } from "../server/useAdjacentTranscriptIds";
 import { useAppConfig } from "../server/useAppConfig";
 import { useTranscript } from "../server/useTranscript";
 import { TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "../transcripts/constants";
+import { getTranscriptDisplayName } from "../utils/transcript";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 
 import { TranscriptBody } from "./TranscriptBody";
@@ -49,6 +51,9 @@ export const TranscriptPanel: FC = () => {
   const filter = Array.isArray(config.filter)
     ? config.filter.join(" ")
     : config.filter;
+
+  // Set document title with transcript task name
+  useDocumentTitle(getTranscriptDisplayName(transcript), "Transcripts");
 
   // Get sorting/filter from store
   const sorting = useStore((state) => state.transcriptsTableState.sorting);

@@ -1,16 +1,28 @@
-import { FC } from "react";
+import { FC, useCallback } from "react";
 
 import { ScalarValue } from "../../api/api";
 import { TranscriptsTableState, useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
 import { AddFilterButton } from "../components/AddFilterButton";
 import { ColumnPickerButton } from "../components/ColumnPickerButton";
+import { ColumnsPopover, ColumnInfo } from "../components/ColumnsPopover";
 import { FilterBar } from "../components/FilterBar";
 import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
 import { useAddFilterPopover } from "./columnFilter";
-import { DEFAULT_VISIBLE_COLUMNS } from "./columns";
-import { TranscriptColumnsPopover } from "./TranscriptColumnsPopover";
+import {
+  COLUMN_LABELS,
+  COLUMN_HEADER_TITLES,
+  DEFAULT_COLUMN_ORDER,
+  DEFAULT_VISIBLE_COLUMNS,
+} from "./columns";
+
+// Convert column definitions to ColumnInfo array
+const COLUMNS_INFO: ColumnInfo[] = DEFAULT_COLUMN_ORDER.map((key) => ({
+  id: key,
+  label: COLUMN_LABELS[key],
+  headerTitle: COLUMN_HEADER_TITLES[key],
+}));
 
 export const TranscriptFilterBar: FC<{
   filterCodeValues?: Record<string, string>;
@@ -27,6 +39,9 @@ export const TranscriptFilterBar: FC<{
   const filters = useStore(
     (state) => state.transcriptsTableState.columnFilters
   );
+  const visibleColumns = useStore(
+    (state) => state.transcriptsTableState.visibleColumns
+  );
   const setTranscriptsTableState = useStore(
     (state) => state.setTranscriptsTableState
   );
@@ -37,6 +52,17 @@ export const TranscriptFilterBar: FC<{
       setTableState: setTranscriptsTableState,
       defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
     });
+
+  // Handle visible columns change
+  const handleVisibleColumnsChange = useCallback(
+    (newVisibleColumns: string[]) => {
+      setTranscriptsTableState((prevState) => ({
+        ...prevState,
+        visibleColumns: newVisibleColumns as Array<keyof TranscriptInfo>,
+      }));
+    },
+    [setTranscriptsTableState]
+  );
 
   // Add filter popover state
   const addFilterPopover = useAddFilterPopover({
@@ -65,10 +91,15 @@ export const TranscriptFilterBar: FC<{
         includeColumnPicker ? (
           <ColumnPickerButton>
             {({ positionEl, isOpen, setIsOpen }) => (
-              <TranscriptColumnsPopover
+              <ColumnsPopover
                 positionEl={positionEl}
                 isOpen={isOpen}
                 setIsOpen={setIsOpen}
+                columns={COLUMNS_INFO}
+                visibleColumns={visibleColumns ?? DEFAULT_VISIBLE_COLUMNS}
+                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+                onVisibleColumnsChange={handleVisibleColumnsChange}
+                popoverId="transcript-columns"
               />
             )}
           </ColumnPickerButton>

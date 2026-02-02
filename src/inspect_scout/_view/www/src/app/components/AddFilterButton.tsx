@@ -14,12 +14,19 @@ import {
 import styles from "./FilterBar.module.css";
 
 /** Props accepted by AddFilterButton - subset of useAddFilterPopover return */
-interface AddFilterPopoverState {
+export interface AddFilterPopoverState {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   selectedColumnId: string | null;
   columns: AvailableColumn[];
-  filterType: "string" | "number" | "date" | "datetime" | "boolean" | "duration" | "unknown";
+  filterType:
+    | "string"
+    | "number"
+    | "date"
+    | "datetime"
+    | "boolean"
+    | "duration"
+    | "unknown";
   operator: OperatorModel;
   setOperator: (op: OperatorModel) => void;
   operatorOptions: OperatorModel[];

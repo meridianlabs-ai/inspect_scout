@@ -3,10 +3,7 @@ import { FC, useCallback } from "react";
 import { ScalarValue } from "../../api/api";
 import { TranscriptsTableState, useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
-import { AddFilterButton } from "../components/AddFilterButton";
-import { ColumnPickerButton } from "../components/ColumnPickerButton";
-import { ColumnsPopover, ColumnInfo } from "../components/ColumnsPopover";
-import { FilterBar } from "../components/FilterBar";
+import { FilterBar, type ColumnInfo } from "../components/FilterBar";
 import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
 import { useAddFilterPopover } from "./columnFilter";
@@ -79,31 +76,13 @@ export const TranscriptFilterBar: FC<{
       filterCodeValues={filterCodeValues ?? {}}
       filterSuggestions={filterSuggestions}
       onFilterColumnChange={onFilterColumnChange}
-      popoverIdPrefix="transcript-filter"
-      addFilterSlot={
-        <AddFilterButton
-          idPrefix="transcript"
-          popoverState={addFilterPopover}
-          suggestions={filterSuggestions}
-        />
-      }
-      rightContent={
-        includeColumnPicker ? (
-          <ColumnPickerButton>
-            {({ positionEl, isOpen, setIsOpen }) => (
-              <ColumnsPopover
-                positionEl={positionEl}
-                isOpen={isOpen}
-                setIsOpen={setIsOpen}
-                columns={COLUMNS_INFO}
-                visibleColumns={visibleColumns ?? DEFAULT_VISIBLE_COLUMNS}
-                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                onVisibleColumnsChange={handleVisibleColumnsChange}
-                popoverId="transcript-columns"
-              />
-            )}
-          </ColumnPickerButton>
-        ) : undefined
+      popoverIdPrefix="transcript"
+      addFilterPopoverState={addFilterPopover}
+      columns={includeColumnPicker ? COLUMNS_INFO : undefined}
+      visibleColumns={visibleColumns ?? DEFAULT_VISIBLE_COLUMNS}
+      defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+      onVisibleColumnsChange={
+        includeColumnPicker ? handleVisibleColumnsChange : undefined
       }
     />
   );

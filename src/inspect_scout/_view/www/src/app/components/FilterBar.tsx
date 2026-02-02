@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { FC, ReactNode, useCallback, useRef, useState } from "react";
+import { FC, useCallback, useRef, useState } from "react";
 
 import { ScalarValue } from "../../api/api";
 import { ApplicationIcons } from "../../components/icons";
@@ -8,6 +8,10 @@ import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import type { SimpleCondition } from "../../query/types";
 import type { ColumnFilter } from "../../state/store";
 
+import {
+  AddFilterButton,
+  type AddFilterPopoverState,
+} from "./AddFilterButton";
 import { Chip } from "./Chip";
 import { ChipGroup } from "./ChipGroup";
 import {
@@ -15,6 +19,8 @@ import {
   useColumnFilterPopover,
   type AvailableColumn,
 } from "./columnFilter";
+import { ColumnPickerButton } from "./ColumnPickerButton";
+import { ColumnsPopover, type ColumnInfo } from "./ColumnsPopover";
 import styles from "./FilterBar.module.css";
 
 const kCopyCodeDescriptors = [
@@ -37,10 +43,20 @@ export interface FilterBarProps {
   onFilterColumnChange?: (columnId: string | null) => void;
   /** Unique ID prefix for popovers */
   popoverIdPrefix?: string;
-  /** Add filter button and popover - rendered by parent for domain-specific column handling */
-  addFilterSlot: ReactNode;
-  /** Right-side actions (e.g., column picker) */
-  rightContent?: ReactNode;
+
+  // Add filter button config
+  /** Popover state from useAddFilterPopover hook */
+  addFilterPopoverState: AddFilterPopoverState;
+
+  // Column picker config (optional - omit to hide)
+  /** Column definitions for the picker */
+  columns?: ColumnInfo[];
+  /** Currently visible column IDs */
+  visibleColumns?: string[];
+  /** Default visible column IDs */
+  defaultVisibleColumns?: string[];
+  /** Callback when visible columns change */
+  onVisibleColumnsChange?: (columns: string[]) => void;
 }
 
 export const FilterBar: FC<FilterBarProps> = ({
@@ -51,8 +67,11 @@ export const FilterBar: FC<FilterBarProps> = ({
   filterSuggestions = [],
   onFilterColumnChange,
   popoverIdPrefix = "filter",
-  addFilterSlot,
-  rightContent,
+  addFilterPopoverState,
+  columns,
+  visibleColumns,
+  defaultVisibleColumns,
+  onVisibleColumnsChange,
 }) => {
   // Filter editing state
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
@@ -148,8 +167,12 @@ export const FilterBar: FC<FilterBarProps> = ({
               );
             })
           : null}
-        {/* Add Filter slot - rendered by parent */}
-        {addFilterSlot}
+        {/* Add Filter Button - rendered internally */}
+        <AddFilterButton
+          idPrefix={popoverIdPrefix}
+          popoverState={addFilterPopoverState}
+          suggestions={filterSuggestions}
+        />
       </ChipGroup>
 
       {/* Edit filter popover */}
@@ -191,10 +214,24 @@ export const FilterBar: FC<FilterBarProps> = ({
         {filterCodeValues !== undefined && (
           <CopyQueryButton itemValues={filterCodeValues} />
         )}
-        {rightContent && (
+        {/* Column Picker - rendered if columns and handler provided */}
+        {columns && onVisibleColumnsChange && (
           <>
             <div className={styles.sep}></div>
-            {rightContent}
+            <ColumnPickerButton>
+              {({ positionEl, isOpen, setIsOpen }) => (
+                <ColumnsPopover
+                  positionEl={positionEl}
+                  isOpen={isOpen}
+                  setIsOpen={setIsOpen}
+                  columns={columns}
+                  visibleColumns={visibleColumns ?? defaultVisibleColumns ?? []}
+                  defaultVisibleColumns={defaultVisibleColumns ?? []}
+                  onVisibleColumnsChange={onVisibleColumnsChange}
+                  popoverId={`${popoverIdPrefix}-columns`}
+                />
+              )}
+            </ColumnPickerButton>
           </>
         )}
       </div>
@@ -289,4 +326,4 @@ const formatFilterCondition = (condition: SimpleCondition): string => {
 };
 
 // Export types for convenience
-export type { AvailableColumn };
+export type { AddFilterPopoverState, AvailableColumn, ColumnInfo };

@@ -20,7 +20,7 @@ from starlette.status import (
 )
 from upath import UPath
 
-from .._query import Query
+from .._query import Query, ScalarValue
 from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
@@ -30,6 +30,7 @@ from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
+    DistinctRequest,
     ScansRequest,
     ScansResponse,
     ScanStatus,
@@ -123,6 +124,22 @@ def create_scans_router(
         return ScansResponse(
             items=enriched_results, total_count=count, next_cursor=next_cursor
         )
+
+    @router.post(
+        "/scans/{dir}/distinct",
+        summary="Get distinct column values",
+        description="Returns distinct values for a column, optionally filtered.",
+    )
+    async def scans_distinct(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
+        body: DistinctRequest | None = None,
+    ) -> list[ScalarValue]:
+        """Get distinct values for a column."""
+        scans_dir = decode_base64url(dir)
+        if body is None:
+            return []
+        async with await scan_jobs_view(scans_dir) as view:
+            return await view.distinct(body.column, body.filter)
 
     @router.get(
         "/scans/active",

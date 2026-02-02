@@ -11,7 +11,8 @@ import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
 import { ScanApi } from "../api/api";
-import { ColumnSizingStrategyKey } from "../app/transcripts/columnSizing/types";
+import { ColumnSizingStrategyKey } from "../app/components/columnSizing";
+import type { ScanColumnKey } from "../app/scans/columns";
 import {
   ErrorScope,
   ResultGroup,
@@ -40,7 +41,7 @@ export interface ColumnFilter {
 }
 
 // Transcripts table UI state
-interface TranscriptsTableState {
+export interface TranscriptsTableState {
   columnSizing: ColumnSizingState;
   columnOrder: string[];
   sorting: SortingState;
@@ -48,9 +49,20 @@ interface TranscriptsTableState {
   focusedRowId: string | null;
   columnFilters: Record<string, ColumnFilter>;
   visibleColumns?: Array<keyof TranscriptInfo>;
-  /** Current sizing strategy */
   sizingStrategy: ColumnSizingStrategyKey;
-  /** Column IDs that have been manually resized by the user */
+  manuallyResizedColumns: string[];
+}
+
+// Scans table UI state
+export interface ScansTableState {
+  columnSizing: ColumnSizingState;
+  columnOrder: ScanColumnKey[];
+  sorting: SortingState;
+  rowSelection: RowSelectionState;
+  focusedRowId: string | null;
+  columnFilters: Record<string, ColumnFilter>;
+  visibleColumns?: ScanColumnKey[];
+  sizingStrategy: ColumnSizingStrategyKey;
   manuallyResizedColumns: string[];
 }
 
@@ -120,6 +132,9 @@ interface StoreState {
   transcripts?: TranscriptInfo[];
   transcriptsDir?: string;
   transcriptsTableState: TranscriptsTableState;
+
+  // Scans table state
+  scansTableState: ScansTableState;
 
   // Transcript Detail Data
   transcriptState: TranscriptState;
@@ -230,6 +245,9 @@ interface StoreState {
   setTranscriptState: (
     updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
   ) => void;
+  setScansTableState: (
+    updater: ScansTableState | ((prev: ScansTableState) => ScansTableState)
+  ) => void;
 
   // Validation actions
   setSelectedValidationSetUri: (uri: string | undefined) => void;
@@ -289,6 +307,16 @@ export const createStore = (api: ScanApi) =>
             columnSizing: {},
             columnOrder: [],
             sorting: [{ id: "date", desc: true }],
+            rowSelection: {},
+            focusedRowId: null,
+            columnFilters: {},
+            sizingStrategy: "fit-content",
+            manuallyResizedColumns: [],
+          },
+          scansTableState: {
+            columnSizing: {},
+            columnOrder: [],
+            sorting: [{ id: "timestamp", desc: true }],
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},
@@ -647,6 +675,14 @@ export const createStore = (api: ScanApi) =>
               state.transcriptState =
                 typeof updater === "function"
                   ? updater(state.transcriptState)
+                  : updater;
+            });
+          },
+          setScansTableState(updater) {
+            set((state) => {
+              state.scansTableState =
+                typeof updater === "function"
+                  ? updater(state.scansTableState)
                   : updater;
             });
           },

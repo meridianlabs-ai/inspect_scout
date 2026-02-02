@@ -1,0 +1,84 @@
+import { FC, useCallback } from "react";
+
+import { ScalarValue } from "../../api/api";
+import { ScansTableState, useStore } from "../../state/store";
+import { useAddFilterPopover } from "../components/columnFilter";
+import { FilterBar, type ColumnInfo } from "../components/FilterBar";
+import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
+
+import {
+  COLUMN_LABELS,
+  COLUMN_HEADER_TITLES,
+  DEFAULT_COLUMN_ORDER,
+  DEFAULT_VISIBLE_COLUMNS,
+  FILTER_COLUMNS,
+  ScanColumnKey,
+} from "./columns";
+
+// Convert column definitions to ColumnInfo array
+const COLUMNS_INFO: ColumnInfo[] = DEFAULT_COLUMN_ORDER.map((key) => ({
+  id: key,
+  label: COLUMN_LABELS[key],
+  headerTitle: COLUMN_HEADER_TITLES[key],
+}));
+
+export const ScansFilterBar: FC<{
+  includeColumnPicker?: boolean;
+  filterSuggestions?: ScalarValue[];
+  onFilterColumnChange?: (columnId: string | null) => void;
+}> = ({
+  includeColumnPicker = true,
+  filterSuggestions = [],
+  onFilterColumnChange,
+}) => {
+  // Scans Filter State
+  const filters = useStore((state) => state.scansTableState.columnFilters);
+  const visibleColumns = useStore(
+    (state) => state.scansTableState.visibleColumns
+  );
+  const setScansTableState = useStore((state) => state.setScansTableState);
+
+  // Use shared filter bar handlers
+  const { handleFilterChange, removeFilter, handleAddFilter } =
+    useFilterBarHandlers<ScanColumnKey, ScansTableState>({
+      setTableState: setScansTableState,
+      defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
+    });
+
+  // Add filter popover state
+  const addFilterPopover = useAddFilterPopover({
+    columns: FILTER_COLUMNS,
+    filters,
+    onAddFilter: handleAddFilter,
+    onFilterColumnChange,
+  });
+
+  // Handle visible columns change
+  const handleVisibleColumnsChange = useCallback(
+    (newVisibleColumns: string[]) => {
+      setScansTableState((prevState) => ({
+        ...prevState,
+        visibleColumns: newVisibleColumns as ScanColumnKey[],
+      }));
+    },
+    [setScansTableState]
+  );
+
+  return (
+    <FilterBar
+      filters={filters}
+      onFilterChange={handleFilterChange}
+      onRemoveFilter={removeFilter}
+      filterSuggestions={filterSuggestions}
+      onFilterColumnChange={onFilterColumnChange}
+      popoverIdPrefix="scans"
+      addFilterPopoverState={addFilterPopover}
+      columns={includeColumnPicker ? COLUMNS_INFO : undefined}
+      visibleColumns={visibleColumns ?? DEFAULT_VISIBLE_COLUMNS}
+      defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+      onVisibleColumnsChange={
+        includeColumnPicker ? handleVisibleColumnsChange : undefined
+      }
+    />
+  );
+};

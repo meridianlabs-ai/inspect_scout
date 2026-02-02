@@ -10365,6 +10365,86 @@
         ]
       }
     },
+    "/scans/{dir}/distinct": {
+      "post": {
+        "description": "Returns distinct values for a column, optionally filtered.",
+        "operationId": "scans_distinct_scans__dir__distinct_post",
+        "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DistinctRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Scans Distinct Scans  Dir  Distinct Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get distinct column values",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
     "/scans/{dir}/{scan}": {
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",

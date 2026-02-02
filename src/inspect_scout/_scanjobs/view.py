@@ -3,7 +3,8 @@
 import abc
 from typing import AsyncIterator
 
-from .._query import Query
+from .._query import Query, ScalarValue
+from .._query.condition import Condition
 from .._recorder.recorder import Status
 
 
@@ -41,6 +42,21 @@ class ScanJobsView(abc.ABC):
 
         Returns:
             Number of matching scan jobs.
+        """
+        ...
+
+    @abc.abstractmethod
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        """Get distinct values of a column, sorted ascending.
+
+        Args:
+            column: Column to get distinct values for.
+            condition: Filter condition, or None for no filter.
+
+        Returns:
+            Distinct values, sorted by column ascending.
         """
         ...
 

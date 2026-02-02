@@ -8,10 +8,7 @@ import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import type { SimpleCondition } from "../../query/types";
 import type { ColumnFilter } from "../../state/store";
 
-import {
-  AddFilterButton,
-  type AddFilterPopoverState,
-} from "./AddFilterButton";
+import { AddFilterButton, type AddFilterPopoverState } from "./AddFilterButton";
 import { Chip } from "./Chip";
 import { ChipGroup } from "./ChipGroup";
 import {

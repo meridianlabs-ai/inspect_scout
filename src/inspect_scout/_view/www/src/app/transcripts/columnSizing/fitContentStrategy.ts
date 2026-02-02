@@ -5,9 +5,9 @@
 import { ColumnSizingState } from "@tanstack/react-table";
 
 import { TranscriptInfo } from "../../../types/api-types";
+import { clampSize, getColumnId } from "../../components/columnSizing";
 
 import { DEFAULT_SIZE, SizingStrategy } from "./types";
-import { clampSize, getColumnId } from "./utils";
 
 /**
  * Measure text width using a temporary span element.

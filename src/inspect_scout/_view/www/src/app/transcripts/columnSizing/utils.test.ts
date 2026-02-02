@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  clampSize,
+  getColumnConstraints,
+  getColumnId,
+} from "../../components/columnSizing";
 import { TranscriptColumn } from "../columns";
-
-import { clampSize, getColumnConstraints, getColumnId } from "./utils";
 
 describe("clampSize", () => {
   const constraints = { size: 150, minSize: 50, maxSize: 200 };

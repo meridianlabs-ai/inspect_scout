@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useStore } from "../../../state/store";
 import { TranscriptInfo } from "../../../types/api-types";
+import { clampSize, getColumnConstraints } from "../../components/columnSizing";
 import { TranscriptColumn } from "../columns";
 
 import { getSizingStrategy } from "./strategies";
 import { ColumnSizingStrategyKey } from "./types";
-import { clampSize, getColumnConstraints } from "./utils";
 
 interface UseColumnSizingOptions {
   /** Column definitions */

@@ -4,8 +4,9 @@
 
 import { ColumnSizingState } from "@tanstack/react-table";
 
+import { getColumnId } from "../../components/columnSizing";
+
 import { SizingStrategy } from "./types";
-import { getColumnId } from "./utils";
 
 export const defaultStrategy: SizingStrategy = {
   computeSizes({ columns }): ColumnSizingState {

@@ -13,3 +13,7 @@ export type {
   SizingStrategy,
   SizingStrategyContext,
 } from "./types";
+
+export { defaultStrategy } from "./defaultStrategy";
+export { fitContentStrategy } from "./fitContentStrategy";
+export { getSizingStrategy, sizingStrategies } from "./strategies";

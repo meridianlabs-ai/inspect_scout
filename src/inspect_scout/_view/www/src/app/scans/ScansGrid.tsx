@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo } from "react";
+import { FC, useEffect, useMemo, useRef } from "react";
 
 import { ScalarValue } from "../../api/api";
 import { scanRoute } from "../../router/url";
@@ -13,6 +13,7 @@ import {
   ScanColumn,
   ScanRow,
 } from "./columns";
+import { useColumnSizing } from "./columnSizing";
 
 // Generate a stable key for a scan item
 function scanItemKey(index: number, item?: ScanRow): string {
@@ -50,13 +51,15 @@ export const ScansGrid: FC<ScansGridProps> = ({
   filterSuggestions = [],
   onFilterColumnChange,
 }) => {
+  // Table ref for DOM measurement (used by column sizing)
+  const tableRef = useRef<HTMLTableElement>(null);
+
   // Table state from store
   const sorting = useStore((state) => state.scansTableState.sorting);
   const columnOrder = useStore((state) => state.scansTableState.columnOrder);
   const columnFilters = useStore(
     (state) => state.scansTableState.columnFilters
   );
-  const columnSizing = useStore((state) => state.scansTableState.columnSizing);
   const rowSelection = useStore((state) => state.scansTableState.rowSelection);
   const focusedRowId = useStore((state) => state.scansTableState.focusedRowId);
   const visibleColumns = useStore(
@@ -87,6 +90,43 @@ export const ScansGrid: FC<ScansGridProps> = ({
     () => getScanColumns(visibleColumns),
     [visibleColumns]
   );
+
+  // Column sizing with min/max constraints and auto-sizing
+  const {
+    columnSizing,
+    handleColumnSizingChange,
+    applyAutoSizing,
+    resetColumnSize,
+  } = useColumnSizing({
+    columns,
+    tableRef,
+    data,
+  });
+
+  // Track if we've done initial auto-sizing
+  const hasInitializedRef = useRef(false);
+
+  // Track previous visible columns to detect changes
+  const previousVisibleColumnsRef = useRef<typeof visibleColumns | null>(null);
+
+  // Auto-size columns on initial load when data is available
+  useEffect(() => {
+    if (!hasInitializedRef.current && data.length > 0) {
+      hasInitializedRef.current = true;
+      applyAutoSizing();
+    }
+  }, [data.length, applyAutoSizing]);
+
+  // Auto-size when visible columns change
+  // (applyAutoSizing preserves manually resized columns)
+  useEffect(() => {
+    const previousVisibleColumns = previousVisibleColumnsRef.current;
+    previousVisibleColumnsRef.current = visibleColumns;
+
+    if (previousVisibleColumns && previousVisibleColumns !== visibleColumns) {
+      applyAutoSizing();
+    }
+  }, [visibleColumns, applyAutoSizing]);
 
   // Compute effective column order
   const effectiveColumnOrder = useMemo(() => {
@@ -126,6 +166,8 @@ export const ScansGrid: FC<ScansGridProps> = ({
       fetchThreshold={fetchThreshold}
       filterSuggestions={filterSuggestions}
       onFilterColumnChange={onFilterColumnChange}
+      onColumnSizingChange={handleColumnSizingChange}
+      onResetColumnSize={resetColumnSize}
       className={className}
       loading={loading}
       emptyMessage="No matching scans"

@@ -3,15 +3,16 @@ import { FC, useCallback } from "react";
 import { ScalarValue } from "../../api/api";
 import { TranscriptsTableState, useStore } from "../../state/store";
 import type { TranscriptInfo } from "../../types/api-types";
+import { useAddFilterPopover } from "../components/columnFilter";
 import { FilterBar, type ColumnInfo } from "../components/FilterBar";
 import { useFilterBarHandlers } from "../components/useFilterBarHandlers";
 
-import { useAddFilterPopover } from "./columnFilter";
 import {
   COLUMN_LABELS,
   COLUMN_HEADER_TITLES,
   DEFAULT_COLUMN_ORDER,
   DEFAULT_VISIBLE_COLUMNS,
+  FILTER_COLUMNS,
 } from "./columns";
 
 // Convert column definitions to ColumnInfo array
@@ -63,6 +64,7 @@ export const TranscriptFilterBar: FC<{
 
   // Add filter popover state
   const addFilterPopover = useAddFilterPopover({
+    columns: FILTER_COLUMNS,
     filters,
     onAddFilter: handleAddFilter,
     onFilterColumnChange,

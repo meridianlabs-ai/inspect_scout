@@ -4,6 +4,7 @@ import { ApplicationIcons } from "../../components/icons";
 import type { ScanStatusWithActiveInfo } from "../../types/api-types";
 import { formatNumber } from "../../utils/format";
 import { printObject } from "../../utils/object";
+import type { AvailableColumn } from "../components/columnFilter";
 import { ExtendedColumnDef, BaseColumnMeta } from "../components/columnTypes";
 
 import styles from "./columns.module.css";
@@ -600,3 +601,12 @@ export function getScanColumns(
 
   return visibleColumnKeys.map((key) => ALL_COLUMNS[key]);
 }
+
+// Columns available for filtering (used by Add Filter popover)
+export const FILTER_COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
+  (columnId) => ({
+    id: columnId,
+    label: COLUMN_LABELS[columnId],
+    filterType: ALL_COLUMNS[columnId].meta?.filterType ?? "string",
+  })
+);

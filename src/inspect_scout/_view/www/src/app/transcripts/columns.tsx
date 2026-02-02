@@ -11,6 +11,7 @@ import {
   formatTime,
 } from "../../utils/format";
 import { printObject } from "../../utils/object";
+import type { AvailableColumn } from "../components/columnFilter";
 
 import styles from "./columns.module.css";
 
@@ -645,3 +646,12 @@ export function getCellTitleValue(
   }
   return String(value);
 }
+
+// Columns available for filtering (used by Add Filter popover)
+export const FILTER_COLUMNS: AvailableColumn[] = DEFAULT_COLUMN_ORDER.map(
+  (columnId) => ({
+    id: columnId,
+    label: COLUMN_LABELS[columnId],
+    filterType: ALL_COLUMNS[columnId].meta?.filterType ?? "string",
+  })
+);

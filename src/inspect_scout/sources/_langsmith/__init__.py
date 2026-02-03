@@ -14,15 +14,15 @@ from logging import getLogger
 from typing import Any, AsyncIterator
 
 from inspect_ai.event import ModelEvent
-from inspect_ai.model._chat_message import (
+from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageUser,
+    stable_message_ids,
 )
 
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util.message_ids import stable_message_ids
 
 from .client import (
     LANGSMITH_SOURCE_TYPE,

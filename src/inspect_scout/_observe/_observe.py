@@ -20,7 +20,7 @@ from typing import (
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.log._transcript import Transcript as InspectTranscript
 from inspect_ai.log._transcript import init_transcript
-from inspect_ai.model import ChatMessage
+from inspect_ai.model import ChatMessage, stable_message_ids
 from inspect_ai.model._model_output import ModelOutput
 from pydantic import JsonValue
 from shortuuid import uuid as shortuuid
@@ -29,7 +29,6 @@ from inspect_scout._project import read_project
 from inspect_scout._transcript.database.database import TranscriptsDB
 from inspect_scout._transcript.database.factory import transcripts_db
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
-from inspect_scout._util.message_ids import stable_message_ids
 
 from .context import (
     OP,

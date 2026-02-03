@@ -30,6 +30,7 @@ EventType = Literal[
     "approval",
     "sandbox",
     "info",
+    "store",
     "logger",
     "error",
     "span_begin",

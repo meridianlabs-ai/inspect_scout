@@ -7,16 +7,13 @@ import { AsyncData } from "../../utils/asyncData";
 import { useActiveScans } from "./useActiveScans";
 
 export const useActiveScan = (
-  _scansDir: string,
   scanId: string | undefined
 ): AsyncData<ActiveScanInfo | undefined> =>
   useMapAsyncData(
     useActiveScans(),
     useCallback(
-      (activeScans: Record<string, ActiveScanInfo>) => {
-        if (!scanId) return undefined;
-        return activeScans[scanId] ?? undefined;
-      },
+      (activeScans: Record<string, ActiveScanInfo>) =>
+        scanId ? (activeScans[scanId] ?? undefined) : undefined,
       [scanId]
     )
   );

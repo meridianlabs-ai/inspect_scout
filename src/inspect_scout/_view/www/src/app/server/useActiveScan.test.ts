@@ -29,7 +29,7 @@ describe("useActiveScan", () => {
   it("returns loading state when active scans are loading", () => {
     mockUseActiveScans.mockReturnValue(loading);
 
-    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current).toBe(loading);
   });
@@ -39,7 +39,7 @@ describe("useActiveScan", () => {
       data({ "other-scan": createMockActiveScanInfo("other-scan") })
     );
 
-    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -49,7 +49,7 @@ describe("useActiveScan", () => {
     const activeScanInfo = createMockActiveScanInfo("scan-123");
     mockUseActiveScans.mockReturnValue(data({ "scan-123": activeScanInfo }));
 
-    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual(activeScanInfo);
@@ -60,7 +60,7 @@ describe("useActiveScan", () => {
       data({ "scan-123": createMockActiveScanInfo("scan-123") })
     );
 
-    const { result } = renderHook(() => useActiveScan("/scans", undefined));
+    const { result } = renderHook(() => useActiveScan(undefined));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toBeUndefined();
@@ -70,7 +70,7 @@ describe("useActiveScan", () => {
     const error = new Error("Network error");
     mockUseActiveScans.mockReturnValue({ loading: false, error });
 
-    const { result } = renderHook(() => useActiveScan("/scans", "scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(error);

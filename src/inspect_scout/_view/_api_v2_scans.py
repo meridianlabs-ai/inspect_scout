@@ -25,7 +25,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._scanjob_config import ScanJobConfig
-from .._scanjobs.factory import scan_jobs_view
+from .._scanjobs.duckdb import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
@@ -98,16 +98,10 @@ def create_scans_router(
             and len(results) == body.pagination.limit
             and results
         ):
-            edge = (
-                results[-1]
-                if body.pagination.direction == "forward"
-                else results[0]
-            )
+            edge = results[-1] if body.pagination.direction == "forward" else results[0]
             next_cursor = _build_scans_cursor(edge, ctx.order_columns)
 
-        return ScansResponse(
-            items=results, total_count=count, next_cursor=next_cursor
-        )
+        return ScansResponse(items=results, total_count=count, next_cursor=next_cursor)
 
     @router.post(
         "/scans/{dir}/distinct",

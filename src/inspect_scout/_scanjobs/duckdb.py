@@ -7,12 +7,15 @@ import duckdb
 import pandas as pd
 from typing_extensions import override
 
+from inspect_scout._recorder.file import FileRecorder
+
 from .._query import Query, ScalarValue
 from .._query.condition import Condition
 from .._query.condition_sql import condition_as_sql
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.recorder import Status
 from .._view._api_v2_types import ScanRow
+from .convert import scan_row_from_status
 from .view import ScanJobsView
 
 SCAN_JOBS_TABLE = "scan_jobs"
@@ -122,12 +125,12 @@ class DuckDBScanJobsView(ScanJobsView):
     ) -> pd.DataFrame:
         """Convert Status objects to a DataFrame for DuckDB.
 
-        Uses ScanRow.from_status() for all transformation logic, then
+        Uses scan_row_from_status() for all transformation logic, then
         converts to DataFrame rows for SQL querying.
         """
         rows = []
         for status in statuses:
-            scan_row = ScanRow.from_status(
+            scan_row = scan_row_from_status(
                 status,
                 active_scan_info=active_scans_map.get(status.spec.scan_id),
             )
@@ -143,3 +146,15 @@ class DuckDBScanJobsView(ScanJobsView):
             rows.append(row_dict)
 
         return pd.DataFrame(rows)
+
+
+async def scan_jobs_view(scans_location: str) -> ScanJobsView:
+    """Create a ScanJobsView for the given scans location.
+
+    Args:
+        scans_location: Path to directory containing scan jobs.
+
+    Returns:
+        ScanJobsView instance for querying scan jobs.
+    """
+    return DuckDBScanJobsView(await FileRecorder.list(scans_location))

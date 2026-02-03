@@ -115,8 +115,17 @@ class DuckDBScanJobsView(ScanJobsView):
         """Convert Status objects to a DataFrame for DuckDB.
 
         Creates flat columns matching ScanRow fields for filtering/sorting.
-        Note: 'status' is computed without active_scan_info here; the endpoint
-        will override to "active" for scans with active_scan_info.
+        In addition to direct field mappings, this method computes several
+        aggregate/derived columns to support client display and filtering needs:
+
+        - status: Computed from errors/complete state (without active_scan_info;
+          the endpoint overrides to "active" for scans with active_scan_info)
+        - total_results: Sum of results across all scanners
+        - total_errors: Sum of errors across all scanners
+        - total_tokens: Sum of tokens across all scanners
+        - scanners: Comma-separated list of scanner names
+        - tags: Comma-separated list of tags
+        - revision_*: Flattened revision fields (version, commit, origin)
         """
         rows = []
         for status in statuses:
@@ -170,7 +179,6 @@ class DuckDBScanJobsView(ScanJobsView):
                     "total_results": total_results,
                     "total_errors": total_errors,
                     "total_tokens": total_tokens,
-                    "error_count": len(status.errors),
                 }
             )
 

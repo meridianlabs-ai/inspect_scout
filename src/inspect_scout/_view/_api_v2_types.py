@@ -111,10 +111,9 @@ class ScanRow(BaseModel):
     total_results: int
     total_errors: int
     total_tokens: int
-    error_count: int
 
-    # === For cell rendering (completion %) ===
-    active_scan_info: ActiveScanInfo | None = None
+    # === For active scan progress (None if not active) ===
+    active_completion_pct: int | None = None
 
     @staticmethod
     def from_status(
@@ -123,28 +122,12 @@ class ScanRow(BaseModel):
     ) -> "ScanRow":
         """Create a ScanRow from a Status object."""
         spec = status.spec
-        summary = status.summary
-
-        # Compute status string
-        if active_scan_info is not None:
-            status_str: Literal["active", "error", "complete", "incomplete"] = "active"
-        elif len(status.errors) > 0:
-            status_str = "error"
-        elif status.complete:
-            status_str = "complete"
-        else:
-            status_str = "incomplete"
-
-        # Extract model string
-        model_str = None
-        if spec.model is not None:
-            model_str = getattr(spec.model, "model", None) or str(spec.model)
 
         # Aggregate summary fields
         total_results = 0
         total_errors = 0
         total_tokens = 0
-        for scanner_summary in summary.scanners.values():
+        for scanner_summary in status.summary.scanners.values():
             total_results += scanner_summary.results
             total_errors += scanner_summary.errors
             total_tokens += scanner_summary.tokens
@@ -159,21 +142,40 @@ class ScanRow(BaseModel):
             metadata=spec.metadata,
             scan_args=spec.scan_args,
             location=status.location,
-            # Transformed fields
-            status=status_str,
+            # Computed fields
+            status=(
+                "active"
+                if active_scan_info
+                else "error"
+                if status.errors
+                else "complete"
+                if status.complete
+                else "incomplete"
+            ),
             scanners=",".join(spec.scanners.keys()) if spec.scanners else "",
-            model=model_str,
+            model=(
+                getattr(spec.model, "model", None) or str(spec.model)
+                if spec.model
+                else None
+            ),
             tags=",".join(spec.tags) if spec.tags else "",
             revision_version=spec.revision.version if spec.revision else None,
             revision_commit=spec.revision.commit if spec.revision else None,
             revision_origin=spec.revision.origin if spec.revision else None,
-            # Aggregates
             total_results=total_results,
             total_errors=total_errors,
             total_tokens=total_tokens,
-            error_count=len(status.errors),
-            # For cell rendering
-            active_scan_info=active_scan_info,
+            active_completion_pct=(
+                None
+                if active_scan_info is None
+                else 0
+                if active_scan_info.total_scans == 0
+                else round(
+                    active_scan_info.metrics.completed_scans
+                    / active_scan_info.total_scans
+                    * 100
+                )
+            ),
         )
 
 

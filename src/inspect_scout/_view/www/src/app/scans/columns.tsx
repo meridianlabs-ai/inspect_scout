@@ -41,9 +41,7 @@ export type ScanColumnKey =
   // Aggregated summary columns
   | "total_results"
   | "total_errors"
-  | "total_tokens"
-  // Error count
-  | "error_count";
+  | "total_tokens";
 
 // Column type for scan grid
 export type ScanColumn = ExtendedColumnDef<ScanRow, BaseColumnMeta>;
@@ -71,8 +69,6 @@ export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
   total_results: "Total Results",
   total_errors: "Scanner Errors",
   total_tokens: "Total Tokens",
-  // Error count
-  error_count: "Scan Errors",
 };
 
 // Column header tooltips
@@ -98,8 +94,6 @@ export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
   total_results: "Total number of results across all scanners",
   total_errors: "Errors reported by scanners while processing transcripts",
   total_tokens: "Total tokens used across all scanners",
-  // Error count
-  error_count: "Infrastructure/process errors that occurred during the scan",
 };
 
 // Helper to get status display (icon and color) for a scan
@@ -164,19 +158,12 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     },
     cell: (info) => {
       const scan = info.row.original;
-      const activeScan = scan.active_scan_info;
 
-      if (activeScan) {
-        const pct =
-          activeScan.total_scans > 0
-            ? Math.round(
-                (activeScan.metrics.completed_scans / activeScan.total_scans) *
-                  100
-              )
-            : 0;
+      if (scan.active_completion_pct != null) {
         return (
           <span className={styles.blue}>
-            <i className={ApplicationIcons["play-circle"]}></i> {pct}%
+            <i className={ApplicationIcons["play-circle"]}></i>{" "}
+            {scan.active_completion_pct}%
           </span>
         );
       }
@@ -502,30 +489,6 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       return formatNumber(value as number);
     },
   },
-
-  // ============================================
-  // Error count
-  // ============================================
-  error_count: {
-    id: "error_count",
-    accessorKey: "error_count",
-    header: "Scan Errors",
-    headerTitle: COLUMN_HEADER_TITLES.error_count,
-    size: 80,
-    minSize: 60,
-    maxSize: 150,
-    meta: {
-      filterable: true,
-      filterType: "number",
-    },
-    cell: (info) => {
-      const value = info.getValue() as number;
-      return formatNumber(value);
-    },
-    textValue: (value) => {
-      return formatNumber(value as number);
-    },
-  },
 };
 
 // Default column order - includes all columns
@@ -542,8 +505,6 @@ export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
   "total_results",
   "total_errors",
   "total_tokens",
-  // Error count
-  "error_count",
   // New columns from spec
   "scan_file",
   "tags",

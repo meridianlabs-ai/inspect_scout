@@ -2781,9 +2781,8 @@ export interface components {
          *     - Computed aggregates
          */
         ScanRow: {
-            active_scan_info?: components["schemas"]["ActiveScanInfo"] | null;
-            /** Error Count */
-            error_count: number;
+            /** Active Completion Pct */
+            active_completion_pct?: number | null;
             /** Location */
             location: string;
             /** Metadata */

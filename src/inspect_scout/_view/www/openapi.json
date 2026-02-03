@@ -6927,19 +6927,16 @@
       "ScanRow": {
         "description": "Flat scan row for API response - maps directly to client grid columns.\n\nFields are either:\n- Extracted from source types (using model_fields to avoid duplication)\n- Transformed/flattened from nested structures\n- Computed aggregates",
         "properties": {
-          "active_scan_info": {
+          "active_completion_pct": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ActiveScanInfo"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
-            ]
-          },
-          "error_count": {
-            "title": "Error Count",
-            "type": "integer"
+            ],
+            "title": "Active Completion Pct"
           },
           "location": {
             "title": "Location",
@@ -7086,8 +7083,7 @@
           "tags",
           "total_results",
           "total_errors",
-          "total_tokens",
-          "error_count"
+          "total_tokens"
         ],
         "title": "ScanRow",
         "type": "object"

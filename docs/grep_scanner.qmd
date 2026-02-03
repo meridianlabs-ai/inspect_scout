@@ -178,6 +178,7 @@ References use `[M1]`, `[M2]` for messages and `[E1]`, `[E2]` for events.
 |------------|-----------------|
 | `model` | Model output completion text |
 | `tool` | Function name, arguments, and result |
+| `compaction` | Model conversation was compacted |
 | `error` | Error message |
 | `info` | Data field (JSON stringified if object) |
 | `logger` | Log message text |

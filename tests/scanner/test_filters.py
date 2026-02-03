@@ -100,6 +100,7 @@ def test_valid_event_filters() -> None:
         ["info"],
         ["span_begin"],
         ["span_end"],
+        ["compaction"],
         ["model", "tool", "error", "logger"],
     ]
 
@@ -178,6 +179,7 @@ def test_event_filter_order_preserved() -> None:
         "info",
         "span_begin",
         "span_end",
+        "compaction",
     ],
 )
 def test_each_event_type(filter_type: EventType) -> None:

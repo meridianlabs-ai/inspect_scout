@@ -1,5 +1,6 @@
 import {
   ApprovalEvent,
+  CompactionEvent,
   JsonChange,
   ErrorEvent,
   InfoEvent,
@@ -55,6 +56,7 @@ export type EventType =
   | InputEvent
   | ErrorEvent
   | ApprovalEvent
+  | CompactionEvent
   | SandboxEvent
   | SpanBeginEvent
   | SpanEndEvent;
@@ -76,6 +78,7 @@ export const eventTypeValues = [
   "input",
   "error",
   "approval",
+  "compaction",
   "sandbox",
   "span_begin",
   "span_end",

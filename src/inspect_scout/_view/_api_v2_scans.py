@@ -76,8 +76,8 @@ def create_scans_router(
             async with await scan_jobs_view(scans_dir) as view:
                 count = await view.count(Query(where=ctx.filter_conditions or []))
                 results = [
-                    status
-                    async for status in view.select(
+                    scan_row
+                    async for scan_row in view.select(
                         Query(
                             where=ctx.conditions or [],
                             limit=ctx.limit,
@@ -91,33 +91,22 @@ def create_scans_router(
         if ctx.needs_reverse:
             results = list(reversed(results))
 
-        with active_scans_store() as store:
-            active_scans_map = store.read_all()
-
-        enriched_results = [
-            ScanRow.from_status(
-                status,
-                active_scan_info=active_scans_map.get(status.spec.scan_id),
-            )
-            for status in results
-        ]
-
         next_cursor = None
         if (
             body
             and body.pagination
-            and len(enriched_results) == body.pagination.limit
-            and enriched_results
+            and len(results) == body.pagination.limit
+            and results
         ):
             edge = (
-                enriched_results[-1]
+                results[-1]
                 if body.pagination.direction == "forward"
-                else enriched_results[0]
+                else results[0]
             )
             next_cursor = _build_scans_cursor(edge, ctx.order_columns)
 
         return ScansResponse(
-            items=enriched_results, total_count=count, next_cursor=next_cursor
+            items=results, total_count=count, next_cursor=next_cursor
         )
 
     @router.post(

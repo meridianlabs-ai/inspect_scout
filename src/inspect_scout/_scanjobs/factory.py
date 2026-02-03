@@ -14,8 +14,4 @@ async def scan_jobs_view(scans_location: str) -> ScanJobsView:
     Returns:
         ScanJobsView instance for querying scan jobs.
     """
-    # Load all Status objects from the scans location
-    statuses = await FileRecorder.list(scans_location)
-
-    # Create and return the DuckDB view
-    return DuckDBScanJobsView(statuses)
+    return DuckDBScanJobsView(await FileRecorder.list(scans_location))

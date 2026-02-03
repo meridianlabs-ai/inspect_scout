@@ -1,7 +1,7 @@
 """DuckDB implementation of ScanJobsView."""
 
 import json
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 import duckdb
 import pandas as pd
@@ -10,7 +10,9 @@ from typing_extensions import override
 from .._query import Query, ScalarValue
 from .._query.condition import Condition
 from .._query.condition_sql import condition_as_sql
+from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.recorder import Status
+from .._view._api_v2_types import ScanRow
 from .view import ScanJobsView
 
 SCAN_JOBS_TABLE = "scan_jobs"
@@ -30,9 +32,7 @@ class DuckDBScanJobsView(ScanJobsView):
             statuses: List of Status objects to index.
         """
         self._statuses = statuses
-        self._status_by_scan_id: dict[str, Status] = {
-            s.spec.scan_id: s for s in statuses
-        }
+        self._scan_row_by_scan_id: dict[str, ScanRow] = {}
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     @override
@@ -43,8 +43,12 @@ class DuckDBScanJobsView(ScanJobsView):
 
         self._conn = duckdb.connect(":memory:")
 
-        # Flatten Status objects to DataFrame
-        df = self._statuses_to_dataframe(self._statuses)
+        # Get active scans for status enrichment
+        with active_scans_store() as store:
+            active_scans_map = store.read_all()
+
+        # Convert Status objects to ScanRows and build DataFrame
+        df = self._statuses_to_dataframe(self._statuses, active_scans_map)
 
         # Register DataFrame as table
         self._conn.register("scan_jobs_df", df)
@@ -61,7 +65,7 @@ class DuckDBScanJobsView(ScanJobsView):
             self._conn = None
 
     @override
-    async def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+    async def select(self, query: Query | None = None) -> AsyncIterator[ScanRow]:
         """Select scan jobs matching query."""
         assert self._conn is not None, "Not connected"
         query = query or Query()
@@ -73,11 +77,11 @@ class DuckDBScanJobsView(ScanJobsView):
         # Execute query
         result = self._conn.execute(sql, params).fetchall()
 
-        # Yield Status objects
+        # Yield ScanRow objects
         for (scan_id,) in result:
-            status = self._status_by_scan_id.get(scan_id)
-            if status is not None:
-                yield status
+            scan_row = self._scan_row_by_scan_id.get(scan_id)
+            if scan_row is not None:
+                yield scan_row
 
     @override
     async def count(self, query: Query | None = None) -> int:
@@ -111,82 +115,31 @@ class DuckDBScanJobsView(ScanJobsView):
         result = self._conn.execute(sql, params).fetchall()
         return [row[0] for row in result]
 
-    def _statuses_to_dataframe(self, statuses: list[Status]) -> pd.DataFrame:
+    def _statuses_to_dataframe(
+        self,
+        statuses: list[Status],
+        active_scans_map: dict[str, ActiveScanInfo],
+    ) -> pd.DataFrame:
         """Convert Status objects to a DataFrame for DuckDB.
 
-        Creates flat columns matching ScanRow fields for filtering/sorting.
-        In addition to direct field mappings, this method computes several
-        aggregate/derived columns to support client display and filtering needs:
-
-        - status: Computed from errors/complete state (without active_scan_info;
-          the endpoint overrides to "active" for scans with active_scan_info)
-        - total_results: Sum of results across all scanners
-        - total_errors: Sum of errors across all scanners
-        - total_tokens: Sum of tokens across all scanners
-        - scanners: Comma-separated list of scanner names
-        - tags: Comma-separated list of tags
-        - revision_*: Flattened revision fields (version, commit, origin)
+        Uses ScanRow.from_status() for all transformation logic, then
+        converts to DataFrame rows for SQL querying.
         """
         rows = []
         for status in statuses:
-            spec = status.spec
-            summary = status.summary
-
-            # Compute status string (without active_scan_info)
-            if len(status.errors) > 0:
-                status_str = "error"
-            elif status.complete:
-                status_str = "complete"
-            else:
-                status_str = "incomplete"
-
-            # Extract model string
-            model_str = None
-            if spec.model is not None:
-                model_str = getattr(spec.model, "model", None) or str(spec.model)
-
-            # Aggregate summary fields
-            total_results = 0
-            total_errors = 0
-            total_tokens = 0
-            for scanner_summary in summary.scanners.values():
-                total_results += scanner_summary.results
-                total_errors += scanner_summary.errors
-                total_tokens += scanner_summary.tokens
-
-            rows.append(
-                {
-                    # Fields from source types
-                    "scan_id": spec.scan_id,
-                    "scan_name": spec.scan_name,
-                    "scan_file": spec.scan_file,
-                    "timestamp": spec.timestamp,
-                    "packages": _serialize_dict(spec.packages),
-                    "metadata": _serialize_dict(spec.metadata),
-                    "scan_args": _serialize_dict(spec.scan_args),
-                    "location": status.location,
-                    # Transformed/flattened fields
-                    "status": status_str,
-                    "scanners": ",".join(spec.scanners.keys()) if spec.scanners else "",
-                    "model": model_str,
-                    "tags": ",".join(spec.tags) if spec.tags else "",
-                    "revision_version": spec.revision.version
-                    if spec.revision
-                    else None,
-                    "revision_commit": spec.revision.commit if spec.revision else None,
-                    "revision_origin": spec.revision.origin if spec.revision else None,
-                    # Aggregate fields
-                    "total_results": total_results,
-                    "total_errors": total_errors,
-                    "total_tokens": total_tokens,
-                }
+            scan_row = ScanRow.from_status(
+                status,
+                active_scan_info=active_scans_map.get(status.spec.scan_id),
             )
+            # Cache for lookup in select()
+            self._scan_row_by_scan_id[scan_row.scan_id] = scan_row
+
+            # Convert to dict for DataFrame, serializing dicts as JSON for DuckDB
+            row_dict = scan_row.model_dump()
+            for key in ("packages", "metadata", "scan_args"):
+                if row_dict[key] is not None:
+                    row_dict[key] = json.dumps(row_dict[key])
+
+            rows.append(row_dict)
 
         return pd.DataFrame(rows)
-
-
-def _serialize_dict(d: dict[str, Any] | None) -> str | None:
-    """Serialize dict to JSON string for DuckDB storage."""
-    if d is None:
-        return None
-    return json.dumps(d)

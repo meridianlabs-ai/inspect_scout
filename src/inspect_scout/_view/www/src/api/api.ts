@@ -27,7 +27,7 @@ export type ScalarValue = string | number | boolean | null;
 /** Topic versions: maps topic name to timestamp. */
 export type TopicVersions = Record<InvalidationTopic, string>;
 
-export interface ScanApi {
+export interface ScoutApiV2 {
   getConfig(): Promise<AppConfig>;
   getTranscripts(
     transcriptsDir: string,

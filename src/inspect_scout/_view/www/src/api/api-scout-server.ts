@@ -21,7 +21,7 @@ import {
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
+import { NoPersistence, ScoutApiV2, ScalarValue, TopicVersions } from "./api";
 import { resolveAttachments } from "./attachmentsHelpers";
 import { serverRequestApi } from "./request";
 
@@ -36,7 +36,7 @@ export const apiScoutServer = (
     customFetch?: typeof fetch;
     disableSSE?: boolean;
   } = {}
-): ScanApi => {
+): ScoutApiV2 => {
   const {
     apiBaseUrl = "/api/v2",
     headerProvider,

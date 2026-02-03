@@ -10,7 +10,7 @@ import { create } from "zustand";
 import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
-import { ScanApi } from "../api/api";
+import { ScoutApiV2 } from "../api/api";
 import { ColumnSizingStrategyKey } from "../app/components/columnSizing";
 import type { ScanColumnKey } from "../app/scans/columns";
 import {
@@ -282,7 +282,7 @@ const createDebouncedPersistStorage = (
   };
 };
 
-export const createStore = (api: ScanApi) =>
+export const createStore = (api: ScoutApiV2) =>
   create<StoreState>()(
     devtools(
       persist(
@@ -752,7 +752,7 @@ export const createStore = (api: ScanApi) =>
 type StoreApi = ReturnType<typeof createStore>;
 
 const StoreContext = createContext<StoreApi | null>(null);
-const ApiContext = createContext<ScanApi | null>(null);
+const ApiContext = createContext<ScoutApiV2 | null>(null);
 
 export const StoreProvider = StoreContext.Provider;
 export const ApiProvider = ApiContext.Provider;
@@ -769,7 +769,7 @@ export const useStore = <T>(selector?: (state: StoreState) => T) => {
   return store(selector);
 };
 
-export const useApi = (): ScanApi => {
+export const useApi = (): ScoutApiV2 => {
   const api = useContext(ApiContext);
   if (!api) throw new Error("useApi must be used within ApiProvider");
   return api;

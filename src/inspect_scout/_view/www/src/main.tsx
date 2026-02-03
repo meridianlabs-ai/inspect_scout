@@ -4,9 +4,9 @@ import { createRoot } from "react-dom/client";
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { ScanApi } from "./api/api";
+import { ScoutApiV2 } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
-import { apiVscodeV2 } from "./api/api-vscode-v2";
+import { apiVscode } from "./api/api-vscode";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
@@ -27,7 +27,7 @@ if (!container) {
 // Render into the root
 const root = createRoot(container);
 
-const selectApi = (): ScanApi => {
+const selectApi = (): ScoutApiV2 => {
   const vscodeApi = getVscodeApi();
   if (!vscodeApi) {
     return apiScoutServer();
@@ -41,7 +41,7 @@ const selectApi = (): ScanApi => {
     );
   }
 
-  return apiVscodeV2(vscodeApi);
+  return apiVscode(vscodeApi);
 };
 
 // Create the API, store, and query client

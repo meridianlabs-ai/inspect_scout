@@ -197,13 +197,18 @@ const useEmbeddedStateInitializer = () => {
         const { scan, scanner, dir } = embeddedState;
 
         // Set the results directory in the store
-        setSingleFileMode(true);
+        if (scanner || scan) {
+          setSingleFileMode(true);
+        }
+
         if (scanner) {
           setSelectedScanner(scanner);
         }
 
         // Navigate to the scan
-        void navigate(scanRoute(dir, scan), { replace: true });
+        if (dir && scan) {
+          void navigate(scanRoute(dir, scan), { replace: true });
+        }
       }
     }
     setHasInitializedEmbeddedData(true);

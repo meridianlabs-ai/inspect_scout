@@ -19,5 +19,6 @@ export const apiVscodeV2 = (vscodeApi: VSCodeApi): ScanApi => {
       disableSSE: true,
     }),
     storage: createVSCodeStore(vscodeApi),
+    capability: "workbench",
   };
 };

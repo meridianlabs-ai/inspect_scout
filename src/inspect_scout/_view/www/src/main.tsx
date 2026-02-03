@@ -28,18 +28,18 @@ if (!container) {
 // Render into the root
 const root = createRoot(container);
 
-const selectApi = (): [ScanApi, "scans" | "workbench"] => {
+const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
   const api = !vscodeApi
     ? apiScoutServer()
     : (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
       ? apiVscodeV1(vscodeApi)
       : apiVscodeV2(vscodeApi);
-  return [api, vscodeApi ? "scans" : "workbench"];
+  return api;
 };
 
 // Create the API, store, and query client
-const [api, apiMode] = selectApi();
+const api = selectApi();
 const store = createStore(api);
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: defaultRetry } },
@@ -48,9 +48,7 @@ const queryClient = new QueryClient({
 // Read showActivityBar from query parameters
 const urlParams = new URLSearchParams(window.location.search);
 const scansMode =
-  urlParams.get("mode") === "scans" ||
-  api.capability === "scans" ||
-  apiMode === "scans";
+  urlParams.get("mode") === "scans" || api.capability === "scans";
 
 // Render the app
 root.render(

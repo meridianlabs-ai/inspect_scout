@@ -242,7 +242,10 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
 
     const currentPath = window.location.hash.slice(1);
     const isDefaultRoute =
-      currentPath === "/" || currentPath === "/scans" || currentPath === "";
+      currentPath === "/" ||
+      currentPath === "/scans" ||
+      currentPath === "" ||
+      currentPath === "/transcripts";
 
     const resolvedScansDir = userScansDir || serverScansDir;
     if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {

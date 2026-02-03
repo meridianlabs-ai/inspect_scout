@@ -231,7 +231,7 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
   const setHasInitializedRouting = useStore(
     (state) => state.setHasInitializedRouting
   );
-  const selectedScanResult = useStore((state) => state.selectedScanResult);
+  const displayedScanResult = useStore((state) => state.displayedScanResult);
   const selectedScanLocation = useStore((state) => state.selectedScanLocation);
   const userScansDir = useStore((state) => state.userScansDir);
 
@@ -249,12 +249,12 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
 
     const resolvedScansDir = userScansDir || serverScansDir;
     if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {
-      if (selectedScanResult) {
+      if (displayedScanResult) {
         void navigate(
           scanResultRoute(
             resolvedScansDir,
             selectedScanLocation,
-            selectedScanResult
+            displayedScanResult
           ),
           { replace: true }
         );
@@ -269,7 +269,7 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
   }, [
     hasInitializedRouting,
     selectedScanLocation,
-    selectedScanResult,
+    displayedScanResult,
     navigate,
     setHasInitializedRouting,
     serverScansDir,

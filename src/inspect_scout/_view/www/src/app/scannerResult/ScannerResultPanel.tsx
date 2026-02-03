@@ -66,6 +66,23 @@ export const ScannerResultPanel: FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
+
+  // Sync displayed result with URL - this ensures both selectedScanResult
+  // (for list highlighting) and displayedScanResult (for route restoration)
+  // stay in sync with what's actually being viewed
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
+  const setDisplayedScanResult = useStore(
+    (state) => state.setDisplayedScanResult
+  );
+  useEffect(() => {
+    if (scanResultUuid) {
+      setSelectedScanResult(scanResultUuid);
+      setDisplayedScanResult(scanResultUuid);
+    }
+  }, [scanResultUuid, setSelectedScanResult, setDisplayedScanResult]);
+
   const appConfig = useAppConfig();
 
   // Validation sidebar - URL is the source of truth

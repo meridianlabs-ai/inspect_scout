@@ -92,6 +92,7 @@ interface StoreState {
 
   // Dataframes
   selectedScanResult?: string;
+  displayedScanResult?: string;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -165,6 +166,7 @@ interface StoreState {
   // Track the select result and data
   setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
+  setDisplayedScanResult: (result: string | undefined) => void;
   setVisibleScannerResults: (results: ScanResultSummary[]) => void;
   setVisibleScannerResultsCount: (count: number) => void;
 
@@ -374,6 +376,10 @@ export const createStore = (api: ScoutApiV2) =>
             set((state) => {
               state.selectedScanResult = result;
             }),
+          setDisplayedScanResult: (result: string | undefined) =>
+            set((state) => {
+              state.displayedScanResult = result;
+            }),
           setVisibleScannerResults: (results: ScanResultSummary[]) => {
             set((state) => {
               state.visibleScannerResults = results;
@@ -401,6 +407,7 @@ export const createStore = (api: ScoutApiV2) =>
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
               state.selectedScanResult = undefined;
+              state.displayedScanResult = undefined;
               state.sortResults = undefined;
             });
           },

@@ -2772,6 +2772,68 @@ export interface components {
             version: string;
         };
         /**
+         * ScanRow
+         * @description Flat scan row for API response - maps directly to client grid columns.
+         *
+         *     Fields are either:
+         *     - Extracted from source types (using model_fields to avoid duplication)
+         *     - Transformed/flattened from nested structures
+         *     - Computed aggregates
+         */
+        ScanRow: {
+            active_scan_info?: components["schemas"]["ActiveScanInfo"] | null;
+            /** Error Count */
+            error_count: number;
+            /** Location */
+            location: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Packages */
+            packages: {
+                [key: string]: string;
+            };
+            /** Revision Commit */
+            revision_commit?: string | null;
+            /** Revision Origin */
+            revision_origin?: string | null;
+            /** Revision Version */
+            revision_version?: string | null;
+            /** Scan Args */
+            scan_args?: {
+                [key: string]: unknown;
+            } | null;
+            /** Scan File */
+            scan_file?: string | null;
+            /** Scan Id */
+            scan_id: string;
+            /** Scan Name */
+            scan_name: string;
+            /** Scanners */
+            scanners: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "error" | "complete" | "incomplete";
+            /** Tags */
+            tags: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Total Errors */
+            total_errors: number;
+            /** Total Results */
+            total_results: number;
+            /** Total Tokens */
+            total_tokens: number;
+        };
+        /**
          * ScanSpec
          * @description Scan specification (scanners, transcripts, config).
          */
@@ -2816,18 +2878,6 @@ export interface components {
             } | null;
             /** Worklist */
             worklist?: components["schemas"]["Worklist"][] | null;
-        };
-        /** ScanStatusWithActiveInfo */
-        ScanStatusWithActiveInfo: {
-            active_scan_info?: components["schemas"]["ActiveScanInfo"] | null;
-            /** Complete */
-            complete: boolean;
-            /** Errors */
-            errors: components["schemas"]["Error"][];
-            /** Location */
-            location: string;
-            spec: components["schemas"]["ScanSpec"];
-            summary: components["schemas"]["Summary"];
         };
         /**
          * ScanTranscripts
@@ -2954,7 +3004,7 @@ export interface components {
         /** ScansResponse */
         ScansResponse: {
             /** Items */
-            items: components["schemas"]["ScanStatusWithActiveInfo"][];
+            items: components["schemas"]["ScanRow"][];
             /** Next Cursor */
             next_cursor?: {
                 [key: string]: unknown;

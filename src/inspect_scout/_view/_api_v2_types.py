@@ -77,23 +77,104 @@ class IPCSerializableResults(RecorderStatus):
 ScanStatus: TypeAlias = RecorderStatus
 
 
-@dataclass
-class ScanStatusWithActiveInfo(RecorderStatus):
-    """Scan status with optional active scan info for in-progress scans."""
+class ScanRow(BaseModel):
+    """Flat scan row for API response - maps directly to client grid columns.
 
+    Fields are either:
+    - Extracted from source types (using model_fields to avoid duplication)
+    - Transformed/flattened from nested structures
+    - Computed aggregates
+    """
+
+    # === Fields extracted from source types (no type duplication) ===
+    # fmt: off
+    scan_id: ScanSpec.model_fields["scan_id"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_name: ScanSpec.model_fields["scan_name"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_file: ScanSpec.model_fields["scan_file"].annotation  # type: ignore[valid-type]  # noqa: F821
+    timestamp: ScanSpec.model_fields["timestamp"].annotation  # type: ignore[valid-type]  # noqa: F821
+    packages: ScanSpec.model_fields["packages"].annotation  # type: ignore[valid-type]  # noqa: F821
+    metadata: ScanSpec.model_fields["metadata"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_args: ScanSpec.model_fields["scan_args"].annotation  # type: ignore[valid-type]  # noqa: F821
+    # fmt: on
+    location: str  # from Status dataclass
+
+    # === Transformed/flattened fields ===
+    status: Literal["active", "error", "complete", "incomplete"]
+    scanners: str  # comma-separated scanner names
+    model: str | None  # extracted from ModelConfig.model
+    tags: str  # comma-separated tags
+    revision_version: str | None
+    revision_commit: str | None
+    revision_origin: str | None
+
+    # === Computed aggregate fields ===
+    total_results: int
+    total_errors: int
+    total_tokens: int
+    error_count: int
+
+    # === For cell rendering (completion %) ===
     active_scan_info: ActiveScanInfo | None = None
 
-    def __init__(
-        self,
-        complete: bool,
-        spec: ScanSpec,
-        location: str,
-        summary: Summary,
-        errors: list[Error],
+    @staticmethod
+    def from_status(
+        status: RecorderStatus,
         active_scan_info: ActiveScanInfo | None = None,
-    ) -> None:
-        super().__init__(complete, spec, location, summary, errors)
-        self.active_scan_info = active_scan_info
+    ) -> "ScanRow":
+        """Create a ScanRow from a Status object."""
+        spec = status.spec
+        summary = status.summary
+
+        # Compute status string
+        if active_scan_info is not None:
+            status_str: Literal["active", "error", "complete", "incomplete"] = "active"
+        elif len(status.errors) > 0:
+            status_str = "error"
+        elif status.complete:
+            status_str = "complete"
+        else:
+            status_str = "incomplete"
+
+        # Extract model string
+        model_str = None
+        if spec.model is not None:
+            model_str = getattr(spec.model, "model", None) or str(spec.model)
+
+        # Aggregate summary fields
+        total_results = 0
+        total_errors = 0
+        total_tokens = 0
+        for scanner_summary in summary.scanners.values():
+            total_results += scanner_summary.results
+            total_errors += scanner_summary.errors
+            total_tokens += scanner_summary.tokens
+
+        return ScanRow(
+            # Extracted fields
+            scan_id=spec.scan_id,
+            scan_name=spec.scan_name,
+            scan_file=spec.scan_file,
+            timestamp=spec.timestamp,
+            packages=spec.packages,
+            metadata=spec.metadata,
+            scan_args=spec.scan_args,
+            location=status.location,
+            # Transformed fields
+            status=status_str,
+            scanners=",".join(spec.scanners.keys()) if spec.scanners else "",
+            model=model_str,
+            tags=",".join(spec.tags) if spec.tags else "",
+            revision_version=spec.revision.version if spec.revision else None,
+            revision_commit=spec.revision.commit if spec.revision else None,
+            revision_origin=spec.revision.origin if spec.revision else None,
+            # Aggregates
+            total_results=total_results,
+            total_errors=total_errors,
+            total_tokens=total_tokens,
+            error_count=len(status.errors),
+            # For cell rendering
+            active_scan_info=active_scan_info,
+        )
 
 
 @dataclass
@@ -131,7 +212,7 @@ class ScansRequest(PaginatedRequest):
 class ScansResponse:
     """Response body for POST /scans endpoint."""
 
-    items: list[ScanStatusWithActiveInfo]
+    items: list[ScanRow]
     total_count: int
     next_cursor: dict[str, Any] | None = None
 

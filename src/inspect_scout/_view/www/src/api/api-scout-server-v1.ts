@@ -87,13 +87,9 @@ export const apiScoutServerV1 = (
       return asyncJsonParse<Status>(result.raw);
     },
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     getScans: async (_scansDir: string): Promise<ScansResponse> => {
-      const result = await readScans();
-      return {
-        items: result.scans,
-        total_count: result.scans.length,
-        next_cursor: null,
-      };
+      throw new Error("Not implemented in API v1");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getScansColumnValues: async (): Promise<never> => {

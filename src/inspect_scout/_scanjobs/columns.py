@@ -12,7 +12,7 @@ class ScanJobColumns:
         from inspect_scout._scanjobs.columns import scan_job_columns as c
 
         filter = c.scan_name == "my_scan"
-        filter = (c.complete == True) & (c.model.like("%gpt%"))
+        filter = (c.status == "complete") & (c.model.like("%gpt%"))
     """
 
     @property
@@ -46,9 +46,9 @@ class ScanJobColumns:
         return Column("timestamp")
 
     @property
-    def complete(self) -> Column:
-        """Whether the scan is complete."""
-        return Column("complete")
+    def status(self) -> Column:
+        """Status of the scan: 'complete', 'incomplete', 'error', or 'active'."""
+        return Column("status")
 
     def __getattr__(self, name: str) -> Column:
         """Access columns using dot notation."""
@@ -71,6 +71,6 @@ Typically aliased to a more compact expression (e.g. `c`) for use in queries.
 Example:
     from inspect_scout._scanjobs.columns import scan_job_columns as c
 
-    filter = c.complete == True
+    filter = c.status == "complete"
     filter = (c.scan_name == "job") & (c.model.like("%gpt%"))
 """

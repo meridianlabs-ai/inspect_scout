@@ -18,7 +18,8 @@ export const useScansColumnValues = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scansColumnValues", params],
+    queryKey:
+      params === skipToken ? [skipToken] : ["scansColumnValues", params],
     queryFn:
       params === skipToken
         ? skipToken

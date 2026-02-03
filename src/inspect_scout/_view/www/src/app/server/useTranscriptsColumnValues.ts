@@ -18,7 +18,8 @@ export const useTranscriptsColumnValues = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["transcriptsColumnValues", params],
+    queryKey:
+      params === skipToken ? [skipToken] : ["transcriptsColumnValues", params],
     queryFn:
       params === skipToken
         ? skipToken

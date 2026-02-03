@@ -71,17 +71,4 @@ describe("useTranscriptsColumnValues", () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(error);
   });
-
-  it("passes skipToken to disable query", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    renderHook(() => useTranscriptsColumnValues(skipToken));
-
-    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["transcriptsColumnValues", skipToken],
-        queryFn: skipToken,
-      })
-    );
-  });
 });

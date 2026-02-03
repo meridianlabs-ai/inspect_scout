@@ -24,17 +24,16 @@ from .._query import Query, ScalarValue
 from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
-from .._recorder.recorder import Status as RecorderStatus
 from .._scanjob_config import ScanJobConfig
 from .._scanjobs.factory import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
     DistinctRequest,
+    ScanRow,
     ScansRequest,
     ScansResponse,
     ScanStatus,
-    ScanStatusWithActiveInfo,
 )
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
@@ -96,12 +95,8 @@ def create_scans_router(
             active_scans_map = store.read_all()
 
         enriched_results = [
-            ScanStatusWithActiveInfo(
-                complete=status.complete,
-                spec=status.spec,
-                location=status.location,
-                summary=status.summary,
-                errors=status.errors,
+            ScanRow.from_status(
+                status,
                 active_scan_info=active_scans_map.get(status.spec.scan_id),
             )
             for status in results
@@ -308,36 +303,19 @@ def create_scans_router(
 
 
 def _build_scans_cursor(
-    status: RecorderStatus,
+    row: ScanRow,
     order_columns: list[OrderBy],
 ) -> dict[str, Any]:
-    """Build cursor from Status using sort columns."""
+    """Build cursor from ScanRow using sort columns."""
     cursor: dict[str, Any] = {}
     for ob in order_columns:
         column = ob.column
-        if column == "scan_id":
-            cursor[column] = status.spec.scan_id
-        elif column == "scan_name":
-            cursor[column] = status.spec.scan_name
-        elif column == "timestamp":
-            cursor[column] = (
-                status.spec.timestamp.isoformat() if status.spec.timestamp else None
-            )
-        elif column == "complete":
-            cursor[column] = status.complete
-        elif column == "location":
-            cursor[column] = status.location
-        elif column == "scanners":
-            cursor[column] = (
-                ",".join(status.spec.scanners.keys()) if status.spec.scanners else ""
-            )
-        elif column == "model":
-            model = status.spec.model
-            cursor[column] = (
-                getattr(model, "model", None) or str(model) if model else None
-            )
+        value = getattr(row, column, None)
+        # Handle timestamp serialization
+        if column == "timestamp" and value is not None:
+            cursor[column] = value.isoformat()
         else:
-            cursor[column] = None
+            cursor[column] = value
     return cursor
 
 

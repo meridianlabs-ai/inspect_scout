@@ -1,6 +1,7 @@
 """DuckDB implementation of ScanJobsView."""
 
-from typing import AsyncIterator
+import json
+from typing import Any, AsyncIterator
 
 import duckdb
 import pandas as pd
@@ -111,25 +112,73 @@ class DuckDBScanJobsView(ScanJobsView):
         return [row[0] for row in result]
 
     def _statuses_to_dataframe(self, statuses: list[Status]) -> pd.DataFrame:
-        """Convert Status objects to a DataFrame for DuckDB."""
+        """Convert Status objects to a DataFrame for DuckDB.
+
+        Creates flat columns matching ScanRow fields for filtering/sorting.
+        Note: 'status' is computed without active_scan_info here; the endpoint
+        will override to "active" for scans with active_scan_info.
+        """
         rows = []
         for status in statuses:
             spec = status.spec
-            # Get model string - handle both ModelConfig and simple cases
+            summary = status.summary
+
+            # Compute status string (without active_scan_info)
+            if len(status.errors) > 0:
+                status_str = "error"
+            elif status.complete:
+                status_str = "complete"
+            else:
+                status_str = "incomplete"
+
+            # Extract model string
             model_str = None
             if spec.model is not None:
                 model_str = getattr(spec.model, "model", None) or str(spec.model)
 
+            # Aggregate summary fields
+            total_results = 0
+            total_errors = 0
+            total_tokens = 0
+            for scanner_summary in summary.scanners.values():
+                total_results += scanner_summary.results
+                total_errors += scanner_summary.errors
+                total_tokens += scanner_summary.tokens
+
             rows.append(
                 {
+                    # Fields from source types
                     "scan_id": spec.scan_id,
                     "scan_name": spec.scan_name,
+                    "scan_file": spec.scan_file,
+                    "timestamp": spec.timestamp,
+                    "packages": _serialize_dict(spec.packages),
+                    "metadata": _serialize_dict(spec.metadata),
+                    "scan_args": _serialize_dict(spec.scan_args),
+                    "location": status.location,
+                    # Transformed/flattened fields
+                    "status": status_str,
                     "scanners": ",".join(spec.scanners.keys()) if spec.scanners else "",
                     "model": model_str,
-                    "location": status.location,
-                    "timestamp": spec.timestamp,
-                    "complete": status.complete,
+                    "tags": ",".join(spec.tags) if spec.tags else "",
+                    "revision_version": spec.revision.version
+                    if spec.revision
+                    else None,
+                    "revision_commit": spec.revision.commit if spec.revision else None,
+                    "revision_origin": spec.revision.origin if spec.revision else None,
+                    # Aggregate fields
+                    "total_results": total_results,
+                    "total_errors": total_errors,
+                    "total_tokens": total_tokens,
+                    "error_count": len(status.errors),
                 }
             )
 
         return pd.DataFrame(rows)
+
+
+def _serialize_dict(d: dict[str, Any] | None) -> str | None:
+    """Serialize dict to JSON string for DuckDB storage."""
+    if d is None:
+        return None
+    return json.dumps(d)

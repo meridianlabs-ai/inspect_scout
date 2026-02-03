@@ -120,8 +120,8 @@ async def test_select_all(duckdb_view: DuckDBScanJobsView) -> None:
 
 @pytest.mark.asyncio
 async def test_select_with_filter(duckdb_view: DuckDBScanJobsView) -> None:
-    """Test filtering by condition."""
-    condition = c.complete == True  # noqa: E712
+    """Test filtering by status condition."""
+    condition = c.status == "complete"
     results = [status async for status in duckdb_view.select(Query(where=[condition]))]
 
     # 75% should be complete (i % 4 != 0)
@@ -183,7 +183,7 @@ async def test_select_with_limit(duckdb_view: DuckDBScanJobsView) -> None:
 @pytest.mark.asyncio
 async def test_select_with_filter_and_limit(duckdb_view: DuckDBScanJobsView) -> None:
     """Test filtering and limiting together."""
-    condition = c.complete == True  # noqa: E712
+    condition = c.status == "complete"
     results = [
         status async for status in duckdb_view.select(Query(where=[condition], limit=3))
     ]
@@ -202,8 +202,8 @@ async def test_count(duckdb_view: DuckDBScanJobsView) -> None:
 
 @pytest.mark.asyncio
 async def test_count_with_filter(duckdb_view: DuckDBScanJobsView) -> None:
-    """Test counting with filter condition."""
-    condition = c.complete == True  # noqa: E712
+    """Test counting with status filter condition."""
+    condition = c.status == "complete"
     count = await duckdb_view.count(Query(where=[condition]))
 
     # 75% should be complete

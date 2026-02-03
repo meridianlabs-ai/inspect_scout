@@ -47,14 +47,17 @@ export const useServerTranscriptsInfinite = (
     QueryKey,
     CursorType | undefined
   >({
-    queryKey: [
-      "transcripts-infinite",
-      "project-config",
-      params !== skipToken ? params.location : skipToken,
-      params !== skipToken ? params.filter : undefined,
-      orderBy,
-      pageSize,
-    ],
+    queryKey:
+      params === skipToken
+        ? [skipToken]
+        : [
+            "transcripts-infinite",
+            "project-config",
+            params.location,
+            params.filter,
+            orderBy,
+            pageSize,
+          ],
     queryFn:
       params === skipToken
         ? skipToken

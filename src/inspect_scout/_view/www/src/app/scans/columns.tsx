@@ -1,7 +1,7 @@
 import clsx from "clsx";
 
 import { ApplicationIcons } from "../../components/icons";
-import type { ScanStatusWithActiveInfo } from "../../types/api-types";
+import type { ScanRow as ApiScanRow } from "../../types/api-types";
 import { formatNumber } from "../../utils/format";
 import { printObject } from "../../utils/object";
 import type { AvailableColumn } from "../components/columnFilter";
@@ -10,11 +10,11 @@ import { ExtendedColumnDef, BaseColumnMeta } from "../components/columnTypes";
 import styles from "./columns.module.css";
 
 /**
- * Extended scan row type with computed fields for grid display.
- * Adds flattened/computed values for columns that need them.
+ * Scan row type for grid display.
+ * Extends the API ScanRow with a client-computed relativeLocation.
  */
-export type ScanRow = ScanStatusWithActiveInfo & {
-  /** Relative path from results directory */
+export type ScanRow = ApiScanRow & {
+  /** Relative path from results directory (computed client-side) */
   relativeLocation: string;
 };
 
@@ -22,7 +22,7 @@ export type ScanRow = ScanStatusWithActiveInfo & {
 // These match the database column names for filtering to work
 export type ScanColumnKey =
   // Original columns
-  | "complete" // Status column (computed display, but can filter on complete)
+  | "status" // Status column
   | "scan_name" // Name column
   | "scanners"
   | "scan_id"
@@ -51,7 +51,7 @@ export type ScanColumn = ExtendedColumnDef<ScanRow, BaseColumnMeta>;
 // Column headers for display (used in column picker and add filter dropdown)
 export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
   // Original columns
-  complete: "Status",
+  status: "Status",
   scan_name: "Name",
   scanners: "Scanners",
   scan_id: "Scan ID",
@@ -78,7 +78,7 @@ export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
 // Column header tooltips
 export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
   // Original columns
-  complete: "Scan completion status (complete, in progress, or error)",
+  status: "Scan completion status (complete, in progress, or error)",
   scan_name: "Name of the scan configuration",
   scanners: "List of scanners used in this scan",
   scan_id: "Unique identifier for the scan",
@@ -102,49 +102,21 @@ export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
   error_count: "Infrastructure/process errors that occurred during the scan",
 };
 
-// Helper to get status value from scan row
-function getStatusValue(scan: ScanRow): string {
-  if (scan.active_scan_info) return "active";
-  if (scan.errors.length > 0) return "error";
-  return scan.complete ? "complete" : "incomplete";
-}
-
-// Helper to get scanners as comma-separated string
-function getScannersValue(scan: ScanRow): string {
-  const scanners = scan.spec.scanners;
-  return scanners ? Object.keys(scanners).join(", ") : "-";
-}
-
-// Helper to get tags as comma-separated string
-function getTagsValue(scan: ScanRow): string {
-  const tags = scan.spec.tags;
-  return tags && tags.length > 0 ? tags.join(", ") : "-";
-}
-
 // Helper to get status display (icon and color) for a scan
 function getStatusDisplay(scan: ScanRow): {
   icon: string;
   colorClass: string | undefined;
 } {
-  if (scan.complete) {
-    return { icon: ApplicationIcons.success, colorClass: styles.green };
+  switch (scan.status) {
+    case "complete":
+      return { icon: ApplicationIcons.success, colorClass: styles.green };
+    case "error":
+      return { icon: ApplicationIcons.error, colorClass: styles.red };
+    case "active":
+    case "incomplete":
+    default:
+      return { icon: ApplicationIcons.pendingTask, colorClass: styles.yellow };
   }
-  if (scan.errors.length > 0) {
-    return { icon: ApplicationIcons.error, colorClass: styles.red };
-  }
-  return { icon: ApplicationIcons.pendingTask, colorClass: styles.yellow };
-}
-
-// Helper to sum a field across all scanner summaries
-function sumScannerField(
-  scan: ScanRow,
-  field: "results" | "errors" | "tokens"
-): number {
-  const scanners = scan.summary.scanners;
-  if (!scanners) return 0;
-  return Object.values(scanners).reduce((sum, scanner) => {
-    return sum + (scanner[field] ?? 0);
-  }, 0);
 }
 
 // Helper to format object values for display
@@ -177,18 +149,18 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   // ============================================
   // Original columns
   // ============================================
-  complete: {
-    id: "complete",
-    accessorFn: getStatusValue,
+  status: {
+    id: "status",
+    accessorKey: "status",
     header: "✓",
-    headerTitle: COLUMN_HEADER_TITLES.complete,
+    headerTitle: COLUMN_HEADER_TITLES.status,
     size: 70,
     minSize: 70,
     maxSize: 70,
     meta: {
       align: "center",
       filterable: true,
-      filterType: "boolean",
+      filterType: "string",
     },
     cell: (info) => {
       const scan = info.row.original;
@@ -216,7 +188,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   scan_name: {
     id: "scan_name",
-    accessorFn: (row) => row.spec.scan_name ?? "-",
+    accessorKey: "scan_name",
     header: "Name",
     headerTitle: COLUMN_HEADER_TITLES.scan_name,
     size: 120,
@@ -229,7 +201,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   scanners: {
     id: "scanners",
-    accessorFn: getScannersValue,
+    accessorKey: "scanners",
     header: "Scanners",
     headerTitle: COLUMN_HEADER_TITLES.scanners,
     size: 120,
@@ -242,7 +214,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   scan_id: {
     id: "scan_id",
-    accessorFn: (row) => row.spec.scan_id ?? "-",
+    accessorKey: "scan_id",
     header: "Scan ID",
     headerTitle: COLUMN_HEADER_TITLES.scan_id,
     size: 150,
@@ -255,7 +227,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   model: {
     id: "model",
-    accessorFn: (row) => row.spec.model?.model ?? "-",
+    accessorKey: "model",
     header: "Model",
     headerTitle: COLUMN_HEADER_TITLES.model,
     size: 150,
@@ -281,7 +253,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   timestamp: {
     id: "timestamp",
-    accessorFn: (row) => row.spec.timestamp ?? "",
+    accessorKey: "timestamp",
     header: "Time",
     headerTitle: COLUMN_HEADER_TITLES.timestamp,
     size: 180,
@@ -307,7 +279,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   // ============================================
   scan_file: {
     id: "scan_file",
-    accessorFn: (row) => row.spec.scan_file ?? "-",
+    accessorKey: "scan_file",
     header: "Scan File",
     headerTitle: COLUMN_HEADER_TITLES.scan_file,
     size: 200,
@@ -318,13 +290,13 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
     cell: (info) => {
-      const value = info.getValue() as string;
+      const value = info.getValue() as string | null;
       return value || "-";
     },
   },
   tags: {
     id: "tags",
-    accessorFn: getTagsValue,
+    accessorKey: "tags",
     header: "Tags",
     headerTitle: COLUMN_HEADER_TITLES.tags,
     size: 150,
@@ -334,10 +306,14 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterable: true,
       filterType: "string",
     },
+    cell: (info) => {
+      const value = info.getValue() as string;
+      return value || "-";
+    },
   },
   revision_version: {
     id: "revision_version",
-    accessorFn: (row) => row.spec.revision?.version ?? "-",
+    accessorKey: "revision_version",
     header: "Version",
     headerTitle: COLUMN_HEADER_TITLES.revision_version,
     size: 150,
@@ -348,13 +324,13 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
     cell: (info) => {
-      const value = info.getValue() as string;
+      const value = info.getValue() as string | null;
       return value || "-";
     },
   },
   revision_commit: {
     id: "revision_commit",
-    accessorFn: (row) => row.spec.revision?.commit ?? "-",
+    accessorKey: "revision_commit",
     header: "Commit",
     headerTitle: COLUMN_HEADER_TITLES.revision_commit,
     size: 120,
@@ -365,8 +341,8 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
     cell: (info) => {
-      const value = info.getValue() as string;
-      if (!value || value === "-") return "-";
+      const value = info.getValue() as string | null;
+      if (!value) return "-";
       // Show first 7 characters of commit hash (standard git short hash)
       return value.slice(0, 7);
     },
@@ -378,7 +354,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   revision_origin: {
     id: "revision_origin",
-    accessorFn: (row) => row.spec.revision?.origin ?? "-",
+    accessorKey: "revision_origin",
     header: "Origin",
     headerTitle: COLUMN_HEADER_TITLES.revision_origin,
     size: 200,
@@ -389,13 +365,13 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
       filterType: "string",
     },
     cell: (info) => {
-      const value = info.getValue() as string;
+      const value = info.getValue() as string | null;
       return value || "-";
     },
   },
   packages: {
     id: "packages",
-    accessorFn: (row) => row.spec.packages,
+    accessorKey: "packages",
     header: "Packages",
     headerTitle: COLUMN_HEADER_TITLES.packages,
     size: 200,
@@ -418,7 +394,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   metadata: {
     id: "metadata",
-    accessorFn: (row) => row.spec.metadata,
+    accessorKey: "metadata",
     header: "Metadata",
     headerTitle: COLUMN_HEADER_TITLES.metadata,
     size: 200,
@@ -441,7 +417,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   scan_args: {
     id: "scan_args",
-    accessorFn: (row) => row.spec.scan_args,
+    accessorKey: "scan_args",
     header: "Scan Args",
     headerTitle: COLUMN_HEADER_TITLES.scan_args,
     size: 200,
@@ -468,14 +444,15 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   // ============================================
   total_results: {
     id: "total_results",
-    accessorFn: (row) => sumScannerField(row, "results"),
+    accessorKey: "total_results",
     header: "Results",
     headerTitle: COLUMN_HEADER_TITLES.total_results,
     size: 100,
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: false,
+      filterable: true,
+      filterType: "number",
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -487,14 +464,15 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   total_errors: {
     id: "total_errors",
-    accessorFn: (row) => sumScannerField(row, "errors"),
+    accessorKey: "total_errors",
     header: "Scanner Errors",
     headerTitle: COLUMN_HEADER_TITLES.total_errors,
     size: 100,
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: false,
+      filterable: true,
+      filterType: "number",
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -506,14 +484,15 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   },
   total_tokens: {
     id: "total_tokens",
-    accessorFn: (row) => sumScannerField(row, "tokens"),
+    accessorKey: "total_tokens",
     header: "Tokens",
     headerTitle: COLUMN_HEADER_TITLES.total_tokens,
     size: 120,
     minSize: 60,
     maxSize: 200,
     meta: {
-      filterable: false,
+      filterable: true,
+      filterType: "number",
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -529,14 +508,15 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
   // ============================================
   error_count: {
     id: "error_count",
-    accessorFn: (row) => row.errors.length,
+    accessorKey: "error_count",
     header: "Scan Errors",
     headerTitle: COLUMN_HEADER_TITLES.error_count,
     size: 80,
     minSize: 60,
     maxSize: 150,
     meta: {
-      filterable: false,
+      filterable: true,
+      filterType: "number",
     },
     cell: (info) => {
       const value = info.getValue() as number;
@@ -551,7 +531,7 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
 // Default column order - includes all columns
 export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
   // Original columns first
-  "complete",
+  "status",
   "scan_name",
   "scanners",
   "scan_id",
@@ -575,9 +555,9 @@ export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
   "scan_args",
 ];
 
-// Default visible columns - the original 7 plus total_scans and total_results
+// Default visible columns - the original 7 plus total_results
 export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = [
-  "complete",
+  "status",
   "scan_name",
   "scanners",
   "scan_id",

@@ -4,8 +4,7 @@ import type { components } from "./generated";
 export type ActiveScanInfo = components["schemas"]["ActiveScanInfo"];
 export type ActiveScansResponse = components["schemas"]["ActiveScansResponse"];
 export type Status = components["schemas"]["Status"];
-export type ScanStatusWithActiveInfo =
-  components["schemas"]["ScanStatusWithActiveInfo"];
+export type ScanRow = components["schemas"]["ScanRow"];
 export type ScanSpec = components["schemas"]["ScanSpec"];
 export type ScanJobConfig = components["schemas"]["ScanJobConfig"];
 export type Summary = components["schemas"]["Summary"];

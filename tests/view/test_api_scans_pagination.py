@@ -147,7 +147,9 @@ class TestScansEndpointPagination:
         ):
             response = client.post(
                 f"/scans/{_base64url('/tmp')}",
-                json={"filter": {"left": "complete", "operator": "=", "right": True}},
+                json={
+                    "filter": {"left": "status", "operator": "=", "right": "complete"}
+                },
             )
 
         assert response.status_code == 200
@@ -177,7 +179,7 @@ class TestScansEndpointPagination:
         assert len(data["items"]) == 10
 
         # Verify descending order by timestamp
-        timestamps = [item["spec"]["timestamp"] for item in data["items"]]
+        timestamps = [item["timestamp"] for item in data["items"]]
         assert timestamps == sorted(timestamps, reverse=True)
 
     @pytest.mark.asyncio
@@ -248,8 +250,8 @@ class TestScansEndpointPagination:
             assert len(data2["items"]) == 3
 
             # Items should be different (next page)
-            ids1 = {item["spec"]["scan_id"] for item in data1["items"]}
-            ids2 = {item["spec"]["scan_id"] for item in data2["items"]}
+            ids1 = {item["scan_id"] for item in data1["items"]}
+            ids2 = {item["scan_id"] for item in data2["items"]}
             assert ids1.isdisjoint(ids2)
 
     @pytest.mark.asyncio
@@ -266,7 +268,7 @@ class TestScansEndpointPagination:
             response = client.post(
                 f"/scans/{_base64url('/tmp')}",
                 json={
-                    "filter": {"left": "complete", "operator": "=", "right": True},
+                    "filter": {"left": "status", "operator": "=", "right": "complete"},
                     "pagination": {"limit": 2, "cursor": None, "direction": "forward"},
                 },
             )
@@ -278,4 +280,4 @@ class TestScansEndpointPagination:
         assert len(data["items"]) == 2
         # All returned items match filter
         for item in data["items"]:
-            assert item["complete"] is True
+            assert item["status"] == "complete"

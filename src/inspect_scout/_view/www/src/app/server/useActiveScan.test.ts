@@ -17,7 +17,7 @@ const createMockScan = (
   scanId: string,
   activeScanInfo: { scan_id: string } | null = null
 ) => ({
-  spec: { scan_id: scanId },
+  scan_id: scanId,
   active_scan_info: activeScanInfo,
   complete: true,
   errors: [],

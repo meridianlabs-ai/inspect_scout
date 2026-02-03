@@ -5,13 +5,13 @@
 
 import { VSCodeApi } from "../utils/vscode";
 
-import { ScanApi } from "./api";
+import { ScoutApiV2 } from "./api";
 import { apiScoutServer } from "./api-scout-server";
 import { webViewJsonRpcClient } from "./jsonrpc";
 import { createJsonRpcFetch } from "./jsonrpc-fetch";
 import { createVSCodeStore } from "./vscode-storage";
 
-export const apiVscodeV2 = (vscodeApi: VSCodeApi): ScanApi => {
+export const apiVscode = (vscodeApi: VSCodeApi): ScoutApiV2 => {
   const rpcClient = webViewJsonRpcClient(vscodeApi);
   return {
     ...apiScoutServer({

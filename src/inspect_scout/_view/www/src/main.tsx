@@ -4,10 +4,9 @@ import { createRoot } from "react-dom/client";
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { ScanApi } from "./api/api";
+import { ScoutApiV2 } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
-import { apiVscodeV1 } from "./api/api-vscode-v1";
-import { apiVscodeV2 } from "./api/api-vscode-v2";
+import { apiVscode } from "./api/api-vscode";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
@@ -28,14 +27,21 @@ if (!container) {
 // Render into the root
 const root = createRoot(container);
 
-const selectApi = (): ScanApi => {
+const selectApi = (): ScoutApiV2 => {
   const vscodeApi = getVscodeApi();
-  const api = !vscodeApi
-    ? apiScoutServer()
-    : (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
-      ? apiVscodeV1(vscodeApi)
-      : apiVscodeV2(vscodeApi);
-  return api;
+  if (!vscodeApi) {
+    return apiScoutServer();
+  }
+
+  const protocolVersion = getEmbeddedScanState()?.extensionProtocolVersion ?? 1;
+  if (protocolVersion < 2) {
+    throw new Error(
+      `VSCode extension protocol version ${protocolVersion} is no longer supported. ` +
+        "Please update your Inspect Scout VSCode extension to the latest version."
+    );
+  }
+
+  return apiVscode(vscodeApi);
 };
 
 // Create the API, store, and query client

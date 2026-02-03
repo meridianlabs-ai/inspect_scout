@@ -7,7 +7,6 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import filesystem
-from inspect_ai._view.fastapi_server import OnlyDirAccessPolicy
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import Scope
 
@@ -19,7 +18,6 @@ from inspect_scout._util.constants import (
 from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
-from ._api_v1 import v1_api_app
 from ._api_v2 import v2_api_app
 
 
@@ -62,25 +60,13 @@ def view_server(
         fs.mkdir(scans, True)
     scans = fs.info(scans).name
 
-    access_policy = OnlyDirAccessPolicy(scans) if not authorization else None
-
-    v1_api = v1_api_app(
-        access_policy=access_policy,
-        results_dir=scans,
-        fs=fs,
-    )
-
     v2_api = v2_api_app(view_config=config)
 
     if authorization:
-        v1_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI()
-    # NOTE: order matters - Starlette matches mounts in order
-    # /api/v2 must come before /api or v2 requests would route to v1
     app.mount("/api/v2", v2_api)
-    app.mount("/api", v1_api)
 
     dist = Path(__file__).parent / "www" / "dist"
     app.mount(

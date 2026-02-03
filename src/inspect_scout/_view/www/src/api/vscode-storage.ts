@@ -1,6 +1,5 @@
 /**
  * VS Code storage adapter for ClientStorage interface.
- * Shared between api-vscode-v1 and api-vscode-v2.
  */
 
 import { VSCodeApi } from "../utils/vscode";

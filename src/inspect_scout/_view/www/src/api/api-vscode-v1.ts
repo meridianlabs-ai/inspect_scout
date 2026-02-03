@@ -87,13 +87,9 @@ export const apiVscodeV1 = (vscodeApi: VSCodeApi): ScanApi => {
         throw new Error(`Invalid response for getScan for scan: ${scanPath}`);
       }
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     getScans: async (_scansDir: string): Promise<ScansResponse> => {
-      const data = await fetchScansData();
-      return {
-        items: data.scans,
-        total_count: data.scans.length,
-        next_cursor: null,
-      };
+      throw new Error("Not implemented in VSCode API v1");
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getScansColumnValues: async (): Promise<never> => {

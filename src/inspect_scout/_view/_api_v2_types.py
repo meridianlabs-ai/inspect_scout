@@ -77,23 +77,43 @@ class IPCSerializableResults(RecorderStatus):
 ScanStatus: TypeAlias = RecorderStatus
 
 
-@dataclass
-class ScanStatusWithActiveInfo(RecorderStatus):
-    """Scan status with optional active scan info for in-progress scans."""
+class ScanRow(BaseModel):
+    """Flat scan row for API response - maps directly to client grid columns.
 
-    active_scan_info: ActiveScanInfo | None = None
+    Fields are either:
+    - Extracted from source types (using model_fields to avoid duplication)
+    - Transformed/flattened from nested structures
+    - Computed aggregates
+    """
 
-    def __init__(
-        self,
-        complete: bool,
-        spec: ScanSpec,
-        location: str,
-        summary: Summary,
-        errors: list[Error],
-        active_scan_info: ActiveScanInfo | None = None,
-    ) -> None:
-        super().__init__(complete, spec, location, summary, errors)
-        self.active_scan_info = active_scan_info
+    # === Fields extracted from source types (no type duplication) ===
+    # fmt: off
+    scan_id: ScanSpec.model_fields["scan_id"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_name: ScanSpec.model_fields["scan_name"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_file: ScanSpec.model_fields["scan_file"].annotation  # type: ignore[valid-type]  # noqa: F821
+    timestamp: ScanSpec.model_fields["timestamp"].annotation  # type: ignore[valid-type]  # noqa: F821
+    packages: ScanSpec.model_fields["packages"].annotation  # type: ignore[valid-type]  # noqa: F821
+    metadata: ScanSpec.model_fields["metadata"].annotation  # type: ignore[valid-type]  # noqa: F821
+    scan_args: ScanSpec.model_fields["scan_args"].annotation  # type: ignore[valid-type]  # noqa: F821
+    # fmt: on
+    location: str  # from Status dataclass
+
+    # === Transformed/flattened fields ===
+    status: Literal["active", "error", "complete", "incomplete"]
+    scanners: str  # comma-separated scanner names
+    model: str | None  # extracted from ModelConfig.model
+    tags: str  # comma-separated tags
+    revision_version: str | None
+    revision_commit: str | None
+    revision_origin: str | None
+
+    # === Computed aggregate fields ===
+    total_results: int
+    total_errors: int
+    total_tokens: int
+
+    # === For active scan progress (None if not active) ===
+    active_completion_pct: int | None = None
 
 
 @dataclass
@@ -131,7 +151,7 @@ class ScansRequest(PaginatedRequest):
 class ScansResponse:
     """Response body for POST /scans endpoint."""
 
-    items: list[ScanStatusWithActiveInfo]
+    items: list[ScanRow]
     total_count: int
     next_cursor: dict[str, Any] | None = None
 

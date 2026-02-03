@@ -3,7 +3,7 @@ import { FC, useEffect, useMemo, useRef } from "react";
 import { ScalarValue } from "../../api/api";
 import { scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import type { ScanStatusWithActiveInfo } from "../../types/api-types";
+import type { ScanRow as ApiScanRow } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
 import { DataGrid } from "../components/dataGrid";
 
@@ -20,11 +20,11 @@ function scanItemKey(index: number, item?: ScanRow): string {
   if (!item) {
     return String(index);
   }
-  return item.spec.scan_id;
+  return item.scan_id;
 }
 
 interface ScansGridProps {
-  scans: ScanStatusWithActiveInfo[];
+  scans: ApiScanRow[];
   resultsDir: string | undefined;
   className?: string | string[];
   loading?: boolean;
@@ -137,7 +137,7 @@ export const ScansGrid: FC<ScansGridProps> = ({
   }, [columnOrder]);
 
   // Get row ID
-  const getRowId = (row: ScanRow): string => row.spec.scan_id;
+  const getRowId = (row: ScanRow): string => row.scan_id;
 
   // Get route for navigation
   const getRowRoute = (row: ScanRow): string => {

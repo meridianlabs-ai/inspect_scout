@@ -6924,6 +6924,170 @@
         "title": "ScanRevision",
         "type": "object"
       },
+      "ScanRow": {
+        "description": "Flat scan row for API response - maps directly to client grid columns.\n\nFields are either:\n- Extracted from source types (using model_fields to avoid duplication)\n- Transformed/flattened from nested structures\n- Computed aggregates",
+        "properties": {
+          "active_completion_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Completion Pct"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "packages": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Packages",
+            "type": "object"
+          },
+          "revision_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Commit"
+          },
+          "revision_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Origin"
+          },
+          "revision_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Version"
+          },
+          "scan_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Args"
+          },
+          "scan_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan File"
+          },
+          "scan_id": {
+            "title": "Scan Id",
+            "type": "string"
+          },
+          "scan_name": {
+            "title": "Scan Name",
+            "type": "string"
+          },
+          "scanners": {
+            "title": "Scanners",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "error",
+              "complete",
+              "incomplete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "title": "Tags",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "total_errors": {
+            "title": "Total Errors",
+            "type": "integer"
+          },
+          "total_results": {
+            "title": "Total Results",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scan_id",
+          "scan_name",
+          "timestamp",
+          "packages",
+          "location",
+          "status",
+          "scanners",
+          "tags",
+          "total_results",
+          "total_errors",
+          "total_tokens"
+        ],
+        "title": "ScanRow",
+        "type": "object"
+      },
       "ScanSpec": {
         "description": "Scan specification (scanners, transcripts, config).",
         "properties": {
@@ -7087,50 +7251,6 @@
           "scanners"
         ],
         "title": "ScanSpec",
-        "type": "object"
-      },
-      "ScanStatusWithActiveInfo": {
-        "properties": {
-          "active_scan_info": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ActiveScanInfo"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "complete": {
-            "title": "Complete",
-            "type": "boolean"
-          },
-          "errors": {
-            "items": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "title": "Errors",
-            "type": "array"
-          },
-          "location": {
-            "title": "Location",
-            "type": "string"
-          },
-          "spec": {
-            "$ref": "#/components/schemas/ScanSpec"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/Summary"
-          }
-        },
-        "required": [
-          "complete",
-          "spec",
-          "location",
-          "summary",
-          "errors"
-        ],
-        "title": "ScanStatusWithActiveInfo",
         "type": "object"
       },
       "ScanTranscripts": {
@@ -7472,7 +7592,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ScanStatusWithActiveInfo"
+              "$ref": "#/components/schemas/ScanRow"
             },
             "title": "Items",
             "type": "array"

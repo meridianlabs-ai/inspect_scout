@@ -5,7 +5,7 @@ from typing import AsyncIterator
 
 from .._query import Query, ScalarValue
 from .._query.condition import Condition
-from .._recorder.recorder import Status
+from .._view._api_v2_types import ScanRow
 
 
 class ScanJobsView(abc.ABC):
@@ -22,14 +22,14 @@ class ScanJobsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+    def select(self, query: Query | None = None) -> AsyncIterator[ScanRow]:
         """Select scan jobs matching query.
 
         Args:
             query: Query with where/limit/order_by criteria.
 
         Yields:
-            Status objects matching the criteria.
+            ScanRow objects matching the criteria.
         """
         ...
 

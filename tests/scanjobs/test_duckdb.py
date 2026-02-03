@@ -5,13 +5,13 @@ from typing import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from inspect_scout._query import Query
+from inspect_scout._query import Column, Query
 from inspect_scout._query.order_by import OrderBy
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanjobs.columns import scan_job_columns as c
 from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._view._api_v2_types import ScanRow
 
 
 def create_test_status(
@@ -108,54 +108,54 @@ async def test_connect_disconnect(sample_statuses: list[Status]) -> None:
 @pytest.mark.asyncio
 async def test_select_all(duckdb_view: DuckDBScanJobsView) -> None:
     """Test selecting all scan jobs."""
-    results = [status async for status in duckdb_view.select(Query())]
+    results = [row async for row in duckdb_view.select(Query())]
     assert len(results) == 10
 
-    # Verify Status structure
+    # Verify ScanRow structure
     first = results[0]
-    assert isinstance(first, Status)
-    assert first.spec.scan_id is not None
+    assert isinstance(first, ScanRow)
+    assert first.scan_id is not None
     assert first.location is not None
 
 
 @pytest.mark.asyncio
 async def test_select_with_filter(duckdb_view: DuckDBScanJobsView) -> None:
-    """Test filtering by condition."""
-    condition = c.complete == True  # noqa: E712
-    results = [status async for status in duckdb_view.select(Query(where=[condition]))]
+    """Test filtering by status condition."""
+    condition = Column("status") == "complete"
+    results = [row async for row in duckdb_view.select(Query(where=[condition]))]
 
     # 75% should be complete (i % 4 != 0)
     assert len(results) == 7 or len(results) == 8
 
     # Verify all results match condition
-    for status in results:
-        assert status.complete is True
+    for row in results:
+        assert row.status == "complete"
 
 
 @pytest.mark.asyncio
 async def test_select_with_filter_by_scan_name(duckdb_view: DuckDBScanJobsView) -> None:
     """Test filtering by scan_name."""
-    condition = c.scan_name == "job_0"
-    results = [status async for status in duckdb_view.select(Query(where=[condition]))]
+    condition = Column("scan_name") == "job_0"
+    results = [row async for row in duckdb_view.select(Query(where=[condition]))]
 
     # Should have ~3-4 results (10 total / 3 names)
     assert 3 <= len(results) <= 4
 
-    for status in results:
-        assert status.spec.scan_name == "job_0"
+    for row in results:
+        assert row.scan_name == "job_0"
 
 
 @pytest.mark.asyncio
 async def test_select_with_order_by(duckdb_view: DuckDBScanJobsView) -> None:
     """Test ordering results."""
     results = [
-        status
-        async for status in duckdb_view.select(
+        row
+        async for row in duckdb_view.select(
             Query(order_by=[OrderBy("timestamp", "ASC")])
         )
     ]
 
-    timestamps = [status.spec.timestamp for status in results]
+    timestamps = [row.timestamp for row in results]
     assert timestamps == sorted(timestamps)
 
 
@@ -163,34 +163,34 @@ async def test_select_with_order_by(duckdb_view: DuckDBScanJobsView) -> None:
 async def test_select_with_order_by_desc(duckdb_view: DuckDBScanJobsView) -> None:
     """Test ordering results descending."""
     results = [
-        status
-        async for status in duckdb_view.select(
+        row
+        async for row in duckdb_view.select(
             Query(order_by=[OrderBy("timestamp", "DESC")])
         )
     ]
 
-    timestamps = [status.spec.timestamp for status in results]
+    timestamps = [row.timestamp for row in results]
     assert timestamps == sorted(timestamps, reverse=True)
 
 
 @pytest.mark.asyncio
 async def test_select_with_limit(duckdb_view: DuckDBScanJobsView) -> None:
     """Test limiting results."""
-    results = [status async for status in duckdb_view.select(Query(limit=5))]
+    results = [row async for row in duckdb_view.select(Query(limit=5))]
     assert len(results) == 5
 
 
 @pytest.mark.asyncio
 async def test_select_with_filter_and_limit(duckdb_view: DuckDBScanJobsView) -> None:
     """Test filtering and limiting together."""
-    condition = c.complete == True  # noqa: E712
+    condition = Column("status") == "complete"
     results = [
-        status async for status in duckdb_view.select(Query(where=[condition], limit=3))
+        row async for row in duckdb_view.select(Query(where=[condition], limit=3))
     ]
     assert len(results) == 3
 
-    for status in results:
-        assert status.complete is True
+    for row in results:
+        assert row.status == "complete"
 
 
 @pytest.mark.asyncio
@@ -202,8 +202,8 @@ async def test_count(duckdb_view: DuckDBScanJobsView) -> None:
 
 @pytest.mark.asyncio
 async def test_count_with_filter(duckdb_view: DuckDBScanJobsView) -> None:
-    """Test counting with filter condition."""
-    condition = c.complete == True  # noqa: E712
+    """Test counting with status filter condition."""
+    condition = Column("status") == "complete"
     count = await duckdb_view.count(Query(where=[condition]))
 
     # 75% should be complete
@@ -213,5 +213,5 @@ async def test_count_with_filter(duckdb_view: DuckDBScanJobsView) -> None:
 @pytest.mark.asyncio
 async def test_count_with_scan_name_filter(duckdb_view: DuckDBScanJobsView) -> None:
     """Test counting with scan_name filter."""
-    count = await duckdb_view.count(Query(where=[c.scan_name == "job_0"]))
+    count = await duckdb_view.count(Query(where=[Column("scan_name") == "job_0"]))
     assert 3 <= count <= 4

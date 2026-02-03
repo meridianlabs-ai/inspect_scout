@@ -8,7 +8,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useStore } from "../../state/store";
-import { ScanStatusWithActiveInfo } from "../../types/api-types";
+import { ScanRow } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { ScansNavbar } from "../components/ScansNavbar";
 import { useScanFilterConditions } from "../hooks/useScanFilterConditions";
@@ -52,7 +52,7 @@ export const ScansPanel: FC = () => {
     );
 
   // Flatten pages into scans array
-  const scans: ScanStatusWithActiveInfo[] = useMemo(
+  const scans: ScanRow[] = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
   );

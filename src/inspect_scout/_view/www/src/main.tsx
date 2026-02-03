@@ -6,7 +6,6 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ScanApi } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
-import { apiVscodeV1 } from "./api/api-vscode-v1";
 import { apiVscodeV2 } from "./api/api-vscode-v2";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
@@ -30,12 +29,19 @@ const root = createRoot(container);
 
 const selectApi = (): ScanApi => {
   const vscodeApi = getVscodeApi();
-  const api = !vscodeApi
-    ? apiScoutServer()
-    : (getEmbeddedScanState()?.extensionProtocolVersion ?? 1) < 2
-      ? apiVscodeV1(vscodeApi)
-      : apiVscodeV2(vscodeApi);
-  return api;
+  if (!vscodeApi) {
+    return apiScoutServer();
+  }
+
+  const protocolVersion = getEmbeddedScanState()?.extensionProtocolVersion ?? 1;
+  if (protocolVersion < 2) {
+    throw new Error(
+      `VSCode extension protocol version ${protocolVersion} is no longer supported. ` +
+        "Please update your Inspect Scout VSCode extension to the latest version."
+    );
+  }
+
+  return apiVscodeV2(vscodeApi);
 };
 
 // Create the API, store, and query client

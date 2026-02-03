@@ -2,6 +2,7 @@
 
 import zipfile
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
@@ -146,14 +147,17 @@ async def test_read_messages_events_cleans_up_via_aclose() -> None:
         result = await view.read_messages_events(info)
 
         # Wrap the close method to track calls
-        original_close = result.data._fs.close
+        # Access implementation detail for testing cleanup behavior
+        # The actual type is _ZipEntryStreamContextManager which has _fs
+        data_impl = cast(Any, result.data)
+        original_close = data_impl._fs.close
 
         async def tracking_close() -> None:
             nonlocal close_called
             close_called = True
             await original_close()
 
-        result.data._fs.close = tracking_close
+        data_impl._fs.close = tracking_close
 
     # At this point:
     # - view has been closed (exited async with)

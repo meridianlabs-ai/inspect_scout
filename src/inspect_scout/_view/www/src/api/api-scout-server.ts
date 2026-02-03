@@ -4,6 +4,7 @@ import {
   ActiveScansResponse,
   AppConfig,
   CreateValidationSetRequest,
+  MessagesEventsResponse,
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
@@ -12,6 +13,7 @@ import {
   ScansResponse,
   Status,
   Transcript,
+  TranscriptInfo,
   TranscriptsResponse,
   ValidationCase,
   ValidationCaseRequest,
@@ -20,6 +22,7 @@ import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
 import { NoPersistence, ScanApi, ScalarValue, TopicVersions } from "./api";
+import { resolveAttachments } from "./attachmentsHelpers";
 import { serverRequestApi } from "./request";
 
 export type HeaderProvider = () => Promise<Record<string, string>>;
@@ -77,7 +80,7 @@ export const apiScoutServer = (
       try {
         await requestApi.fetchString(
           "HEAD",
-          `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
+          `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}/info`
         );
         return true;
       } catch (error) {
@@ -91,11 +94,34 @@ export const apiScoutServer = (
       transcriptsDir: string,
       id: string
     ): Promise<Transcript> => {
-      const result = await requestApi.fetchString(
-        "GET",
-        `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}`
-      );
-      return asyncJsonParse<Transcript>(result.raw);
+      const encodedDir = encodeBase64Url(transcriptsDir);
+      const encodedId = encodeURIComponent(id);
+
+      const [infoResult, messagesEventsResult] = await Promise.all([
+        requestApi.fetchString(
+          "GET",
+          `/transcripts/${encodedDir}/${encodedId}/info`
+        ),
+        requestApi.fetchString(
+          "GET",
+          `/transcripts/${encodedDir}/${encodedId}/messages-events`
+        ),
+      ]);
+
+      const [info, { messages, events, attachments }] = await Promise.all([
+        asyncJsonParse<TranscriptInfo>(infoResult.raw),
+        asyncJsonParse<MessagesEventsResponse>(messagesEventsResult.raw),
+      ]);
+
+      return {
+        ...info,
+        ...(attachments && Object.keys(attachments).length > 0
+          ? {
+              messages: resolveAttachments(messages, attachments),
+              events: resolveAttachments(events, attachments),
+            }
+          : { messages, events }),
+      };
     },
     getTranscriptsColumnValues: async (
       transcriptsDir: string,

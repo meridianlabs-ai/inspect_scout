@@ -9,6 +9,7 @@ from inspect_ai.event._event import Event
 from inspect_ai.model import ChatMessage, Content
 
 from .._llm_scanner.params import LlmScannerParams
+from .._transcript.types import Transcript
 from .._validation.types import ValidationCase
 from ._api_v2_config import create_config_router
 from ._api_v2_scanners import create_scanners_router
@@ -57,6 +58,7 @@ def v2_api_app(
                     ("JsonChange", JsonChange),
                     ("LlmScannerParams", LlmScannerParams),
                     ("InvalidationTopic", InvalidationTopic),
+                    ("Transcript", Transcript),
                 ],
             )
         return app.openapi_schema

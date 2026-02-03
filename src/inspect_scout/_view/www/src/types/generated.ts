@@ -308,7 +308,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/transcripts/{dir}/{id}": {
+    "/transcripts/{dir}/{id}/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -316,10 +316,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get transcript
-         * @description Returns a single transcript with full content (messages and events).
+         * Get transcript info
+         * @description Returns transcript metadata without messages or events.
          */
-        get: operations["transcript_transcripts__dir___id__get"];
+        get: operations["transcript_info_transcripts__dir___id__info_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -328,7 +328,27 @@ export interface paths {
          * Check transcript existence
          * @description Checks if a transcript exists.
          */
-        head: operations["transcript_transcripts__dir___id__head"];
+        head: operations["transcript_info_transcripts__dir___id__info_head"];
+        patch?: never;
+        trace?: never;
+    };
+    "/transcripts/{dir}/{id}/messages-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get transcript messages and events (raw)
+         * @description Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.
+         */
+        get: operations["transcript_messages_and_events_transcripts__dir___id__messages_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1799,8 +1819,7 @@ export interface components {
              * @enum {string}
              */
             answer: "boolean" | "numeric" | "string";
-            /** @default null */
-            preprocessor: components["schemas"]["MessageFormatOptions"] | null;
+            preprocessor?: components["schemas"]["MessageFormatOptions"] | null;
             /** Question */
             question: string;
         };
@@ -1932,6 +1951,22 @@ export interface components {
              * @default false
              */
             exclude_tool_usage: boolean;
+        };
+        /**
+         * MessagesEventsResponse
+         * @description Response for GET /transcripts/{dir}/{id}/messages-events endpoint.
+         */
+        MessagesEventsResponse: {
+            /** Attachments */
+            attachments?: {
+                [key: string]: string;
+            } | null;
+            /** Events */
+            events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
+            /** Messages */
+            messages: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * ModelCall
@@ -3849,25 +3884,15 @@ export interface components {
         ValidationCase: {
             /** Id */
             id: string | string[];
-            /**
-             * Labels
-             * @default null
-             */
+            /** Labels */
             labels: {
                 [key: string]: boolean;
             } | null;
-            /**
-             * Predicate
-             * @default null
-             */
-            predicate: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
-            /**
-             * Split
-             * @default null
-             */
-            split: string | null;
-            /** @default null */
-            target: components["schemas"]["JsonValue"] | null;
+            /** Predicate */
+            predicate?: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
+            /** Split */
+            split?: string | null;
+            target?: components["schemas"]["JsonValue"] | null;
         };
         /** ValidationCaseRequest */
         ValidationCaseRequest: {
@@ -4405,7 +4430,7 @@ export interface operations {
             };
         };
     };
-    transcript_transcripts__dir___id__get: {
+    transcript_info_transcripts__dir___id__info_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4425,12 +4450,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Transcript"];
+                    "application/json": components["schemas"]["TranscriptInfo"];
                 };
             };
         };
     };
-    transcript_transcripts__dir___id__head: {
+    transcript_info_transcripts__dir___id__info_head: {
         parameters: {
             query?: never;
             header?: never;
@@ -4450,7 +4475,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Transcript"];
+                    "application/json": components["schemas"]["TranscriptInfo"];
+                };
+            };
+        };
+    };
+    transcript_messages_and_events_transcripts__dir___id__messages_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+                /** @description Transcript ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesEventsResponse"];
                 };
             };
         };

@@ -4296,8 +4296,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "question": {
             "title": "Question",
@@ -4555,6 +4554,117 @@
           "exclude_tool_usage"
         ],
         "title": "MessageFormatOptions",
+        "type": "object"
+      },
+      "MessagesEventsResponse": {
+        "additionalProperties": true,
+        "description": "Response for GET /transcripts/{dir}/{id}/messages-events endpoint.",
+        "properties": {
+          "attachments": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachments"
+          },
+          "events": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SampleInitEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SampleLimitEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SandboxEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StateEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StoreEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ModelEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ToolEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/CompactionEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/InputEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ScoreEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ScoreEditEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ErrorEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/LoggerEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/InfoEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SpanBeginEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SpanEndEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/StepEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SubtaskEvent"
+                }
+              ]
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChatMessageSystem"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageUser"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageTool"
+                }
+              ]
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages",
+          "events"
+        ],
+        "title": "MessagesEventsResponse",
         "type": "object"
       },
       "ModelCall": {
@@ -9756,7 +9866,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Labels"
           },
           "predicate": {
@@ -9781,7 +9890,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Predicate"
           },
           "split": {
@@ -9793,7 +9901,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Split"
           },
           "target": {
@@ -9804,8 +9911,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           }
         },
         "required": [
@@ -10943,10 +11049,10 @@
         ]
       }
     },
-    "/transcripts/{dir}/{id}": {
+    "/transcripts/{dir}/{id}/info": {
       "get": {
-        "description": "Returns a single transcript with full content (messages and events).",
-        "operationId": "transcript_transcripts__dir___id__get",
+        "description": "Returns transcript metadata without messages or events.",
+        "operationId": "transcript_info_transcripts__dir___id__info_get",
         "parameters": [
           {
             "description": "Transcripts directory (base64url-encoded)",
@@ -10976,21 +11082,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Transcript"
+                  "$ref": "#/components/schemas/TranscriptInfo"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get transcript",
+        "summary": "Get transcript info",
         "tags": [
           "transcripts"
         ]
       },
       "head": {
         "description": "Checks if a transcript exists.",
-        "operationId": "transcript_transcripts__dir___id__head",
+        "operationId": "transcript_info_transcripts__dir___id__info_head",
         "parameters": [
           {
             "description": "Transcripts directory (base64url-encoded)",
@@ -11020,7 +11126,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Transcript"
+                  "$ref": "#/components/schemas/TranscriptInfo"
                 }
               }
             },
@@ -11028,6 +11134,52 @@
           }
         },
         "summary": "Check transcript existence",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/messages-events": {
+      "get": {
+        "description": "Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.",
+        "operationId": "transcript_messages_and_events_transcripts__dir___id__messages_events_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesEventsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get transcript messages and events (raw)",
         "tags": [
           "transcripts"
         ]

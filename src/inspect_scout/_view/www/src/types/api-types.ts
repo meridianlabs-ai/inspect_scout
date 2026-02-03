@@ -46,6 +46,7 @@ export type StepEvent = components["schemas"]["StepEvent"];
 export type StoreEvent = components["schemas"]["StoreEvent"];
 export type SubtaskEvent = components["schemas"]["SubtaskEvent"];
 export type ToolEvent = components["schemas"]["ToolEvent"];
+export type CompactionEvent = components["schemas"]["CompactionEvent"];
 export type Event = components["schemas"]["Event"];
 export type InvalidationTopic = components["schemas"]["InvalidationTopic"];
 

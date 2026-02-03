@@ -7266,6 +7266,9 @@ pre._value_1uivt_24 {
   border: solid 1px var(--bs-light-border-subtle);
   border-radius: var(--bs-border-radius);
 }
+._panel_8zdtn_1 {
+  margin: 0.5em 0;
+}
 ._tab_1je38_1 {
   min-width: 4rem;
   padding: 0.1rem 0.6rem;

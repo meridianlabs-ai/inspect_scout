@@ -12,6 +12,7 @@ from typing import (
 )
 
 from inspect_ai.event._approval import ApprovalEvent
+from inspect_ai.event._compaction import CompactionEvent
 from inspect_ai.event._error import ErrorEvent
 from inspect_ai.event._event import (
     Event,
@@ -62,6 +63,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     InfoEvent: "info",
     SpanBeginEvent: "span_begin",
     SpanEndEvent: "span_end",
+    CompactionEvent: "compaction",
 }
 
 
@@ -335,6 +337,7 @@ def _get_event_types_from_filter(
         "state": StateEvent,
         "store": StoreEvent,
         "approval": ApprovalEvent,
+        "compaction": CompactionEvent,
         "input": InputEvent,
         "score": ScoreEvent,
         "error": ErrorEvent,

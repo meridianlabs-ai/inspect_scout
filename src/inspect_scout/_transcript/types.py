@@ -26,6 +26,7 @@ class TranscriptTooLargeError(Exception):
 EventType = Literal[
     "model",
     "tool",
+    "compaction",
     "approval",
     "sandbox",
     "info",

@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
+- Add support for Inspect `CompactionEvent`.
 
 ## 0.4.11 (29 January 2026)
 

@@ -1156,6 +1156,118 @@
         "title": "ChatMessageUser",
         "type": "object"
       },
+      "CompactionEvent": {
+        "description": "Compaction of conversation history.",
+        "properties": {
+          "event": {
+            "const": "compaction",
+            "default": "compaction",
+            "title": "Event",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "tokens_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tokens After"
+          },
+          "tokens_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tokens Before"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event"
+        ],
+        "title": "CompactionEvent",
+        "type": "object"
+      },
       "Condition": {
         "description": "WHERE clause condition that can be combined with others.",
         "properties": {
@@ -2145,6 +2257,9 @@
           },
           {
             "$ref": "#/components/schemas/ApprovalEvent"
+          },
+          {
+            "$ref": "#/components/schemas/CompactionEvent"
           },
           {
             "$ref": "#/components/schemas/InputEvent"
@@ -8993,6 +9108,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/CompactionEvent"
                 },
                 {
                   "$ref": "#/components/schemas/InputEvent"

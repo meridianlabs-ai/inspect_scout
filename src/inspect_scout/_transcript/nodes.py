@@ -36,7 +36,6 @@ class AgentSourceSpan:
 
     source: Literal["span"] = "span"
     span_id: str = ""
-    invoked_by: ToolEvent | None = None
 
 
 @dataclass(frozen=True)

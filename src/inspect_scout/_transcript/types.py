@@ -10,6 +10,8 @@ from inspect_ai.log._file import (
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
+from .._util.zip_common import ZipCompressionMethod
+
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
 
@@ -117,11 +119,10 @@ class TranscriptMessagesAndEvents:
     or call aclose() directly if the context manager is never entered.
     """
 
-    compression_method: int | None
+    compression_method: ZipCompressionMethod | None
     """ZIP compression method per PKWARE APPNOTE spec, or None if uncompressed.
 
     See: https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.9.TXT (section 4.4.5)
-    Common values: 0 = stored (no compression), 8 = DEFLATE
     """
 
     uncompressed_size: int | None

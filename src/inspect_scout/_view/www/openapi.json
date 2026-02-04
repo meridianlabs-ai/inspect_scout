@@ -2399,6 +2399,21 @@
             "default": null,
             "title": "Extra Body"
           },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Extra Headers"
+          },
           "frequency_penalty": {
             "anyOf": [
               {
@@ -2832,6 +2847,20 @@
             ],
             "title": "Extra Body"
           },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
+          },
           "frequency_penalty": {
             "anyOf": [
               {
@@ -3239,6 +3268,20 @@
               }
             ],
             "title": "Extra Body"
+          },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -4954,6 +4997,30 @@
             "title": "Tools",
             "type": "array"
           },
+          "traceback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback"
+          },
+          "traceback_ansi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback Ansi"
+          },
           "uuid": {
             "anyOf": [
               {
@@ -5825,6 +5892,12 @@
         ],
         "title": "ProvenanceData",
         "type": "object"
+      },
+      "RawEncoding": {
+        "enum": [
+          "zstd"
+        ],
+        "type": "string"
       },
       "RenameValidationSetRequest": {
         "properties": {
@@ -10155,6 +10228,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -11261,7 +11341,7 @@
     },
     "/transcripts/{dir}/{id}/messages-events": {
       "get": {
-        "description": "Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.",
+        "description": "Returns JSON bytes for transcript messages and events. May be compressed (check Content-Encoding or X-Content-Encoding headers). JSON may contain a top-level 'attachments' dict; strings within 'messages' and 'events' may contain 'attachment://<32-char-hex-id>' refs that must be resolved client-side by looking up the ID in the 'attachments' dict. Use X-Accept-Raw-Encoding header to bypass server transcoding and receive bytes in the source compression format (e.g., zstd); client must decompress.",
         "operationId": "transcript_messages_and_events_transcripts__dir___id__messages_events_get",
         "parameters": [
           {
@@ -11285,6 +11365,25 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression.",
+            "in": "header",
+            "name": "x-accept-raw-encoding",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "zstd",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression.",
+              "title": "X-Accept-Raw-Encoding"
+            }
           }
         ],
         "responses": {
@@ -11294,12 +11393,15 @@
                 "schema": {
                   "$ref": "#/components/schemas/MessagesEventsResponse"
                 }
+              },
+              "application/octet-stream": {
+                "description": "Raw compressed bytes when X-Accept-Raw-Encoding header matches the source compression (e.g., zstd). Check X-Content-Encoding header for the compression format."
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get transcript messages and events (raw)",
+        "summary": "Get transcript messages and events",
         "tags": [
           "transcripts"
         ]

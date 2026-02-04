@@ -340,8 +340,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get transcript messages and events (raw)
-         * @description Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.
+         * Get transcript messages and events
+         * @description Returns JSON bytes for transcript messages and events. May be compressed (check Content-Encoding or X-Content-Encoding headers). JSON may contain a top-level 'attachments' dict; strings within 'messages' and 'events' may contain 'attachment://<32-char-hex-id>' refs that must be resolved client-side by looking up the ID in the 'attachments' dict. Use X-Accept-Raw-Encoding header to bypass server transcoding and receive bytes in the source compression format (e.g., zstd); client must decompress.
          */
         get: operations["transcript_messages_and_events_transcripts__dir___id__messages_events_get"];
         put?: never;
@@ -1308,6 +1308,13 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Extra Headers
+             * @default null
+             */
+            extra_headers: {
+                [key: string]: string;
+            } | null;
+            /**
              * Frequency Penalty
              * @default null
              */
@@ -1453,6 +1460,10 @@ export interface components {
             extra_body?: {
                 [key: string]: unknown;
             } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
+            } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
             /** Internal Tools */
@@ -1525,6 +1536,10 @@ export interface components {
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
+            } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -2088,6 +2103,16 @@ export interface components {
             /** Tools */
             tools: components["schemas"]["ToolInfo"][];
             /**
+             * Traceback
+             * @default null
+             */
+            traceback: string | null;
+            /**
+             * Traceback Ansi
+             * @default null
+             */
+            traceback_ansi: string | null;
+            /**
              * Uuid
              * @default null
              */
@@ -2341,6 +2366,8 @@ export interface components {
              */
             timestamp: string;
         };
+        /** @enum {string} */
+        RawEncoding: "zstd";
         /** RenameValidationSetRequest */
         RenameValidationSetRequest: {
             /** Name */
@@ -3972,6 +3999,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -4532,7 +4563,10 @@ export interface operations {
     transcript_messages_and_events_transcripts__dir___id__messages_events_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression. */
+                "x-accept-raw-encoding"?: "zstd" | null;
+            };
             path: {
                 /** @description Transcripts directory (base64url-encoded) */
                 dir: string;
@@ -4550,6 +4584,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessagesEventsResponse"];
+                    /** @description Raw compressed bytes when X-Accept-Raw-Encoding header matches the source compression (e.g., zstd). Check X-Content-Encoding header for the compression format. */
+                    "application/octet-stream": unknown;
                 };
             };
         };

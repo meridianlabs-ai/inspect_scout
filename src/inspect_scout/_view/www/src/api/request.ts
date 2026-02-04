@@ -30,10 +30,12 @@ export interface ServerRequestApi {
     path: string,
     headers?: Record<string, string>,
     body?: string
-  ) => Promise<{
-    raw: string;
-  }>;
-  fetchBytes: (method: HttpMethod, path: string) => Promise<ArrayBuffer>;
+  ) => Promise<{ raw: string }>;
+  fetchBytes: (
+    method: HttpMethod,
+    path: string,
+    headers?: Record<string, string>
+  ) => Promise<{ data: ArrayBuffer; headers: Headers }>;
   fetchType: <T>(
     method: HttpMethod,
     path: string,
@@ -68,12 +70,13 @@ export function serverRequestApi(
     }
   }
 
-  async function mergeGlobalHeaders(headers: HeadersInit): Promise<void> {
-    if (getHeaders) {
-      const globalHeaders = await getHeaders();
-      Object.assign(headers, globalHeaders);
-    }
-  }
+  const withGlobalHeaders = async (
+    headers: Record<string, string>
+  ): Promise<Record<string, string>> =>
+    // NOTE: It's typically not safe to use object spreading for headers since,
+    // in the general case, they could be HeadersInit which is more complex than
+    // Record<string, string>. We're in complete control, so we'll just spread.
+    getHeaders ? { ...(await getHeaders()), ...headers } : headers;
 
   const fetchType = async <T>(
     method: HttpMethod,
@@ -84,7 +87,7 @@ export function serverRequestApi(
 
     // By default, disable browser caching. When enableBrowserCache is true,
     // omit these headers to let the browser handle ETag-based caching.
-    const responseHeaders: HeadersInit = request?.enableBrowserCache
+    const baseHeaders = request?.enableBrowserCache
       ? {
           Accept: "application/json",
           ...request?.headers,
@@ -97,15 +100,15 @@ export function serverRequestApi(
           ...request?.headers,
         };
 
-    await mergeGlobalHeaders(responseHeaders);
-
     if (request?.body) {
-      responseHeaders["Content-Type"] = "application/json";
+      baseHeaders["Content-Type"] = "application/json";
     }
+
+    const headers = await withGlobalHeaders(baseHeaders);
 
     const response = await fetchFn(url, {
       method,
-      headers: responseHeaders,
+      headers,
       body: request?.body,
       credentials: isApiCrossOrigin() ? "include" : "same-origin",
     });
@@ -139,38 +142,34 @@ export function serverRequestApi(
   const fetchString = async (
     method: HttpMethod,
     path: string,
-    headers?: Record<string, string>,
+    customHeaders?: Record<string, string>,
     body?: string
-  ): Promise<{ raw: string; headers: Headers }> => {
+  ): Promise<{ raw: string }> => {
     const url = buildApiUrl(path);
 
-    const requestHeaders: HeadersInit = {
+    const baseHeaders = {
       Accept: "application/json",
       Pragma: "no-cache",
       Expires: "0",
       "Cache-Control": "no-cache",
-      ...headers,
+      ...customHeaders,
     };
 
-    await mergeGlobalHeaders(requestHeaders);
-
     if (body) {
-      requestHeaders["Content-Type"] = "application/json";
+      baseHeaders["Content-Type"] = "application/json";
     }
+
+    const headers = await withGlobalHeaders(baseHeaders);
 
     const response = await fetchFn(url, {
       method,
-      headers: requestHeaders,
+      headers,
       body,
       credentials: isApiCrossOrigin() ? "include" : "same-origin",
     });
 
     if (response.ok) {
-      const text = await response.text();
-      return {
-        raw: text,
-        headers: response.headers,
-      };
+      return { raw: await response.text() };
     }
 
     const message = (await response.text()) || response.statusText;
@@ -179,22 +178,20 @@ export function serverRequestApi(
 
   const fetchBytes = async (
     method: HttpMethod,
-    path: string
-  ): Promise<ArrayBuffer> => {
+    path: string,
+    headers?: Record<string, string>
+  ): Promise<{ data: ArrayBuffer; headers: Headers }> => {
     const url = buildApiUrl(path);
-
-    const headers: HeadersInit = {
-      Accept: "application/octet-stream",
-      Pragma: "no-cache",
-      Expires: "0",
-      "Cache-Control": "no-cache",
-    };
-
-    await mergeGlobalHeaders(headers);
 
     const response = await fetchFn(url, {
       method,
-      headers,
+      headers: await withGlobalHeaders({
+        Accept: "application/octet-stream",
+        Pragma: "no-cache",
+        Expires: "0",
+        "Cache-Control": "no-cache",
+        ...headers,
+      }),
       credentials: isApiCrossOrigin() ? "include" : "same-origin",
     });
 
@@ -206,7 +203,10 @@ export function serverRequestApi(
       );
     }
 
-    return await response.arrayBuffer();
+    return {
+      data: await response.arrayBuffer(),
+      headers: response.headers,
+    };
   };
 
   return {

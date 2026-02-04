@@ -15,7 +15,7 @@ from ._api_v2_config import create_config_router
 from ._api_v2_scanners import create_scanners_router
 from ._api_v2_scans import create_scans_router
 from ._api_v2_topics import create_topics_router
-from ._api_v2_transcripts import create_transcripts_router
+from ._api_v2_transcripts import RawEncoding, create_transcripts_router
 from ._api_v2_validations import create_validation_router
 from ._openapi import build_openapi_schema
 from .invalidationTopics import InvalidationTopic
@@ -59,6 +59,7 @@ def v2_api_app(
                     ("LlmScannerParams", LlmScannerParams),
                     ("InvalidationTopic", InvalidationTopic),
                     ("Transcript", Transcript),
+                    ("RawEncoding", RawEncoding),
                 ],
             )
         return app.openapi_schema

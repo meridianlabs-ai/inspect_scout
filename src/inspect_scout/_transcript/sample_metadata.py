@@ -4,15 +4,14 @@ This module provides a wrapper class that gives typed access to
 sample metadata fields from Inspect eval logs.
 """
 
-from typing import Any, Literal, cast
+from typing import Any, cast
 
+from inspect_ai.log import EvalStatus
 from inspect_ai.model import GenerateConfig
 from inspect_ai.scorer._metric import Value
 
 from .eval_log import EVAL_LOG_SOURCE_TYPE
 from .types import Transcript
-
-EvalStatus = Literal["started", "success", "cancelled", "error"]
 
 
 class SampleMetadata:
@@ -100,7 +99,7 @@ class SampleMetadata:
 
     @property
     def id(self) -> str:
-        """Unique id for sample. Same as EvalSampleSummary.id."""
+        """Unique id for sample. Same as str(EvalSampleSummary.id)."""
         return str(self._metadata["id"])
 
     @property

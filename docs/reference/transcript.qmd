@@ -7,9 +7,9 @@ reference: "inspect_scout"
 
 ### transcripts_from
 ### Transcript
-### SampleMetadata
 ### Transcripts
 ### TranscriptsReader
+### SampleMetadata
 
 ## Database
 

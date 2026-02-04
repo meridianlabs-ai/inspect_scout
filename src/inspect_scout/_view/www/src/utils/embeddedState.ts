@@ -2,10 +2,11 @@ import JSON5 from "json5";
 
 import { basename, dirname } from "./path";
 
-export interface EmbeddedScanState {
+export interface EmbeddedInitState {
   dir?: string;
   scan?: string;
   scanner?: string;
+  route?: string;
   /** Protocol version: undefined/1 = legacy V1, 2 = HTTP proxy support */
   extensionProtocolVersion?: number;
 }
@@ -14,7 +15,7 @@ export interface EmbeddedScanState {
  * Checks for embedded state in the HTML document and parses it.
  * Returns scan directory and name if embedded state exists and is valid.
  */
-export function getEmbeddedScanState(): EmbeddedScanState | null {
+export function getEmbeddedInitState(): EmbeddedInitState | null {
   const embeddedState = document.getElementById(
     "scanview-state"
   ) as HTMLScriptElement | null;
@@ -28,6 +29,7 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
       type: string;
       url: string;
       scanner?: string;
+      route?: string;
       extensionProtocolVersion?: number;
     } = JSON5.parse(embeddedState.textContent);
 
@@ -39,6 +41,7 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
         dir,
         scan,
         scanner: state.scanner,
+        route: state.route,
         extensionProtocolVersion: state.extensionProtocolVersion,
       };
     }

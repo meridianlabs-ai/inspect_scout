@@ -38,7 +38,7 @@ import {
 } from "./router/url";
 import { useStore } from "./state/store";
 import { AppConfig } from "./types/api-types";
-import { getEmbeddedScanState } from "./utils/embeddedState";
+import { getEmbeddedInitState } from "./utils/embeddedState";
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
@@ -192,7 +192,7 @@ const useEmbeddedStateInitializer = () => {
     // Check for embedded state on initial load
     const hasRestoredState = selectedScanner !== undefined;
     if (!hasRestoredState) {
-      const embeddedState = getEmbeddedScanState();
+      const embeddedState = getEmbeddedInitState();
       if (embeddedState) {
         const { scan, scanner, dir } = embeddedState;
 
@@ -205,8 +205,10 @@ const useEmbeddedStateInitializer = () => {
           setSelectedScanner(scanner);
         }
 
-        // Navigate to the scan
-        if (dir && scan) {
+        // Navigate to route or scan
+        if (embeddedState.route) {
+          void navigate(embeddedState.route, { replace: true });
+        } else if (dir && scan) {
           void navigate(scanRoute(dir, scan), { replace: true });
         }
       }

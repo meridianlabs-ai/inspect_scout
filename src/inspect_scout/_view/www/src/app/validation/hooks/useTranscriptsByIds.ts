@@ -8,12 +8,15 @@ import { TranscriptInfo } from "../../../types/api-types";
 /**
  * Hook to fetch transcripts by their IDs using an IN query.
  * Returns a map of transcript_id -> TranscriptInfo for quick lookups.
+ * Also returns sourceIds for staleness detection - consumers should only
+ * trust lookups when the requested ID was in the sourceIds set.
  */
 export const useTranscriptsByIds = (
   transcriptsDir: string | undefined,
   ids: string[]
 ): {
   data: Map<string, TranscriptInfo> | undefined;
+  sourceIds: Set<string> | undefined;
   loading: boolean;
   error: Error | null;
 } => {
@@ -58,8 +61,16 @@ export const useTranscriptsByIds = (
     return map;
   }, [query.data]);
 
+  // Track which IDs were used to build the current map
+  // This enables staleness detection in consumers
+  const sourceIds = useMemo(() => {
+    if (!query.data) return undefined;
+    return new Set(ids);
+  }, [query.data, ids]);
+
   return {
     data: transcriptMap,
+    sourceIds,
     loading: query.isLoading,
     error: query.error,
   };

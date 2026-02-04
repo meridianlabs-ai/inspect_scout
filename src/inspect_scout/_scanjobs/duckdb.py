@@ -1,13 +1,21 @@
 """DuckDB implementation of ScanJobsView."""
 
+import json
 from typing import AsyncIterator
 
 import duckdb
 import pandas as pd
 from typing_extensions import override
 
-from .._query import Query
+from inspect_scout._recorder.file import FileRecorder
+
+from .._query import Query, ScalarValue
+from .._query.condition import Condition
+from .._query.condition_sql import condition_as_sql
+from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.recorder import Status
+from .._view._api_v2_types import ScanRow
+from .convert import scan_row_from_status
 from .view import ScanJobsView
 
 SCAN_JOBS_TABLE = "scan_jobs"
@@ -27,9 +35,7 @@ class DuckDBScanJobsView(ScanJobsView):
             statuses: List of Status objects to index.
         """
         self._statuses = statuses
-        self._status_by_scan_id: dict[str, Status] = {
-            s.spec.scan_id: s for s in statuses
-        }
+        self._scan_row_by_scan_id: dict[str, ScanRow] = {}
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     @override
@@ -40,8 +46,12 @@ class DuckDBScanJobsView(ScanJobsView):
 
         self._conn = duckdb.connect(":memory:")
 
-        # Flatten Status objects to DataFrame
-        df = self._statuses_to_dataframe(self._statuses)
+        # Get active scans for status enrichment
+        with active_scans_store() as store:
+            active_scans_map = store.read_all()
+
+        # Convert Status objects to ScanRows and build DataFrame
+        df = self._statuses_to_dataframe(self._statuses, active_scans_map)
 
         # Register DataFrame as table
         self._conn.register("scan_jobs_df", df)
@@ -58,7 +68,7 @@ class DuckDBScanJobsView(ScanJobsView):
             self._conn = None
 
     @override
-    async def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+    async def select(self, query: Query | None = None) -> AsyncIterator[ScanRow]:
         """Select scan jobs matching query."""
         assert self._conn is not None, "Not connected"
         query = query or Query()
@@ -70,11 +80,11 @@ class DuckDBScanJobsView(ScanJobsView):
         # Execute query
         result = self._conn.execute(sql, params).fetchall()
 
-        # Yield Status objects
+        # Yield ScanRow objects
         for (scan_id,) in result:
-            status = self._status_by_scan_id.get(scan_id)
-            if status is not None:
-                yield status
+            scan_row = self._scan_row_by_scan_id.get(scan_id)
+            if scan_row is not None:
+                yield scan_row
 
     @override
     async def count(self, query: Query | None = None) -> int:
@@ -91,26 +101,60 @@ class DuckDBScanJobsView(ScanJobsView):
         assert result is not None
         return int(result[0])
 
-    def _statuses_to_dataframe(self, statuses: list[Status]) -> pd.DataFrame:
-        """Convert Status objects to a DataFrame for DuckDB."""
+    @override
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        """Get distinct values of a column, sorted ascending."""
+        assert self._conn is not None, "Not connected"
+
+        if condition is not None:
+            where_sql, params = condition_as_sql(condition, "duckdb")
+            sql = f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} WHERE {where_sql} ORDER BY "{column}" ASC'
+        else:
+            params = []
+            sql = f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} ORDER BY "{column}" ASC'
+
+        result = self._conn.execute(sql, params).fetchall()
+        return [row[0] for row in result]
+
+    def _statuses_to_dataframe(
+        self,
+        statuses: list[Status],
+        active_scans_map: dict[str, ActiveScanInfo],
+    ) -> pd.DataFrame:
+        """Convert Status objects to a DataFrame for DuckDB.
+
+        Uses scan_row_from_status() for all transformation logic, then
+        converts to DataFrame rows for SQL querying.
+        """
         rows = []
         for status in statuses:
-            spec = status.spec
-            # Get model string - handle both ModelConfig and simple cases
-            model_str = None
-            if spec.model is not None:
-                model_str = getattr(spec.model, "model", None) or str(spec.model)
-
-            rows.append(
-                {
-                    "scan_id": spec.scan_id,
-                    "scan_name": spec.scan_name,
-                    "scanners": ",".join(spec.scanners.keys()) if spec.scanners else "",
-                    "model": model_str,
-                    "location": status.location,
-                    "timestamp": spec.timestamp,
-                    "complete": status.complete,
-                }
+            scan_row = scan_row_from_status(
+                status,
+                active_scan_info=active_scans_map.get(status.spec.scan_id),
             )
+            # Cache for lookup in select()
+            self._scan_row_by_scan_id[scan_row.scan_id] = scan_row
+
+            # Convert to dict for DataFrame, serializing dicts as JSON for DuckDB
+            row_dict = scan_row.model_dump()
+            for key in ("packages", "metadata", "scan_args"):
+                if row_dict[key] is not None:
+                    row_dict[key] = json.dumps(row_dict[key])
+
+            rows.append(row_dict)
 
         return pd.DataFrame(rows)
+
+
+async def scan_jobs_view(scans_location: str) -> ScanJobsView:
+    """Create a ScanJobsView for the given scans location.
+
+    Args:
+        scans_location: Path to directory containing scan jobs.
+
+    Returns:
+        ScanJobsView instance for querying scan jobs.
+    """
+    return DuckDBScanJobsView(await FileRecorder.list(scans_location))

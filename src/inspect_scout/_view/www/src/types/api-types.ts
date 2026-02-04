@@ -4,8 +4,7 @@ import type { components } from "./generated";
 export type ActiveScanInfo = components["schemas"]["ActiveScanInfo"];
 export type ActiveScansResponse = components["schemas"]["ActiveScansResponse"];
 export type Status = components["schemas"]["Status"];
-export type ScanStatusWithActiveInfo =
-  components["schemas"]["ScanStatusWithActiveInfo"];
+export type ScanRow = components["schemas"]["ScanRow"];
 export type ScanSpec = components["schemas"]["ScanSpec"];
 export type ScanJobConfig = components["schemas"]["ScanJobConfig"];
 export type Summary = components["schemas"]["Summary"];
@@ -16,6 +15,8 @@ export type ModelUsage = components["schemas"]["ModelUsage"];
 export type ModelConfig = components["schemas"]["ModelConfig-Output"];
 export type TranscriptsResponse = components["schemas"]["TranscriptsResponse"];
 export type Transcript = components["schemas"]["Transcript"];
+export type MessagesEventsResponse =
+  components["schemas"]["MessagesEventsResponse"];
 export type Pagination = components["schemas"]["Pagination"];
 export type TranscriptInfo = components["schemas"]["TranscriptInfo"];
 export type ScansResponse = components["schemas"]["ScansResponse"];
@@ -46,6 +47,7 @@ export type StepEvent = components["schemas"]["StepEvent"];
 export type StoreEvent = components["schemas"]["StoreEvent"];
 export type SubtaskEvent = components["schemas"]["SubtaskEvent"];
 export type ToolEvent = components["schemas"]["ToolEvent"];
+export type CompactionEvent = components["schemas"]["CompactionEvent"];
 export type Event = components["schemas"]["Event"];
 export type InvalidationTopic = components["schemas"]["InvalidationTopic"];
 

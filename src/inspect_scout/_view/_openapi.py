@@ -53,7 +53,9 @@ def build_openapi_schema(
                     schema_generator=CustomJsonSchemaGenerator,
                 )
                 schemas.update(schema.get("$defs", {}))
-                schemas[m.__name__] = _schema_without_defs(schema)
+                schemas[m.__name__] = _strip_defaults_from_nullable(
+                    _schema_without_defs(schema)
+                )
             schemas[name] = {
                 "oneOf": [
                     {"$ref": f"#/components/schemas/{m.__name__}"} for m in members
@@ -69,7 +71,12 @@ def build_openapi_schema(
                 schema_generator=CustomJsonSchemaGenerator,
             )
             schemas.update(schema.get("$defs", {}))
-            schemas[name] = _schema_without_defs(schema)
+            schemas[name] = _strip_defaults_from_nullable(_schema_without_defs(schema))
+        else:
+            raise TypeError(
+                f"Unsupported extra_schema type for '{name}': {t}. "
+                "Expected Union, Literal, or Pydantic model."
+            )
 
     return openapi_schema
 
@@ -77,3 +84,28 @@ def build_openapi_schema(
 def _schema_without_defs(schema: dict[str, Any]) -> dict[str, Any]:
     """Return schema dict excluding $defs key."""
     return {k: v for k, v in schema.items() if k != "$defs"}
+
+
+def _strip_defaults_from_nullable(schema: dict[str, Any]) -> dict[str, Any]:
+    """Strip 'default' from nullable properties to match FastAPI response_model behavior.
+
+    When Pydantic generates schemas via model_json_schema(), it includes 'default'
+    for fields with defaults. But FastAPI strips defaults when generating schemas
+    from response_model. openapi-typescript treats fields with 'default' as required
+    (not optional), causing type mismatches.
+
+    This ensures extra_schemas match the behavior of schemas derived from endpoints.
+    """
+    schema = dict(schema)
+    if "properties" in schema:
+        properties = {}
+        for prop_name, prop_schema in schema["properties"].items():
+            prop_schema = dict(prop_schema)
+            # Check if nullable (has anyOf with null type)
+            if "anyOf" in prop_schema and any(
+                item.get("type") == "null" for item in prop_schema.get("anyOf", [])
+            ):
+                prop_schema.pop("default", None)
+            properties[prop_name] = prop_schema
+        schema["properties"] = properties
+    return schema

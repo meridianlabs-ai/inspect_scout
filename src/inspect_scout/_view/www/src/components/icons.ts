@@ -59,6 +59,7 @@ export const ApplicationIcons = {
     all: "bi bi-arrows-collapse",
     up: "bi bi-chevron-up",
   },
+  compaction: "bi bi-stack",
   config: "bi bi-gear",
   confirm: "bi bi-check",
   copy: "bi bi-copy",

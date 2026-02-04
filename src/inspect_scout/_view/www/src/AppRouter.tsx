@@ -197,13 +197,18 @@ const useEmbeddedStateInitializer = () => {
         const { scan, scanner, dir } = embeddedState;
 
         // Set the results directory in the store
-        setSingleFileMode(true);
+        if (scanner || scan) {
+          setSingleFileMode(true);
+        }
+
         if (scanner) {
           setSelectedScanner(scanner);
         }
 
         // Navigate to the scan
-        void navigate(scanRoute(dir, scan), { replace: true });
+        if (dir && scan) {
+          void navigate(scanRoute(dir, scan), { replace: true });
+        }
       }
     }
     setHasInitializedEmbeddedData(true);
@@ -226,7 +231,7 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
   const setHasInitializedRouting = useStore(
     (state) => state.setHasInitializedRouting
   );
-  const selectedScanResult = useStore((state) => state.selectedScanResult);
+  const displayedScanResult = useStore((state) => state.displayedScanResult);
   const selectedScanLocation = useStore((state) => state.selectedScanLocation);
   const userScansDir = useStore((state) => state.userScansDir);
 
@@ -237,16 +242,19 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
 
     const currentPath = window.location.hash.slice(1);
     const isDefaultRoute =
-      currentPath === "/" || currentPath === "/scans" || currentPath === "";
+      currentPath === "/" ||
+      currentPath === "/scans" ||
+      currentPath === "" ||
+      currentPath === "/transcripts";
 
     const resolvedScansDir = userScansDir || serverScansDir;
     if (isDefaultRoute && selectedScanLocation && resolvedScansDir) {
-      if (selectedScanResult) {
+      if (displayedScanResult) {
         void navigate(
           scanResultRoute(
             resolvedScansDir,
             selectedScanLocation,
-            selectedScanResult
+            displayedScanResult
           ),
           { replace: true }
         );
@@ -261,7 +269,7 @@ const useRoutingInitializer = (serverScansDir: string | undefined) => {
   }, [
     hasInitializedRouting,
     selectedScanLocation,
-    selectedScanResult,
+    displayedScanResult,
     navigate,
     setHasInitializedRouting,
     serverScansDir,

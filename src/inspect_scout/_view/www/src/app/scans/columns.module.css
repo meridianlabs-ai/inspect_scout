@@ -1,0 +1,15 @@
+.green {
+  color: var(--bs-success);
+}
+
+.yellow {
+  color: var(--bs-warning);
+}
+
+.red {
+  color: var(--bs-danger);
+}
+
+.blue {
+  color: var(--bs-primary);
+}

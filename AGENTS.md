@@ -38,14 +38,14 @@ Consult documentation when you need deeper context on how subsystems work.
 - Scanners, transcripts, validation, results, projects, workflows, DB schema
 
 ### Design Documents
-Architecture and design decisions in `/design/`. 
+Architecture and design decisions in `/design/`.
 
 - [data-pipeline.md](design/data-pipeline.md) - Transcript data pipeline
 - [exception_handling.md](design/exception_handling.md) - Job vs infrastructure exceptions
 - [generator-iterator.md](design/generator-iterator.md) - Async generator semantics
 - [mp.md](design/mp.md) - Multi-process concurrency
 - [validation.md](design/validation.md) - Validation data structures
-- [TODO.md](design/TODO.md) - Future work
+- [react-query.md](src/inspect_scout/_view/www/design/react-query.md) - React Query patterns
 
 ## Python
 

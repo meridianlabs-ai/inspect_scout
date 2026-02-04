@@ -20,7 +20,7 @@ from typing import (
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.log._transcript import Transcript as InspectTranscript
 from inspect_ai.log._transcript import init_transcript
-from inspect_ai.model import ChatMessage
+from inspect_ai.model import ChatMessage, stable_message_ids
 from inspect_ai.model._model_output import ModelOutput
 from pydantic import JsonValue
 from shortuuid import uuid as shortuuid
@@ -29,7 +29,6 @@ from inspect_scout._project import read_project
 from inspect_scout._transcript.database.database import TranscriptsDB
 from inspect_scout._transcript.database.factory import transcripts_db
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
-from inspect_scout._util.message_ids import MessageIdManager, apply_message_ids_to_event
 
 from .context import (
     OP,
@@ -51,14 +50,14 @@ logger = logging.getLogger(__name__)
 async def _process_pending_captures(ctx: ObserveContext) -> None:
     """Process pending SDK captures and append events to transcript.
 
-    Creates a MessageIdManager per transcript (leaf) to ensure stable message IDs
-    based on content hash. Messages with identical content receive the same ID,
-    enabling cross-event message identity tracking.
+    Creates a stable_message_ids() function per transcript (leaf) to ensure stable
+    message IDs based on content hash. Messages with identical content receive the
+    same ID, enabling cross-event message identity tracking.
 
     Args:
         ctx: The observe context containing pending captures.
     """
-    id_manager = MessageIdManager()
+    apply_ids = stable_message_ids()
 
     for data, provider_key in ctx.pending_captures:
         provider_instance = get_provider_instance(provider_key)
@@ -66,7 +65,7 @@ async def _process_pending_captures(ctx: ObserveContext) -> None:
             try:
                 event = await provider_instance.build_event(data)
                 if isinstance(event, ModelEvent):
-                    apply_message_ids_to_event(event, id_manager)
+                    apply_ids(event)
                 ctx.inspect_transcript._events.append(event)
             except Exception as e:
                 logger.warning(f"Failed to build event from {provider_key}: {e}")

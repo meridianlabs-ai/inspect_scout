@@ -1,10 +1,10 @@
 import { VscodeButton, VscodeCheckbox } from "@vscode-elements/react-elements";
-import { CSSProperties, FC, useMemo, useState } from "react";
+import { CSSProperties, FC, useCallback, useMemo, useState } from "react";
 
 import { ApplicationIcons } from "../../../components/icons";
 import { Modal } from "../../../components/Modal";
 import { useStore } from "../../../state/store";
-import { ValidationCase } from "../../../types/api-types";
+import { TranscriptInfo, ValidationCase } from "../../../types/api-types";
 import { useTranscriptsByIds } from "../hooks/useTranscriptsByIds";
 import { extractUniqueSplits, getCaseKey, getIdText } from "../utils";
 
@@ -81,8 +81,34 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
   const gridStyle: CSSProperties = { gridTemplateColumns: gridColumns };
 
   // Fetch transcript data for all cases
-  const { data: transcriptMap, loading: transcriptsLoading } =
-    useTranscriptsByIds(transcriptsDir, transcriptIds);
+  const {
+    data: transcriptMap,
+    sourceIds,
+    loading: transcriptsLoading,
+  } = useTranscriptsByIds(transcriptsDir, transcriptIds);
+
+  // Safe transcript lookup that detects staleness
+  // Returns undefined if the map is stale (built for different IDs than requested)
+  const getTranscriptSafely = useCallback(
+    (transcriptId: string | undefined): TranscriptInfo | undefined => {
+      if (!transcriptId) return undefined;
+      if (!transcriptMap) return undefined;
+
+      // Check for staleness: the ID should be in the set of IDs the map was built for
+      if (sourceIds && !sourceIds.has(transcriptId)) {
+        console.warn(
+          `[ValidationCasesList] Stale transcript lookup detected: ` +
+            `ID "${transcriptId}" not in sourceIds. ` +
+            `sourceIds: [${[...sourceIds].join(", ")}], ` +
+            `requested: [${transcriptIds.join(", ")}]`
+        );
+        return undefined;
+      }
+
+      return transcriptMap.get(transcriptId);
+    },
+    [transcriptMap, sourceIds, transcriptIds]
+  );
 
   // Filter and sort cases based on split and search
   const filteredCases = useMemo(() => {
@@ -96,9 +122,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       if (searchText) {
         const search = searchText.toLowerCase();
         const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
-        const transcript = transcriptId
-          ? transcriptMap?.get(transcriptId)
-          : undefined;
+        const transcript = getTranscriptSafely(transcriptId);
 
         // Check ID
         const idText = getIdText(c.id).toLowerCase();
@@ -131,7 +155,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
       // Both have splits - sort alphabetically
       return splitA!.localeCompare(splitB!);
     });
-  }, [cases, splitFilter, searchText, transcriptMap]);
+  }, [cases, splitFilter, searchText, getTranscriptSafely]);
 
   // Get filtered case keys for select all logic
   const filteredCaseKeys = useMemo(() => {
@@ -294,9 +318,7 @@ export const ValidationCasesList: FC<ValidationCasesListProps> = ({
             filteredCases.map((c) => {
               const caseKey = getCaseKey(c.id);
               const transcriptId = Array.isArray(c.id) ? c.id[0] : c.id;
-              const transcript = transcriptId
-                ? transcriptMap?.get(transcriptId)
-                : undefined;
+              const transcript = getTranscriptSafely(transcriptId);
               return (
                 <ValidationCaseCard
                   key={caseKey}

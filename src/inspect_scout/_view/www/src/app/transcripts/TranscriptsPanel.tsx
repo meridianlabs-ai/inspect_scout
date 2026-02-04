@@ -4,11 +4,12 @@ import { FC, useCallback, useEffect, useMemo } from "react";
 
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useStore } from "../../state/store";
 import { TranscriptInfo } from "../../types/api-types";
 import { Footer } from "../components/Footer";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
-import { useFilterBarProps } from "../hooks/useFilterBarProps";
+import { useTranscriptsFilterBarProps } from "../hooks/useTranscriptsFilterBarProps";
 import { useAppConfig } from "../server/useAppConfig";
 import { useServerTranscriptsInfinite } from "../server/useServerTranscriptsInfinite";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
@@ -19,6 +20,8 @@ import { TranscriptsGrid } from "./TranscriptsGrid";
 import styles from "./TranscriptsPanel.module.css";
 
 export const TranscriptsPanel: FC = () => {
+  useDocumentTitle("Transcripts");
+
   // Resolve the active transcripts directory
   const {
     displayTranscriptsDir,
@@ -44,7 +47,7 @@ export const TranscriptsPanel: FC = () => {
     filterSuggestions,
     onFilterColumnChange,
     condition,
-  } = useFilterBarProps(resolvedTranscriptsDir);
+  } = useTranscriptsFilterBarProps(resolvedTranscriptsDir);
   const { data, error, fetchNextPage, hasNextPage, isFetching } =
     useServerTranscriptsInfinite(
       resolvedTranscriptsDir

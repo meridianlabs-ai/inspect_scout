@@ -3,8 +3,9 @@
 import abc
 from typing import AsyncIterator
 
-from .._query import Query
-from .._recorder.recorder import Status
+from .._query import Query, ScalarValue
+from .._query.condition import Condition
+from .._view._api_v2_types import ScanRow
 
 
 class ScanJobsView(abc.ABC):
@@ -21,14 +22,14 @@ class ScanJobsView(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def select(self, query: Query | None = None) -> AsyncIterator[Status]:
+    def select(self, query: Query | None = None) -> AsyncIterator[ScanRow]:
         """Select scan jobs matching query.
 
         Args:
             query: Query with where/limit/order_by criteria.
 
         Yields:
-            Status objects matching the criteria.
+            ScanRow objects matching the criteria.
         """
         ...
 
@@ -41,6 +42,21 @@ class ScanJobsView(abc.ABC):
 
         Returns:
             Number of matching scan jobs.
+        """
+        ...
+
+    @abc.abstractmethod
+    async def distinct(
+        self, column: str, condition: Condition | None
+    ) -> list[ScalarValue]:
+        """Get distinct values of a column, sorted ascending.
+
+        Args:
+            column: Column to get distinct values for.
+            condition: Filter condition, or None for no filter.
+
+        Returns:
+            Distinct values, sorted by column ascending.
         """
         ...
 

@@ -128,6 +128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scans/{dir}/distinct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get distinct column values
+         * @description Returns distinct values for a column, optionally filtered.
+         */
+        post: operations["scans_distinct_scans__dir__distinct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scans/{dir}/{scan}": {
         parameters: {
             query?: never;
@@ -288,7 +308,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/transcripts/{dir}/{id}": {
+    "/transcripts/{dir}/{id}/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -296,10 +316,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get transcript
-         * @description Returns a single transcript with full content (messages and events).
+         * Get transcript info
+         * @description Returns transcript metadata without messages or events.
          */
-        get: operations["transcript_transcripts__dir___id__get"];
+        get: operations["transcript_info_transcripts__dir___id__info_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -308,7 +328,27 @@ export interface paths {
          * Check transcript existence
          * @description Checks if a transcript exists.
          */
-        head: operations["transcript_transcripts__dir___id__head"];
+        head: operations["transcript_info_transcripts__dir___id__info_head"];
+        patch?: never;
+        trace?: never;
+    };
+    "/transcripts/{dir}/{id}/messages-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get transcript messages and events (raw)
+         * @description Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.
+         */
+        get: operations["transcript_messages_and_events_transcripts__dir___id__messages_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -794,6 +834,62 @@ export interface components {
             tool_call_id: string[] | null;
         };
         /**
+         * CompactionEvent
+         * @description Compaction of conversation history.
+         */
+        CompactionEvent: {
+            /**
+             * Event
+             * @default compaction
+             * @constant
+             */
+            event: "compaction";
+            /**
+             * Metadata
+             * @default null
+             */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Pending
+             * @default null
+             */
+            pending: boolean | null;
+            /**
+             * Source
+             * @default null
+             */
+            source: string | null;
+            /**
+             * Span Id
+             * @default null
+             */
+            span_id: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /**
+             * Tokens After
+             * @default null
+             */
+            tokens_after: number | null;
+            /**
+             * Tokens Before
+             * @default null
+             */
+            tokens_before: number | null;
+            /**
+             * Uuid
+             * @default null
+             */
+            uuid: string | null;
+            /** Working Start */
+            working_start: number;
+        };
+        /**
          * Condition
          * @description WHERE clause condition that can be combined with others.
          */
@@ -1168,7 +1264,7 @@ export interface components {
             /** Traceback Ansi */
             traceback_ansi: string;
         };
-        Event: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
+        Event: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
         /**
          * GenerateConfig
          * @description Model generation options.
@@ -1723,8 +1819,7 @@ export interface components {
              * @enum {string}
              */
             answer: "boolean" | "numeric" | "string";
-            /** @default null */
-            preprocessor: components["schemas"]["MessageFormatOptions"] | null;
+            preprocessor?: components["schemas"]["MessageFormatOptions"] | null;
             /** Question */
             question: string;
         };
@@ -1856,6 +1951,22 @@ export interface components {
              * @default false
              */
             exclude_tool_usage: boolean;
+        };
+        /**
+         * MessagesEventsResponse
+         * @description Response for GET /transcripts/{dir}/{id}/messages-events endpoint.
+         */
+        MessagesEventsResponse: {
+            /** Attachments */
+            attachments?: {
+                [key: string]: string;
+            } | null;
+            /** Events */
+            events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
+            /** Messages */
+            messages: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * ModelCall
@@ -2661,6 +2772,67 @@ export interface components {
             version: string;
         };
         /**
+         * ScanRow
+         * @description Flat scan row for API response - maps directly to client grid columns.
+         *
+         *     Fields are either:
+         *     - Extracted from source types (using model_fields to avoid duplication)
+         *     - Transformed/flattened from nested structures
+         *     - Computed aggregates
+         */
+        ScanRow: {
+            /** Active Completion Pct */
+            active_completion_pct?: number | null;
+            /** Location */
+            location: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model */
+            model?: string | null;
+            /** Packages */
+            packages: {
+                [key: string]: string;
+            };
+            /** Revision Commit */
+            revision_commit?: string | null;
+            /** Revision Origin */
+            revision_origin?: string | null;
+            /** Revision Version */
+            revision_version?: string | null;
+            /** Scan Args */
+            scan_args?: {
+                [key: string]: unknown;
+            } | null;
+            /** Scan File */
+            scan_file?: string | null;
+            /** Scan Id */
+            scan_id: string;
+            /** Scan Name */
+            scan_name: string;
+            /** Scanners */
+            scanners: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "error" | "complete" | "incomplete";
+            /** Tags */
+            tags: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Total Errors */
+            total_errors: number;
+            /** Total Results */
+            total_results: number;
+            /** Total Tokens */
+            total_tokens: number;
+        };
+        /**
          * ScanSpec
          * @description Scan specification (scanners, transcripts, config).
          */
@@ -2705,18 +2877,6 @@ export interface components {
             } | null;
             /** Worklist */
             worklist?: components["schemas"]["Worklist"][] | null;
-        };
-        /** ScanStatusWithActiveInfo */
-        ScanStatusWithActiveInfo: {
-            active_scan_info?: components["schemas"]["ActiveScanInfo"] | null;
-            /** Complete */
-            complete: boolean;
-            /** Errors */
-            errors: components["schemas"]["Error"][];
-            /** Location */
-            location: string;
-            spec: components["schemas"]["ScanSpec"];
-            summary: components["schemas"]["Summary"];
         };
         /**
          * ScanTranscripts
@@ -2843,7 +3003,7 @@ export interface components {
         /** ScansResponse */
         ScansResponse: {
             /** Items */
-            items: components["schemas"]["ScanStatusWithActiveInfo"][];
+            items: components["schemas"]["ScanRow"][];
             /** Next Cursor */
             next_cursor?: {
                 [key: string]: unknown;
@@ -3611,7 +3771,7 @@ export interface components {
             /** Error */
             error?: string | null;
             /** Events */
-            events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
+            events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
             /** Limit */
             limit?: string | null;
             /** Message Count */
@@ -3773,25 +3933,15 @@ export interface components {
         ValidationCase: {
             /** Id */
             id: string | string[];
-            /**
-             * Labels
-             * @default null
-             */
+            /** Labels */
             labels: {
                 [key: string]: boolean;
             } | null;
-            /**
-             * Predicate
-             * @default null
-             */
-            predicate: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
-            /**
-             * Split
-             * @default null
-             */
-            split: string | null;
-            /** @default null */
-            target: components["schemas"]["JsonValue"] | null;
+            /** Predicate */
+            predicate?: ("gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "contains" | "startswith" | "endswith" | "icontains" | "iequals") | null;
+            /** Split */
+            split?: string | null;
+            target?: components["schemas"]["JsonValue"] | null;
         };
         /** ValidationCaseRequest */
         ValidationCaseRequest: {
@@ -4101,6 +4251,33 @@ export interface operations {
             };
         };
     };
+    scans_distinct_scans__dir__distinct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DistinctRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (string | number | boolean | null)[];
+                };
+            };
+        };
+    };
     scan_scans__dir___scan__get: {
         parameters: {
             query?: never;
@@ -4302,7 +4479,7 @@ export interface operations {
             };
         };
     };
-    transcript_transcripts__dir___id__get: {
+    transcript_info_transcripts__dir___id__info_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4322,12 +4499,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Transcript"];
+                    "application/json": components["schemas"]["TranscriptInfo"];
                 };
             };
         };
     };
-    transcript_transcripts__dir___id__head: {
+    transcript_info_transcripts__dir___id__info_head: {
         parameters: {
             query?: never;
             header?: never;
@@ -4347,7 +4524,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Transcript"];
+                    "application/json": components["schemas"]["TranscriptInfo"];
+                };
+            };
+        };
+    };
+    transcript_messages_and_events_transcripts__dir___id__messages_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Transcripts directory (base64url-encoded) */
+                dir: string;
+                /** @description Transcript ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagesEventsResponse"];
                 };
             };
         };

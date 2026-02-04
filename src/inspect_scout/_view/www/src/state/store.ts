@@ -10,8 +10,9 @@ import { create } from "zustand";
 import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
-import { ScanApi } from "../api/api";
-import { ColumnSizingStrategyKey } from "../app/transcripts/columnSizing/types";
+import { ScoutApiV2 } from "../api/api";
+import { ColumnSizingStrategyKey } from "../app/components/columnSizing";
+import type { ScanColumnKey } from "../app/scans/columns";
 import {
   ErrorScope,
   ResultGroup,
@@ -40,7 +41,7 @@ export interface ColumnFilter {
 }
 
 // Transcripts table UI state
-interface TranscriptsTableState {
+export interface TranscriptsTableState {
   columnSizing: ColumnSizingState;
   columnOrder: string[];
   sorting: SortingState;
@@ -48,9 +49,20 @@ interface TranscriptsTableState {
   focusedRowId: string | null;
   columnFilters: Record<string, ColumnFilter>;
   visibleColumns?: Array<keyof TranscriptInfo>;
-  /** Current sizing strategy */
   sizingStrategy: ColumnSizingStrategyKey;
-  /** Column IDs that have been manually resized by the user */
+  manuallyResizedColumns: string[];
+}
+
+// Scans table UI state
+export interface ScansTableState {
+  columnSizing: ColumnSizingState;
+  columnOrder: ScanColumnKey[];
+  sorting: SortingState;
+  rowSelection: RowSelectionState;
+  focusedRowId: string | null;
+  columnFilters: Record<string, ColumnFilter>;
+  visibleColumns?: ScanColumnKey[];
+  sizingStrategy: ColumnSizingStrategyKey;
   manuallyResizedColumns: string[];
 }
 
@@ -80,6 +92,7 @@ interface StoreState {
 
   // Dataframes
   selectedScanResult?: string;
+  displayedScanResult?: string;
 
   // general UI state
   properties: Record<string, Record<string, unknown> | undefined>;
@@ -121,6 +134,9 @@ interface StoreState {
   transcriptsDir?: string;
   transcriptsTableState: TranscriptsTableState;
 
+  // Scans table state
+  scansTableState: ScansTableState;
+
   // Transcript Detail Data
   transcriptState: TranscriptState;
 
@@ -150,6 +166,7 @@ interface StoreState {
   // Track the select result and data
   setSelectedScanner: (scanner: string) => void;
   setSelectedScanResult: (result: string) => void;
+  setDisplayedScanResult: (result: string | undefined) => void;
   setVisibleScannerResults: (results: ScanResultSummary[]) => void;
   setVisibleScannerResultsCount: (count: number) => void;
 
@@ -230,6 +247,9 @@ interface StoreState {
   setTranscriptState: (
     updater: TranscriptState | ((prev: TranscriptState) => TranscriptState)
   ) => void;
+  setScansTableState: (
+    updater: ScansTableState | ((prev: ScansTableState) => ScansTableState)
+  ) => void;
 
   // Validation actions
   setSelectedValidationSetUri: (uri: string | undefined) => void;
@@ -264,7 +284,7 @@ const createDebouncedPersistStorage = (
   };
 };
 
-export const createStore = (api: ScanApi) =>
+export const createStore = (api: ScoutApiV2) =>
   create<StoreState>()(
     devtools(
       persist(
@@ -289,6 +309,16 @@ export const createStore = (api: ScanApi) =>
             columnSizing: {},
             columnOrder: [],
             sorting: [{ id: "date", desc: true }],
+            rowSelection: {},
+            focusedRowId: null,
+            columnFilters: {},
+            sizingStrategy: "fit-content",
+            manuallyResizedColumns: [],
+          },
+          scansTableState: {
+            columnSizing: {},
+            columnOrder: [],
+            sorting: [{ id: "timestamp", desc: true }],
             rowSelection: {},
             focusedRowId: null,
             columnFilters: {},
@@ -346,6 +376,10 @@ export const createStore = (api: ScanApi) =>
             set((state) => {
               state.selectedScanResult = result;
             }),
+          setDisplayedScanResult: (result: string | undefined) =>
+            set((state) => {
+              state.displayedScanResult = result;
+            }),
           setVisibleScannerResults: (results: ScanResultSummary[]) => {
             set((state) => {
               state.visibleScannerResults = results;
@@ -373,6 +407,7 @@ export const createStore = (api: ScanApi) =>
               state.selectedFilter = undefined;
               state.selectedScanner = undefined;
               state.selectedScanResult = undefined;
+              state.displayedScanResult = undefined;
               state.sortResults = undefined;
             });
           },
@@ -650,6 +685,14 @@ export const createStore = (api: ScanApi) =>
                   : updater;
             });
           },
+          setScansTableState(updater) {
+            set((state) => {
+              state.scansTableState =
+                typeof updater === "function"
+                  ? updater(state.scansTableState)
+                  : updater;
+            });
+          },
 
           // Validation actions
           setSelectedValidationSetUri: (uri: string | undefined) => {
@@ -716,7 +759,7 @@ export const createStore = (api: ScanApi) =>
 type StoreApi = ReturnType<typeof createStore>;
 
 const StoreContext = createContext<StoreApi | null>(null);
-const ApiContext = createContext<ScanApi | null>(null);
+const ApiContext = createContext<ScoutApiV2 | null>(null);
 
 export const StoreProvider = StoreContext.Provider;
 export const ApiProvider = ApiContext.Provider;
@@ -733,7 +776,7 @@ export const useStore = <T>(selector?: (state: StoreState) => T) => {
   return store(selector);
 };
 
-export const useApi = (): ScanApi => {
+export const useApi = (): ScoutApiV2 => {
   const api = useContext(ApiContext);
   if (!api) throw new Error("useApi must be used within ApiProvider");
   return api;

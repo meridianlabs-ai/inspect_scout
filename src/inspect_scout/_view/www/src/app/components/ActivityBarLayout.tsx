@@ -7,6 +7,7 @@ import {
   getActivityById,
   getActivityByRoute,
 } from "../../router/activities";
+import { openRouteInNewTab } from "../../router/url";
 import { AppConfig } from "../../types/api-types";
 
 import { ActivityBar } from "./ActivityBar";
@@ -32,10 +33,17 @@ export const ActivityBarLayout: FC<ActivityBarLayoutProps> = ({
   const currentActivity = getActivityByRoute(location.pathname);
   const selectedActivityId = currentActivity?.id ?? "";
 
-  const handleSelectActivity = (activityId: string) => {
+  const handleSelectActivity = (
+    activityId: string,
+    options?: { openInNewTab?: boolean }
+  ) => {
     const activity = getActivityById(activityId);
     if (activity) {
-      void navigate(activity.route);
+      if (options?.openInNewTab) {
+        openRouteInNewTab(activity.route);
+      } else {
+        void navigate(activity.route);
+      }
     }
   };
 

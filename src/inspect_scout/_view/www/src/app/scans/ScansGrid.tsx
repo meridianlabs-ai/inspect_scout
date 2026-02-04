@@ -1,64 +1,74 @@
-import type {
-  ColDef,
-  FilterChangedEvent,
-  RowClickedEvent,
-  StateUpdatedEvent,
-} from "ag-grid-community";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeBalham,
-} from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
-import { clsx } from "clsx";
-import { FC, useCallback, useEffect, useMemo, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { FC, useEffect, useMemo, useRef } from "react";
 
-import { ApplicationIcons } from "../../components/icons";
-import { useLoggingNavigate } from "../../debugging/navigationDebugging";
-import { getRelativePathFromParams, scanRoute } from "../../router/url";
+import { ScalarValue } from "../../api/api";
+import { scanRoute } from "../../router/url";
 import { useStore } from "../../state/store";
-import type { ScanStatusWithActiveInfo } from "../../types/api-types";
+import type { ScanRow as ApiScanRow } from "../../types/api-types";
 import { toRelativePath } from "../../utils/path";
-import { debounce } from "../../utils/sync";
+import { DataGrid } from "../components/dataGrid";
 
-import styles from "./ScansGrid.module.css";
+import {
+  DEFAULT_COLUMN_ORDER,
+  getScanColumns,
+  ScanColumn,
+  ScanRow,
+} from "./columns";
+import { useColumnSizing } from "./columnSizing";
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Generate a stable key for a scan item
+function scanItemKey(index: number, item?: ScanRow): string {
+  if (!item) {
+    return String(index);
+  }
+  return item.scan_id;
+}
 
-const GRID_STATE_NAME = "ScanJobsGrid";
-
-// Extends API type with computed relativeLocation for grid display
-type ScanRow = ScanStatusWithActiveInfo & { relativeLocation: string };
-
-export const ScansGrid: FC<{
-  scans: ScanStatusWithActiveInfo[];
+interface ScansGridProps {
+  scans: ApiScanRow[];
   resultsDir: string | undefined;
-}> = ({ scans, resultsDir }) => {
-  const params = useParams<{ "*": string }>();
-  const paramsRelativePath = getRelativePathFromParams(params);
-  const navigate = useLoggingNavigate("ScansGrid");
+  className?: string | string[];
+  loading?: boolean;
+  /** Called when scroll position nears end */
+  onScrollNearEnd?: (distanceFromBottom?: number) => void;
+  /** Whether more data is available to fetch */
+  hasMore?: boolean;
+  /** Distance from bottom (in px) at which to trigger callback */
+  fetchThreshold?: number;
+  /** Autocomplete suggestions for the currently editing filter column */
+  filterSuggestions?: ScalarValue[];
+  /** Called when a filter column starts/stops being edited */
+  onFilterColumnChange?: (columnId: string | null) => void;
+}
 
-  const gridStates = useStore((state) => state.gridStates);
-  const setGridState = useStore((state) => state.setGridState);
+export const ScansGrid: FC<ScansGridProps> = ({
+  scans,
+  resultsDir,
+  className,
+  loading,
+  onScrollNearEnd,
+  hasMore = false,
+  fetchThreshold = 500,
+  filterSuggestions = [],
+  onFilterColumnChange,
+}) => {
+  // Table ref for DOM measurement (used by column sizing)
+  const tableRef = useRef<HTMLTableElement>(null);
 
+  // Table state from store
+  const sorting = useStore((state) => state.scansTableState.sorting);
+  const columnOrder = useStore((state) => state.scansTableState.columnOrder);
+  const columnFilters = useStore(
+    (state) => state.scansTableState.columnFilters
+  );
+  const rowSelection = useStore((state) => state.scansTableState.rowSelection);
+  const focusedRowId = useStore((state) => state.scansTableState.focusedRowId);
+  const visibleColumns = useStore(
+    (state) => state.scansTableState.visibleColumns
+  );
+  const setTableState = useStore((state) => state.setScansTableState);
   const setVisibleScanJobCount = useStore(
     (state) => state.setVisibleScanJobCount
   );
-
-  const gridState = useMemo(() => {
-    const savedState = gridStates[GRID_STATE_NAME];
-    // If no saved state, apply default sorting
-    if (!savedState?.sort) {
-      return {
-        sort: {
-          sortModel: [{ colId: "timestamp", sort: "desc" as const }],
-        },
-      };
-    }
-    return savedState;
-  }, [gridStates]);
 
   // Add computed relativeLocation to each scan
   const data = useMemo(
@@ -67,204 +77,101 @@ export const ScansGrid: FC<{
         ...scan,
         relativeLocation: toRelativePath(scan.location, resultsDir),
       })),
-    [scans, resultsDir, paramsRelativePath]
+    [scans, resultsDir]
   );
 
+  // Update visible count
   useEffect(() => {
     setVisibleScanJobCount(data.length);
   }, [data.length, setVisibleScanJobCount]);
 
-  // Create column definitions
-  const columnDefs = useMemo((): ColDef<ScanRow>[] => {
-    const baseColumns: ColDef<ScanRow>[] = [
-      {
-        colId: "status",
-        headerName: "✓",
-        initialWidth: 70,
-        minWidth: 70,
-        maxWidth: 70,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => {
-          const scan = params.data;
-          if (!scan) return "";
-          if (scan.active_scan_info) return "active";
-          if (scan.errors.length > 0) return "error";
-          return scan.complete ? "complete" : "incomplete";
-        },
-        cellRenderer: (params: {
-          value: string;
-          data: ScanRow | undefined;
-        }) => {
-          const scan = params.data;
-          if (!scan) return null;
-
-          const activeScan = scan.active_scan_info;
-          if (activeScan) {
-            const pct =
-              activeScan.total_scans > 0
-                ? Math.round(
-                    (activeScan.metrics.completed_scans /
-                      activeScan.total_scans) *
-                      100
-                  )
-                : 0;
-            return (
-              <span className={classNameForColor("blue")}>
-                <i className={ApplicationIcons["play-circle"]}></i> {pct}%
-              </span>
-            );
-          }
-
-          const hasErrors = scan.errors.length > 0;
-          const icon = scan.complete
-            ? ApplicationIcons.success
-            : hasErrors
-              ? ApplicationIcons.error
-              : ApplicationIcons.pendingTask;
-          const color = scan.complete ? "green" : hasErrors ? "red" : "yellow";
-
-          return <i className={clsx(icon, classNameForColor(color))}></i>;
-        },
-      },
-      {
-        colId: "name",
-        headerName: "Name",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.scan_name ?? "-",
-      },
-      {
-        colId: "scanners",
-        headerName: "Scanners",
-        initialWidth: 120,
-        minWidth: 120,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => {
-          const scanners = params.data?.spec.scanners;
-          return scanners ? Object.keys(scanners).join(", ") : "-";
-        },
-      },
-      {
-        colId: "scanId",
-        headerName: "Scan Id",
-        initialWidth: 150,
-        minWidth: 100,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.scan_id ?? "-",
-      },
-      {
-        colId: "model",
-        headerName: "Model",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.model?.model ?? "-",
-      },
-      {
-        field: "relativeLocation",
-        headerName: "Path",
-        initialWidth: 120,
-        minWidth: 80,
-        sortable: true,
-        filter: true,
-        resizable: true,
-      },
-      {
-        colId: "timestamp",
-        headerName: "Time",
-        initialWidth: 150,
-        minWidth: 100,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        valueGetter: (params) => params.data?.spec.timestamp ?? "",
-        valueFormatter: (params) => {
-          const timestamp = params.value;
-          return timestamp ? new Date(timestamp).toLocaleString() : "-";
-        },
-        comparator: (valueA: string, valueB: string) => {
-          if (!valueA) return 1;
-          if (!valueB) return -1;
-          return new Date(valueA).getTime() - new Date(valueB).getTime();
-        },
-      },
-    ];
-
-    return baseColumns;
-  }, []);
-
-  const gridRef = useRef<AgGridReact>(null);
-  const resizeGridColumns = useCallback(
-    debounce(() => {
-      gridRef.current?.api?.sizeColumnsToFit();
-    }, 10),
-    []
+  // Define table columns based on visible columns from store
+  const columns = useMemo<ScanColumn[]>(
+    () => getScanColumns(visibleColumns),
+    [visibleColumns]
   );
 
-  const onFilterChanged = useCallback(
-    (event: FilterChangedEvent<ScanRow>) => {
-      const displayedRowCount = event.api.getDisplayedRowCount();
-      setVisibleScanJobCount(displayedRowCount);
-    },
-    [setVisibleScanJobCount]
-  );
+  // Column sizing with min/max constraints and auto-sizing
+  const {
+    columnSizing,
+    handleColumnSizingChange,
+    applyAutoSizing,
+    resetColumnSize,
+  } = useColumnSizing({
+    columns,
+    tableRef,
+    data,
+  });
+
+  // Track if we've done initial auto-sizing
+  const hasInitializedRef = useRef(false);
+
+  // Track previous visible columns to detect changes
+  const previousVisibleColumnsRef = useRef<typeof visibleColumns | null>(null);
+
+  // Auto-size columns on initial load when data is available
+  useEffect(() => {
+    if (!hasInitializedRef.current && data.length > 0) {
+      hasInitializedRef.current = true;
+      applyAutoSizing();
+    }
+  }, [data.length, applyAutoSizing]);
+
+  // Auto-size when visible columns change
+  // (applyAutoSizing preserves manually resized columns)
+  useEffect(() => {
+    const previousVisibleColumns = previousVisibleColumnsRef.current;
+    previousVisibleColumnsRef.current = visibleColumns;
+
+    if (previousVisibleColumns && previousVisibleColumns !== visibleColumns) {
+      applyAutoSizing();
+    }
+  }, [visibleColumns, applyAutoSizing]);
+
+  // Compute effective column order
+  const effectiveColumnOrder = useMemo(() => {
+    if (columnOrder && columnOrder.length > 0) {
+      return columnOrder;
+    }
+    return DEFAULT_COLUMN_ORDER;
+  }, [columnOrder]);
+
+  // Get row ID
+  const getRowId = (row: ScanRow): string => row.scan_id;
+
+  // Get route for navigation
+  const getRowRoute = (row: ScanRow): string => {
+    if (!resultsDir) return "";
+    return scanRoute(resultsDir, row.relativeLocation);
+  };
 
   return (
-    <div className={styles.gridWrapper}>
-      <AgGridReact<ScanRow>
-        ref={gridRef}
-        rowData={data}
-        columnDefs={columnDefs}
-        defaultColDef={{
-          sortable: true,
-          filter: true,
-          resizable: true,
-        }}
-        animateRows={false}
-        suppressColumnMoveAnimation={true}
-        suppressCellFocus={true}
-        theme={themeBalham}
-        enableCellTextSelection={true}
-        autoSizeStrategy={{ type: "fitGridWidth" }}
-        initialState={gridState}
-        onStateUpdated={(e: StateUpdatedEvent<ScanRow>) => {
-          setGridState(GRID_STATE_NAME, e.state);
-        }}
-        rowClass={styles.row}
-        onRowClicked={(e: RowClickedEvent<ScanRow>) => {
-          if (e.data && resultsDir) {
-            void navigate(scanRoute(resultsDir, e.data.relativeLocation));
-          }
-        }}
-        onGridSizeChanged={resizeGridColumns}
-        onFilterChanged={onFilterChanged}
-      />
-    </div>
+    <DataGrid
+      data={data}
+      columns={columns}
+      getRowId={getRowId}
+      getRowKey={scanItemKey}
+      state={{
+        sorting,
+        columnOrder: effectiveColumnOrder,
+        columnFilters,
+        columnSizing,
+        rowSelection,
+        focusedRowId,
+      }}
+      onStateChange={setTableState}
+      getRowRoute={getRowRoute}
+      onScrollNearEnd={onScrollNearEnd}
+      hasMore={hasMore}
+      fetchThreshold={fetchThreshold}
+      filterSuggestions={filterSuggestions}
+      onFilterColumnChange={onFilterColumnChange}
+      onColumnSizingChange={handleColumnSizingChange}
+      onResetColumnSize={resetColumnSize}
+      className={className}
+      loading={loading}
+      emptyMessage="No matching scans"
+      noConfigMessage="No scans directory configured."
+    />
   );
-};
-
-const classNameForColor = (color: string): string | undefined => {
-  switch (color) {
-    case "green":
-      return styles.green;
-    case "yellow":
-      return styles.yellow;
-    case "red":
-      return styles.red;
-    case "blue":
-      return styles.blue;
-    default:
-      return "";
-  }
 };

@@ -3,8 +3,8 @@ import JSON5 from "json5";
 import { basename, dirname } from "./path";
 
 export interface EmbeddedScanState {
-  dir: string;
-  scan: string;
+  dir?: string;
+  scan?: string;
   scanner?: string;
   /** Protocol version: undefined/1 = legacy V1, 2 = HTTP proxy support */
   extensionProtocolVersion?: number;
@@ -31,10 +31,10 @@ export function getEmbeddedScanState(): EmbeddedScanState | null {
       extensionProtocolVersion?: number;
     } = JSON5.parse(embeddedState.textContent);
 
-    if (state.type === "updateState" && state.url) {
+    if (state.type === "updateState") {
       const url = state.url;
-      const dir = dirname(url);
-      const scan = basename(url);
+      const dir = url ? dirname(url) : undefined;
+      const scan = url ? basename(url) : undefined;
       return {
         dir,
         scan,

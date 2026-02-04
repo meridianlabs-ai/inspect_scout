@@ -11,6 +11,7 @@ import { LoadingBar } from "../../components/LoadingBar";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolButton } from "../../components/ToolButton";
 import { EventNode, EventType } from "../../components/transcript/types";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import {
   getScannerParam,
   getValidationParam,
@@ -24,7 +25,9 @@ import { useSelectedScanResultData } from "../hooks/useSelectedScanResultData";
 import { useSelectedScanResultInputData } from "../hooks/useSelectedScanResultInputData";
 import { useAppConfig } from "../server/useAppConfig";
 import { useHasTranscript } from "../server/useHasTranscript";
-import { ScanResultData } from "../types";
+import { isTranscriptInput, ScanResultData } from "../types";
+import { getScanDisplayName } from "../utils/scan";
+import { getTranscriptDisplayName } from "../utils/transcript";
 import { useScansDir } from "../utils/useScansDir";
 import { useTranscriptsDir } from "../utils/useTranscriptsDir";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
@@ -63,6 +66,23 @@ export const ScannerResultPanel: FC = () => {
       setSelectedScanner(scannerParam);
     }
   }, [searchParams, setSelectedScanner]);
+
+  // Sync displayed result with URL - this ensures both selectedScanResult
+  // (for list highlighting) and displayedScanResult (for route restoration)
+  // stay in sync with what's actually being viewed
+  const setSelectedScanResult = useStore(
+    (state) => state.setSelectedScanResult
+  );
+  const setDisplayedScanResult = useStore(
+    (state) => state.setDisplayedScanResult
+  );
+  useEffect(() => {
+    if (scanResultUuid) {
+      setSelectedScanResult(scanResultUuid);
+      setDisplayedScanResult(scanResultUuid);
+    }
+  }, [scanResultUuid, setSelectedScanResult, setDisplayedScanResult]);
+
   const appConfig = useAppConfig();
 
   // Validation sidebar - URL is the source of truth
@@ -86,6 +106,17 @@ export const ScannerResultPanel: FC = () => {
 
   const { loading: inputLoading, data: inputData } =
     useSelectedScanResultInputData();
+
+  // Set document title with task name and scan location
+  const taskName =
+    inputData && isTranscriptInput(inputData)
+      ? getTranscriptDisplayName(inputData.input)
+      : undefined;
+  useDocumentTitle(
+    taskName,
+    getScanDisplayName(selectedScan, appConfig.scans.dir),
+    "Scans"
+  );
 
   const { resolvedTranscriptsDir } = useTranscriptsDir(false);
   const { loading: hasTranscriptLoading, data: hasTranscript } =

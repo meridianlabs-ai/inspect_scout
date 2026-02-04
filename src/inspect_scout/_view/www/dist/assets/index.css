@@ -4108,129 +4108,29 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   cursor: default;
 }
-._dropdownContainer_1fize_1 {
-  position: relative;
+._filterButton_fuk0s_1 {
   display: inline-flex;
   align-items: center;
-}
-
-.btn._toolButton_1fize_7 {
-  background-color: var(--bs-light-border-subtle);
-}
-
-.btn._toolButton_1fize_7._bodyColor_1fize_11 {
-  background-color: var(--bs-body-bg);
-}
-
-.btn-tools._toolButton_1fize_7 {
-  border: solid 1px var(--bs-border-color);
-}
-
-._toolButton_1fize_7 {
-  white-space: nowrap;
-}
-
-._toolButton_1fize_7 i {
-  margin-right: 0.5em;
-}
-
-._toolButton_1fize_7 ._chevron_1fize_27 {
-  margin-left: 0.5em;
-  margin-right: 0;
-  font-size: 0.75em;
-}
-
-._toolButton_1fize_7:focus {
-  outline: none;
-  box-shadow:
-    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
-    inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-._backdrop_1fize_41 {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 998;
-}
-
-._dropdownMenu_1fize_50 {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.25rem;
-  background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  z-index: 999;
-  min-width: 100%;
-  overflow: hidden;
-}
-
-._dropdownMenu_1fize_50._alignRight_1fize_64 {
-  right: 0;
-  left: auto;
-}
-
-._dropdownItem_1fize_69 {
-  display: block;
-  width: 100%;
-  padding: 0.25rem 0.75rem;
-  background: none;
+  justify-content: center;
+  padding: 2px;
   border: none;
-  text-align: left;
-  cursor: pointer;
-  color: var(--bs-body-color);
-  white-space: nowrap;
-  transition: background-color 0.15s ease-in-out;
-}
-
-._dropdownItem_1fize_69:hover {
-  background-color: var(--bs-tertiary-bg);
-}
-
-._dropdownItem_1fize_69:active {
-  background-color: var(--bs-secondary-bg);
-}
-._chip_4n1t8_1 {
-  display: inline-flex;
-  flex-direction: row;
-  margin: 0rem 0;
-  padding: 2px 6px;
-  border: solid 1px var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  align-items: baseline;
-  white-space: nowrap;
-}
-
-._label_4n1t8_12 {
-  font-weight: 600;
-  margin-right: 0.5em;
-}
-
-._icon_4n1t8_17 {
-  margin-right: 0.2rem;
-  font-size: 0.9em;
-}
-
-._closeIcon_4n1t8_22 {
-  margin-left: 0.3rem;
-  font-size: 0.9em;
-}
-
-._clickable_4n1t8_27 {
+  background: transparent;
+  color: var(--bs-secondary);
   cursor: pointer;
 }
-._chipGroup_1de1s_1 {
+
+._filterButtonActive_fuk0s_12 {
+  color: var(--bs-primary);
+}
+._headerActions_uh0qk_1 {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  column-gap: 0.3rem;
-  row-gap: 0.3rem;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+}
+
+._filterPopover_uh0qk_8 {
+  min-width: 180px;
 }
 ._container_1qaxn_1 {
   position: relative;
@@ -4369,12 +4269,195 @@ so disabling selection can break that functionality */
   color: var(--bs-secondary);
   padding-left: 2px;
 }
-._success_1mf4d_1 {
-  color: var(--bs-success) !important;
+._dropdownContainer_1fize_1 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
-._unsuccess_1mf4d_5 {
-  opacity: 0.5 !important;
+.btn._toolButton_1fize_7 {
+  background-color: var(--bs-light-border-subtle);
+}
+
+.btn._toolButton_1fize_7._bodyColor_1fize_11 {
+  background-color: var(--bs-body-bg);
+}
+
+.btn-tools._toolButton_1fize_7 {
+  border: solid 1px var(--bs-border-color);
+}
+
+._toolButton_1fize_7 {
+  white-space: nowrap;
+}
+
+._toolButton_1fize_7 i {
+  margin-right: 0.5em;
+}
+
+._toolButton_1fize_7 ._chevron_1fize_27 {
+  margin-left: 0.5em;
+  margin-right: 0;
+  font-size: 0.75em;
+}
+
+._toolButton_1fize_7:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(var(--bs-primary-rgb), 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+._backdrop_1fize_41 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+}
+
+._dropdownMenu_1fize_50 {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  min-width: 100%;
+  overflow: hidden;
+}
+
+._dropdownMenu_1fize_50._alignRight_1fize_64 {
+  right: 0;
+  left: auto;
+}
+
+._dropdownItem_1fize_69 {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.75rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  transition: background-color 0.15s ease-in-out;
+}
+
+._dropdownItem_1fize_69:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+._dropdownItem_1fize_69:active {
+  background-color: var(--bs-secondary-bg);
+}
+._chip_4n1t8_1 {
+  display: inline-flex;
+  flex-direction: row;
+  margin: 0rem 0;
+  padding: 2px 6px;
+  border: solid 1px var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+._label_4n1t8_12 {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+
+._icon_4n1t8_17 {
+  margin-right: 0.2rem;
+  font-size: 0.9em;
+}
+
+._closeIcon_4n1t8_22 {
+  margin-left: 0.3rem;
+  font-size: 0.9em;
+}
+
+._clickable_4n1t8_27 {
+  cursor: pointer;
+}
+._container_1ljjt_1 {
+  display: flex;
+  flex-direction: row;
+  background: var(--bs-light-bg-subtle);
+  border-bottom: solid var(--bs-border-color) 1px;
+  padding: 0rem 0.5rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+._filterBar_1ljjt_11 {
+  margin: 1px 0;
+}
+
+._filterLabel_1ljjt_15 {
+  margin-right: 0.3rem;
+  margin-top: 3px;
+}
+
+._filterNone_1ljjt_20 {
+  margin-top: 2px;
+}
+
+._actionButtons_1ljjt_24 {
+  margin-left: auto;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex-direction: row;
+  font-size: var(--inspect-font-size-smallest);
+  height: calc(100% - 4px);
+}
+
+._actionButton_1ljjt_24 {
+  padding: 0.1rem 0.4rem;
+  margin: 0;
+  font-size: var(--inspect-font-size-smallest);
+}
+
+._actionButtonDropDown_1ljjt_42 {
+  font-size: var(--inspect-font-size-smallest);
+}
+
+._actionButton_1ljjt_24._chipButton_1ljjt_46 {
+  background-color: unset;
+  margin-left: 0.3rem;
+}
+
+._sep_1ljjt_51 {
+  width: 1px;
+  height: calc(100% - 2px);
+  margin: 2px 0.3rem;
+
+  background-color: var(--bs-border-color);
+  font-size: var(--inspect-font-size-smallestest);
+}
+
+._filterChip_1ljjt_60 {
+  /* Filter chip specific styles can go here */
+}
+
+._columnsButton_1ljjt_64 {
+  padding: 0.1rem 0.3rem;
+}
+._chipGroup_1de1s_1 {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 0.3rem;
+  row-gap: 0.3rem;
 }
 .btn._toolButton_wcmr6_1 {
   background-color: var(--bs-light-border-subtle);
@@ -4402,13 +4485,6 @@ so disabling selection can break that functionality */
 
 .btn._toolButton_wcmr6_1._subtle_wcmr6_25 {
   background-color: var(--bs-body-bg);
-}
-._button_wkaow_1 {
-  padding: 0.1rem 0.3rem;
-}
-
-.btn._button_wkaow_1 {
-  background-color: transparent;
 }
 ._columnList_1wz3s_1 {
   display: grid;
@@ -4453,63 +4529,12 @@ so disabling selection can break that functionality */
 ._selected_1wz3s_41 {
   font-weight: 600;
 }
-._container_13hb2_1 {
-  display: flex;
-  flex-direction: row;
-  background: var(--bs-light-bg-subtle);
-  border-bottom: solid var(--bs-border-color) 1px;
-  padding: 0rem 0.5rem;
-  align-items: flex-start;
-  width: 100%;
+._success_1mf4d_1 {
+  color: var(--bs-success) !important;
 }
 
-._filterBar_13hb2_11 {
-  margin: 1px 0;
-}
-
-._filterLabel_13hb2_15 {
-  margin-right: 0.3rem;
-  margin-top: 3px;
-}
-
-._filterNone_13hb2_20 {
-  margin-top: 2px;
-}
-
-._actionButtons_13hb2_24 {
-  margin-left: auto;
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
-  flex-direction: row;
-  font-size: var(--inspect-font-size-smallest);
-  height: calc(100% - 4px);
-}
-
-._actionButton_13hb2_24 {
-  padding: 0.1rem 0.4rem;
-  margin: 0;
-  font-size: var(--inspect-font-size-smallest);
-}
-
-._actionButtonDropDown_13hb2_42 {
-  font-size: var(--inspect-font-size-smallest);
-}
-
-._actionButton_13hb2_24._chipButton_13hb2_46 {
-  background-color: unset;
-  margin-left: 0.3rem;
-}
-
-._sep_13hb2_51 {
-  width: 1px;
-  height: calc(100% - 2px);
-  margin: 2px 0.3rem;
-
-  background-color: var(--bs-border-color);
-  font-size: var(--inspect-font-size-smallestest);
+._unsuccess_1mf4d_5 {
+  opacity: 0.5 !important;
 }
 ._footer_1ykeg_1 {
   border-top: solid var(--bs-light-border-subtle) 1px;
@@ -4595,76 +4620,32 @@ so disabling selection can break that functionality */
   margin-top: -2px;
   font-size: 0.8em;
 }
-._gridWrapper_10nnn_1 {
-  height: 100%;
-  border-top: solid 1px var(--bs-border-color);
-}
-
-/* Hide sort index numbers in multi-column sort */
-._gridWrapper_10nnn_1 .ag-header-cell .ag-sort-order {
-  display: none;
-}
-
-._row_10nnn_11 {
-  cursor: pointer;
-}
-
-._green_10nnn_15 {
+._green_ynv0j_1 {
   color: var(--bs-success);
 }
 
-._red_10nnn_19 {
-  color: var(--bs-danger);
-}
-
-._yellow_10nnn_23 {
+._yellow_ynv0j_5 {
   color: var(--bs-warning);
 }
 
-._blue_10nnn_27 {
-  color: var(--bs-primary);
-}
-._container_18ufx_1 {
-  display: grid;
-  grid-template-rows: max-content max-content 1fr max-content;
-  height: 100%;
-  row-gap: 0;
-}
-._filterButton_fuk0s_1 {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  border: none;
-  background: transparent;
-  color: var(--bs-secondary);
-  cursor: pointer;
+._red_ynv0j_9 {
+  color: var(--bs-danger);
 }
 
-._filterButtonActive_fuk0s_12 {
+._blue_ynv0j_13 {
   color: var(--bs-primary);
 }
-._headerActions_uh0qk_1 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 6px;
-}
-
-._filterPopover_uh0qk_8 {
-  min-width: 180px;
-}
-._container_1b6j7_1 {
+._container_8dclc_1 {
   overflow: auto;
   outline: none;
 }
 
-._table_1b6j7_6 {
+._table_8dclc_6 {
   display: grid;
   width: 100%;
 }
 
-._thead_1b6j7_11 {
+._thead_8dclc_11 {
   display: grid;
   position: sticky;
   top: 0;
@@ -4673,13 +4654,13 @@ so disabling selection can break that functionality */
   border-bottom: 1px solid var(--bs-border-color);
 }
 
-._headerRow_1b6j7_20 {
+._headerRow_8dclc_20 {
   display: flex;
   width: 100%;
   height: 32px;
 }
 
-._headerCell_1b6j7_26 {
+._headerCell_8dclc_26 {
   display: flex;
   position: relative;
   align-items: center;
@@ -4693,7 +4674,7 @@ so disabling selection can break that functionality */
   transition: background-color 0.15s ease;
 }
 
-._headerContent_1b6j7_40 {
+._headerContent_8dclc_40 {
   flex: 1;
   display: flex;
   align-items: center;
@@ -4702,35 +4683,35 @@ so disabling selection can break that functionality */
   user-select: none;
 }
 
-._headerText_1b6j7_49 {
+._headerContent_8dclc_40:active {
+  cursor: grabbing;
+}
+
+._headerText_8dclc_53 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._headerContent_1b6j7_40:active {
-  cursor: grabbing;
-}
-
-._sortIcon_1b6j7_59 {
+._sortIcon_8dclc_59 {
   font-size: 10px;
   margin-left: 2px;
 }
 
-._headerCellDragging_1b6j7_64 {
+._headerCellDragging_8dclc_64 {
   opacity: 1;
   background: var(--bs-light-bg-subtle);
 }
 
-._headerCellDragOverLeft_1b6j7_69 {
+._headerCellDragOverLeft_8dclc_69 {
   border-left: 3px solid var(--bs-primary);
 }
 
-._headerCellDragOverRight_1b6j7_73 {
+._headerCellDragOverRight_8dclc_73 {
   border-right: 3px solid var(--bs-primary);
 }
 
-._resizer_1b6j7_77 {
+._resizer_8dclc_77 {
   position: absolute;
   right: 0;
   top: 0;
@@ -4747,30 +4728,30 @@ so disabling selection can break that functionality */
   pointer-events: auto;
 }
 
-._headerCellDragging_1b6j7_64 ._resizer_1b6j7_77 {
+._headerCellDragging_8dclc_64 ._resizer_8dclc_77 {
   border-right: none;
 }
 
-._resizer_1b6j7_77:hover {
+._resizer_8dclc_77:hover {
   background: var(--bs-primary);
   opacity: 0.5;
 }
 
-._resizerActive_1b6j7_103 {
+._resizerActive_8dclc_103 {
   background: var(--bs-primary);
   opacity: 1;
 }
 
-._headerCell_1b6j7_26:last-child {
+._headerCell_8dclc_26:last-child {
   border-right: none;
 }
 
-._tbody_1b6j7_112 {
+._tbody_8dclc_112 {
   display: grid;
   position: relative;
 }
 
-._row_1b6j7_117 {
+._row_8dclc_117 {
   display: flex;
   position: absolute;
   width: 100%;
@@ -4781,24 +4762,24 @@ so disabling selection can break that functionality */
   user-select: none;
 }
 
-._row_1b6j7_117:hover {
+._row_8dclc_117:hover {
   background: var(--bs-light);
 }
 
-._rowSelected_1b6j7_132 {
+._rowSelected_8dclc_132 {
   background: var(--bs-primary-bg-subtle) !important;
 }
 
-._rowFocused_1b6j7_136 {
+._rowFocused_8dclc_136 {
   outline: 2px solid var(--bs-primary-bg-subtle);
   outline-offset: 0px;
 }
 
-._rowSelected_1b6j7_132._rowFocused_1b6j7_136 {
+._rowSelected_8dclc_132._rowFocused_8dclc_136 {
   background: var(--bs-primary-bg-subtle) !important;
 }
 
-._cell_1b6j7_145 {
+._cell_8dclc_145 {
   display: flex;
   align-items: center;
   padding: 4px 8px;
@@ -4808,31 +4789,42 @@ so disabling selection can break that functionality */
   font-size: 12px !important;
 }
 
-._cell_1b6j7_145:last-child {
+._cell_8dclc_145:last-child {
   border-right: none;
 }
 
-._cellCenter_1b6j7_159 {
+._cellCenter_8dclc_159 {
   justify-content: center;
 }
 
-._headerCellCenter_1b6j7_163 {
+._headerCellCenter_8dclc_163 {
   justify-content: center;
 }
 
-._green_1b6j7_167 {
-  color: var(--bs-success);
-}
-
-._red_1b6j7_171 {
-  color: var(--bs-danger);
-}
-
-._noMatching_1b6j7_175 {
+._noMatching_8dclc_167 {
   grid-column: 1 / -1;
   margin-left: auto;
   margin-right: auto;
   margin-top: 3rem;
+}
+._container_1a52k_1 {
+  display: grid;
+  grid-template-rows: max-content max-content 1fr max-content;
+  height: 100%;
+  row-gap: 0;
+}
+
+._gridContainer_1a52k_8 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+._grid_1a52k_8 {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 ._container_w24zj_1 {
   height: 100%;
@@ -7273,6 +7265,9 @@ pre._value_1uivt_24 {
   margin-bottom: 0;
   border: solid 1px var(--bs-light-border-subtle);
   border-radius: var(--bs-border-radius);
+}
+._panel_8zdtn_1 {
+  margin: 0.5em 0;
 }
 ._tab_1je38_1 {
   min-width: 4rem;

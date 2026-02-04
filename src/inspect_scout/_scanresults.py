@@ -456,27 +456,41 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
         expanded["metadata"] = None
 
     expanded["metadata"] = expanded["metadata"].apply(
-        lambda x: json.dumps(x)
-        if isinstance(x, dict)
-        else (json.dumps({}) if pd.isna(x) else x)
+        lambda x: (
+            json.dumps(x)
+            if isinstance(x, dict)
+            else (json.dumps({}) if pd.isna(x) else x)
+        )
     )
 
     # Handle references: split by type into message_references and event_references
     if "references" in expanded.columns:
         # Filter references by type (matching ResultReport.to_df_columns logic)
         expanded["message_references"] = expanded["references"].apply(
-            lambda refs: to_json_str_safe(
-                [r for r in refs if isinstance(r, dict) and r.get("type") == "message"]
+            lambda refs: (
+                to_json_str_safe(
+                    [
+                        r
+                        for r in refs
+                        if isinstance(r, dict) and r.get("type") == "message"
+                    ]
+                )
+                if isinstance(refs, list)
+                else "[]"
             )
-            if isinstance(refs, list)
-            else "[]"
         )
         expanded["event_references"] = expanded["references"].apply(
-            lambda refs: to_json_str_safe(
-                [r for r in refs if isinstance(r, dict) and r.get("type") == "event"]
+            lambda refs: (
+                to_json_str_safe(
+                    [
+                        r
+                        for r in refs
+                        if isinstance(r, dict) and r.get("type") == "event"
+                    ]
+                )
+                if isinstance(refs, list)
+                else "[]"
             )
-            if isinstance(refs, list)
-            else "[]"
         )
         # Drop the references column as it's been split
         expanded = expanded.drop(columns=["references"])

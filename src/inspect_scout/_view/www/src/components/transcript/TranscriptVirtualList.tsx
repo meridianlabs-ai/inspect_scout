@@ -3,6 +3,7 @@ import { VirtuosoHandle } from "react-virtuoso";
 
 import {
   ApprovalEvent,
+  CompactionEvent,
   ErrorEvent,
   InfoEvent,
   InputEvent,
@@ -22,6 +23,7 @@ import {
 } from "../../types/api-types";
 
 import { ApprovalEventView } from "./ApprovalEventView";
+import { CompactionEventView } from "./CompactionEventView";
 import { ErrorEventView } from "./ErrorEventView";
 import { InfoEventView } from "./InfoEventView";
 import { InputEventView } from "./InputEventView";
@@ -118,6 +120,14 @@ export const RenderedEventNode: FC<RenderedEventNodeProps> = memo(
         return (
           <InfoEventView
             eventNode={node as EventNode<InfoEvent>}
+            className={className}
+          />
+        );
+
+      case "compaction":
+        return (
+          <CompactionEventView
+            eventNode={node as EventNode<CompactionEvent>}
             className={className}
           />
         );

@@ -101,6 +101,16 @@ export const eventSearchText = (node: EventNode): string[] => {
       break;
     }
 
+    case "compaction": {
+      const compactionEvent = event;
+      // Source shown in title
+      if (compactionEvent.source) {
+        texts.push(compactionEvent.source);
+      }
+      texts.push(JSON.stringify(compactionEvent));
+      break;
+    }
+
     case "step": {
       const stepEvent = event;
       if (stepEvent.name) {

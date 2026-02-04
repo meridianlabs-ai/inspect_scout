@@ -3,11 +3,14 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useStore } from "../../../state/store";
 import { TranscriptInfo } from "../../../types/api-types";
+import {
+  clampSize,
+  ColumnSizingStrategyKey,
+  getColumnConstraints,
+  getSizingStrategy,
+  SizingStrategy,
+} from "../../components/columnSizing";
 import { TranscriptColumn } from "../columns";
-
-import { getSizingStrategy } from "./strategies";
-import { ColumnSizingStrategyKey } from "./types";
-import { clampSize, getColumnConstraints } from "./utils";
 
 interface UseColumnSizingOptions {
   /** Column definitions */
@@ -162,7 +165,9 @@ export function useColumnSizing({
         columnSizing: currentSizing,
       } = latestRef.current;
 
-      const strategy = getSizingStrategy(strategyKey);
+      const strategy = getSizingStrategy(
+        strategyKey
+      ) as SizingStrategy<TranscriptInfo>;
       const calculatedSizing = strategy.computeSizes({
         tableElement: tableRef.current,
         columns: cols,
@@ -205,7 +210,9 @@ export function useColumnSizing({
           columnConstraints: constraints,
         } = latestRef.current;
 
-        const strategy = getSizingStrategy(strategyKey);
+        const strategy = getSizingStrategy(
+          strategyKey
+        ) as SizingStrategy<TranscriptInfo>;
         const allSizes = strategy.computeSizes({
           tableElement: tableRef.current,
           columns: cols,

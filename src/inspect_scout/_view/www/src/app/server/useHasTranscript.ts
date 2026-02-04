@@ -15,7 +15,7 @@ export const useHasTranscript = (
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["has_transcript", params],
+    queryKey: params === skipToken ? [skipToken] : ["has_transcript", params],
     queryFn:
       params === skipToken
         ? skipToken

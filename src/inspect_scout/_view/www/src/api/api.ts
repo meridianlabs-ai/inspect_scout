@@ -27,7 +27,7 @@ export type ScalarValue = string | number | boolean | null;
 /** Topic versions: maps topic name to timestamp. */
 export type TopicVersions = Record<InvalidationTopic, string>;
 
-export interface ScanApi {
+export interface ScoutApiV2 {
   getConfig(): Promise<AppConfig>;
   getTranscripts(
     transcriptsDir: string,
@@ -48,6 +48,11 @@ export interface ScanApi {
     orderBy?: OrderByModel | OrderByModel[],
     pagination?: Pagination
   ): Promise<ScansResponse>;
+  getScansColumnValues(
+    scansDir: string,
+    column: string,
+    filter: Condition | undefined
+  ): Promise<ScalarValue[]>;
   getScan(scansDir: string, scanPath: string): Promise<Status>;
   getScannerDataframe(
     scansDir: string,

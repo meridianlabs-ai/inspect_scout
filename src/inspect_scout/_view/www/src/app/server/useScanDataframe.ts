@@ -22,7 +22,7 @@ export const useScanDataframe = (
   return useAsyncDataFromQuery({
     queryKey:
       params === skipToken
-        ? ["scanDataframe", skipToken, skipToken, skipToken]
+        ? [skipToken]
         : ["scanDataframe", params.scansDir, params.scanPath, params.scanner],
     queryFn:
       params === skipToken

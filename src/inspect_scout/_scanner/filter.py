@@ -59,6 +59,7 @@ def validate_events_filter(filter: list[EventType] | None) -> None:
         "state",
         "store",
         "approval",
+        "compaction",
         "input",
         "score",
         "error",

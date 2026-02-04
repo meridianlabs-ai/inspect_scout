@@ -1,0 +1,81 @@
+{
+  "description": "Agent containing info events mixed with model and tool events",
+  "events": [
+    {
+      "event": "info",
+      "uuid": "e-001",
+      "source": "system",
+      "data": "Starting execution",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "info",
+      "uuid": "e-003",
+      "source": "debug",
+      "data": {"step": 1, "action": "search"},
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "tool",
+      "uuid": "e-004",
+      "id": "tool-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-005",
+      "source": "debug",
+      "data": {"step": 2, "action": "respond"},
+      "timestamp": "2024-01-01T00:00:07Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-006",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:08Z",
+      "completed": "2024-01-01T00:00:09Z",
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "info",
+      "uuid": "e-007",
+      "source": "system",
+      "data": "Execution complete",
+      "timestamp": "2024-01-01T00:00:10Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "event_uuids": ["e-001", "e-002", "e-003", "e-004", "e-005", "e-006", "e-007"],
+      "total_tokens": 375
+    },
+    "scoring": null
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "description": "Edge case: only init span present",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-init",
+      "id": "init",
+      "name": "init",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-001",
+      "span_id": "init",
+      "source": "sample_init",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-init-end",
+      "span_id": "init",
+      "timestamp": "2024-01-01T00:00:02Z"
+    }
+  ],
+  "expected": {
+    "init": {
+      "section": "init",
+      "event_uuids": [
+        "e-001"
+      ]
+    },
+    "agent": null,
+    "scoring": null
+  }
+}

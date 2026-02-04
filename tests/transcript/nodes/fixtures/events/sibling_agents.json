@@ -1,0 +1,151 @@
+{
+  "description": "Multiple agents at the same level (siblings)",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent1",
+      "id": "agent-1",
+      "name": "researcher",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "agent-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent1-end",
+      "span_id": "agent-1",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent2",
+      "id": "agent-2",
+      "name": "writer",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "agent-2",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:06Z",
+      "completed": "2024-01-01T00:00:07Z",
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent2-end",
+      "span_id": "agent-2",
+      "timestamp": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent3",
+      "id": "agent-3",
+      "name": "reviewer",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:09Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "agent-3",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:10Z",
+      "completed": "2024-01-01T00:00:11Z",
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent3-end",
+      "span_id": "agent-3",
+      "timestamp": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:13Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "root",
+      "name": "root",
+      "source": {
+        "source": "span",
+        "span_id": "root"
+      },
+      "children": [
+        {
+          "id": "agent-1",
+          "name": "researcher",
+          "source": {
+            "source": "span",
+            "span_id": "agent-1"
+          },
+          "event_uuids": ["e-001"],
+          "total_tokens": 150
+        },
+        {
+          "id": "agent-2",
+          "name": "writer",
+          "source": {
+            "source": "span",
+            "span_id": "agent-2"
+          },
+          "event_uuids": ["e-002"],
+          "total_tokens": 300
+        },
+        {
+          "id": "agent-3",
+          "name": "reviewer",
+          "source": {
+            "source": "span",
+            "span_id": "agent-3"
+          },
+          "event_uuids": ["e-003"],
+          "total_tokens": 225
+        }
+      ],
+      "total_tokens": 675
+    },
+    "scoring": null
+  }
+}

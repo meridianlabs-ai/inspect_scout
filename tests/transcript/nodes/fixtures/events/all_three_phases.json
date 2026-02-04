@@ -1,0 +1,144 @@
+{
+  "description": "All three phases with multiple events each",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-init",
+      "id": "init",
+      "name": "init",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-init-1",
+      "span_id": "init",
+      "source": "setup",
+      "data": "Loading configuration",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-init-2",
+      "span_id": "init",
+      "source": "setup",
+      "data": "Initializing tools",
+      "timestamp": "2024-01-01T00:00:02Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-init-end",
+      "span_id": "init",
+      "timestamp": "2024-01-01T00:00:03Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-agent-1",
+      "span_id": "solvers",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-agent-2",
+      "span_id": "solvers",
+      "id": "tool-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-agent-3",
+      "span_id": "solvers",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:09Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:11Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-scorers",
+      "id": "scorers",
+      "name": "scorers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-score-1",
+      "span_id": "scorers",
+      "model": "judge-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "info",
+      "uuid": "e-score-2",
+      "span_id": "scorers",
+      "source": "scorer",
+      "data": {"score": 0.9, "explanation": "Good answer"},
+      "timestamp": "2024-01-01T00:00:15Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-scorers-end",
+      "span_id": "scorers",
+      "timestamp": "2024-01-01T00:00:16Z"
+    }
+  ],
+  "expected": {
+    "init": {
+      "section": "init",
+      "event_uuids": ["e-init-1", "e-init-2"],
+      "total_tokens": 0
+    },
+    "agent": {
+      "id": "solvers",
+      "name": "solvers",
+      "source": {
+        "source": "span",
+        "span_id": "solvers"
+      },
+      "event_uuids": ["e-agent-1", "e-agent-2", "e-agent-3"],
+      "total_tokens": 450
+    },
+    "scoring": {
+      "section": "scoring",
+      "event_uuids": ["e-score-1", "e-score-2"],
+      "total_tokens": 225
+    }
+  }
+}

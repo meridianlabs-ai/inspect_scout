@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
+- Add `SampleMetadata` class for typed access to Inspect eval log metadata fields.
 - Add support for Inspect `CompactionEvent`.
 - Add "store" event to `EventType` enumeration.
 - View Server: Add optimized `/transcripts/{dir}/{id}/info` and `/transcripts/{dir}/{id}/messages-events` endpoints for fetching transcript data. The `messages-events` endpoint streams raw (potentially compressed) JSON for improved performance.

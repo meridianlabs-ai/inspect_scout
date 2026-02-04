@@ -50,6 +50,7 @@ from ._transcript.database.factory import transcripts_db
 from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
+from ._transcript.sample_metadata import SampleMetadata
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
@@ -118,6 +119,7 @@ __all__ = [
     "columns",
     "LogColumns",
     "log_columns",
+    "SampleMetadata",
     # scanner
     "Error",
     "Scanner",

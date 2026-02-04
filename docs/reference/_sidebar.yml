@@ -79,6 +79,8 @@ website:
           href: reference/transcript.qmd#transcripts_from
         - text: Transcript
           href: reference/transcript.qmd#transcript
+        - text: SampleMetadata
+          href: reference/transcript.qmd#samplemetadata
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
         - text: TranscriptsReader

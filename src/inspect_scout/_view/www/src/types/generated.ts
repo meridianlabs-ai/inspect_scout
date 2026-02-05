@@ -162,7 +162,11 @@ export interface paths {
         get: operations["scan_scans__dir___scan__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a scan
+         * @description Deletes a scan directory. Returns 409 Conflict if scan is active.
+         */
+        delete: operations["delete_scan_scans__dir___scan__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1299,7 +1303,7 @@ export interface components {
              * Effort
              * @default null
              */
-            effort: ("low" | "medium" | "high") | null;
+            effort: ("low" | "medium" | "high" | "max") | null;
             /**
              * Extra Body
              * @default null
@@ -1455,7 +1459,7 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high") | null;
+            effort?: ("low" | "medium" | "high" | "max") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
@@ -1532,7 +1536,7 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high") | null;
+            effort?: ("low" | "medium" | "high" | "max") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
@@ -1691,7 +1695,7 @@ export interface components {
             working_start: number;
         };
         /** @enum {string} */
-        InvalidationTopic: "project-config";
+        InvalidationTopic: "project-config" | "scans";
         /**
          * JSONSchema
          * @description JSON Schema for type.
@@ -4331,6 +4335,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Status"];
                 };
+            };
+        };
+    };
+    delete_scan_scans__dir___scan__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+                /** @description Scan path (base64url-encoded) */
+                scan: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

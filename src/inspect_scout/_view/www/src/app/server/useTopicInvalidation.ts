@@ -26,8 +26,9 @@ export const useTopicInvalidation = (): boolean => {
       ([topic, timestamp]) => prevVersionsRef.current?.[topic] !== timestamp
     );
     for (const [topic] of changedTopics) {
+      const invKey = `${topic}-inv`;
       void queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes(topic),
+        predicate: (query) => query.queryKey.includes(invKey),
       });
     }
 

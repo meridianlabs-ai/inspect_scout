@@ -14,8 +14,10 @@ import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.responses import StreamingResponse
+from send2trash import send2trash
 from starlette.status import (
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from upath import UPath
@@ -37,6 +39,7 @@ from ._api_v2_types import (
 )
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
+from .invalidationTopics import notify_topics
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -184,18 +187,24 @@ def create_scans_router(
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
-        recorder_status_with_df = await scan_results_df_async(
-            str(scan_path), rows="transcripts"
-        )
-
-        if recorder_status_with_df.spec.transcripts:
-            recorder_status_with_df.spec.transcripts = (
-                recorder_status_with_df.spec.transcripts.model_copy(
-                    update={"data": None}
-                )
+        try:
+            recorder_status_with_df = await scan_results_df_async(
+                str(scan_path), rows="transcripts"
             )
 
-        return recorder_status_with_df
+            if recorder_status_with_df.spec.transcripts:
+                recorder_status_with_df.spec.transcripts = (
+                    recorder_status_with_df.spec.transcripts.model_copy(
+                        update={"data": None}
+                    )
+                )
+
+            return recorder_status_with_df
+        except FileNotFoundError as err:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scan not found: {scan_path}",
+            ) from err
 
     @router.get(
         "/scans/{dir}/{scan}/{scanner}",
@@ -281,6 +290,43 @@ def create_scans_router(
             media_type="text/plain",
             headers={"X-Input-Type": input_type or ""},
         )
+
+    @router.delete(
+        "/scans/{dir}/{scan}",
+        status_code=204,
+        summary="Delete a scan",
+        description="Deletes a scan directory. Returns 409 Conflict if scan is active.",
+    )
+    async def delete_scan(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+    ) -> None:
+        """Delete a scan directory."""
+        scans_dir = decode_base64url(dir)
+        scan_path = UPath(scans_dir) / decode_base64url(scan)
+
+        # Check if scan exists
+        if not scan_path.exists():
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Scan not found",
+            )
+
+        # Check if scan is active (prevent deletion of running scans)
+        scan_location_str = str(scan_path)
+        with active_scans_store() as store:
+            active_scans = store.read_all()
+            for active_info in active_scans.values():
+                if active_info.location == scan_location_str:
+                    raise HTTPException(
+                        status_code=HTTP_409_CONFLICT,
+                        detail=f"Cannot delete active scan: {active_info.scan_id}",
+                    )
+
+        send2trash(scan_path.path)
+
+        # Notify clients to invalidate scan caches
+        await notify_topics(["scans"])
 
     return router
 

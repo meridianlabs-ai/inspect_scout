@@ -23,7 +23,13 @@ export const useScanDataframe = (
     queryKey:
       params === skipToken
         ? [skipToken]
-        : ["scanDataframe", params.scansDir, params.scanPath, params.scanner],
+        : [
+            "scanDataframe",
+            params.scansDir,
+            params.scanPath,
+            params.scanner,
+            "scans-inv",
+          ],
     queryFn:
       params === skipToken
         ? skipToken

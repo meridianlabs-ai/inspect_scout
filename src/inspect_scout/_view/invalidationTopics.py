@@ -6,10 +6,13 @@ from typing import Literal, TypeAlias
 
 import anyio
 
-InvalidationTopic: TypeAlias = Literal["project-config"]
+InvalidationTopic: TypeAlias = Literal["project-config", "scans"]
 
 _startup_timestamp = datetime.now(timezone.utc).isoformat()
-_versions: dict[InvalidationTopic, str] = {"project-config": _startup_timestamp}
+_versions: dict[InvalidationTopic, str] = {
+    "project-config": _startup_timestamp,
+    "scans": _startup_timestamp,
+}
 _condition: anyio.Condition | None = None
 
 

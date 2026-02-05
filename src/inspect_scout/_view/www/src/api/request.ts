@@ -34,7 +34,8 @@ export interface ServerRequestApi {
   fetchBytes: (
     method: HttpMethod,
     path: string,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    extraAcceptType?: string
   ) => Promise<{ data: ArrayBuffer; headers: Headers }>;
   fetchType: <T>(
     method: HttpMethod,
@@ -176,17 +177,31 @@ export function serverRequestApi(
     throw new ApiError(response.status, `HTTP ${response.status}: ${message}`);
   };
 
+  /**
+   * Fetch binary data from an endpoint.
+   *
+   * @param extraAcceptType - Additional MIME type to include in Accept header.
+   *   Use when an endpoint may return different content types depending on
+   *   request headers or server state. For example, an endpoint that returns
+   *   application/octet-stream when the client requests raw compressed bytes,
+   *   but falls back to application/json when transcoding to browser-compatible
+   *   compression.
+   */
   const fetchBytes = async (
     method: HttpMethod,
     path: string,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    extraAcceptType?: string
   ): Promise<{ data: ArrayBuffer; headers: Headers }> => {
     const url = buildApiUrl(path);
+    const acceptTypes = extraAcceptType
+      ? `application/octet-stream, ${extraAcceptType}`
+      : "application/octet-stream";
 
     const response = await fetchFn(url, {
       method,
       headers: await withGlobalHeaders({
-        Accept: "application/octet-stream",
+        Accept: acceptTypes,
         Pragma: "no-cache",
         Expires: "0",
         "Cache-Control": "no-cache",

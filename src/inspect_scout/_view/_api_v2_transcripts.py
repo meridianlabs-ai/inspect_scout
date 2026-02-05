@@ -195,9 +195,10 @@ def create_transcripts_router() -> APIRouter:
         # Determine response based on compression method
         if encoding_name and encoding_name in accepted_raw_encodings:
             # Client accepts this raw encoding - send with X-Content-Encoding
+            # Use octet-stream since this is raw compressed bytes the client must decode
             return StreamingResponse(
                 content=bytes_only(),
-                media_type="application/json",
+                media_type="application/octet-stream",
                 headers={"X-Content-Encoding": encoding_name},
             )
         elif metadata.compression_method == ZipCompressionMethod.DEFLATE:

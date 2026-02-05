@@ -46,9 +46,13 @@ async function fetchMessagesEvents(
 ): Promise<string> {
   const url = `/transcripts/${encodedDir}/${encodedId}/messages-events`;
 
-  const result = await requestApi.fetchBytes("GET", url, {
-    "X-Accept-Raw-Encoding": ENCODING_ZSTD,
-  });
+  const result = await requestApi.fetchBytes(
+    "GET",
+    url,
+    { "X-Accept-Raw-Encoding": ENCODING_ZSTD },
+    // Server returns application/json when transcoding to deflate
+    "application/json"
+  );
 
   const encoding = result.headers.get("X-Content-Encoding");
 

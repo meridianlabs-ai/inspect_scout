@@ -7,29 +7,18 @@ stored locally or remotely (e.g., S3) using async range requests.
 from __future__ import annotations
 
 import struct
-import zlib
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import anyio
-from anyio.abc import ByteReceiveStream
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from typing_extensions import Self
 
+from .compression_transcoding import CompressedToUncompressedStream
+from .zip_common import ZipCompressionMethod, ZipEntry
+
 # Default chunk size for streaming compressed data (1MB)
 DEFAULT_CHUNK_SIZE = 1024 * 1024
-
-
-@dataclass
-class ZipEntry:
-    """Metadata for a single ZIP archive member."""
-
-    filename: str
-    compression_method: int
-    compressed_size: int
-    uncompressed_size: int
-    local_header_offset: int
 
 
 # This is an exploratory cache of central directories keyed by filename
@@ -45,105 +34,7 @@ _filename_locks: dict[str, anyio.Lock] = {}
 _locks_lock = anyio.Lock()
 
 
-class _DecompressStream(AsyncIterator[bytes]):
-    """AsyncIterator wrapper for decompressing ZIP member data streams.
-
-    This class replaces the async generator pattern to provide explicit control
-    over resource cleanup via the aclose() method. This fixes Python 3.12 issues
-    where async generator cleanup could fail with "generator already running" errors
-    during event loop shutdown.
-    """
-
-    def __init__(self, compressed_stream: ByteReceiveStream, decompression_mode: int):
-        """Initialize the decompression stream.
-
-        Args:
-            compressed_stream: The input byte stream to decompress
-            decompression_mode: How to process the stream (0=pass-through, 8=DEFLATE).
-                This controls decompression behavior, not the actual compression
-                of the underlying data. Use 0 to stream raw bytes unchanged.
-        """
-        self._compressed_stream = compressed_stream
-        self._decompression_mode = decompression_mode
-        self._decompressor: zlib._Decompress | None = None
-        self._stream_iterator: AsyncIterator[bytes] | None = None
-        self._exhausted = False
-        self._closed = False
-
-    def __aiter__(self) -> AsyncIterator[bytes]:
-        """Return self as the async iterator."""
-        return self
-
-    async def __anext__(self) -> bytes:
-        """Get the next chunk of decompressed data.
-
-        Returns:
-            Next chunk of decompressed bytes
-
-        Raises:
-            StopAsyncIteration: When stream is exhausted
-        """
-        if self._closed:
-            raise StopAsyncIteration
-
-        if self._exhausted:
-            raise StopAsyncIteration
-
-        # Initialize stream iterator on first call
-        if self._stream_iterator is None:
-            self._stream_iterator = self._compressed_stream.__aiter__()
-
-        try:
-            if self._decompression_mode == 0:
-                # Pass through raw bytes unchanged
-                return await self._stream_iterator.__anext__()
-
-            elif self._decompression_mode == 8:
-                # DEFLATE compression
-                if self._decompressor is None:
-                    self._decompressor = zlib.decompressobj(-15)  # Raw DEFLATE
-
-                # Keep reading until we have decompressed data to return
-                while True:
-                    try:
-                        chunk = await self._stream_iterator.__anext__()
-                        decompressed = self._decompressor.decompress(chunk)
-                        if decompressed:
-                            return decompressed
-                        # If no decompressed data, continue reading
-                    except StopAsyncIteration:
-                        # Input stream exhausted, flush any remaining data
-                        if self._decompressor:
-                            final = self._decompressor.flush()
-                            self._decompressor = None
-                            self._exhausted = True
-                            if final:
-                                return final
-                        raise
-
-            else:
-                raise NotImplementedError(
-                    f"Unsupported decompression mode {self._decompression_mode}"
-                )
-
-        except StopAsyncIteration:
-            self._exhausted = True
-            raise
-
-    async def aclose(self) -> None:
-        """Explicitly close the stream and underlying resources.
-
-        This method ensures the ByteReceiveStream is properly closed even
-        when the iterator is not fully consumed.
-        """
-        if self._closed:
-            return
-
-        self._closed = True
-        self._exhausted = True
-
-        # Close the underlying stream
-        await self._compressed_stream.aclose()
+# source_cm was never entered, nothing to close
 
 
 async def _get_central_directory(
@@ -339,7 +230,7 @@ class _ZipMemberBytes:
         self,
         filesystem: AsyncFilesystem,
         filename: str,
-        range_and_method: tuple[int, int, int],
+        range_and_method: tuple[int, int, ZipCompressionMethod],
         *,
         raw: bool = False,
     ):
@@ -347,24 +238,30 @@ class _ZipMemberBytes:
         self._filename = filename
         self._offset, self._end, self._method = range_and_method
         self._raw = raw
-        self._active_streams: set[_DecompressStream] = set()
+        self._active_streams: set[CompressedToUncompressedStream] = set()
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        # When raw=True, use decompression_mode=0 to pass through bytes unchanged
-        decompression_mode = 0 if self._raw else self._method
-        stream = _DecompressStream(
-            await self._filesystem.read_file_bytes(
-                self._filename, self._offset, self._end
-            ),
-            decompression_mode,
+        byte_stream = await self._filesystem.read_file_bytes(
+            self._filename, self._offset, self._end
         )
-        self._active_streams.add(stream)
-        try:
-            async for chunk in stream:
-                yield chunk
-        finally:
-            self._active_streams.discard(stream)
-            await stream.aclose()
+
+        if self._raw or self._method == ZipCompressionMethod.STORED:
+            # Pass through raw bytes directly - no decompression needed
+            try:
+                async for chunk in byte_stream:
+                    yield chunk
+            finally:
+                await byte_stream.aclose()
+        else:
+            # Decompress using the appropriate method
+            stream = CompressedToUncompressedStream(byte_stream, self._method)
+            self._active_streams.add(stream)
+            try:
+                async for chunk in stream:
+                    yield chunk
+            finally:
+                self._active_streams.discard(stream)
+                await stream.aclose()
 
     async def __aenter__(self) -> Self:
         return self
@@ -473,7 +370,7 @@ class AsyncZipReader:
 
     async def _get_member_range_and_method(
         self, member: str | ZipEntry
-    ) -> tuple[int, int, int]:
+    ) -> tuple[int, int, ZipCompressionMethod]:
         entry = (
             member
             if isinstance(member, ZipEntry)

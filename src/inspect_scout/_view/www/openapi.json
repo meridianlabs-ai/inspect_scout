@@ -2399,6 +2399,21 @@
             "default": null,
             "title": "Extra Body"
           },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Extra Headers"
+          },
           "frequency_penalty": {
             "anyOf": [
               {
@@ -2832,6 +2847,20 @@
             ],
             "title": "Extra Body"
           },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
+          },
           "frequency_penalty": {
             "anyOf": [
               {
@@ -3239,6 +3268,20 @@
               }
             ],
             "title": "Extra Body"
+          },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -4953,6 +4996,30 @@
             },
             "title": "Tools",
             "type": "array"
+          },
+          "traceback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback"
+          },
+          "traceback_ansi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback Ansi"
           },
           "uuid": {
             "anyOf": [
@@ -7070,6 +7137,10 @@
           "total_tokens": {
             "title": "Total Tokens",
             "type": "integer"
+          },
+          "transcript_count": {
+            "title": "Transcript Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -7083,7 +7154,8 @@
           "tags",
           "total_results",
           "total_errors",
-          "total_tokens"
+          "total_tokens",
+          "transcript_count"
         ],
         "title": "ScanRow",
         "type": "object"

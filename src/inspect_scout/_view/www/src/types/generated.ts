@@ -1308,6 +1308,13 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Extra Headers
+             * @default null
+             */
+            extra_headers: {
+                [key: string]: string;
+            } | null;
+            /**
              * Frequency Penalty
              * @default null
              */
@@ -1453,6 +1460,10 @@ export interface components {
             extra_body?: {
                 [key: string]: unknown;
             } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
+            } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
             /** Internal Tools */
@@ -1525,6 +1536,10 @@ export interface components {
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
+            } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -2087,6 +2102,16 @@ export interface components {
             tool_choice: ("auto" | "any" | "none") | components["schemas"]["ToolFunction"];
             /** Tools */
             tools: components["schemas"]["ToolInfo"][];
+            /**
+             * Traceback
+             * @default null
+             */
+            traceback: string | null;
+            /**
+             * Traceback Ansi
+             * @default null
+             */
+            traceback_ansi: string | null;
             /**
              * Uuid
              * @default null
@@ -2831,6 +2856,8 @@ export interface components {
             total_results: number;
             /** Total Tokens */
             total_tokens: number;
+            /** Transcript Count */
+            transcript_count: number;
         };
         /**
          * ScanSpec

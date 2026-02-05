@@ -8,7 +8,7 @@ export const useScans = (scansDir: string): AsyncData<ScanRow[]> => {
   const api = useApi();
 
   return useAsyncDataFromQuery({
-    queryKey: ["scans", scansDir],
+    queryKey: ["scans", scansDir, "scans-inv"],
     queryFn: async () => (await api.getScans(scansDir)).items,
     staleTime: 5000,
     refetchInterval: 5000,

@@ -2375,7 +2375,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -2825,7 +2826,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -3247,7 +3249,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -3785,7 +3788,8 @@
       },
       "InvalidationTopic": {
         "enum": [
-          "project-config"
+          "project-config",
+          "scans"
         ],
         "type": "string"
       },
@@ -10870,6 +10874,43 @@
       }
     },
     "/scans/{dir}/{scan}": {
+      "delete": {
+        "description": "Deletes a scan directory. Returns 409 Conflict if scan is active.",
+        "operationId": "delete_scan_scans__dir___scan__delete",
+        "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a scan",
+        "tags": [
+          "scans"
+        ]
+      },
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",
         "operationId": "scan_scans__dir___scan__get",
@@ -11081,7 +11122,10 @@
                     "type": "string"
                   },
                   "propertyNames": {
-                    "const": "project-config"
+                    "enum": [
+                      "project-config",
+                      "scans"
+                    ]
                   },
                   "title": "Response Get Topics Topics Get",
                   "type": "object"

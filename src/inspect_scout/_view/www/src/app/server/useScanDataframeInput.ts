@@ -19,7 +19,9 @@ export const useScanDataframeInput = (
 
   return useAsyncDataFromQuery({
     queryKey:
-      params === skipToken ? [skipToken] : ["scanDataframeInput", params],
+      params === skipToken
+        ? [skipToken]
+        : ["scanDataframeInput", params, "scans-inv"],
     queryFn:
       params === skipToken
         ? skipToken

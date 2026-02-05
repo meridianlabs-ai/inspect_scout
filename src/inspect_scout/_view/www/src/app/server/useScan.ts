@@ -20,7 +20,7 @@ export const useScan = (
     queryKey:
       params === skipToken
         ? [skipToken]
-        : ["scan", params.scansDir, params.scanPath],
+        : ["scan", params.scansDir, params.scanPath, "scans-inv"],
     queryFn:
       params === skipToken
         ? skipToken

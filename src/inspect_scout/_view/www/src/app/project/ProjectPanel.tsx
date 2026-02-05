@@ -299,7 +299,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     setOriginalConfig(null);
     // Reset expected etag so the init effect will re-initialize from server
     lastSavedEtagRef.current = null;
-    void queryClient.invalidateQueries({ queryKey: ["project-config"] });
+    void queryClient.invalidateQueries({ queryKey: ["project-config-inv"] });
   };
 
   return (

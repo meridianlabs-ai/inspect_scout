@@ -37,7 +37,14 @@ export const useScansInfinite = (
     QueryKey,
     CursorType | undefined
   >({
-    queryKey: ["scans-infinite", scansDir, filter, orderBy, pageSize],
+    queryKey: [
+      "scans-infinite",
+      scansDir,
+      filter,
+      orderBy,
+      pageSize,
+      "scans-inv",
+    ],
     queryFn: async ({ pageParam }) => {
       const pagination = pageParam
         ? { limit: pageSize, cursor: pageParam, direction: "forward" as const }

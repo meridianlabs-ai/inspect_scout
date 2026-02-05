@@ -2,6 +2,7 @@ import clsx from "clsx";
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { ErrorPanel } from "../../components/ErrorPanel";
 import { ExtendedFindProvider } from "../../components/ExtendedFindProvider";
 import { LoadingBar } from "../../components/LoadingBar";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
@@ -29,7 +30,7 @@ export const ScanPanel: React.FC = () => {
   } = useScansDir(true);
   // Load server data
   const { loading: scansLoading } = useScans(resolvedScansDir);
-  const { loading: scanLoading, data: selectedScan } = useSelectedScan();
+  const { loading: scanLoading, data: selectedScan, error } = useSelectedScan();
 
   const loading = scansLoading || scanLoading;
 
@@ -59,7 +60,8 @@ export const ScanPanel: React.FC = () => {
         setScansDir={setScansDir}
       />
       <LoadingBar loading={!!loading} />
-      {selectedScan && (
+      {error && <ErrorPanel title="Error Loading Scan" error={error} />}
+      {!error && selectedScan && (
         <>
           <ScanPanelTitle resultsDir={scansDir} selectedScan={selectedScan} />
           <ExtendedFindProvider>

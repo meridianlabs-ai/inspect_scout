@@ -1,4 +1,3 @@
-import zlib
 from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import AbstractAsyncContextManager
 from types import TracebackType
@@ -7,6 +6,7 @@ from typing import Literal
 import zstandard
 from anyio.abc import ByteReceiveStream
 
+from .compression import DeflateCompressor, DeflateDecompressor, ZstdDecompressor
 from .zip_common import ZipCompressionMethod
 
 
@@ -35,12 +35,12 @@ class CompressedToUncompressedStream(AsyncIterator[bytes]):
             compression_method: Compression format of input (8=DEFLATE, 93=zstd).
         """
         self._compressed_stream = compressed_stream
-        self._compression_method = compression_method
-        self._decompressor: zlib._Decompress | zstandard.ZstdDecompressionObj | None = (
-            None
+        self._decompressor = (
+            DeflateDecompressor()
+            if compression_method == ZipCompressionMethod.DEFLATE
+            else ZstdDecompressor()
         )
         self._stream_iterator: AsyncIterator[bytes] | None = None
-        self._exhausted = False
         self._closed = False
 
     def __aiter__(self) -> AsyncIterator[bytes]:
@@ -48,87 +48,14 @@ class CompressedToUncompressedStream(AsyncIterator[bytes]):
         return self
 
     async def __anext__(self) -> bytes:
-        """Get the next chunk of decompressed data.
-
-        Returns:
-            Next chunk of decompressed bytes
-
-        Raises:
-            StopAsyncIteration: When stream is exhausted
-        """
-        if self._closed:
-            raise StopAsyncIteration
-
-        if self._exhausted:
+        if self._closed or self._decompressor.exhausted:
             raise StopAsyncIteration
 
         # Initialize stream iterator on first call
         if self._stream_iterator is None:
             self._stream_iterator = self._compressed_stream.__aiter__()
 
-        try:
-            if self._compression_method == ZipCompressionMethod.DEFLATE:
-                # DEFLATE compression
-                if self._decompressor is None:
-                    self._decompressor = zlib.decompressobj(-15)  # Raw DEFLATE
-
-                # Keep reading until we have decompressed data to return
-                while True:
-                    try:
-                        chunk = await self._stream_iterator.__anext__()
-                        decompressed = self._decompressor.decompress(chunk)
-                        if decompressed:
-                            return decompressed
-                        # If no decompressed data, continue reading
-                    except StopAsyncIteration:
-                        # Input stream exhausted, flush any remaining data
-                        if self._decompressor:
-                            final = self._decompressor.flush()
-                            self._decompressor = None
-                            self._exhausted = True
-                            if final:
-                                return final
-                        raise
-
-            elif self._compression_method == ZipCompressionMethod.ZSTD:
-                # Zstandard compression
-                if self._decompressor is None:
-                    dctx = zstandard.ZstdDecompressor()
-                    self._decompressor = dctx.decompressobj()
-
-                # Keep reading until we have decompressed data to return
-                while True:
-                    try:
-                        chunk = await self._stream_iterator.__anext__()
-                        decompressed = self._decompressor.decompress(chunk)
-                        if decompressed:
-                            return decompressed
-                        # If no decompressed data, continue reading
-                    except StopAsyncIteration:
-                        # Input stream exhausted - attempt final flush
-                        # Note: Unlike zlib, zstandard's decompressobj doesn't have
-                        # a flush() method. However, passing empty bytes can trigger
-                        # output of any remaining buffered data in some edge cases.
-                        if self._decompressor:
-                            try:
-                                final = self._decompressor.decompress(b"")
-                            except zstandard.ZstdError:
-                                # No more data to decompress
-                                final = b""
-                            self._decompressor = None
-                            self._exhausted = True
-                            if final:
-                                return final
-                        raise
-
-            else:
-                raise NotImplementedError(
-                    f"Unsupported compression method {self._compression_method}"
-                )
-
-        except StopAsyncIteration:
-            self._exhausted = True
-            raise
+        return await self._decompressor.decompress_next(self._stream_iterator)
 
     async def aclose(self) -> None:
         """Explicitly close the stream and underlying resources.
@@ -140,7 +67,6 @@ class CompressedToUncompressedStream(AsyncIterator[bytes]):
             return
 
         self._closed = True
-        self._exhausted = True
 
         # Close the underlying stream
         await self._compressed_stream.aclose()
@@ -231,12 +157,7 @@ class _DeflateCompressStream(AsyncIterator[bytes]):
             source_stream: The input byte stream to compress
         """
         self._source_stream = source_stream
-        # wbits=-15 produces raw DEFLATE (no zlib/gzip wrapper)
-        self._compressor: zlib._Compress | None = zlib.compressobj(
-            level=6,
-            wbits=-15,  # raw DEFLATE
-        )
-        self._exhausted = False
+        self._compressor = DeflateCompressor()
         self._closed = False
 
     def __aiter__(self) -> AsyncIterator[bytes]:
@@ -252,28 +173,10 @@ class _DeflateCompressStream(AsyncIterator[bytes]):
         Raises:
             StopAsyncIteration: When stream is exhausted
         """
-        if self._closed or self._exhausted:
+        if self._closed or self._compressor.exhausted:
             raise StopAsyncIteration
 
-        # Keep reading until we have compressed data to return
-        while True:
-            try:
-                chunk = await self._source_stream.__anext__()
-                if self._compressor is None:
-                    raise StopAsyncIteration
-                compressed = self._compressor.compress(chunk)
-                if compressed:
-                    return compressed
-                # If no compressed data yet (buffered), continue reading
-            except StopAsyncIteration:
-                # Input stream exhausted, flush any remaining data
-                if self._compressor:
-                    final = self._compressor.flush()
-                    self._compressor = None
-                    self._exhausted = True
-                    if final:
-                        return final
-                raise
+        return await self._compressor.compress_next(self._source_stream)
 
     async def aclose(self) -> None:
         """Explicitly close the stream.
@@ -284,8 +187,6 @@ class _DeflateCompressStream(AsyncIterator[bytes]):
             return
 
         self._closed = True
-        self._exhausted = True
-        self._compressor = None
 
 
 class _ZstdDecompressIterator(AsyncIterator[bytes]):

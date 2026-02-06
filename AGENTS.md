@@ -40,12 +40,13 @@ Consult documentation when you need deeper context on how subsystems work.
 ### Design Documents
 Architecture and design decisions in `/design/`.
 
-- [data-pipeline.md](design/data-pipeline.md) - Transcript data pipeline
-- [exception_handling.md](design/exception_handling.md) - Job vs infrastructure exceptions
-- [generator-iterator.md](design/generator-iterator.md) - Async generator semantics
-- [mp.md](design/mp.md) - Multi-process concurrency
-- [validation.md](design/validation.md) - Validation data structures
-- [react-query.md](src/inspect_scout/_view/www/design/react-query.md) - React Query patterns
+- [Transcript data pipeline](design/data-pipeline.md)
+- [Job vs infrastructure exceptions](design/exception_handling.md)
+- [Async generator semantics](design/generator-iterator.md)
+- [Multi-process concurrency](design/mp.md)
+- [Validation data structures](design/validation.md)
+- [React Query patterns](src/inspect_scout/_view/www/design/react-query.md)
+- [Frontend specific testing](src/inspect_scout/_view/www/design/front-end-testing.md)
 
 ## Python
 

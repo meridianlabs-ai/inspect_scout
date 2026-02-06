@@ -1,129 +1,133 @@
 // @vitest-environment jsdom
 import { skipToken } from "@tanstack/react-query";
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 
 import { Column } from "../../query/column";
-import { useApi } from "../../state/store";
-import { data, loading } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
+import { server } from "../../test/setup-msw";
+import { createTestWrapper } from "../../test/test-utils";
 
 import { useCode } from "./useCode";
-
-vi.mock("../../state/store", () => ({
-  useApi: vi.fn(),
-}));
-
-vi.mock("../../utils/asyncDataFromQuery", () => ({
-  useAsyncDataFromQuery: vi.fn(),
-}));
-
-const mockUseApi = vi.mocked(useApi);
-const mockUseAsyncDataFromQuery = vi.mocked(useAsyncDataFromQuery);
 
 const simpleCondition = new Column("total_tokens").lt(75);
 
 describe("useCode", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseApi.mockReturnValue({} as ReturnType<typeof useApi>);
-  });
-
-  it("returns loading state when query is pending", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    const { result } = renderHook(() => useCode(simpleCondition));
-
-    expect(result.current).toEqual(loading);
-  });
-
-  it("returns data on successful fetch", () => {
-    const mockCodeResponse = {
+  it("returns loading then data on successful fetch", async () => {
+    const mockResponse = {
       python: "Not Yet Implemented",
       sqlite: '"total_tokens" < ?',
       duckdb: '"total_tokens" < ?',
       postgres: '"total_tokens" < $1',
     };
 
-    mockUseAsyncDataFromQuery.mockReturnValue(data(mockCodeResponse));
+    server.use(
+      http.post("/api/v2/code", () => HttpResponse.json(mockResponse))
+    );
 
-    const { result } = renderHook(() => useCode(simpleCondition));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.data).toEqual(mockCodeResponse);
-  });
-
-  it("returns error on fetch failure", () => {
-    const error = new Error("Network error");
-    mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
-
-    const { result } = renderHook(() => useCode(simpleCondition));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(error);
-  });
-
-  it("passes correct options to useAsyncDataFromQuery", () => {
-    const mockApi = {
-      postCode: vi.fn(),
-    };
-    mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    renderHook(() => useCode(simpleCondition));
-
-    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith({
-      queryKey: ["code", simpleCondition],
-      queryFn: expect.any(Function),
-      staleTime: Infinity,
+    const { result } = renderHook(() => useCode(simpleCondition), {
+      wrapper: createTestWrapper(),
     });
+
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual(mockResponse);
   });
 
-  it("passes skipToken to disable query", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+  it("sends condition as request body", async () => {
+    let capturedBody: unknown;
 
-    renderHook(() => useCode(skipToken));
-
-    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["code", skipToken],
-        queryFn: skipToken,
+    server.use(
+      http.post("/api/v2/code", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ python: "test" });
       })
     );
+
+    const { result } = renderHook(() => useCode(simpleCondition), {
+      wrapper: createTestWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Condition is serialized via JSON.stringify, so compare as JSON
+    expect(capturedBody).toEqual(JSON.parse(JSON.stringify(simpleCondition)));
   });
 
-  it("queryFn calls postCode with condition", async () => {
-    const mockResponse = { python: "test", sqlite: "test" };
-    const mockApi = {
-      postCode: vi.fn().mockResolvedValue(mockResponse),
-    };
-    mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+  it("returns error on server failure", async () => {
+    server.use(
+      http.post("/api/v2/code", () =>
+        HttpResponse.text("Bad Request", { status: 400 })
+      )
+    );
 
-    renderHook(() => useCode(simpleCondition));
+    const { result } = renderHook(() => useCode(simpleCondition), {
+      wrapper: createTestWrapper(),
+    });
 
-    const callArgs = mockUseAsyncDataFromQuery.mock.calls[0]?.[0];
-    expect(callArgs).toBeDefined();
-    const queryFn = callArgs!.queryFn as () => Promise<unknown>;
-    const result = await queryFn();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
-    expect(mockApi.postCode).toHaveBeenCalledWith(simpleCondition);
-    expect(result).toEqual(mockResponse);
+    expect(result.current.error).toBeDefined();
+    expect(result.current.error?.message).toContain("400");
   });
 
-  it("uses condition in queryKey for caching", () => {
-    const condition1 = new Column("a").eq(1);
-    const condition2 = new Column("b").eq(2);
+  it("does not make request when skipToken is passed", async () => {
+    let requestMade = false;
 
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+    server.use(
+      http.post("/api/v2/code", () => {
+        requestMade = true;
+        return HttpResponse.json({});
+      })
+    );
 
-    renderHook(() => useCode(condition1));
-    renderHook(() => useCode(condition2));
+    const { result } = renderHook(() => useCode(skipToken), {
+      wrapper: createTestWrapper(),
+    });
 
-    const call1 = mockUseAsyncDataFromQuery.mock.calls[0]?.[0];
-    const call2 = mockUseAsyncDataFromQuery.mock.calls[1]?.[0];
+    // With skipToken, query stays pending and no request is made
+    expect(result.current.loading).toBe(true);
 
-    expect(call1?.queryKey).toEqual(["code", condition1]);
-    expect(call2?.queryKey).toEqual(["code", condition2]);
+    // Give it a tick to ensure no request fires
+    await new Promise((r) => setTimeout(r, 50));
+    expect(requestMade).toBe(false);
+  });
+
+  it("uses different cache entries for different conditions", async () => {
+    let requestCount = 0;
+
+    server.use(
+      http.post("/api/v2/code", () => {
+        requestCount++;
+        return HttpResponse.json({ python: `response-${requestCount}` });
+      })
+    );
+
+    const wrapper = createTestWrapper();
+
+    const { result: result1 } = renderHook(
+      () => useCode(new Column("a").eq(1)),
+      { wrapper }
+    );
+    const { result: result2 } = renderHook(
+      () => useCode(new Column("b").eq(2)),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(result1.current.loading).toBe(false);
+      expect(result2.current.loading).toBe(false);
+    });
+
+    // Two different conditions should trigger two separate requests
+    expect(requestCount).toBe(2);
   });
 });

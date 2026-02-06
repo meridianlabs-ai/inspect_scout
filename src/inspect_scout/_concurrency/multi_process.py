@@ -26,7 +26,10 @@ import anyio
 from anyio import create_task_group
 from inspect_ai.model._generate_config import active_generate_config
 from inspect_ai.model._model import active_model, model_roles
-from inspect_ai.model._model_config import model_to_model_config
+from inspect_ai.model._model_config import (
+    model_roles_to_model_roles_config,
+    model_to_model_config,
+)
 from inspect_ai.util._anyio import inner_exception
 from inspect_ai.util._concurrency import init_concurrency
 
@@ -177,7 +180,7 @@ def multi_process_strategy(
                 plugin_dir=get_plugin_directory(),
                 log_level=get_log_level(),
                 model_config=model_to_model_config(active_model()),  # type: ignore[arg-type]
-                model_roles=model_roles(),
+                model_roles=model_roles_to_model_roles_config(model_roles()),
                 generate_config=active_generate_config(),
             )
 

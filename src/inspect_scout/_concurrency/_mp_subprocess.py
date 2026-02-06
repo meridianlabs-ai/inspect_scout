@@ -15,7 +15,10 @@ from typing import Callable
 
 import anyio
 from inspect_ai._eval.context import init_model_context
-from inspect_ai.model._model_config import model_config_to_model
+from inspect_ai.model._model_config import (
+    model_config_to_model,
+    model_roles_config_to_model_roles,
+)
 from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
@@ -208,7 +211,7 @@ def subprocess_main(
 
         init_model_context(
             model=model_config_to_model(ipc_ctx.model_config),
-            model_roles=ipc_ctx.model_roles,
+            model_roles=model_roles_config_to_model_roles(ipc_ctx.model_roles),
             config=ipc_ctx.generate_config,
         )
 

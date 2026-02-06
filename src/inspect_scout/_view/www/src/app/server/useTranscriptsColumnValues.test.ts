@@ -19,7 +19,7 @@ describe("useTranscriptsColumnValues", () => {
 
     server.use(
       http.post(`/api/v2/transcripts/${encodedLocation}/distinct`, () =>
-        HttpResponse.json(mockValues)
+        HttpResponse.json<string[]>(mockValues)
       )
     );
 
@@ -50,7 +50,7 @@ describe("useTranscriptsColumnValues", () => {
         `/api/v2/transcripts/${encodedLocation}/distinct`,
         async ({ request }) => {
           capturedBody = await request.json();
-          return HttpResponse.json([]);
+          return HttpResponse.json<string[]>([]);
         }
       )
     );
@@ -103,7 +103,7 @@ describe("useTranscriptsColumnValues", () => {
     server.use(
       http.post(`/api/v2/transcripts/${encodedLocation}/distinct`, () => {
         requestMade = true;
-        return HttpResponse.json([]);
+        return HttpResponse.json<string[]>([]);
       })
     );
 

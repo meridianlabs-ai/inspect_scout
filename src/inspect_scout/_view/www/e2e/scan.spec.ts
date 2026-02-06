@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 
+import type { ScansResponse, Status } from "../src/types/api-types";
 import { encodeBase64Url } from "../src/utils/base64url";
 
 import { test, expect } from "./fixtures/app";
@@ -20,7 +21,7 @@ test("clicking a scan row opens the scan detail panel", async ({
 }) => {
   network.use(
     http.post("*/api/v2/scans/:dir", () =>
-      HttpResponse.json(
+      HttpResponse.json<ScansResponse>(
         createScansResponse([
           createScanRow({
             scan_id: SCAN_ID,
@@ -31,7 +32,7 @@ test("clicking a scan row opens the scan detail panel", async ({
       ),
     ),
     http.get("*/api/v2/scans/:dir/:scanPath", () =>
-      HttpResponse.json(
+      HttpResponse.json<Status>(
         createStatus({
           location: SCAN_LOCATION,
           spec: {

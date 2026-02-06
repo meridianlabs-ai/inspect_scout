@@ -1,12 +1,14 @@
 import { http, HttpResponse } from "msw";
 
+import type { ScansResponse } from "../src/types/api-types";
+
 import { test, expect } from "./fixtures/app";
 import { createScanRow, createScansResponse } from "./fixtures/test-data";
 
 test("scans page renders grid with data", async ({ page, network }) => {
   network.use(
     http.post("*/api/v2/scans/:dir", () =>
-      HttpResponse.json(
+      HttpResponse.json<ScansResponse>(
         createScansResponse([
           createScanRow({
             scan_id: "scan-001",

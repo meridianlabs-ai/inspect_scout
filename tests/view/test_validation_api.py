@@ -343,8 +343,7 @@ class TestDeleteValidation:
 
         response = client.delete(f"/validations/{encoded_uri}")
 
-        assert response.status_code == 200
-        assert response.json() == {"deleted": True}
+        assert response.status_code == 204
         assert not validation_csv.exists()
 
     def test_delete_validation_not_found(
@@ -554,8 +553,7 @@ class TestDeleteValidationCase:
 
         response = client.delete(f"/validations/{encoded_uri}/{encoded_case_id}")
 
-        assert response.status_code == 200
-        assert response.json() == {"deleted": True}
+        assert response.status_code == 204
 
         # Verify the case was deleted
         get_response = client.get(f"/validations/{encoded_uri}")

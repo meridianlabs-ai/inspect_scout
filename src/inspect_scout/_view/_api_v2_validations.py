@@ -137,12 +137,13 @@ def create_validation_router(
 
     @router.delete(
         "/{uri}",
+        status_code=204,
         summary="Delete a validation file",
         description="Deletes a validation file from the project.",
     )
     async def delete_validation(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
-    ) -> dict[str, bool]:
+    ) -> None:
         """Delete a validation file."""
         file_uri = decode_base64url(uri)
         file_path = _uri_to_path(file_uri)
@@ -157,7 +158,6 @@ def create_validation_router(
             )
 
         send2trash(str(file_path))
-        return {"deleted": True}
 
     @router.put(
         "/{uri}/rename",
@@ -303,13 +303,14 @@ def create_validation_router(
 
     @router.delete(
         "/{uri}/{case_id}",
+        status_code=204,
         summary="Delete a case",
         description="Deletes a case from a validation file.",
     )
     async def delete_validation_case(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
-    ) -> dict[str, bool]:
+    ) -> None:
         """Delete a case from a validation file."""
         file_uri = decode_base64url(uri)
         file_path = _uri_to_path(file_uri)
@@ -327,8 +328,6 @@ def create_validation_router(
                     status_code=HTTP_404_NOT_FOUND,
                     detail="Case not found",
                 )
-
-            return {"deleted": True}
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,

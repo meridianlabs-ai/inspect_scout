@@ -1,5 +1,10 @@
 import { http, HttpResponse } from "msw";
 
+import type {
+  MessagesEventsResponse,
+  TranscriptInfo,
+  TranscriptsResponse,
+} from "../src/types/api-types";
 import { encodeBase64Url } from "../src/utils/base64url";
 
 import { test, expect } from "./fixtures/app";
@@ -18,7 +23,7 @@ test("clicking a transcript row opens the transcript detail panel", async ({
 }) => {
   network.use(
     http.post("*/api/v2/transcripts/:dir", () =>
-      HttpResponse.json(
+      HttpResponse.json<TranscriptsResponse>(
         createTranscriptsResponse([
           createTranscriptInfo({
             transcript_id: TRANSCRIPT_ID,
@@ -30,7 +35,7 @@ test("clicking a transcript row opens the transcript detail panel", async ({
       ),
     ),
     http.get("*/api/v2/transcripts/:dir/:id/info", () =>
-      HttpResponse.json(
+      HttpResponse.json<TranscriptInfo>(
         createTranscriptInfo({
           transcript_id: TRANSCRIPT_ID,
           task_id: "my-task",
@@ -40,7 +45,7 @@ test("clicking a transcript row opens the transcript detail panel", async ({
       ),
     ),
     http.get("*/api/v2/transcripts/:dir/:id/messages-events", () =>
-      HttpResponse.json(createMessagesEventsResponse()),
+      HttpResponse.json<MessagesEventsResponse>(createMessagesEventsResponse()),
     ),
   );
 

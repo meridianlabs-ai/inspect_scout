@@ -119,7 +119,7 @@ export const apiScoutServer = (
       id: string
     ): Promise<boolean> => {
       try {
-        await requestApi.fetchString(
+        await requestApi.fetchVoid(
           "HEAD",
           `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}/info`
         );
@@ -364,21 +364,17 @@ export const apiScoutServer = (
     deleteValidationCase: async (
       uri: string,
       caseId: string
-    ): Promise<boolean> => {
-      const result = await requestApi.fetchString(
+    ): Promise<void> => {
+      await requestApi.fetchVoid(
         "DELETE",
         `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`
       );
-      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
-      return response.deleted;
     },
-    deleteValidationSet: async (uri: string): Promise<boolean> => {
-      const result = await requestApi.fetchString(
+    deleteValidationSet: async (uri: string): Promise<void> => {
+      await requestApi.fetchVoid(
         "DELETE",
         `/validations/${encodeBase64Url(uri)}`
       );
-      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
-      return response.deleted;
     },
     renameValidationSet: async (
       uri: string,

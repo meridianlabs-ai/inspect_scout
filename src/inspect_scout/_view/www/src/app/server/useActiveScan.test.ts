@@ -55,7 +55,7 @@ describe("useActiveScan", () => {
   it("returns matching scan info when scan is active", async () => {
     server.use(
       http.get("/api/v2/scans/active", () =>
-        HttpResponse.json(activeScanResponse)
+        HttpResponse.json<ActiveScansResponse>(activeScanResponse)
       )
     );
 
@@ -75,7 +75,7 @@ describe("useActiveScan", () => {
   it("returns undefined when scan is not found", async () => {
     server.use(
       http.get("/api/v2/scans/active", () =>
-        HttpResponse.json(activeScanResponse)
+        HttpResponse.json<ActiveScansResponse>(activeScanResponse)
       )
     );
 
@@ -93,7 +93,7 @@ describe("useActiveScan", () => {
   it("returns undefined when scanId is undefined", async () => {
     server.use(
       http.get("/api/v2/scans/active", () =>
-        HttpResponse.json(activeScanResponse)
+        HttpResponse.json<ActiveScansResponse>(activeScanResponse)
       )
     );
 

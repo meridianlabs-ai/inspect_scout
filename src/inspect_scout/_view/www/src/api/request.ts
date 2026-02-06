@@ -31,6 +31,11 @@ export interface ServerRequestApi {
     headers?: Record<string, string>,
     body?: string
   ) => Promise<{ raw: string }>;
+  fetchVoid: (
+    method: HttpMethod,
+    path: string,
+    headers?: Record<string, string>
+  ) => Promise<void>;
   fetchBytes: (
     method: HttpMethod,
     path: string,
@@ -178,6 +183,41 @@ export function serverRequestApi(
   };
 
   /**
+   * Fetch from an endpoint that returns no body (e.g., 204 No Content).
+   * Expects a 2xx response with no meaningful body.
+   */
+  const fetchVoid = async (
+    method: HttpMethod,
+    path: string,
+    customHeaders?: Record<string, string>
+  ): Promise<void> => {
+    const url = buildApiUrl(path);
+
+    const baseHeaders = {
+      Pragma: "no-cache",
+      Expires: "0",
+      "Cache-Control": "no-cache",
+      ...customHeaders,
+    };
+
+    const headers = await withGlobalHeaders(baseHeaders);
+
+    const response = await fetchFn(url, {
+      method,
+      headers,
+      credentials: isApiCrossOrigin() ? "include" : "same-origin",
+    });
+
+    if (!response.ok) {
+      const message = (await response.text()) || response.statusText;
+      throw new ApiError(
+        response.status,
+        `HTTP ${response.status}: ${message}`
+      );
+    }
+  };
+
+  /**
    * Fetch binary data from an endpoint.
    *
    * @param extraAcceptType - Additional MIME type to include in Accept header.
@@ -226,6 +266,7 @@ export function serverRequestApi(
 
   return {
     fetchString,
+    fetchVoid,
     fetchBytes,
     fetchType,
   };

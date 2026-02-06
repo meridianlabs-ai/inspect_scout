@@ -11531,18 +11531,7 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Delete Validation Validations  Uri  Delete",
-                  "type": "object"
-                }
-              }
-            },
+          "204": {
             "description": "Successful Response"
           }
         },
@@ -11665,18 +11654,7 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Delete Validation Case Validations  Uri   Case Id  Delete",
-                  "type": "object"
-                }
-              }
-            },
+          "204": {
             "description": "Successful Response"
           }
         },

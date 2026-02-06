@@ -307,9 +307,27 @@ jobs:
         working-directory: src/inspect_scout/_view/www
         run: pnpm install --frozen-lockfile
 
+      - name: Get Playwright version
+        id: pw-version
+        working-directory: src/inspect_scout/_view/www
+        run: echo "version=$(pnpm exec playwright --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
       - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         working-directory: src/inspect_scout/_view/www
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (on cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        working-directory: src/inspect_scout/_view/www
+        run: pnpm exec playwright install-deps chromium
 
       - name: Run e2e tests
         working-directory: src/inspect_scout/_view/www

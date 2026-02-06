@@ -3,43 +3,41 @@ import { http, HttpResponse } from "msw";
 import { test, expect } from "./fixtures/app";
 import { createScanRow, createScansResponse } from "./fixtures/test-data";
 
-test.describe("Scans page", () => {
-  test("renders scan grid with data", async ({ page, network }) => {
-    network.use(
-      http.post("*/api/v2/scans/:dir", () =>
-        HttpResponse.json(
-          createScansResponse([
-            createScanRow({
-              scan_id: "scan-001",
-              scan_name: "eval-safety",
-              status: "complete",
-              total_results: 42,
-            }),
-            createScanRow({
-              scan_id: "scan-002",
-              scan_name: "eval-quality",
-              status: "active",
-              total_results: 10,
-            }),
-          ]),
-        ),
+test("scans page renders grid with data", async ({ page, network }) => {
+  network.use(
+    http.post("*/api/v2/scans/:dir", () =>
+      HttpResponse.json(
+        createScansResponse([
+          createScanRow({
+            scan_id: "scan-001",
+            scan_name: "eval-safety",
+            status: "complete",
+            total_results: 42,
+          }),
+          createScanRow({
+            scan_id: "scan-002",
+            scan_name: "eval-quality",
+            status: "active",
+            total_results: 10,
+          }),
+        ]),
       ),
-    );
+    ),
+  );
 
-    await page.goto("/#/scans");
+  await page.goto("/#/scans");
 
-    // Grid renders with scan data
-    await expect(page.getByText("eval-safety").first()).toBeVisible();
-    await expect(page.getByText("eval-quality").first()).toBeVisible();
+  // Grid renders with scan data
+  await expect(page.getByText("eval-safety").first()).toBeVisible();
+  await expect(page.getByText("eval-quality").first()).toBeVisible();
 
-    // Footer shows item count
-    await expect(page.locator("#scan-job-footer")).toContainText("2 items");
-  });
+  // Footer shows item count
+  await expect(page.locator("#scan-job-footer")).toContainText("2 items");
+});
 
-  test("shows empty state when no scans exist", async ({ page }) => {
-    await page.goto("/#/scans");
+test("scans page shows empty state when no scans exist", async ({ page }) => {
+  await page.goto("/#/scans");
 
-    // Footer shows 0 items
-    await expect(page.locator("#scan-job-footer")).toContainText("0 items");
-  });
+  // Footer shows 0 items
+  await expect(page.locator("#scan-job-footer")).toContainText("0 items");
 });

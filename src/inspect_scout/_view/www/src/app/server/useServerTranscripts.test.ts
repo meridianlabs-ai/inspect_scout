@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { Column } from "../../query/column";
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
+import type { TranscriptsResponse } from "../../types/api-types";
 import { encodeBase64Url } from "../../utils/base64url";
 
 import { useServerTranscripts } from "./useServerTranscripts";
@@ -14,7 +15,7 @@ const location = "/test/transcripts";
 const encodedLocation = encodeBase64Url(location);
 const endpoint = `/api/v2/transcripts/${encodedLocation}`;
 
-const mockTranscriptsResponse = {
+const mockTranscriptsResponse: TranscriptsResponse = {
   items: [
     { transcript_id: "t-1", metadata: {} },
     { transcript_id: "t-2", metadata: {} },

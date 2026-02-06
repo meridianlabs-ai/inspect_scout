@@ -5,10 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
+import type { ScanJobConfig } from "../../types/api-types";
 
 import { useStartScan } from "./useStartScan";
 
-const mockScanConfig = {
+const mockScanConfig: ScanJobConfig = {
   filter: ["task_id = 'test'"],
 };
 

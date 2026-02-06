@@ -13,6 +13,8 @@ export default tseslint.config(
       "node_modules/",
       "build/",
       "scripts/",
+      "playwright-report/",
+      "test-results/",
       "*.config.?s",
       "*.config.cjs",
       "src/types/generated.ts",

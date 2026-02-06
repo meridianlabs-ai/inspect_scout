@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
+import type { ProjectConfig } from "../../types/api-types";
 
 import { useProjectConfig, useUpdateProjectConfig } from "./useProjectConfig";
 
@@ -16,7 +17,7 @@ describe("useProjectConfig", () => {
   it("returns config with etag from response headers", async () => {
     server.use(
       http.get("/api/v2/project/config", () =>
-        HttpResponse.json(mockConfig, {
+        HttpResponse.json<ProjectConfig>(mockConfig, {
           headers: { ETag: '"abc123"' },
         })
       )
@@ -38,7 +39,9 @@ describe("useProjectConfig", () => {
 
   it("returns empty etag when header is missing", async () => {
     server.use(
-      http.get("/api/v2/project/config", () => HttpResponse.json(mockConfig))
+      http.get("/api/v2/project/config", () =>
+        HttpResponse.json<ProjectConfig>(mockConfig)
+      )
     );
 
     const { result } = renderHook(() => useProjectConfig(), {
@@ -80,14 +83,14 @@ describe("useUpdateProjectConfig", () => {
 
     server.use(
       http.get("/api/v2/project/config", () =>
-        HttpResponse.json(mockConfig, {
+        HttpResponse.json<ProjectConfig>(mockConfig, {
           headers: { ETag: '"original"' },
         })
       ),
       http.put("/api/v2/project/config", async ({ request }) => {
         capturedHeaders = new Headers(request.headers);
         capturedBody = await request.json();
-        return HttpResponse.json(updatedConfig, {
+        return HttpResponse.json<ProjectConfig>(updatedConfig, {
           headers: { ETag: '"updated-etag"' },
         });
       })
@@ -127,12 +130,12 @@ describe("useUpdateProjectConfig", () => {
 
     server.use(
       http.get("/api/v2/project/config", () =>
-        HttpResponse.json(mockConfig, {
+        HttpResponse.json<ProjectConfig>(mockConfig, {
           headers: { ETag: '"v1"' },
         })
       ),
       http.put("/api/v2/project/config", () =>
-        HttpResponse.json(updatedConfig, {
+        HttpResponse.json<ProjectConfig>(updatedConfig, {
           headers: { ETag: '"v2"' },
         })
       )
@@ -172,7 +175,7 @@ describe("useUpdateProjectConfig", () => {
   it("propagates 412 Precondition Failed as error", async () => {
     server.use(
       http.get("/api/v2/project/config", () =>
-        HttpResponse.json(mockConfig, {
+        HttpResponse.json<ProjectConfig>(mockConfig, {
           headers: { ETag: '"v1"' },
         })
       ),

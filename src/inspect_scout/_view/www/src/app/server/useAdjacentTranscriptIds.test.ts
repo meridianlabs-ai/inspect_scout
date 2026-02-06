@@ -5,7 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
-import type { TranscriptInfo } from "../../types/api-types";
+import type {
+  TranscriptInfo,
+  TranscriptsResponse,
+} from "../../types/api-types";
 import { encodeBase64Url } from "../../utils/base64url";
 
 import { useAdjacentTranscriptIds } from "./useAdjacentTranscriptIds";
@@ -19,15 +22,17 @@ const makeTranscript = (id: string): TranscriptInfo => ({
   metadata: {},
 });
 
+type CursorObject = { page: string } | null;
+
 type PaginationBody = {
   filter: unknown;
   order_by: unknown;
-  pagination: { cursor: string | null } | null;
+  pagination: { cursor: CursorObject } | null;
 };
 
 /**
  * Creates an MSW handler that returns paginated transcript responses.
- * Each entry in `pages` maps a cursor value to a page of transcript IDs.
+ * Each entry in `pages` maps a cursor key to a page of transcript IDs.
  * The first entry (cursor `null`) is the initial page.
  */
 const handlePaginatedTranscripts = (
@@ -35,18 +40,19 @@ const handlePaginatedTranscripts = (
 ) =>
   http.post(endpoint, async ({ request }) => {
     const body = (await request.json()) as PaginationBody;
-    const cursor = body.pagination?.cursor ?? null;
-    const page = pages.get(cursor);
+    const cursorObj = body.pagination?.cursor ?? null;
+    const cursorKey = cursorObj?.page ?? null;
+    const page = pages.get(cursorKey);
     if (!page) {
-      return HttpResponse.json({
+      return HttpResponse.json<TranscriptsResponse>({
         items: [],
         next_cursor: null,
         total_count: 0,
       });
     }
-    return HttpResponse.json({
+    return HttpResponse.json<TranscriptsResponse>({
       items: page.ids.map(makeTranscript),
-      next_cursor: page.nextCursor,
+      next_cursor: page.nextCursor ? { page: page.nextCursor } : null,
       total_count: page.ids.length,
     });
   });

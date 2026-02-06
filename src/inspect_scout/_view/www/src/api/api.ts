@@ -88,8 +88,8 @@ export interface ScoutApiV2 {
     caseId: string,
     data: ValidationCaseRequest
   ): Promise<ValidationCase>;
-  deleteValidationCase(uri: string, caseId: string): Promise<boolean>;
-  deleteValidationSet(uri: string): Promise<boolean>;
+  deleteValidationCase(uri: string, caseId: string): Promise<void>;
+  deleteValidationSet(uri: string): Promise<void>;
   renameValidationSet(uri: string, newName: string): Promise<string>;
 
   storage: ClientStorage;

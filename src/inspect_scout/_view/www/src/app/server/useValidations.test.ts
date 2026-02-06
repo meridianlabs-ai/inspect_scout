@@ -32,7 +32,7 @@ describe("useValidationCase", () => {
   it("returns validation case on success", async () => {
     server.use(
       http.get(`/api/v2/validations/${encodedUri}/${encodedCaseId}`, () =>
-        HttpResponse.json(mockCase)
+        HttpResponse.json<ValidationCase>(mockCase)
       )
     );
 
@@ -94,7 +94,7 @@ describe("useValidationCase", () => {
     server.use(
       http.get(`/api/v2/validations/${encodedUri}/${encodedCaseId}`, () => {
         requestMade = true;
-        return HttpResponse.json(mockCase);
+        return HttpResponse.json<ValidationCase>(mockCase);
       })
     );
 
@@ -120,7 +120,7 @@ describe("useUpdateValidationCase", () => {
         `/api/v2/validations/${encodedUri}/${encodedCaseId}`,
         async ({ request }) => {
           capturedBody = await request.json();
-          return HttpResponse.json(updatedCase);
+          return HttpResponse.json<ValidationCase>(updatedCase);
         }
       )
     );
@@ -147,7 +147,7 @@ describe("useUpdateValidationCase", () => {
     // Pre-populate the case cache
     server.use(
       http.get(`/api/v2/validations/${encodedUri}/${encodedCaseId}`, () =>
-        HttpResponse.json(mockCase)
+        HttpResponse.json<ValidationCase>(mockCase)
       )
     );
 
@@ -205,8 +205,9 @@ describe("useBulkDeleteValidationCases", () => {
   it("deletes all cases successfully", async () => {
     for (const id of caseIds) {
       server.use(
-        http.delete(deleteEndpoint(id), () =>
-          HttpResponse.json({ deleted: true })
+        http.delete(
+          deleteEndpoint(id),
+          () => new HttpResponse(null, { status: 204 })
         )
       );
     }
@@ -227,14 +228,16 @@ describe("useBulkDeleteValidationCases", () => {
   it("handles partial failures gracefully", async () => {
     // case-1 and case-3 succeed, case-2 fails
     server.use(
-      http.delete(deleteEndpoint("case-1"), () =>
-        HttpResponse.json({ deleted: true })
+      http.delete(
+        deleteEndpoint("case-1"),
+        () => new HttpResponse(null, { status: 204 })
       ),
       http.delete(deleteEndpoint("case-2"), () =>
         HttpResponse.text("Server Error", { status: 500 })
       ),
-      http.delete(deleteEndpoint("case-3"), () =>
-        HttpResponse.json({ deleted: true })
+      http.delete(
+        deleteEndpoint("case-3"),
+        () => new HttpResponse(null, { status: 204 })
       )
     );
 

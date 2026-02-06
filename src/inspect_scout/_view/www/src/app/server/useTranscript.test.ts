@@ -81,6 +81,17 @@ const mockMessagesEvents: MessagesEventsResponse = {
   ],
 };
 
+function assertZstdAcceptHeader(request: Request): Response | null {
+  const acceptEncoding = request.headers.get("X-Accept-Raw-Encoding");
+  if (acceptEncoding !== "zstd") {
+    return HttpResponse.json(
+      { error: "Expected X-Accept-Raw-Encoding: zstd header" },
+      { status: 400 }
+    );
+  }
+  return null;
+}
+
 function setupInfoHandler(): void {
   server.use(
     http.get(`/api/v2/transcripts/${encodedLocation}/${encodedId}/info`, () =>
@@ -93,7 +104,11 @@ function setupMessagesEventsJsonHandler(): void {
   server.use(
     http.get(
       `/api/v2/transcripts/${encodedLocation}/${encodedId}/messages-events`,
-      () => HttpResponse.json<MessagesEventsResponse>(mockMessagesEvents)
+      ({ request }) => {
+        const error = assertZstdAcceptHeader(request);
+        if (error) return error;
+        return HttpResponse.json<MessagesEventsResponse>(mockMessagesEvents);
+      }
     )
   );
 }
@@ -102,7 +117,10 @@ function setupMessagesEventsZstdHandler(): void {
   server.use(
     http.get(
       `/api/v2/transcripts/${encodedLocation}/${encodedId}/messages-events`,
-      () => {
+      ({ request }) => {
+        const error = assertZstdAcceptHeader(request);
+        if (error) return error;
+
         const jsonString = JSON.stringify(mockMessagesEvents);
         const encoder = new TextEncoder();
         const uncompressed = encoder.encode(jsonString);

@@ -49,6 +49,7 @@ export function createScanRow(
     total_errors: 0,
     total_results: 0,
     total_tokens: 0,
+    transcript_count: 0,
     ...overrides,
   };
 }

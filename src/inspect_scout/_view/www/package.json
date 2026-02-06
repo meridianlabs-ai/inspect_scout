@@ -40,7 +40,10 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm lint:fix && pnpm format && pnpm typecheck",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test --config playwright.config.ts",
+    "e2e:ui": "playwright test --config playwright.config.ts --ui",
+    "e2e:headed": "playwright test --config playwright.config.ts --headed"
   },
   "exports": {
     ".": {
@@ -56,6 +59,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@msw/playwright": "^0.4.5",
+    "@playwright/test": "^1.58.1",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@testing-library/react": "^16.3.1",

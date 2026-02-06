@@ -1,6 +1,6 @@
 """Tests that Model objects survive pickling for multiprocess scanning."""
 
-import cloudpickle
+import cloudpickle  # type: ignore[import-untyped]
 from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._model_config import model_roles_to_model_roles_config
 from inspect_scout import llm_scanner

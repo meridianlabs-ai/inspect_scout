@@ -115,6 +115,9 @@ class ScanRow(BaseModel):
     # === For active scan progress (None if not active) ===
     active_completion_pct: int | None = None
 
+    # transcript count
+    transcript_count: int
+
 
 @dataclass
 class PaginatedRequest:

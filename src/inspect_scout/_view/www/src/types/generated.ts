@@ -2862,6 +2862,8 @@ export interface components {
             total_results: number;
             /** Total Tokens */
             total_tokens: number;
+            /** Transcript Count */
+            transcript_count: number;
         };
         /**
          * ScanSpec

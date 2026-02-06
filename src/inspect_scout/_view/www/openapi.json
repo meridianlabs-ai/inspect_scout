@@ -7147,6 +7147,10 @@
           "total_tokens": {
             "title": "Total Tokens",
             "type": "integer"
+          },
+          "transcript_count": {
+            "title": "Transcript Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -7160,7 +7164,8 @@
           "tags",
           "total_results",
           "total_errors",
-          "total_tokens"
+          "total_tokens",
+          "transcript_count"
         ],
         "title": "ScanRow",
         "type": "object"

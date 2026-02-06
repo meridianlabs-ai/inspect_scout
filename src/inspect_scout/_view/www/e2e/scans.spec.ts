@@ -41,3 +41,21 @@ test("scans page shows empty state when no scans exist", async ({ page }) => {
   // Footer shows 0 items
   await expect(page.locator("#scan-job-footer")).toContainText("0 items");
 });
+
+test("scans page shows error panel on API failure", async ({
+  page,
+  network,
+}) => {
+  network.use(
+    http.post("*/api/v2/scans/:dir", () =>
+      HttpResponse.text("Internal Server Error", { status: 500 }),
+    ),
+  );
+
+  await page.goto("/#/scans");
+
+  // React Query retries 3x with exponential backoff before surfacing the error
+  await expect(page.getByText("Error Loading Scans")).toBeVisible({
+    timeout: 15_000,
+  });
+});

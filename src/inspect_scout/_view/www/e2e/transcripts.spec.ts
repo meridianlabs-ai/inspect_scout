@@ -46,3 +46,21 @@ test("transcripts page shows empty state when no transcripts exist", async ({
   // Footer shows 0 items
   await expect(page.locator("#transcripts-footer")).toContainText("0 items");
 });
+
+test("transcripts page shows error panel on API failure", async ({
+  page,
+  network,
+}) => {
+  network.use(
+    http.post("*/api/v2/transcripts/:dir", () =>
+      HttpResponse.text("Internal Server Error", { status: 500 }),
+    ),
+  );
+
+  await page.goto("/#/transcripts");
+
+  // React Query retries 3x with exponential backoff before surfacing the error
+  await expect(page.getByText("Error Loading Transcript")).toBeVisible({
+    timeout: 15_000,
+  });
+});

@@ -1,9 +1,11 @@
 import type {
   ActiveScansResponse,
   AppConfig,
+  MessagesEventsResponse,
   ProjectConfig,
   ScanRow,
   ScansResponse,
+  Status,
   TranscriptInfo,
   TranscriptsResponse,
 } from "../../src/types/api-types";
@@ -81,4 +83,33 @@ export function createProjectConfig(): ProjectConfig {
   return {
     filter: [],
   } satisfies ProjectConfig;
+}
+
+export function createStatus(overrides?: Partial<Status>): Status {
+  return {
+    complete: true,
+    errors: [],
+    location:
+      "/home/test/project/.scans/scan_id=aBcDeFgHiJkLmNoPqRsTuV",
+    spec: {
+      scan_id: "aBcDeFgHiJkLmNoPqRsTuV",
+      scan_name: "eval-safety",
+      options: { max_transcripts: 25 },
+      packages: {},
+      scanners: {},
+      timestamp: "2024-01-01T00:00:00Z",
+    },
+    summary: { complete: true, scanners: {} },
+    ...overrides,
+  } satisfies Status;
+}
+
+export function createMessagesEventsResponse(
+  overrides?: Partial<MessagesEventsResponse>,
+): MessagesEventsResponse {
+  return {
+    messages: [],
+    events: [],
+    ...overrides,
+  } satisfies MessagesEventsResponse;
 }

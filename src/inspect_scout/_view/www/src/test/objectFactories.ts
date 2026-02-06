@@ -1,7 +1,7 @@
 import type { ActiveScanInfo } from "../types/api-types";
 
 export function createActiveScanInfo(
-  overrides: Partial<ActiveScanInfo> & { scan_id: string },
+  overrides: Partial<ActiveScanInfo> & { scan_id: string }
 ): ActiveScanInfo {
   return {
     config: "default",

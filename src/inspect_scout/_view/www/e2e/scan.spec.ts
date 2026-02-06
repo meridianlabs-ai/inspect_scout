@@ -57,6 +57,7 @@ test("clicking a scan row opens the scan detail panel", async ({
 test("scan panel shows error state when scan API fails", async ({
   page,
   network,
+  disableRetries: _,
 }) => {
   network.use(
     http.get("*/api/v2/scans/:dir/:scanPath", () =>
@@ -67,7 +68,5 @@ test("scan panel shows error state when scan API fails", async ({
   const encodedDir = encodeBase64Url(SCANS_DIR);
   await page.goto(`/#/scan/${encodedDir}/${SCAN_RELATIVE_PATH}`);
 
-  await expect(page.getByText("Error Loading Scan")).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByText("Error Loading Scan")).toBeVisible();
 });

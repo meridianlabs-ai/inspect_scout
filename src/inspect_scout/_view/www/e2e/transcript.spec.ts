@@ -54,6 +54,7 @@ test("clicking a transcript row opens the transcript detail panel", async ({
 test("transcript panel shows error state when API fails", async ({
   page,
   network,
+  disableRetries: _,
 }) => {
   network.use(
     http.get("*/api/v2/transcripts/:dir/:id/info", () =>
@@ -66,7 +67,5 @@ test("transcript panel shows error state when API fails", async ({
     `/#/transcripts/${encodedDir}/${TRANSCRIPT_ID}`,
   );
 
-  await expect(page.getByText("Error Loading Transcript")).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByText("Error Loading Transcript")).toBeVisible();
 });

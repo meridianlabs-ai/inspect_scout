@@ -52,6 +52,7 @@ const MOCK_EVENT_SOURCE_SCRIPT = `
 
 interface AppFixtures {
   network: NetworkFixture;
+  disableRetries: void;
 }
 
 export const test = base.extend<AppFixtures>({
@@ -65,6 +66,17 @@ export const test = base.extend<AppFixtures>({
   network: createNetworkFixture({
     initialHandlers: defaultHandlers,
   }),
+
+  // Opt-in fixture: destructure in a test to disable React Query retries
+  disableRetries: [
+    async ({ page }, use) => {
+      await page.addInitScript(() => {
+        globalThis.__TEST_DISABLE_RETRY = true;
+      });
+      await use();  
+    },
+    { auto: false },
+  ],
 });
 
 export { expect } from "@playwright/test";

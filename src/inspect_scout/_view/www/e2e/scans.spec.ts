@@ -45,6 +45,7 @@ test("scans page shows empty state when no scans exist", async ({ page }) => {
 test("scans page shows error panel on API failure", async ({
   page,
   network,
+  disableRetries: _,
 }) => {
   network.use(
     http.post("*/api/v2/scans/:dir", () =>
@@ -54,8 +55,5 @@ test("scans page shows error panel on API failure", async ({
 
   await page.goto("/#/scans");
 
-  // React Query retries 3x with exponential backoff before surfacing the error
-  await expect(page.getByText("Error Loading Scans")).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByText("Error Loading Scans")).toBeVisible();
 });

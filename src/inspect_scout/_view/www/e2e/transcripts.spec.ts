@@ -50,6 +50,7 @@ test("transcripts page shows empty state when no transcripts exist", async ({
 test("transcripts page shows error panel on API failure", async ({
   page,
   network,
+  disableRetries: _,
 }) => {
   network.use(
     http.post("*/api/v2/transcripts/:dir", () =>
@@ -59,8 +60,5 @@ test("transcripts page shows error panel on API failure", async ({
 
   await page.goto("/#/transcripts");
 
-  // React Query retries 3x with exponential backoff before surfacing the error
-  await expect(page.getByText("Error Loading Transcript")).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByText("Error Loading Transcript")).toBeVisible();
 });

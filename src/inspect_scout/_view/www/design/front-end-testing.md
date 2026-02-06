@@ -35,6 +35,18 @@ expect(capturedHeaders?.get("If-Match")).toBe('"v1"');
 **Collapsed group suppression**: Node has no concept of `console.groupCollapsed` — it prints everything. `setup-msw.ts` replicates browser behavior by suppressing `console.log` calls inside collapsed groups. This quiets MSW's SSE handler (which wraps all logging in `groupCollapsed`), but applies to any code using collapsed groups. Top-level `console.log` is unaffected.
 
 
+### Type-check mock response data
+
+Always pass the response type to `HttpResponse.json<T>()`. Without it, mock data silently drifts from the real API schema — missing fields, wrong types, stale shapes after a backend change — and tests pass against payloads the server would never return.
+
+```typescript
+http.get("/api/v2/scans/active", () =>
+  HttpResponse.json<ActiveScansResponse>({
+    items: { "scan-123": scanInfo },
+  }),
+);
+```
+
 ## Patterns
 
 ### Hooks

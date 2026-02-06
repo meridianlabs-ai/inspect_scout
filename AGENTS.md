@@ -94,7 +94,10 @@ pnpm install
 | `pnpm dev` | Start dev server (user typically has this running—don't start) |
 | `pnpm watch` | Watch mode (user typically has this running—don't start) |
 | `pnpm build` | Production build |
-| `pnpm test` | Run tests |
+| `pnpm test` | Run unit/integration tests |
+| `pnpm e2e` | Run Playwright e2e tests |
+| `pnpm e2e:ui` | Run e2e tests with interactive UI |
+| `pnpm e2e:headed` | Run e2e tests in headed browser |
 | `pnpm lint` | Lint code |
 | `pnpm lint:fix` | Lint and auto-fix |
 | `pnpm format` | Format code |

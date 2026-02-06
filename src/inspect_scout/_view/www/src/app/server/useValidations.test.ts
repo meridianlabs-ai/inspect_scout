@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
+import type { ValidationCase } from "../../types/api-types";
 import { encodeBase64Url } from "../../utils/base64url";
 
 import {
@@ -19,7 +20,7 @@ const caseId = "case-1";
 const encodedUri = encodeBase64Url(uri);
 const encodedCaseId = encodeBase64Url(caseId);
 
-const mockCase = {
+const mockCase: ValidationCase = {
   id: caseId,
   labels: { correct: true },
   target: "expected answer",

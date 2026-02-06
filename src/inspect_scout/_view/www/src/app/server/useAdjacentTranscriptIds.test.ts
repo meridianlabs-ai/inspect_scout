@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
+import type { TranscriptInfo } from "../../types/api-types";
 import { encodeBase64Url } from "../../utils/base64url";
 
 import { useAdjacentTranscriptIds } from "./useAdjacentTranscriptIds";
@@ -13,7 +14,7 @@ const location = "/test-transcripts";
 const encodedLocation = encodeBase64Url(location);
 const endpoint = `/api/v2/transcripts/${encodedLocation}`;
 
-const makeTranscript = (id: string) => ({
+const makeTranscript = (id: string): TranscriptInfo => ({
   transcript_id: id,
   metadata: {},
 });

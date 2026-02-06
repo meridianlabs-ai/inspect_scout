@@ -35,6 +35,22 @@ expect(capturedHeaders?.get("If-Match")).toBe('"v1"');
 **Collapsed group suppression**: Node has no concept of `console.groupCollapsed` — it prints everything. `setup-msw.ts` replicates browser behavior by suppressing `console.log` calls inside collapsed groups. This quiets MSW's SSE handler (which wraps all logging in `groupCollapsed`), but applies to any code using collapsed groups. Top-level `console.log` is unaffected.
 
 
+### Mock Data with `satisfies`
+
+Use `satisfies` (not a type annotation) when constructing mock response data for MSW handlers. This gives type checking against the real API schema while keeping the literal type — so typos and missing required fields are caught at compile time, but you don't have to fill in every optional field.
+
+```typescript
+http.get("/api/v2/app-config", () =>
+  HttpResponse.json({
+    home_dir: "/home/test",
+    filter: [],
+    scans: { dir: "/tmp/.scans", source: "project" },
+  } satisfies AppConfig),
+);
+```
+
+Unlike a type annotation, `satisfies` doesn't require a variable — you can type-check data inline where it's passed to `HttpResponse.json()`.
+
 ## Patterns
 
 ### Hooks

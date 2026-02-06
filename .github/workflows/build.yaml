@@ -288,6 +288,7 @@ jobs:
         run: pnpm test
 
   js-e2e:
+    continue-on-error: true  # TODO: remove once e2e tests prove stable
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

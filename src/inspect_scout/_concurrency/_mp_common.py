@@ -23,7 +23,7 @@ from typing import (
 import anyio
 import cloudpickle  # type:ignore
 from inspect_ai._util.logger import warn_once
-from inspect_ai.model import GenerateConfig, Model, ModelConfig
+from inspect_ai.model import GenerateConfig, ModelConfig
 from typing_extensions import TypeVarTuple, Unpack
 
 if TYPE_CHECKING:
@@ -240,8 +240,8 @@ class IPCContext:
     model_config: ModelConfig
     """Configuration specifying which model provider and settings to use."""
 
-    model_roles: dict[str, Model] | None
-    """Optional mapping of role names to specific Model instances."""
+    model_roles: dict[str, ModelConfig] | None
+    """Optional mapping of role names to serializable ModelConfig instances."""
 
     generate_config: GenerateConfig
     """Generation parameters (temperature, max_tokens, etc.) for model calls."""

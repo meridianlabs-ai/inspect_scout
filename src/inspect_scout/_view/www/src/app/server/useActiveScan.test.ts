@@ -1,78 +1,129 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 
-import { ActiveScanInfo } from "../../types/api-types";
-import { data, loading } from "../../utils/asyncData";
+import { createActiveScanInfo } from "../../test/objectFactories";
+import { server } from "../../test/setup-msw";
+import { createTestWrapper } from "../../test/test-utils";
+import type { ActiveScansResponse } from "../../types/api-types";
 
 import { useActiveScan } from "./useActiveScan";
-import { useActiveScans } from "./useActiveScans";
 
-vi.mock("./useActiveScans", () => ({
-  useActiveScans: vi.fn(),
-}));
+const scan123 = createActiveScanInfo({
+  scan_id: "scan-123",
+  total_scans: 10,
+  metrics: {
+    batch_failures: 0,
+    batch_pending: 0,
+    buffered_scanner_jobs: 0,
+    completed_scans: 5,
+    memory_usage: 0,
+    process_count: 0,
+    task_count: 0,
+    tasks_idle: 0,
+    tasks_parsing: 0,
+    tasks_scanning: 0,
+  },
+});
 
-const mockUseActiveScans = vi.mocked(useActiveScans);
+const scan456 = createActiveScanInfo({
+  scan_id: "scan-456",
+  total_scans: 20,
+  metrics: {
+    batch_failures: 0,
+    batch_pending: 0,
+    buffered_scanner_jobs: 0,
+    completed_scans: 15,
+    memory_usage: 0,
+    process_count: 0,
+    task_count: 0,
+    tasks_idle: 0,
+    tasks_parsing: 0,
+    tasks_scanning: 0,
+  },
+});
 
-const createMockActiveScanInfo = (scanId: string): ActiveScanInfo =>
-  ({
-    scan_id: scanId,
-    total_scans: 10,
-    metrics: { completed_scans: 5 },
-  }) as ActiveScanInfo;
+const activeScanResponse: ActiveScansResponse = {
+  items: {
+    "scan-123": scan123,
+    "scan-456": scan456,
+  },
+};
 
 describe("useActiveScan", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns loading state when active scans are loading", () => {
-    mockUseActiveScans.mockReturnValue(loading);
-
-    const { result } = renderHook(() => useActiveScan("scan-123"));
-
-    expect(result.current).toBe(loading);
-  });
-
-  it("returns undefined when scan is not found in active scans", () => {
-    mockUseActiveScans.mockReturnValue(
-      data({ "other-scan": createMockActiveScanInfo("other-scan") })
+  it("returns matching scan info when scan is active", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.json(activeScanResponse)
+      )
     );
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(result.current.loading).toBe(false);
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual(scan123);
+  });
+
+  it("returns undefined when scan is not found", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.json(activeScanResponse)
+      )
+    );
+
+    const { result } = renderHook(() => useActiveScan("nonexistent"), {
+      wrapper: createTestWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     expect(result.current.data).toBeUndefined();
   });
 
-  it("returns ActiveScanInfo when scan is active", () => {
-    const activeScanInfo = createMockActiveScanInfo("scan-123");
-    mockUseActiveScans.mockReturnValue(data({ "scan-123": activeScanInfo }));
-
-    const { result } = renderHook(() => useActiveScan("scan-123"));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.data).toEqual(activeScanInfo);
-  });
-
-  it("returns undefined when scanId is undefined", () => {
-    mockUseActiveScans.mockReturnValue(
-      data({ "scan-123": createMockActiveScanInfo("scan-123") })
+  it("returns undefined when scanId is undefined", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.json(activeScanResponse)
+      )
     );
 
-    const { result } = renderHook(() => useActiveScan(undefined));
+    const { result } = renderHook(() => useActiveScan(undefined), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     expect(result.current.data).toBeUndefined();
   });
 
-  it("returns error when active scans fetch fails", () => {
-    const error = new Error("Network error");
-    mockUseActiveScans.mockReturnValue({ loading: false, error });
+  it("returns error when fetch fails", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.text("Server Error", { status: 500 })
+      )
+    );
 
-    const { result } = renderHook(() => useActiveScan("scan-123"));
+    const { result } = renderHook(() => useActiveScan("scan-123"), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(error);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBeDefined();
+    expect(result.current.error?.message).toContain("500");
   });
 });

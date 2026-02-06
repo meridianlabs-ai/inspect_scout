@@ -2,8 +2,10 @@ from typing import Any, Awaitable, Callable, Literal, overload
 
 from inspect_ai.model import (
     Model,
+    ModelConfig,
     get_model,
 )
+from inspect_ai.model._model_config import model_config_to_model, model_to_model_config
 from inspect_ai.scorer import ValueToFloat
 from jinja2 import Environment
 
@@ -123,7 +125,21 @@ def llm_scanner(
         else 0
     )
 
+    # Convert Model instances to serializable ModelConfig so the closure
+    # can survive cloudpickle roundtrips in multiprocess scanning.
+    serializable_model: str | ModelConfig | None
+    if isinstance(model, Model):
+        serializable_model = model_to_model_config(model)
+    else:
+        serializable_model = model
+
     async def scan(transcript: Transcript) -> Result:
+        resolved_model: str | Model | None = (
+            model_config_to_model(serializable_model)
+            if isinstance(serializable_model, ModelConfig)
+            else serializable_model
+        )
+
         messages_str, extract_references = await messages_as_str(
             transcript,
             preprocessor=preprocessor,
@@ -145,7 +161,7 @@ def llm_scanner(
                 input=resolved_prompt,
                 schema=structured_schema(answer),
                 answer_tool=answer.answer_tool,
-                model=model,
+                model=resolved_model,
                 max_attempts=answer.max_attempts,
                 retry_refusals=retry_refusals,
             )
@@ -156,7 +172,7 @@ def llm_scanner(
         # otherwise do a normal generate
         else:
             model_output = await generate_retry_refusals(
-                get_model(model),
+                get_model(resolved_model),
                 resolved_prompt,
                 tools=[],
                 tool_choice=None,

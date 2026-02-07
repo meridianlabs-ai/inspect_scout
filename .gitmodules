@@ -1,0 +1,3 @@
+[submodule "src/inspect_scout/_view/frontend"]
+	path = src/inspect_scout/_view/frontend
+	url = https://github.com/meridianlabs-ai/ts-mono-test.git

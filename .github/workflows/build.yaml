@@ -125,7 +125,7 @@ jobs:
         run: python scripts/export_openapi_schema.py
       - name: Check schema is up-to-date
         run: |
-          if ! git diff --exit-code src/inspect_scout/_view/www/openapi.json
+          if ! git diff --exit-code src/inspect_scout/_view/openapi.json
           then
             echo "❌ openapi.json is out of sync with Python API code!"
             echo ""
@@ -136,208 +136,59 @@ jobs:
             exit 1
           fi
 
-  js-lint:
+  js-dist-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
 
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
+          cache-dependency-path: src/inspect_scout/_view/frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm install --frozen-lockfile
-
-      - name: Check linting
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm lint
-
-  js-typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm install --frozen-lockfile
-
-      - name: Check typechecking
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm typecheck
-
-  js-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm install --frozen-lockfile
-
-      - name: Check formatting
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm format:check
-
-  js-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
+        working-directory: src/inspect_scout/_view/frontend
         run: pnpm install --frozen-lockfile
 
       - name: Generate TypeScript types from OpenAPI
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm types:generate
+        working-directory: src/inspect_scout/_view/frontend
+        run: pnpm --filter scout types:generate
 
       - name: Check generated types are up-to-date
-        working-directory: src/inspect_scout/_view/www
+        working-directory: src/inspect_scout/_view/frontend
         run: |
-          if ! git diff --exit-code src/types/generated.ts
+          if ! git diff --exit-code
           then
             echo "❌ generated.ts is out of sync with openapi.json!"
             echo ""
             echo "TypeScript types need to be regenerated. Run:"
-            echo "  cd src/inspect_scout/_view/www"
-            echo "  pnpm types:generate"
+            echo "  cd src/inspect_scout/_view/frontend"
+            echo "  pnpm --filter scout types:generate"
             echo ""
-            echo "Then commit the updated src/types/generated.ts file."
+            echo "Then commit the updated generated.ts file."
             exit 1
           fi
 
-      - name: Build package
-        working-directory: src/inspect_scout/_view/www
+      - name: Build
+        working-directory: src/inspect_scout/_view/frontend
         run: pnpm build
 
-      - name: Check build output is clean
-        working-directory: src/inspect_scout/_view/www
+      - name: Check dist is up-to-date
         run: |
-          if ! git diff --exit-code
+          if ! git diff --exit-code src/inspect_scout/_view/dist
           then
-            echo "❌ Build produced unexpected changes!"
+            echo "❌ dist/ is out of sync with the frontend source!"
             echo ""
-            echo "Files changed during build:"
-            git diff --name-only
+            echo "The build output has changed. Run:"
+            echo "  cd src/inspect_scout/_view/frontend"
+            echo "  pnpm build"
+            echo ""
+            echo "Then commit the updated dist/ directory."
             exit 1
           fi
-
-  js-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm test
-
-  js-e2e:
-    continue-on-error: true  # TODO: remove once e2e tests prove stable
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: src/inspect_scout/_view/www/package.json
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: src/inspect_scout/_view/www/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm install --frozen-lockfile
-
-      - name: Get Playwright version
-        id: pw-version
-        working-directory: src/inspect_scout/_view/www
-        run: echo "version=$(pnpm exec playwright --version)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Install Playwright system deps (on cache hit)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm exec playwright install-deps chromium
-
-      - name: Run e2e tests
-        working-directory: src/inspect_scout/_view/www
-        run: pnpm e2e
-
-      - name: Upload test results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: src/inspect_scout/_view/www/playwright-report/
-          retention-days: 7

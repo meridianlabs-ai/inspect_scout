@@ -2,7 +2,7 @@
 
 ## Repository Structure
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
-- **React frontend** (`src/inspect_scout/_view/www/`) - Web UI for viewing scan results, exploring transcripts, and managing projects.
+- **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md).
 
 ## Principles
 
@@ -18,6 +18,7 @@
 
 ### Testing
 - Test observable behavior, not internal implementation details
+- Do not test things that are enforced by the type system
 - Be efficient; avoid duplicate coverage
 - Prefer data/table driven tests for maintainability
 - Tests must be isolated; no shared mutable state or order dependencies
@@ -45,8 +46,13 @@ Architecture and design decisions in `/design/`.
 - [Async generator semantics](design/generator-iterator.md)
 - [Multi-process concurrency](design/mp.md)
 - [Validation data structures](design/validation.md)
-- [React Query patterns](src/inspect_scout/_view/www/design/react-query.md)
-- [Frontend specific testing](src/inspect_scout/_view/www/design/front-end-testing.md)
+- [React Query patterns](src/inspect_scout/_view/ts-mono/apps/scout/design/react-query.md)
+- [Frontend specific testing](src/inspect_scout/_view/ts-mono/apps/scout/design/front-end-testing.md)
+
+### Guides
+Developer workflow guides in `/guides/`.
+
+- [Frontend submodule guide](guides/frontend-submodule.md)
 
 ## Python
 
@@ -79,7 +85,9 @@ Directory: `src/inspect_scout/`
 
 ## TypeScript
 
-Directory: `src/inspect_scout/_view/www/` (run all commands from here)
+Directory: `src/inspect_scout/_view/ts-mono/` (run all commands from here)
+
+See the frontend's own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) for full details.
 
 ### Setup
 ```bash
@@ -90,18 +98,14 @@ pnpm install
 ### Scripts
 | Command | Description |
 |---------|-------------|
-| `pnpm check` | Run all checks (lint, format, typecheck) |
+| `pnpm check` | Run all checks (lint, format, typecheck) via Turborepo |
 | `pnpm dev` | Start dev server (user typically has this running—don't start) |
 | `pnpm watch` | Watch mode (user typically has this running—don't start) |
 | `pnpm build` | Production build |
 | `pnpm test` | Run unit/integration tests |
-| `pnpm e2e` | Run Playwright e2e tests |
-| `pnpm e2e:ui` | Run e2e tests with interactive UI |
-| `pnpm e2e:headed` | Run e2e tests in headed browser |
-| `pnpm lint` | Lint code |
-| `pnpm lint:fix` | Lint and auto-fix |
+| `pnpm lint` | Lint all packages |
+| `pnpm typecheck` | Type-check all packages |
 | `pnpm format` | Format code |
-| `pnpm typecheck` | Type check |
 
 ### Style
 - Strict mode enabled; no `any`, no type assertions

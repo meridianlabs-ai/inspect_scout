@@ -41,6 +41,8 @@ export const TranscriptViewNodes: FC<TranscriptViewNodesProps> = ({
         ? collapsedEvents[kTranscriptCollapseScope]
         : undefined) || defaultCollapsedIds
     );
+    // TODO: lint react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
 
   return (

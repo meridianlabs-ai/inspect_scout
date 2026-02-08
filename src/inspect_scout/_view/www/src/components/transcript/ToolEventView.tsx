@@ -51,6 +51,8 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
       approvalNode: approvalNode as EventNode<ApprovalEvent> | undefined,
       lastModelNode: lastModelNode as EventNode<ModelEvent> | undefined,
     };
+    // TODO: lint react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.events]);
 
   const title = `Tool: ${event.view?.title || event.function}`;

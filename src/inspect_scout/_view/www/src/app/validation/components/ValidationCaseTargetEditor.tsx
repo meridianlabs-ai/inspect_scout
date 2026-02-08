@@ -68,10 +68,13 @@ export const ValidationCaseTargetEditor: FC<
     if (target === undefined || target === null) return;
 
     const newMode = getTargetMode(target);
+    // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+    /* eslint-disable react-hooks/set-state-in-effect */
     setMode(newMode);
     if (newMode === "other") {
       setCustomValue(String(target ?? ""));
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [target, isTyping]);
 
   // Debounce only the text input changes

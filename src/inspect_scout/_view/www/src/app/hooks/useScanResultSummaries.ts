@@ -14,8 +14,11 @@ export const useScanResultSummaries = (columnTable?: ColumnTable) => {
 
   useEffect(() => {
     if (!rowData || rowData.length === 0) {
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      /* eslint-disable react-hooks/set-state-in-effect */
       setScanResultsSummaries([]);
       setIsLoading(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
 

@@ -298,6 +298,10 @@ export function DataGrid<
   }, [resetDragState]);
 
   // Create table instance
+  // useReactTable returns unmemoizable functions
+  // https://github.com/TanStack/table/issues/5567
+  // https://github.com/facebook/react/issues/33057
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

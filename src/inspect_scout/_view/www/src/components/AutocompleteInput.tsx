@@ -109,6 +109,8 @@ export const AutocompleteInput: FC<AutocompleteInputProps> = ({
 
   // Reset highlight when suggestions change (no selection by default)
   useEffect(() => {
+    // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHighlightedIndex(-1);
   }, [filteredSuggestions]);
 

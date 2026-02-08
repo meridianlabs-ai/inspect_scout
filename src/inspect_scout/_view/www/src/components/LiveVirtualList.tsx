@@ -151,6 +151,7 @@ export const LiveVirtualList = <T,>({
     [followOutput, live, scrollRef, listHandle]
   );
 
+  const [, forceRender] = useState({});
   const forceUpdate = useCallback(() => forceRender({}), []);
 
   useEffect(() => {
@@ -164,8 +165,6 @@ export const LiveVirtualList = <T,>({
     }, 0);
     return () => clearTimeout(timer);
   }, [forceUpdate]);
-
-  const [, forceRender] = useState({});
 
   // Default function to extract searchable text using JSON.stringify
   const defaultItemSearchText = useCallback((item: T): string => {
@@ -312,6 +311,8 @@ export const LiveVirtualList = <T,>({
       }, 50);
       return () => clearTimeout(timer);
     }
+    // TODO: lint react-hooks/exhaustive-deps Fix this
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTopMostItemIndex, listHandle, offsetTop]);
 
   // Watch for scrolling to stop and trigger pending search callback

@@ -98,6 +98,8 @@ export const ANSIDisplay: FC<ANSIDisplayProps> = ({
       ) : (
         <div className={clsx(styles.ansiDisplay)} style={backgroundStyle}>
           {ansiOutput.outputLines.map((line, index) => {
+            // TODO: lint react-hooks/immutability - the mutation of firstOutput is funky. Render functions are supposed to be pure.
+            // eslint-disable-next-line react-hooks/immutability
             firstOutput = firstOutput || !!line.outputRuns.length;
             return (
               <div key={index} className={clsx(styles.ansiDisplayLine)}>

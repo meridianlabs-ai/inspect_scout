@@ -12,6 +12,8 @@ export const ScannerResultsSearch: FC = () => {
 
   const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setScansSearchText(e.target.value);
+    // TODO: lint react-hooks/exhaustive-deps - refactor to avoid the lint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

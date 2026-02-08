@@ -12,6 +12,7 @@ import {
   GenerateConfigInput,
   ProjectConfigInput,
 } from "../../types/api-types";
+import { STABLE_EMPTY_OBJECT } from "../../utils/react";
 
 import {
   KeyValueField,
@@ -71,7 +72,8 @@ export const SettingsContent: FC<SettingsContentProps> = ({
   config,
   onChange,
 }) => {
-  const generateConfig = config.generate_config ?? {};
+  const generateConfig: GenerateConfigInput =
+    config.generate_config ?? STABLE_EMPTY_OBJECT;
 
   // Helper to update generate_config fields
   const updateGenerateConfig = useCallback(
@@ -170,9 +172,11 @@ export const SettingsContent: FC<SettingsContentProps> = ({
       .filter((t) => t.length > 0);
     const configParsed = Array.isArray(config.tags) ? config.tags : [];
     if (JSON.stringify(currentParsed) !== JSON.stringify(configParsed)) {
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTagsText(configValue);
     }
-  }, [config.tags]);
+  }, [config.tags, tagsText]);
 
   const handleTagsInput = (value: string) => {
     setTagsText(value);

@@ -89,6 +89,7 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
       {Object.keys(entry.metrics).map((key) => {
         return (
           <LabeledValue
+            key={key}
             label={key}
             layout="row"
             className={clsx("text-size-smallest", styles.contents)}

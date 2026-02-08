@@ -41,6 +41,8 @@ export const ScanPanel: React.FC = () => {
   const clearScanState = useStore((state) => state.clearScanState);
   useEffect(() => {
     clearScanState();
+    // TODO: lint react-hooks/exhaustive-deps - should we just add clearScanState to the dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync URL query param with store state

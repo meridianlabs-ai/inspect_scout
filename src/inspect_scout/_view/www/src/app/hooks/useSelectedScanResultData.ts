@@ -54,8 +54,11 @@ const useScanResultData = (
 
   useEffect(() => {
     if (!filtered) {
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      /* eslint-disable react-hooks/set-state-in-effect */
       setScanResultData(undefined);
       setIsLoading(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
 

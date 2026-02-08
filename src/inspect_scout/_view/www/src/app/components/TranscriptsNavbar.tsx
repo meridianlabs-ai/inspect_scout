@@ -60,6 +60,8 @@ export const TranscriptsNavbar: FC<TranscriptsNavbarProps> = ({
     }
 
     return buttons;
+    // TODO: lint react-hooks/exhaustive-deps Fix this
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backUrl, singleFileMode]);
 
   const editable = false;

@@ -1,3 +1,5 @@
+// TODO: lint react-hooks/exhaustive-deps
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Placement } from "@popperjs/core";
 import clsx from "clsx";
 import React, {

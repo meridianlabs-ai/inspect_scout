@@ -35,6 +35,18 @@ export interface GridDescriptor {
   columns: string[];
 }
 
+interface ResultGroup {
+  type: "group";
+  label: string;
+}
+
+// Type guard to check if entry is a ResultGroup
+const isResultGroup = (
+  entry: ResultGroup | ScanResultSummary
+): entry is ResultGroup => {
+  return "type" in entry && entry.type === "group";
+};
+
 interface ScannerResultsListProps {
   id: string;
   columnTable?: ColumnTable;
@@ -134,25 +146,13 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
       // Default sort for validations: validations first, then by identifier
       setSortResults([{ column: "Validation", direction: "desc" }]);
     }
-  }, [sortResults, selectedFilter, filteredSummaries]);
+  }, [sortResults, selectedFilter, filteredSummaries, setSortResults]);
 
   // Compute the optimal column layout based on the current data
   const gridDescriptor = useMemo(() => {
     const descriptor = optimalColumnLayout(filteredSummaries);
     return descriptor;
   }, [filteredSummaries]);
-
-  interface ResultGroup {
-    type: "group";
-    label: string;
-  }
-
-  // Type guard to check if entry is a ResultGroup
-  const isResultGroup = (
-    entry: ResultGroup | ScanResultSummary
-  ): entry is ResultGroup => {
-    return "type" in entry && entry.type === "group";
-  };
 
   const rows: Array<ResultGroup | ScanResultSummary> = useMemo(() => {
     // No grouping
@@ -378,7 +378,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
         />
       );
     },
-    [gridDescriptor, isResultGroup]
+    [gridDescriptor]
   );
 
   let noContentMessage: string | undefined = undefined;

@@ -1996,13 +1996,10 @@ export interface components {
             request: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /**
-             * Response
-             * @default null
-             */
+            /** Response */
             response: {
                 [key: string]: components["schemas"]["JsonValue"];
-            } | null;
+            };
             /**
              * Time
              * @default null

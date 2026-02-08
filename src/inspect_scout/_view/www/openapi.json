@@ -4725,19 +4725,11 @@
             "type": "object"
           },
           "response": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Response"
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Response",
+            "type": "object"
           },
           "time": {
             "anyOf": [
@@ -4753,7 +4745,8 @@
           }
         },
         "required": [
-          "request"
+          "request",
+          "response"
         ],
         "title": "ModelCall",
         "type": "object"

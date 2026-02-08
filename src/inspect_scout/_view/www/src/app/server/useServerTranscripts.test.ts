@@ -27,7 +27,9 @@ const mockTranscriptsResponse: TranscriptsResponse = {
 describe("useServerTranscripts", () => {
   it("returns transcripts on successful fetch", async () => {
     server.use(
-      http.post(endpoint, () => HttpResponse.json(mockTranscriptsResponse))
+      http.post(endpoint, () =>
+        HttpResponse.json<TranscriptsResponse>(mockTranscriptsResponse)
+      )
     );
 
     const { result } = renderHook(() => useServerTranscripts(location), {
@@ -47,7 +49,7 @@ describe("useServerTranscripts", () => {
     server.use(
       http.post(endpoint, async ({ request }) => {
         capturedBody = await request.json();
-        return HttpResponse.json(mockTranscriptsResponse);
+        return HttpResponse.json<TranscriptsResponse>(mockTranscriptsResponse);
       })
     );
 
@@ -81,7 +83,7 @@ describe("useServerTranscripts", () => {
     server.use(
       http.post(endpoint, async ({ request }) => {
         capturedBody = await request.json();
-        return HttpResponse.json(mockTranscriptsResponse);
+        return HttpResponse.json<TranscriptsResponse>(mockTranscriptsResponse);
       })
     );
 

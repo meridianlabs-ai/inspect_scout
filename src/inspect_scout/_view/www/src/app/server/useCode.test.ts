@@ -22,7 +22,9 @@ describe("useCode", () => {
     };
 
     server.use(
-      http.post("/api/v2/code", () => HttpResponse.json(mockResponse))
+      http.post("/api/v2/code", () =>
+        HttpResponse.json<Record<string, string>>(mockResponse)
+      )
     );
 
     const { result } = renderHook(() => useCode(simpleCondition), {
@@ -44,7 +46,7 @@ describe("useCode", () => {
     server.use(
       http.post("/api/v2/code", async ({ request }) => {
         capturedBody = await request.json();
-        return HttpResponse.json({ python: "test" });
+        return HttpResponse.json<Record<string, string>>({ python: "test" });
       })
     );
 
@@ -85,7 +87,7 @@ describe("useCode", () => {
     server.use(
       http.post("/api/v2/code", () => {
         requestMade = true;
-        return HttpResponse.json({});
+        return HttpResponse.json<Record<string, string>>({});
       })
     );
 
@@ -107,7 +109,9 @@ describe("useCode", () => {
     server.use(
       http.post("/api/v2/code", () => {
         requestCount++;
-        return HttpResponse.json({ python: `response-${requestCount}` });
+        return HttpResponse.json<Record<string, string>>({
+          python: `response-${requestCount}`,
+        });
       })
     );
 

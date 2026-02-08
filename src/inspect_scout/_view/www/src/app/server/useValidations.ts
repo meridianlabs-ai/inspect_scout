@@ -181,7 +181,7 @@ export const useUpdateValidationCase = (uri: string) => {
 export const useDeleteValidationCase = (uri: string) => {
   const queryClient = useQueryClient();
   const api = useApi();
-  return useMutation<boolean, Error, string>({
+  return useMutation<void, Error, string>({
     mutationFn: (caseId) => api.deleteValidationCase(uri, caseId),
     onSuccess: () => {
       void queryClient.invalidateQueries({
@@ -233,7 +233,7 @@ export const useBulkDeleteValidationCases = (uri: string) => {
 export const useDeleteValidationSet = () => {
   const queryClient = useQueryClient();
   const api = useApi();
-  return useMutation<boolean, Error, string>({
+  return useMutation<void, Error, string>({
     mutationFn: (uri) => api.deleteValidationSet(uri),
     onSuccess: () => {
       void queryClient.invalidateQueries({

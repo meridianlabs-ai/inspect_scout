@@ -1,5 +1,7 @@
 import { http, HttpResponse } from "msw";
 
+import type { TranscriptsResponse } from "../src/types/api-types";
+
 import { test, expect } from "./fixtures/app";
 import {
   createTranscriptInfo,
@@ -9,7 +11,7 @@ import {
 test("transcripts page renders grid with data", async ({ page, network }) => {
   network.use(
     http.post("*/api/v2/transcripts/:dir", () =>
-      HttpResponse.json(
+      HttpResponse.json<TranscriptsResponse>(
         createTranscriptsResponse([
           createTranscriptInfo({
             transcript_id: "t-001",

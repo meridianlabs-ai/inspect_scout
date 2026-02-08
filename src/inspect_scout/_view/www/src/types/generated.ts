@@ -1996,10 +1996,13 @@ export interface components {
             request: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /** Response */
+            /**
+             * Response
+             * @default null
+             */
             response: {
                 [key: string]: components["schemas"]["JsonValue"];
-            };
+            } | null;
             /**
              * Time
              * @default null
@@ -4005,10 +4008,6 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */

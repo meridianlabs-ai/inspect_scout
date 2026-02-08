@@ -4,6 +4,7 @@ import { FC, ReactNode } from "react";
 import { ContentData } from "../../../types/api-types";
 import { RecordTree } from "../../content/RecordTree";
 
+import { CompactionData, kCompactionMetadata } from "./CompactionData";
 import styles from "./ContentDataView.module.css";
 import { WebSearch } from "./WebSearch";
 import { WebSearchContentData, WebSearchResults } from "./WebSearchResults";
@@ -14,7 +15,7 @@ export interface ContentDataProps {
 }
 
 interface RenderableData {
-  type: string;
+  type?: string;
   name?: string;
   [key: string]: any;
 }
@@ -42,7 +43,7 @@ export const ContentDataView: FC<ContentDataProps> = ({ id, contentData }) => {
 
   return (
     <div className={clsx(styles.contentData)}>
-      {renderer.render(renderableData)}
+      {renderer.render(id, renderableData)}
     </div>
   );
 };
@@ -53,15 +54,25 @@ export const ContentDataView: FC<ContentDataProps> = ({ id, contentData }) => {
 interface ContentDataRenderer {
   name: string;
   canRender: (data: RenderableData) => boolean;
-  render: (data: RenderableData) => ReactNode;
+  render: (id: string, data: RenderableData) => ReactNode;
 }
+
+const compactionDataRenderer: ContentDataRenderer = {
+  name: "Compaction",
+  canRender: (data: RenderableData) => {
+    return Object.hasOwn(data, kCompactionMetadata);
+  },
+  render: (id: string, data: RenderableData): ReactNode => {
+    return <CompactionData id={id} data={data} />;
+  },
+};
 
 const webSearchServerToolRenderer: ContentDataRenderer = {
   name: "WebSearch",
   canRender: (data: RenderableData) => {
     return data.type === "server_tool_use" && data.name === "web_search";
   },
-  render: (data: RenderableData): ReactNode => {
+  render: (_id: string, data: RenderableData): ReactNode => {
     return <WebSearch query={data.input.query} />;
   },
 };
@@ -73,7 +84,7 @@ const webSearchResultsServerToolRenderer: ContentDataRenderer = {
       data.type === "web_search_tool_result" && Array.isArray(data.content)
     );
   },
-  render: (data: RenderableData): ReactNode => {
+  render: (_id: string, data: RenderableData): ReactNode => {
     const results: WebSearchContentData[] =
       data.content as WebSearchContentData[];
     return <WebSearchResults results={results} />;
@@ -83,7 +94,7 @@ const webSearchResultsServerToolRenderer: ContentDataRenderer = {
 const serverToolRenderer: ContentDataRenderer = {
   name: "ServerTool",
   canRender: (data: RenderableData) => data.type === "server_tool_use",
-  render: (data: RenderableData): ReactNode => {
+  render: (id: string, data: RenderableData): ReactNode => {
     return (
       <>
         <div
@@ -96,7 +107,7 @@ const serverToolRenderer: ContentDataRenderer = {
           Server Tool
         </div>
         <RecordTree
-          id={data.name || "server-tool"}
+          id={`${id}-server-tool`}
           record={data}
           className={clsx(styles.data)}
         />
@@ -106,6 +117,7 @@ const serverToolRenderer: ContentDataRenderer = {
 };
 
 export const contentDataRenderers: ContentDataRenderer[] = [
+  compactionDataRenderer,
   webSearchServerToolRenderer,
   webSearchResultsServerToolRenderer,
   serverToolRenderer,

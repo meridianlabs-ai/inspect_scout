@@ -17,10 +17,7 @@ A coding agent that explores the codebase, plans an approach, then builds the so
 ```
 
 **Notes:**
-- Transcript row spans the full timeline — selecting it shows the whole trajectory
-- Solver agents (Explore, Plan, Build) and Scoring are indented beneath
 - Init phase is hidden by default
-- Token counts are right-aligned for quick scanning
 - Small gaps between agents represent the orchestrator's own model calls
 
 ## 2. Iterative Sub-Agents (Multiple Spans)
@@ -40,10 +37,7 @@ An agent that iterates between exploring and planning before building. When a na
 ```
 
 **Notes:**
-- Explore and Plan each appear twice, with both spans on the same row
-- The sequence reads left-to-right: Explore → Plan → Explore → Plan → Build → Scoring
 - Token counts are aggregated across all spans for each agent
-- Gaps between spans on the same row show when that agent was not active
 
 ## 3. Agent Navigation
 
@@ -79,11 +73,8 @@ Clicking Build zooms into it:
 ```
 
 **Notes:**
-- `←` back arrow returns to the parent level; `Escape` key does the same
-- Breadcrumb shows path: `Transcript › Build` — each segment is clickable
-- Build's bar rescales to fill the full width, revealing its sub-agents (Code, Test, Fix)
-- Token count updates to show Build's total (31.8k)
-- The pattern repeats for deeper nesting — clicking Test zooms in further:
+- `Escape` key also returns to parent level
+- Each breadcrumb segment is clickable
 
 ### Zoomed into Test
 
@@ -99,10 +90,8 @@ Clicking Build zooms into it:
 ```
 
 **Notes:**
-- Breadcrumb extends: `Transcript › Build › Test` — all segments clickable
-- `←` returns to Build level; clicking `Transcript` jumps straight to the top
-- Test's timeline rescales to full width, revealing its own sub-agents
-- Each level of nesting works identically — no limit on depth
+- Clicking any breadcrumb segment jumps directly to that level
+- No limit on nesting depth
 
 ## 4. Parallel Sub-Agents
 
@@ -138,12 +127,8 @@ Clicking Explore (3) drills into the parallel group:
 ```
 
 **Notes:**
-- `(3)` badge on the group row indicates multiple parallel instances
-- Envelope bar at the top level spans earliest start to latest end of all instances
-- Drill-down uses the same breadcrumb navigation pattern as section 3
-- Individual bars overlap in time, clearly showing concurrent execution
-- At full width, timing differences between instances are much easier to see
 - Token count on the group row is the sum of all instances
+- At full width, timing differences between instances are much easier to see
 
 ## 5. Inline Markers
 
@@ -177,9 +162,85 @@ Multiple agents with markers on different rows:
 ```
 
 **Notes:**
-- Markers appear at the position within the bar corresponding to when the event occurred
-- `▲` errors are positioned where the error happened in time
-- `┊` compaction markers show where the context window was compressed
 - The Transcript row aggregates all markers from its children
 - Markers replace a single `█` character — they don't widen the bar
-- Both marker types are visually distinct from the bar fill while remaining subtle
+
+## 6. Selection and Navigation
+
+Single click selects a row (driving the content panel below). Drill-down is a separate action via a `›` chevron attached to each bar, or double-click. This preserves browsing — you can click between sibling agents to compare their events without navigating in and out.
+
+### Selected State (Sequential)
+
+Build is selected. Chevrons on each bar indicate drillable agents:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Transcript                                                  48.5k tokens │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Transcript│██████████████████████████████████████████████████████│       │
+│  Explore  │ ██████████›                                          │  8.1k │
+│  Plan     │             ███████›                                 │  5.3k │
+│▸ Build    │                      ███████████████████████████████›│ 31.8k │
+│  Scoring  │                                                   ███│  3.2k │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Selected State (Iterative)
+
+Each span gets its own chevron — you can drill into a specific invocation:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Transcript                                                  61.5k tokens │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Transcript│██████████████████████████████████████████████████████│       │
+│▸ Explore  │ ██████›        █████›                                │ 14.5k │
+│  Plan     │         █████›        ████›                          │  9.2k │
+│  Build    │                             ██████████████████████›  │ 34.6k │
+│  Scoring  │                                                   ███│  3.2k │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Interactions
+
+| Action | Effect |
+|--------|--------|
+| Click row | Select — highlights row, shows its events in content panel |
+| Click `›` on bar | Drill down into that specific agent span |
+| Double-click bar | Drill down (shortcut) |
+| `Enter` | Drill down into selected row |
+| `Escape` | Zoom out one level (or deselect if at top) |
+| `↑` / `↓` | Move selection between rows |
+
+**Notes:**
+- Leaf agents (Scoring) and the Transcript row have no chevron
+- In the iterative case, clicking `›` on a specific span drills into just that invocation
+- Selection changes only update the content panel — the timeline stays stable
+
+## 7. Flat Transcript (No Sub-Agents)
+
+A simple eval with no agent hierarchy — just model calls and tool calls. The timeline shows a single Transcript bar. Inline markers provide landmarks for navigating the execution.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Transcript                                                  12.4k tokens │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Transcript│████████████████████▲█████████┊███████████████████████│       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Notes:**
+- Compact timeline leaves maximum vertical space for the content panel
+
+## 8. Timeline Height
+
+The timeline panel height adapts to content, up to a cap of 6 rows. A resizable divider between the timeline and content panel lets users override the default.
+
+### Behavior
+
+- **Adaptive**: timeline grows to fit its rows — 2 agents = 2 rows, no wasted space
+- **Cap at 6 rows**: beyond 6, the swimlane area scrolls internally
+- **Resizable divider**: draggable border between timeline and content panel
+
+**Notes:**
+- When scrolled, the Transcript parent row could optionally stay pinned at the top

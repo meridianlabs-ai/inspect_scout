@@ -89,6 +89,7 @@ export interface AgentNodeType extends TranscriptNodeBase {
   source: AgentSource;
   content: (EventNodeType | AgentNodeType)[];
   taskDescription?: string;
+  utility: boolean;
 }
 
 /**
@@ -218,7 +219,8 @@ function createAgentNode(
   id: string,
   name: string,
   source: AgentSource,
-  content: (EventNodeType | AgentNodeType)[]
+  content: (EventNodeType | AgentNodeType)[],
+  utility: boolean = false
 ): AgentNodeType {
   return {
     type: "agent",
@@ -226,6 +228,7 @@ function createAgentNode(
     name,
     source,
     content,
+    utility,
     startTime: minStartTime(content),
     endTime: maxEndTime(content),
     totalTokens: sumTokens(content),
@@ -545,6 +548,107 @@ function buildAgentFromTree(tree: TreeItem[]): AgentNodeType {
 }
 
 // =============================================================================
+// Utility Agent Classification
+// =============================================================================
+
+/**
+ * Extract system prompt from the first ModelEvent in agent's direct content.
+ */
+function getSystemPrompt(agent: AgentNodeType): string | null {
+  for (const item of agent.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const input = item.event.input;
+      if (input) {
+        for (const msg of input) {
+          if (msg.role === "system") {
+            if (typeof msg.content === "string") {
+              return msg.content;
+            }
+            if (Array.isArray(msg.content)) {
+              const parts: string[] = [];
+              for (const c of msg.content) {
+                if ("text" in c && typeof c.text === "string") {
+                  parts.push(c.text);
+                }
+              }
+              return parts.length > 0 ? parts.join("\n") : null;
+            }
+          }
+        }
+      }
+      return null; // ModelEvent found but no system message
+    }
+  }
+  return null; // No ModelEvent found
+}
+
+/**
+ * Check if agent has a single turn or single tool-calling turn.
+ *
+ * A single turn is 1 ModelEvent with no ToolEvents.
+ * A single tool-calling turn is 2 ModelEvents with a ToolEvent between them.
+ */
+function isSingleTurn(agent: AgentNodeType): boolean {
+  // Collect direct events (not child agents) with their types
+  const directEvents: string[] = [];
+  for (const item of agent.content) {
+    if (item.type === "event") {
+      if (item.event.event === "model") {
+        directEvents.push("model");
+      } else if (item.event.event === "tool") {
+        directEvents.push("tool");
+      }
+    }
+  }
+
+  const modelCount = directEvents.filter((e) => e === "model").length;
+  const toolCount = directEvents.filter((e) => e === "tool").length;
+
+  // Single turn: exactly 1 model event
+  if (modelCount === 1) {
+    return true;
+  }
+
+  // Single tool-calling turn: 2 model events with tool event(s) between
+  if (modelCount === 2 && toolCount >= 1) {
+    const firstModel = directEvents.indexOf("model");
+    const secondModel = directEvents.lastIndexOf("model");
+    const between = directEvents.slice(firstModel + 1, secondModel);
+    return between.includes("tool");
+  }
+
+  return false;
+}
+
+/**
+ * Classify utility agents in the tree via post-processing.
+ *
+ * An agent is utility if it has a single turn (or single tool-calling turn)
+ * and a different system prompt than its parent.
+ */
+function classifyUtilityAgents(
+  node: AgentNodeType,
+  parentSystemPrompt: string | null = null
+): void {
+  const agentSystemPrompt = getSystemPrompt(node);
+
+  // Classify this node (root agent is never utility)
+  if (parentSystemPrompt !== null && agentSystemPrompt !== null) {
+    if (agentSystemPrompt !== parentSystemPrompt && isSingleTurn(node)) {
+      node.utility = true;
+    }
+  }
+
+  // Recurse into child agents
+  const effectivePrompt = agentSystemPrompt ?? parentSystemPrompt;
+  for (const item of node.content) {
+    if (item.type === "agent") {
+      classifyUtilityAgents(item, effectivePrompt);
+    }
+  }
+}
+
+// =============================================================================
 // Main Builder
 // =============================================================================
 
@@ -610,6 +714,11 @@ export function buildTranscriptNodes(events: Event[]): TranscriptNodes {
   } else {
     // No phase spans - treat entire tree as agent
     agentNode = buildAgentFromTree(tree);
+  }
+
+  // Classify utility agents
+  if (agentNode) {
+    classifyUtilityAgents(agentNode);
   }
 
   // Compute root-level timing and tokens

@@ -347,9 +347,9 @@ A tool error uses the same `▲` marker as the timeline. Compaction appears as a
 - `▲ ERROR` and compaction dividers correspond to inline markers in the timeline bars
 - `◆` / `◇` distinguish model calls from tool calls
 
-## 10. Infrastructure Agents
+## 10. Utility Agents
 
-Infrastructure agents (bash checkers, safety validators, etc.) can number in the dozens — one per tool call — and are rarely interesting. They never appear in the timeline. In the content panel, they are hidden by default behind a toggle.
+Utility agents (bash checkers, safety validators, etc.) can number in the dozens — one per tool call — and are rarely interesting. They never appear in the timeline. In the content panel, they are hidden by default behind a toggle.
 
 ### Hidden (Default)
 
@@ -357,7 +357,7 @@ A collapsed toggle indicates their presence:
 
 ```
 │                                                                          │
-│ ▸ 12 infrastructure agents hidden                                        │
+│ ▸ 12 utility agents hidden                                               │
 │                                                                          │
 │ ◆ MODEL                                                          2.1k    │
 │ I'll start by reading the codebase...                                    │
@@ -371,11 +371,11 @@ A collapsed toggle indicates their presence:
 
 ### Revealed
 
-Toggling shows infrastructure agents as single-line entries with `⚙`, inline where they ran:
+Toggling shows utility agents as single-line entries with `⚙`, inline where they ran:
 
 ```
 │                                                                          │
-│ ▾ 12 infrastructure agents shown                                         │
+│ ▾ 12 utility agents shown                                                │
 │                                                                          │
 │ ◆ MODEL                                                          2.1k    │
 │ I'll start by reading the codebase...                                    │
@@ -392,5 +392,5 @@ Toggling shows infrastructure agents as single-line entries with `⚙`, inline w
 
 **Notes:**
 - `⚙` entries are single-line — no box, no task description
-- Infrastructure agents are never shown in the timeline, only in the content panel
-- The toggle count reflects the selected agent's infra agents, not the whole trace
+- Utility agents are never shown in the timeline, only in the content panel
+- The toggle count reflects the selected agent's utility agents, not the whole trace

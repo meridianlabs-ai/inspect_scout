@@ -38,6 +38,7 @@ interface JsonEvent {
   function?: string;
   agent?: string;
   source?: string;
+  input?: Array<{ role: string; content: string }>;
   output?: {
     usage?: {
       input_tokens?: number;
@@ -70,6 +71,7 @@ interface ExpectedAgent {
   }>;
   content_types?: string[];
   total_tokens?: number;
+  utility?: boolean;
 }
 
 interface ExpectedSection {
@@ -139,6 +141,7 @@ function createEvent(data: JsonEvent): Event | null {
         event: "model",
         model: data.model ?? "unknown",
         completed: data.completed ?? null,
+        input: data.input ?? [],
         output: data.output
           ? {
               usage: data.output.usage
@@ -322,6 +325,11 @@ function assertAgentMatches(
   // Check total tokens if specified
   if (expected.total_tokens !== undefined) {
     expect(actual!.totalTokens).toBe(expected.total_tokens);
+  }
+
+  // Check utility if specified
+  if (expected.utility !== undefined) {
+    expect(actual!.utility).toBe(expected.utility);
   }
 
   // Check children if specified

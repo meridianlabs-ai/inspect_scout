@@ -20,6 +20,7 @@ from inspect_ai.event import (
     event_sequence,
     event_tree,
 )
+from inspect_ai.model import ChatMessageSystem
 
 # Type alias for tree items returned by event_tree
 TreeItem = SpanNode | Event
@@ -159,6 +160,7 @@ class AgentNode(TranscriptNode):
     source: AgentSource
     content: list["EventNode | AgentNode"] = field(default_factory=list)
     task_description: str | None = None
+    utility: bool = False
 
     @property
     def start_time(self) -> datetime | None:
@@ -277,6 +279,9 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
             _build_section_from_span("scoring", scorers_span) if scorers_span else None
         )
 
+        if agent_node is not None:
+            _classify_utility_agents(agent_node)
+
         return TranscriptNodes(
             init=init_section,
             agent=agent_node,
@@ -285,6 +290,7 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
     else:
         # No phase spans - treat entire tree as agent
         agent_node = _build_agent_from_tree(tree)
+        _classify_utility_agents(agent_node)
         return TranscriptNodes(agent=agent_node)
 
 
@@ -513,3 +519,97 @@ def _build_agent_from_tree(tree: list[TreeItem]) -> AgentNode:
         source=AgentSourceSpan(span_id="main"),
         content=content,
     )
+
+
+# =============================================================================
+# Utility Agent Classification
+# =============================================================================
+
+
+def _get_system_prompt(agent: AgentNode) -> str | None:
+    """Extract system prompt from the first ModelEvent in agent's direct content.
+
+    Args:
+        agent: The agent node to extract the system prompt from.
+
+    Returns:
+        The system prompt text, or None if no system message found.
+    """
+    for item in agent.content:
+        if isinstance(item, EventNode) and isinstance(item.event, ModelEvent):
+            for msg in item.event.input:
+                if isinstance(msg, ChatMessageSystem):
+                    if isinstance(msg.content, str):
+                        return msg.content
+                    # Content is list of Content objects
+                    parts = [
+                        c.text for c in msg.content if hasattr(c, "text")
+                    ]
+                    return "\n".join(parts) if parts else None
+            return None  # ModelEvent found but no system message
+    return None  # No ModelEvent found
+
+
+def _is_single_turn(agent: AgentNode) -> bool:
+    """Check if agent has a single turn or single tool-calling turn.
+
+    A single turn is 1 ModelEvent with no ToolEvents.
+    A single tool-calling turn is 2 ModelEvents with a ToolEvent between them.
+
+    Args:
+        agent: The agent node to check.
+
+    Returns:
+        True if the agent matches the single-turn pattern.
+    """
+    # Collect direct events (not child agents) with their types
+    direct_events: list[str] = []
+    for item in agent.content:
+        if isinstance(item, EventNode):
+            if isinstance(item.event, ModelEvent):
+                direct_events.append("model")
+            elif isinstance(item.event, ToolEvent):
+                direct_events.append("tool")
+
+    model_count = direct_events.count("model")
+    tool_count = direct_events.count("tool")
+
+    # Single turn: exactly 1 model event
+    if model_count == 1:
+        return True
+
+    # Single tool-calling turn: 2 model events with tool event(s) between
+    if model_count == 2 and tool_count >= 1:
+        # Verify a tool event appears between the two model events
+        first_model = direct_events.index("model")
+        second_model = len(direct_events) - 1 - direct_events[::-1].index("model")
+        between = direct_events[first_model + 1 : second_model]
+        return "tool" in between
+
+    return False
+
+
+def _classify_utility_agents(
+    node: AgentNode, parent_system_prompt: str | None = None
+) -> None:
+    """Classify utility agents in the tree via post-processing.
+
+    An agent is utility if it has a single turn (or single tool-calling turn)
+    and a different system prompt than its parent.
+
+    Args:
+        node: The agent node to classify (and recurse into).
+        parent_system_prompt: The system prompt of the parent agent.
+    """
+    agent_system_prompt = _get_system_prompt(node)
+
+    # Classify this node (root agent is never utility)
+    if parent_system_prompt is not None and agent_system_prompt is not None:
+        if agent_system_prompt != parent_system_prompt and _is_single_turn(node):
+            node.utility = True
+
+    # Recurse into child agents
+    effective_prompt = agent_system_prompt or parent_system_prompt
+    for item in node.content:
+        if isinstance(item, AgentNode):
+            _classify_utility_agents(item, effective_prompt)

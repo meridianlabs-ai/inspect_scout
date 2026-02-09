@@ -18,7 +18,14 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import GenerateConfig, ModelOutput, ModelUsage
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageSystem,
+    ChatMessageUser,
+    GenerateConfig,
+    ModelOutput,
+    ModelUsage,
+)
 from inspect_scout._transcript.nodes import (
     AgentNode,
     AgentSourceSpan,
@@ -61,6 +68,19 @@ def parse_timestamp(ts_str: str | None) -> datetime:
     return datetime.fromisoformat(ts_str)
 
 
+def _parse_input_messages(input_data: list[dict[str, Any]]) -> list[ChatMessage]:
+    """Parse input messages from fixture JSON into ChatMessage objects."""
+    messages: list[ChatMessage] = []
+    for msg in input_data:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "system":
+            messages.append(ChatMessageSystem(content=content))
+        elif role == "user":
+            messages.append(ChatMessageUser(content=content))
+    return messages
+
+
 def events_from_json(data: dict[str, Any]) -> list[Event]:
     """Deserialize minimal JSON to full inspect_ai Events.
 
@@ -98,6 +118,9 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             model=data.get("model", "test-model"),
             usage=usage,
         )
+        input_messages: list[ChatMessage] = _parse_input_messages(
+            data.get("input", [])
+        )
         return ModelEvent(
             uuid=uuid,
             span_id=span_id,
@@ -108,7 +131,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             event="model",
             model=data.get("model", "test-model"),
             role=None,
-            input=[],
+            input=input_messages,
             tools=[],
             tool_choice="auto",
             config=GenerateConfig(),
@@ -348,6 +371,13 @@ def assert_agent_matches(
         assert actual.total_tokens == expected["total_tokens"], (
             f"{agent_name} token count mismatch: "
             f"got {actual.total_tokens}, expected {expected['total_tokens']}"
+        )
+
+    # Check utility if specified
+    if "utility" in expected:
+        assert actual.utility == expected["utility"], (
+            f"{agent_name} utility mismatch: "
+            f"got {actual.utility}, expected {expected['utility']}"
         )
 
     # Check child agents if specified

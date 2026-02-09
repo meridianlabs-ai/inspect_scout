@@ -1,4 +1,7 @@
-# Timeline UI Design
+---
+title: Timeline UI Design
+format: typst
+---
 
 ## 1. Sequential Sub-Agents
 
@@ -11,7 +14,7 @@ A coding agent that explores the codebase, plans an approach, then builds the so
 │ Transcript│██████████████████████████████████████████████████████│       │
 │  Explore  │ ███████████                                          │  8.1k │
 │  Plan     │             ████████                                 │  5.3k │
-│  Build    │                      ████████████████████████████████│ 31.8k │
+│  Build    │                      ████████████████████████████    │ 31.8k │
 │  Scoring  │                                                   ███│  3.2k │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -31,7 +34,7 @@ An agent that iterates between exploring and planning before building. When a na
 │ Transcript│██████████████████████████████████████████████████████│       │
 │  Explore  │ ███████        ██████                                │ 14.5k │
 │  Plan     │         ██████        █████                          │  9.2k │
-│  Build    │                             ███████████████████████  │ 34.6k │
+│  Build    │                             █████████████████████    │ 34.6k │
 │  Scoring  │                                                   ███│  3.2k │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -52,7 +55,7 @@ Agents can nest to arbitrary depth. Rather than showing all levels at once (whic
 │ Transcript│██████████████████████████████████████████████████████│       │
 │  Explore  │ ███████████                                          │  8.1k │
 │  Plan     │             ████████                                 │  5.3k │
-│  Build    │                      ████████████████████████████████ 31.8k  │
+│  Build    │                      ████████████████████████████    | 31.8k │
 │  Scoring  │                                                   ███│  3.2k │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -106,7 +109,7 @@ Multiple Explore agents run in parallel, followed by sequential Plan and Build. 
 │ Transcript   │██████████████████████████████████████████████████│        │
 │  Explore (3) │ █████████████                                    │ 24.3k  │
 │  Plan        │               ███████                            │  5.3k  │
-│  Build       │                       ██████████████████████████ │ 27.6k  │
+│  Build       │                       ████████████████████████   │ 27.6k  │
 │  Scoring     │                                                ██│  3.2k  │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -146,6 +149,7 @@ A single Transcript bar showing two errors and one compaction:
 ```
 │ Transcript│██████████████▲██████████┊██████████▲████████████████│       │
 ```
+{{< pagebreak >}}
 
 Multiple agents with markers on different rows:
 
@@ -260,7 +264,6 @@ Build is selected, showing model calls, a tool call, and three sub-agent launche
 │ Build    │██████████████████████████████████████████████████████│        │
 │  Code    │ ██████████████████████                               │ 15.2k  │
 │  Test    │                       ████████████████               │ 10.4k  │
-│  Fix     │                                       ███████████████│  6.2k  │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │ ◆ MODEL                                                          2.1k    │
@@ -291,20 +294,13 @@ Build is selected, showing model calls, a tool call, and three sub-agent launche
 │ │ "Run test suite and verify changes"                          │         │
 │ └──────────────────────────────────────────────────────────────┘         │
 │                                                                          │
-│ ◆ MODEL                                                          0.8k    │
-│ Tests found 2 failures. Fixing...                                        │
-│                                                                          │
-│ ┌──────────────────────────────────────────────────────────────┐         │
-│ │ Fix                                          6.2k ·  4.1s    │         │
-│ │ "Fix test failures in auth module"                           │         │
-│ └──────────────────────────────────────────────────────────────┘         │
-│                                                                          │
 │ ◆ MODEL                                                          0.6k    │
 │ All tests passing. Changes complete.                                     │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
+{{< pagebreak >}}
 ### Parallel Sub-Agents
 
 Parallel sub-agents are grouped with a `┃` gutter connecting their cards:

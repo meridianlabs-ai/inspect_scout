@@ -4725,11 +4725,19 @@
             "type": "object"
           },
           "response": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
-            "title": "Response",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Response"
           },
           "time": {
             "anyOf": [
@@ -4745,8 +4753,7 @@
           }
         },
         "required": [
-          "request",
-          "response"
+          "request"
         ],
         "title": "ModelCall",
         "type": "object"
@@ -10237,6 +10244,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [

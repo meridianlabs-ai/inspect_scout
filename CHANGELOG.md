@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.12 (09 February 2026)
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
 - Add `SampleMetadata` class for typed access to Inspect eval log metadata fields.

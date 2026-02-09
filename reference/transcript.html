@@ -496,6 +496,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#samplemetadata" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SampleMetadata</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
  <span class="menu-text">transcripts_db</span></a>
   </div>
@@ -834,6 +840,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#transcript" id="toc-transcript" class="nav-link" data-scroll-target="#transcript">Transcript</a></li>
   <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a></li>
   <li><a href="#transcriptsreader" id="toc-transcriptsreader" class="nav-link" data-scroll-target="#transcriptsreader">TranscriptsReader</a></li>
+  <li><a href="#samplemetadata" id="toc-samplemetadata" class="nav-link" data-scroll-target="#samplemetadata">SampleMetadata</a></li>
   </ul></li>
   <li><a href="#database" id="toc-database" class="nav-link" data-scroll-target="#database">Database</a>
   <ul class="collapse">
@@ -889,7 +896,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts for scanning.</p>
 <p>Transcripts may be stored in a <code>TranscriptDB</code> or may be Inspect eval logs.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/factory.py#L19">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/factory.py#L19">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transcripts_from(location: <span class="bu">str</span> <span class="op">|</span> Logs) <span class="op">-&gt;</span> Transcripts</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -903,7 +910,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcript">Transcript</h3>
 <p>Transcript info and transcript content (messages and events).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/types.py#L119">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/types.py#L198">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Transcript(TranscriptInfo)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1009,7 +1016,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts_from(<span class="st">"./logs"</span>)</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>transcripts <span class="op">=</span> transcripts.where(c.task_set <span class="op">==</span> <span class="st">"cybench"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L56">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L56">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Transcripts(abc.ABC)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
@@ -1019,7 +1026,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Filter the transcript collection by a SQL WHERE clause or <span class="element-type-name ref-interlink"><a href="../reference/transcript.html#condition">Condition</a></span>.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L75">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L75">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> where(<span class="va">self</span>, condition: <span class="bu">str</span> <span class="op">|</span> Condition) <span class="op">-&gt;</span> <span class="st">"Transcripts"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1033,7 +1040,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Filter transcripts to only those with IDs matching validation cases.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L91">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L91">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> for_validation(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>, validation: <span class="bu">str</span> <span class="op">|</span> ValidationSet <span class="op">|</span> Mapping[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> ValidationSet]</span>
@@ -1049,7 +1056,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Limit the number of transcripts processed.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L164">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L164">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> limit(<span class="va">self</span>, n: <span class="bu">int</span>) <span class="op">-&gt;</span> <span class="st">"Transcripts"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1063,7 +1070,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Shuffle the order of transcripts.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L177">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L177">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> shuffle(<span class="va">self</span>, seed: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="st">"Transcripts"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1078,7 +1085,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Order transcripts by column.</p>
 <p>Can be chained multiple times for tie-breaking. If shuffle() is also used, shuffle takes precedence.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L190">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L190">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> order_by(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>, column: Column, direction: Literal[<span class="st">"ASC"</span>, <span class="st">"DESC"</span>] <span class="op">=</span> <span class="st">"ASC"</span></span>
@@ -1098,7 +1105,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Read the selected transcripts.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L209">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L209">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reader(<span class="va">self</span>, snapshot: ScanTranscripts <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> TranscriptsReader</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1113,7 +1120,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Restore transcripts from a snapshot.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L220">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L220">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
@@ -1132,7 +1139,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcriptsreader">TranscriptsReader</h3>
 <p>Read transcripts based on a <code>TranscriptsQuery</code>.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L16">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L16">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptsReader(abc.ABC)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
@@ -1142,7 +1149,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Index of <code>TranscriptInfo</code> for the collection.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L32">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L32">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> index(<span class="va">self</span>) <span class="op">-&gt;</span> AsyncIterator[TranscriptInfo]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1154,7 +1161,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Read transcript content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/transcripts.py#L37">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/transcripts.py#L37">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read(</span>
@@ -1174,6 +1181,101 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dl>
 </section>
 </section>
+<section id="samplemetadata" class="level3">
+<h3 class="anchored" data-anchor-id="samplemetadata">SampleMetadata</h3>
+<p>Typed accessor for sample metadata from Inspect eval logs.</p>
+<p>Provides typed properties for accessing metadata fields specific to Inspect eval logs, while preserving the lazy JSON parsing optimization. Raises an error if the transcript is not from an Inspect eval log.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/sample_metadata.py#L17">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SampleMetadata</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section class="level4">
+<h4 class="anchored" data-anchor-id="">Attributes</h4>
+<dl>
+<dt><code class="ref-definition">eval_id</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Globally unique id for eval. Same as EvalLog.eval.eval_id.</p>
+</dd>
+<dt><code class="ref-definition">log</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Location that the log file was read from. Same as EvalLog.location.</p>
+</dd>
+<dt><code class="ref-definition">eval_status</code> <span class="element-type"><span class="element-type-name">EvalStatus</span></span></dt>
+<dd>
+<p>Status of eval. Same as EvalLog.status.</p>
+</dd>
+<dt><code class="ref-definition">eval_tags</code> <span class="element-type">list[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Tags associated with evaluation run. Same as EvalLog.eval.tags.</p>
+</dd>
+<dt><code class="ref-definition">eval_metadata</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Additional eval metadata. Same as EvalLog.eval.metadata.</p>
+</dd>
+<dt><code class="ref-definition">task_args</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>]</span></dt>
+<dd>
+<p>Task arguments. Same as EvalLog.eval.task_args.</p>
+</dd>
+<dt><code class="ref-definition">generate_config</code> <span class="element-type"><span class="element-type-name">GenerateConfig</span></span></dt>
+<dd>
+<p>Generate config for model instance. Same as EvalLog.eval.model_generate_config.</p>
+</dd>
+<dt><code class="ref-definition">model_roles</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Model roles. Same as EvalLog.eval.model_roles.</p>
+</dd>
+<dt><code class="ref-definition">id</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Unique id for sample. Same as str(EvalSampleSummary.id).</p>
+</dd>
+<dt><code class="ref-definition">epoch</code> <span class="element-type"><span class="element-type-name">int</span></span></dt>
+<dd>
+<p>Epoch number for sample. Same as EvalSampleSummary.epoch.</p>
+</dd>
+<dt><code class="ref-definition">input</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Sample input. Derived from EvalSampleSummary.input (converted to string).</p>
+</dd>
+<dt><code class="ref-definition">target</code> <span class="element-type">list[<span class="element-type-name">str</span>]</span></dt>
+<dd>
+<p>Sample target value(s). Derived from EvalSampleSummary.target.</p>
+<p>Stored as comma-separated string; parsed back to list.</p>
+</dd>
+<dt><code class="ref-definition">sample_metadata</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>]</span></dt>
+<dd>
+<p>Sample metadata. Same as EvalSampleSummary.metadata.</p>
+</dd>
+<dt><code class="ref-definition">working_time</code> <span class="element-type"><span class="element-type-name">float</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Working time for the sample. Same as EvalSampleSummary.working_time.</p>
+</dd>
+<dt><code class="ref-definition">score_values</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Value</span>]</span></dt>
+<dd>
+<p>Score values for this sample. Derived from EvalSampleSummary.scores.</p>
+<p>Note: Only score values are stored in transcript metadata, not full Score objects (answer, explanation, metadata are not available).</p>
+</dd>
+</dl>
+</section>
+<section class="level4 class-methods">
+<h4 class="class-methods anchored" data-anchor-id="">Methods</h4>
+<dl>
+<dt>__init__</dt>
+<dd>
+<p>Initialize SampleMetadata wrapper.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/sample_metadata.py#L34">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, transcript: Transcript) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">transcript</code> <span class="element-type"><span class="element-type-name"><a href="../reference/transcript.html#transcript">Transcript</a></span></span></dt>
+<dd>
+<p>A Transcript from an Inspect eval log.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</section>
 </section>
 <section id="database" class="level2">
 <h2 class="anchored" data-anchor-id="database">Database</h2>
@@ -1181,9 +1283,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcripts_db">transcripts_db</h3>
 <p>Read/write interface to transcripts database.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/factory.py#L36">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/factory.py#L36">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transcripts_db(location: <span class="bu">str</span>) <span class="op">-&gt;</span> TranscriptsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transcripts_db(location: <span class="bu">str</span>) <span class="op">-&gt;</span> TranscriptsDB</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1195,11 +1297,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcripts_db_schema">transcripts_db_schema</h3>
 <p>Get transcript database schema in various formats.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/schema.py#L191">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/schema.py#L191">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transcripts_db_schema(</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>: Literal[<span class="st">"pyarrow"</span>, <span class="st">"avro"</span>, <span class="st">"json"</span>, <span class="st">"pandas"</span>] <span class="op">=</span> <span class="st">"pyarrow"</span>,</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> pa.Schema <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> pd.DataFrame</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> transcripts_db_schema(</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">format</span>: Literal[<span class="st">"pyarrow"</span>, <span class="st">"avro"</span>, <span class="st">"json"</span>, <span class="st">"pandas"</span>] <span class="op">=</span> <span class="st">"pyarrow"</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> pa.Schema <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> pd.DataFrame</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">format</code> <span class="element-type"><span class="element-type-name">Literal</span>['pyarrow', 'avro', 'json', 'pandas']</span></dt>
 <dd>
@@ -1211,9 +1313,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="transcriptsdb">TranscriptsDB</h3>
 <p>Database of transcripts with write capability.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L115">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L139">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptsDB(TranscriptsView)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptsDB(TranscriptsView)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
 <h4 class="class-methods anchored" data-anchor-id="">Methods</h4>
 <dl>
@@ -1221,10 +1323,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Connect to transcripts database.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L22">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L23">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="ex">connect</span>(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="ex">connect</span>(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div>
 
 </div>
@@ -1233,10 +1335,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Disconnect from transcripts database.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L27">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L28">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> disconnect(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> disconnect(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div>
 
 </div>
@@ -1246,10 +1348,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Get transcript IDs matching query.</p>
 <p>Optimized method that returns only transcript IDs without loading full metadata.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L47">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L48">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> transcript_ids(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> transcript_ids(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">query</code> <span class="element-type"><span class="element-type-name">Query</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1261,10 +1363,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Select transcripts matching query.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L62">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L63">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> select(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> AsyncIterator[TranscriptInfo]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> select(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> AsyncIterator[TranscriptInfo]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">query</code> <span class="element-type"><span class="element-type-name">Query</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1276,10 +1378,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Count transcripts matching query.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L71">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L72">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> count(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="bu">int</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> count(<span class="va">self</span>, query: Query <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="bu">int</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">query</code> <span class="element-type"><span class="element-type-name">Query</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1291,15 +1393,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Read transcript content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L83">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L84">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read(</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    t: TranscriptInfo,</span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    content: TranscriptContent,</span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    max_bytes: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Transcript</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read(</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    t: TranscriptInfo,</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>    content: TranscriptContent,</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    max_bytes: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Transcript</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">t</code> <span class="element-type"><span class="element-type-name">TranscriptInfo</span></span></dt>
 <dd>
@@ -1315,16 +1417,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 </dl>
 </dd>
+<dt>read_messages_events</dt>
+<dd>
+<p>Get messages/events stream handle.</p>
+<p>Returns TranscriptMessagesAndEvents with a lazy <code>data</code> context manager. The stream is not opened until <code>data</code> is entered. Caller can safely hold the result after view context exits.</p>
+<p>Note: The JSON may contain an ‘attachments’ dict at the top level. Strings within ‘messages’ and ‘events’ may contain references like ‘<a href="attachment://" class="uri">attachment://</a>&lt;32-char-hex-id&gt;’ that must be resolved by looking up the ID in the ‘attachments’ dict.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L100">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> read_messages_events(</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>, t: TranscriptInfo</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> TranscriptMessagesAndEvents</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">t</code> <span class="element-type"><span class="element-type-name">TranscriptInfo</span></span></dt>
+<dd>
+<p>Transcript to read messages/events for.</p>
+</dd>
+</dl>
+</dd>
 <dt>distinct</dt>
 <dd>
 <p>Get distinct values of a column, sorted ascending.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L99">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L123">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> distinct(</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>, column: <span class="bu">str</span>, condition: Condition <span class="op">|</span> <span class="va">None</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">list</span>[ScalarValue]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> distinct(</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>, column: <span class="bu">str</span>, condition: Condition <span class="op">|</span> <span class="va">None</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">list</span>[ScalarValue]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">column</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1340,18 +1461,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Insert transcripts into database.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L118">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L142">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> insert(</span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    transcripts: Iterable[Transcript]</span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> AsyncIterable[Transcript]</span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> Transcripts</span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> pa.RecordBatchReader,</span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    session_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    commit: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span>,</span>
-<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> insert(</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    transcripts: Iterable[Transcript]</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> AsyncIterable[Transcript]</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> Transcripts</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> pa.RecordBatchReader,</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    session_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>    commit: <span class="bu">bool</span> <span class="op">=</span> <span class="va">True</span>,</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">transcripts</code> <span class="element-type"><span class="element-type-name">Iterable</span>[<span class="element-type-name"><a href="../reference/transcript.html#transcript">Transcript</a></span>] | <span class="element-type-name">AsyncIterable</span>[<span class="element-type-name"><a href="../reference/transcript.html#transcript">Transcript</a></span>] | <span class="element-type-name"><a href="../reference/transcript.html#transcripts">Transcripts</a></span> | pa.RecordBatchReader</span></dt>
 <dd>
@@ -1373,10 +1494,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>For parquet: compacts data files + rebuilds index. For relational DBs: may be a no-op or transaction commit.</p>
 <p>This is called automatically when insert() is called with commit=True (the default). Only call this manually when using commit=False with insert() for batch operations.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/database/database.py#L140">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/database/database.py#L164">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> commit(<span class="va">self</span>, session_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> commit(<span class="va">self</span>, session_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">session_id</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1395,9 +1516,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Database column with comparison operators.</p>
 <p>Supports various predicate functions including <code>like()</code>, <code>not_like()</code>, <code>between()</code>, etc. Additionally supports standard python equality and comparison operators (e.g.&nbsp;<code>==</code>, ’&gt;`, etc.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L32">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L32">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Column</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Column</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
 <h4 class="class-methods anchored" data-anchor-id="">Methods</h4>
 <dl>
@@ -1405,9 +1526,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is in a list.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L74">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L74">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> in_(<span class="va">self</span>, values: <span class="bu">list</span>[Any]) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> in_(<span class="va">self</span>, values: <span class="bu">list</span>[Any]) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">values</code> <span class="element-type">list[<span class="element-type-name">Any</span>]</span></dt>
 <dd>
@@ -1419,9 +1540,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is not in a list.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L78">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L78">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_in(<span class="va">self</span>, values: <span class="bu">list</span>[Any]) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_in(<span class="va">self</span>, values: <span class="bu">list</span>[Any]) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">values</code> <span class="element-type">list[<span class="element-type-name">Any</span>]</span></dt>
 <dd>
@@ -1433,9 +1554,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>SQL LIKE pattern matching (case-sensitive).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L82">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L82">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> like(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> like(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">pattern</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1447,9 +1568,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>SQL NOT LIKE pattern matching (case-sensitive).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L86">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L86">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_like(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_like(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">pattern</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1462,9 +1583,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>PostgreSQL ILIKE pattern matching (case-insensitive).</p>
 <p>Note: For SQLite and DuckDB, this will use LIKE with LOWER() for case-insensitivity.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L90">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L90">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ilike(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ilike(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">pattern</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1477,9 +1598,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>PostgreSQL NOT ILIKE pattern matching (case-insensitive).</p>
 <p>Note: For SQLite and DuckDB, this will use NOT LIKE with LOWER() for case-insensitivity.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L97">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L97">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_ilike(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_ilike(<span class="va">self</span>, pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">pattern</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
 <dd>
@@ -1491,9 +1612,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is NULL.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L104">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L104">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> is_null(<span class="va">self</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> is_null(<span class="va">self</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div>
 
 </div>
@@ -1502,9 +1623,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is not NULL.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L108">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L108">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> is_not_null(<span class="va">self</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> is_not_null(<span class="va">self</span>) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div>
 
 </div>
@@ -1513,9 +1634,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is between two values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L112">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L112">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> between(<span class="va">self</span>, low: Any, high: Any) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> between(<span class="va">self</span>, low: Any, high: Any) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">low</code> <span class="element-type"><span class="element-type-name">Any</span></span></dt>
 <dd>
@@ -1531,9 +1652,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Check if value is not between two values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/column.py#L126">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/column.py#L126">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_between(<span class="va">self</span>, low: Any, high: Any) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> not_between(<span class="va">self</span>, low: Any, high: Any) <span class="op">-&gt;</span> Condition</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">low</code> <span class="element-type"><span class="element-type-name">Any</span></span></dt>
 <dd>
@@ -1552,9 +1673,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="condition">Condition</h3>
 <p>WHERE clause condition that can be combined with others.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_query/condition.py#L42">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_query/condition.py#L42">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Condition(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Condition(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -1585,15 +1706,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="columns">Columns</h3>
 <p>Entry point for building filter expressions.</p>
 <p>Supports both dot notation and bracket notation for accessing columns:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> columns <span class="im">as</span> c</span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>c.column_name</span>
-<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>c[<span class="st">"column_name"</span>]</span>
-<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>c[<span class="st">"nested.json.path"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> columns <span class="im">as</span> c</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>c.column_name</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>c[<span class="st">"column_name"</span>]</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>c[<span class="st">"nested.json.path"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/columns.py#L44">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/columns.py#L44">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Columns</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Columns</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -1676,22 +1797,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="columns-1">columns</h3>
 <p>Column selector for where expressions.</p>
 <p>Typically aliased to a more compact expression (e.g.&nbsp;<code>c</code>) for use in queries). For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> columns <span class="im">as</span> c</span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c.model <span class="op">==</span> <span class="st">"gpt-4"</span></span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> (c.task_set <span class="op">==</span> <span class="st">"math"</span>) <span class="op">&amp;</span> (c.epochs <span class="op">&gt;</span> <span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> columns <span class="im">as</span> c</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c.model <span class="op">==</span> <span class="st">"gpt-4"</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> (c.task_set <span class="op">==</span> <span class="st">"math"</span>) <span class="op">&amp;</span> (c.epochs <span class="op">&gt;</span> <span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/columns.py#L161">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/columns.py#L161">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>columns <span class="op">=</span> Columns()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>columns <span class="op">=</span> Columns()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="logcolumns" class="level3">
 <h3 class="anchored" data-anchor-id="logcolumns">LogColumns</h3>
 <p>Typed column interface for Inspect log transcripts.</p>
 <p>Provides typed properties for standard Inspect log columns while preserving the ability to access custom fields through the base Metadata class methods.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/log.py#L16">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/log.py#L16">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> LogColumns(Columns)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> LogColumns(Columns)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -1834,18 +1955,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="log_columns">log_columns</h3>
 <p>Log columns selector for where expressions.</p>
 <p>Typically aliased to a more compact expression (e.g.&nbsp;<code>c</code>) for use in queries). For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> log_columns <span class="im">as</span> c</span>
-<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a><span class="co"># typed access to standard fields</span></span>
-<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c.model <span class="op">==</span> <span class="st">"gpt-4"</span></span>
-<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> (c.task_set <span class="op">==</span> <span class="st">"math"</span>) <span class="op">&amp;</span> (c.epochs <span class="op">&gt;</span> <span class="dv">1</span>)</span>
-<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a><span class="co"># dynamic access to custom fields</span></span>
-<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c[<span class="st">"custom_field"</span>] <span class="op">&gt;</span> <span class="dv">100</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> log_columns <span class="im">as</span> c</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a><span class="co"># typed access to standard fields</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c.model <span class="op">==</span> <span class="st">"gpt-4"</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> (c.task_set <span class="op">==</span> <span class="st">"math"</span>) <span class="op">&amp;</span> (c.epochs <span class="op">&gt;</span> <span class="dv">1</span>)</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a><span class="co"># dynamic access to custom fields</span></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a><span class="bu">filter</span> <span class="op">=</span> c[<span class="st">"custom_field"</span>] <span class="op">&gt;</span> <span class="dv">100</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_transcript/log.py#L146">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_transcript/log.py#L146">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb45"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>log_columns <span class="op">=</span> LogColumns()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>log_columns <span class="op">=</span> LogColumns()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="observe" class="level2">
@@ -1856,33 +1977,33 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Works as decorator (<span class="citation" data-cites="observe">@observe</span>, <span class="citation" data-cites="observe">@observe</span>(), <span class="citation" data-cites="observe">@observe</span>(task_set=“x”)) or context manager (async with observe():).</p>
 <p>Uses implicit leaf detection: the innermost observe context (one with no children) triggers transcript write to the database. This allows nesting observe contexts where the outer context sets shared parameters and inner contexts represent individual transcript entries.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/_observe.py#L110">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/_observe.py#L109">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> observe(</span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>    func: Callable[OP, Awaitable[OR]] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>    provider: (</span>
-<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>        Literal[<span class="st">"inspect"</span>, <span class="st">"openai"</span>, <span class="st">"anthropic"</span>, <span class="st">"google"</span>]</span>
-<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> ObserveProvider</span>
-<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> Sequence[ObserveProviderName <span class="op">|</span> ObserveProvider]</span>
-<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> <span class="va">None</span></span>
-<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">=</span> <span class="st">"inspect"</span>,</span>
-<span id="cb46-10"><a href="#cb46-10" aria-hidden="true" tabindex="-1"></a>    db: <span class="bu">str</span> <span class="op">|</span> TranscriptsDB <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-11"><a href="#cb46-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># TranscriptInfo fields (ordered to match TranscriptInfo for consistency)</span></span>
-<span id="cb46-12"><a href="#cb46-12" aria-hidden="true" tabindex="-1"></a>    source_type: <span class="bu">str</span> <span class="op">=</span> <span class="st">"observe"</span>,</span>
-<span id="cb46-13"><a href="#cb46-13" aria-hidden="true" tabindex="-1"></a>    source_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-14"><a href="#cb46-14" aria-hidden="true" tabindex="-1"></a>    source_uri: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-15"><a href="#cb46-15" aria-hidden="true" tabindex="-1"></a>    task_set: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-16"><a href="#cb46-16" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-17"><a href="#cb46-17" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-18"><a href="#cb46-18" aria-hidden="true" tabindex="-1"></a>    agent: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-19"><a href="#cb46-19" aria-hidden="true" tabindex="-1"></a>    agent_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-20"><a href="#cb46-20" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-21"><a href="#cb46-21" aria-hidden="true" tabindex="-1"></a>    model_options: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-22"><a href="#cb46-22" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-23"><a href="#cb46-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Full TranscriptInfo for advanced use</span></span>
-<span id="cb46-24"><a href="#cb46-24" aria-hidden="true" tabindex="-1"></a>    info: TranscriptInfo <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb46-25"><a href="#cb46-25" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Callable[OP, Awaitable[OR]] <span class="op">|</span> _ObserveContextManager</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> observe(</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>    func: Callable[OP, Awaitable[OR]] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>    provider: (</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>        Literal[<span class="st">"inspect"</span>, <span class="st">"openai"</span>, <span class="st">"anthropic"</span>, <span class="st">"google"</span>]</span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> ObserveProvider</span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> Sequence[ObserveProviderName <span class="op">|</span> ObserveProvider]</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> <span class="va">None</span></span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">=</span> <span class="st">"inspect"</span>,</span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>    db: <span class="bu">str</span> <span class="op">|</span> TranscriptsDB <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># TranscriptInfo fields (ordered to match TranscriptInfo for consistency)</span></span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>    source_type: <span class="bu">str</span> <span class="op">=</span> <span class="st">"observe"</span>,</span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>    source_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>    source_uri: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>    task_set: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-17"><a href="#cb49-17" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-18"><a href="#cb49-18" aria-hidden="true" tabindex="-1"></a>    agent: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-19"><a href="#cb49-19" aria-hidden="true" tabindex="-1"></a>    agent_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-20"><a href="#cb49-20" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-21"><a href="#cb49-21" aria-hidden="true" tabindex="-1"></a>    model_options: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-22"><a href="#cb49-22" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-23"><a href="#cb49-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Full TranscriptInfo for advanced use</span></span>
+<span id="cb49-24"><a href="#cb49-24" aria-hidden="true" tabindex="-1"></a>    info: TranscriptInfo <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb49-25"><a href="#cb49-25" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Callable[OP, Awaitable[OR]] <span class="op">|</span> _ObserveContextManager</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">func</code> <span class="element-type"><span class="element-type-name">Callable</span>[<span class="element-type-name">OP</span>, <span class="element-type-name">Awaitable</span>[<span class="element-type-name">OR</span>]] | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1951,25 +2072,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Update the current observe context’s TranscriptInfo fields.</p>
 <p>Call this from within an <span class="citation" data-cites="observe">@observe</span> decorated function or observe() context to set transcript fields after execution (e.g., score, success, limit).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/_observe.py#L332">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/_observe.py#L331">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> observe_update(</span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>    source_type: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    source_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    source_uri: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    task_set: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>    agent: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>    agent_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>    model_options: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>    score: JsonValue <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>    success: <span class="bu">bool</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb50"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> observe_update(</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    source_type: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>    source_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>    source_uri: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>    task_set: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>    agent: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>    agent_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a>    model_options: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>    score: JsonValue <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>    success: <span class="bu">bool</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb50-17"><a href="#cb50-17" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">source_type</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -2033,10 +2154,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="observeprovider">ObserveProvider</h3>
 <p>Protocol for LLM capture providers.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/providers/provider.py#L22">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/providers/provider.py#L22">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="at">@runtime_checkable</span></span>
-<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ObserveProvider(Protocol)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="at">@runtime_checkable</span></span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ObserveProvider(Protocol)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
 <h4 class="class-methods anchored" data-anchor-id="">Methods</h4>
 <dl>
@@ -2045,9 +2166,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Install hooks/patches for capturing LLM calls.</p>
 <p>Called once per provider class. Implementations should be idempotent.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/providers/provider.py#L26">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/providers/provider.py#L26">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> install(<span class="va">self</span>, emit: ObserveEmit) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> install(<span class="va">self</span>, emit: ObserveEmit) <span class="op">-&gt;</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">emit</code> <span class="element-type"><span class="element-type-name"><a href="../reference/transcript.html#observeemit">ObserveEmit</a></span></span></dt>
 <dd>
@@ -2060,9 +2181,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Convert raw captured data to an Inspect Event.</p>
 <p>Called by the framework at observe exit for each captured item. This is where async conversion (using Inspect AI converters) happens.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/providers/provider.py#L39">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/providers/provider.py#L39">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> build_event(<span class="va">self</span>, data: <span class="bu">dict</span>[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> Event</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb53"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> build_event(<span class="va">self</span>, data: <span class="bu">dict</span>[<span class="bu">str</span>, Any]) <span class="op">-&gt;</span> Event</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">data</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">Any</span>]</span></dt>
 <dd>
@@ -2077,9 +2198,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="observeemit">ObserveEmit</h3>
 <p>Sync function to emit raw captured data. Called by provider wrappers.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/e406960ea6cfef014c9c22154abc06318fba3a46/src/inspect_scout/_observe/providers/provider.py#L18">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bd13bac388ba72ba844e123fa914f7a9613b7499/src/inspect_scout/_observe/providers/provider.py#L18">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb51"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>ObserveEmit <span class="op">=</span> Callable[[<span class="bu">dict</span>[<span class="bu">str</span>, Any]], <span class="va">None</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb54"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>ObserveEmit <span class="op">=</span> Callable[[<span class="bu">dict</span>[<span class="bu">str</span>, Any]], <span class="va">None</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

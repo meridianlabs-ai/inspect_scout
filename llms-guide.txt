@@ -3191,14 +3191,15 @@ events.
 
 ### Supported Event Types
 
-| Event Type | What’s Searched                         |
-|------------|-----------------------------------------|
-| `model`    | Model output completion text            |
-| `tool`     | Function name, arguments, and result    |
-| `error`    | Error message                           |
-| `info`     | Data field (JSON stringified if object) |
-| `logger`   | Log message text                        |
-| `approval` | Message, tool call, and decision        |
+| Event Type   | What’s Searched                         |
+|--------------|-----------------------------------------|
+| `model`      | Model output completion text            |
+| `tool`       | Function name, arguments, and result    |
+| `compaction` | Model conversation was compacted        |
+| `error`      | Error message                           |
+| `info`       | Data field (JSON stringified if object) |
+| `logger`     | Log message text                        |
+| `approval`   | Message, tool call, and decision        |
 
 ## Examples
 

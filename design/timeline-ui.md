@@ -244,3 +244,157 @@ The timeline panel height adapts to content, up to a cap of 6 rows. A resizable 
 
 **Notes:**
 - When scrolled, the Transcript parent row could optionally stay pinned at the top
+
+## 9. Content Panel
+
+The content panel sits below the timeline, separated by the resizable divider (section 8). It shows the selected agent's events and sub-agent launches in chronological order. All events are always expanded. Sub-agent cards appear inline at their launch point and are clickable to drill down.
+
+### Events and Sub-Agent Cards
+
+Build is selected, showing model calls, a tool call, and three sub-agent launches:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ← Transcript › Build                                      31.8k tokens   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Build    │██████████████████████████████████████████████████████│        │
+│  Code    │ ██████████████████████                               │ 15.2k  │
+│  Test    │                       ████████████████               │ 10.4k  │
+│  Fix     │                                       ███████████████│  6.2k  │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ ◆ MODEL                                                          2.1k    │
+│ I'll start by reading the existing codebase to understand the            │
+│ architecture before making changes.                                      │
+│                                                                          │
+│ ◇ TOOL read_file                                                 0.3s    │
+│ path: "src/main.py"                                                      │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄               │
+│ import os                                                                │
+│ from app import create_app                                               │
+│ ...                                                                      │
+│                                                                          │
+│ ◆ MODEL                                                          3.4k    │
+│ Based on the code, I need to modify the authentication module.           │
+│ Let me delegate the implementation...                                    │
+│                                                                          │
+│ ┌──────────────────────────────────────────────────────────────┐         │
+│ │ Code                                        15.2k · 12.4s    │         │
+│ │ "Implement the authentication changes"                       │         │
+│ └──────────────────────────────────────────────────────────────┘         │
+│                                                                          │
+│ ◆ MODEL                                                          1.2k    │
+│ Code changes complete. Running tests...                                  │
+│                                                                          │
+│ ┌──────────────────────────────────────────────────────────────┐         │
+│ │ Test                                        10.4k ·  8.2s    │         │
+│ │ "Run test suite and verify changes"                          │         │
+│ └──────────────────────────────────────────────────────────────┘         │
+│                                                                          │
+│ ◆ MODEL                                                          0.8k    │
+│ Tests found 2 failures. Fixing...                                        │
+│                                                                          │
+│ ┌──────────────────────────────────────────────────────────────┐         │
+│ │ Fix                                          6.2k ·  4.1s    │         │
+│ │ "Fix test failures in auth module"                           │         │
+│ └──────────────────────────────────────────────────────────────┘         │
+│                                                                          │
+│ ◆ MODEL                                                          0.6k    │
+│ All tests passing. Changes complete.                                     │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Parallel Sub-Agents
+
+Parallel sub-agents are grouped with a `┃` gutter connecting their cards:
+
+```
+│                                                                          │
+│ ◆ MODEL                                                          1.8k    │
+│ I'll research this from multiple angles...                               │
+│                                                                          │
+│ ┃ ┌──────────────────────────────────────────────────────────┐           │
+│ ┃ │ Explore 1                                8.1k ·  6.2s    │           │
+│ ┃ │ "Search for API documentation"                           │           │
+│ ┃ └──────────────────────────────────────────────────────────┘           │
+│ ┃ ┌──────────────────────────────────────────────────────────┐           │
+│ ┃ │ Explore 2                                9.4k ·  7.8s    │           │
+│ ┃ │ "Analyze existing codebase"                              │           │
+│ ┃ └──────────────────────────────────────────────────────────┘           │
+│                                                                          │
+│ ◆ MODEL                                                          2.1k    │
+│ Research complete. Synthesizing findings...                              │
+│                                                                          │
+```
+
+### Errors and Compaction
+
+A tool error uses the same `▲` marker as the timeline. Compaction appears as a horizontal divider:
+
+```
+│                                                                          │
+│ ◇ TOOL web_search                                     ▲ ERROR    0.3s    │
+│ query: "solar panel efficiency"                                          │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄               │
+│ Error: Rate limit exceeded                                               │
+│                                                                          │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ COMPACTION ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄              │
+│                                                                          │
+│ ◆ MODEL                                                          1.5k    │
+│ Continuing after context compression...                                  │
+│                                                                          │
+```
+
+**Notes:**
+- Clicking a sub-agent card drills down (same as double-click or `›` in the timeline)
+- `▲ ERROR` and compaction dividers correspond to inline markers in the timeline bars
+- `◆` / `◇` distinguish model calls from tool calls
+
+## 10. Infrastructure Agents
+
+Infrastructure agents (bash checkers, safety validators, etc.) can number in the dozens — one per tool call — and are rarely interesting. They never appear in the timeline. In the content panel, they are hidden by default behind a toggle.
+
+### Hidden (Default)
+
+A collapsed toggle indicates their presence:
+
+```
+│                                                                          │
+│ ▸ 12 infrastructure agents hidden                                        │
+│                                                                          │
+│ ◆ MODEL                                                          2.1k    │
+│ I'll start by reading the codebase...                                    │
+│                                                                          │
+│ ◇ TOOL bash                                                     0.8s     │
+│ command: "npm test"                                                      │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄               │
+│ Tests passed: 42/42                                                      │
+│                                                                          │
+```
+
+### Revealed
+
+Toggling shows infrastructure agents as single-line entries with `⚙`, inline where they ran:
+
+```
+│                                                                          │
+│ ▾ 12 infrastructure agents shown                                         │
+│                                                                          │
+│ ◆ MODEL                                                          2.1k    │
+│ I'll start by reading the codebase...                                    │
+│                                                                          │
+│ ◇ TOOL bash                                                      0.8s    │
+│ command: "npm test"                                                      │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄               │
+│ Tests passed: 42/42                                                      │
+│                                                                          │
+│ ⚙ bash_checker                                            0.3k · 0.1s    │
+│ ⚙ safety_validator                                        0.2k · 0.2s    │
+│                                                                          │
+```
+
+**Notes:**
+- `⚙` entries are single-line — no box, no task description
+- Infrastructure agents are never shown in the timeline, only in the content panel
+- The toggle count reflects the selected agent's infra agents, not the whole trace

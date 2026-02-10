@@ -9,8 +9,8 @@ import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscode } from "./api/api-vscode";
 import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
+import { getEmbeddedAppMessage } from "./hooks/useWindowMessaging";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
-import { getEmbeddedInitState } from "./utils/embeddedState";
 import { defaultRetry } from "./utils/react-query";
 import { getVscodeApi } from "./utils/vscode";
 
@@ -33,7 +33,8 @@ const selectApi = (): ScoutApiV2 => {
     return apiScoutServer();
   }
 
-  const protocolVersion = getEmbeddedInitState()?.extensionProtocolVersion ?? 1;
+  const protocolVersion =
+    getEmbeddedAppMessage()?.extensionProtocolVersion ?? 1;
   if (protocolVersion < 2) {
     throw new Error(
       `VSCode extension protocol version ${protocolVersion} is no longer supported. ` +

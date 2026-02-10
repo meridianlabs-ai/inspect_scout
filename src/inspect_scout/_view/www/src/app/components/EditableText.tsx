@@ -55,6 +55,7 @@ export const EditableText: FC<EditableTextProps> = ({
 
     // If not editing yet (just focused) or current text equals the initial value,
     // show first mruMaxItems items
+    // eslint-disable-next-line react-hooks/refs -- initialValueRef stores a snapshot set in handleFocus; safe to read as it doesn't need to trigger re-renders
     if (!isEditing || currentText === initialValueRef.current) {
       return mru.slice(0, mruMaxItems);
     }
@@ -242,6 +243,7 @@ export const EditableText: FC<EditableTextProps> = ({
           id="editable-text-mru-popover"
           isOpen={showMruPopover}
           setIsOpen={setShowMruPopover}
+          // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
           positionEl={spanRef.current}
           placement="bottom-start"
           hoverDelay={0}

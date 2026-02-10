@@ -245,6 +245,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   return (
     <Virtuoso
       ref={listHandle}
+      // eslint-disable-next-line react-hooks/refs -- Virtuoso accepts undefined for customScrollParent and handles dynamic ref population
       customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
       id={id}
       style={{ ...style }}

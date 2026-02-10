@@ -66,7 +66,7 @@ export const ValidationCasePredicateSelector: FC<
     if (!value && defaultValue) {
       onChange(defaultValue);
     }
-  }, [value, defaultValue]);
+  }, [value, defaultValue, onChange]);
 
   return (
     <div ref={ref} className={styles.container}>

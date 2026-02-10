@@ -181,6 +181,8 @@ export const ChatViewVirtualListComponent: FC<ChatViewVirtualListComponentProps>
             />
           );
         },
+        // TODO: lint react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [
           id,
           showLabels,

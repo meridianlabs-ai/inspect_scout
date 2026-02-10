@@ -44,6 +44,7 @@ export const ColumnPickerButton: FC<ColumnPickerButtonProps> = ({
         className={clsx("text-size-smallest", styles.columnsButton)}
       />
       {children({
+        // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
         positionEl: buttonRef.current,
         isOpen,
         setIsOpen,

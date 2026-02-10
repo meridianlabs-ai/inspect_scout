@@ -151,6 +151,9 @@ export const ScannerResultPanel: FC = () => {
     setSearchParams(newParams);
   };
 
+  // TODO: lint react-hooks/preserve-manual-memoization - the lint seems to be a bug in the rule that doesn't account for the ?
+  // However, this useMemo feels like a premature optimization. I think it should go
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const showEvents = useMemo(() => {
     if (!selectedResult?.scanEvents) {
       return false;

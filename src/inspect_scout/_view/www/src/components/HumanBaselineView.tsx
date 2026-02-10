@@ -49,6 +49,8 @@ export const HumanBaselineView: FC<HumanBaselineViewProps> = ({
     return () => {
       revokableUrls.forEach((url) => URL.revokeObjectURL(url));
     };
+    // TODO: lint react-hooks/exhaustive-deps - consider refactoring this code to remove the smell
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Make a player for each session log

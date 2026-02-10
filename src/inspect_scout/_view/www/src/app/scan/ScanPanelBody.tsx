@@ -141,6 +141,8 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
       options.push("model");
     }
     return options;
+    // TODO: lint react-hooks/exhaustive-deps - refactor to avoid the lint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedScanner, visibleScannerResults]);
 
   const tools: ReactNode[] = [];

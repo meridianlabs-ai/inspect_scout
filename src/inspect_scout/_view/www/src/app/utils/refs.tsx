@@ -29,6 +29,8 @@ export const useMarkdownRefs = (
   const [currentSearchParams] = useSearchParams();
 
   // Build URL to the scan result with the appropriate query parameters
+  // TODO: lint react-hooks/preserve-manual-memoization - the lint seems to be a bug in the rule that doesn't account for the ?
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const buildUrl = useMemo(() => {
     if (!summary?.uuid) {
       return (queryParams: string) => `?${queryParams}`;

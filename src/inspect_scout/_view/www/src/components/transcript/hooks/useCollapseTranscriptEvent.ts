@@ -15,5 +15,7 @@ export const useCollapseTranscriptEvent = (
       collapseEvent(scope, id, value);
     };
     return [isCollapsed, set];
+    // TODO: lint react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed, collapseEvent, id]);
 };

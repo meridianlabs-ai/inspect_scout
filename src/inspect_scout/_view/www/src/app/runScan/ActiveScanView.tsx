@@ -63,6 +63,9 @@ const getMetricLabel = (scanners: Record<string, ScannerSummary>): string => {
 
 const ActiveScanCard: FC<{ info: ActiveScanInfo }> = ({ info }) => {
   const { metrics, summary } = info;
+  // Date.now() is intentionally impure here - we need the current time to calculate
+  // live-updating elapsed/remaining durations. Safe for this client-only component.
+  // eslint-disable-next-line react-hooks/purity
   const [now, setNow] = useState(Date.now());
 
   // Update time every second for elapsed/remaining

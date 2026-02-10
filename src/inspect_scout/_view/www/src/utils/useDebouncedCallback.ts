@@ -31,6 +31,7 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   });
 
   // Create stable debounced function once
+  /* eslint-disable react-hooks/refs -- The ref is read inside the debounced callback when invoked, not during render. This is a standard pattern for stable callbacks that access latest values. */
   const debouncedFn = useMemo(
     () =>
       debounce((...args: Parameters<T>) => {
@@ -38,6 +39,7 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
       }, delay),
     [delay]
   );
+  /* eslint-enable react-hooks/refs */
 
   // Cleanup on unmount
   useEffect(() => {

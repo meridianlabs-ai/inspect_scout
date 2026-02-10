@@ -141,8 +141,11 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
       const initialized = initializeEditedConfig(
         data.config as ProjectConfigInput
       );
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      /* eslint-disable react-hooks/set-state-in-effect */
       setEditedConfig(initialized);
       setOriginalConfig(deepCopy(initialized));
+      /* eslint-enable react-hooks/set-state-in-effect */
       lastSavedEtagRef.current = data.etag;
       return;
     }
@@ -161,7 +164,7 @@ export const ProjectPanel: FC<ProjectPanelProps> = ({ config }) => {
     setEditedConfig(initialized);
     setOriginalConfig(deepCopy(initialized));
     lastSavedEtagRef.current = data.etag;
-  }, [data?.etag, editedConfig]);
+  }, [data, editedConfig]);
 
   const hasChanges = useMemo(() => {
     return !configsEqual(editedConfig, originalConfig);

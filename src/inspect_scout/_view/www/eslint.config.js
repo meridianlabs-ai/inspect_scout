@@ -39,7 +39,7 @@ export default tseslint.config(
       react: reactPlugin,
       "react-hooks": reactHooksPlugin,
       "react-refresh": reactRefreshPlugin,
-      import: importPlugin
+      import: importPlugin,
     },
     rules: {
       "import/order": [
@@ -60,10 +60,6 @@ export default tseslint.config(
           },
         },
       ],
-      // React Hooks rules
-      "react-hooks/rules-of-hooks": "warn",
-      // "react-hooks/exhaustive-deps": "warn",
-
       // These are disabled because we didn't have time to fix them, not because they are bad rules
       "no-unused-vars": "off",
       "@typescript-eslint/no-unsafe-call": "off",
@@ -80,9 +76,13 @@ export default tseslint.config(
       //   "error",
       //   { varsIgnorePattern: "^_" },
       // ]
-      // ...reactPlugin.configs.recommended.rules,
-      // ...reactPlugin.configs["jsx-runtime"].rules,
-      // ...reactHooksPlugin.configs.recommended.rules,
+      ...reactPlugin.configs.recommended.rules,
+      ...reactPlugin.configs["jsx-runtime"].rules,
+      "react/prop-types": "off",
+      "react/display-name": "off",
+      "react/no-children-prop": "off",
+      "react/no-unescaped-entities": "off",
+      ...reactHooksPlugin.configs.recommended.rules,
       // ...reactRefreshPlugin.configs.recommended.rules,
       // // We may want to remove the disables below as we see fit
       // "@typescript-eslint/restrict-template-expressions": "off",

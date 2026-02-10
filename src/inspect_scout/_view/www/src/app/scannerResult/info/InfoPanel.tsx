@@ -44,6 +44,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
                   }
                   return (
                     <ModelTokenTable
+                      key={key}
                       model_usage={resultData?.scanModelUsage[key]}
                     />
                   );

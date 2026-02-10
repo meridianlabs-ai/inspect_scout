@@ -43,7 +43,7 @@ export const CompactionEventView: FC<CompactionEventViewProps> = ({
       subTitle={formatDateTime(new Date(event.timestamp))}
       icon={ApplicationIcons.compaction}
     >
-      {[<MetaDataGrid entries={data} className={styles.panel} />]}
+      <MetaDataGrid entries={data} className={styles.panel} />
     </EventPanel>
   );
 };

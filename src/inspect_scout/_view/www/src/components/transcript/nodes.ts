@@ -8,11 +8,7 @@
  * since we don't have access to inspect_ai's event_tree().
  */
 
-import type {
-  ChatMessage,
-  Event,
-  ToolEvent,
-} from "../../types/api-types";
+import type { ChatMessage, Event, ToolEvent } from "../../types/api-types";
 
 // =============================================================================
 // Agent Source Types
@@ -638,9 +634,7 @@ function processChildren(
       }
       const branchInput = getBranchInput(branchContent);
       const forkedAt =
-        branchInput !== null
-          ? findForkedAt(parentContent, branchInput)
-          : "";
+        branchInput !== null ? findForkedAt(parentContent, branchInput) : "";
       result.push(createBranch(forkedAt, branchContent));
     }
     return result;

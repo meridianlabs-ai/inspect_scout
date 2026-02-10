@@ -164,6 +164,7 @@ export const ApplicationIcons = {
   usage: "bi bi-stopwatch",
   trash: "bi bi-trash",
   rename: "bi bi-pencil-square",
+  timeline: "bi bi-bar-chart-steps",
   validation: "bi bi-patch-check",
   wrap: "bi bi-text-wrap",
   x: "bi bi-x",

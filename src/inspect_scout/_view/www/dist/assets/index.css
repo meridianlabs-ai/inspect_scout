@@ -4826,6 +4826,45 @@ so disabling selection can break that functionality */
   min-height: 0;
   overflow: auto;
 }
+._container_5prjp_1 {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+._headerRow_5prjp_8 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 1rem 1.25rem 0.75rem 1rem;
+  flex-shrink: 0;
+}
+
+._title_5prjp_16 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+._scenarioSelect_5prjp_24 {
+  width: 240px;
+}
+
+._scenarioDescription_5prjp_28 {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+._content_5prjp_33 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
 ._container_w24zj_1 {
   height: 100%;
   display: grid;

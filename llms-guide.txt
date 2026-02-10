@@ -2480,6 +2480,77 @@ def my_scanner() -> Scanner[Transcript]: ...
 You should also be sure to return a result for each supported label (so
 that metrics can be computed correctly on each row).
 
+## Packaging
+
+A convenient way to distribute scanners is to include them in a Python
+package. This makes it very easy for others to use your scanner and
+ensure they have all of the required dependencies.
+
+Scanners in packages can be *registered* such that users can easily
+refer to them by name from the CLI. For example, if your package is
+named `myscanners` and your scanner is named `reward_hacking` you could
+do a scan with:
+
+``` bash
+scout scan myscanners/reward_hacking
+```
+
+### Example
+
+Here’s an example that walks through all of the requirements for
+registering scanners in packages. Let’s say your package is named
+`myscanners` and has a task named `reward_hacking` in the `scanners.py`
+file:
+
+    myscanners/       
+      myscanners/
+        scanners.py
+        _registry.py
+      pyproject.toml
+
+The `_registry.py` file serves as a place to import things that you want
+registered with Inspect. For example:
+
+**\_registry.py**
+
+``` python
+from .scanners import reward_hacking
+```
+
+You can then register `reward_hacking` (and anything else imported into
+`_registry.py`) as a [setuptools entry
+point](https://setuptools.pypa.io/en/latest/userguide/entry_point.html).
+This will ensure that inspect can resolve references to your package
+from the CLI. Here is how this looks in `pyproject.toml`:
+
+## Setuptools
+
+``` toml
+[project.entry-points.inspect_ai]
+myscanners = "myscanners._registry"
+```
+
+## uv
+
+``` toml
+[project.entry-points.inspect_ai]
+myscanners = "myscanners._registry"
+```
+
+## Poetry
+
+``` toml
+[tool.poetry.plugins.inspect_ai]
+myscanners = "myscanners._registry"
+```
+
+Now, anyone that has installed your package can run use your scanner as
+follows:
+
+``` bash
+scout scan myscanners/reward_hacking
+```
+
 ## Scanners as Scorers
 
 You may have noticed that scanners are very similar to Inspect

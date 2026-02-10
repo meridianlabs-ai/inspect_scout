@@ -668,6 +668,18 @@
     ]
   },
   {
+    "objectID": "scanners.html#packaging",
+    "href": "scanners.html#packaging",
+    "title": "Scanners",
+    "section": "Packaging",
+    "text": "Packaging\nA convenient way to distribute scanners is to include them in a Python package. This makes it very easy for others to use your scanner and ensure they have all of the required dependencies.\nScanners in packages can be registered such that users can easily refer to them by name from the CLI. For example, if your package is named myscanners and your scanner is named reward_hacking you could do a scan with:\nscout scan myscanners/reward_hacking\n\nExample\nHere’s an example that walks through all of the requirements for registering scanners in packages. Let’s say your package is named myscanners and has a task named reward_hacking in the scanners.py file:\nmyscanners/       \n  myscanners/\n    scanners.py\n    _registry.py\n  pyproject.toml\nThe _registry.py file serves as a place to import things that you want registered with Inspect. For example:\n\n\n_registry.py\n\nfrom .scanners import reward_hacking\n\nYou can then register reward_hacking (and anything else imported into _registry.py) as a setuptools entry point. This will ensure that inspect can resolve references to your package from the CLI. Here is how this looks in pyproject.toml:\n\nSetuptoolsuvPoetry\n\n\n[project.entry-points.inspect_ai]\nmyscanners = \"myscanners._registry\"\n\n\n[project.entry-points.inspect_ai]\nmyscanners = \"myscanners._registry\"\n\n\n[tool.poetry.plugins.inspect_ai]\nmyscanners = \"myscanners._registry\"\n\n\n\nNow, anyone that has installed your package can run use your scanner as follows:\nscout scan myscanners/reward_hacking",
+    "crumbs": [
+      "Getting Started",
+      "Using Scout",
+      "Scanners"
+    ]
+  },
+  {
     "objectID": "scanners.html#scanners-as-scorers",
     "href": "scanners.html#scanners-as-scorers",
     "title": "Scanners",
@@ -1127,14 +1139,14 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent and display of native compaction data from OpenAI and Anthropic.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."
+    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."
   },
   {
-    "objectID": "CHANGELOG.html#february-2026",
-    "href": "CHANGELOG.html#february-2026",
+    "objectID": "CHANGELOG.html#unreleased",
+    "href": "CHANGELOG.html#unreleased",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent and display of native compaction data from OpenAI and Anthropic.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."
+    "text": "Scoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."
   },
   {
     "objectID": "CHANGELOG.html#january-2026",

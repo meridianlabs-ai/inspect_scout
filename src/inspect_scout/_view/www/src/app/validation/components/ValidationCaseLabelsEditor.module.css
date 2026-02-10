@@ -1,0 +1,40 @@
+.inputContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 4px 6px;
+  min-height: 30px;
+  align-items: center;
+  align-content: flex-start;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--bs-border-color));
+  border-radius: 2px;
+}
+
+.labelChip {
+  /* Label chip specific styles can go here */
+}
+
+.popoverContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+.popoverField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.popoverLabel {
+  font-weight: 600;
+}
+
+.popoverActions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  margin-top: 0.2rem;
+}

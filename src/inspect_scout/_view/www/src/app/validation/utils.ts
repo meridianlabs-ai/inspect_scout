@@ -34,6 +34,22 @@ export const getCaseKey = (id: string | string[]): string => {
 };
 
 /**
+ * Extracts unique label keys from a list of validation cases.
+ * Returns sorted array of label key names.
+ */
+export const extractUniqueLabels = (cases: ValidationCase[]): string[] => {
+  const labelKeys = new Set<string>();
+  for (const c of cases) {
+    if (c.labels) {
+      for (const key of Object.keys(c.labels)) {
+        labelKeys.add(key);
+      }
+    }
+  }
+  return Array.from(labelKeys).sort();
+};
+
+/**
  * Extracts unique split values from a list of validation cases.
  * Returns sorted array of non-empty split values.
  */

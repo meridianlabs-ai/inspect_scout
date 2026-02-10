@@ -306,7 +306,8 @@ class ValidationFileWriter:
     def upsert_case(self, case: ValidationCase) -> None:
         """Create or update a case in the validation file."""
         cases = self.read_cases()
-        case_dict = case.model_dump(exclude_none=True)
+        # Flatten the labels before writing
+        case_dict = _flatten_labels_in_data([case.model_dump(exclude_none=True)])[0]
         index = self.find_case_index(cases, case.id)
 
         if index is not None:

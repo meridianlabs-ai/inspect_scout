@@ -33,12 +33,14 @@ import {
   validationQueryKeys,
 } from "../../server/useValidations";
 import {
+  extractUniqueLabels,
   extractUniqueSplits,
   hasValidationSetExtension,
   isValidFilename,
 } from "../utils";
 
 import styles from "./ValidationCaseEditor.module.css";
+import { ValidationCaseLabelsEditor } from "./ValidationCaseLabelsEditor";
 import {
   extractUniquePredicates,
   ValidationCasePredicateSelector,
@@ -432,6 +434,17 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                   />
                 </Field>
               )}
+
+              <Field
+                label="Labels"
+                helper="Labels that must be present or absent."
+              >
+                <ValidationCaseLabelsEditor
+                  labels={caseData?.labels ?? null}
+                  availableLabels={extractUniqueLabels(validationCases || [])}
+                  onChange={(labels) => handleFieldChange("labels", labels)}
+                />
+              </Field>
 
               <Field
                 label="Split"

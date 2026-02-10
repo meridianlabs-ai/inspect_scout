@@ -20,7 +20,9 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageAssistant,
     ChatMessageSystem,
+    ChatMessageTool,
     ChatMessageUser,
     GenerateConfig,
     ModelOutput,
@@ -30,6 +32,7 @@ from inspect_scout._transcript.nodes import (
     AgentNode,
     AgentSourceSpan,
     AgentSourceTool,
+    Branch,
     EventNode,
     SectionNode,
     TranscriptNodes,
@@ -78,6 +81,15 @@ def _parse_input_messages(input_data: list[dict[str, Any]]) -> list[ChatMessage]
             messages.append(ChatMessageSystem(content=content))
         elif role == "user":
             messages.append(ChatMessageUser(content=content))
+        elif role == "assistant":
+            messages.append(ChatMessageAssistant(content=content))
+        elif role == "tool":
+            messages.append(
+                ChatMessageTool(
+                    content=content,
+                    tool_call_id=msg.get("tool_call_id", ""),
+                )
+            )
     return messages
 
 
@@ -325,6 +337,30 @@ def assert_section_matches(
         )
 
 
+def assert_branch_matches(
+    actual: Branch,
+    expected: dict[str, Any],
+    branch_name: str = "branch",
+) -> None:
+    """Assert a branch matches expected structure."""
+    assert actual.forked_at == expected["forked_at"], (
+        f"{branch_name} forked_at mismatch: "
+        f"got {actual.forked_at!r}, expected {expected['forked_at']!r}"
+    )
+
+    if "event_uuids" in expected:
+        actual_uuids: list[str] = []
+        for item in actual.content:
+            if isinstance(item, EventNode):
+                uuid = getattr(item.event, "uuid", None)
+                if uuid:
+                    actual_uuids.append(uuid)
+        assert actual_uuids == expected["event_uuids"], (
+            f"{branch_name} event UUIDs mismatch: "
+            f"got {actual_uuids}, expected {expected['event_uuids']}"
+        )
+
+
 def assert_agent_matches(
     actual: AgentNode | None,
     expected: dict[str, Any] | None,
@@ -379,6 +415,22 @@ def assert_agent_matches(
             f"{agent_name} utility mismatch: "
             f"got {actual.utility}, expected {expected['utility']}"
         )
+
+    # Check branches if specified
+    if "branches" in expected:
+        expected_branches = expected["branches"]
+        assert len(actual.branches) == len(expected_branches), (
+            f"{agent_name} branch count mismatch: "
+            f"got {len(actual.branches)}, expected {len(expected_branches)}"
+        )
+        for i, (actual_branch, expected_branch) in enumerate(
+            zip(actual.branches, expected_branches, strict=True)
+        ):
+            assert_branch_matches(
+                actual_branch,
+                expected_branch,
+                f"{agent_name}.branches[{i}]",
+            )
 
     # Check child agents if specified
     if "children" in expected:

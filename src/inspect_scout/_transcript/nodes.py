@@ -6,6 +6,8 @@ and phase separation (init/agent/scoring).
 Uses inspect_ai's event_tree() to parse span structure.
 """
 
+import hashlib
+import json
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -15,12 +17,18 @@ from typing import Literal
 from inspect_ai.event import (
     Event,
     ModelEvent,
+    SpanBeginEvent,
     SpanNode,
     ToolEvent,
     event_sequence,
     event_tree,
 )
-from inspect_ai.model import ChatMessageSystem
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageAssistant,
+    ChatMessageSystem,
+    ChatMessageTool,
+)
 
 # Type alias for tree items returned by event_tree
 TreeItem = SpanNode | Event
@@ -159,8 +167,32 @@ class AgentNode(TranscriptNode):
     name: str
     source: AgentSource
     content: list["EventNode | AgentNode"] = field(default_factory=list)
+    branches: list["Branch"] = field(default_factory=list)
     task_description: str | None = None
     utility: bool = False
+
+    @property
+    def start_time(self) -> datetime | None:
+        """Earliest start time among content."""
+        return _min_start_time(self.content)
+
+    @property
+    def end_time(self) -> datetime | None:
+        """Latest end time among content."""
+        return _max_end_time(self.content)
+
+    @property
+    def total_tokens(self) -> int:
+        """Sum of tokens from all content."""
+        return _sum_tokens(self.content)
+
+
+@dataclass
+class Branch(TranscriptNode):
+    """A discarded alternative path from a branch point."""
+
+    forked_at: str
+    content: list[EventNode | AgentNode] = field(default_factory=list)
 
     @property
     def start_time(self) -> datetime | None:
@@ -249,6 +281,11 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
     if not events:
         return TranscriptNodes()
 
+    # Detect explicit branches globally
+    has_explicit_branches = any(
+        isinstance(e, SpanBeginEvent) and e.type == "branch" for e in events
+    )
+
     # Use event_tree to get hierarchical structure
     tree = event_tree(events)
 
@@ -273,7 +310,9 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
             _build_section_from_span("init", init_span) if init_span else None
         )
         agent_node = (
-            _build_agent_from_solvers_span(solvers_span) if solvers_span else None
+            _build_agent_from_solvers_span(solvers_span, has_explicit_branches)
+            if solvers_span
+            else None
         )
         scoring_section = (
             _build_section_from_span("scoring", scorers_span) if scorers_span else None
@@ -281,6 +320,7 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
 
         if agent_node is not None:
             _classify_utility_agents(agent_node)
+            _classify_branches(agent_node, has_explicit_branches)
 
         return TranscriptNodes(
             init=init_section,
@@ -289,8 +329,9 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
         )
     else:
         # No phase spans - treat entire tree as agent
-        agent_node = _build_agent_from_tree(tree)
+        agent_node = _build_agent_from_tree(tree, has_explicit_branches)
         _classify_utility_agents(agent_node)
+        _classify_branches(agent_node, has_explicit_branches)
         return TranscriptNodes(agent=agent_node)
 
 
@@ -314,7 +355,9 @@ def _build_section_from_span(
     return SectionNode(section=section, content=content)
 
 
-def _build_agent_from_solvers_span(solvers_span: SpanNode) -> AgentNode | None:
+def _build_agent_from_solvers_span(
+    solvers_span: SpanNode, has_explicit_branches: bool
+) -> AgentNode | None:
     """Build agent hierarchy from the solvers span.
 
     Looks for explicit agent spans (type='agent') within the solvers span.
@@ -323,6 +366,7 @@ def _build_agent_from_solvers_span(solvers_span: SpanNode) -> AgentNode | None:
 
     Args:
         solvers_span: The top-level solvers SpanNode.
+        has_explicit_branches: Whether explicit branch spans exist globally.
 
     Returns:
         An AgentNode representing the agent hierarchy, or None if empty.
@@ -343,15 +387,18 @@ def _build_agent_from_solvers_span(solvers_span: SpanNode) -> AgentNode | None:
     if agent_spans:
         # Build from explicit agent spans
         if len(agent_spans) == 1:
-            return _build_agent_from_span(agent_spans[0], other_items)
+            return _build_agent_from_span(
+                agent_spans[0], has_explicit_branches, other_items
+            )
         else:
             # Multiple agent spans - create root containing all
             children: list[EventNode | AgentNode] = [
-                _build_agent_from_span(span, []) for span in agent_spans
+                _build_agent_from_span(span, has_explicit_branches, [])
+                for span in agent_spans
             ]
             # Add any orphan events
             for item in other_items:
-                children.insert(0, _tree_item_to_node(item))
+                children.insert(0, _tree_item_to_node(item, has_explicit_branches))
             return AgentNode(
                 id="root",
                 name="root",
@@ -360,26 +407,29 @@ def _build_agent_from_solvers_span(solvers_span: SpanNode) -> AgentNode | None:
             )
     else:
         # No explicit agent spans - use solvers span itself as the agent container
-        # Process children, which may include tool spans with model events
-        content: list[EventNode | AgentNode] = []
-        for item in solvers_span.children:
-            content.append(_tree_item_to_node(item))
+        content, branches = _process_children(
+            solvers_span.children, has_explicit_branches
+        )
 
         return AgentNode(
             id=solvers_span.id,
             name=solvers_span.name,
             source=AgentSourceSpan(span_id=solvers_span.id),
             content=content,
+            branches=branches,
         )
 
 
 def _build_agent_from_span(
-    span: SpanNode, extra_items: list[TreeItem] | None = None
+    span: SpanNode,
+    has_explicit_branches: bool,
+    extra_items: list[TreeItem] | None = None,
 ) -> AgentNode:
     """Build an AgentNode from a SpanNode with type='agent'.
 
     Args:
         span: The agent SpanNode to convert.
+        has_explicit_branches: Whether explicit branch spans exist globally.
         extra_items: Additional tree items (orphan events) to include
             at the start of the agent's content.
 
@@ -391,21 +441,24 @@ def _build_agent_from_span(
     # Add any extra items first (orphan events)
     if extra_items:
         for item in extra_items:
-            content.append(_tree_item_to_node(item))
+            content.append(_tree_item_to_node(item, has_explicit_branches))
 
-    # Process span children
-    for child in span.children:
-        content.append(_tree_item_to_node(child))
+    # Process span children with branch awareness
+    child_content, branches = _process_children(span.children, has_explicit_branches)
+    content.extend(child_content)
 
     return AgentNode(
         id=span.id,
         name=span.name,
         source=AgentSourceSpan(span_id=span.id),
         content=content,
+        branches=branches,
     )
 
 
-def _tree_item_to_node(item: TreeItem) -> EventNode | AgentNode:
+def _tree_item_to_node(
+    item: TreeItem, has_explicit_branches: bool
+) -> EventNode | AgentNode:
     """Convert a tree item (SpanNode or Event) to an EventNode or AgentNode.
 
     Dispatches to the appropriate builder based on item type:
@@ -415,17 +468,18 @@ def _tree_item_to_node(item: TreeItem) -> EventNode | AgentNode:
 
     Args:
         item: A tree item from event_tree() (SpanNode or Event).
+        has_explicit_branches: Whether explicit branch spans exist globally.
 
     Returns:
         An EventNode or AgentNode representing the item.
     """
     if isinstance(item, SpanNode):
         if item.type == "agent":
-            return _build_agent_from_span(item)
+            return _build_agent_from_span(item, has_explicit_branches)
         else:
             # Non-agent span - flatten to events wrapped in a synthetic agent
             # or just return the events directly
-            return _build_agent_from_span_generic(item)
+            return _build_agent_from_span_generic(item, has_explicit_branches)
     else:
         return _event_to_node(item)
 
@@ -453,15 +507,15 @@ def _event_to_node(event: Event) -> EventNode | AgentNode:
     return EventNode(event=event)
 
 
-def _build_agent_from_span_generic(span: SpanNode) -> AgentNode:
+def _build_agent_from_span_generic(
+    span: SpanNode, has_explicit_branches: bool
+) -> AgentNode:
     """Build an AgentNode from a non-agent SpanNode.
 
     If the span is a tool span (type="tool") containing model events,
     we treat it as a tool-spawned agent.
     """
-    content: list[EventNode | AgentNode] = []
-    for child in span.children:
-        content.append(_tree_item_to_node(child))
+    content, branches = _process_children(span.children, has_explicit_branches)
 
     # Determine the source based on span type and content
     source: AgentSource
@@ -476,6 +530,7 @@ def _build_agent_from_span_generic(span: SpanNode) -> AgentNode:
         name=span.name,
         source=source,
         content=content,
+        branches=branches,
     )
 
 
@@ -497,28 +552,313 @@ def _contains_model_events(span: SpanNode) -> bool:
     return False
 
 
-def _build_agent_from_tree(tree: list[TreeItem]) -> AgentNode:
+def _build_agent_from_tree(
+    tree: list[TreeItem], has_explicit_branches: bool
+) -> AgentNode:
     """Build agent from a list of tree items when no explicit phase spans exist.
 
     Creates a synthetic "main" agent containing all tree items as content.
 
     Args:
         tree: List of tree items from event_tree().
+        has_explicit_branches: Whether explicit branch spans exist globally.
 
     Returns:
         An AgentNode with id="main" containing all items.
     """
-    content: list[EventNode | AgentNode] = []
-
-    for item in tree:
-        content.append(_tree_item_to_node(item))
+    content, branches = _process_children(tree, has_explicit_branches)
 
     return AgentNode(
         id="main",
         name="main",
         source=AgentSourceSpan(span_id="main"),
         content=content,
+        branches=branches,
     )
+
+
+# =============================================================================
+# Branch Processing
+# =============================================================================
+
+
+def _process_children(
+    children: list[TreeItem], has_explicit_branches: bool
+) -> tuple[list[EventNode | AgentNode], list[Branch]]:
+    """Process a span's children with branch awareness.
+
+    When explicit branches are active, collects adjacent type="branch" SpanNode
+    runs and builds Branch objects from them. Otherwise, standard processing.
+
+    Args:
+        children: List of tree items to process.
+        has_explicit_branches: Whether explicit branch spans exist globally.
+
+    Returns:
+        Tuple of (content nodes, branch list).
+    """
+    if not has_explicit_branches:
+        # Standard processing - no branch detection at build time
+        content: list[EventNode | AgentNode] = []
+        for item in children:
+            content.append(_tree_item_to_node(item, has_explicit_branches))
+        return content, []
+
+    # Explicit branch mode: collect branch spans and build Branch objects
+    content = []
+    branches: list[Branch] = []
+    branch_run: list[SpanNode] = []
+
+    def _flush_branch_run(
+        branch_run: list[SpanNode],
+        parent_content: list[EventNode | AgentNode],
+    ) -> list[Branch]:
+        """Convert accumulated branch spans into Branch objects."""
+        result: list[Branch] = []
+        for span in branch_run:
+            branch_content: list[EventNode | AgentNode] = []
+            for child in span.children:
+                branch_content.append(_tree_item_to_node(child, has_explicit_branches))
+            branch_input = _get_branch_input(branch_content)
+            forked_at = (
+                _find_forked_at(parent_content, branch_input)
+                if branch_input is not None
+                else ""
+            )
+            result.append(Branch(forked_at=forked_at, content=branch_content))
+        return result
+
+    for item in children:
+        if isinstance(item, SpanNode) and item.type == "branch":
+            branch_run.append(item)
+        else:
+            if branch_run:
+                branches.extend(_flush_branch_run(branch_run, content))
+                branch_run = []
+            content.append(_tree_item_to_node(item, has_explicit_branches))
+
+    if branch_run:
+        branches.extend(_flush_branch_run(branch_run, content))
+
+    return content, branches
+
+
+def _find_forked_at(
+    agent_content: list[EventNode | AgentNode],
+    branch_input: list[ChatMessage],
+) -> str:
+    """Determine the fork point by matching the last shared input message.
+
+    Examines the last message in branch_input and matches it back to an event
+    in the parent's content.
+
+    Args:
+        agent_content: The parent agent's content list.
+        branch_input: The shared input messages of the branching ModelEvent.
+
+    Returns:
+        UUID of the event at the fork point, or "" if at the beginning.
+    """
+    if not branch_input:
+        return ""
+
+    last_msg = branch_input[-1]
+
+    if isinstance(last_msg, ChatMessageTool):
+        # Match tool_call_id to a ToolEvent.id
+        tool_call_id = getattr(last_msg, "tool_call_id", None)
+        if tool_call_id:
+            for item in agent_content:
+                if (
+                    isinstance(item, EventNode)
+                    and isinstance(item.event, ToolEvent)
+                    and item.event.id == tool_call_id
+                ):
+                    return item.event.uuid or ""
+        return ""
+
+    if isinstance(last_msg, ChatMessageAssistant):
+        # Match message id to ModelEvent.output.message.id
+        msg_id = getattr(last_msg, "id", None)
+        if msg_id:
+            for item in agent_content:
+                if isinstance(item, EventNode) and isinstance(item.event, ModelEvent):
+                    output = getattr(item.event, "output", None)
+                    if output is not None:
+                        out_msg = getattr(output, "message", None)
+                        if out_msg is not None:
+                            out_id = getattr(out_msg, "id", None)
+                            if out_id == msg_id:
+                                return item.event.uuid or ""
+        # Fallback: compare content
+        msg_content = getattr(last_msg, "content", None)
+        if msg_content:
+            for item in agent_content:
+                if isinstance(item, EventNode) and isinstance(item.event, ModelEvent):
+                    output = getattr(item.event, "output", None)
+                    if output is not None:
+                        out_msg = getattr(output, "message", None)
+                        if out_msg is not None:
+                            out_content = getattr(out_msg, "content", None)
+                            if out_content == msg_content:
+                                return item.event.uuid or ""
+        return ""
+
+    # ChatMessageUser / ChatMessageSystem - fork at beginning
+    return ""
+
+
+def _get_branch_input(
+    content: list[EventNode | AgentNode],
+) -> list[ChatMessage] | None:
+    """Extract the input from the first ModelEvent in branch content.
+
+    Args:
+        content: The branch's content nodes.
+
+    Returns:
+        The input message list, or None if no ModelEvent found.
+    """
+    for item in content:
+        if isinstance(item, EventNode) and isinstance(item.event, ModelEvent):
+            return list(item.event.input)
+    return None
+
+
+# =============================================================================
+# Branch Auto-Detection
+# =============================================================================
+
+
+def _message_fingerprint(msg: ChatMessage) -> str:
+    """Compute a fingerprint for a single ChatMessage.
+
+    Serializes role + content, ignoring auto-generated fields like id, source,
+    metadata.
+
+    Args:
+        msg: The chat message to fingerprint.
+
+    Returns:
+        SHA-256 hex digest of the message content.
+    """
+    role = getattr(msg, "role", "")
+    content = getattr(msg, "content", "")
+    if isinstance(content, str):
+        serialized = content
+    else:
+        # Content is list of Content objects
+        serialized = json.dumps(
+            [c.model_dump(exclude_none=True) for c in content],
+            sort_keys=True,
+        )
+    raw = f"{role}:{serialized}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _input_fingerprint(messages: list[ChatMessage]) -> str:
+    """Compute a fingerprint for a sequence of input messages.
+
+    Args:
+        messages: The input message list.
+
+    Returns:
+        SHA-256 hex digest of the concatenated message fingerprints.
+    """
+    parts = [_message_fingerprint(m) for m in messages]
+    combined = "|".join(parts)
+    return hashlib.sha256(combined.encode()).hexdigest()
+
+
+def _detect_auto_branches(agent: AgentNode) -> None:
+    """Detect re-rolled ModelEvents with identical inputs and create branches.
+
+    For each group of ModelEvents with the same input fingerprint, the last
+    one stays in content and earlier ones (plus their trailing events up to
+    the next re-roll) become branches.
+
+    Mutates agent in-place.
+
+    Args:
+        agent: The agent node to process.
+    """
+    # Find ModelEvent indices and their fingerprints (skip empty inputs)
+    model_indices: list[tuple[int, str]] = []
+    for i, item in enumerate(agent.content):
+        if isinstance(item, EventNode) and isinstance(item.event, ModelEvent):
+            input_msgs = list(item.event.input)
+            if not input_msgs:
+                continue
+            fp = _input_fingerprint(input_msgs)
+            model_indices.append((i, fp))
+
+    # Group by fingerprint
+    fingerprint_groups: dict[str, list[int]] = {}
+    for idx, fp in model_indices:
+        fingerprint_groups.setdefault(fp, []).append(idx)
+
+    # Only process groups with duplicates
+    duplicate_groups = {
+        fp: indices for fp, indices in fingerprint_groups.items() if len(indices) > 1
+    }
+
+    if not duplicate_groups:
+        return
+
+    # For each duplicate group, determine which indices become branches
+    branch_ranges: list[tuple[int, int, list[ChatMessage]]] = []
+
+    for _fp, indices in duplicate_groups.items():
+        # Last re-roll stays in content, earlier ones become branches
+        # Get the shared input from any of them
+        first_idx = indices[0]
+        first_item = agent.content[first_idx]
+        assert isinstance(first_item, EventNode) and isinstance(
+            first_item.event, ModelEvent
+        )
+        shared_input = list(first_item.event.input)
+
+        for i, branch_start in enumerate(indices[:-1]):
+            # Branch extends from this ModelEvent to just before the next re-roll
+            next_reroll = indices[i + 1]
+            branch_ranges.append((branch_start, next_reroll, shared_input))
+
+    # Sort by start index descending so we can remove from the end first
+    branch_ranges.sort(key=lambda x: x[0], reverse=True)
+
+    for start, end, shared_input in branch_ranges:
+        branch_content = list(agent.content[start:end])
+        forked_at = _find_forked_at(agent.content, shared_input)
+        agent.branches.append(Branch(forked_at=forked_at, content=branch_content))
+        del agent.content[start:end]
+
+    # Reverse branches so they're in original order
+    agent.branches.reverse()
+
+
+def _classify_branches(agent: AgentNode, has_explicit_branches: bool) -> None:
+    """Recursively detect branches in the agent tree.
+
+    If not in explicit mode, calls _detect_auto_branches on each agent.
+    Always recurses into child agents in both content and branches.
+
+    Args:
+        agent: The agent node to process.
+        has_explicit_branches: Whether explicit branch spans exist globally.
+    """
+    if not has_explicit_branches:
+        _detect_auto_branches(agent)
+
+    # Recurse into child agents in content
+    for item in agent.content:
+        if isinstance(item, AgentNode):
+            _classify_branches(item, has_explicit_branches)
+
+    # Recurse into agents within branches
+    for branch in agent.branches:
+        for item in branch.content:
+            if isinstance(item, AgentNode):
+                _classify_branches(item, has_explicit_branches)
 
 
 # =============================================================================
@@ -542,9 +882,7 @@ def _get_system_prompt(agent: AgentNode) -> str | None:
                     if isinstance(msg.content, str):
                         return msg.content
                     # Content is list of Content objects
-                    parts = [
-                        c.text for c in msg.content if hasattr(c, "text")
-                    ]
+                    parts = [c.text for c in msg.content if hasattr(c, "text")]
                     return "\n".join(parts) if parts else None
             return None  # ModelEvent found but no system message
     return None  # No ModelEvent found

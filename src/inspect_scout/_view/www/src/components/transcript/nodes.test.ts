@@ -14,6 +14,7 @@ import type { Event } from "../../types/api-types";
 import {
   AgentNodeType,
   AgentSource,
+  BranchType,
   buildTranscriptNodes,
   EventNodeType,
   SectionNodeType,
@@ -38,7 +39,7 @@ interface JsonEvent {
   function?: string;
   agent?: string;
   source?: string;
-  input?: Array<{ role: string; content: string }>;
+  input?: Array<{ role: string; content: string; tool_call_id?: string }>;
   output?: {
     usage?: {
       input_tokens?: number;
@@ -53,12 +54,18 @@ interface ExpectedAgentSource {
   span_id?: string;
 }
 
+interface ExpectedBranch {
+  forked_at: string;
+  event_uuids: string[];
+}
+
 interface ExpectedAgent {
   id: string;
   name: string;
   source: ExpectedAgentSource;
   event_uuids?: string[];
   nested_uuids?: string[];
+  branches?: ExpectedBranch[];
   children?: ExpectedAgent[];
   content_structure?: Array<{
     type: "event" | "agent";
@@ -136,12 +143,23 @@ function createEvent(data: JsonEvent): Event | null {
   switch (data.event) {
     case "model": {
       // Create a minimal ModelEvent-like object with just what we need
+      // Map input messages to include tool_call_id for tool messages
+      const inputMsgs = (data.input ?? []).map((msg) => {
+        const mapped: Record<string, unknown> = {
+          role: msg.role,
+          content: msg.content,
+        };
+        if (msg.tool_call_id !== undefined) {
+          mapped.tool_call_id = msg.tool_call_id;
+        }
+        return mapped;
+      });
       return {
         ...baseFields,
         event: "model",
         model: data.model ?? "unknown",
         completed: data.completed ?? null,
-        input: data.input ?? [],
+        input: inputMsgs,
         output: data.output
           ? {
               usage: data.output.usage
@@ -294,11 +312,29 @@ function assertSectionMatches(
 }
 
 /**
+ * Assert that a BranchType matches expected values.
+ */
+function assertBranchMatches(
+  actual: BranchType,
+  expected: ExpectedBranch
+): void {
+  expect(actual.forkedAt).toBe(expected.forked_at);
+  if (expected.event_uuids !== undefined) {
+    const uuids = actual.content
+      .filter((c): c is EventNodeType => c.type === "event")
+      .map((c) => c.event.uuid)
+      .filter((uuid): uuid is string => uuid !== null);
+    expect(uuids).toEqual(expected.event_uuids);
+  }
+}
+
+/**
  * Assert that an AgentNode matches expected values.
  *
  * This handles various fixture formats:
  * - event_uuids: direct event UUIDs at this level
  * - nested_uuids: all event UUIDs in nested structure
+ * - branches: branch assertions
  * - children: child agent assertions
  * - content_structure: detailed content type assertions
  * - total_tokens: token count validation
@@ -330,6 +366,18 @@ function assertAgentMatches(
   // Check utility if specified
   if (expected.utility !== undefined) {
     expect(actual!.utility).toBe(expected.utility);
+  }
+
+  // Check branches if specified
+  if (expected.branches !== undefined) {
+    expect(actual!.branches.length).toBe(expected.branches.length);
+    for (let i = 0; i < expected.branches.length; i++) {
+      const actualBranch = actual!.branches[i];
+      const expectedBranch = expected.branches[i];
+      if (actualBranch && expectedBranch) {
+        assertBranchMatches(actualBranch, expectedBranch);
+      }
+    }
   }
 
   // Check children if specified

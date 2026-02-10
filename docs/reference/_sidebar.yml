@@ -79,12 +79,12 @@ website:
           href: reference/transcript.qmd#transcripts_from
         - text: Transcript
           href: reference/transcript.qmd#transcript
-        - text: SampleMetadata
-          href: reference/transcript.qmd#samplemetadata
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
         - text: TranscriptsReader
           href: reference/transcript.qmd#transcriptsreader
+        - text: SampleMetadata
+          href: reference/transcript.qmd#samplemetadata
         - text: transcripts_db
           href: reference/transcript.qmd#transcripts_db
         - text: transcripts_db_schema

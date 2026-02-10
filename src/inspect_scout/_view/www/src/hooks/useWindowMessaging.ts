@@ -1,5 +1,5 @@
 import JSON5 from "json5";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useAppConfig } from "../app/server/useAppConfig";
 import { useLoggingNavigate } from "../debugging/navigationDebugging";
@@ -117,12 +117,14 @@ export const useWindowMessaging = (): void => {
   const selectedScanner = useStore((state) => state.selectedScanner);
   const scansDir = useAppConfig().scans.dir;
 
-  const context: MessageContext = {
-    navigate,
-    setSingleFileMode,
-    setSelectedScanner,
-    scansDir: scansDir ?? "",
-  };
+  const context: MessageContext = useMemo(() => {
+    return {
+      navigate,
+      setSingleFileMode,
+      setSelectedScanner,
+      scansDir: scansDir ?? "",
+    };
+  }, [navigate, setSingleFileMode, setSelectedScanner, scansDir]);
 
   const hasInitializedEmbeddedData = useStore(
     (state) => state.hasInitializedEmbeddedData

@@ -394,3 +394,112 @@ Toggling shows utility agents as single-line entries with `⚙`, inline where th
 - `⚙` entries are single-line — no box, no task description
 - Utility agents are never shown in the timeline, only in the content panel
 - The toggle count reflects the selected agent's utility agents, not the whole trace
+
+## 11. Branches
+
+Branches represent alternative execution paths forked from a point in an agent's trajectory. They appear when an agent retries, backtracks, or explores multiple strategies. Each branch shares the same events up to the fork point, then diverges.
+
+### Timeline: Inline Branch Marker
+
+Branches don't get their own swimlane rows. Instead, a `⑂` marker appears inline on the parent agent's bar at each fork point. Clicking the marker opens a popover listing the branches at that point. Selecting a branch from the popover drills down.
+
+#### Branch Markers on Timeline Bars
+
+Build has two child agents and a fork point with two branches:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ← Transcript › Build                                      31.8k tokens   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Build    │████████████⑂████████████████████████████████████████████│     │
+│  Code    │ ██████████████████████                                  │15.2k│
+│  Test    │                       ████████████████                  │10.4k│
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Multiple Fork Points
+
+Each fork point gets its own `⑂` marker:
+
+```
+│ Build    │████████████⑂████████████⑂██████████████████████████████│      │
+```
+
+#### Branch Popover
+
+Clicking a `⑂` marker opens a popover listing the branches at that fork point. Each entry shows label, tokens, and duration:
+
+```
+┌──────────────────────────────────┐
+│ ⑂ branch 1        8.7k ·  6.1s  │
+│ ⑂ branch 2        5.1k ·  4.3s  │
+└──────────────────────────────────┘
+```
+
+Clicking a branch entry drills down:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ← Transcript › Build › ⑂ branch 1                          8.7k tokens   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ ⑂ branch 1│███████████████████████████████████████████████████████│      │
+│  Refactor  │ ████████████████████                                 │ 5.2k │
+│  Validate  │                      ██████████████████████████████  │ 3.5k │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Notes:**
+- `⑂` markers replace a single `█` character — same pattern as error/compaction markers (section 5)
+- The popover is lightweight — just a list, not a full panel
+- Keeps the timeline compact; branches don't consume swimlane rows
+
+### Content Panel: Branch Cards
+
+Branch cards use dashed borders (`╌`) to distinguish from child agent cards (`─`). They appear inline at the fork point — after the `forkedAt` event — and show label, tokens, duration, and first model output preview. Clicking a branch card drills down.
+
+#### Branch Cards at Fork Point
+
+```
+│                                                                          │
+│ ◆ MODEL                                                          3.4k    │
+│ The current approach isn't working. Let me try a different               │
+│ strategy...                                                              │
+│                                                                          │
+│ ┌──────────────────────────────────────────────────────────────┐         │
+│ │ Code                                        15.2k · 12.4s    │         │
+│ │ "Implement the authentication changes"                       │         │
+│ └──────────────────────────────────────────────────────────────┘         │
+│                                                                          │
+│ ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐             │
+│ ╎ ⑂ branch 1                                   8.7k ·  6.1 ╎             │
+│ ╎ "Let me try a recursive approach instead"                ╎             │
+│ └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘             │
+│ ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐             │
+│ ╎ ⑂ branch 2                                   5.1k ·  4.3 ╎             │
+│ ╎ "Attempting a greedy algorithm approach"                 ╎             │
+│ └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘             │
+│                                                                          │
+│ ◆ MODEL                                                          1.2k    │
+│ Tests passing. Changes complete.                                         │
+│                                                                          │
+```
+
+**Notes:**
+- Dashed borders (`╌` / `╎`) visually separate branch cards from child agent cards (`─` / `│`)
+- Multiple branches at the same fork point appear consecutively
+- Branch cards show the first model output as a preview, same as child agent cards
+- Clicking a branch card drills down (same as selecting from the `⑂` popover)
+
+### Naming
+
+- **Explicit branches**: use the span `name` from the transcript (e.g., `⑂ retry`, `⑂ backtrack`)
+- **Auto-detected branches**: numbered sequentially — `⑂ branch 1`, `⑂ branch 2`, etc.
+- The `⑂` prefix is always shown to distinguish branches from child agents
+
+### Visual Language Summary
+
+| Element | Timeline | Content Panel |
+|---------|----------|---------------|
+| Child agent | `██████` solid bar, own row | `┌─` solid-border card |
+| Branch | `⑂` inline marker, popover to drill down | `┌╌` dashed-border card, `⑂` prefix |
+| Utility agent | Not shown | `⚙` single-line entry |

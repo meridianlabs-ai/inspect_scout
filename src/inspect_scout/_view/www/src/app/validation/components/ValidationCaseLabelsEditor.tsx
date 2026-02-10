@@ -150,11 +150,13 @@ export const ValidationCaseLabelsEditor: FC<
               }
             >
               <VscodeRadio
+                name="label-value"
                 label="True"
                 value="true"
                 checked={newLabelValue === "true"}
               />
               <VscodeRadio
+                name="label-value"
                 label="False"
                 value="false"
                 checked={newLabelValue === "false"}

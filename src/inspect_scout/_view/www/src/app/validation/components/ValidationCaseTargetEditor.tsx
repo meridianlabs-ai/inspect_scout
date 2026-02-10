@@ -111,9 +111,24 @@ export const ValidationCaseTargetEditor: FC<
           handleRadioChange((e.target as HTMLInputElement).value)
         }
       >
-        <VscodeRadio label="True" value="true" checked={mode === "true"} />
-        <VscodeRadio label="False" value="false" checked={mode === "false"} />
-        <VscodeRadio label="Other" value="other" checked={mode === "other"} />
+        <VscodeRadio
+          name="target-mode"
+          label="True"
+          value="true"
+          checked={mode === "true"}
+        />
+        <VscodeRadio
+          name="target-mode"
+          label="False"
+          value="false"
+          checked={mode === "false"}
+        />
+        <VscodeRadio
+          name="target-mode"
+          label="Other"
+          value="other"
+          checked={mode === "other"}
+        />
       </VscodeRadioGroup>
 
       {mode === "other" && (

@@ -1,5 +1,9 @@
 import { skipToken, useQueryClient } from "@tanstack/react-query";
-import { VscodeDivider } from "@vscode-elements/react-elements";
+import {
+  VscodeDivider,
+  VscodeRadio,
+  VscodeRadioGroup,
+} from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import React, { FC, ReactNode, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -146,6 +150,8 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
   );
 };
 
+type ValidationType = "target" | "labels";
+
 interface ValidationCaseEditorComponentProps {
   transcriptId: string;
   validationSets: string[];
@@ -185,6 +191,19 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
 
   // Track when "other" mode is selected in the target editor
   const [isOtherModeSelected, setIsOtherModeSelected] = useState(false);
+
+  // Track whether user is editing a target or labels
+  const [validationType, setValidationType] = useState<ValidationType>(() =>
+    caseData?.labels != null ? "labels" : "target"
+  );
+
+  // Sync validationType when caseData changes (e.g., switching cases)
+  useEffect(() => {
+    // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValidationType(caseData?.labels != null ? "labels" : "target");
+  }, [caseData?.labels]);
+
   const deleteCaseMutation = useDeleteValidationCase(
     editorValidationSetUri ?? ""
   );
@@ -265,6 +284,35 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
       queryClient,
       updateValidationCaseMutation,
     ]
+  );
+
+  // Handle switching between target and labels mode
+  const handleValidationTypeChange = useCallback(
+    (newType: string) => {
+      // Validate - the web component may fire change events with unexpected values
+      if (newType !== "target" && newType !== "labels") return;
+      if (newType === validationType) return;
+      setValidationType(newType);
+
+      // Clear both values in the cache so the user starts fresh in the new mode.
+      // Don't fire a save - the isNewEmptyCase guard prevents it.
+      if (editorValidationSetUri) {
+        queryClient.setQueryData(
+          validationQueryKeys.case({
+            url: editorValidationSetUri,
+            caseId: transcriptId,
+          }),
+          (prev: ValidationCase | null | undefined) => ({
+            id: prev?.id ?? transcriptId,
+            target: null,
+            labels: null,
+            predicate: prev?.predicate ?? null,
+            split: prev?.split ?? null,
+          })
+        );
+      }
+    },
+    [validationType, editorValidationSetUri, transcriptId, queryClient]
   );
 
   const handleValidationSetSelect = useCallback(
@@ -350,23 +398,26 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     caseData?.target === null ||
     (!Array.isArray(caseData.target) && typeof caseData.target !== "object");
 
-  const actions: ReactNode =
-    caseData?.target != null && caseData.target !== "" ? (
-      <MenuActionButton
-        items={[
-          {
-            icon: ApplicationIcons.trash,
-            label: "Delete validation case",
-            value: "delete",
-            disabled: deleteCaseMutation.isPending,
-          },
-        ]}
-        onSelect={(value) => {
-          if (value === "delete") setShowDeleteModal(true);
-        }}
-        title="More actions"
-      />
-    ) : undefined;
+  const hasCaseData =
+    (caseData?.target != null && caseData.target !== "") ||
+    caseData?.labels != null;
+
+  const actions: ReactNode = hasCaseData ? (
+    <MenuActionButton
+      items={[
+        {
+          icon: ApplicationIcons.trash,
+          label: "Delete validation case",
+          value: "delete",
+          disabled: deleteCaseMutation.isPending,
+        },
+      ]}
+      onSelect={(value) => {
+        if (value === "delete") setShowDeleteModal(true);
+      }}
+      title="More actions"
+    />
+  ) : undefined;
 
   return (
     <div className={clsx(styles.container, className)}>
@@ -404,47 +455,83 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
           )}
           {editorValidationSetUri && isEditable && (
             <>
-              <Field label="Target" helper="The expected value for this case.">
-                <ValidationCaseTargetEditor
-                  target={caseData?.target}
-                  onChange={(target) => {
-                    if (!isOtherTarget(target)) {
-                      // Set predicate to "eq" for boolean targets
-                      handleFieldChange("predicate", "eq");
-                    }
-                    handleFieldChange("target", target);
-                  }}
-                  onModeChange={setIsOtherModeSelected}
-                />
+              <Field
+                label="Type"
+                helper="Choose single-value validation or label-based validation."
+              >
+                <VscodeRadioGroup
+                  key={validationType}
+                  onChange={(e) =>
+                    handleValidationTypeChange(
+                      (e.target as HTMLInputElement).value
+                    )
+                  }
+                >
+                  <VscodeRadio
+                    name="validation-type"
+                    label="Values"
+                    value="target"
+                    defaultChecked={validationType === "target"}
+                  />
+                  <VscodeRadio
+                    name="validation-type"
+                    label="Labels"
+                    value="labels"
+                    defaultChecked={validationType === "labels"}
+                  />
+                </VscodeRadioGroup>
               </Field>
 
-              {isOtherModeSelected && (
+              {validationType === "target" && (
+                <>
+                  <Field
+                    label="Target"
+                    helper="The expected value for this case."
+                  >
+                    <ValidationCaseTargetEditor
+                      target={caseData?.target}
+                      onChange={(target) => {
+                        if (!isOtherTarget(target)) {
+                          // Set predicate to "eq" for boolean targets
+                          handleFieldChange("predicate", "eq");
+                        }
+                        handleFieldChange("target", target);
+                      }}
+                      onModeChange={setIsOtherModeSelected}
+                    />
+                  </Field>
+
+                  {isOtherModeSelected && (
+                    <Field
+                      label="Predicate"
+                      helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+                    >
+                      <ValidationCasePredicateSelector
+                        value={caseData?.predicate || null}
+                        onChange={(predicate) =>
+                          handleFieldChange("predicate", predicate)
+                        }
+                        existingPredicates={extractUniquePredicates(
+                          validationCases || []
+                        )}
+                      />
+                    </Field>
+                  )}
+                </>
+              )}
+
+              {validationType === "labels" && (
                 <Field
-                  label="Predicate"
-                  helper="Specifies the comparison logic for individual cases (by default, comparison is for equality)."
+                  label="Labels"
+                  helper="Labels that must be present or absent."
                 >
-                  <ValidationCasePredicateSelector
-                    value={caseData?.predicate || null}
-                    onChange={(predicate) =>
-                      handleFieldChange("predicate", predicate)
-                    }
-                    existingPredicates={extractUniquePredicates(
-                      validationCases || []
-                    )}
+                  <ValidationCaseLabelsEditor
+                    labels={caseData?.labels ?? null}
+                    availableLabels={extractUniqueLabels(validationCases || [])}
+                    onChange={(labels) => handleFieldChange("labels", labels)}
                   />
                 </Field>
               )}
-
-              <Field
-                label="Labels"
-                helper="Labels that must be present or absent."
-              >
-                <ValidationCaseLabelsEditor
-                  labels={caseData?.labels ?? null}
-                  availableLabels={extractUniqueLabels(validationCases || [])}
-                  onChange={(labels) => handleFieldChange("labels", labels)}
-                />
-              </Field>
 
               <Field
                 label="Split"

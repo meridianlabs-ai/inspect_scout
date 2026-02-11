@@ -591,3 +591,160 @@ class TestConditionAsSqlParameterized:
         sql, params = condition_as_sql(c)
         assert sql == '"count" = ?'
         assert params == [42]
+
+
+class TestDialectSpecificSQL:
+    """Tests for dialect-specific SQL generation (sqlite, duckdb, postgres)."""
+
+    # JSON path formatting per dialect
+    def test_sqlite_json_path_simple(self) -> None:
+        c = Column("config.model.name") == "gpt-4"
+        sql, params = condition_as_sql(c, "sqlite")
+        assert "json_extract" in sql
+        assert "$.model.name" in sql
+        assert params == ["gpt-4"]
+
+    def test_duckdb_json_path_simple(self) -> None:
+        c = Column("config.model.name") == "gpt-4"
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "json_extract_string" in sql
+        assert "$.model.name" in sql
+        assert params == ["gpt-4"]
+
+    def test_postgres_json_path_simple(self) -> None:
+        c = Column("config.model.name") == "gpt-4"
+        sql, params = condition_as_sql(c, "postgres")
+        assert "->>" in sql or "->" in sql
+        assert params == ["gpt-4"]
+
+    def test_sqlite_json_path_with_array_index(self) -> None:
+        c = Column("items[0].name") == "test"
+        sql, params = condition_as_sql(c, "sqlite")
+        assert "json_extract" in sql
+        assert "[0]" in sql
+        assert params == ["test"]
+
+    def test_duckdb_json_path_with_array_index(self) -> None:
+        c = Column("items[0].name") == "test"
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "json_extract_string" in sql
+        assert "[0]" in sql
+        assert params == ["test"]
+
+    def test_postgres_json_path_with_array_index(self) -> None:
+        c = Column("items[0].name") == "test"
+        sql, params = condition_as_sql(c, "postgres")
+        assert "->>" in sql or "->" in sql
+        assert params == ["test"]
+
+    # Type casting for JSON paths
+    def test_postgres_json_path_int_cast(self) -> None:
+        c = Column("config.count") == 42
+        sql, params = condition_as_sql(c, "postgres")
+        assert "::text::bigint" in sql
+        assert params == [42]
+
+    def test_postgres_json_path_float_cast(self) -> None:
+        c = Column("config.score") == 0.75
+        sql, params = condition_as_sql(c, "postgres")
+        assert "::text::double precision" in sql
+        assert params == [0.75]
+
+    def test_postgres_json_path_bool_cast(self) -> None:
+        c = Column("config.active") == True  # noqa: E712
+        sql, params = condition_as_sql(c, "postgres")
+        assert "::text::boolean" in sql
+        assert params == [True]
+
+    def test_duckdb_json_path_int_cast(self) -> None:
+        c = Column("config.count") == 42
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "::BIGINT" in sql
+        assert params == [42]
+
+    def test_duckdb_json_path_float_cast(self) -> None:
+        c = Column("config.score") == 0.75
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "::DOUBLE" in sql
+        assert params == [0.75]
+
+    def test_duckdb_json_path_bool_cast(self) -> None:
+        c = Column("config.active") == True  # noqa: E712
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "::BOOLEAN" in sql
+        assert params == [True]
+
+    # LIKE operators skip numeric casting but may need VARCHAR cast
+    def test_postgres_like_no_numeric_cast(self) -> None:
+        c = Column("config.name").like("%test%")
+        sql, params = condition_as_sql(c, "postgres")
+        assert "::bigint" not in sql
+        assert "::double" not in sql.lower()
+        assert "ILIKE" in sql or "LIKE" in sql
+
+    def test_duckdb_like_varchar_cast(self) -> None:
+        c = Column("config.name").like("%test%")
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "CAST" in sql and "VARCHAR" in sql
+        assert params == ["%test%"]
+
+    # Placeholder syntax per dialect
+    def test_sqlite_uses_question_mark(self) -> None:
+        c = Column("model") == "gpt-4"
+        sql, params = condition_as_sql(c, "sqlite")
+        assert "?" in sql
+        assert "$" not in sql
+
+    def test_duckdb_uses_question_mark(self) -> None:
+        c = Column("model") == "gpt-4"
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "?" in sql
+        assert "$" not in sql
+
+    def test_postgres_uses_dollar_sign(self) -> None:
+        c = Column("model") == "gpt-4"
+        sql, params = condition_as_sql(c, "postgres")
+        assert "$1" in sql
+        assert "?" not in sql
+
+    def test_postgres_multiple_params_numbered(self) -> None:
+        c = Column("score").between(0.0, 1.0)
+        sql, params = condition_as_sql(c, "postgres")
+        assert "$1" in sql
+        assert "$2" in sql
+        assert params == [0.0, 1.0]
+
+    # IN with multiple values
+    def test_sqlite_in_placeholders(self) -> None:
+        c = Column("model").in_(["a", "b", "c"])
+        sql, params = condition_as_sql(c, "sqlite")
+        assert sql.count("?") == 3
+        assert params == ["a", "b", "c"]
+
+    def test_postgres_in_placeholders(self) -> None:
+        c = Column("model").in_(["a", "b", "c"])
+        sql, params = condition_as_sql(c, "postgres")
+        assert "$1" in sql
+        assert "$2" in sql
+        assert "$3" in sql
+        assert params == ["a", "b", "c"]
+
+    # ILIKE handling differs by dialect
+    def test_sqlite_ilike_uses_lower(self) -> None:
+        c = Column("model").ilike("%GPT%")
+        sql, params = condition_as_sql(c, "sqlite")
+        assert "LOWER" in sql
+        assert "LIKE" in sql
+        assert "ILIKE" not in sql
+
+    def test_postgres_ilike_native(self) -> None:
+        c = Column("model").ilike("%GPT%")
+        sql, params = condition_as_sql(c, "postgres")
+        assert "ILIKE" in sql
+        assert "LOWER" not in sql
+
+    def test_duckdb_ilike_uses_lower(self) -> None:
+        c = Column("model").ilike("%GPT%")
+        sql, params = condition_as_sql(c, "duckdb")
+        assert "LOWER" in sql
+        assert "LIKE" in sql

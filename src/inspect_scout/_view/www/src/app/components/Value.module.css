@@ -4,9 +4,10 @@
   align-items: center;
   border-radius: 5px;
   padding: 8px;
+  margin-bottom: 1px;
   width: 2.5rem;
   height: 1rem;
-  font-size: 0.7rem;
+  font-size: var(--inspect-font-size-smallest);
 }
 
 .true {
@@ -23,9 +24,15 @@
 
 .valueTable {
   display: grid;
-  grid-template-columns: max-content auto;
+  grid-template-columns: minmax(auto, max-content) auto;
   column-gap: 1rem;
   row-gap: 0rem;
+}
+
+.valueKey {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inline .valueValue {

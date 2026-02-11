@@ -7228,50 +7228,57 @@ a._citationLink_1ggvf_9:hover {
   border: none;
   margin-left: 0.4rem;
 }
-._boolean_11h9i_1 {
+._boolean_8citi_1 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   border-radius: 5px;
   padding: 8px;
+  margin-bottom: 1px;
   width: 2.5rem;
   height: 1rem;
-  font-size: 0.7rem;
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._true_11h9i_12 {
+._true_8citi_13 {
   background-color: var(--bs-success);
   border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
 }
 
-._false_11h9i_18 {
+._false_8citi_19 {
   background-color: var(--bs-danger);
   border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
 }
 
-._valueTable_11h9i_24 {
+._valueTable_8citi_25 {
   display: grid;
-  grid-template-columns: max-content auto;
+  grid-template-columns: minmax(auto, max-content) auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }
 
-._inline_11h9i_31 ._valueValue_11h9i_31 {
+._valueKey_8citi_32 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._inline_8citi_38 ._valueValue_8citi_38 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: end;
 }
 
-._inline_11h9i_31 ._valueValue_11h9i_31 p {
+._inline_8citi_38 ._valueValue_8citi_38 p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-pre._value_11h9i_24 {
+pre._value_8citi_25 {
   margin: 0;
 }
 ._title_19l1b_1 {

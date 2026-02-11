@@ -1,8 +1,10 @@
 import clsx from "clsx";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { PopOver } from "../../../../components/PopOver";
-import { useStore } from "../../../../state/store";
+import { getColumnsParam, updateColumnsParam } from "../../../../router/url";
+import { ColumnPreset, useStore } from "../../../../state/store";
 
 import { defaultColumns } from "./../types";
 import styles from "./ScannerDataframeColumnsPopover.module.css";
@@ -59,7 +61,7 @@ const columnsGroups = {
     "label",
     "value_type",
     "answer",
-    "scan_tokens_total",
+    "scan_total_tokens",
     "scan_model_usage",
     "scan_events",
     "timestamp",
@@ -175,6 +177,133 @@ const useDataframeColumns = () => {
   };
 };
 
+/**
+ * Hook to sync dataframe column selection with the URL `cols` query param.
+ * On mount, if `cols` is present in the URL, applies those columns.
+ * On column changes, updates the URL param to keep it in sync.
+ */
+const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const initializedRef = useRef(false);
+
+  // On mount: apply URL columns if present
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const urlColumns = getColumnsParam(searchParams);
+    if (urlColumns) {
+      setFilteredColumns(urlColumns);
+    }
+  }, []);
+
+  // On column changes: update URL param (skip first render after mount init)
+  useEffect(() => {
+    if (!initializedRef.current) return;
+
+    setSearchParams(
+      (prev) => updateColumnsParam(prev, isDefault ? undefined : filtered),
+      { replace: true }
+    );
+  }, [filtered, isDefault, setSearchParams]);
+};
+
+const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
+  const presets =
+    useStore((state) => state.dataframeColumnPresets) ?? [];
+  const setPresets = useStore((state) => state.setDataframeColumnPresets);
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSaving && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isSaving]);
+
+  const handleSave = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    const newPreset: ColumnPreset = { name, columns: [...filtered] };
+    setPresets([...presets, newPreset]);
+    setPresetName("");
+    setIsSaving(false);
+  };
+
+  const handleDelete = (index: number) => {
+    setPresets(presets.filter((_, i) => i !== index));
+  };
+
+  const handleLoad = (preset: ColumnPreset) => {
+    setFilteredColumns(preset.columns);
+  };
+
+  return (
+    <div className={styles.presets}>
+      {presets.map((preset, index) => (
+        <div key={index} className={styles.presetItem}>
+          <a
+            className={styles.presetLink}
+            onClick={() => handleLoad(preset)}
+            title={`Load "${preset.name}" (${preset.columns.length} columns)`}
+          >
+            {preset.name}
+          </a>
+          <button
+            className={styles.presetDelete}
+            onClick={() => handleDelete(index)}
+            title={`Delete "${preset.name}"`}
+          >
+            &times;
+          </button>
+        </div>
+      ))}
+      {isSaving ? (
+        <div className={styles.presetSaveRow}>
+          <input
+            ref={inputRef}
+            className={styles.presetInput}
+            type="text"
+            placeholder="Preset name"
+            value={presetName}
+            onChange={(e) => setPresetName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") {
+                setIsSaving(false);
+                setPresetName("");
+              }
+            }}
+          />
+          <a className={styles.presetLink} onClick={handleSave}>
+            Save
+          </a>
+          <a
+            className={styles.presetLink}
+            onClick={() => {
+              setIsSaving(false);
+              setPresetName("");
+            }}
+          >
+            Cancel
+          </a>
+        </div>
+      ) : (
+        <a className={styles.presetLink} onClick={() => setIsSaving(true)}>
+          Save current...
+        </a>
+      )}
+    </div>
+  );
+};
+
 export const ScannerDataframeColumnsPopover: FC<
   ScannerDataframeColumnsPopoverProps
 > = ({ positionEl }) => {
@@ -192,6 +321,9 @@ export const ScannerDataframeColumnsPopover: FC<
     filtered,
     arrangedColumns,
   } = useDataframeColumns();
+
+  useColumnsUrlSync(filtered, isDefaultFilter);
+
   return (
     <PopOver
       id={`scandata-choose-columns-popover`}
@@ -222,6 +354,8 @@ export const ScannerDataframeColumnsPopover: FC<
           All
         </a>
       </div>
+
+      <PresetSection filtered={filtered} />
 
       <div className={clsx(styles.grid, "text-size-smaller")}>
         {arrangedColumns(3).map((columnGroup, colIndex) => {

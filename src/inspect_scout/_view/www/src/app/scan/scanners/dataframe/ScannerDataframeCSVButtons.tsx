@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { FC, useCallback } from "react";
 
 import { ApplicationIcons } from "../../../../components/icons";
 import { ToolButton } from "../../../../components/ToolButton";
@@ -6,12 +6,7 @@ import { useStore } from "../../../../state/store";
 import { defaultColumns } from "../types";
 
 import { useDataframeGridApi } from "./DataframeGridApiContext";
-
-/** Transient status for copy/download operations */
-type OperationStatus = "idle" | "success" | "error" | "empty";
-
-/** Duration to show success/error feedback before resetting to idle */
-const FEEDBACK_DURATION_MS = 2000;
+import { useOperationStatus } from "./useOperationStatus";
 
 /**
  * Sanitize a string for use as a filename by replacing invalid characters.
@@ -27,50 +22,6 @@ const sanitizeFilename = (name: string, fallback = "scan"): string => {
  */
 const getFileTimestamp = (): string =>
   new Date().toISOString().slice(0, 19).replace(/[:-]/g, "");
-
-/**
- * Hook for managing transient operation status with auto-reset.
- * Handles cleanup on unmount to prevent state updates after unmount.
- */
-const useOperationStatus = () => {
-  const [status, setStatus] = useState<OperationStatus>("idle");
-  const timeoutRef = useRef<number | null>(null);
-  const isMountedRef = useRef(true);
-
-  // Track mounted state and cleanup timeout on unmount
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  const setTransientStatus = useCallback((newStatus: OperationStatus) => {
-    if (!isMountedRef.current) return;
-
-    setStatus(newStatus);
-
-    // Clear any pending timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    // Auto-reset to idle after feedback duration (except for idle itself)
-    if (newStatus !== "idle") {
-      timeoutRef.current = window.setTimeout(() => {
-        if (isMountedRef.current) {
-          setStatus("idle");
-        }
-      }, FEEDBACK_DURATION_MS);
-    }
-  }, []);
-
-  return [status, setTransientStatus] as const;
-};
 
 /**
  * Button to copy filtered dataframe data as CSV to clipboard.

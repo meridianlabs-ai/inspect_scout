@@ -16,6 +16,7 @@ import { ScanInfo } from "./info/ScanInfo";
 import { DataframeGridApiProvider } from "./scanners/dataframe/DataframeGridApiContext";
 import { ScannerDataframeClearFiltersButton } from "./scanners/dataframe/ScannerDataframeClearFiltersButton";
 import { ScannerDataframeColumnsPopover } from "./scanners/dataframe/ScannerDataframeColumnsPopover";
+import { ScannerDataframeCopyLinkButton } from "./scanners/dataframe/ScannerDataframeCopyLinkButton";
 import {
   ScannerDataframeCopyCSVButton,
   ScannerDataframeDownloadCSVButton,
@@ -79,7 +80,11 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
   // Helper function to update both store and URL
   const handleTabChange = (tabId: string) => {
     setSelectedResultsTab(tabId);
-    setSearchParams({ tab: tabId });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tabId);
+      return next;
+    });
   };
 
   const selectedResultsView =
@@ -161,6 +166,9 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
       );
       tools.push(
         <ScannerDataframeDownloadCSVButton key="scan-dataframe-download-csv" />
+      );
+      tools.push(
+        <ScannerDataframeCopyLinkButton key="scan-dataframe-copy-link" />
       );
       tools.push(
         <ScannerDataframeWrapTextButton key="scan-dataframe-wrap-text" />

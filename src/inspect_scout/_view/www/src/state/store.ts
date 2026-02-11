@@ -23,6 +23,12 @@ import type { SimpleCondition } from "../query/types";
 import { TranscriptInfo } from "../types/api-types";
 import { debounce } from "../utils/sync";
 
+// Column preset for dataframe view
+export interface ColumnPreset {
+  name: string;
+  columns: string[];
+}
+
 // Filter types for columns
 export type FilterType =
   | "string"
@@ -117,6 +123,7 @@ interface StoreState {
   dataframeWrapText?: boolean;
   dataframeShowFilterColumns?: boolean;
   dataframeFilterColumns?: string[];
+  dataframeColumnPresets?: ColumnPreset[];
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -234,6 +241,7 @@ interface StoreState {
   setDataframeWrapText: (wrap: boolean) => void;
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
+  setDataframeColumnPresets: (presets: ColumnPreset[]) => void;
 
   setUserScansDir: (path: string) => void;
   setUserTranscriptsDir: (path: string) => void;
@@ -647,6 +655,11 @@ export const createStore = (api: ScoutApiV2) =>
           setDataframeShowFilterColumns: (show: boolean) => {
             set((state) => {
               state.dataframeShowFilterColumns = show;
+            });
+          },
+          setDataframeColumnPresets: (presets: ColumnPreset[]) => {
+            set((state) => {
+              state.dataframeColumnPresets = presets;
             });
           },
           setUserScansDir: (path: string) => {

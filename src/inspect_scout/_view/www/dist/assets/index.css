@@ -9468,6 +9468,46 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-wrap: break-word;
   word-break: break-all;
 }
+._inputContainer_1nqcj_1 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 4px 6px;
+  min-height: 30px;
+  align-items: center;
+  align-content: flex-start;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--bs-border-color));
+  border-radius: 2px;
+}
+
+._labelChip_1nqcj_14 {
+  /* Label chip specific styles can go here */
+}
+
+._popoverContent_1nqcj_18 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+._popoverField_1nqcj_25 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+._popoverLabel_1nqcj_31 {
+  font-weight: 600;
+}
+
+._popoverActions_1nqcj_35 {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  margin-top: 0.2rem;
+}
 ._container_1cz5u_1 {
   margin: 0.5rem;
 }

@@ -1,7 +1,7 @@
 import re
 from typing import Callable, Literal, Protocol, Sequence
 
-from inspect_ai._util.pattern import ANSWER_PATTERN_LINE, ANSWER_PATTERN_WORD
+from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
     str_to_float,
     strip_numeric_punctuation,
@@ -29,6 +29,25 @@ from .prompt import (
     STR_ANSWER_FORMAT,
     STR_ANSWER_PROMPT,
 )
+
+
+def _search_last(pattern: str, string: str, flags: int = 0) -> re.Match[str] | None:
+    """Return the last match of *pattern* in *string*, or ``None``.
+
+    ``re.search`` returns the *first* match, which breaks answer extraction
+    when the LLM echoes "Answer:" in its reasoning before the real marker.
+    """
+    return (
+        matches[-1] if (matches := list(re.finditer(pattern, string, flags))) else None
+    )
+
+
+# The upstream ANSWER_PATTERN_LINE (r"(?i)ANSWER\s*:\s*([^\n]+)\s*\Z") lets \s*
+# after the colon consume newlines, so "Answer:\nANSWER: 0.5" is a single match
+# with group(1) == "ANSWER: 0.5".  This variant uses [^\S\n]* (horizontal
+# whitespace only) after the colon so each line is matched independently,
+# allowing _search_last to pick the final occurrence.
+_ANSWER_PATTERN_LINE = r"(?i)ANSWER\s*:[^\S\n]*([^\n]+)"
 
 
 def _strip_markdown_formatting(text: str) -> str:
@@ -107,7 +126,7 @@ class _BoolAnswer(Answer):
         value_to_float: ValueToFloat | None = None,
     ) -> Result:
         completion = _strip_markdown_formatting(output.completion)
-        match = re.search(ANSWER_PATTERN_WORD, completion, re.IGNORECASE)
+        match = _search_last(ANSWER_PATTERN_WORD, completion, re.IGNORECASE)
 
         if match:
             answer = match.group(1).lower()
@@ -155,7 +174,7 @@ class _NumberAnswer(Answer):
         value_to_float: ValueToFloat | None = None,
     ) -> Result:
         completion = _strip_markdown_formatting(output.completion)
-        match = re.search(ANSWER_PATTERN_LINE, completion)
+        match = _search_last(_ANSWER_PATTERN_LINE, completion)
 
         if match:
             answer = _safe_str_to_float(match.group(1).strip())
@@ -216,9 +235,9 @@ class _LabelsAnswer(Answer):
 
         # For multi-classification, allow comma-separated values on the line
         pattern = (
-            ANSWER_PATTERN_LINE if self.multi_classification else ANSWER_PATTERN_WORD
+            _ANSWER_PATTERN_LINE if self.multi_classification else ANSWER_PATTERN_WORD
         )
-        match = re.search(pattern, output.completion, re.IGNORECASE)
+        match = _search_last(pattern, output.completion, re.IGNORECASE)
 
         if match:
             answer_text = match.group(1).strip()
@@ -288,7 +307,7 @@ class _StrAnswer(Answer):
         extract_references: Callable[[str], list[Reference]],
         value_to_float: ValueToFloat | None = None,
     ) -> Result:
-        match = re.search(ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
+        match = _search_last(_ANSWER_PATTERN_LINE, output.completion, re.IGNORECASE)
 
         if match:
             answer_text = match.group(1).strip()

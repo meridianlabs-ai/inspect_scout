@@ -96,6 +96,9 @@ def test_answer_templates(
         ("Reasoning.\n\nANSWER: maybe", False, None, "Reasoning.\n\nANSWER: maybe"),
         ("Reasoning.\n\n**ANSWER: yes**", True, "Yes", "Reasoning."),
         ("No pattern here", False, None, "No pattern here"),
+        # Double-answer: LLM emits "Answer:" in reasoning before the real ANSWER marker
+        ("Answer:\nANSWER: yes", True, "Yes", "Answer:"),
+        ("Answer:\nANSWER: no", False, "No", "Answer:"),
     ],
 )
 def test_bool_results(
@@ -128,6 +131,9 @@ def test_bool_results(
         ("Trailing text.\n\nANSWER: 42 points", 42.0, "Trailing text."),
         ("Whitespace.\n\nANSWER:  42  ", 42.0, "Whitespace."),
         ("Markdown.\n\n**ANSWER: 7**", 7.0, "Markdown."),
+        # Double-answer: LLM emits "Answer:" in reasoning before the real ANSWER marker
+        ("Answer:\nANSWER: 0.5", 0.5, "Answer:"),
+        ("Answer:\nANSWER: 42", 42.0, "Answer:"),
     ],
 )
 def test_number_results(
@@ -168,6 +174,14 @@ def test_number_results(
             "1",
             "Choice 27",
             "Analysis.",
+        ),
+        # Double-answer: LLM emits "Answer:" in reasoning before the real ANSWER marker
+        (
+            ["First", "Second", "Third"],
+            "Answer:\nANSWER: B",
+            "B",
+            "Second",
+            "Answer:",
         ),
     ],
 )
@@ -280,6 +294,14 @@ def test_labels_results(
             "A,Z,1",
             "Many.",
         ),
+        # Double-answer: LLM emits "Answer:" in reasoning before the real ANSWER marker
+        (
+            ["First", "Second", "Third"],
+            "Answer:\nANSWER: B,C",
+            ["Second", "Third"],
+            "B,C",
+            "Answer:",
+        ),
     ],
 )
 def test_multi_classification_results(
@@ -372,6 +394,13 @@ def test_multi_classification_results(
             "Yes",
             "Yes",
             "Think.",
+        ),
+        # Double-answer: LLM emits "Answer:" in reasoning before the real ANSWER marker
+        (
+            "Answer:\nANSWER: The response was helpful",
+            "The response was helpful",
+            "The response was helpful",
+            "Answer:",
         ),
     ],
 )

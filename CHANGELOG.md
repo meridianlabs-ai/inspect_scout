@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scout View: Improve display of large dictionary scan values.
+- Bugfix: Fix answer parsing when LLM echoes "Answer:" in reasoning before the actual answer marker.
 
 ## 0.4.13 (11 February 2026)
 

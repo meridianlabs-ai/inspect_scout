@@ -2,7 +2,7 @@ import {
   VscodeOption,
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
-import { FC, useEffect } from "react";
+import { FC } from "react";
 
 import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
 import { ValidationCase } from "../../../types/api-types";
@@ -61,12 +61,6 @@ export const ValidationCasePredicateSelector: FC<
     const newValue = (e.target as HTMLSelectElement).value as Predicate;
     onChange(newValue);
   };
-
-  useEffect(() => {
-    if (!value && defaultValue) {
-      onChange(defaultValue);
-    }
-  }, [value, defaultValue, onChange]);
 
   return (
     <div ref={ref} className={styles.container}>

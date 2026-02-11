@@ -223,13 +223,19 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
       if (!editorValidationSetUri) return;
 
-      // Build the updated case.
-      // When setting target, clear labels (and vice versa) to enforce mutual exclusivity.
+      // Build the updated case, enforcing mutual exclusivity and predicate rules:
+      // - Setting target clears labels; setting labels clears target and predicate.
+      // - Boolean targets clear predicate; "other" targets default predicate to "eq".
       const clearOpposite =
         field === "target"
-          ? { labels: null }
+          ? isOtherTarget(value)
+            ? {
+                labels: null,
+                ...(!caseData?.predicate && { predicate: "eq" as const }),
+              }
+            : { labels: null, predicate: null }
           : field === "labels"
-            ? { target: null }
+            ? { target: null, predicate: null }
             : {};
       const updatedCase: ValidationCase = caseData
         ? { ...caseData, ...clearOpposite, [field]: value }
@@ -487,13 +493,7 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                   >
                     <ValidationCaseTargetEditor
                       target={caseData?.target}
-                      onChange={(target) => {
-                        if (!isOtherTarget(target)) {
-                          // Set predicate to "eq" for boolean targets
-                          handleFieldChange("predicate", "eq");
-                        }
-                        handleFieldChange("target", target);
-                      }}
+                      onChange={(target) => handleFieldChange("target", target)}
                       onModeChange={setIsOtherModeSelected}
                     />
                   </Field>

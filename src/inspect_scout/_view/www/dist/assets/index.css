@@ -7228,7 +7228,7 @@ a._citationLink_1ggvf_9:hover {
   border: none;
   margin-left: 0.4rem;
 }
-._boolean_1uivt_1 {
+._boolean_11h9i_1 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -7239,38 +7239,39 @@ a._citationLink_1ggvf_9:hover {
   font-size: 0.7rem;
 }
 
-._true_1uivt_12 {
+._true_11h9i_12 {
   background-color: var(--bs-success);
   border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
 }
 
-._false_1uivt_18 {
+._false_11h9i_18 {
   background-color: var(--bs-danger);
   border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
 }
 
-._valueTable_1uivt_24 {
+._valueTable_11h9i_24 {
   display: grid;
   grid-template-columns: max-content auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }
 
-._inline_1uivt_31 ._valueValue_1uivt_31 {
+._inline_11h9i_31 ._valueValue_11h9i_31 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: end;
+}
+
+._inline_11h9i_31 ._valueValue_11h9i_31 p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._inline_1uivt_31 ._valueValue_1uivt_31 p {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-pre._value_1uivt_24 {
+pre._value_11h9i_24 {
   margin: 0;
 }
 ._title_19l1b_1 {

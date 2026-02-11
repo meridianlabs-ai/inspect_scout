@@ -1,3 +1,8 @@
+## 0.4.13 (11 February 2026)
+
+- Validation: Support for applying validation labels in Scout View.
+- Compatibility with latest release of the Inspect VS Code Extension.
+
 ## 0.4.12 (09 February 2026)
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.

@@ -13,7 +13,7 @@ from inspect_scout._util.compression_transcoding import _DeflateCompressStream
 
 # Import zipfile-zstd for Python < 3.14 (monkey-patches zipfile to support zstd)
 if sys.version_info < (3, 14):
-    import zipfile_zstd  # type: ignore[import-untyped]  # noqa: F401
+    import zipfile_zstd  # type: ignore # noqa: F401
 
 
 @pytest.fixture

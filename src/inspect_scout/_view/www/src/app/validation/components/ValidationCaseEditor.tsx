@@ -192,17 +192,23 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
   // Track when "other" mode is selected in the target editor
   const [isOtherModeSelected, setIsOtherModeSelected] = useState(false);
 
-  // Track whether user is editing a target or labels
-  const [validationType, setValidationType] = useState<ValidationType>(() =>
-    caseData?.labels != null ? "labels" : "target"
-  );
-
-  // Sync validationType when caseData changes (e.g., switching cases)
-  useEffect(() => {
-    // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setValidationType(caseData?.labels != null ? "labels" : "target");
-  }, [caseData?.labels]);
+  // Track whether user is editing a target or labels.
+  // null = no user override yet, derive from data; non-null = user's explicit choice.
+  // Default priority: 1) this case's data, 2) whether the set uses labels, 3) "target".
+  const [validationTypeOverride, setValidationTypeOverride] =
+    useState<ValidationType | null>(null);
+  const caseHasTarget = caseData?.target != null && caseData.target !== "";
+  const caseHasLabels = caseData?.labels != null;
+  const setUsesLabels = validationCases?.some((c) => c.labels != null) ?? false;
+  const defaultValidationType: ValidationType = caseHasLabels
+    ? "labels"
+    : caseHasTarget
+      ? "target"
+      : setUsesLabels
+        ? "labels"
+        : "target";
+  const validationType: ValidationType =
+    validationTypeOverride ?? defaultValidationType;
 
   const deleteCaseMutation = useDeleteValidationCase(
     editorValidationSetUri ?? ""
@@ -217,9 +223,16 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     (field: keyof ValidationCaseRequest, value: JsonValue | string | null) => {
       if (!editorValidationSetUri) return;
 
-      // Build the updated case
+      // Build the updated case.
+      // When setting target, clear labels (and vice versa) to enforce mutual exclusivity.
+      const clearOpposite =
+        field === "target"
+          ? { labels: null }
+          : field === "labels"
+            ? { target: null }
+            : {};
       const updatedCase: ValidationCase = caseData
-        ? { ...caseData, [field]: value }
+        ? { ...caseData, ...clearOpposite, [field]: value }
         : {
             id: transcriptId,
             labels: null,
@@ -250,14 +263,15 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
         return;
       }
 
-      // Fire mutation immediately - optimistic updates handle UI
+      // Fire mutation immediately - optimistic updates handle UI.
+      // Include both target and labels so the optimistic cache update
+      // (which spreads data onto the previous case) clears the opposite field.
       const request: ValidationCaseRequest = {
         id: updatedCase.id,
+        target: updatedCase.target,
+        labels: updatedCase.labels,
         predicate: updatedCase.predicate,
         split: updatedCase.split,
-        ...(updatedCase.labels != null
-          ? { labels: updatedCase.labels }
-          : { target: updatedCase.target }),
       };
 
       setSaveStatus("saving");
@@ -286,33 +300,17 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
     ]
   );
 
-  // Handle switching between target and labels mode
+  // Handle switching between target and labels mode.
+  // Only updates which editor is shown — the actual data clearing happens
+  // server-side when the user saves a value in the new mode, since
+  // handleFieldChange sends either target or labels, never both.
   const handleValidationTypeChange = useCallback(
     (newType: string) => {
-      // Validate - the web component may fire change events with unexpected values
       if (newType !== "target" && newType !== "labels") return;
       if (newType === validationType) return;
-      setValidationType(newType);
-
-      // Clear both values in the cache so the user starts fresh in the new mode.
-      // Don't fire a save - the isNewEmptyCase guard prevents it.
-      if (editorValidationSetUri) {
-        queryClient.setQueryData(
-          validationQueryKeys.case({
-            url: editorValidationSetUri,
-            caseId: transcriptId,
-          }),
-          (prev: ValidationCase | null | undefined) => ({
-            id: prev?.id ?? transcriptId,
-            target: null,
-            labels: null,
-            predicate: prev?.predicate ?? null,
-            split: prev?.split ?? null,
-          })
-        );
-      }
+      setValidationTypeOverride(newType);
     },
-    [validationType, editorValidationSetUri, transcriptId, queryClient]
+    [validationType]
   );
 
   const handleValidationSetSelect = useCallback(
@@ -460,7 +458,6 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                 helper="Choose single-value validation or label-based validation."
               >
                 <VscodeRadioGroup
-                  key={validationType}
                   onChange={(e) =>
                     handleValidationTypeChange(
                       (e.target as HTMLInputElement).value
@@ -471,13 +468,13 @@ const ValidationCaseEditorComponent: FC<ValidationCaseEditorComponentProps> = ({
                     name="validation-type"
                     label="Values"
                     value="target"
-                    defaultChecked={validationType === "target"}
+                    checked={validationType === "target"}
                   />
                   <VscodeRadio
                     name="validation-type"
                     label="Labels"
                     value="labels"
-                    defaultChecked={validationType === "labels"}
+                    checked={validationType === "labels"}
                   />
                 </VscodeRadioGroup>
               </Field>

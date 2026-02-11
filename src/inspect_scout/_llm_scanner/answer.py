@@ -37,8 +37,9 @@ def _search_last(pattern: str, string: str, flags: int = 0) -> re.Match[str] | N
     ``re.search`` returns the *first* match, which breaks answer extraction
     when the LLM echoes "Answer:" in its reasoning before the real marker.
     """
-    matches = list(re.finditer(pattern, string, flags))
-    return matches[-1] if matches else None
+    return (
+        matches[-1] if (matches := list(re.finditer(pattern, string, flags))) else None
+    )
 
 
 # The upstream ANSWER_PATTERN_LINE (r"(?i)ANSWER\s*:\s*([^\n]+)\s*\Z") lets \s*

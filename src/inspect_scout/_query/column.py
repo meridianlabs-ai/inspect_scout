@@ -33,7 +33,7 @@ class Column:
     """Database column with comparison operators.
 
     Supports various predicate functions including `like()`, `not_like()`, `between()`, etc.
-    Additionally supports standard python equality and comparison operators (e.g. `==`, '>`, etc.
+    Additionally supports standard python equality and comparison operators (e.g. `==`, `>`, etc.
     """
 
     def __init__(self, name: str):

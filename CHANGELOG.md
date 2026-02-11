@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scout View: Improve display of large dictionary scan values.
+
 ## 0.4.13 (11 February 2026)
 
 - Validation: Support for applying validation labels in Scout View.

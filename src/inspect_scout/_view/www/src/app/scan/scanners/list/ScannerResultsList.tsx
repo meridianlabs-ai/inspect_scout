@@ -533,7 +533,7 @@ const optimalColumnLayout = (
       }, 0);
 
       gridColParts.push(
-        `minmax(${Math.min(Math.max((maxKeyLen + maxValueLen) * 10, 135), 400)}px, 2fr)`
+        `minmax(${Math.min(Math.max((maxKeyLen + maxValueLen) * 10, 135), 200)}px, 4fr)`
       );
     } else {
       gridColParts.push("3fr");

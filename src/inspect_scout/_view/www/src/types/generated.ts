@@ -2200,6 +2200,11 @@ export interface components {
              */
             reasoning_tokens: number | null;
             /**
+             * Total Cost
+             * @default null
+             */
+            total_cost: number | null;
+            /**
              * Total Tokens
              * @default 0
              */
@@ -2553,7 +2558,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "message" | "time" | "working" | "token" | "operator" | "custom";
+            type: "message" | "time" | "working" | "token" | "cost" | "operator" | "custom";
             /**
              * Uuid
              * @default null

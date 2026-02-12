@@ -91,6 +91,7 @@ export interface AgentNodeType extends TranscriptNodeBase {
   branches: BranchType[];
   taskDescription?: string;
   utility: boolean;
+  outline?: OutlineType;
 }
 
 /**
@@ -100,6 +101,21 @@ export interface BranchType extends TranscriptNodeBase {
   type: "branch";
   forkedAt: string;
   content: (EventNodeType | AgentNodeType)[];
+}
+
+/**
+ * A node in an agent's outline, referencing an event by UUID.
+ */
+export interface OutlineNodeType {
+  event: string;
+  children?: OutlineNodeType[];
+}
+
+/**
+ * Hierarchical outline of events for an agent.
+ */
+export interface OutlineType {
+  nodes: OutlineNodeType[];
 }
 
 /**

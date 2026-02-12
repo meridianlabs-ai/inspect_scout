@@ -170,6 +170,7 @@ class AgentNode(TranscriptNode):
     branches: list["Branch"] = field(default_factory=list)
     task_description: str | None = None
     utility: bool = False
+    outline: "Outline | None" = None
 
     @property
     def start_time(self) -> datetime | None:
@@ -208,6 +209,21 @@ class Branch(TranscriptNode):
     def total_tokens(self) -> int:
         """Sum of tokens from all content."""
         return _sum_tokens(self.content)
+
+
+@dataclass
+class OutlineNode:
+    """A node in an agent's outline, referencing an event by UUID."""
+
+    event: str
+    children: list["OutlineNode"] = field(default_factory=list)
+
+
+@dataclass
+class Outline:
+    """Hierarchical outline of events for an agent."""
+
+    nodes: list[OutlineNode] = field(default_factory=list)
 
 
 @dataclass

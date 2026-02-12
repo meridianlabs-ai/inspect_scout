@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scout View: Support for displaying cost limits.
+
 ## 0.4.14 (12 February 2026)
 
 - Scout View: Improve display of large dictionary scan values.

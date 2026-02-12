@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.15 (12 February 2026)
 
 - Scout View: Support for displaying cost limits.
 

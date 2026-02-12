@@ -426,8 +426,8 @@ function eventToNode(event: Event): EventNode | AgentNode {
 
     if (agentName && nestedEvents && nestedEvents.length > 0) {
       // Recursively process nested events to handle nested tool agents
-      const nestedContent: (EventNode | AgentNode)[] = nestedEvents.map(
-        (e) => eventToNode(e)
+      const nestedContent: (EventNode | AgentNode)[] = nestedEvents.map((e) =>
+        eventToNode(e)
       );
 
       return createAgentNode(
@@ -571,8 +571,8 @@ function buildAgentFromSolversSpan(
       );
     } else {
       // Multiple agent spans - create root containing all
-      const children: (EventNode | AgentNode)[] = agentSpans.map(
-        (span) => buildAgentFromSpan(span, hasExplicitBranches)
+      const children: (EventNode | AgentNode)[] = agentSpans.map((span) =>
+        buildAgentFromSpan(span, hasExplicitBranches)
       );
       // Add any orphan events at the start
       for (const item of otherItems) {

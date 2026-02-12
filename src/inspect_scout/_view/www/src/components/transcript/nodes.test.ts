@@ -314,10 +314,7 @@ function assertSectionMatches(
 /**
  * Assert that a Branch matches expected values.
  */
-function assertBranchMatches(
-  actual: Branch,
-  expected: ExpectedBranch
-): void {
+function assertBranchMatches(actual: Branch, expected: ExpectedBranch): void {
   expect(actual.forkedAt).toBe(expected.forked_at);
   if (expected.event_uuids !== undefined) {
     const uuids = actual.content
@@ -405,9 +402,7 @@ function assertAgentMatches(
       expect(actualItem.type).toBe(expectedItem.type);
 
       if (expectedItem.type === "event" && expectedItem.uuid) {
-        expect((actualItem as EventNode).event.uuid).toBe(
-          expectedItem.uuid
-        );
+        expect((actualItem as EventNode).event.uuid).toBe(expectedItem.uuid);
       }
 
       if (expectedItem.type === "agent") {

@@ -1,207 +1,214 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 
-import { data, loading } from "../../utils/asyncData";
+import { server } from "../../test/setup-msw";
+import { createTestWrapper } from "../../test/test-utils";
+import type {
+  TranscriptInfo,
+  TranscriptsResponse,
+} from "../../types/api-types";
+import { encodeBase64Url } from "../../utils/base64url";
 
 import { useAdjacentTranscriptIds } from "./useAdjacentTranscriptIds";
-import { useServerTranscriptsInfinite } from "./useServerTranscriptsInfinite";
 
-vi.mock("./useServerTranscriptsInfinite", () => ({
-  useServerTranscriptsInfinite: vi.fn(),
-}));
+const location = "/test-transcripts";
+const encodedLocation = encodeBase64Url(location);
+const endpoint = `/api/v2/transcripts/${encodedLocation}`;
 
-const mockUseServerTranscriptsInfinite = vi.mocked(
-  useServerTranscriptsInfinite
-);
-
-const createMockTranscript = (id: string) => ({
+const makeTranscript = (id: string): TranscriptInfo => ({
   transcript_id: id,
-  source_uri: `/test/${id}`,
-  task_id: "task-1",
-  task_set: "set-1",
-  model: "model-1",
-  score: null,
-  success: true,
-  message_count: 10,
-  total_time: 100,
-  total_tokens: 500,
-  date: "2024-01-01",
-  error: null,
   metadata: {},
 });
 
-const createMockQueryResult = (
-  pages: string[][],
-  options: {
-    isLoading?: boolean;
-    error?: Error;
-    hasNextPage?: boolean;
-    isFetchingNextPage?: boolean;
-  } = {}
-) => ({
-  data: options.isLoading
-    ? undefined
-    : {
-        pages: pages.map((ids) => ({
-          items: ids.map(createMockTranscript),
-          next_cursor: null,
-          total_count: ids.length,
-        })),
-        pageParams: pages.map(() => undefined),
-      },
-  error: options.error ?? null,
-  isLoading: options.isLoading ?? false,
-  hasNextPage: options.hasNextPage ?? false,
-  isFetchingNextPage: options.isFetchingNextPage ?? false,
-  fetchNextPage: vi.fn().mockResolvedValue(undefined),
-  // Additional required fields from UseInfiniteQueryResult
-  isFetching: false,
-  isError: !!options.error,
-  isSuccess: !options.isLoading && !options.error,
-  status: options.isLoading ? "pending" : options.error ? "error" : "success",
-  fetchStatus: "idle",
-  refetch: vi.fn(),
-  isFetchingPreviousPage: false,
-  hasPreviousPage: false,
-  fetchPreviousPage: vi.fn(),
-  isRefetching: false,
-  isPending: options.isLoading ?? false,
-  isLoadingError: false,
-  isRefetchError: false,
-  dataUpdatedAt: Date.now(),
-  errorUpdatedAt: 0,
-  failureCount: 0,
-  failureReason: null,
-  errorUpdateCount: 0,
-  isFetched: !options.isLoading,
-  isPlaceholderData: false,
-  isPaused: false,
-  isStale: false,
-});
+type CursorObject = { page: string } | null;
+
+type PaginationBody = {
+  filter: unknown;
+  order_by: unknown;
+  pagination: { cursor: CursorObject } | null;
+};
+
+/**
+ * Creates an MSW handler that returns paginated transcript responses.
+ * Each entry in `pages` maps a cursor key to a page of transcript IDs.
+ * The first entry (cursor `null`) is the initial page.
+ */
+const handlePaginatedTranscripts = (
+  pages: Map<string | null, { ids: string[]; nextCursor: string | null }>
+) =>
+  http.post(endpoint, async ({ request }) => {
+    const body = (await request.json()) as PaginationBody;
+    const cursorObj = body.pagination?.cursor ?? null;
+    const cursorKey = cursorObj?.page ?? null;
+    const page = pages.get(cursorKey);
+    if (!page) {
+      return HttpResponse.json<TranscriptsResponse>({
+        items: [],
+        next_cursor: null,
+        total_count: 0,
+      });
+    }
+    return HttpResponse.json<TranscriptsResponse>({
+      items: page.ids.map(makeTranscript),
+      next_cursor: page.nextCursor ? { page: page.nextCursor } : null,
+      total_count: page.ids.length,
+    });
+  });
 
 describe("useAdjacentTranscriptIds", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("returns [undefined, nextId] for the first item", async () => {
+    server.use(
+      handlePaginatedTranscripts(
+        new Map([[null, { ids: ["id-1", "id-2", "id-3"], nextCursor: null }]])
+      )
+    );
+
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-1", location),
+      { wrapper: createTestWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual([undefined, "id-2"]);
   });
 
-  it("returns loading when query is loading", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([[]], { isLoading: true }) as never
+  it("returns [prevId, nextId] for a middle item", async () => {
+    server.use(
+      handlePaginatedTranscripts(
+        new Map([[null, { ids: ["id-1", "id-2", "id-3"], nextCursor: null }]])
+      )
     );
 
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-1", "/location")
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-2", location),
+      { wrapper: createTestWrapper() }
     );
 
-    expect(result.current).toBe(loading);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual(["id-1", "id-3"]);
   });
 
-  it("returns [undefined, nextId] when id is at index 0", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([["id-1", "id-2", "id-3"]]) as never
+  it("returns [prevId, undefined] for the last item with no more pages", async () => {
+    server.use(
+      handlePaginatedTranscripts(
+        new Map([[null, { ids: ["id-1", "id-2", "id-3"], nextCursor: null }]])
+      )
     );
 
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-1", "/location")
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-3", location),
+      { wrapper: createTestWrapper() }
     );
 
-    expect(result.current).toEqual(data([undefined, "id-2"]));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual(["id-2", undefined]);
   });
 
-  it("returns [prevId, nextId] when id is in middle of list", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([["id-1", "id-2", "id-3"]]) as never
+  it("fetches next page when viewing last item with more pages available", async () => {
+    server.use(
+      handlePaginatedTranscripts(
+        new Map([
+          [null, { ids: ["id-1", "id-2"], nextCursor: "cursor-2" }],
+          ["cursor-2", { ids: ["id-3", "id-4"], nextCursor: null }],
+        ])
+      )
     );
 
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-2", "/location")
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-2", location),
+      { wrapper: createTestWrapper() }
     );
 
-    expect(result.current).toEqual(data(["id-1", "id-3"]));
+    // Initially loads first page, id-2 is last item so it triggers fetchNextPage
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // After second page loads, id-3 becomes the next adjacent ID
+    await waitFor(() => {
+      expect(result.current.data).toEqual(["id-1", "id-3"]);
+    });
   });
 
-  it("returns [prevId, undefined] when id is last item and no more pages", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([["id-1", "id-2", "id-3"]], {
-        hasNextPage: false,
-      }) as never
+  it("returns adjacent ids across page boundaries", async () => {
+    const wrapper = createTestWrapper();
+
+    server.use(
+      handlePaginatedTranscripts(
+        new Map([
+          [null, { ids: ["id-1", "id-2"], nextCursor: "cursor-2" }],
+          ["cursor-2", { ids: ["id-3", "id-4"], nextCursor: null }],
+        ])
+      )
     );
 
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-3", "/location")
+    // First, view id-2 (last item on page 1) — this triggers fetchNextPage
+    const { result: result1 } = renderHook(
+      () => useAdjacentTranscriptIds("id-2", location, 2),
+      { wrapper }
     );
 
-    expect(result.current).toEqual(data(["id-2", undefined]));
+    // Wait for both pages to load (id-2 triggers page 2 fetch)
+    await waitFor(() => {
+      expect(result1.current.loading).toBe(false);
+      expect(result1.current.data).toEqual(["id-1", "id-3"]);
+    });
+
+    // Now view id-3 (first item on page 2) — both pages are cached
+    const { result: result2 } = renderHook(
+      () => useAdjacentTranscriptIds("id-3", location, 2),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(result2.current.loading).toBe(false);
+    });
+
+    // id-2 is last on prev page, id-4 is next on same page
+    expect(result2.current.data).toEqual(["id-2", "id-4"]);
   });
 
-  it("calls fetchNextPage when id is last item and hasNextPage is true", () => {
-    const mockFetchNextPage = vi.fn().mockResolvedValue(undefined);
-    mockUseServerTranscriptsInfinite.mockReturnValue({
-      ...createMockQueryResult([["id-1", "id-2", "id-3"]], {
-        hasNextPage: true,
-      }),
-      fetchNextPage: mockFetchNextPage,
-    } as never);
+  it("returns error when fetch fails", async () => {
+    server.use(
+      http.post(endpoint, () =>
+        HttpResponse.text("Server Error", { status: 500 })
+      )
+    );
 
-    renderHook(() => useAdjacentTranscriptIds("id-3", "/location"));
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-1", location),
+      { wrapper: createTestWrapper() }
+    );
 
-    expect(mockFetchNextPage).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBeDefined();
+    expect(result.current.error?.message).toContain("500");
   });
 
-  it("returns error when query has error", () => {
-    const error = new Error("Network error");
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([[]], { error }) as never
+  it("returns loading when location is null", async () => {
+    const { result } = renderHook(
+      () => useAdjacentTranscriptIds("id-1", null),
+      { wrapper: createTestWrapper() }
     );
 
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-1", "/location")
-    );
+    // No fetch should be made — skipToken path
+    expect(result.current.loading).toBe(true);
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(error);
-  });
-
-  it("returns loading when id not found in loaded pages", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([["id-1", "id-2", "id-3"]]) as never
-    );
-
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-not-found", "/location")
-    );
-
-    expect(result.current).toBe(loading);
-  });
-
-  it("returns adjacent ids across page boundaries - next from next page", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([
-        ["id-1", "id-2"],
-        ["id-3", "id-4"],
-      ]) as never
-    );
-
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-2", "/location")
-    );
-
-    expect(result.current).toEqual(data(["id-1", "id-3"]));
-  });
-
-  it("returns adjacent ids across page boundaries - prev from prev page", () => {
-    mockUseServerTranscriptsInfinite.mockReturnValue(
-      createMockQueryResult([
-        ["id-1", "id-2"],
-        ["id-3", "id-4"],
-      ]) as never
-    );
-
-    const { result } = renderHook(() =>
-      useAdjacentTranscriptIds("id-3", "/location")
-    );
-
-    expect(result.current).toEqual(data(["id-2", "id-4"]));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(result.current.loading).toBe(true);
   });
 });

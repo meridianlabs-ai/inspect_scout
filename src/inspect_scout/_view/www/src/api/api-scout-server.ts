@@ -1,3 +1,5 @@
+import { decompress as decompressZstd } from "fzstd";
+
 import { ScanResultInputData, Input, InputType } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import {
@@ -8,6 +10,7 @@ import {
   Pagination,
   ProjectConfig,
   ProjectConfigInput,
+  RawEncoding,
   ScanJobConfig,
   ScannersResponse,
   ScansResponse,
@@ -28,6 +31,44 @@ import { serverRequestApi } from "./request";
 export type HeaderProvider = () => Promise<Record<string, string>>;
 
 type TopicUpdateCallback = (topVersions: TopicVersions) => void;
+
+const ENCODING_ZSTD: RawEncoding = "zstd";
+
+/**
+ * Fetch messages-events JSON for a transcript.
+ * Requests raw zstd-compressed bytes and decompresses client-side.
+ * Falls back to uncompressed JSON if server doesn't support zstd.
+ */
+async function fetchMessagesEvents(
+  requestApi: ReturnType<typeof serverRequestApi>,
+  encodedDir: string,
+  encodedId: string
+): Promise<string> {
+  const url = `/transcripts/${encodedDir}/${encodedId}/messages-events`;
+
+  const result = await requestApi.fetchBytes(
+    "GET",
+    url,
+    { "X-Accept-Raw-Encoding": ENCODING_ZSTD },
+    // Server returns application/json when transcoding to deflate
+    "application/json"
+  );
+
+  const encoding = result.headers.get("X-Content-Encoding");
+
+  if (encoding === ENCODING_ZSTD) {
+    return new TextDecoder().decode(
+      decompressZstd(new Uint8Array(result.data))
+    );
+  }
+
+  if (encoding !== null) {
+    throw new Error(`Unsupported X-Content-Encoding: ${encoding}`);
+  }
+
+  // No X-Content-Encoding header means uncompressed (or browser-handled compression)
+  return new TextDecoder().decode(result.data);
+}
 
 export const apiScoutServer = (
   options: {
@@ -78,7 +119,7 @@ export const apiScoutServer = (
       id: string
     ): Promise<boolean> => {
       try {
-        await requestApi.fetchString(
+        await requestApi.fetchVoid(
           "HEAD",
           `/transcripts/${encodeBase64Url(transcriptsDir)}/${encodeURIComponent(id)}/info`
         );
@@ -97,20 +138,17 @@ export const apiScoutServer = (
       const encodedDir = encodeBase64Url(transcriptsDir);
       const encodedId = encodeURIComponent(id);
 
-      const [infoResult, messagesEventsResult] = await Promise.all([
+      const [infoResult, messagesEventsJson] = await Promise.all([
         requestApi.fetchString(
           "GET",
           `/transcripts/${encodedDir}/${encodedId}/info`
         ),
-        requestApi.fetchString(
-          "GET",
-          `/transcripts/${encodedDir}/${encodedId}/messages-events`
-        ),
+        fetchMessagesEvents(requestApi, encodedDir, encodedId),
       ]);
 
       const [info, { messages, events, attachments }] = await Promise.all([
         asyncJsonParse<TranscriptInfo>(infoResult.raw),
-        asyncJsonParse<MessagesEventsResponse>(messagesEventsResult.raw),
+        asyncJsonParse<MessagesEventsResponse>(messagesEventsJson),
       ]);
 
       return {
@@ -181,10 +219,11 @@ export const apiScoutServer = (
       scanPath: string,
       scanner: string
     ): Promise<ArrayBuffer> => {
-      return await requestApi.fetchBytes(
+      const result = await requestApi.fetchBytes(
         "GET",
         `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/${encodeURIComponent(scanner)}`
       );
+      return result.data;
     },
     getScannerDataframeInput: async (
       scansDir: string,
@@ -325,21 +364,17 @@ export const apiScoutServer = (
     deleteValidationCase: async (
       uri: string,
       caseId: string
-    ): Promise<boolean> => {
-      const result = await requestApi.fetchString(
+    ): Promise<void> => {
+      await requestApi.fetchVoid(
         "DELETE",
         `/validations/${encodeBase64Url(uri)}/${encodeBase64Url(caseId)}`
       );
-      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
-      return response.deleted;
     },
-    deleteValidationSet: async (uri: string): Promise<boolean> => {
-      const result = await requestApi.fetchString(
+    deleteValidationSet: async (uri: string): Promise<void> => {
+      await requestApi.fetchVoid(
         "DELETE",
         `/validations/${encodeBase64Url(uri)}`
       );
-      const response = await asyncJsonParse<{ deleted: boolean }>(result.raw);
-      return response.deleted;
     },
     renameValidationSet: async (
       uri: string,

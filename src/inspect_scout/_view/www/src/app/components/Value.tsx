@@ -160,9 +160,23 @@ const ValueTable: FC<{
   references,
   style,
 }) => {
+  // Sort keys by the value (desc, so true to false), then slice 5 keys to display
+  const sortedKeys = Object.keys(value).sort((a, b) => {
+    const aVal = (value as Record<string, unknown>)[a];
+    const bVal = (value as Record<string, unknown>)[b];
+    if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+      return Number(bVal) - Number(aVal);
+    } else if (typeof aVal === "number" && typeof bVal === "number") {
+      return bVal - aVal;
+    } else {
+      // Keep original order if not boolean
+      return 0;
+    }
+  });
+
   // Display only 5 rows
-  const keys = Object.keys(value);
-  const keysToDisplay = keys.slice(0, maxTableSize);
+  const keysToDisplay = sortedKeys.slice(0, maxTableSize);
+  const notShown = Object.keys(value).length - maxTableSize;
 
   // Display the rows
   return (
@@ -196,6 +210,21 @@ const ValueTable: FC<{
           </Fragment>
         );
       })}
+      {notShown > 0 && (
+        <Fragment key={`value-table-row-more`}>
+          <div
+            className={clsx(
+              styles.valueKey,
+              "text-style-label",
+              "text-style-secondary",
+              "text-size-smallest"
+            )}
+          >
+            {notShown} more…
+          </div>
+          <div className={clsx(styles.valueValue)}></div>
+        </Fragment>
+      )}
     </div>
   );
 };

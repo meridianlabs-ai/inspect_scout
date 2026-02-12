@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+from pathlib import Path
 from typing import Generator
 
 import pytest
@@ -144,3 +145,23 @@ async def test_sanitize_table_names(
 
     # Should still be able to retrieve
     scanner_table(recorder_buffer._buffer_dir, scanner_name)
+
+
+def test_buffer_dir_respects_env_var(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that SCOUT_SCANBUFFER_DIR env var overrides the default buffer location."""
+    custom_dir = tmp_path / "custom_buffer"
+    monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(custom_dir))
+    result = RecorderBuffer.buffer_dir("/some/scan/location")
+    assert result.parent == custom_dir
+
+
+def test_buffer_dir_expands_tilde(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that ~ in SCOUT_SCANBUFFER_DIR is expanded to the home directory."""
+    monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", "~/my_scout_buffer")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    result = RecorderBuffer.buffer_dir("/some/scan/location")
+    assert result.parent == tmp_path / "my_scout_buffer"

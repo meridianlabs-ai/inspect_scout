@@ -1,110 +1,114 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 
-import { useApi } from "../../state/store";
-import { data, loading } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
+import { createActiveScanInfo } from "../../test/objectFactories";
+import { server } from "../../test/setup-msw";
+import { createTestWrapper } from "../../test/test-utils";
+import type { ActiveScansResponse } from "../../types/api-types";
 
 import { useActiveScans } from "./useActiveScans";
 
-vi.mock("../../state/store", () => ({
-  useApi: vi.fn(),
-}));
-
-vi.mock("../../utils/asyncDataFromQuery", () => ({
-  useAsyncDataFromQuery: vi.fn(),
-}));
-
-const mockUseApi = vi.mocked(useApi);
-const mockUseAsyncDataFromQuery = vi.mocked(useAsyncDataFromQuery);
-
-describe("useServerActiveScans", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseApi.mockReturnValue({} as ReturnType<typeof useApi>);
-  });
-
-  it("returns loading state when query is pending", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    const { result } = renderHook(() => useActiveScans());
-
-    expect(result.current).toEqual(loading);
-  });
-
-  it("returns data on successful fetch", () => {
-    const mockActiveScans = {
-      "scan-123": {
-        scan_id: "scan-123",
-        metrics: {
-          process_count: 2,
-          task_count: 4,
-          completed_scans: 100,
-        },
-        last_updated: 1704067200,
+describe("useActiveScans", () => {
+  it("returns loading then data on successful fetch", async () => {
+    const scanInfo = createActiveScanInfo({
+      scan_id: "scan-123",
+      metrics: {
+        batch_failures: 0,
+        batch_pending: 0,
+        buffered_scanner_jobs: 0,
+        completed_scans: 100,
+        memory_usage: 0,
+        process_count: 2,
+        task_count: 4,
+        tasks_idle: 0,
+        tasks_parsing: 0,
+        tasks_scanning: 0,
       },
-    };
+    });
 
-    mockUseAsyncDataFromQuery.mockReturnValue(data(mockActiveScans));
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.json<ActiveScansResponse>({
+          items: { "scan-123": scanInfo },
+        })
+      )
+    );
 
-    const { result } = renderHook(() => useActiveScans());
+    const { result } = renderHook(() => useActiveScans(), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.data).toEqual(mockActiveScans);
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toEqual({ "scan-123": scanInfo });
   });
 
-  it("returns empty object when no active scans", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(data({}));
+  it("handles empty active scans", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.json<ActiveScansResponse>({ items: {} })
+      )
+    );
 
-    const { result } = renderHook(() => useActiveScans());
+    const { result } = renderHook(() => useActiveScans(), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     expect(result.current.data).toEqual({});
   });
 
-  it("returns error on fetch failure", () => {
-    const error = new Error("Network error");
-    mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
+  it("returns error on server failure", async () => {
+    server.use(
+      http.get("/api/v2/scans/active", () =>
+        HttpResponse.text("Internal Server Error", { status: 500 })
+      )
+    );
 
-    const { result } = renderHook(() => useActiveScans());
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(error);
-  });
-
-  it("passes correct options to useAsyncDataFromQuery", () => {
-    const mockApi = {
-      getActiveScans: vi.fn(),
-    };
-    mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    renderHook(() => useActiveScans());
-
-    expect(mockUseAsyncDataFromQuery).toHaveBeenCalledWith({
-      queryKey: ["active-scans"],
-      queryFn: expect.any(Function),
-      refetchInterval: 5000,
+    const { result } = renderHook(() => useActiveScans(), {
+      wrapper: createTestWrapper(),
     });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBeDefined();
+    expect(result.current.error?.message).toContain("500");
   });
 
-  it("queryFn extracts items from API response", async () => {
-    const mockItems = { "scan-1": { scan_id: "scan-1" } };
-    const mockApi = {
-      getActiveScans: vi.fn().mockResolvedValue({ items: mockItems }),
-    };
-    mockUseApi.mockReturnValue(mockApi as unknown as ReturnType<typeof useApi>);
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
+  it("sends GET request to correct endpoint", async () => {
+    let capturedMethod: string | undefined;
+    let capturedUrl: string | undefined;
 
-    renderHook(() => useActiveScans());
+    server.use(
+      http.get("/api/v2/scans/active", ({ request }) => {
+        capturedMethod = request.method;
+        capturedUrl = request.url;
+        return HttpResponse.json<ActiveScansResponse>({
+          items: {},
+        });
+      })
+    );
 
-    const callArgs = mockUseAsyncDataFromQuery.mock.calls[0]?.[0];
-    expect(callArgs).toBeDefined();
-    const queryFn = callArgs!.queryFn as () => Promise<unknown>;
-    const result = await queryFn();
+    const { result } = renderHook(() => useActiveScans(), {
+      wrapper: createTestWrapper(),
+    });
 
-    expect(mockApi.getActiveScans).toHaveBeenCalled();
-    expect(result).toEqual(mockItems);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(capturedMethod).toBe("GET");
+    expect(capturedUrl).toContain("/api/v2/scans/active");
   });
 });

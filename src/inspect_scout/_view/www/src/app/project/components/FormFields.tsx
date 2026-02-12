@@ -64,6 +64,8 @@ export const TextField: FC<TextFieldProps> = ({
       return () => clearTimeout(timer);
     } else {
       // Clear error immediately when input becomes valid
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedError(null);
     }
   }, [errorMessage]);
@@ -227,6 +229,8 @@ export const KeyValueField: FC<KeyValueFieldProps> = ({
     if (JSON.stringify(currentParsed) !== JSON.stringify(valueParsed)) {
       setText(configText);
     }
+    // TODO: lint react-hooks/exhaustive-deps - review this
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const handleInput = (newText: string) => {

@@ -293,9 +293,12 @@ export function useColumnFilter({
     prevColumnIdRef.current = columnId;
 
     if (!isOpen || columnChanged) {
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      /* eslint-disable react-hooks/set-state-in-effect */
       setOperator(condition?.operator ?? defaultOperator);
       setValue(formatFilterValue(condition?.right, filterType));
       setValue2(formatFilterValue2(condition?.right, filterType));
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [condition, defaultOperator, filterType, isOpen, columnId, setValue]);
 

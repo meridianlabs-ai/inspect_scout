@@ -103,8 +103,8 @@ value.
  */
 const Rendered: FC<RenderedProps> = ({ values }): ReactNode => {
   if (Array.isArray(values)) {
-    return values.map((val) => {
-      return <Rendered values={val} />;
+    return values.map((val, index) => {
+      return <Rendered key={index} values={val} />;
     });
   } else if (values && typeof values === "object") {
     if (Object.keys(values).length === 0) {

@@ -2375,7 +2375,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -2398,6 +2399,21 @@
             ],
             "default": null,
             "title": "Extra Body"
+          },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -2810,7 +2826,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -2831,6 +2848,20 @@
               }
             ],
             "title": "Extra Body"
+          },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -3218,7 +3249,8 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -3239,6 +3271,20 @@
               }
             ],
             "title": "Extra Body"
+          },
+          "extra_headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -3742,7 +3788,8 @@
       },
       "InvalidationTopic": {
         "enum": [
-          "project-config"
+          "project-config",
+          "scans"
         ],
         "type": "string"
       },
@@ -4678,11 +4725,19 @@
             "type": "object"
           },
           "response": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
-            "title": "Response",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Response"
           },
           "time": {
             "anyOf": [
@@ -4698,8 +4753,7 @@
           }
         },
         "required": [
-          "request",
-          "response"
+          "request"
         ],
         "title": "ModelCall",
         "type": "object"
@@ -4954,6 +5008,30 @@
             "title": "Tools",
             "type": "array"
           },
+          "traceback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback"
+          },
+          "traceback_ansi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Traceback Ansi"
+          },
           "uuid": {
             "anyOf": [
               {
@@ -5122,6 +5200,18 @@
             ],
             "default": null,
             "title": "Reasoning Tokens"
+          },
+          "total_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Cost"
           },
           "total_tokens": {
             "default": 0,
@@ -5826,6 +5916,12 @@
         "title": "ProvenanceData",
         "type": "object"
       },
+      "RawEncoding": {
+        "enum": [
+          "zstd"
+        ],
+        "type": "string"
+      },
       "RenameValidationSetRequest": {
         "properties": {
           "name": {
@@ -6251,6 +6347,7 @@
               "time",
               "working",
               "token",
+              "cost",
               "operator",
               "custom"
             ],
@@ -7070,6 +7167,10 @@
           "total_tokens": {
             "title": "Total Tokens",
             "type": "integer"
+          },
+          "transcript_count": {
+            "title": "Transcript Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -7083,7 +7184,8 @@
           "tags",
           "total_results",
           "total_errors",
-          "total_tokens"
+          "total_tokens",
+          "transcript_count"
         ],
         "title": "ScanRow",
         "type": "object"
@@ -10155,6 +10257,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -10790,6 +10899,43 @@
       }
     },
     "/scans/{dir}/{scan}": {
+      "delete": {
+        "description": "Deletes a scan directory. Returns 409 Conflict if scan is active.",
+        "operationId": "delete_scan_scans__dir___scan__delete",
+        "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a scan",
+        "tags": [
+          "scans"
+        ]
+      },
       "get": {
         "description": "Returns detailed status and metadata for a single scan.",
         "operationId": "scan_scans__dir___scan__get",
@@ -11001,7 +11147,10 @@
                     "type": "string"
                   },
                   "propertyNames": {
-                    "const": "project-config"
+                    "enum": [
+                      "project-config",
+                      "scans"
+                    ]
                   },
                   "title": "Response Get Topics Topics Get",
                   "type": "object"
@@ -11261,7 +11410,7 @@
     },
     "/transcripts/{dir}/{id}/messages-events": {
       "get": {
-        "description": "Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.",
+        "description": "Returns JSON bytes for transcript messages and events. May be compressed (check Content-Encoding or X-Content-Encoding headers). JSON may contain a top-level 'attachments' dict; strings within 'messages' and 'events' may contain 'attachment://<32-char-hex-id>' refs that must be resolved client-side by looking up the ID in the 'attachments' dict. Use X-Accept-Raw-Encoding header to bypass server transcoding and receive bytes in the source compression format (e.g., zstd); client must decompress.",
         "operationId": "transcript_messages_and_events_transcripts__dir___id__messages_events_get",
         "parameters": [
           {
@@ -11285,6 +11434,25 @@
               "title": "Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression.",
+            "in": "header",
+            "name": "x-accept-raw-encoding",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "zstd",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression.",
+              "title": "X-Accept-Raw-Encoding"
+            }
           }
         ],
         "responses": {
@@ -11294,12 +11462,15 @@
                 "schema": {
                   "$ref": "#/components/schemas/MessagesEventsResponse"
                 }
+              },
+              "application/octet-stream": {
+                "description": "Raw compressed bytes when X-Accept-Raw-Encoding header matches the source compression (e.g., zstd). Check X-Content-Encoding header for the compression format."
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get transcript messages and events (raw)",
+        "summary": "Get transcript messages and events",
         "tags": [
           "transcripts"
         ]
@@ -11380,18 +11551,7 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Delete Validation Validations  Uri  Delete",
-                  "type": "object"
-                }
-              }
-            },
+          "204": {
             "description": "Successful Response"
           }
         },
@@ -11514,18 +11674,7 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Delete Validation Case Validations  Uri   Case Id  Delete",
-                  "type": "object"
-                }
-              }
-            },
+          "204": {
             "description": "Successful Response"
           }
         },

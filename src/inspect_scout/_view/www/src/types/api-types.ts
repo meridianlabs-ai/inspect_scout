@@ -50,6 +50,7 @@ export type ToolEvent = components["schemas"]["ToolEvent"];
 export type CompactionEvent = components["schemas"]["CompactionEvent"];
 export type Event = components["schemas"]["Event"];
 export type InvalidationTopic = components["schemas"]["InvalidationTopic"];
+export type RawEncoding = components["schemas"]["RawEncoding"];
 
 export type JsonChange = components["schemas"]["JsonChange"];
 
@@ -110,7 +111,8 @@ export type Type17 =
   | "working"
   | "token"
   | "operator"
-  | "custom";
+  | "custom"
+  | "cost";
 
 // TODO: ??
 export type JsonChangeOp =

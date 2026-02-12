@@ -68,10 +68,13 @@ export const ValidationCaseTargetEditor: FC<
     if (target === undefined || target === null) return;
 
     const newMode = getTargetMode(target);
+    // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+    /* eslint-disable react-hooks/set-state-in-effect */
     setMode(newMode);
     if (newMode === "other") {
       setCustomValue(String(target ?? ""));
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [target, isTyping]);
 
   // Debounce only the text input changes
@@ -108,9 +111,24 @@ export const ValidationCaseTargetEditor: FC<
           handleRadioChange((e.target as HTMLInputElement).value)
         }
       >
-        <VscodeRadio label="True" value="true" checked={mode === "true"} />
-        <VscodeRadio label="False" value="false" checked={mode === "false"} />
-        <VscodeRadio label="Other" value="other" checked={mode === "other"} />
+        <VscodeRadio
+          name="target-mode"
+          label="True"
+          value="true"
+          checked={mode === "true"}
+        />
+        <VscodeRadio
+          name="target-mode"
+          label="False"
+          value="false"
+          checked={mode === "false"}
+        />
+        <VscodeRadio
+          name="target-mode"
+          label="Other"
+          value="other"
+          checked={mode === "other"}
+        />
       </VscodeRadioGroup>
 
       {mode === "other" && (

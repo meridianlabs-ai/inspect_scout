@@ -178,6 +178,7 @@ export const FilterBar: FC<FilterBarProps> = ({
           id={`${popoverIdPrefix}-editor-${editingColumnId}`}
           isOpen={isEditorOpen}
           setIsOpen={handleEditorOpenChange}
+          // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
           positionEl={chipRefs.current[editingColumnId] ?? null}
           placement="bottom-start"
           showArrow={true}

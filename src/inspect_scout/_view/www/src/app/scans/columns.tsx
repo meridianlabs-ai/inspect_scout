@@ -38,6 +38,7 @@ export type ScanColumnKey =
   | "packages"
   | "metadata"
   | "scan_args"
+  | "transcript_count"
   // Aggregated summary columns
   | "total_results"
   | "total_errors"
@@ -65,6 +66,7 @@ export const COLUMN_LABELS: Record<ScanColumnKey, string> = {
   packages: "Packages",
   metadata: "Metadata",
   scan_args: "Scan Args",
+  transcript_count: "Transcripts",
   // Aggregated summary columns
   total_results: "Total Results",
   total_errors: "Scanner Errors",
@@ -94,6 +96,7 @@ export const COLUMN_HEADER_TITLES: Record<ScanColumnKey, string> = {
   total_results: "Total number of results across all scanners",
   total_errors: "Errors reported by scanners while processing transcripts",
   total_tokens: "Total tokens used across all scanners",
+  transcript_count: "Number of transcripts processed in this scan",
 };
 
 // Helper to get status display (icon and color) for a scan
@@ -184,6 +187,26 @@ export const ALL_COLUMNS: Record<ScanColumnKey, ScanColumn> = {
     meta: {
       filterable: true,
       filterType: "string",
+    },
+  },
+  transcript_count: {
+    id: "transcript_count",
+    accessorKey: "transcript_count",
+    header: "Transcripts",
+    headerTitle: COLUMN_HEADER_TITLES.transcript_count,
+    size: 100,
+    minSize: 60,
+    maxSize: 200,
+    meta: {
+      filterable: true,
+      filterType: "number",
+    },
+    cell: (info) => {
+      const value = info.getValue() as number;
+      return formatNumber(value);
+    },
+    textValue: (value) => {
+      return formatNumber(value as number);
     },
   },
   scanners: {
@@ -502,6 +525,7 @@ export const DEFAULT_COLUMN_ORDER: ScanColumnKey[] = [
   "location",
   "timestamp",
   // Aggregated summary columns
+  "transcript_count",
   "total_results",
   "total_errors",
   "total_tokens",
@@ -525,6 +549,7 @@ export const DEFAULT_VISIBLE_COLUMNS: ScanColumnKey[] = [
   "model",
   "location",
   "timestamp",
+  "transcript_count",
   "total_results",
 ];
 

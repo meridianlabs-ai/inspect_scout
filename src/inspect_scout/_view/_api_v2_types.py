@@ -5,16 +5,16 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from inspect_scout._project.types import ProjectConfig
-from inspect_scout._query.order_by import OrderBy
-
+from .._project.types import ProjectConfig
 from .._query.condition import Condition
+from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
+from .._util.zip_common import ZipCompressionMethod
 
 
 @dataclass
@@ -114,6 +114,9 @@ class ScanRow(BaseModel):
 
     # === For active scan progress (None if not active) ===
     active_completion_pct: int | None = None
+
+    # transcript count
+    transcript_count: int
 
 
 @dataclass
@@ -273,5 +276,5 @@ class MessagesEventsResponse(BaseModel):
 class StreamMetadata:
     """Metadata yielded first from streaming generators."""
 
-    compression_method: int | None
+    compression_method: ZipCompressionMethod | None
     uncompressed_size: int | None

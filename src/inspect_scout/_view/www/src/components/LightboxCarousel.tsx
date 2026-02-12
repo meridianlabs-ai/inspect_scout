@@ -1,3 +1,5 @@
+// TODO: lint react-hooks/exhaustive-deps Fix this
+/* eslint-disable react-hooks/exhaustive-deps */
 import clsx from "clsx";
 import { FC, MouseEvent, ReactNode, useCallback, useEffect } from "react";
 

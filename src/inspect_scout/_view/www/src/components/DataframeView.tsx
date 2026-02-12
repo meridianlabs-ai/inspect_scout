@@ -186,13 +186,13 @@ export const DataframeView: FC<DataframeViewProps> = ({
     if (selectedDataframeRow < totalRows - 1) {
       setSelectedDataframeRow(selectedDataframeRow + 1);
     }
-  }, [selectedDataframeRow, rowData]);
+  }, [selectedDataframeRow, rowData, setSelectedDataframeRow]);
 
   const handlePrevious = useCallback(() => {
     if (selectedDataframeRow > 0) {
       setSelectedDataframeRow(selectedDataframeRow - 1);
     }
-  }, [selectedDataframeRow]);
+  }, [selectedDataframeRow, setSelectedDataframeRow]);
 
   const handleEnter = useCallback(() => {
     if (
@@ -270,6 +270,7 @@ export const DataframeView: FC<DataframeViewProps> = ({
     handleNext,
     handlePrevious,
     handleEnter,
+    setSelectedDataframeRow,
   ]);
 
   const updateVisibleRowCount = useCallback(

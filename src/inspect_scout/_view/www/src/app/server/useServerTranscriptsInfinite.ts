@@ -52,11 +52,11 @@ export const useServerTranscriptsInfinite = (
         ? [skipToken]
         : [
             "transcripts-infinite",
-            "project-config",
             params.location,
             params.filter,
             orderBy,
             pageSize,
+            "project-config-inv",
           ],
     queryFn:
       params === skipToken

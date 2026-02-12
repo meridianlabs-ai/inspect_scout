@@ -1,11 +1,19 @@
 import json
 import os
+import sys
 import zipfile
+import zlib
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_scout._util.async_zip import AsyncZipReader
+from inspect_scout._util.compression_transcoding import _DeflateCompressStream
+
+# Import zipfile-zstd for Python < 3.14 (monkey-patches zipfile to support zstd)
+if sys.version_info < (3, 14):
+    import zipfile_zstd  # type: ignore # noqa: F401
 
 
 @pytest.fixture
@@ -154,3 +162,72 @@ async def test_read_s3_zip_member() -> None:
 
         # Verify we got data
         _the_json = json.loads(b"".join(chunks).decode("utf-8"))
+
+
+@pytest.fixture
+def zstd_zip_file(tmp_path: Path) -> Path:
+    """Create a test ZIP file compressed with zstd (method 93)."""
+    zip_path = tmp_path / "zstd_test.zip"
+
+    # zipfile-zstd adds ZIP_ZSTANDARD (93) to zipfile
+    # Use getattr to satisfy both mypy and runtime
+    zstd_compression: int = getattr(zipfile, "ZIP_ZSTANDARD", 93)
+    with zipfile.ZipFile(zip_path, "w", compression=zstd_compression) as zf:
+        zf.writestr("test.json", json.dumps({"message": "hello zstd"}))
+
+    return zip_path
+
+
+@pytest.mark.asyncio
+async def test_read_zstd_compressed_member(zstd_zip_file: Path) -> None:
+    """Test reading a zstd-compressed member from a ZIP file."""
+    zip_path = str(zstd_zip_file)
+
+    async with AsyncFilesystem() as fs:
+        reader = AsyncZipReader(fs, zip_path)
+
+        # Verify the entry is zstd-compressed (method 93)
+        entry = await reader.get_member_entry("test.json")
+        assert entry.compression_method == 93
+
+        # Read the test.json member
+        chunks = []
+        async with await reader.open_member("test.json") as stream:
+            async for chunk in stream:
+                chunks.append(chunk)
+
+        # Verify content was decompressed correctly
+        data = b"".join(chunks)
+        parsed = json.loads(data.decode("utf-8"))
+        assert parsed["message"] == "hello zstd"
+
+
+@pytest.mark.asyncio
+async def test_deflate_compress_stream() -> None:
+    """Test that _DeflateCompressStream correctly deflate-compresses data."""
+    original_data = b"The quick brown fox jumps over the lazy dog. " * 100
+
+    async def source_iterator() -> "AsyncIterator[bytes]":
+        """Yield the original data in chunks."""
+        chunk_size = 1024
+        for i in range(0, len(original_data), chunk_size):
+            yield original_data[i : i + chunk_size]
+
+    # Compress with _DeflateCompressStream
+    compressed_chunks = []
+    compress_stream = _DeflateCompressStream(source_iterator())
+    try:
+        async for chunk in compress_stream:
+            compressed_chunks.append(chunk)
+    finally:
+        await compress_stream.aclose()
+
+    compressed_data = b"".join(compressed_chunks)
+
+    # Verify compressed data is smaller than original
+    assert len(compressed_data) < len(original_data)
+
+    # Verify we can decompress with zlib (raw DEFLATE, wbits=-15)
+    decompressor = zlib.decompressobj(-15)
+    decompressed = decompressor.decompress(compressed_data) + decompressor.flush()
+    assert decompressed == original_data

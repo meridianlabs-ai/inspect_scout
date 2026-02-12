@@ -109,6 +109,8 @@ export const EventPanel: FC<EventPanelProps> = ({
 
   const toggleCollapse = useCallback(() => {
     setCollapsed(!collapsed);
+    // TODO: lint react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCollapsed, collapsed, childIds]);
 
   const [mouseOver, setMouseOver] = useState(false);

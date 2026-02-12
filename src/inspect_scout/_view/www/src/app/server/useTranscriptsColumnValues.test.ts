@@ -1,73 +1,119 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { skipToken } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it } from "vitest";
 
-import { useApi } from "../../state/store";
-import { data, loading } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
+import { server } from "../../test/setup-msw";
+import { createTestWrapper } from "../../test/test-utils";
+import { encodeBase64Url } from "../../utils/base64url";
 
 import { useTranscriptsColumnValues } from "./useTranscriptsColumnValues";
 
-vi.mock("../../state/store", () => ({
-  useApi: vi.fn(),
-}));
-
-vi.mock("../../utils/asyncDataFromQuery", () => ({
-  useAsyncDataFromQuery: vi.fn(),
-}));
-
-const mockUseApi = vi.mocked(useApi);
-const mockUseAsyncDataFromQuery = vi.mocked(useAsyncDataFromQuery);
+const location = "/transcripts";
+const encodedLocation = encodeBase64Url(location);
 
 describe("useTranscriptsColumnValues", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseApi.mockReturnValue({} as ReturnType<typeof useApi>);
-  });
-
-  it("returns loading state when query is pending", () => {
-    mockUseAsyncDataFromQuery.mockReturnValue(loading);
-
-    const { result } = renderHook(() =>
-      useTranscriptsColumnValues({
-        location: "/transcripts",
-        column: "model",
-        filter: undefined,
-      })
-    );
-
-    expect(result.current).toEqual(loading);
-  });
-
-  it("returns data on successful fetch", () => {
+  it("returns loading then data on successful fetch", async () => {
     const mockValues = ["gpt-4", "claude-3", "gemini"];
-    mockUseAsyncDataFromQuery.mockReturnValue(data(mockValues));
 
-    const { result } = renderHook(() =>
-      useTranscriptsColumnValues({
-        location: "/transcripts",
-        column: "model",
-        filter: undefined,
-      })
+    server.use(
+      http.post(`/api/v2/transcripts/${encodedLocation}/distinct`, () =>
+        HttpResponse.json<string[]>(mockValues)
+      )
     );
 
-    expect(result.current.loading).toBe(false);
+    const { result } = renderHook(
+      () =>
+        useTranscriptsColumnValues({
+          location,
+          column: "model",
+          filter: undefined,
+        }),
+      { wrapper: createTestWrapper() }
+    );
+
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
     expect(result.current.data).toEqual(mockValues);
   });
 
-  it("returns error on fetch failure", () => {
-    const error = new Error("Network error");
-    mockUseAsyncDataFromQuery.mockReturnValue({ loading: false, error });
+  it("sends column and filter in request body", async () => {
+    let capturedBody: unknown;
 
-    const { result } = renderHook(() =>
-      useTranscriptsColumnValues({
-        location: "/transcripts",
-        column: "model",
-        filter: undefined,
+    server.use(
+      http.post(
+        `/api/v2/transcripts/${encodedLocation}/distinct`,
+        async ({ request }) => {
+          capturedBody = await request.json();
+          return HttpResponse.json<string[]>([]);
+        }
+      )
+    );
+
+    const { result } = renderHook(
+      () =>
+        useTranscriptsColumnValues({
+          location,
+          column: "model",
+          filter: undefined,
+        }),
+      { wrapper: createTestWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(capturedBody).toEqual({ column: "model", filter: null });
+  });
+
+  it("returns error on server failure", async () => {
+    server.use(
+      http.post(`/api/v2/transcripts/${encodedLocation}/distinct`, () =>
+        HttpResponse.text("Server Error", { status: 500 })
+      )
+    );
+
+    const { result } = renderHook(
+      () =>
+        useTranscriptsColumnValues({
+          location,
+          column: "model",
+          filter: undefined,
+        }),
+      { wrapper: createTestWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBeDefined();
+    expect(result.current.error?.message).toContain("500");
+  });
+
+  it("does not make request when skipToken is passed", async () => {
+    let requestMade = false;
+
+    server.use(
+      http.post(`/api/v2/transcripts/${encodedLocation}/distinct`, () => {
+        requestMade = true;
+        return HttpResponse.json<string[]>([]);
       })
     );
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe(error);
+    const { result } = renderHook(() => useTranscriptsColumnValues(skipToken), {
+      wrapper: createTestWrapper(),
+    });
+
+    expect(result.current.loading).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(requestMade).toBe(false);
   });
 });

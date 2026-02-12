@@ -120,6 +120,8 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
         // Cancel rendering if component unmounts
         cancel();
       };
+      // TODO: lint react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [markdown, omitMedia, cachedHtml, renderedHtml, postProcess]);
 
     return (

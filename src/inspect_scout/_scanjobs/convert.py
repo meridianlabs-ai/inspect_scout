@@ -65,4 +65,7 @@ def scan_row_from_status(
                 * 100
             )
         ),
+        transcript_count=len(spec.transcripts.transcript_ids)
+        if spec.transcripts is not None
+        else 0,
     )

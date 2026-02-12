@@ -22,6 +22,7 @@ import {
   LoggingNavigate,
   useLoggingNavigate,
 } from "./debugging/navigationDebugging";
+import { useWindowMessaging } from "./hooks/useWindowMessaging";
 import {
   kScansRootRouteUrlPattern,
   kScansRouteUrlPattern,
@@ -40,7 +41,6 @@ import {
 } from "./router/url";
 import { useStore } from "./state/store";
 import { AppConfig } from "./types/api-types";
-import { getEmbeddedScanState } from "./utils/embeddedState";
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
@@ -56,7 +56,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     const config = useAppConfig();
 
     useFindBandShortcut();
-    useEmbeddedStateInitializer();
+    useWindowMessaging();
     useRoutingInitializer(config.scans.dir);
 
     const content = <Outlet />;
@@ -175,57 +175,6 @@ export const createAppRouter = (config: AppRouterConfig) => {
     ],
     { basename: "" }
   );
-};
-
-// Handles embedded state initialization on first load
-const useEmbeddedStateInitializer = () => {
-  const navigate = useLoggingNavigate("useEmbeddedStateInitializer");
-  const hasInitializedEmbeddedData = useStore(
-    (state) => state.hasInitializedEmbeddedData
-  );
-  const setHasInitializedEmbeddedData = useStore(
-    (state) => state.setHasInitializedEmbeddedData
-  );
-  const setSingleFileMode = useStore((state) => state.setSingleFileMode);
-  const setSelectedScanner = useStore((state) => state.setSelectedScanner);
-  const selectedScanner = useStore((state) => state.selectedScanner);
-
-  useEffect(() => {
-    if (hasInitializedEmbeddedData) {
-      return;
-    }
-
-    // Check for embedded state on initial load
-    const hasRestoredState = selectedScanner !== undefined;
-    if (!hasRestoredState) {
-      const embeddedState = getEmbeddedScanState();
-      if (embeddedState) {
-        const { scan, scanner, dir } = embeddedState;
-
-        // Set the results directory in the store
-        if (scanner || scan) {
-          setSingleFileMode(true);
-        }
-
-        if (scanner) {
-          setSelectedScanner(scanner);
-        }
-
-        // Navigate to the scan
-        if (dir && scan) {
-          void navigate(scanRoute(dir, scan), { replace: true });
-        }
-      }
-    }
-    setHasInitializedEmbeddedData(true);
-  }, [
-    navigate,
-    hasInitializedEmbeddedData,
-    setSingleFileMode,
-    setHasInitializedEmbeddedData,
-    selectedScanner,
-    setSelectedScanner,
-  ]);
 };
 
 // Handles routing initialization on first load

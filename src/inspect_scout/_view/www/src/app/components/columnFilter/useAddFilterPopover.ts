@@ -59,6 +59,8 @@ export function useAddFilterPopover({
   // Reset column selection when popover opens
   useEffect(() => {
     if (isOpen && !prevOpenRef.current) {
+      // TODO: lint react-hooks/set-state-in-effect - consider if fixing this violation makes sense
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedColumnId(null);
     }
     prevOpenRef.current = isOpen;

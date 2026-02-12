@@ -49,17 +49,17 @@ from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
 from typing_extensions import override
 
-from inspect_scout._query.condition import Condition, ScalarValue
-from inspect_scout._query.condition_sql import condition_as_sql, conditions_as_filter
-from inspect_scout._transcript.database.schema import reserved_columns
-from inspect_scout._util.async_zip import AsyncZipReader, ZipEntry
-from inspect_scout._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-
 from .._query import Query
+from .._query.condition import Condition, ScalarValue
+from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
+from .._util.async_zip import AsyncZipReader
+from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
+from .._util.zip_common import ZipEntry
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
+from .database.schema import reserved_columns
 from .json.load_filtered import load_filtered_transcript
 from .local_files_cache import init_task_files_cache
 from .transcripts import TranscriptsReader

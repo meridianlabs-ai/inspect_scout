@@ -3698,7 +3698,7 @@ so disabling selection can break that functionality */
   margin-right: 0.5rem;
   color: var(--bs-red);
 }
-._wrapper_1tajk_1 {
+._wrapper_xqbef_1 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3709,26 +3709,26 @@ so disabling selection can break that functionality */
   text-align: center;
 }
 
-._container_1tajk_12 {
+._container_xqbef_12 {
   width: 100%;
-  height: 1px;
+  height: 0px;
   background-color: transparent;
   position: sticky;
-  overflow: hidden;
+  overflow: visible;
   z-index: 1200;
 }
 
-._animate_1tajk_21 {
+._animate_xqbef_21 {
   width: 5%;
   height: 1px;
-  animation: _leftToRight_1tajk_1 2s linear infinite;
+  animation: _leftToRight_xqbef_1 2s linear infinite;
   background-color: #3b82f6;
   position: absolute;
   left: 0;
   top: 0;
 }
 
-@keyframes _leftToRight_1tajk_1 {
+@keyframes _leftToRight_xqbef_1 {
   0% {
     transform: translateX(-100%);
   }
@@ -6726,12 +6726,32 @@ button._segment_19z32_10 {
 ._content_13ihw_1 {
   white-space: pre-wrap;
 }
-._contentData_1sd1z_1 {
-  border: solid var(--bs-light-border-subtle) 1px;
-  padding: 0.5em;
+._title_1pwo3_1 {
+  margin-bottom: 0.25em;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 0.3em;
+  align-items: baseline;
+  color: var(--bs-secondary) !important;
+  font-weight: var(--bs-body-font-weight) !important;
+}
+
+._content_1pwo3_11 {
   margin-bottom: 0.5em;
-  margin-top: 0.5em;
-  margin-left: 1em;
+  overflow-wrap: anywhere;
+}
+
+._grid_1pwo3_16 {
+  border: solid var(--bs-border-color) 1px;
+  border-radius: var(--bs-border-radius);
+  padding: 0.5em;
+}
+
+._content_1pwo3_11 ._grid_1pwo3_16 .text-style-label {
+  text-transform: none !important;
+}
+._contentData_1lrx1_1 {
+  margin-bottom: 0.5em;
 }
 ._webSearch_1376z_1 {
   display: grid;
@@ -7247,49 +7267,57 @@ a._citationLink_1ggvf_9:hover {
   border: none;
   margin-left: 0.4rem;
 }
-._boolean_1uivt_1 {
+._boolean_8citi_1 {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   border-radius: 5px;
   padding: 8px;
+  margin-bottom: 1px;
   width: 2.5rem;
   height: 1rem;
-  font-size: 0.7rem;
+  font-size: var(--inspect-font-size-smallest);
 }
 
-._true_1uivt_12 {
+._true_8citi_13 {
   background-color: var(--bs-success);
   border: solid var(--bs-success) 1px;
   color: var(--bs-body-bg);
 }
 
-._false_1uivt_18 {
+._false_8citi_19 {
   background-color: var(--bs-danger);
   border: solid var(--bs-danger) 1px;
   color: var(--bs-body-bg);
 }
 
-._valueTable_1uivt_24 {
+._valueTable_8citi_25 {
   display: grid;
-  grid-template-columns: max-content auto;
+  grid-template-columns: minmax(auto, max-content) auto;
   column-gap: 1rem;
   row-gap: 0rem;
 }
 
-._inline_1uivt_31 ._valueValue_1uivt_31 {
+._valueKey_8citi_32 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._inline_1uivt_31 ._valueValue_1uivt_31 p {
+._inline_8citi_38 ._valueValue_8citi_38 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: end;
+}
+
+._inline_8citi_38 ._valueValue_8citi_38 p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-pre._value_1uivt_24 {
+pre._value_8citi_25 {
   margin: 0;
 }
 ._title_19l1b_1 {
@@ -9486,6 +9514,46 @@ span.ap-marker-container:hover span.ap-marker {
 ._idValue_oam2j_153 {
   overflow-wrap: break-word;
   word-break: break-all;
+}
+._inputContainer_1nqcj_1 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 4px 6px;
+  min-height: 30px;
+  align-items: center;
+  align-content: flex-start;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--bs-border-color));
+  border-radius: 2px;
+}
+
+._labelChip_1nqcj_14 {
+  /* Label chip specific styles can go here */
+}
+
+._popoverContent_1nqcj_18 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+._popoverField_1nqcj_25 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+._popoverLabel_1nqcj_31 {
+  font-weight: 600;
+}
+
+._popoverActions_1nqcj_35 {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  margin-top: 0.2rem;
 }
 ._container_1cz5u_1 {
   margin: 0.5rem;

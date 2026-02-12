@@ -162,7 +162,11 @@ export interface paths {
         get: operations["scan_scans__dir___scan__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a scan
+         * @description Deletes a scan directory. Returns 409 Conflict if scan is active.
+         */
+        delete: operations["delete_scan_scans__dir___scan__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -340,8 +344,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get transcript messages and events (raw)
-         * @description Returns raw JSON bytes for transcript messages and events. May be DEFLATE-compressed (check Content-Encoding header). JSON may contain 'attachments' dict; strings with 'attachment://<id>' refs must be resolved client-side.
+         * Get transcript messages and events
+         * @description Returns JSON bytes for transcript messages and events. May be compressed (check Content-Encoding or X-Content-Encoding headers). JSON may contain a top-level 'attachments' dict; strings within 'messages' and 'events' may contain 'attachment://<32-char-hex-id>' refs that must be resolved client-side by looking up the ID in the 'attachments' dict. Use X-Accept-Raw-Encoding header to bypass server transcoding and receive bytes in the source compression format (e.g., zstd); client must decompress.
          */
         get: operations["transcript_messages_and_events_transcripts__dir___id__messages_events_get"];
         put?: never;
@@ -1299,13 +1303,20 @@ export interface components {
              * Effort
              * @default null
              */
-            effort: ("low" | "medium" | "high") | null;
+            effort: ("low" | "medium" | "high" | "max") | null;
             /**
              * Extra Body
              * @default null
              */
             extra_body: {
                 [key: string]: unknown;
+            } | null;
+            /**
+             * Extra Headers
+             * @default null
+             */
+            extra_headers: {
+                [key: string]: string;
             } | null;
             /**
              * Frequency Penalty
@@ -1448,10 +1459,14 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high") | null;
+            effort?: ("low" | "medium" | "high" | "max") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
+            } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -1521,10 +1536,14 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high") | null;
+            effort?: ("low" | "medium" | "high" | "max") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
+            } | null;
+            /** Extra Headers */
+            extra_headers?: {
+                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -1676,7 +1695,7 @@ export interface components {
             working_start: number;
         };
         /** @enum {string} */
-        InvalidationTopic: "project-config";
+        InvalidationTopic: "project-config" | "scans";
         /**
          * JSONSchema
          * @description JSON Schema for type.
@@ -1977,10 +1996,13 @@ export interface components {
             request: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /** Response */
+            /**
+             * Response
+             * @default null
+             */
             response: {
                 [key: string]: components["schemas"]["JsonValue"];
-            };
+            } | null;
             /**
              * Time
              * @default null
@@ -2088,6 +2110,16 @@ export interface components {
             /** Tools */
             tools: components["schemas"]["ToolInfo"][];
             /**
+             * Traceback
+             * @default null
+             */
+            traceback: string | null;
+            /**
+             * Traceback Ansi
+             * @default null
+             */
+            traceback_ansi: string | null;
+            /**
              * Uuid
              * @default null
              */
@@ -2167,6 +2199,11 @@ export interface components {
              * @default null
              */
             reasoning_tokens: number | null;
+            /**
+             * Total Cost
+             * @default null
+             */
+            total_cost: number | null;
             /**
              * Total Tokens
              * @default 0
@@ -2341,6 +2378,8 @@ export interface components {
              */
             timestamp: string;
         };
+        /** @enum {string} */
+        RawEncoding: "zstd";
         /** RenameValidationSetRequest */
         RenameValidationSetRequest: {
             /** Name */
@@ -2519,7 +2558,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "message" | "time" | "working" | "token" | "operator" | "custom";
+            type: "message" | "time" | "working" | "token" | "cost" | "operator" | "custom";
             /**
              * Uuid
              * @default null
@@ -2831,6 +2870,8 @@ export interface components {
             total_results: number;
             /** Total Tokens */
             total_tokens: number;
+            /** Transcript Count */
+            transcript_count: number;
         };
         /**
          * ScanSpec
@@ -3972,6 +4013,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -4303,6 +4348,29 @@ export interface operations {
             };
         };
     };
+    delete_scan_scans__dir___scan__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Scans directory (base64url-encoded) */
+                dir: string;
+                /** @description Scan path (base64url-encoded) */
+                scan: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     scan_df_scans__dir___scan___scanner__get: {
         parameters: {
             query?: never;
@@ -4532,7 +4600,10 @@ export interface operations {
     transcript_messages_and_events_transcripts__dir___id__messages_events_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Comma-separated list of compression algorithms the client application can decompress in code (e.g., 'zstd'). Use this for algorithms browsers don't natively support. If the source uses a listed algorithm, raw compressed bytes are returned with X-Content-Encoding header (not Content-Encoding, so the browser won't attempt decompression). Otherwise, server transcodes to deflate for automatic browser decompression. */
+                "x-accept-raw-encoding"?: "zstd" | null;
+            };
             path: {
                 /** @description Transcripts directory (base64url-encoded) */
                 dir: string;
@@ -4550,6 +4621,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessagesEventsResponse"];
+                    /** @description Raw compressed bytes when X-Accept-Raw-Encoding header matches the source compression (e.g., zstd). Check X-Content-Encoding header for the compression format. */
+                    "application/octet-stream": unknown;
                 };
             };
         };
@@ -4636,15 +4709,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
-                };
+                content?: never;
             };
         };
     };
@@ -4748,15 +4817,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
-                };
+                content?: never;
             };
         };
     };

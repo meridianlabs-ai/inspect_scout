@@ -19,7 +19,9 @@ export const useScansColumnValues = (
 
   return useAsyncDataFromQuery({
     queryKey:
-      params === skipToken ? [skipToken] : ["scansColumnValues", params],
+      params === skipToken
+        ? [skipToken]
+        : ["scansColumnValues", params, "scans-inv"],
     queryFn:
       params === skipToken
         ? skipToken

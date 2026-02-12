@@ -1,8 +1,23 @@
-## Unreleased
+## 0.4.15 (12 February 2026)
+
+- Scout View: Support for displaying cost limits.
+
+## 0.4.14 (12 February 2026)
+
+- Scout View: Improve display of large dictionary scan values.
+- Enable customization of the scan buffer directory via `SCOUT_SCANBUFFER_DIR` environment variable.
+- Bugfix: Fix answer parsing when LLM echoes "Answer:" in reasoning before the actual answer marker.
+
+## 0.4.13 (11 February 2026)
+
+- Validation: Support for applying validation labels in Scout View.
+- Compatibility with latest release of the Inspect VS Code Extension.
+
+## 0.4.12 (09 February 2026)
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
 - Add `SampleMetadata` class for typed access to Inspect eval log metadata fields.
-- Add support for Inspect `CompactionEvent`.
+- Add support for Inspect `CompactionEvent` and display of native compaction data from OpenAI and Anthropic.
 - Add "store" event to `EventType` enumeration.
 - View Server: Add optimized `/transcripts/{dir}/{id}/info` and `/transcripts/{dir}/{id}/messages-events` endpoints for fetching transcript data. The `messages-events` endpoint streams raw (potentially compressed) JSON for improved performance.
 - Bugfix: Eliminate problem with stale transcript status when deleting validation cases.

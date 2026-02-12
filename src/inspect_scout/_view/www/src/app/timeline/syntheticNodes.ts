@@ -1,7 +1,7 @@
 import type {
-  AgentNodeType,
-  BranchType,
-  SectionNodeType,
+  AgentNode,
+  Branch,
+  SectionNode,
   TranscriptNodes,
 } from "../../components/transcript/nodes";
 
@@ -28,12 +28,12 @@ function makeAgent(
   startSec: number,
   endSec: number,
   tokens: number,
-  content: AgentNodeType["content"] = [],
+  content: AgentNode["content"] = [],
   options?: {
-    branches?: BranchType[];
+    branches?: Branch[];
     utility?: boolean;
   }
-): AgentNodeType {
+): AgentNode {
   return {
     type: "agent",
     id,
@@ -53,7 +53,7 @@ function makeSection(
   startSec: number,
   endSec: number,
   tokens: number
-): SectionNodeType {
+): SectionNode {
   return {
     type: "section",
     section,
@@ -65,10 +65,10 @@ function makeSection(
 }
 
 function makeNodes(
-  agent: AgentNodeType,
+  agent: AgentNode,
   options?: {
-    init?: SectionNodeType;
-    scoring?: SectionNodeType;
+    init?: SectionNode;
+    scoring?: SectionNode;
   }
 ): TranscriptNodes {
   const init = options?.init ?? null;
@@ -209,7 +209,7 @@ function flatTranscript(): TimelineScenario {
 
 // S8: Many rows (8+ agents to test scrolling)
 function manyRows(): TimelineScenario {
-  const agents: AgentNodeType[] = [];
+  const agents: AgentNode[] = [];
   const names = [
     "Research",
     "Analyze",
@@ -285,7 +285,7 @@ function utilityAgents(): TimelineScenario {
 
 // S11a: Branches (single fork)
 function branchesSingleFork(): TimelineScenario {
-  const branch1: BranchType = {
+  const branch1: Branch = {
     type: "branch",
     forkedAt: "model-call-5",
     content: [
@@ -297,7 +297,7 @@ function branchesSingleFork(): TimelineScenario {
     totalTokens: 8700,
   };
 
-  const branch2: BranchType = {
+  const branch2: Branch = {
     type: "branch",
     forkedAt: "model-call-5",
     content: [makeAgent("branch2-rewrite", "Rewrite", 15, 25, 5100)],
@@ -326,7 +326,7 @@ function branchesSingleFork(): TimelineScenario {
 
 // S11b: Branches (multiple forks)
 function branchesMultipleForks(): TimelineScenario {
-  const earlyBranch: BranchType = {
+  const earlyBranch: Branch = {
     type: "branch",
     forkedAt: "model-call-3",
     content: [makeAgent("early-attempt", "Attempt", 8, 14, 4200)],
@@ -335,7 +335,7 @@ function branchesMultipleForks(): TimelineScenario {
     totalTokens: 4200,
   };
 
-  const lateBranch1: BranchType = {
+  const lateBranch1: Branch = {
     type: "branch",
     forkedAt: "model-call-10",
     content: [makeAgent("late-retry", "Retry", 30, 38, 3800)],
@@ -344,7 +344,7 @@ function branchesMultipleForks(): TimelineScenario {
     totalTokens: 3800,
   };
 
-  const lateBranch2: BranchType = {
+  const lateBranch2: Branch = {
     type: "branch",
     forkedAt: "model-call-10",
     content: [makeAgent("late-alt", "Alternative", 30, 42, 6100)],

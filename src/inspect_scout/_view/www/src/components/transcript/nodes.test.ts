@@ -12,12 +12,12 @@ import { describe, expect, it } from "vitest";
 import type { Event } from "../../types/api-types";
 
 import {
-  AgentNodeType,
+  AgentNode,
   AgentSource,
-  BranchType,
+  Branch,
   buildTranscriptNodes,
-  EventNodeType,
-  SectionNodeType,
+  EventNode,
+  SectionNode,
   TranscriptNodes,
 } from "./nodes";
 
@@ -238,12 +238,12 @@ function eventsFromJson(data: FixtureData): Event[] {
 /**
  * Get all event UUIDs from an EventNode or AgentNode's content (non-recursive).
  */
-function getDirectEventUuids(node: EventNodeType | AgentNodeType): string[] {
+function getDirectEventUuids(node: EventNode | AgentNode): string[] {
   if (node.type === "event") {
     return node.event.uuid ? [node.event.uuid] : [];
   }
   return node.content
-    .filter((c): c is EventNodeType => c.type === "event")
+    .filter((c): c is EventNode => c.type === "event")
     .map((c) => c.event.uuid)
     .filter((uuid): uuid is string => uuid !== null);
 }
@@ -251,7 +251,7 @@ function getDirectEventUuids(node: EventNodeType | AgentNodeType): string[] {
 /**
  * Get all event UUIDs from a SectionNode.
  */
-function getSectionEventUuids(node: SectionNodeType): string[] {
+function getSectionEventUuids(node: SectionNode): string[] {
   return node.content
     .map((c) => c.event.uuid)
     .filter((uuid): uuid is string => uuid !== null);
@@ -260,14 +260,14 @@ function getSectionEventUuids(node: SectionNodeType): string[] {
 /**
  * Get child agents from an AgentNode.
  */
-function getChildAgents(node: AgentNodeType): AgentNodeType[] {
-  return node.content.filter((c): c is AgentNodeType => c.type === "agent");
+function getChildAgents(node: AgentNode): AgentNode[] {
+  return node.content.filter((c): c is AgentNode => c.type === "agent");
 }
 
 /**
  * Get all event UUIDs recursively from an AgentNode.
  */
-function getAllEventUuids(node: AgentNodeType): string[] {
+function getAllEventUuids(node: AgentNode): string[] {
   const uuids: string[] = [];
   for (const item of node.content) {
     if (item.type === "event") {
@@ -299,7 +299,7 @@ function assertSourceMatches(
  * Assert that a SectionNode matches expected values.
  */
 function assertSectionMatches(
-  actual: SectionNodeType | null,
+  actual: SectionNode | null,
   expected: ExpectedSection | null
 ): void {
   if (expected === null) {
@@ -312,16 +312,16 @@ function assertSectionMatches(
 }
 
 /**
- * Assert that a BranchType matches expected values.
+ * Assert that a Branch matches expected values.
  */
 function assertBranchMatches(
-  actual: BranchType,
+  actual: Branch,
   expected: ExpectedBranch
 ): void {
   expect(actual.forkedAt).toBe(expected.forked_at);
   if (expected.event_uuids !== undefined) {
     const uuids = actual.content
-      .filter((c): c is EventNodeType => c.type === "event")
+      .filter((c): c is EventNode => c.type === "event")
       .map((c) => c.event.uuid)
       .filter((uuid): uuid is string => uuid !== null);
     expect(uuids).toEqual(expected.event_uuids);
@@ -340,7 +340,7 @@ function assertBranchMatches(
  * - total_tokens: token count validation
  */
 function assertAgentMatches(
-  actual: AgentNodeType | null,
+  actual: AgentNode | null,
   expected: ExpectedAgent | null
 ): void {
   if (expected === null) {
@@ -405,13 +405,13 @@ function assertAgentMatches(
       expect(actualItem.type).toBe(expectedItem.type);
 
       if (expectedItem.type === "event" && expectedItem.uuid) {
-        expect((actualItem as EventNodeType).event.uuid).toBe(
+        expect((actualItem as EventNode).event.uuid).toBe(
           expectedItem.uuid
         );
       }
 
       if (expectedItem.type === "agent") {
-        const agentItem = actualItem as AgentNodeType;
+        const agentItem = actualItem as AgentNode;
         if (expectedItem.id) {
           expect(agentItem.id).toBe(expectedItem.id);
         }

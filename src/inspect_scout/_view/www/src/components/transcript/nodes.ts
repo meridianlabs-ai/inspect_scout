@@ -74,7 +74,7 @@ interface TranscriptNodeBase {
 /**
  * Wraps a single Event with computed timing and token properties.
  */
-export interface EventNodeType extends TranscriptNodeBase {
+export interface EventNode extends TranscriptNodeBase {
   type: "event";
   event: Event;
 }
@@ -82,49 +82,49 @@ export interface EventNodeType extends TranscriptNodeBase {
 /**
  * Represents an agent with nested content (events and child agents).
  */
-export interface AgentNodeType extends TranscriptNodeBase {
+export interface AgentNode extends TranscriptNodeBase {
   type: "agent";
   id: string;
   name: string;
   source: AgentSource;
-  content: (EventNodeType | AgentNodeType)[];
-  branches: BranchType[];
+  content: (EventNode | AgentNode)[];
+  branches: Branch[];
   taskDescription?: string;
   utility: boolean;
-  outline?: OutlineType;
+  outline?: Outline;
 }
 
 /**
  * A discarded alternative path from a branch point.
  */
-export interface BranchType extends TranscriptNodeBase {
+export interface Branch extends TranscriptNodeBase {
   type: "branch";
   forkedAt: string;
-  content: (EventNodeType | AgentNodeType)[];
+  content: (EventNode | AgentNode)[];
 }
 
 /**
  * A node in an agent's outline, referencing an event by UUID.
  */
-export interface OutlineNodeType {
+export interface OutlineNode {
   event: string;
-  children?: OutlineNodeType[];
+  children?: OutlineNode[];
 }
 
 /**
  * Hierarchical outline of events for an agent.
  */
-export interface OutlineType {
-  nodes: OutlineNodeType[];
+export interface Outline {
+  nodes: OutlineNode[];
 }
 
 /**
  * Section node for init or scoring phases (EventNodes only).
  */
-export interface SectionNodeType extends TranscriptNodeBase {
+export interface SectionNode extends TranscriptNodeBase {
   type: "section";
   section: "init" | "scoring";
-  content: EventNodeType[];
+  content: EventNode[];
 }
 
 /**
@@ -134,7 +134,7 @@ export interface SectionNodeType extends TranscriptNodeBase {
  * stream — e.g. a default agent-centric view alongside an alternative
  * grouping or filtered view.
  */
-export interface TimelineType {
+export interface Timeline {
   name: string;
   description: string;
   transcript: TranscriptNodes;
@@ -144,15 +144,15 @@ export interface TimelineType {
  * Root container for transcript node hierarchy.
  */
 export interface TranscriptNodes {
-  init: SectionNodeType | null;
-  agent: AgentNodeType | null;
-  scoring: SectionNodeType | null;
+  init: SectionNode | null;
+  agent: AgentNode | null;
+  scoring: SectionNode | null;
   startTime: Date | null;
   endTime: Date | null;
   totalTokens: number;
 }
 
-export type TranscriptNode = EventNodeType | AgentNodeType | SectionNodeType;
+export type TranscriptNode = EventNode | AgentNode | SectionNode;
 
 // =============================================================================
 // Helper Functions
@@ -241,7 +241,7 @@ function sumTokens(nodes: (TranscriptNode | TranscriptNodeBase)[]): number {
 /**
  * Create an EventNode from an Event.
  */
-function createEventNode(event: Event): EventNodeType {
+function createEventNode(event: Event): EventNode {
   return {
     type: "event",
     event,
@@ -258,10 +258,10 @@ function createAgentNode(
   id: string,
   name: string,
   source: AgentSource,
-  content: (EventNodeType | AgentNodeType)[],
+  content: (EventNode | AgentNode)[],
   utility: boolean = false,
-  branches: BranchType[] = []
-): AgentNodeType {
+  branches: Branch[] = []
+): AgentNode {
   return {
     type: "agent",
     id,
@@ -277,12 +277,12 @@ function createAgentNode(
 }
 
 /**
- * Create a BranchType with computed properties.
+ * Create a Branch with computed properties.
  */
 function createBranch(
   forkedAt: string,
-  content: (EventNodeType | AgentNodeType)[]
-): BranchType {
+  content: (EventNode | AgentNode)[]
+): Branch {
   return {
     type: "branch",
     forkedAt,
@@ -298,8 +298,8 @@ function createBranch(
  */
 function createSectionNode(
   section: "init" | "scoring",
-  content: EventNodeType[]
-): SectionNodeType {
+  content: EventNode[]
+): SectionNode {
   return {
     type: "section",
     section,
@@ -419,14 +419,14 @@ function containsModelEvents(span: SpanNode): boolean {
  * Handles ToolEvents that spawn nested agents, recursively processing
  * nested events to detect further agent spawning.
  */
-function eventToNode(event: Event): EventNodeType | AgentNodeType {
+function eventToNode(event: Event): EventNode | AgentNode {
   if (event.event === "tool") {
     const agentName = event.agent;
     const nestedEvents = event.events as Event[] | undefined;
 
     if (agentName && nestedEvents && nestedEvents.length > 0) {
       // Recursively process nested events to handle nested tool agents
-      const nestedContent: (EventNodeType | AgentNodeType)[] = nestedEvents.map(
+      const nestedContent: (EventNode | AgentNode)[] = nestedEvents.map(
         (e) => eventToNode(e)
       );
 
@@ -447,7 +447,7 @@ function eventToNode(event: Event): EventNodeType | AgentNodeType {
 function treeItemToNode(
   item: TreeItem,
   hasExplicitBranches: boolean
-): EventNodeType | AgentNodeType {
+): EventNode | AgentNode {
   if (isSpanNode(item)) {
     if (item.type === "agent") {
       return buildAgentFromSpan(item, hasExplicitBranches);
@@ -467,8 +467,8 @@ function buildAgentFromSpan(
   span: SpanNode,
   hasExplicitBranches: boolean,
   extraItems?: TreeItem[]
-): AgentNodeType {
-  const content: (EventNodeType | AgentNodeType)[] = [];
+): AgentNode {
+  const content: (EventNode | AgentNode)[] = [];
 
   // Add any extra items first (orphan events)
   if (extraItems) {
@@ -503,7 +503,7 @@ function buildAgentFromSpan(
 function buildAgentFromSpanGeneric(
   span: SpanNode,
   hasExplicitBranches: boolean
-): AgentNodeType {
+): AgentNode {
   const [content, branches] = processChildren(
     span.children,
     hasExplicitBranches
@@ -526,7 +526,7 @@ function buildAgentFromSpanGeneric(
 function buildSectionFromSpan(
   section: "init" | "scoring",
   span: SpanNode
-): SectionNodeType {
+): SectionNode {
   // Flatten the tree, extracting just the events
   const events = eventSequence(span.children);
   const content = events.map((e) => createEventNode(e));
@@ -543,7 +543,7 @@ function buildSectionFromSpan(
 function buildAgentFromSolversSpan(
   solversSpan: SpanNode,
   hasExplicitBranches: boolean
-): AgentNodeType | null {
+): AgentNode | null {
   if (solversSpan.children.length === 0) {
     return null;
   }
@@ -571,7 +571,7 @@ function buildAgentFromSolversSpan(
       );
     } else {
       // Multiple agent spans - create root containing all
-      const children: (EventNodeType | AgentNodeType)[] = agentSpans.map(
+      const children: (EventNode | AgentNode)[] = agentSpans.map(
         (span) => buildAgentFromSpan(span, hasExplicitBranches)
       );
       // Add any orphan events at the start
@@ -610,7 +610,7 @@ function buildAgentFromSolversSpan(
 function buildAgentFromTree(
   tree: TreeItem[],
   hasExplicitBranches: boolean
-): AgentNodeType {
+): AgentNode {
   const [content, branches] = processChildren(tree, hasExplicitBranches);
 
   return createAgentNode(
@@ -636,10 +636,10 @@ function buildAgentFromTree(
 function processChildren(
   children: TreeItem[],
   hasExplicitBranches: boolean
-): [(EventNodeType | AgentNodeType)[], BranchType[]] {
+): [(EventNode | AgentNode)[], Branch[]] {
   if (!hasExplicitBranches) {
     // Standard processing - no branch detection at build time
-    const content: (EventNodeType | AgentNodeType)[] = [];
+    const content: (EventNode | AgentNode)[] = [];
     for (const item of children) {
       content.push(treeItemToNode(item, hasExplicitBranches));
     }
@@ -647,17 +647,17 @@ function processChildren(
   }
 
   // Explicit branch mode: collect branch spans and build Branch objects
-  const content: (EventNodeType | AgentNodeType)[] = [];
-  const branches: BranchType[] = [];
+  const content: (EventNode | AgentNode)[] = [];
+  const branches: Branch[] = [];
   let branchRun: SpanNode[] = [];
 
   function flushBranchRun(
     run: SpanNode[],
-    parentContent: (EventNodeType | AgentNodeType)[]
-  ): BranchType[] {
-    const result: BranchType[] = [];
+    parentContent: (EventNode | AgentNode)[]
+  ): Branch[] {
+    const result: Branch[] = [];
     for (const span of run) {
-      const branchContent: (EventNodeType | AgentNodeType)[] = [];
+      const branchContent: (EventNode | AgentNode)[] = [];
       for (const child of span.children) {
         branchContent.push(treeItemToNode(child, hasExplicitBranches));
       }
@@ -692,7 +692,7 @@ function processChildren(
  * Determine the fork point by matching the last shared input message.
  */
 function findForkedAt(
-  agentContent: (EventNodeType | AgentNodeType)[],
+  agentContent: (EventNode | AgentNode)[],
   branchInput: ChatMessage[]
 ): string {
   if (branchInput.length === 0) return "";
@@ -753,7 +753,7 @@ function findForkedAt(
  * Extract the input from the first ModelEvent in branch content.
  */
 function getBranchInput(
-  content: (EventNodeType | AgentNodeType)[]
+  content: (EventNode | AgentNode)[]
 ): ChatMessage[] | null {
   for (const item of content) {
     if (item.type === "event" && item.event.event === "model") {
@@ -796,7 +796,7 @@ function inputFingerprint(messages: ChatMessage[]): string {
  *
  * Mutates agent in-place.
  */
-function detectAutoBranches(agent: AgentNodeType): void {
+function detectAutoBranches(agent: AgentNode): void {
   // Find ModelEvent indices and their fingerprints (skip empty inputs)
   const modelIndices: [number, string][] = [];
   for (let i = 0; i < agent.content.length; i++) {
@@ -864,7 +864,7 @@ function detectAutoBranches(agent: AgentNodeType): void {
  * Recursively detect branches in the agent tree.
  */
 function classifyBranches(
-  agent: AgentNodeType,
+  agent: AgentNode,
   hasExplicitBranches: boolean
 ): void {
   if (!hasExplicitBranches) {
@@ -895,7 +895,7 @@ function classifyBranches(
 /**
  * Extract system prompt from the first ModelEvent in agent's direct content.
  */
-function getSystemPrompt(agent: AgentNodeType): string | null {
+function getSystemPrompt(agent: AgentNode): string | null {
   for (const item of agent.content) {
     if (item.type === "event" && item.event.event === "model") {
       const input = item.event.input;
@@ -929,7 +929,7 @@ function getSystemPrompt(agent: AgentNodeType): string | null {
  * A single turn is 1 ModelEvent with no ToolEvents.
  * A single tool-calling turn is 2 ModelEvents with a ToolEvent between them.
  */
-function isSingleTurn(agent: AgentNodeType): boolean {
+function isSingleTurn(agent: AgentNode): boolean {
   // Collect direct events (not child agents) with their types
   const directEvents: string[] = [];
   for (const item of agent.content) {
@@ -968,7 +968,7 @@ function isSingleTurn(agent: AgentNodeType): boolean {
  * and a different system prompt than its parent.
  */
 function classifyUtilityAgents(
-  node: AgentNodeType,
+  node: AgentNode,
   parentSystemPrompt: string | null = null
 ): void {
   const agentSystemPrompt = getSystemPrompt(node);
@@ -1042,9 +1042,9 @@ export function buildTranscriptNodes(events: Event[]): TranscriptNodes {
   const hasPhaseSpans =
     topSpans.has("init") || topSpans.has("solvers") || topSpans.has("scorers");
 
-  let initSection: SectionNodeType | null = null;
-  let agentNode: AgentNodeType | null = null;
-  let scoringSection: SectionNodeType | null = null;
+  let initSection: SectionNode | null = null;
+  let agentNode: AgentNode | null = null;
+  let scoringSection: SectionNode | null = null;
 
   if (hasPhaseSpans) {
     // Use spans to partition events

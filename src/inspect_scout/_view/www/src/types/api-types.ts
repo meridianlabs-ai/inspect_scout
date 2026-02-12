@@ -111,7 +111,8 @@ export type Type17 =
   | "working"
   | "token"
   | "operator"
-  | "custom";
+  | "custom"
+  | "cost";
 
 // TODO: ??
 export type JsonChangeOp =

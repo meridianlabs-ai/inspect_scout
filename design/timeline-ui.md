@@ -533,3 +533,51 @@ When multiple timelines are available, a row of pills appears above the timeline
 - Switching timelines resets drill-down, selection, and branch navigation to the new tree's root
 - Each timeline maintains independent navigation state while active
 - The active timeline pill is visually highlighted (filled background vs outline)
+
+## 13. Custom Outline
+
+By default, the content panel shows events in a flat chronological list. When an `AgentNode` has an `outline` attached, a sidebar appears on the left side of the content panel providing hierarchical navigation. This is primarily useful for custom timelines where the author wants to impose a meaningful structure on the event stream.
+
+### Data Model
+
+An `Outline` is a tree of `OutlineNode` entries, each referencing an event by UUID:
+
+- **event** — UUID of an event in the agent's content
+- **children** — optional nested `OutlineNode` list
+
+### Layout
+
+The outline sidebar sits to the left of the content panel, separated by a vertical divider. Outline entries are shown as a collapsible tree. Clicking an entry scrolls the content panel to that event.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ← Transcript › Build                                      31.8k tokens   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Build    │██████████████████████████████████████████████████████│        │
+│  Code    │ ██████████████████████                               │ 15.2k  │
+│  Test    │                       ████████████████               │ 10.4k  │
+├──────────────────────────────────────────────────────────────────────────┤
+│          │                                                               │
+│ Outline  │  ◆ MODEL                                         2.1k        │
+│          │  I'll start by reading the existing codebase...              │
+│ ▾ Setup  │                                                               │
+│   Read   │  ◇ TOOL read_file                                0.3s        │
+│   Config │  path: "src/main.py"                                         │
+│ ▾ Impl   │  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄              │
+│   Code   │  import os                                                    │
+│   Test   │  from app import create_app                                   │
+│ ▸ Review │  ...                                                          │
+│          │                                                               │
+│          │  ◆ MODEL                                         3.4k        │
+│          │  Based on the code, I need to modify the auth...             │
+│          │                                                               │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Behavior
+
+- **No outline**: sidebar is hidden — content panel uses full width (default)
+- **With outline**: sidebar appears; entries are collapsible tree nodes
+- Clicking an outline entry scrolls the content panel to the referenced event and highlights it
+- The currently visible event is highlighted in the outline (scroll tracking)
+- Outline entries display the event's label (model output preview, tool name, etc.)

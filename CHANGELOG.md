@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.14 (12 February 2026)
 
 - Scout View: Improve display of large dictionary scan values.
 - Enable customization of the scan buffer directory via `SCOUT_SCANBUFFER_DIR` environment variable.

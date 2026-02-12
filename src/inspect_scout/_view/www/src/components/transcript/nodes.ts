@@ -112,6 +112,19 @@ export interface SectionNodeType extends TranscriptNodeBase {
 }
 
 /**
+ * A named timeline view over a transcript.
+ *
+ * Multiple timelines allow different interpretations of the same event
+ * stream — e.g. a default agent-centric view alongside an alternative
+ * grouping or filtered view.
+ */
+export interface TimelineType {
+  name: string;
+  description: string;
+  transcript: TranscriptNodes;
+}
+
+/**
  * Root container for transcript node hierarchy.
  */
 export interface TranscriptNodes {

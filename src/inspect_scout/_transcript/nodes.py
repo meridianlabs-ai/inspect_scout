@@ -234,6 +234,20 @@ class SectionNode(TranscriptNode):
 
 
 @dataclass
+class Timeline:
+    """A named timeline view over a transcript.
+
+    Multiple timelines allow different interpretations of the same event
+    stream — e.g. a default agent-centric view alongside an alternative
+    grouping or filtered view.
+    """
+
+    name: str
+    description: str
+    transcript: "TranscriptNodes"
+
+
+@dataclass
 class TranscriptNodes:
     """Root container for transcript node hierarchy."""
 

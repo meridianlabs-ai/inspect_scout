@@ -495,3 +495,41 @@ Branch cards use dashed borders (`╌`) to distinguish from child agent cards (`
 - **Explicit branches**: use the span `name` from the transcript (e.g., `↳ retry`, `↳ backtrack`)
 - **Auto-detected branches**: numbered sequentially — `↳ branch 1`, `↳ branch 2`, etc.
 - The `↳` prefix is always shown to distinguish branches from child agents
+
+## 12. Multiple Timelines
+
+A single transcript can have multiple timeline interpretations. Each timeline is a named view with its own `TranscriptNodes` tree — the same event stream parsed with different groupings, filters, or analytical lenses. For example, a default agent-centric timeline alongside a phase-based or domain-specific grouping.
+
+### Data Model
+
+A `Timeline` is a lightweight container:
+
+- **name** — short label shown in the pill (e.g., "Agents", "Phases", "Tools")
+- **description** — tooltip or subtitle explaining the view
+- **transcript** — a full `TranscriptNodes` tree (init / agent / scoring)
+
+### UI: Timeline Pills
+
+When multiple timelines are available, a row of pills appears above the timeline panel. Clicking a pill switches the entire timeline and content panel to that view. Only one timeline is active at a time.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  [ Agents ]  [ Phases ]  [ Tools ]                                       │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Transcript                                                  48.5k tokens │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Transcript│██████████████████████████████████████████████████████│       │
+│  Explore  │ ███████████                                          │  8.1k │
+│  Plan     │             ████████                                 │  5.3k │
+│  Build    │                      ████████████████████████████    │ 31.8k │
+│  Scoring  │                                                   ███│  3.2k │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Behavior
+
+- **Single timeline**: pills are hidden — no UI change from current design
+- **Multiple timelines**: pills appear; the first timeline is selected by default
+- Switching timelines resets drill-down, selection, and branch navigation to the new tree's root
+- Each timeline maintains independent navigation state while active
+- The active timeline pill is visually highlighted (filled background vs outline)

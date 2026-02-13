@@ -1,4 +1,4 @@
-## Unrelased
+## 0.4.16 (13 February 2026)
 
 - Transcript DB: `phoenix()` transcript source for importing transcripts from Arize Phoenix.
 

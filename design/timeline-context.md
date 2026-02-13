@@ -1325,13 +1325,27 @@ Implemented `collectMarkers(node: AgentNode, depth: MarkerDepth): TimelineMarker
 
 **Tests:** 23 tests covering isErrorEvent (6 cases: ToolEvent with/without error, ModelEvent with event.error, output.error, clean, CompactionEvent), isCompactionEvent (3 cases), S5 inline markers (error + compaction from child agent), S7 flat (empty), depth modes (direct/children/recursive with parent-child-grandchild), branch markers (matched UUID, unmatched, empty forkedAt, S11a synthetic), sort order (unsorted input, mixed types), edge cases (empty agent, normal-only events).
 
-## Phase 4: `useTimeline` Hook (Pending)
+## Phase 4: `useTimeline` Hook (Complete)
 
 **Files:** `useTimeline.ts`, `useTimeline.test.ts`
 
-See the plan file for full specification. Key elements:
+### What was done
 
-- **Pure functions** (testable without DOM): `parsePathSegment()`, `resolvePath()`, `buildBreadcrumbs()`
-- **Hook:** `useTimeline(tree: TranscriptNodes): TimelineState` — reads path/selected from URL search params, returns resolved node, rows, breadcrumbs, selection, and navigation functions
-- **Root-level init/scoring:** folded into the root AgentNode's content via `sectionToAgent()` before computing swimlane rows
-- **Path resolution:** slash-separated, case-insensitive, with `-N` suffix for span indexing
+Implemented the `useTimeline` hook and three pure helper functions that drive URL-based drill-down navigation through the transcript node tree.
+
+**Pure functions** (exported, testable without DOM):
+
+- `parsePathSegment(segment)` — splits `"my-agent-3"` into `{ name: "my-agent", spanIndex: 3 }`. Only the trailing `-N` is consumed (N must be >= 1). `-0` is treated as part of the name.
+- `resolvePath(tree, pathString)` — walks the tree from `tree.agent`, splitting path on `/`, matching child agents case-insensitively. `-N` suffix selects the Nth same-named child (1-indexed). Special first-segment names: `"init"` → `tree.init`, `"scoring"` → `tree.scoring`. Returns `null` for invalid paths.
+- `buildBreadcrumbs(pathString, tree)` — builds `BreadcrumbSegment[]` starting with root. Each segment resolves its label from the actual agent name when possible, falls back to the raw segment string.
+
+**Hook:** `useTimeline(tree: TranscriptNodes): TimelineState`
+
+- Reads `path` and `selected` from `useSearchParams()`
+- Resolves path → `AgentNode | SectionNode` (SectionNodes converted via `sectionToAgent`)
+- Falls back to root on invalid path
+- At root level, folds `init`/`scoring` into the agent's content via `prepareRootNode()` so they appear as swimlane rows
+- Computes `rows` via `computeSwimLaneRows()`, `breadcrumbs` via `buildBreadcrumbs()`
+- Navigation: `drillDown(name, spanIndex?)`, `goUp()`, `select(name | null)` — all update URL via `setSearchParams(..., { replace: true })`
+
+**Tests:** 44 tests. Pure function tests (no jsdom): parsePathSegment (7 cases), resolvePath (12 cases including root, named, case-insensitive, nested S3, span index S2, invalid, empty tree, scoring, init, out-of-range), buildBreadcrumbs (5 cases). Hook tests (jsdom + `MemoryRouter` wrapper): S1 root resolution, drill-down, S7 flat, S4 parallel, selected param, nested breadcrumbs, invalid fallback, scoring fold at root vs drilled-in, scoring path conversion, drillDown/goUp/select navigation, span index drill-down, S2 iterative spans.

@@ -418,6 +418,29 @@ def _normalize_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str,
 
         normalized.append(new_msg)
 
+    # Infer tool result messages: a "user" message immediately following an
+    # "assistant" message with tool_calls, whose content looks like JSON,
+    # is almost certainly a tool result (Google GenAI doesn't set tool_call_id
+    # or role="tool" in OpenInference attributes).
+    for i in range(1, len(normalized)):
+        msg = normalized[i]
+        prev = normalized[i - 1]
+        if (
+            msg.get("role") == "user"
+            and "tool_call_id" not in msg
+            and prev.get("role") == "assistant"
+            and prev.get("tool_calls")
+        ):
+            content = msg.get("content", "")
+            if isinstance(content, str) and content.strip().startswith("{"):
+                # Extract tool_call_id from the preceding assistant's tool call
+                prev_calls = prev.get("tool_calls", [])
+                tc_id = ""
+                if prev_calls and isinstance(prev_calls[0], dict):
+                    tc_id = prev_calls[0].get("id", "")
+                msg["role"] = "tool"
+                msg["tool_call_id"] = tc_id
+
     return normalized
 
 
@@ -558,6 +581,12 @@ async def _parse_raw_output(
 
     if not isinstance(output_data, dict):
         return None
+
+    # Google GenAI format: candidates array with content.parts
+    if isinstance(output_data.get("candidates"), list):
+        from inspect_ai.model import model_output_from_google
+
+        return await model_output_from_google(output_data, model=model_name)
 
     # Anthropic format: use inspect_ai converter
     # Detect by structure: top-level content array with typed blocks + role field

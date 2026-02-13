@@ -114,7 +114,7 @@ async def test_phoenix_openai_responses_trace(phoenix_project: str) -> None:
 
     for t in transcripts:
         assert t.model is not None
-        assert t.message_count > 0
+        assert t.message_count is not None and t.message_count > 0
         assert len(t.messages) > 0
         assert len(t.events) > 0
 

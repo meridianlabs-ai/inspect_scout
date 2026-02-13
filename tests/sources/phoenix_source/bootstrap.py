@@ -1731,7 +1731,7 @@ async def main(force: bool = False) -> None:
     print("Bootstrap complete! Traces have been exported to Phoenix.")
     print(
         "Run integration tests with: "
-        "PHOENIX_RUN_TESTS=1 pytest tests/sources/phoenix_source/test_phoenix.py -v"
+        "PHOENIX_RUN_TESTS=1 pytest tests/sources/phoenix_source/test_phoenix.py -v --runapi"
     )
 
 

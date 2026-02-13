@@ -47,7 +47,7 @@ async def extract_input_messages(
     attributes = span.get("attributes") or {}
 
     # Path 1: Try raw input.value payload (most complete)
-    messages = _parse_raw_input(attributes, provider)
+    messages = await _parse_raw_input(attributes, provider)
     if messages:
         return messages
 
@@ -56,15 +56,61 @@ async def extract_input_messages(
         attributes, prefix="llm.input_messages"
     )
     if oi_messages:
-        return await _convert_messages(oi_messages, provider)
+        return await _convert_messages(oi_messages)
 
     return []
 
 
-def _parse_raw_input(
+def _detect_message_format(messages: list[dict[str, Any]], provider: Provider) -> str:
+    """Detect the format of raw messages.
+
+    Checks message structure to determine the provider format:
+    - Anthropic: content blocks with tool_use/tool_result types
+    - Google: ``parts`` field instead of ``content``
+    - OpenAI: standard messages with content/tool_calls
+    - unknown: non-JSON-serializable content (e.g. Python repr strings)
+
+    Args:
+        messages: Raw message dicts
+        provider: Detected provider hint
+
+    Returns:
+        "anthropic", "openai", or "unknown"
+    """
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+
+        # Google GenAI uses "parts" instead of "content"
+        if "parts" in msg:
+            return "unknown"
+
+        content = msg.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if isinstance(block, dict):
+                block_type = block.get("type", "")
+                if block_type in ("tool_use", "tool_result"):
+                    return "anthropic"
+            elif isinstance(block, str):
+                # Python repr of Anthropic objects (from some instrumentors)
+                if block.startswith(
+                    ("ToolUseBlock(", "TextBlock(", "ToolResultBlock(")
+                ):
+                    return "unknown"
+
+    # Fall back to provider hint
+    return "anthropic" if provider == Provider.ANTHROPIC else "openai"
+
+
+async def _parse_raw_input(
     attributes: dict[str, Any], provider: Provider
 ) -> list[ChatMessage] | None:
     """Parse raw input.value JSON payload into ChatMessages.
+
+    Routes to inspect_ai provider-specific converters for proper handling
+    of tool calls, tool results, and content blocks.
 
     Args:
         attributes: Span attributes
@@ -93,8 +139,35 @@ def _parse_raw_input(
     # Extract messages from the payload
     messages = input_data.get("messages") or input_data.get("contents")
     if messages and isinstance(messages, list):
-        # Use provider-specific converters via _convert_messages_sync
-        return _convert_messages_sync(messages, provider)
+        fmt = _detect_message_format(messages, provider)
+        if fmt == "anthropic":
+            from inspect_ai.model import messages_from_anthropic
+
+            system = input_data.get("system")
+            system_text = None
+            if isinstance(system, str):
+                system_text = system
+            elif isinstance(system, list):
+                # Anthropic system can be list of content blocks
+                parts = []
+                for block in system:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        parts.append(block.get("text", ""))
+                system_text = " ".join(parts) if parts else None
+
+            return await messages_from_anthropic(
+                messages,
+                system_message=system_text,
+            )
+        elif fmt == "openai":
+            from inspect_ai.model import messages_from_openai
+
+            normalized = _normalize_openai_messages(messages)
+            return await messages_from_openai(normalized)  # type: ignore[arg-type]
+        else:
+            # Unrecognized format (e.g. Python repr strings) — fall through to
+            # OpenInference attribute extraction (Path 2)
+            return None
 
     # OpenAI Responses API: input can be string or list of typed items
     input_items = input_data.get("input")
@@ -104,123 +177,6 @@ def _parse_raw_input(
         return _convert_responses_input(input_items)
 
     return None
-
-
-def _convert_messages_sync(
-    messages: list[dict[str, Any]], provider: Provider
-) -> list[ChatMessage] | None:
-    """Synchronously convert raw messages to ChatMessages.
-
-    For raw payloads we use simple conversion since we can't await
-    the async converter functions in a sync context.
-
-    Args:
-        messages: Raw message dicts from provider payload
-        provider: Provider type
-
-    Returns:
-        List of ChatMessages or None
-    """
-    result: list[ChatMessage] = []
-
-    for msg in messages:
-        if not isinstance(msg, dict):
-            continue
-
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-
-        # Handle Anthropic content blocks
-        if isinstance(content, list):
-            text_parts = []
-            for block in content:
-                if isinstance(block, dict):
-                    if block.get("type") == "text":
-                        text_parts.append(block.get("text", ""))
-                    elif block.get("type") == "tool_result":
-                        # Tool result in user messages (Anthropic format)
-                        pass
-                elif isinstance(block, str):
-                    text_parts.append(block)
-            content = " ".join(text_parts) if text_parts else ""
-
-        if role == "system":
-            from inspect_ai.model._chat_message import ChatMessageSystem
-
-            result.append(ChatMessageSystem(content=str(content)))
-        elif role == "user":
-            result.append(ChatMessageUser(content=str(content)))
-        elif role == "assistant":
-            tool_calls = _extract_tool_calls_from_message(msg)
-            result.append(
-                ChatMessageAssistant(
-                    content=str(content) if content else "",
-                    tool_calls=tool_calls if tool_calls else None,
-                )
-            )
-        elif role == "tool":
-            from inspect_ai.model._chat_message import ChatMessageTool
-
-            result.append(
-                ChatMessageTool(
-                    content=str(content),
-                    tool_call_id=str(msg.get("tool_call_id", "")),
-                )
-            )
-
-    return result if result else None
-
-
-def _extract_tool_calls_from_message(msg: dict[str, Any]) -> list[ToolCall]:
-    """Extract tool calls from an assistant message.
-
-    Args:
-        msg: Message dictionary
-
-    Returns:
-        List of ToolCall objects
-    """
-    tool_calls: list[ToolCall] = []
-
-    # OpenAI format: tool_calls array
-    tc_list = msg.get("tool_calls")
-    if isinstance(tc_list, list):
-        for tc in tc_list:
-            if not isinstance(tc, dict):
-                continue
-            func = tc.get("function", {})
-            if not isinstance(func, dict):
-                continue
-            args_str = func.get("arguments", "{}")
-            try:
-                args = json.loads(args_str) if isinstance(args_str, str) else args_str
-            except json.JSONDecodeError:
-                args = {}
-
-            tool_calls.append(
-                ToolCall(
-                    id=str(tc.get("id", "")),
-                    function=str(func.get("name", "")),
-                    arguments=args if isinstance(args, dict) else {},
-                    type="function",
-                )
-            )
-
-    # Anthropic format: content blocks with type=tool_use
-    content = msg.get("content")
-    if isinstance(content, list) and not tool_calls:
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "tool_use":
-                tool_calls.append(
-                    ToolCall(
-                        id=str(block.get("id", "")),
-                        function=str(block.get("name", "")),
-                        arguments=block.get("input", {}),
-                        type="function",
-                    )
-                )
-
-    return tool_calls
 
 
 def _convert_responses_input(items: list[Any]) -> list[ChatMessage] | None:
@@ -384,15 +340,15 @@ def _extract_openinference_messages(
 
 
 async def _convert_messages(
-    messages: list[dict[str, Any]], provider: Provider
+    messages: list[dict[str, Any]],
 ) -> list[ChatMessage]:
-    """Convert message dictionaries to ChatMessage objects.
+    """Convert OpenInference-normalized message dicts to ChatMessage objects.
 
-    Uses inspect_ai converters based on detected provider.
+    OpenInference flattened attributes are always in OpenAI-like format,
+    so this always uses the OpenAI converter.
 
     Args:
         messages: List of message dictionaries (OpenAI format)
-        provider: Detected provider type
 
     Returns:
         List of ChatMessage objects
@@ -488,12 +444,11 @@ def _simple_message_conversion(messages: list[dict[str, Any]]) -> list[ChatMessa
     return result
 
 
-async def extract_output(span: dict[str, Any], provider: Provider) -> ModelOutput:
+async def extract_output(span: dict[str, Any]) -> ModelOutput:
     """Extract output from Phoenix span.
 
     Args:
         span: Phoenix span dictionary
-        provider: Detected provider type
 
     Returns:
         ModelOutput object
@@ -502,7 +457,7 @@ async def extract_output(span: dict[str, Any], provider: Provider) -> ModelOutpu
     model_name = get_model_name_from_attrs(attributes) or "unknown"
 
     # Path 1: Try raw output.value payload
-    output = _parse_raw_output(attributes, model_name, provider)
+    output = await _parse_raw_output(attributes, model_name)
     if output:
         usage = extract_usage(span)
         if usage:
@@ -569,15 +524,18 @@ async def extract_output(span: dict[str, Any], provider: Provider) -> ModelOutpu
     return output
 
 
-def _parse_raw_output(
-    attributes: dict[str, Any], model_name: str, provider: Provider
+async def _parse_raw_output(
+    attributes: dict[str, Any], model_name: str
 ) -> ModelOutput | None:
     """Parse raw output.value JSON payload into ModelOutput.
+
+    Routes to inspect_ai provider-specific converters for proper handling
+    of tool calls and content blocks. Detects Anthropic vs OpenAI format
+    by output structure rather than provider hint.
 
     Args:
         attributes: Span attributes
         model_name: Model name for output
-        provider: Detected provider
 
     Returns:
         ModelOutput or None if parsing fails
@@ -600,6 +558,21 @@ def _parse_raw_output(
 
     if not isinstance(output_data, dict):
         return None
+
+    # Anthropic format: use inspect_ai converter
+    # Detect by structure: top-level content array with typed blocks + role field
+    if (
+        isinstance(output_data.get("content"), list)
+        and output_data.get("role") == "assistant"
+    ):
+        from inspect_ai.model import model_output_from_anthropic
+
+        # Ensure required Anthropic Message fields are present
+        anthropic_data = dict(output_data)
+        anthropic_data.setdefault("id", "msg_unknown")
+        anthropic_data.setdefault("type", "message")
+        anthropic_data.setdefault("stop_reason", "end_turn")
+        return await model_output_from_anthropic(anthropic_data)
 
     # OpenAI format: choices array
     choices = output_data.get("choices")
@@ -656,43 +629,6 @@ def _parse_raw_output(
                         )
                     ],
                 )
-
-    # Anthropic format: content array at top level
-    content_blocks = output_data.get("content")
-    if isinstance(content_blocks, list):
-        text_parts = []
-        tool_calls = []
-
-        for block in content_blocks:
-            if not isinstance(block, dict):
-                continue
-            block_type = block.get("type", "")
-            if block_type == "text":
-                text_parts.append(block.get("text", ""))
-            elif block_type == "tool_use":
-                tool_calls.append(
-                    ToolCall(
-                        id=str(block.get("id", "")),
-                        function=str(block.get("name", "")),
-                        arguments=block.get("input", {}),
-                        type="function",
-                    )
-                )
-
-        content = "".join(text_parts)
-
-        return ModelOutput(
-            model=model_name,
-            choices=[
-                ChatCompletionChoice(
-                    message=ChatMessageAssistant(
-                        content=content,
-                        tool_calls=tool_calls if tool_calls else None,
-                    ),
-                    stop_reason="tool_calls" if tool_calls else "stop",
-                )
-            ],
-        )
 
     # OpenAI Responses API format: output array with typed items
     output_items = output_data.get("output")

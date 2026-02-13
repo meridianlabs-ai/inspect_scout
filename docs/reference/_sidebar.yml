@@ -157,6 +157,8 @@ website:
       - section: sources
         href: reference/sources.qmd
         contents:
+        - text: phoenix
+          href: reference/sources.qmd#phoenix
         - text: langsmith
           href: reference/sources.qmd#langsmith
         - text: logfire

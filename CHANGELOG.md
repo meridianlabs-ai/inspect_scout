@@ -1,3 +1,11 @@
+## 0.4.17 (13 February 2026)
+
+- Transcript DB: Improve Anthropic and Google tool call capture for `pheonix()` transcript source.
+
+## 0.4.16 (13 February 2026)
+
+- Transcript DB: `phoenix()` transcript source for importing transcripts from Arize Phoenix.
+
 ## 0.4.15 (12 February 2026)
 
 - Scout View: Support for displaying cost limits.

@@ -63,30 +63,32 @@ AgentSource = AgentSourceSpan | AgentSourceTool
 # =============================================================================
 
 
-def _min_start_time(nodes: Sequence["TranscriptNode"]) -> datetime | None:
+def _min_start_time(nodes: Sequence["TranscriptNode"]) -> datetime:
     """Return the earliest start time among nodes.
 
+    Requires at least one node (all nodes have non-null start_time).
+
     Args:
-        nodes: Sequence of transcript nodes to check.
+        nodes: Non-empty sequence of transcript nodes to check.
 
     Returns:
-        The minimum start_time, or None if no nodes have start times.
+        The minimum start_time.
     """
-    times = [node.start_time for node in nodes if node.start_time]
-    return min(times) if times else None
+    return min(node.start_time for node in nodes)
 
 
-def _max_end_time(nodes: Sequence["TranscriptNode"]) -> datetime | None:
+def _max_end_time(nodes: Sequence["TranscriptNode"]) -> datetime:
     """Return the latest end time among nodes.
 
+    Requires at least one node (all nodes have non-null end_time).
+
     Args:
-        nodes: Sequence of transcript nodes to check.
+        nodes: Non-empty sequence of transcript nodes to check.
 
     Returns:
-        The maximum end_time, or None if no nodes have end times.
+        The maximum end_time.
     """
-    times = [node.end_time for node in nodes if node.end_time]
-    return max(times) if times else None
+    return max(node.end_time for node in nodes)
 
 
 def _sum_tokens(nodes: Sequence["TranscriptNode"]) -> int:
@@ -106,13 +108,13 @@ class TranscriptNode(ABC):
 
     @property
     @abstractmethod
-    def start_time(self) -> datetime | None:
+    def start_time(self) -> datetime:
         """Start time of this node."""
         ...
 
     @property
     @abstractmethod
-    def end_time(self) -> datetime | None:
+    def end_time(self) -> datetime:
         """End time of this node."""
         ...
 
@@ -130,19 +132,19 @@ class EventNode(TranscriptNode):
     event: Event
 
     @property
-    def start_time(self) -> datetime | None:
-        """Event timestamp."""
+    def start_time(self) -> datetime:
+        """Event timestamp (required field on all events)."""
         ts = getattr(self.event, "timestamp", None)
-        if ts is not None:
-            return ts if isinstance(ts, datetime) else None
-        return None
+        if not isinstance(ts, datetime):
+            raise ValueError("Event missing required timestamp field")
+        return ts
 
     @property
-    def end_time(self) -> datetime | None:
+    def end_time(self) -> datetime:
         """Event completion time if available, else timestamp."""
         completed = getattr(self.event, "completed", None)
-        if completed is not None:
-            return completed if isinstance(completed, datetime) else None
+        if isinstance(completed, datetime):
+            return completed
         return self.start_time
 
     @property
@@ -173,12 +175,12 @@ class AgentNode(TranscriptNode):
     outline: "Outline | None" = None
 
     @property
-    def start_time(self) -> datetime | None:
+    def start_time(self) -> datetime:
         """Earliest start time among content."""
         return _min_start_time(self.content)
 
     @property
-    def end_time(self) -> datetime | None:
+    def end_time(self) -> datetime:
         """Latest end time among content."""
         return _max_end_time(self.content)
 
@@ -196,12 +198,12 @@ class Branch(TranscriptNode):
     content: list[EventNode | AgentNode] = field(default_factory=list)
 
     @property
-    def start_time(self) -> datetime | None:
+    def start_time(self) -> datetime:
         """Earliest start time among content."""
         return _min_start_time(self.content)
 
     @property
-    def end_time(self) -> datetime | None:
+    def end_time(self) -> datetime:
         """Latest end time among content."""
         return _max_end_time(self.content)
 
@@ -234,12 +236,12 @@ class SectionNode(TranscriptNode):
     content: list[EventNode] = field(default_factory=list)
 
     @property
-    def start_time(self) -> datetime | None:
+    def start_time(self) -> datetime:
         """Earliest start time among content."""
         return _min_start_time(self.content)
 
     @property
-    def end_time(self) -> datetime | None:
+    def end_time(self) -> datetime:
         """Latest end time among content."""
         return _max_end_time(self.content)
 
@@ -278,12 +280,14 @@ class TranscriptNodes:
     @property
     def start_time(self) -> datetime | None:
         """Earliest start time across all sections."""
-        return _min_start_time(self._sections())
+        sections = self._sections()
+        return _min_start_time(sections) if sections else None
 
     @property
     def end_time(self) -> datetime | None:
         """Latest end time across all sections."""
-        return _max_end_time(self._sections())
+        sections = self._sections()
+        return _max_end_time(sections) if sections else None
 
     @property
     def total_tokens(self) -> int:

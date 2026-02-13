@@ -66,8 +66,8 @@ function isSpanNode(item: TreeItem): item is SpanNode {
  * Base interface for computed properties on all transcript nodes.
  */
 interface TranscriptNodeBase {
-  startTime: Date | null;
-  endTime: Date | null;
+  startTime: Date;
+  endTime: Date;
   totalTokens: number;
 }
 
@@ -169,19 +169,25 @@ function parseTimestamp(timestamp: string | null | undefined): Date | null {
 
 /**
  * Get the start time for an event.
+ * Every event has a required `timestamp` field.
  */
-function getEventStartTime(event: Event): Date | null {
+function getEventStartTime(event: Event): Date {
   const timestamp = (event as { timestamp?: string }).timestamp;
-  return parseTimestamp(timestamp);
+  const date = parseTimestamp(timestamp);
+  if (!date) {
+    throw new Error("Event missing required timestamp field");
+  }
+  return date;
 }
 
 /**
  * Get the end time for an event (completed if available, else timestamp).
  */
-function getEventEndTime(event: Event): Date | null {
+function getEventEndTime(event: Event): Date {
   const completed = (event as { completed?: string }).completed;
   if (completed) {
-    return parseTimestamp(completed);
+    const date = parseTimestamp(completed);
+    if (date) return date;
   }
   return getEventStartTime(event);
 }
@@ -203,28 +209,32 @@ function getEventTokens(event: Event): number {
 
 /**
  * Return the earliest start time among nodes.
+ * Requires at least one node (all nodes have non-null startTime).
  */
-function minStartTime(
-  nodes: (TranscriptNode | TranscriptNodeBase)[]
-): Date | null {
-  const times = nodes
-    .map((n) => n.startTime)
-    .filter((t): t is Date => t !== null);
-  if (times.length === 0) return null;
-  return times.reduce((min, t) => (t < min ? t : min));
+function minStartTime(nodes: (TranscriptNode | TranscriptNodeBase)[]): Date {
+  const first = nodes[0];
+  if (!first) {
+    throw new Error("minStartTime requires at least one node");
+  }
+  return nodes.reduce(
+    (min, n) => (n.startTime < min ? n.startTime : min),
+    first.startTime
+  );
 }
 
 /**
  * Return the latest end time among nodes.
+ * Requires at least one node (all nodes have non-null endTime).
  */
-function maxEndTime(
-  nodes: (TranscriptNode | TranscriptNodeBase)[]
-): Date | null {
-  const times = nodes
-    .map((n) => n.endTime)
-    .filter((t): t is Date => t !== null);
-  if (times.length === 0) return null;
-  return times.reduce((max, t) => (t > max ? t : max));
+function maxEndTime(nodes: (TranscriptNode | TranscriptNodeBase)[]): Date {
+  const first = nodes[0];
+  if (!first) {
+    throw new Error("maxEndTime requires at least one node");
+  }
+  return nodes.reduce(
+    (max, n) => (n.endTime > max ? n.endTime : max),
+    first.endTime
+  );
 }
 
 /**
@@ -237,6 +247,9 @@ function sumTokens(nodes: (TranscriptNode | TranscriptNodeBase)[]): number {
 // =============================================================================
 // Node Creation
 // =============================================================================
+
+/** Sentinel date for nodes with no content (e.g. empty agent spans). */
+const EPOCH = new Date(0);
 
 /**
  * Create an EventNode from an Event.
@@ -270,8 +283,8 @@ function createAgentNode(
     content,
     branches,
     utility,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime: content.length > 0 ? minStartTime(content) : EPOCH,
+    endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
     totalTokens: sumTokens(content),
   };
 }
@@ -287,8 +300,8 @@ function createBranch(
     type: "branch",
     forkedAt,
     content,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime: content.length > 0 ? minStartTime(content) : EPOCH,
+    endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
     totalTokens: sumTokens(content),
   };
 }
@@ -304,8 +317,8 @@ function createSectionNode(
     type: "section",
     section,
     content,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime: content.length > 0 ? minStartTime(content) : EPOCH,
+    endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
     totalTokens: sumTokens(content),
   };
 }
@@ -1080,8 +1093,8 @@ export function buildTranscriptNodes(events: Event[]): TranscriptNodes {
     init: initSection,
     agent: agentNode,
     scoring: scoringSection,
-    startTime: minStartTime(sections),
-    endTime: maxEndTime(sections),
+    startTime: sections.length > 0 ? minStartTime(sections) : null,
+    endTime: sections.length > 0 ? maxEndTime(sections) : null,
     totalTokens: sumTokens(sections),
   };
 }

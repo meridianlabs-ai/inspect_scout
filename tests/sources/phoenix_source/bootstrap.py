@@ -56,7 +56,25 @@ TRACES = [
     "scout-test-phoenix-pydanticai-tools",
     "scout-test-phoenix-pydanticai-multiturn",
     "scout-test-phoenix-pydanticai-multiturn-tools",
+    # OpenAI Responses API
+    "scout-test-phoenix-openai-responses-simple",
+    "scout-test-phoenix-openai-responses-tools",
+    "scout-test-phoenix-openai-responses-multiturn-tools",
 ]
+
+
+def set_trace_metadata(span: Any, provider: str, trace_type: str) -> None:
+    """Set standard metadata attributes on a trace span.
+
+    Args:
+        span: OpenTelemetry span
+        provider: Provider name (e.g., "openai", "anthropic")
+        trace_type: Trace type (e.g., "simple", "tools", "multiturn")
+    """
+    span.set_attribute("session.id", f"scout-test-{provider}")
+    span.set_attribute("tag.tags", ["scout-test", provider, trace_type])
+    span.set_attribute("metadata.env", "test")
+    span.set_attribute("metadata.framework_version", "1.0")
 
 
 def check_dependencies() -> bool:
@@ -142,8 +160,12 @@ async def is_bootstrap_complete() -> bool:
         return False
 
 
-def setup_instrumentation() -> Any:
-    """Set up OpenInference instrumentation with Phoenix."""
+def setup_instrumentation() -> tuple[Any, Any]:
+    """Set up OpenInference instrumentation with Phoenix.
+
+    Returns:
+        Tuple of (tracer, tracer_provider) so provider can be flushed.
+    """
     from openinference.instrumentation.anthropic import AnthropicInstrumentor
     from openinference.instrumentation.openai import OpenAIInstrumentor
     from opentelemetry import trace
@@ -177,17 +199,12 @@ def setup_instrumentation() -> Any:
     except ImportError:
         print("Skipping LangChain instrumentation (package not installed)")
 
-    # PydanticAI span processor (optional)
-    try:
-        from openinference.instrumentation.pydantic_ai import (
-            OpenInferenceSpanProcessor,
-        )
+    # Note: PydanticAI OpenInferenceSpanProcessor intentionally NOT added here.
+    # Calling tracer_provider.add_span_processor() overwrites the HTTP export
+    # processor set by phoenix.otel.register(), preventing all spans from being
+    # exported. PydanticAI traces are still captured through OpenAIInstrumentor.
 
-        tracer_provider.add_span_processor(OpenInferenceSpanProcessor())
-    except ImportError:
-        print("Skipping PydanticAI instrumentation (package not installed)")
-
-    return trace.get_tracer(__name__)
+    return trace.get_tracer(__name__), tracer_provider
 
 
 async def create_openai_simple_trace(tracer: Any) -> None:
@@ -196,7 +213,8 @@ async def create_openai_simple_trace(tracer: Any) -> None:
 
     client = openai.OpenAI()
 
-    with tracer.start_as_current_span("scout-test-phoenix-openai-simple"):
+    with tracer.start_as_current_span("scout-test-phoenix-openai-simple") as span:
+        set_trace_metadata(span, "openai", "simple")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -216,7 +234,8 @@ async def create_openai_multiturn_trace(tracer: Any) -> None:
 
     client = openai.OpenAI()
 
-    with tracer.start_as_current_span("scout-test-phoenix-openai-multiturn"):
+    with tracer.start_as_current_span("scout-test-phoenix-openai-multiturn") as span:
+        set_trace_metadata(span, "openai", "multiturn")
         messages: list[dict[str, str]] = [
             {"role": "system", "content": "You are a helpful math tutor."},
             {"role": "user", "content": "What is 2 + 2?"},
@@ -276,7 +295,8 @@ async def create_openai_tools_trace(tracer: Any) -> None:
         }
     ]
 
-    with tracer.start_as_current_span("scout-test-phoenix-openai-tools"):
+    with tracer.start_as_current_span("scout-test-phoenix-openai-tools") as span:
+        set_trace_metadata(span, "openai", "tools")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -333,7 +353,10 @@ async def create_openai_multiturn_tools_trace(tracer: Any) -> None:
         }
     ]
 
-    with tracer.start_as_current_span("scout-test-phoenix-openai-multiturn-tools"):
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-openai-multiturn-tools"
+    ) as span:
+        set_trace_metadata(span, "openai", "multiturn-tools")
         messages: list[Any] = [
             {"role": "user", "content": "What's the weather in San Francisco?"},
         ]
@@ -412,7 +435,8 @@ async def create_anthropic_simple_trace(tracer: Any) -> None:
 
     client = anthropic.Anthropic()
 
-    with tracer.start_as_current_span("scout-test-phoenix-anthropic-simple"):
+    with tracer.start_as_current_span("scout-test-phoenix-anthropic-simple") as span:
+        set_trace_metadata(span, "anthropic", "simple")
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=1024,
@@ -437,7 +461,8 @@ async def create_anthropic_multiturn_trace(tracer: Any) -> None:
 
     client = anthropic.Anthropic()
 
-    with tracer.start_as_current_span("scout-test-phoenix-anthropic-multiturn"):
+    with tracer.start_as_current_span("scout-test-phoenix-anthropic-multiturn") as span:
+        set_trace_metadata(span, "anthropic", "multiturn")
         messages: list[dict[str, str]] = [
             {"role": "user", "content": "What is 2 + 2?"},
         ]
@@ -502,7 +527,8 @@ async def create_anthropic_tools_trace(tracer: Any) -> None:
         }
     ]
 
-    with tracer.start_as_current_span("scout-test-phoenix-anthropic-tools"):
+    with tracer.start_as_current_span("scout-test-phoenix-anthropic-tools") as span:
+        set_trace_metadata(span, "anthropic", "tools")
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=1024,
@@ -568,7 +594,10 @@ async def create_anthropic_multiturn_tools_trace(tracer: Any) -> None:
         }
     ]
 
-    with tracer.start_as_current_span("scout-test-phoenix-anthropic-multiturn-tools"):
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-anthropic-multiturn-tools"
+    ) as span:
+        set_trace_metadata(span, "anthropic", "multiturn-tools")
         messages: list[Any] = [
             {"role": "user", "content": "What's the weather in San Francisco?"},
         ]
@@ -686,7 +715,8 @@ async def create_google_simple_trace(tracer: Any) -> None:
 
         client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
-        with tracer.start_as_current_span("scout-test-phoenix-google-simple"):
+        with tracer.start_as_current_span("scout-test-phoenix-google-simple") as span:
+            set_trace_metadata(span, "google", "simple")
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents="Say 'Hello, Scout test!' and nothing else.",
@@ -711,7 +741,10 @@ async def create_google_multiturn_trace(tracer: Any) -> None:
 
         client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
-        with tracer.start_as_current_span("scout-test-phoenix-google-multiturn"):
+        with tracer.start_as_current_span(
+            "scout-test-phoenix-google-multiturn"
+        ) as span:
+            set_trace_metadata(span, "google", "multiturn")
             # Turn 1
             response1 = client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -826,7 +859,8 @@ async def create_google_tools_trace(tracer: Any) -> None:
 
         tool = types.Tool(function_declarations=[get_weather])
 
-        with tracer.start_as_current_span("scout-test-phoenix-google-tools"):
+        with tracer.start_as_current_span("scout-test-phoenix-google-tools") as span:
+            set_trace_metadata(span, "google", "tools")
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents="What's the weather in San Francisco?",
@@ -904,7 +938,10 @@ async def create_google_multiturn_tools_trace(tracer: Any) -> None:
 
         tool = types.Tool(function_declarations=[get_weather])
 
-        with tracer.start_as_current_span("scout-test-phoenix-google-multiturn-tools"):
+        with tracer.start_as_current_span(
+            "scout-test-phoenix-google-multiturn-tools"
+        ) as span:
+            set_trace_metadata(span, "google", "multiturn-tools")
             # Turn 1: Ask about SF weather
             response1 = client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -1072,7 +1109,8 @@ async def create_langchain_agent_trace(tracer: Any) -> None:
         system_prompt="You are a helpful assistant. Use tools when needed.",
     )
 
-    with tracer.start_as_current_span("scout-test-phoenix-langchain-agent"):
+    with tracer.start_as_current_span("scout-test-phoenix-langchain-agent") as span:
+        set_trace_metadata(span, "langchain", "agent")
         result = agent.invoke(
             {
                 "messages": [
@@ -1117,7 +1155,8 @@ async def create_langchain_multiturn_trace(tracer: Any) -> None:
         {"role": "user", "content": "What should I see first?"},
     ]
 
-    with tracer.start_as_current_span("scout-test-phoenix-langchain-multiturn"):
+    with tracer.start_as_current_span("scout-test-phoenix-langchain-multiturn") as span:
+        set_trace_metadata(span, "langchain", "multiturn")
         result = agent.invoke({"messages": messages})
         print(f"LangChain multiturn: {result['messages'][-1].content}")
 
@@ -1146,7 +1185,10 @@ async def create_langchain_multiturn_tools_trace(tracer: Any) -> None:
         system_prompt="You are a helpful weather assistant. Use tools when needed.",
     )
 
-    with tracer.start_as_current_span("scout-test-phoenix-langchain-multiturn-tools"):
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-langchain-multiturn-tools"
+    ) as span:
+        set_trace_metadata(span, "langchain", "multiturn-tools")
         # Turn 1: Ask about SF weather (triggers tool)
         result1 = agent.invoke(
             {
@@ -1193,7 +1235,8 @@ async def create_pydanticai_simple_trace(tracer: Any) -> None:
         system_prompt="You are a helpful assistant.",
     )
 
-    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-simple"):
+    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-simple") as span:
+        set_trace_metadata(span, "pydanticai", "simple")
         result = await agent.run("Say 'Hello, Scout test!' and nothing else.")
         print(f"PydanticAI simple: {result.output}")
 
@@ -1223,7 +1266,8 @@ async def create_pydanticai_tools_trace(tracer: Any) -> None:
         """
         return f"The weather in {city} is sunny with a temperature of 72F."
 
-    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-tools"):
+    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-tools") as span:
+        set_trace_metadata(span, "pydanticai", "tools")
         result = await agent.run("What's the weather in San Francisco?")
         print(f"PydanticAI tools: {result.output}")
 
@@ -1241,7 +1285,10 @@ async def create_pydanticai_multiturn_trace(tracer: Any) -> None:
         system_prompt="You are a helpful math tutor.",
     )
 
-    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-multiturn"):
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-pydanticai-multiturn"
+    ) as span:
+        set_trace_metadata(span, "pydanticai", "multiturn")
         # Turn 1
         result1 = await agent.run("What is 2 + 2?")
         print(f"PydanticAI multiturn turn 1: {result1.output}")
@@ -1290,7 +1337,10 @@ async def create_pydanticai_multiturn_tools_trace(tracer: Any) -> None:
         }
         return f"The weather in {city} is {weather_data.get(city.lower(), 'unknown')}."
 
-    with tracer.start_as_current_span("scout-test-phoenix-pydanticai-multiturn-tools"):
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-pydanticai-multiturn-tools"
+    ) as span:
+        set_trace_metadata(span, "pydanticai", "multiturn-tools")
         # Turn 1: Ask about SF weather (triggers tool)
         result1 = await agent.run("What's the weather in San Francisco?")
         print(f"PydanticAI multiturn-tools turn 1: {result1.output}")
@@ -1310,6 +1360,249 @@ async def create_pydanticai_multiturn_tools_trace(tracer: Any) -> None:
         print(f"PydanticAI multiturn-tools turn 3: {result3.output}")
 
 
+# =============================================================================
+# OpenAI Responses API Trace Functions
+# =============================================================================
+
+
+async def create_openai_responses_simple_trace(tracer: Any) -> None:
+    """Create a simple OpenAI Responses API trace."""
+    import openai
+
+    client = openai.OpenAI()
+
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-openai-responses-simple"
+    ) as span:
+        set_trace_metadata(span, "openai-responses", "simple")
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            instructions="You are a helpful assistant.",
+            input="Say 'Hello, Scout test!' and nothing else.",
+        )
+        print(f"OpenAI Responses simple: {response.output_text}")
+
+
+async def create_openai_responses_tools_trace(tracer: Any) -> None:
+    """Create an OpenAI Responses API trace with tool calls."""
+    import json
+
+    import openai
+
+    client = openai.OpenAI()
+
+    tools = [
+        {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "The city name"},
+                },
+                "required": ["city"],
+            },
+        }
+    ]
+
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-openai-responses-tools"
+    ) as span:
+        set_trace_metadata(span, "openai-responses", "tools")
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input="What's the weather in San Francisco?",
+            tools=tools,
+        )
+
+        # Find function call in output
+        function_call = None
+        for item in response.output:
+            if item.type == "function_call":
+                function_call = item
+                break
+
+        if function_call:
+            print(f"OpenAI Responses tools: Tool called - {function_call.name}")
+
+            # Send function result back
+            response2 = client.responses.create(
+                model="gpt-4o-mini",
+                input=[
+                    {
+                        "type": "message",
+                        "role": "user",
+                        "content": "What's the weather in San Francisco?",
+                    },
+                    {
+                        "type": "function_call",
+                        "call_id": function_call.call_id,
+                        "name": function_call.name,
+                        "arguments": function_call.arguments,
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": function_call.call_id,
+                        "output": json.dumps({"temperature": 72, "condition": "sunny"}),
+                    },
+                ],
+                tools=tools,
+            )
+            print(f"OpenAI Responses tools: {response2.output_text}")
+
+
+async def create_openai_responses_multiturn_tools_trace(tracer: Any) -> None:
+    """Create a multi-turn OpenAI Responses API trace with tool calls."""
+    import json
+
+    import openai
+
+    client = openai.OpenAI()
+
+    tools = [
+        {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "The city name"},
+                },
+                "required": ["city"],
+            },
+        }
+    ]
+
+    with tracer.start_as_current_span(
+        "scout-test-phoenix-openai-responses-multiturn-tools"
+    ) as span:
+        set_trace_metadata(span, "openai-responses", "multiturn-tools")
+
+        # Turn 1: Ask about SF weather
+        input_items: list[Any] = [
+            {
+                "type": "message",
+                "role": "user",
+                "content": "What's the weather in San Francisco?",
+            },
+        ]
+
+        response1 = client.responses.create(
+            model="gpt-4o-mini",
+            input=input_items,
+            tools=tools,
+        )
+
+        # Handle tool call from turn 1
+        function_call1 = None
+        for item in response1.output:
+            if item.type == "function_call":
+                function_call1 = item
+                break
+
+        if function_call1:
+            input_items.extend(
+                [
+                    {
+                        "type": "function_call",
+                        "call_id": function_call1.call_id,
+                        "name": function_call1.name,
+                        "arguments": function_call1.arguments,
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": function_call1.call_id,
+                        "output": json.dumps({"temperature": 72, "condition": "sunny"}),
+                    },
+                ]
+            )
+
+            response1b = client.responses.create(
+                model="gpt-4o-mini",
+                input=input_items,
+                tools=tools,
+            )
+            # Add assistant response to history
+            for item in response1b.output:
+                if item.type == "message":
+                    input_items.append(
+                        {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": item.content[0].text,
+                        }
+                    )
+                    break
+            print(f"OpenAI Responses multiturn-tools turn 1: {response1b.output_text}")
+
+        # Turn 2: Ask about NYC weather
+        input_items.append(
+            {"type": "message", "role": "user", "content": "What about New York?"}
+        )
+
+        response2 = client.responses.create(
+            model="gpt-4o-mini",
+            input=input_items,
+            tools=tools,
+        )
+
+        function_call2 = None
+        for item in response2.output:
+            if item.type == "function_call":
+                function_call2 = item
+                break
+
+        if function_call2:
+            input_items.extend(
+                [
+                    {
+                        "type": "function_call",
+                        "call_id": function_call2.call_id,
+                        "name": function_call2.name,
+                        "arguments": function_call2.arguments,
+                    },
+                    {
+                        "type": "function_call_output",
+                        "call_id": function_call2.call_id,
+                        "output": json.dumps(
+                            {"temperature": 45, "condition": "cloudy"}
+                        ),
+                    },
+                ]
+            )
+
+            response2b = client.responses.create(
+                model="gpt-4o-mini",
+                input=input_items,
+                tools=tools,
+            )
+            for item in response2b.output:
+                if item.type == "message":
+                    input_items.append(
+                        {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": item.content[0].text,
+                        }
+                    )
+                    break
+            print(f"OpenAI Responses multiturn-tools turn 2: {response2b.output_text}")
+
+        # Turn 3: Comparison (no tool needed)
+        input_items.append(
+            {"type": "message", "role": "user", "content": "Which city is warmer?"}
+        )
+
+        response3 = client.responses.create(
+            model="gpt-4o-mini",
+            input=input_items,
+            tools=tools,
+        )
+        print(f"OpenAI Responses multiturn-tools turn 3: {response3.output_text}")
+
+
 async def main(force: bool = False) -> None:
     """Run all trace creation functions.
 
@@ -1323,7 +1616,7 @@ async def main(force: bool = False) -> None:
             print("Use --force to recreate traces anyway.")
             return
 
-    tracer = setup_instrumentation()
+    tracer, tracer_provider = setup_instrumentation()
 
     print()
     print("Creating test traces in Phoenix")
@@ -1411,8 +1704,31 @@ async def main(force: bool = False) -> None:
     except Exception as e:
         print(f"PydanticAI multiturn-tools trace failed: {e}")
 
+    # Create OpenAI Responses API traces
+    print("Creating OpenAI Responses API simple trace...")
+    try:
+        await create_openai_responses_simple_trace(tracer)
+    except Exception as e:
+        print(f"OpenAI Responses simple trace failed: {e}")
+
+    print("Creating OpenAI Responses API tools trace...")
+    try:
+        await create_openai_responses_tools_trace(tracer)
+    except Exception as e:
+        print(f"OpenAI Responses tools trace failed: {e}")
+
+    print("Creating OpenAI Responses API multi-turn tools trace...")
+    try:
+        await create_openai_responses_multiturn_tools_trace(tracer)
+    except Exception as e:
+        print(f"OpenAI Responses multiturn-tools trace failed: {e}")
+
+    # Flush all pending spans to Phoenix
+    tracer_provider.force_flush()
+    tracer_provider.shutdown()
+
     print()
-    print("Bootstrap complete! Traces should appear in Phoenix shortly.")
+    print("Bootstrap complete! Traces have been exported to Phoenix.")
     print(
         "Run integration tests with: "
         "PHOENIX_RUN_TESTS=1 pytest tests/sources/phoenix_source/test_phoenix.py -v"

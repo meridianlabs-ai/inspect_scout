@@ -97,3 +97,52 @@ async def test_phoenix_requires_project() -> None:
     with pytest.raises(ValueError, match="project"):
         async for _ in phoenix():
             pass
+
+
+@skip_if_no_phoenix
+@pytest.mark.asyncio
+async def test_phoenix_openai_responses_trace(phoenix_project: str) -> None:
+    """Test that OpenAI Responses API traces are correctly imported."""
+    from inspect_scout.sources._phoenix import phoenix
+
+    transcripts = []
+    async for t in phoenix(project=phoenix_project):
+        if "responses" in (t.task_id or ""):
+            transcripts.append(t)
+
+    assert len(transcripts) >= 1, "No Responses API traces found - run bootstrap"
+
+    for t in transcripts:
+        assert t.model is not None
+        assert t.message_count > 0
+        assert len(t.messages) > 0
+        assert len(t.events) > 0
+
+
+@skip_if_no_phoenix
+@pytest.mark.asyncio
+async def test_phoenix_metadata_extraction(phoenix_project: str) -> None:
+    """Test that metadata/tags are extracted from Phoenix traces."""
+    from inspect_scout.sources._phoenix import phoenix
+
+    transcripts = []
+    async for t in phoenix(project=phoenix_project, limit=10):
+        transcripts.append(t)
+
+    assert len(transcripts) > 0
+
+    # At least some transcripts should have metadata
+    with_metadata = [
+        t for t in transcripts if t.metadata.get("session_id") or t.metadata.get("tags")
+    ]
+    assert len(with_metadata) > 0, (
+        "No transcripts have metadata - run bootstrap with metadata"
+    )
+
+    # Verify metadata structure
+    for t in with_metadata:
+        if t.metadata.get("session_id"):
+            assert t.metadata["session_id"].startswith("scout-test-")
+        if t.metadata.get("tags"):
+            assert isinstance(t.metadata["tags"], list)
+            assert "scout-test" in t.metadata["tags"]

@@ -92,11 +92,18 @@ def _parse_raw_input(
 
     # Extract messages from the payload
     messages = input_data.get("messages") or input_data.get("contents")
-    if not messages or not isinstance(messages, list):
-        return None
+    if messages and isinstance(messages, list):
+        # Use provider-specific converters via _convert_messages_sync
+        return _convert_messages_sync(messages, provider)
 
-    # Use provider-specific converters via _convert_messages_sync
-    return _convert_messages_sync(messages, provider)
+    # OpenAI Responses API: input can be string or list of typed items
+    input_items = input_data.get("input")
+    if isinstance(input_items, str):
+        return [ChatMessageUser(content=input_items)]
+    if isinstance(input_items, list):
+        return _convert_responses_input(input_items)
+
+    return None
 
 
 def _convert_messages_sync(
@@ -214,6 +221,82 @@ def _extract_tool_calls_from_message(msg: dict[str, Any]) -> list[ToolCall]:
                 )
 
     return tool_calls
+
+
+def _convert_responses_input(items: list[Any]) -> list[ChatMessage] | None:
+    """Convert OpenAI Responses API input items to ChatMessages.
+
+    Handles input item types:
+    - ``message`` → ChatMessageUser/ChatMessageAssistant/ChatMessageSystem
+    - ``function_call`` → ChatMessageAssistant with ToolCall
+    - ``function_call_output`` → ChatMessageTool
+
+    Args:
+        items: List of Responses API input items
+
+    Returns:
+        List of ChatMessages or None if no items parsed
+    """
+    from inspect_ai.model._chat_message import ChatMessageSystem, ChatMessageTool
+
+    result: list[ChatMessage] = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        item_type = item.get("type", "")
+
+        if item_type == "message":
+            role = item.get("role", "user")
+            # Content can be string or list of content items
+            content = item.get("content", "")
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        if part.get("type") in ("input_text", "output_text", "text"):
+                            text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                content = " ".join(text_parts) if text_parts else ""
+
+            if role == "system":
+                result.append(ChatMessageSystem(content=str(content)))
+            elif role == "assistant":
+                result.append(ChatMessageAssistant(content=str(content)))
+            else:
+                result.append(ChatMessageUser(content=str(content)))
+
+        elif item_type == "function_call":
+            args_str = item.get("arguments", "{}")
+            try:
+                args = json.loads(args_str) if isinstance(args_str, str) else args_str
+            except json.JSONDecodeError:
+                args = {}
+            result.append(
+                ChatMessageAssistant(
+                    content="",
+                    tool_calls=[
+                        ToolCall(
+                            id=str(item.get("call_id", "")),
+                            function=str(item.get("name", "")),
+                            arguments=args if isinstance(args, dict) else {},
+                            type="function",
+                        )
+                    ],
+                )
+            )
+
+        elif item_type == "function_call_output":
+            result.append(
+                ChatMessageTool(
+                    content=str(item.get("output", "")),
+                    tool_call_id=str(item.get("call_id", "")),
+                )
+            )
+
+    return result if result else None
 
 
 def _extract_openinference_messages(
@@ -346,6 +429,11 @@ def _normalize_openai_messages(messages: list[dict[str, Any]]) -> list[dict[str,
             continue
 
         new_msg = dict(msg)
+
+        # Normalize Google GenAI role names
+        role = new_msg.get("role", "")
+        if role == "model":
+            new_msg["role"] = "assistant"
 
         # Normalize tool_calls if present
         if "tool_calls" in new_msg:
@@ -606,6 +694,56 @@ def _parse_raw_output(
             ],
         )
 
+    # OpenAI Responses API format: output array with typed items
+    output_items = output_data.get("output")
+    if isinstance(output_items, list) and output_items:
+        text_parts = []
+        tool_calls = []
+
+        for item in output_items:
+            if not isinstance(item, dict):
+                continue
+            item_type = item.get("type", "")
+
+            if item_type == "message":
+                for content_item in item.get("content", []):
+                    if isinstance(content_item, dict):
+                        if content_item.get("type") == "output_text":
+                            text_parts.append(content_item.get("text", ""))
+
+            elif item_type == "function_call":
+                args_str = item.get("arguments", "{}")
+                try:
+                    args = (
+                        json.loads(args_str) if isinstance(args_str, str) else args_str
+                    )
+                except json.JSONDecodeError:
+                    args = {}
+
+                tool_calls.append(
+                    ToolCall(
+                        id=str(item.get("call_id", "")),
+                        function=str(item.get("name", "")),
+                        arguments=args if isinstance(args, dict) else {},
+                        type="function",
+                    )
+                )
+
+        content = "".join(text_parts)
+
+        return ModelOutput(
+            model=model_name,
+            choices=[
+                ChatCompletionChoice(
+                    message=ChatMessageAssistant(
+                        content=content,
+                        tool_calls=tool_calls if tool_calls else None,
+                    ),
+                    stop_reason="tool_calls" if tool_calls else "stop",
+                )
+            ],
+        )
+
     return None
 
 
@@ -729,12 +867,19 @@ def _parse_tool_schema(schema: Any) -> ToolInfo | None:
     properties = params.get("properties", {}) if isinstance(params, dict) else {}
     required = params.get("required", []) if isinstance(params, dict) else []
 
+    # Normalize uppercase type strings (e.g. Google GenAI uses "STRING", "OBJECT")
+    normalized_properties = {}
+    for prop_name, prop_value in properties.items():
+        if isinstance(prop_value, dict) and isinstance(prop_value.get("type"), str):
+            prop_value = {**prop_value, "type": prop_value["type"].lower()}
+        normalized_properties[prop_name] = prop_value
+
     return ToolInfo(
         name=str(name),
         description=str(func.get("description", "")),
         parameters=ToolParams(
             type="object",
-            properties=properties,
+            properties=normalized_properties,
             required=required,
         ),
     )

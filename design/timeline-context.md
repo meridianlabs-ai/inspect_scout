@@ -1234,3 +1234,104 @@ The timeline panel shows up to **5 rows** by default (parent row + up to 4 child
 The divider position is stored in Zustand (persisted) so it survives VSCode tab switches and session restarts.
 
 
+# Phased Implementation
+
+All new files go in `src/inspect_scout/_view/www/src/app/timeline/`.
+
+## Working Guidelines
+
+1. **One phase at a time.** Implement, test, and verify each phase before moving to the next.
+2. **Review before commit.** After tests pass, pause and review the code together before committing. Do not auto-commit.
+3. **Full tests at each step.** Every phase produces both an implementation file and a test file. Run `pnpm test` and `pnpm check` to verify.
+4. **Use synthetic scenarios.** Import `timelineScenarios` from `syntheticNodes.ts` for realistic test data. Build minimal inline helpers for edge cases.
+5. **Pure logic first.** Phases 1–3 are pure functions with no DOM or React dependencies. Phase 4 introduces the hook layer.
+6. **Mirror Python changes.** If a phase touches `nodes.ts`, the corresponding changes must be mirrored in `nodes.py` and both test suites must pass.
+
+## Phase 1: Swimlane Row Computation (Complete)
+
+**Files:** `swimlaneRows.ts`, `swimlaneRows.test.ts`
+**Commit:** `b8b384ed`
+
+### What was done
+
+Implemented `computeSwimLaneRows(node: AgentNode): SwimLaneRow[]` which transforms an AgentNode's children into rows for rendering as horizontal swimlane bars.
+
+**Types:**
+- `SingleSpan { agent: AgentNode }` — one agent occupying a time range
+- `ParallelSpan { agents: AgentNode[] }` — overlapping agents on the same row
+- `TimelineSpan = SingleSpan | ParallelSpan` — with `isSingleSpan()` / `isParallelSpan()` guards
+- `SwimLaneRow { name, spans, totalTokens, startTime, endTime }`
+
+**Algorithm:**
+1. Parent row first (the node itself as a SingleSpan)
+2. Filter children to non-utility AgentNodes
+3. Group by name (case-insensitive, display name from first encountered)
+4. Cluster spans: check pairwise overlap with 100ms tolerance — any overlap makes the entire group a ParallelSpan, otherwise each agent is a separate SingleSpan
+5. Order rows by earliest start time
+
+**Helper:** `sectionToAgent(section: SectionNode): AgentNode` — converts SectionNode (init/scoring) to AgentNode for uniform handling. Exported for use by the Phase 4 hook.
+
+### Non-nullable times
+
+Also made `startTime`/`endTime` non-nullable across both Python (`nodes.py`) and TypeScript (`nodes.ts`), since every Event has a required timestamp field. Container nodes use an epoch sentinel (`new Date(0)` / `datetime(1970, 1, 1, tzinfo=timezone.utc)`) for the degenerate empty-content case. `TranscriptNodes.startTime`/`endTime` remain `Date | null` since empty transcripts are valid.
+
+**Tests:** 20 tests covering sequential (S1), iterative (S2), parallel (S4), flat (S7), many-rows (S8), utility filtering (S10), custom edge cases (case-insensitive grouping, no children, token aggregation, time ranges).
+
+## Phase 2: Content Item Building (Complete)
+
+**Files:** `contentItems.ts`, `contentItems.test.ts`
+**Commit:** `3401bfca`
+
+### What was done
+
+Implemented `buildContentItems(node: AgentNode): ContentItem[]` which transforms an AgentNode into a flat list of items for the detail panel.
+
+**Types:**
+- `EventItem { type: "event", eventNode }` — a single event
+- `AgentCardItem { type: "agent_card", agentNode }` — a child agent rendered as a card
+- `BranchCardItem { type: "branch_card", branch }` — a branch fork point
+- `ContentItem` — discriminated union of the above
+
+**Algorithm:**
+1. Walk `node.content` chronologically: EventNode → EventItem, AgentNode → AgentCardItem
+2. Insert branch cards: for each branch, find the event matching `forkedAt` UUID and insert a BranchCardItem after it. Multiple branches at the same fork point appear consecutively. Unresolvable UUIDs → append at end.
+
+No parallel grouping type — parallel agents appear as consecutive AgentCardItems. The UI layer detects adjacency and renders visual grouping. Utility agents are always included; filtering is a UI concern.
+
+**Tests:** 16 tests covering sequential (S1), flat (S7), parallel (S4), iterative (S2), utility agents (S10, drilled into Build), deep nesting (S3), branches with unmatched UUIDs (S11a, S11b), matched UUID insertion, multiple branches at same fork point, branches at different positions, mixed matched/unmatched, edge cases.
+
+## Phase 3: Marker Computation (Complete)
+
+**Files:** `markers.ts`, `markers.test.ts`
+**Commit:** `4c4b84d5`
+
+### What was done
+
+Implemented `collectMarkers(node: AgentNode, depth: MarkerDepth): TimelineMarker[]` which finds error, compaction, and branch markers at configurable depth.
+
+**Types:**
+- `MarkerKind = "error" | "compaction" | "branch"`
+- `TimelineMarker { kind, timestamp, reference }` — reference is event UUID or forkedAt ID
+- `MarkerDepth = "direct" | "children" | "recursive"`
+
+**Exported helpers:**
+- `isErrorEvent(event)` — ToolEvent with `.error !== null`, or ModelEvent with `.error !== null` or `.output.error !== null`
+- `isCompactionEvent(event)` — `event.event === "compaction"`
+
+**Algorithm:**
+- Recursion controlled by `shouldDescend(depth, currentLevel)`: direct = never descend, children = descend at level 0 only, recursive = always descend
+- Branch markers resolved by scanning `node.content` for the event matching `forkedAt` UUID → timestamp. Unresolvable branches silently dropped.
+- All markers sorted by timestamp.
+
+**Tests:** 23 tests covering isErrorEvent (6 cases: ToolEvent with/without error, ModelEvent with event.error, output.error, clean, CompactionEvent), isCompactionEvent (3 cases), S5 inline markers (error + compaction from child agent), S7 flat (empty), depth modes (direct/children/recursive with parent-child-grandchild), branch markers (matched UUID, unmatched, empty forkedAt, S11a synthetic), sort order (unsorted input, mixed types), edge cases (empty agent, normal-only events).
+
+## Phase 4: `useTimeline` Hook (Pending)
+
+**Files:** `useTimeline.ts`, `useTimeline.test.ts`
+
+See the plan file for full specification. Key elements:
+
+- **Pure functions** (testable without DOM): `parsePathSegment()`, `resolvePath()`, `buildBreadcrumbs()`
+- **Hook:** `useTimeline(tree: TranscriptNodes): TimelineState` — reads path/selected from URL search params, returns resolved node, rows, breadcrumbs, selection, and navigation functions
+- **Root-level init/scoring:** folded into the root AgentNode's content via `sectionToAgent()` before computing swimlane rows
+- **Path resolution:** slash-separated, case-insensitive, with `-N` suffix for span indexing

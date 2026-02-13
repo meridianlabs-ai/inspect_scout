@@ -148,3 +148,66 @@ async def test_phoenix_transcript_fields_in_db(
 
     finally:
         await db.disconnect()
+
+
+@skip_if_no_phoenix
+@pytest.mark.asyncio
+async def test_phoenix_metadata_roundtrip(phoenix_project: str, tmp_path: Path) -> None:
+    """Test that metadata/tags survive Phoenix -> DB round-trip."""
+    from inspect_scout.sources._phoenix import phoenix
+
+    # Fetch transcripts
+    transcripts: list[Any] = []
+    async for transcript in phoenix(project=phoenix_project, limit=10):
+        transcripts.append(transcript)
+
+    assert len(transcripts) > 0, (
+        "No transcripts found. Run bootstrap first: "
+        "python -m tests.sources.phoenix_source.bootstrap"
+    )
+
+    # Verify metadata was extracted from Phoenix
+    transcripts_with_metadata = [
+        t for t in transcripts if t.metadata.get("session_id") or t.metadata.get("tags")
+    ]
+    assert len(transcripts_with_metadata) > 0, (
+        "No transcripts have metadata - run bootstrap with metadata"
+    )
+
+    # Insert into DB and verify round-trip
+    db_path = tmp_path / "metadata_db"
+    db_path.mkdir(parents=True, exist_ok=True)
+
+    db = ParquetTranscriptsDB(str(db_path))
+    await db.connect()
+
+    try:
+        await db.insert(transcripts)
+        db_results = [info async for info in db.select(Query())]
+        db_by_id = {r.transcript_id: r for r in db_results}
+
+        for original in transcripts_with_metadata:
+            assert original.transcript_id in db_by_id
+            db_record = db_by_id[original.transcript_id]
+
+            # Verify session_id survived
+            if original.metadata.get("session_id"):
+                assert (
+                    db_record.metadata.get("session_id")
+                    == original.metadata["session_id"]
+                ), f"session_id mismatch for {original.transcript_id}"
+
+            # Verify tags survived
+            if original.metadata.get("tags"):
+                assert db_record.metadata.get("tags") == original.metadata["tags"], (
+                    f"tags mismatch for {original.transcript_id}"
+                )
+
+            # Verify nested metadata survived
+            if original.metadata.get("metadata"):
+                assert (
+                    db_record.metadata.get("metadata") == original.metadata["metadata"]
+                ), f"nested metadata mismatch for {original.transcript_id}"
+
+    finally:
+        await db.disconnect()

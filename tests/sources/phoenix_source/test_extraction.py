@@ -125,7 +125,7 @@ class TestExtractOutput:
     async def test_extract_openai_output(self) -> None:
         """Extract output from OpenAI-format raw payload."""
         span = create_openai_llm_span(output_content="Hello there!")
-        output = await extract_output(span, Provider.OPENAI)
+        output = await extract_output(span)
 
         assert isinstance(output, ModelOutput)
         assert output.message is not None
@@ -135,7 +135,7 @@ class TestExtractOutput:
     async def test_extract_anthropic_output(self) -> None:
         """Extract output from Anthropic-format raw payload."""
         span = create_anthropic_llm_span(output_content="Hello there!")
-        output = await extract_output(span, Provider.ANTHROPIC)
+        output = await extract_output(span)
 
         assert isinstance(output, ModelOutput)
         assert output.message is not None
@@ -172,7 +172,7 @@ class TestExtractOutput:
                 "output.value": raw_output,
             }
         }
-        output = await extract_output(span, Provider.OPENAI)
+        output = await extract_output(span)
 
         assert output.message is not None
         assert output.message.tool_calls is not None
@@ -189,7 +189,7 @@ class TestExtractOutput:
                 "llm.output_messages.0.message.content": "The answer is 42.",
             }
         }
-        output = await extract_output(span, Provider.OPENAI)
+        output = await extract_output(span)
 
         assert output.message is not None
         assert "42" in str(output.message.content)
@@ -198,7 +198,7 @@ class TestExtractOutput:
     async def test_extract_empty_output_fallback(self) -> None:
         """Return empty output when no data found."""
         span: dict[str, Any] = {"attributes": {"llm.model_name": "unknown"}}
-        output = await extract_output(span, Provider.OPENAI)
+        output = await extract_output(span)
 
         assert isinstance(output, ModelOutput)
 

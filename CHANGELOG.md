@@ -1,3 +1,7 @@
+## Unrelased
+
+- Transcript DB: `phoenix()` transcript source for importing transcripts from Arize Phoenix.
+
 ## 0.4.15 (12 February 2026)
 
 - Scout View: Support for displaying cost limits.

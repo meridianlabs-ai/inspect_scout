@@ -76,7 +76,7 @@
     "href": "reference/sources.html",
     "title": "Sources",
     "section": "",
-    "text": "langsmith\nRead transcripts from LangSmith traces.\nEach LangSmith root run (trace) becomes one Scout transcript. Child runs (LLM calls, tools) become events within the transcript.\nData sources:\n\nproject - Import traces from a project (default)\ndataset - Import examples from a dataset\n\n\nSource\n\nasync def langsmith(\n    project: str | None = None,\n    dataset: str | None = None,\n    from_time: datetime | None = None,\n    to_time: datetime | None = None,\n    tags: list[str] | None = None,\n    filter: str | None = None,\n    trace_filter: str | None = None,\n    run_type: str | None = None,\n    limit: int | None = None,\n    api_key: str | None = None,\n    api_url: str | None = None,\n) -&gt; AsyncIterator[Transcript]\n\nproject str | None\n\nLangSmith project name. Optional for dataset, used as default data source otherwise.\n\ndataset str | None\n\nLangSmith dataset name or ID. Fetches from curated evaluation datasets instead of project traces.\n\nfrom_time datetime | None\n\nOnly fetch traces created on or after this time\n\nto_time datetime | None\n\nOnly fetch traces created before this time\n\ntags list[str] | None\n\nFilter by tags (all must match)\n\nfilter str | None\n\nLangSmith filter string for run filtering. Can use filters saved from the LangSmith UI.\n\ntrace_filter str | None\n\nFilter on root run attributes\n\nrun_type str | None\n\nFilter by run type (llm, chain, tool, etc.)\n\nlimit int | None\n\nMaximum number of transcripts to fetch\n\napi_key str | None\n\nLangSmith API key (or LANGSMITH_API_KEY env var)\n\napi_url str | None\n\nLangSmith API URL (or LANGSMITH_ENDPOINT env var)\n\n\n\n\nlogfire\nRead transcripts from Logfire traces.\nEach Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.\n\nSource\n\nasync def logfire(\n    project: str | None = None,\n    from_time: datetime | None = None,\n    to_time: datetime | None = None,\n    filter: str | None = None,\n    trace_id: str | None = None,\n    limit: int | None = None,\n    read_token: str | None = None,\n) -&gt; AsyncIterator[Transcript]\n\nproject str | None\n\nLogfire project name in format “org/project”. If not provided, queries across all accessible projects.\n\nfrom_time datetime | None\n\nOnly fetch traces created on or after this time\n\nto_time datetime | None\n\nOnly fetch traces created before this time\n\nfilter str | None\n\nSQL WHERE fragment for additional filtering (e.g., “attributes-&gt;&gt;‘gen_ai.request.model’ = ‘gpt-4o’”)\n\ntrace_id str | None\n\nFetch a specific trace by ID instead of querying\n\nlimit int | None\n\nMaximum number of transcripts to fetch\n\nread_token str | None\n\nLogfire read token (or LOGFIRE_READ_TOKEN env var). Generate from Logfire dashboard Settings &gt; Read Tokens.",
+    "text": "phoenix\nRead transcripts from Arize Phoenix traces.\nEach Phoenix trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.\n\nSource\n\nasync def phoenix(\n    project: str | None = None,\n    from_time: datetime | None = None,\n    to_time: datetime | None = None,\n    trace_id: str | list[str] | None = None,\n    session_id: str | list[str] | None = None,\n    tags: list[str] | None = None,\n    metadata: dict[str, str] | None = None,\n    limit: int | None = None,\n    api_key: str | None = None,\n    base_url: str | None = None,\n) -&gt; AsyncIterator[Transcript]\n\nproject str | None\n\nPhoenix project name or ID. Required for fetching spans.\n\nfrom_time datetime | None\n\nOnly fetch traces created on or after this time\n\nto_time datetime | None\n\nOnly fetch traces created before this time\n\ntrace_id str | list[str] | None\n\nFetch specific trace(s) by ID (single string or list)\n\nsession_id str | list[str] | None\n\nFilter to traces belonging to specific session(s) (matches session.id attribute on root span)\n\ntags list[str] | None\n\nFilter by tags on root span (all must match; stored in tag.tags attribute)\n\nmetadata dict[str, str] | None\n\nFilter by metadata key-value pairs on root span (all must match; stored in metadata.* attributes)\n\nlimit int | None\n\nMaximum number of transcripts to fetch\n\napi_key str | None\n\nPhoenix API key (or PHOENIX_API_KEY env var)\n\nbase_url str | None\n\nPhoenix base URL (or PHOENIX_COLLECTOR_ENDPOINT env var)\n\n\n\n\nlangsmith\nRead transcripts from LangSmith traces.\nEach LangSmith root run (trace) becomes one Scout transcript. Child runs (LLM calls, tools) become events within the transcript.\nData sources:\n\nproject - Import traces from a project (default)\ndataset - Import examples from a dataset\n\n\nSource\n\nasync def langsmith(\n    project: str | None = None,\n    dataset: str | None = None,\n    from_time: datetime | None = None,\n    to_time: datetime | None = None,\n    tags: list[str] | None = None,\n    filter: str | None = None,\n    trace_filter: str | None = None,\n    run_type: str | None = None,\n    limit: int | None = None,\n    api_key: str | None = None,\n    api_url: str | None = None,\n) -&gt; AsyncIterator[Transcript]\n\nproject str | None\n\nLangSmith project name. Optional for dataset, used as default data source otherwise.\n\ndataset str | None\n\nLangSmith dataset name or ID. Fetches from curated evaluation datasets instead of project traces.\n\nfrom_time datetime | None\n\nOnly fetch traces created on or after this time\n\nto_time datetime | None\n\nOnly fetch traces created before this time\n\ntags list[str] | None\n\nFilter by tags (all must match)\n\nfilter str | None\n\nLangSmith filter string for run filtering. Can use filters saved from the LangSmith UI.\n\ntrace_filter str | None\n\nFilter on root run attributes\n\nrun_type str | None\n\nFilter by run type (llm, chain, tool, etc.)\n\nlimit int | None\n\nMaximum number of transcripts to fetch\n\napi_key str | None\n\nLangSmith API key (or LANGSMITH_API_KEY env var)\n\napi_url str | None\n\nLangSmith API URL (or LANGSMITH_ENDPOINT env var)\n\n\n\n\nlogfire\nRead transcripts from Logfire traces.\nEach Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.\n\nSource\n\nasync def logfire(\n    project: str | None = None,\n    from_time: datetime | None = None,\n    to_time: datetime | None = None,\n    filter: str | None = None,\n    trace_id: str | None = None,\n    limit: int | None = None,\n    read_token: str | None = None,\n) -&gt; AsyncIterator[Transcript]\n\nproject str | None\n\nLogfire project name in format “org/project”. If not provided, queries across all accessible projects.\n\nfrom_time datetime | None\n\nOnly fetch traces created on or after this time\n\nto_time datetime | None\n\nOnly fetch traces created before this time\n\nfilter str | None\n\nSQL WHERE fragment for additional filtering (e.g., “attributes-&gt;&gt;‘gen_ai.request.model’ = ‘gpt-4o’”)\n\ntrace_id str | None\n\nFetch a specific trace by ID instead of querying\n\nlimit int | None\n\nMaximum number of transcripts to fetch\n\nread_token str | None\n\nLogfire read token (or LOGFIRE_READ_TOKEN env var). Generate from Logfire dashboard Settings &gt; Read Tokens.",
     "crumbs": [
       "Reference",
       "Python API",
@@ -384,7 +384,7 @@
     "href": "db_importing.html",
     "title": "Importing Transcripts",
     "section": "",
-    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nInspect Logs: Read transcript data from Inspect eval log files.\nLangSmith and Logfire: Read transcript data from LLM observability platforms.\nTranscript API: Python API for creating and inserting transcripts.\nArrow Import: Efficient direct insertion using RecordBatchReader.\nParquet Data Lake: Use an existing data lake not created using Inspect Scout.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
+    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nInspect Logs: Read transcript data from Inspect eval log files.\nArize Phoenix, LangSmith, and Logfire: Read transcript data from LLM observability platforms.\nTranscript API: Python API for creating and inserting transcripts.\nArrow Import: Efficient direct insertion using RecordBatchReader.\nParquet Data Lake: Use an existing data lake not created using Inspect Scout.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
     "crumbs": [
       "Getting Started",
       "Transcripts Database",
@@ -396,7 +396,7 @@
     "href": "db_importing.html#overview",
     "title": "Importing Transcripts",
     "section": "",
-    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nInspect Logs: Read transcript data from Inspect eval log files.\nLangSmith and Logfire: Read transcript data from LLM observability platforms.\nTranscript API: Python API for creating and inserting transcripts.\nArrow Import: Efficient direct insertion using RecordBatchReader.\nParquet Data Lake: Use an existing data lake not created using Inspect Scout.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
+    "text": "You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:\n\nInspect Logs: Read transcript data from Inspect eval log files.\nArize Phoenix, LangSmith, and Logfire: Read transcript data from LLM observability platforms.\nTranscript API: Python API for creating and inserting transcripts.\nArrow Import: Efficient direct insertion using RecordBatchReader.\nParquet Data Lake: Use an existing data lake not created using Inspect Scout.\n\nWe’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the Database Schema and make a plan for how you want to map your data into it.",
     "crumbs": [
       "Getting Started",
       "Transcripts Database",
@@ -409,6 +409,18 @@
     "title": "Importing Transcripts",
     "section": "Inspect Logs",
     "text": "Inspect Logs\nWhile Scout can read Inspect logs directly, you might prefer to keep them in a transcript database. You can easily import Inspect logs as follows:\nfrom inspect_scout import transcripts_db, transcripts_from\n\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n    await db.insert(transcripts_from(\"./logs\"))\nYou could also insert a filtered list of transcripts:\nfrom inspect_scout import columns as c\n\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n    transcripts = (\n        transcripts_from(\"./logs\")\n        .where(c.task_set == \"cybench\")\n        .where(c.model.like(\"openai/%\"))\n    )\n    await db.insert(transcripts)",
+    "crumbs": [
+      "Getting Started",
+      "Transcripts Database",
+      "Importing"
+    ]
+  },
+  {
+    "objectID": "db_importing.html#arize-phoenix",
+    "href": "db_importing.html#arize-phoenix",
+    "title": "Importing Transcripts",
+    "section": "Arize Phoenix",
+    "text": "Arize Phoenix\nArize Phoenix is an open-source observability platform for LLM applications. Phoenix uses OpenInference semantic conventions which normalize trace data across all LLM providers, so Scout can import transcripts from any provider traced through Phoenix.\nUse the phoenix() transcript source to import traces from a Phoenix project. You can filter by time range, specific trace ID, or limit the number of transcripts:\nfrom inspect_scout import transcripts_db\nfrom inspect_scout.sources import phoenix\n\nasync with transcripts_db(\"s3://my-transcript-db/\") as db:\n    await db.insert(phoenix(\n        project=\"my-phoenix-project\",\n    ))\nPhoenix automatically extracts OpenInference context attributes — session.id, user.id, tag.tags, and metadata.* — into transcript metadata when present.\nYou can also filter traces by session, tags, or metadata:\n# Filter by session\nawait db.insert(phoenix(\n    project=\"my-chatbot\",\n    session_id=\"sess-abc\",\n))\n\n# Filter by tags (all must match)\nawait db.insert(phoenix(\n    project=\"my-agent\",\n    tags=[\"production\", \"v2\"],\n))\n\n# Filter by metadata key-value pairs\nawait db.insert(phoenix(\n    project=\"my-agent\",\n    metadata={\"env\": \"production\", \"region\": \"us-east\"},\n))\n\n# Fetch specific traces by ID\nawait db.insert(phoenix(\n    project=\"my-agent\",\n    trace_id=[\"trace-1\", \"trace-2\", \"trace-3\"],\n))\n\n\n\n\n\n\nNoteAuthentication\n\n\n\nSet the PHOENIX_API_KEY environment variable to authenticate with Phoenix. Set PHOENIX_COLLECTOR_ENDPOINT for the base URL (defaults to https://app.phoenix.arize.com).",
     "crumbs": [
       "Getting Started",
       "Transcripts Database",
@@ -696,7 +708,7 @@
     "href": "index.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:\n\nDetect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.\nAnalyze transcripts from Inspect Evals, LangSmith, Logfire, or custom sources via the capture and import APIs.\nDevelop scanners interactively, exploring transcripts and scan results visually in Scout View.\nValidate scanner accuracy against human-labeled examples.\nScale to thousands of transcripts with parallel processing, batching, and fault tolerance.\n\n\n\nInstall the inspect_scout package from PyPI with:\npip install inspect-scout\nYou should also be sure to install the Inspect AI VS Code Extension which includes features for viewing and debugging Scout scans.",
+    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:\n\nDetect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.\nAnalyze transcripts from Inspect Evals, Arize Phoenix, LangSmith, Logfire, or custom sources via the capture and import APIs.\nDevelop scanners interactively, exploring transcripts and scan results visually in Scout View.\nValidate scanner accuracy against human-labeled examples.\nScale to thousands of transcripts with parallel processing, batching, and fault tolerance.\n\n\n\nInstall the inspect_scout package from PyPI with:\npip install inspect-scout\nYou should also be sure to install the Inspect AI VS Code Extension which includes features for viewing and debugging Scout scans.",
     "crumbs": [
       "Getting Started"
     ]
@@ -706,7 +718,7 @@
     "href": "index.html#welcome",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:\n\nDetect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.\nAnalyze transcripts from Inspect Evals, LangSmith, Logfire, or custom sources via the capture and import APIs.\nDevelop scanners interactively, exploring transcripts and scan results visually in Scout View.\nValidate scanner accuracy against human-labeled examples.\nScale to thousands of transcripts with parallel processing, batching, and fault tolerance.\n\n\n\nInstall the inspect_scout package from PyPI with:\npip install inspect-scout\nYou should also be sure to install the Inspect AI VS Code Extension which includes features for viewing and debugging Scout scans.",
+    "text": "Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:\n\nDetect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.\nAnalyze transcripts from Inspect Evals, Arize Phoenix, LangSmith, Logfire, or custom sources via the capture and import APIs.\nDevelop scanners interactively, exploring transcripts and scan results visually in Scout View.\nValidate scanner accuracy against human-labeled examples.\nScale to thousands of transcripts with parallel processing, batching, and fault tolerance.\n\n\n\nInstall the inspect_scout package from PyPI with:\npip install inspect-scout\nYou should also be sure to install the Inspect AI VS Code Extension which includes features for viewing and debugging Scout scans.",
     "crumbs": [
       "Getting Started"
     ]
@@ -1127,25 +1139,39 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Scout View: Improve display of large dictionary scan values.\nEnable customization of the scan buffer directory via SCOUT_SCANBUFFER_DIR environment variable.\nBugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker."
+    "text": "Transcript DB: phoenix() transcript source for importing transcripts from Arize Phoenix."
   },
   {
     "objectID": "CHANGELOG.html#february-2026",
     "href": "CHANGELOG.html#february-2026",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Scout View: Improve display of large dictionary scan values.\nEnable customization of the scan buffer directory via SCOUT_SCANBUFFER_DIR environment variable.\nBugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker."
+    "text": "Transcript DB: phoenix() transcript source for importing transcripts from Arize Phoenix."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-1",
     "href": "CHANGELOG.html#february-2026-1",
     "title": "Inspect Scout",
-    "section": "0.4.13 (11 February 2026)",
-    "text": "0.4.13 (11 February 2026)\n\nValidation: Support for applying validation labels in Scout View.\nCompatibility with latest release of the Inspect VS Code Extension."
+    "section": "0.4.15 (12 February 2026)",
+    "text": "0.4.15 (12 February 2026)\n\nScout View: Support for displaying cost limits."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-2",
     "href": "CHANGELOG.html#february-2026-2",
+    "title": "Inspect Scout",
+    "section": "0.4.14 (12 February 2026)",
+    "text": "0.4.14 (12 February 2026)\n\nScout View: Improve display of large dictionary scan values.\nEnable customization of the scan buffer directory via SCOUT_SCANBUFFER_DIR environment variable.\nBugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker."
+  },
+  {
+    "objectID": "CHANGELOG.html#february-2026-3",
+    "href": "CHANGELOG.html#february-2026-3",
+    "title": "Inspect Scout",
+    "section": "0.4.13 (11 February 2026)",
+    "text": "0.4.13 (11 February 2026)\n\nValidation: Support for applying validation labels in Scout View.\nCompatibility with latest release of the Inspect VS Code Extension."
+  },
+  {
+    "objectID": "CHANGELOG.html#february-2026-4",
+    "href": "CHANGELOG.html#february-2026-4",
     "title": "Inspect Scout",
     "section": "0.4.12 (09 February 2026)",
     "text": "0.4.12 (09 February 2026)\n\nScoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent and display of native compaction data from OpenAI and Anthropic.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."
@@ -1648,7 +1674,7 @@
     "href": "db_overview.html#creating-a-database",
     "title": "Transcripts Database",
     "section": "Creating a Database",
-    "text": "Creating a Database\nThere are several sources you can use for building a transcript database:\n\nInspect evaluation logs.\nLLM observability systems (e.g. LangSmith, Logfire).\nTraces directly captured from agent execution.\nAny other source using the import API.\n\nTranscript databases have very few required fields (minimally just transcript_id and messages) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (metadata) which can be used for transcript filtering.\nThese articles cover transcript databases in more depth:\n\nDatabase Schema — Documents the required and optional fields as well as data formats for transcript messages and events.\nCapturing Transcripts — Describes how to capture transcripts from running LLM code using the @observe decorator / context-manager.\nImporting Transcripts — Covers building a database from Inspect Logs, LangSmith, Logfire, and custom sources using the import API.",
+    "text": "Creating a Database\nThere are several sources you can use for building a transcript database:\n\nInspect evaluation logs.\nLLM observability systems (e.g. Arize Phoenix, LangSmith, Logfire).\nTraces directly captured from agent execution.\nAny other source using the import API.\n\nTranscript databases have very few required fields (minimally just transcript_id and messages) but there are other fields that identify the source of the transcript that you’ll likely want to populate. You can also include arbitrary other columns in the database (metadata) which can be used for transcript filtering.\nThese articles cover transcript databases in more depth:\n\nDatabase Schema — Documents the required and optional fields as well as data formats for transcript messages and events.\nCapturing Transcripts — Describes how to capture transcripts from running LLM code using the @observe decorator / context-manager.\nImporting Transcripts — Covers building a database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and custom sources using the import API.",
     "crumbs": [
       "Getting Started",
       "Transcripts Database"

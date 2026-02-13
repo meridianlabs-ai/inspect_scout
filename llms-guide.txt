@@ -8,8 +8,8 @@ transcripts. With Scout, you can easily:
 
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
-2.  Analyze transcripts from Inspect Evals, LangSmith, Logfire, or
-    custom sources via the capture and import APIs.
+2.  Analyze transcripts from Inspect Evals, Arize Phoenix, LangSmith,
+    Logfire, or custom sources via the capture and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.
@@ -4023,7 +4023,7 @@ There are several sources you can use for building a transcript
 database:
 
 1.  Inspect evaluation logs.
-2.  LLM observability systems (e.g. LangSmith, Logfire).
+2.  LLM observability systems (e.g. Arize Phoenix, LangSmith, Logfire).
 3.  Traces directly captured from agent execution.
 4.  Any other source using the import API.
 
@@ -4044,8 +4044,8 @@ These articles cover transcript databases in more depth:
     context-manager.
 
 3.  [Importing Transcripts](db_importing.qmd) — Covers building a
-    database from Inspect Logs, LangSmith, Logfire, and custom sources
-    using the import API.
+    database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and
+    custom sources using the import API.
 
 ## Publishing Transcripts
 
@@ -4485,8 +4485,9 @@ where your transcript data lives and how it is managed:
 1.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
     eval log files.
 
-2.  [LangSmith](#langsmith) and [Logfire](#logfire): Read transcript
-    data from LLM observability platforms.
+2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith), and
+    [Logfire](#logfire): Read transcript data from LLM observability
+    platforms.
 
 3.  [Transcript API](#transcript-api): Python API for creating and
     inserting transcripts.
@@ -4528,6 +4529,69 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     )
     await db.insert(transcripts)
 ```
+
+## Arize Phoenix
+
+[Arize Phoenix](https://phoenix.arize.com/) is an open-source
+observability platform for LLM applications. Phoenix uses
+[OpenInference](https://arize.com/openinference/) semantic conventions
+which normalize trace data across all LLM providers, so Scout can import
+transcripts from any provider traced through Phoenix.
+
+Use the `phoenix()` transcript source to import traces from a Phoenix
+project. You can filter by time range, specific trace ID, or limit the
+number of transcripts:
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import phoenix
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(phoenix(
+        project="my-phoenix-project",
+    ))
+```
+
+Phoenix automatically extracts
+[OpenInference](https://arize.com/openinference/) context attributes —
+`session.id`, `user.id`, `tag.tags`, and `metadata.*` — into transcript
+metadata when present.
+
+You can also filter traces by session, tags, or metadata:
+
+``` python
+# Filter by session
+await db.insert(phoenix(
+    project="my-chatbot",
+    session_id="sess-abc",
+))
+
+# Filter by tags (all must match)
+await db.insert(phoenix(
+    project="my-agent",
+    tags=["production", "v2"],
+))
+
+# Filter by metadata key-value pairs
+await db.insert(phoenix(
+    project="my-agent",
+    metadata={"env": "production", "region": "us-east"},
+))
+
+# Fetch specific traces by ID
+await db.insert(phoenix(
+    project="my-agent",
+    trace_id=["trace-1", "trace-2", "trace-3"],
+))
+```
+
+> [!NOTE]
+>
+> ### Authentication
+>
+> Set the `PHOENIX_API_KEY` environment variable to authenticate with
+> Phoenix. Set `PHOENIX_COLLECTOR_ENDPOINT` for the base URL (defaults
+> to `https://app.phoenix.arize.com`).
 
 ## LangSmith
 

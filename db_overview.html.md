@@ -19,7 +19,7 @@ There are several sources you can use for building a transcript
 database:
 
 1.  Inspect evaluation logs.
-2.  LLM observability systems (e.g. LangSmith, Logfire).
+2.  LLM observability systems (e.g. Arize Phoenix, LangSmith, Logfire).
 3.  Traces directly captured from agent execution.
 4.  Any other source using the import API.
 
@@ -40,8 +40,8 @@ These articles cover transcript databases in more depth:
     context-manager.
 
 3.  [Importing Transcripts](db_importing.qmd) — Covers building a
-    database from Inspect Logs, LangSmith, Logfire, and custom sources
-    using the import API.
+    database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and
+    custom sources using the import API.
 
 ## Publishing Transcripts
 

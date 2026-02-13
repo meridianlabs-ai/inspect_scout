@@ -8,8 +8,8 @@ transcripts. With Scout, you can easily:
 
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
-2.  Analyze transcripts from Inspect Evals, LangSmith, Logfire, or
-    custom sources via the capture and import APIs.
+2.  Analyze transcripts from Inspect Evals, Arize Phoenix, LangSmith,
+    Logfire, or custom sources via the capture and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.

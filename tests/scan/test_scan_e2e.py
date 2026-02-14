@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 
@@ -212,3 +213,80 @@ def test_scan_processes_all_transcripts_beyond_1000(tmp_path: Path) -> None:
         f"Expected {transcript_count} scan results, got {len(scanner_df)}. "
         "This indicates a limit is being applied during scanning."
     )
+
+
+def test_scan_model_usage_not_cumulative(tmp_path: Path) -> None:
+    """Test that scan_total_tokens reflects per-scan usage, not cumulative.
+
+    Regression test for a bug where init_model_usage() didn't reset the
+    model usage context between sequential scans within the same worker task,
+    causing scan_total_tokens to accumulate across scans.
+    """
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+
+    transcript_count = 5
+
+    import asyncio
+
+    async def insert_transcripts() -> None:
+        transcripts = [
+            create_minimal_transcript(f"token-test-{i:03d}", i)
+            for i in range(transcript_count)
+        ]
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert(transcripts)
+
+    asyncio.run(insert_transcripts())
+
+    mock_responses = [
+        ModelOutput.from_content(
+            model="mockllm",
+            content="The assistant was helpful.\n\nANSWER: yes",
+        )
+        for _ in range(transcript_count)
+    ]
+
+    # max_transcripts=1 forces a single worker to process all scans
+    # sequentially, which is where the cumulative bug manifests
+    status = scan(
+        scanners=[llm_scanner_factory()],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,
+        max_transcripts=1,
+        model="mockllm/model",
+        model_args={"custom_outputs": mock_responses},
+        display="none",
+    )
+
+    assert status.complete
+    assert status.location is not None
+
+    results = scan_results_df(
+        status.location, scanner="llm_test_scanner", rows="transcripts"
+    )
+    df = results.scanners["llm_test_scanner"]
+    assert len(df) == transcript_count
+
+    # Every scan uses the same prompt/response, so each should report
+    # identical token counts. Before the fix, tokens grew cumulatively:
+    # [187, 374, 561, 748, 935] instead of [187, 187, 187, 187, 187].
+    first_tokens = int(df["scan_total_tokens"].iloc[0])
+    assert first_tokens > 0
+    assert df["scan_total_tokens"].tolist() == [first_tokens] * transcript_count
+
+    first_usage_str = df["scan_model_usage"].iloc[0]
+    first_usage = json.loads(first_usage_str)
+    model_name = next(iter(first_usage))
+    assert first_usage[model_name]["input_tokens"] > 0
+    assert first_usage[model_name]["output_tokens"] > 0
+    assert first_usage[model_name]["total_tokens"] == first_tokens
+
+    for i in range(1, transcript_count):
+        usage = json.loads(df["scan_model_usage"].iloc[i])
+        assert usage == first_usage, (
+            f"scan_model_usage for scan {i} differs from scan 0: {usage} != {first_usage}"
+        )

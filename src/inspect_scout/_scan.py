@@ -638,8 +638,10 @@ async def _scan_async_inner(
                     # 2) We need to reflect the signature of the scanner fn -- either
                     #    by introspecting or by synthesizing a loader
 
-                    # initialize model_usage tracking for this coroutine
-                    init_model_usage()
+                    # initialize model_usage tracking for this scan (force
+                    # reset so usage doesn't accumulate across sequential
+                    # scans within the same worker task)
+                    init_model_usage(initial_usage={})
 
                     inspect_transcript = InspectTranscript()
                     init_transcript(inspect_transcript)

@@ -6,9 +6,9 @@
 2. [Definitions](#definitions)
 3. [Requirements](#requirements)
 4. [Design Proposal](#design-proposal)
+   - [Git Submodule as Coordination Point](#git-submodule-as-coordination-point)
    - [Artifact Publishing](#artifact-publishing)
    - [Artifact Resolution](#artifact-resolution)
-   - [Frontend Commit Ref in Python](#frontend-commit-ref-in-python)
    - [Asset Fingerprinting](#asset-fingerprinting)
    - [TypeScript Monorepo Structure](#typescript-monorepo-structure)
 5. [Open Topics](#open-topics)
@@ -28,9 +28,9 @@ Currently:
 
 ## Definitions
 
-### Actors
+### Key Components
 
-| Actor | Description |
+| Component | Description |
 |-------|-------------|
 | **Python package** | `inspect-scout` or `inspect-ai`, installed via pip. Contains backend code, CLI, and serves the frontend. |
 | **React app** | The React frontend application. Built output is the `dist/` folder. |
@@ -43,7 +43,7 @@ Currently:
 | **PyPI user** | Consumes the published Python package from PyPI |
 | **Git user** | Installs the Python package directly from a git ref |
 | **Python-only contributor** | Develops Python code; does not work on frontend code |
-| **Frontend contributor** | Works primarily in the TS monorepo; touches the Python repo to update the frontend commit ref |
+| **Frontend contributor** | Works primarily in the TS monorepo; updates the submodule pointer in the Python repo when ready to share |
 | **Python package maintainer** | Cuts releases of the Python package to PyPI |
 
 ## Requirements
@@ -68,27 +68,25 @@ Currently:
 
 ## Design Proposal
 
-> The design hinges on the **git commit SHA** as the coordination point between Python and the React app. The Python repo pins the exact TS monorepo commit it needs in `pyproject.toml`. Artifacts are stored in S3 keyed by `{app-name}/{commit-sha}`. No semver, no compatibility ranges — the pin is an explicit "I need this exact build."
+> The design hinges on the **git commit SHA** as the coordination point between Python and the React app. The Python repo includes the TS monorepo as a **git submodule** — git itself tracks the pinned commit. Artifacts are stored in S3 keyed by `{app-name}/{commit-sha}`. No semver, no compatibility ranges — the submodule pointer is an explicit "I need this exact build."
 
 ### How Each Story Is Solved
 
-**Story 1 (PyPI user):** CI reads the pinned commit ref from `pyproject.toml`, fetches the matching artifact from S3, and bakes `dist/` into the wheel. No network fetch at install time.
+**Story 1 (PyPI user):** CI reads the submodule pointer SHA, fetches the matching artifact from S3, and bakes `dist/` into the wheel. No network fetch at install time.
 
-**Story 2 (Git user):** A build hook runs during `pip install`, reads the commit ref from `pyproject.toml`, downloads the matching artifact from S3, and extracts it to `dist/`.
+**Story 2 (Git user):** A build hook runs during `pip install`, reads the submodule pointer SHA, downloads the matching artifact from S3, and extracts it to `dist/`.
 
-**Story 3 (Python-only contributor):** Same build hook as story 2. The fetched `dist/` is gitignored. The pinned commit ref stays the same across Python-only changes.
+**Story 3 (Python-only contributor):** Same build hook as story 2. The fetched `dist/` is gitignored. The submodule pointer stays the same across Python-only changes.
 
-**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor builds `dist/` locally in the TS monorepo, then copies or symlinks it into the Python package's expected location. They run `scout view` to verify their changes end-to-end before publishing.
+**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor can work inside the submodule directory (`frontend/`) or in a separate clone of the TS monorepo. Either way, they build `dist/` locally and symlink it into the Python package's expected location. They run `scout view` to verify their changes end-to-end before publishing.
 
-**Story 5 (Frontend contributor prepares WIP for others):** The frontend contributor runs the publish script from their TS monorepo branch, uploading the artifact to S3 keyed by commit SHA. They then update `pyproject.toml` on a Python branch to point to that commit SHA.
+**Story 5 (Frontend contributor prepares WIP for others):** The frontend contributor commits in the TS monorepo, runs the publish script to upload the artifact to S3, then updates the submodule pointer on a Python branch and commits.
 
-**Story 6 (Git user tests prepared WIP):** The git user installs the Python branch (`pip install git+https://...@feature-branch`). The build hook reads the commit ref from `pyproject.toml`, fetches the matching artifact from S3, and extracts it to `dist/`. No Node.js or TS monorepo needed.
+**Story 6 (Git user tests prepared WIP):** The git user installs the Python branch (`pip install git+https://...@feature-branch`). The build hook reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `dist/`. No Node.js or TS monorepo needed.
 
-**Story 7 (Frontend contributor publishes):** The TS monorepo provides a publish script that builds `dist/`, tars it, and uploads to S3 keyed by the current HEAD commit SHA. The contributor then updates the commit ref in the Python repo's `pyproject.toml`.
+**Story 7 (Frontend contributor publishes):** The TS monorepo provides a publish script that builds `dist/`, tars it, and uploads to S3 keyed by the current HEAD commit SHA. The contributor then updates the submodule pointer in the Python repo and commits.
 
-**Story 8 (Clean merge):** Merge the TS monorepo branch to main first, (optionally) republish from main, update the Python branch's `pyproject.toml` to point to the final TS main commit SHA, then merge the Python branch to main.
-
-**Story 9 (Python release):** CI reads the commit ref from `pyproject.toml`, fetches the matching tarball from S3, bakes `dist/` into the wheel, and publishes to PyPI. No manual steps beyond the normal release process.
+**Story 8 (Python release):** CI reads the submodule pointer SHA, fetches the matching tarball from S3, bakes `dist/` into the wheel, and publishes to PyPI. No manual steps beyond the normal release process.
 
 ### Artifact Publishing
 
@@ -117,7 +115,7 @@ The TS monorepo provides a script (e.g., `pnpm publish:scout`) that:
 3. Tars the `dist/` directory
 4. Uploads to `s3://{bucket}/{app-name}/{commit-sha}.tar.gz`
 
-**Publishing is deferred until sharing.** A frontend developer can make many local commits without publishing. They only run the publish script when they're ready for someone else to consume the build — e.g., before asking a tester to try a Python branch that pins that commit, or before merging to main. This mirrors today's workflow where a developer can iterate locally and only commits `dist/` when they're ready to share.
+**Publishing is deferred until sharing.** A frontend developer can make many local commits without publishing. They only run the publish script when they're ready for someone else to consume the build — e.g., before updating the submodule pointer for a tester, or before merging to main. This mirrors today's workflow where a developer can iterate locally and only commits `dist/` when they're ready to share.
 
 #### When Artifacts Are Published
 
@@ -129,12 +127,12 @@ The TS monorepo provides a script (e.g., `pnpm publish:scout`) that:
 
 ### Artifact Resolution
 
-Python packages resolve their frontend by reading the commit ref from `pyproject.toml` and fetching the matching artifact from S3.
+Python packages resolve their frontend by reading the submodule pointer SHA and fetching the matching artifact from S3.
 
 #### Resolution Algorithm
 
 ```
-1. Read commit SHA from pyproject.toml
+1. Read commit SHA from submodule pointer (git ls-tree HEAD frontend)
 2. Construct S3 URL: s3://{bucket}/{app-name}/{sha}.tar.gz
 3. Download and extract to dist/
 ```
@@ -156,18 +154,40 @@ Python packages resolve their frontend by reading the commit ref from `pyproject
 | `dist/` already exists (editable) | Overwrite with fetched version |
 | S3 auth failure | Error with credential guidance |
 
-### Frontend Commit Ref in Python
+### Git Submodule as Coordination Point
 
-The Python repo stores the TS monorepo commit ref in `pyproject.toml` under a custom metadata field:
+The Python repo includes the TS monorepo as a git submodule. The submodule pointer is the single source of truth for which frontend commit the Python package needs.
 
-```toml
-[tool.inspect-scout]
-frontend-commit = "a1b2c3d4e5f6..."
+#### Repository Structure
+
+```
+inspect_scout/
+├── .gitmodules          # declares frontend/ → https://github.com/.../ts-monorepo
+├── frontend/            # submodule pointer (not checked out unless initialized)
+├── src/
+└── pyproject.toml
 ```
 
-- Updated manually by the developer when they want a new frontend build
-- On main, always points to a published artifact
+The submodule is **not initialized** for most users. It's just a SHA pointer in the git tree. The build hook reads the SHA via `git ls-tree HEAD frontend` — this works without initializing the submodule.
+
+#### How the Build Hook Reads the SHA
+
+The build hook needs the submodule pointer SHA to construct the S3 URL. It does **not** need the submodule contents.
+
+| Install method | `.git` available? | How to read SHA |
+|----------------|-------------------|-----------------|
+| `pip install -e .` (editable) | Yes — user's clone | `git ls-tree HEAD frontend` |
+| `pip install git+https://...` | Yes — pip clones the repo with `.git` | `git ls-tree HEAD frontend` |
+| CI wheel build | Yes — CI checks out the repo | `git ls-tree HEAD frontend` |
+| sdist | No — `.git` is stripped | Fallback: bake SHA into a generated file during sdist creation |
+
+pip initializes submodules automatically during `git+https://` installs ([pypa/pip#289](https://github.com/pypa/pip/issues/289)), but the build hook doesn't even need that — it only reads the pointer from the parent repo's tree.
+
+#### Submodule State
+
+- On `main`, the submodule pointer always points to a published artifact
 - On feature branches, may point to a branch commit artifact for testing
+- Updated by the frontend contributor when they're ready to share a new build
 
 ### Asset Fingerprinting
 
@@ -267,21 +287,11 @@ All packages use the `@meridian/` scope.
 - Can a commit SHA's artifact be overwritten? (Simpler but less safe)
 - Or strictly immutable? (Safer but requires new commits for fixes)
 
-### Stale Commit Ref Detection
-- A frontend contributor could publish a new artifact to S3 but forget to update the commit SHA in the Python repo's `pyproject.toml`. The Python package would continue to serve the old frontend.
-- This is analogous to today's risk of updating JS source but forgetting to rebuild and commit `dist/`. Today, CI warns if JS source has changed without a corresponding `dist/` update.
-- What's the equivalent safety net in v2? CI check that the pinned SHA is reachable from TS monorepo main? A check that the SHA was published recently? Or is code review sufficient?
+### Stale Submodule Pointer Detection
+- A frontend contributor could publish a new artifact to S3 but forget to update the submodule pointer in the Python repo. The Python package would continue to serve the old frontend.
+- Using a git submodule makes this harder to forget than a manual `pyproject.toml` edit — `git status` and `git diff` show submodule state changes. But the risk isn't eliminated entirely.
+- CI could check that the submodule pointer matches a published artifact in S3.
 
 ### Offline/Cached Fallback for Editable Installs
 - If a Python-only contributor already has a working `dist/` and re-runs `pip install -e .` (e.g., after a rebase or environment rebuild), must they have network access?
 - Could the build hook skip the fetch if the correct `dist/` is already present?
-
-## Appendix: Changes from v1
-
-| Aspect | v1 | v2 |
-|--------|----|----|
-| **Coordination point** | REST API semver | Git commit SHA |
-| **Versioning** | Semver for REST API, React app, and compatibility ranges | No new versioning; existing Python package versioning unchanged |
-| **Artifact storage** | GitHub Releases | S3 |
-| **Artifact naming** | `{app}-{app-version}-api-{api-version}.tar.gz` | `{app-name}/{commit-sha}.tar.gz` |
-| **Compatibility check** | Semver range matching (`requiredApiVersion: ^1.3.0`) | Implicit — the Python repo pins the exact commit it needs |

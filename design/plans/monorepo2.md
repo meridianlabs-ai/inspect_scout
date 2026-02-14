@@ -5,16 +5,17 @@
 1. [Problem Statement](#problem-statement)
 2. [Definitions](#definitions)
 3. [Requirements](#requirements)
-4. [Design Proposal](#design-proposal)
+4. [Assumptions](#assumptions)
+5. [Design Proposal](#design-proposal)
    - [Overview](#overview)
    - [Artifact Publishing](#artifact-publishing)
    - [Artifact Fetching](#artifact-fetching)
    - [Git Submodule as Coordination Point](#git-submodule-as-coordination-point)
-5. [How Each Story Is Solved](#how-each-story-is-solved)
-6. [Misc](#misc)
+6. [How Each Story Is Solved](#how-each-story-is-solved)
+7. [Supporting Details](#supporting-details)
    - [TypeScript Monorepo Structure](#typescript-monorepo-structure)
    - [Asset Fingerprinting](#asset-fingerprinting)
-7. [Open Topics](#open-topics)
+8. [Open Topics](#open-topics)
 
 ## Problem Statement
 
@@ -55,7 +56,7 @@ Currently:
 |---|-------|-------------|
 | 1 | **PyPI user** can `scout view` after installing from PyPI | `pip install inspect-scout` provides a working frontend. No extra steps, no network fetch at install time. |
 | 2 | **Git user** can `scout view` after installing a git ref | `pip install git+https://...[@ref]` provides a working frontend. No extra steps beyond having network access. |
-| 3 | **Python-only contributor** can `scout view` after `pip instal -e`'ing | `git clone && pip install -e ".[dev]"` provides a working frontend automatically. Python-only changes require no frontend awareness. |
+| 3 | **Python-only contributor** can `scout view` after `pip install -e`'ing | `git clone && pip install -e ".[dev]"` provides a working frontend automatically. Python-only changes require no frontend awareness. |
 | 4 | **Frontend contributor** can test WIP via Python server | A frontend contributor can serve their in-progress frontend through the Python server locally, verifying it works end-to-end before publishing. |
 | 5 | **Frontend contributor** can prepare WIP branch for others to test | A frontend contributor can make their in-progress frontend available so that others can test it before the changes are merged to `main`. |
 | 6 | **Git user** can test a prepared WIP branch | A git user can install a Python branch and get the matching in-progress frontend automatically, without needing Node.js or the TS monorepo. |
@@ -77,7 +78,7 @@ The TypeScript code for both `inspect_ai` and `inspect_scout` frontends lives in
 
 The Python repo includes the TS monorepo as a **git submodule** at `frontend/`. The submodule pointer — a commit SHA tracked by git itself — is the single coordination point between the Python package and its frontend. No semver, no compatibility ranges — the pointer says "I need this exact build."
 
-When a frontend contributor is ready to share their work, they **build and publish** the app's `dist/` as a `.tar.gz` to **S3**, keyed by the TS monorepo commit SHA (e.g., `s3://bucket/scout-app/{sha}.tar.gz`). The decision to publish is deliberate — equivalent to today's decision to "build and commit `dist/`." A script handles the actual build, tar, and upload.
+When a frontend contributor is ready to share their work, they **build and publish** the app's `dist/` as a `.tar.gz` to **S3**, keyed by the TS monorepo commit SHA (e.g., `s3://app-dist/scout-app/{sha}.tar.gz`). The decision to publish is deliberate — equivalent to today's decision to "build and commit `dist/`." A script handles the actual build, tar, and upload.
 
 Non-frontend users never need Node.js. A **build hook** in the Python package reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `frontend/apps/scout/dist/`. For PyPI wheels, CI does this at build time so the wheel ships with `dist/` included. The Python server always serves from the same path — `frontend/apps/scout/dist/` — regardless of how the files got there.
 
@@ -166,13 +167,10 @@ The hook uses only Python stdlib (`urllib.request`, `tarfile`, `subprocess`) —
 | Artifact not found in S3 | Error: "Frontend build for commit {sha} not found. Has it been published?" |
 | Network failure | Error with retry suggestion |
 | `dist/` already exists (editable) | Overwrite with fetched version |
-| S3 auth failure | Error with credential guidance |
 
 ### Git Submodule as Coordination Point
 
-The Python repo includes the TS monorepo as a git submodule. The submodule pointer is the single source of truth for which frontend commit the Python package needs.
-
-#### Repository Structure
+The Python repo declares the TS monorepo as a git submodule at `frontend/`:
 
 ```
 inspect_scout/
@@ -182,7 +180,9 @@ inspect_scout/
 └── pyproject.toml
 ```
 
-The submodule is **not initialized** for most users. It's just a SHA pointer in the git tree. The build hook reads the SHA via `git ls-tree HEAD frontend` — this works without initializing the submodule.
+Most users never initialize the submodule. Git still records the pointer as a SHA in the tree, and the build hook reads it via `git ls-tree HEAD frontend` — no checkout required.
+
+Only frontend contributors initialize the submodule (via `git submodule init && git submodule update`) to get a working copy of the TS monorepo for local development.
 
 #### Submodule State
 
@@ -208,7 +208,7 @@ The submodule is **not initialized** for most users. It's just a SHA pointer in 
 
 **Story 8 (Python release):** CI reads the submodule pointer SHA, fetches the matching tarball from S3, and bakes `dist/` into the wheel at `frontend/apps/scout/dist/`. The wheel is published to PyPI. No manual steps beyond the normal release process.
 
-## Misc
+## Supporting Details
 
 ### TypeScript Monorepo Structure
 

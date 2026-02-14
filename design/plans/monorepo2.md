@@ -6,9 +6,11 @@
 2. [Definitions](#definitions)
 3. [Requirements](#requirements)
 4. [Design Proposal](#design-proposal)
-   - [Git Submodule as Coordination Point](#git-submodule-as-coordination-point)
+   - [Overview](#overview)
+   - [How Each Story Is Solved](#how-each-story-is-solved)
    - [Artifact Publishing](#artifact-publishing)
    - [Artifact Resolution](#artifact-resolution)
+   - [Git Submodule as Coordination Point](#git-submodule-as-coordination-point)
    - [Asset Fingerprinting](#asset-fingerprinting)
    - [TypeScript Monorepo Structure](#typescript-monorepo-structure)
 5. [Open Topics](#open-topics)
@@ -68,25 +70,33 @@ Currently:
 
 ## Design Proposal
 
-> The design hinges on the **git commit SHA** as the coordination point between Python and the React app. The Python repo includes the TS monorepo as a **git submodule** — git itself tracks the pinned commit. Artifacts are stored in S3 keyed by `{app-name}/{commit-sha}`. No semver, no compatibility ranges — the submodule pointer is an explicit "I need this exact build."
+### Overview
+
+The TypeScript code for both `inspect_ai` and `inspect_scout` frontends lives in a **separate git repository** (the TS monorepo), managed with **pnpm workspaces** and **Turborepo**. Shared code (components, utilities, types) is factored into workspace packages consumed by both apps.
+
+The Python repo includes the TS monorepo as a **git submodule** at `frontend/`. The submodule pointer — a commit SHA tracked by git itself — is the single coordination point between the Python package and its frontend. No semver, no compatibility ranges — the pointer says "I need this exact build."
+
+When a frontend contributor is ready to share their work, they **build and publish** the app's `dist/` as a `.tar.gz` to **S3**, keyed by the TS monorepo commit SHA (e.g., `s3://bucket/scout-app/{sha}.tar.gz`). The decision to publish is deliberate — equivalent to today's decision to "build and commit `dist/`." A script handles the actual build, tar, and upload.
+
+Non-frontend users never need Node.js. A **build hook** in the Python package reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `frontend/apps/scout/dist/`. For PyPI wheels, CI does this at build time so the wheel ships with `dist/` included. The Python server always serves from the same path — `frontend/apps/scout/dist/` — regardless of how the files got there.
 
 ### How Each Story Is Solved
 
-**Story 1 (PyPI user):** CI reads the submodule pointer SHA, fetches the matching artifact from S3, and bakes `dist/` into the wheel. No network fetch at install time.
+**Story 1 (PyPI user):** The wheel published to PyPI already contains `dist/`. Nothing special happens at install time.
 
-**Story 2 (Git user):** A build hook runs during `pip install`, reads the submodule pointer SHA, downloads the matching artifact from S3, and extracts it to `dist/`.
+**Story 2 (Git user):** A build hook runs during `pip install`, reads the submodule pointer SHA, downloads the matching artifact from S3, and extracts it to `frontend/apps/scout/dist/` — the same location `pnpm build` would produce.
 
-**Story 3 (Python-only contributor):** Same build hook as story 2. The fetched `dist/` is gitignored. The submodule pointer stays the same across Python-only changes.
+**Story 3 (Python-only contributor):** Same build hook as story 2. The submodule pointer stays the same across Python-only changes.
 
-**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor can work inside the submodule directory (`frontend/`) or in a separate clone of the TS monorepo. Either way, they build `dist/` locally and symlink it into the Python package's expected location. They run `scout view` to verify their changes end-to-end before publishing.
+**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor initializes the submodule and runs `pnpm build` inside it. The output lands at `frontend/apps/scout/dist/` — the same path the build hook and `pnpm build` both target. No symlinks needed. They run `scout view` to verify end-to-end.
 
 **Story 5 (Frontend contributor prepares WIP for others):** The frontend contributor commits in the TS monorepo, runs the publish script to upload the artifact to S3, then updates the submodule pointer on a Python branch and commits.
 
-**Story 6 (Git user tests prepared WIP):** The git user installs the Python branch (`pip install git+https://...@feature-branch`). The build hook reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `dist/`. No Node.js or TS monorepo needed.
+**Story 6 (Git user tests prepared WIP):** The git user installs the Python branch (`pip install git+https://...@feature-branch`). The build hook reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `frontend/apps/scout/dist/`. No Node.js or TS monorepo needed.
 
 **Story 7 (Frontend contributor publishes):** The TS monorepo provides a publish script that builds `dist/`, tars it, and uploads to S3 keyed by the current HEAD commit SHA. The contributor then updates the submodule pointer in the Python repo and commits.
 
-**Story 8 (Python release):** CI reads the submodule pointer SHA, fetches the matching tarball from S3, bakes `dist/` into the wheel, and publishes to PyPI. No manual steps beyond the normal release process.
+**Story 8 (Python release):** CI reads the submodule pointer SHA, fetches the matching tarball from S3, and bakes `dist/` into the wheel at `frontend/apps/scout/dist/`. The wheel is published to PyPI. No manual steps beyond the normal release process.
 
 ### Artifact Publishing
 
@@ -134,16 +144,20 @@ Python packages resolve their frontend by reading the submodule pointer SHA and 
 ```
 1. Read commit SHA from submodule pointer (git ls-tree HEAD frontend)
 2. Construct S3 URL: s3://{bucket}/{app-name}/{sha}.tar.gz
-3. Download and extract to dist/
+3. Download and extract to frontend/apps/scout/dist/
 ```
 
 #### When Resolution Happens
 
-| Install method | When | Where | Result |
-|----------------|------|-------|--------|
-| `pip install inspect-scout` (PyPI) | CI wheel build | GitHub Actions | `dist/` baked into wheel |
-| `pip install git+https://...` | Build hook during install | User's machine | `dist/` fetched on demand |
-| `pip install -e ".[dev]"` | Build hook during install | User's machine | `dist/` fetched on demand, gitignored |
+| Install method | When | Where | Target path |
+|----------------|------|-------|-------------|
+| `pip install inspect-scout` (PyPI) | CI wheel build | GitHub Actions | `frontend/apps/scout/dist/` baked into wheel |
+| `pip install git+https://...` | Build hook during install | User's machine | `frontend/apps/scout/dist/` |
+| `pip install -e ".[dev]"` | Build hook during install | User's machine | `frontend/apps/scout/dist/` (gitignored) |
+
+#### Serving Path
+
+The Python server always serves from `frontend/apps/scout/dist/`. This path is the same regardless of install method — the only difference is how the files got there (build hook fetch, local `pnpm build`, or baked into the wheel by CI).
 
 #### Error Handling
 
@@ -273,6 +287,11 @@ All packages use the `@meridian/` scope.
 - Which AWS account/bucket?
 - Public read access or authenticated?
 - Lifecycle policies for old artifacts?
+
+### Artifact Upload Security
+- The S3 bucket must be writable by authorized publishers but not by the public. Anyone with write access can push an artifact that all users will consume.
+- Options: CI-only uploads (only merged commits get published via GitHub Actions with OIDC), a signing/gating service, scoped IAM credentials for trusted contributors, etc.
+- What's the threat model? Compromised contributor credentials? Malicious PRs that trigger CI publish?
 
 ### Build Hook Implementation
 - Hatch build hook vs custom mechanism for fetching from S3 during `pip install -e .`

@@ -873,7 +873,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts from <a href="https://phoenix.arize.com/">Arize Phoenix</a> traces.</p>
 <p>Each Phoenix trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0317d54e44d3688e8ff97721dbbc8f721dc584df/src/inspect_scout/sources/_phoenix/__init__.py#L43">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/41032feccfa3fa1ea9318bd38128c7978fe6b2c8/src/inspect_scout/sources/_phoenix/__init__.py#L43">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> phoenix(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -940,7 +940,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>dataset</code> - Import examples from a dataset</li>
 </ul>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0317d54e44d3688e8ff97721dbbc8f721dc584df/src/inspect_scout/sources/_langsmith/__init__.py#L49">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/41032feccfa3fa1ea9318bd38128c7978fe6b2c8/src/inspect_scout/sources/_langsmith/__init__.py#L49">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> langsmith(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -1007,7 +1007,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts from <a href="https://logfire.pydantic.dev/">Logfire</a> traces.</p>
 <p>Each Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/0317d54e44d3688e8ff97721dbbc8f721dc584df/src/inspect_scout/sources/_logfire/__init__.py#L45">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/41032feccfa3fa1ea9318bd38128c7978fe6b2c8/src/inspect_scout/sources/_logfire/__init__.py#L45">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> logfire(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>

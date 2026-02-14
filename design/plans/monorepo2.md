@@ -12,10 +12,11 @@
    - [Artifact Fetching](#artifact-fetching)
    - [Git Submodule as Coordination Point](#git-submodule-as-coordination-point)
 6. [How Each Story Is Solved](#how-each-story-is-solved)
-7. [Supporting Details](#supporting-details)
+7. [Walkthrough: Coordinated Frontend + API Feature](#walkthrough-coordinated-frontend--api-feature)
+8. [Supporting Details](#supporting-details)
    - [TypeScript Monorepo Structure](#typescript-monorepo-structure)
    - [Asset Fingerprinting](#asset-fingerprinting)
-8. [Open Topics](#open-topics)
+9. [Open Topics](#open-topics)
 
 ## Problem Statement
 
@@ -207,6 +208,118 @@ Only frontend contributors initialize the submodule (via `git submodule init && 
 **Story 7 (Frontend contributor publishes):** The TS monorepo provides a publish script that builds `dist/`, tars it, and uploads to S3 keyed by the current HEAD commit SHA. The contributor then updates the submodule pointer in the Python repo and commits.
 
 **Story 8 (Python release):** CI reads the submodule pointer SHA, fetches the matching tarball from S3, and bakes `dist/` into the wheel at `frontend/apps/scout/dist/`. The wheel is published to PyPI. No manual steps beyond the normal release process.
+
+## Walkthrough: Coordinated Frontend + API Feature
+
+This traces the full lifecycle of a feature that requires both a new Python API endpoint and React code that uses it — from development through testing, merge, and release.
+
+### 1. Developer sets up the Python repo
+
+```bash
+git clone https://github.com/.../inspect_scout
+cd inspect_scout
+pip install -e ".[dev]"
+```
+
+The build hook runs during `pip install -e`, fetches the current `main` frontend artifact from S3, and places it at `frontend/apps/scout/dist/`. The developer now has a working baseline.
+
+### 2. Developer builds the Python side
+
+Create a feature branch and add the new endpoint:
+
+```bash
+git checkout -b feat/chart-export
+# ... add new endpoint, write tests ...
+scout view  # verify existing frontend still works against the new code
+git push -u origin feat/chart-export
+```
+
+### 3. Developer sets up the TS monorepo
+
+The developer initializes the submodule to get a working copy of the frontend code:
+
+```bash
+git submodule init && git submodule update
+cd frontend
+pnpm install
+```
+
+### 4. Developer builds the frontend side
+
+In the TS monorepo (`frontend/`), on a feature branch:
+
+```bash
+git checkout -b feat/chart-export
+# ... add React code that calls the new endpoint ...
+pnpm dev  # dev server with hot reload, proxied to the local Python server
+# iterate across multiple commits — no publishing yet
+```
+
+### 5. Developer tests end-to-end locally
+
+Build the frontend and verify it works through the Python server:
+
+```bash
+cd frontend
+pnpm build  # produces frontend/apps/scout/dist/
+cd ..
+scout view  # Python server serves the locally built frontend
+```
+
+The developer verifies the new feature works end-to-end. They can repeat steps 4–5 as many times as needed.
+
+### 6. Developer makes the branch available to a tester
+
+When the developer is ready for someone else to test, they publish the frontend artifact:
+
+In the TS monorepo (`frontend/`):
+
+```bash
+git push origin feat/chart-export
+pnpm publish:scout  # builds dist/, tars it, triggers CI upload to s3://app-dist/scout-app/{sha}.tar.gz
+```
+
+Back in the Python repo, update the submodule pointer to the published commit:
+
+```bash
+cd frontend && git checkout {sha} && cd ..
+git add frontend
+git commit -m "Update frontend to feat/chart-export"
+git push
+```
+
+### 7. Tester consumes the branch
+
+The tester does not need Node.js, the TS monorepo, or any frontend tooling. They run:
+
+```bash
+pip install git+https://github.com/.../inspect_scout@feat/chart-export
+scout view
+```
+
+pip clones the Python branch, builds a wheel, and the build hook reads the submodule pointer SHA, fetches the matching artifact from S3, and extracts it to `frontend/apps/scout/dist/`. The tester gets the complete feature.
+
+### 8. Developer merges to main
+
+After testing and review:
+
+- Merge the TS monorepo branch to `main` (the published artifact is already in S3, keyed by the commit SHA — merging doesn't change the SHA)
+- If the TS merge changed the SHA (e.g., squash merge), re-publish from the new SHA and update the submodule pointer in the Python repo
+- Merge the Python branch to `main`
+
+Anyone installing from `main` now gets the new feature automatically via the build hook.
+
+### 9. Maintainer publishes to PyPI
+
+When the maintainer is ready to cut a release:
+
+```bash
+python -m build  # or CI pipeline
+# The build hook fetches the artifact from S3 and bakes dist/ into the wheel
+# Publish the wheel to PyPI
+```
+
+End users run `pip install inspect-scout` and get the new feature with no extra steps.
 
 ## Supporting Details
 

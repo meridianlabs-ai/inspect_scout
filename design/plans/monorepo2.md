@@ -83,12 +83,12 @@ Non-frontend users never need Node.js. A **build hook** in the Python package re
 
 ### Artifact Publishing
 
-Frontend artifacts are published to S3 via a script in the TS monorepo.
+Frontend artifacts are published to a publicly readable S3 bucket (`app-dist`) in the Meridian AWS account.
 
 #### S3 Structure
 
 ```
-s3://bucket-name/
+s3://app-dist/
 ├── scout-app/
 │   ├── {commit-sha-1}.tar.gz
 │   ├── {commit-sha-2}.tar.gz
@@ -113,7 +113,7 @@ The TS monorepo provides a script (e.g., `pnpm publish:scout`) that:
 1. Reads the current HEAD commit SHA (the script must run after committing — uncommitted changes have no SHA to key on)
 2. Runs `pnpm build` for the target app
 3. Tars the `dist/` directory
-4. Triggers a GitHub Action (or similar) that uploads to `s3://{bucket}/{app-name}/{commit-sha}.tar.gz`
+4. Triggers a GitHub Action (or similar) that uploads to `s3://app-dist/{app-name}/{commit-sha}.tar.gz`
 
 The developer does not upload directly to S3. The upload is handled by CI (e.g., a GitHub Actions workflow) that has the necessary credentials. The local script's role is to build, tar, and initiate the upload — not to hold S3 write credentials.
 
@@ -138,7 +138,7 @@ Even for commands like `pip install -e .`, pip internally builds a wheel before 
 The hook:
 
 1. Reads the submodule pointer SHA via `git ls-tree HEAD frontend`
-2. Constructs the S3 URL: `https://{bucket}.s3.amazonaws.com/{app-name}/{sha}.tar.gz`
+2. Constructs the S3 URL: `https://app-dist.s3.amazonaws.com/{app-name}/{sha}.tar.gz`
 3. Downloads and extracts to `frontend/apps/scout/dist/`
 4. For non-editable builds, uses `build_data["force_include"]` to ensure `dist/` is included in the wheel
 
@@ -248,6 +248,21 @@ All packages use the `@meridian/` scope.
 | `packages/components` | `@meridian/components` | Shared React components |
 | `tooling/*` | `@meridian/eslint-config`, etc. | Dev tooling configs |
 
+#### Workspace Dependencies
+
+Apps reference shared packages using pnpm's `workspace:*` protocol:
+
+```json
+{
+  "dependencies": {
+    "@meridian/common": "workspace:*",
+    "@meridian/components": "workspace:*"
+  }
+}
+```
+
+This tells pnpm to resolve from the monorepo workspace rather than npm. At install time, pnpm links directly to the local package source.
+
 #### Notes
 
 - `common` holds non-UI code (types, utilities, helpers); `components` holds shared React components
@@ -261,18 +276,19 @@ All packages use the `@meridian/` scope.
 Current Vite config produces non-hashed filenames:
 
 ```javascript
+// vite.config.ts
 output: {
-  entryFileNames: `assets/index.js`,
-  chunkFileNames: `assets/[name].js`,
-  assetFileNames: `assets/[name].[ext]`,
+  entryFileNames: `assets/index.js`,      // No hash
+  chunkFileNames: `assets/[name].js`,     // No hash
+  assetFileNames: `assets/[name].[ext]`,  // No hash
 }
 ```
 
-Browsers cache `index.js` and serve stale versions after upgrades.
+Result: Browsers cache `index.js`, serve stale versions after upgrades.
 
 #### Current Workaround
 
-`NoCacheStaticFiles` in `server.py` disables caching for all JS files.
+[server.py](../../src/inspect_scout/_view/server.py) has `NoCacheStaticFiles` that disables caching for all JS files.
 
 #### Proposed Solution
 
@@ -288,11 +304,14 @@ output: {
 
 Then remove `NoCacheStaticFiles` and use standard `StaticFiles`.
 
-## Open Topics
+#### Why This Works
 
-### S3 Bucket
-- Meridian AWS account, publicly readable bucket (name TBD)
-- Lifecycle policies for old artifacts deferred
+- Each build produces unique filenames based on content
+- `index.html` references the hashed filenames
+- Browsers cache forever (files are immutable)
+- New deployments = new URLs = no stale cache
+
+## Open Topics
 
 ### Artifact Upload Security
 - The S3 bucket must be writable by authorized publishers but not by the public. Anyone with write access can push an artifact that all users will consume.

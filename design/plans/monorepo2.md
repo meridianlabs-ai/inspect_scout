@@ -198,7 +198,7 @@ Only frontend contributors initialize the submodule (via `git submodule init && 
 
 **Story 3 (Python-only contributor):** Same build hook as story 2. The submodule pointer stays the same across Python-only changes.
 
-**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor initializes the submodule and runs `pnpm build` inside it. The output lands at `frontend/apps/scout/dist/` — the same path the build hook and `pnpm build` both target. No symlinks needed. They run `scout view` to verify end-to-end.
+**Story 4 (Frontend contributor tests WIP locally):** The frontend contributor initializes the submodule (`git submodule init && git submodule update`) and runs `pnpm build` inside it. The output lands at `frontend/apps/scout/dist/` — the same path the build hook and `pnpm build` both target. No symlinks needed. They run `scout view` to verify end-to-end.
 
 **Story 5 (Frontend contributor prepares WIP for others):** The frontend contributor commits in the TS monorepo, runs the publish script to upload the artifact to S3, then updates the submodule pointer on a Python branch and commits.
 

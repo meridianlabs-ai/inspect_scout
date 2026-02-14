@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Callable
 
 import pytest
 from inspect_scout._concurrency.common import ScanMetrics
@@ -208,72 +209,43 @@ def _make_status(*, complete: bool = True, errors: list[Error] | None = None) ->
     )
 
 
-def test_scan_complete_strips_tracebacks_from_logged_status(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    errors = [_make_error("long traceback\nline 2\nline 3")]
-    status = _make_status(complete=False, errors=errors)
-    display = DisplayLog()
-
-    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
-        display.scan_complete(status)
-
-    assert len(caplog.records) == 1
-    logged_status: Status = caplog.records[0].__dict__["status"]
-    assert len(logged_status.errors) == 1
-    assert logged_status.errors[0].traceback == ""
-
-
-def test_scan_complete_no_errors_logs_normally(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    status = _make_status(complete=True)
-    display = DisplayLog()
-
-    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
-        display.scan_complete(status)
-
-    assert len(caplog.records) == 1
-    logged_status: Status = caplog.records[0].__dict__["status"]
-    assert logged_status.errors == []
-
-
-def test_scan_status_strips_tracebacks(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    errors = [_make_error(), _make_error()]
-    status = _make_status(complete=False, errors=errors)
-    display = DisplayLog()
-
-    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
-        display.scan_status(status)
-
-    assert len(caplog.records) == 1
-    logged_status: Status = caplog.records[0].__dict__["status"]
-    assert all(e.traceback == "" for e in logged_status.errors)
-
-
-def test_scan_interrupted_strips_tracebacks(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    errors = [_make_error("tb")]
-    status = _make_status(complete=False, errors=errors)
-    display = DisplayLog()
-
-    with caplog.at_level(logging.WARNING, logger="inspect_scout._display.log"):
-        display.scan_interrupted("interrupted!", status)
-
-    assert len(caplog.records) == 1
-    logged_status: Status = caplog.records[0].__dict__["status"]
-    assert logged_status.errors[0].traceback == ""
-
-
-def test_strip_tracebacks_does_not_mutate_original_status() -> None:
-    original_tb = "Traceback (most recent call last):\n  File ..."
-    errors = [_make_error(original_tb)]
-    status = _make_status(complete=False, errors=errors)
-    display = DisplayLog()
-
+def _call_scan_complete(display: DisplayLog, status: Status) -> None:
     display.scan_complete(status)
 
-    assert status.errors[0].traceback == original_tb
+
+def _call_scan_status(display: DisplayLog, status: Status) -> None:
+    display.scan_status(status)
+
+
+def _call_scan_interrupted(display: DisplayLog, status: Status) -> None:
+    display.scan_interrupted("interrupted!", status)
+
+
+@pytest.mark.parametrize("num_errors", [0, 1, 2])
+@pytest.mark.parametrize(
+    ("call_method", "log_level"),
+    [
+        (_call_scan_complete, logging.INFO),
+        (_call_scan_status, logging.INFO),
+        (_call_scan_interrupted, logging.WARNING),
+    ],
+    ids=["scan_complete", "scan_status", "scan_interrupted"],
+)
+def test_strip_tracebacks_from_logged_status(
+    call_method: Callable[[DisplayLog, Status], None],
+    log_level: int,
+    num_errors: int,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    errors = [_make_error("long traceback\nline 2\nline 3") for _ in range(num_errors)]
+    status = _make_status(complete=num_errors == 0, errors=errors)
+    display = DisplayLog()
+
+    with caplog.at_level(log_level, logger="inspect_scout._display.log"):
+        call_method(display, status)
+
+    assert len(caplog.records) == 1
+    logged_status: Status = caplog.records[0].__dict__["status"]
+    assert len(logged_status.errors) == num_errors
+    assert all(e.traceback == "" for e in logged_status.errors)
+    assert all(e.traceback != "" for e in status.errors)

@@ -458,12 +458,27 @@ class EvalLogTranscriptsView(TranscriptsView):
             f"Reading from {t.source_uri} ({entry.filename})",
         ):
             async with await zip_reader.open_member(entry) as json_iterable:
-                return await load_filtered_transcript(
+                transcript = await load_filtered_transcript(
                     json_iterable,
                     t,
                     content.messages,
                     content.events,
                 )
+
+            # Fallback: eval logs don't store timelines, so build from events
+            if (
+                content.timelines is not None
+                and not transcript.timelines
+                and transcript.events
+            ):
+                from .timeline import build_timeline
+                from .util import filter_timelines
+
+                raw_timeline = build_timeline(transcript.events)
+                timelines = filter_timelines([raw_timeline], content.timelines)
+                transcript = transcript.model_copy(update={"timelines": timelines})
+
+            return transcript
 
     @override
     async def read_messages_events(

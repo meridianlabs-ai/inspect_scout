@@ -8,8 +8,8 @@ Uses inspect_ai's event_tree() to parse span structure.
 import hashlib
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Annotated, Any, Literal
 
 from inspect_ai.event import (
     Event,
@@ -25,6 +25,15 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageTool,
+)
+from pydantic import (
+    BaseModel,
+    Discriminator,
+    Field,
+    Tag,
+    ValidationInfo,
+    field_serializer,
+    model_validator,
 )
 
 # Type alias for tree items returned by event_tree
@@ -82,11 +91,32 @@ def _sum_tokens(
     return sum(node.total_tokens for node in nodes)
 
 
-@dataclass
-class TimelineEvent:
+class TimelineEvent(BaseModel):
     """Wraps a single Event."""
 
+    type: Literal["event"] = "event"
     event: Event
+
+    @field_serializer("event")
+    def _serialize_event(self, event: Event, _info: Any) -> str:
+        """Serialize event as its UUID for storage."""
+        return event.uuid or ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_event(cls, data: Any, info: ValidationInfo) -> Any:
+        """Resolve event UUID string to Event object via validation context."""
+        if isinstance(data, dict):
+            event_val = data.get("event")
+            if isinstance(event_val, str):
+                # Resolve UUID → Event via context
+                ctx = info.context or {} if info else {}
+                events_by_uuid = ctx.get("events_by_uuid", {})
+                resolved = events_by_uuid.get(event_val)
+                if resolved is not None:
+                    data = {**data, "event": resolved}
+            return data
+        return data
 
     @property
     def start_time(self) -> datetime:
@@ -118,15 +148,29 @@ class TimelineEvent:
         return 0
 
 
-@dataclass
-class TimelineSpan:
+def _timeline_content_discriminator(v: Any) -> str:
+    """Discriminator function for TimelineSpan.content and TimelineBranch.content."""
+    if isinstance(v, dict):
+        return str(v.get("type", "event"))
+    return str(getattr(v, "type", "event"))
+
+
+# Discriminated union type for content items
+TimelineContentItem = Annotated[
+    Annotated[TimelineEvent, Tag("event")] | Annotated["TimelineSpan", Tag("span")],
+    Discriminator(_timeline_content_discriminator),
+]
+
+
+class TimelineSpan(BaseModel):
     """A span of execution — agent, scorer, tool, or root."""
 
+    type: Literal["span"] = "span"
     id: str
     name: str
     span_type: str | None
-    content: list["TimelineEvent | TimelineSpan"] = field(default_factory=list)
-    branches: list["TimelineBranch"] = field(default_factory=list)
+    content: list[TimelineContentItem] = Field(default_factory=list)
+    branches: list["TimelineBranch"] = Field(default_factory=list)
     task_description: str | None = None
     utility: bool = False
     outline: "Outline | None" = None
@@ -147,12 +191,12 @@ class TimelineSpan:
         return _sum_tokens(self.content)
 
 
-@dataclass
-class TimelineBranch:
+class TimelineBranch(BaseModel):
     """A discarded alternative path from a branch point."""
 
+    type: Literal["branch"] = "branch"
     forked_at: str
-    content: list[TimelineEvent | TimelineSpan] = field(default_factory=list)
+    content: list[TimelineContentItem] = Field(default_factory=list)
 
     @property
     def start_time(self) -> datetime:
@@ -170,23 +214,20 @@ class TimelineBranch:
         return _sum_tokens(self.content)
 
 
-@dataclass
-class OutlineNode:
+class OutlineNode(BaseModel):
     """A node in an agent's outline, referencing an event by UUID."""
 
     event: str
-    children: list["OutlineNode"] = field(default_factory=list)
+    children: list["OutlineNode"] = Field(default_factory=list)
 
 
-@dataclass
-class Outline:
+class Outline(BaseModel):
     """Hierarchical outline of events for an agent."""
 
-    nodes: list[OutlineNode] = field(default_factory=list)
+    nodes: list[OutlineNode] = Field(default_factory=list)
 
 
-@dataclass
-class Timeline:
+class Timeline(BaseModel):
     """A named timeline view over a transcript.
 
     Multiple timelines allow different interpretations of the same event
@@ -913,3 +954,73 @@ def _classify_utility_agents(
     for item in node.content:
         if isinstance(item, TimelineSpan):
             _classify_utility_agents(item, effective_prompt)
+
+
+# =============================================================================
+# Timeline Event Filtering
+# =============================================================================
+
+
+def filter_timeline_events(
+    timeline: Timeline,
+    event_types: list[str] | Literal["all"],
+) -> Timeline:
+    """Return a copy of the timeline with only matching event types.
+
+    Walks the tree and removes TimelineEvent nodes whose event.event
+    is not in event_types. Keeps TimelineSpan structure; prunes empty
+    spans/branches after filtering.
+
+    Args:
+        timeline: The timeline to filter.
+        event_types: Event type strings to keep, or "all" to keep everything.
+
+    Returns:
+        A new Timeline with only matching events.
+    """
+    if event_types == "all":
+        return timeline
+    allowed = set(event_types)
+    new_root = _filter_span(timeline.root, allowed)
+    return Timeline(name=timeline.name, description=timeline.description, root=new_root)
+
+
+def _filter_span(span: TimelineSpan, allowed: set[str]) -> TimelineSpan:
+    """Filter a span's content and branches, keeping only allowed event types."""
+    filtered_content = _filter_content_list(span.content, allowed)
+    filtered_branches = [
+        TimelineBranch(
+            forked_at=b.forked_at,
+            content=_filter_content_list(b.content, allowed),
+        )
+        for b in span.branches
+    ]
+    # Remove branches that ended up empty
+    filtered_branches = [b for b in filtered_branches if b.content]
+    return TimelineSpan(
+        id=span.id,
+        name=span.name,
+        span_type=span.span_type,
+        content=filtered_content,
+        branches=filtered_branches,
+        task_description=span.task_description,
+        utility=span.utility,
+        outline=span.outline,
+    )
+
+
+def _filter_content_list(
+    items: list[TimelineContentItem],
+    allowed: set[str],
+) -> list[TimelineContentItem]:
+    """Filter content items, keeping events with allowed types and non-empty spans."""
+    result: list[TimelineContentItem] = []
+    for item in items:
+        if isinstance(item, TimelineEvent):
+            if item.event.event in allowed:
+                result.append(item)
+        else:  # TimelineSpan
+            filtered = _filter_span(item, allowed)
+            if filtered.content or filtered.branches:
+                result.append(filtered)
+    return result

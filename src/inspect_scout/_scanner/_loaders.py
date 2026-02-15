@@ -13,8 +13,9 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from .._transcript.timeline import Timeline
 from .._transcript.types import Transcript, TranscriptContent
-from .._transcript.util import filter_list, filter_transcript
+from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .loader import Loader, loader
 from .types import ScannerInput
 
@@ -68,6 +69,38 @@ def _ListItemLoader(
     return the_factory()
 
 
+def _TimelineListLoader(
+    content: TranscriptContent,
+) -> Loader[ScannerInput]:
+    @loader(name="TimelineListLoader", content=content)
+    def the_factory() -> Loader[ScannerInput]:
+        async def the_loader(
+            transcript: Transcript,
+        ) -> AsyncIterator[list[Timeline]]:
+            yield filter_timelines(transcript.timelines, content.timelines)
+
+        return the_loader
+
+    return the_factory()
+
+
+def _TimelineItemLoader(
+    content: TranscriptContent,
+) -> Loader[ScannerInput]:
+    @loader(name="TimelineItemLoader", content=content)
+    def the_factory() -> Loader[ScannerInput]:
+        async def the_loader(
+            transcript: Transcript,
+        ) -> AsyncIterator[Timeline]:
+            filtered = filter_timelines(transcript.timelines, content.timelines)
+            if filtered:
+                yield filtered[0]
+
+        return the_loader
+
+    return the_factory()
+
+
 def create_implicit_loader(
     scanner_fn: Callable[..., Any], content: TranscriptContent
 ) -> Loader[ScannerInput]:
@@ -94,8 +127,15 @@ def create_implicit_loader(
         args = get_args(input_annotation)
         assert args, "Scanner input list type annotation must not be bare"
         element_type = args[0]
+        # Check for list[Timeline]
+        if element_type is Timeline:
+            return _TimelineListLoader(content)
         # Return list loader (yields entire list)
         return _ListLoader(_message_or_event(element_type), content)
+
+    # Check for single Timeline
+    if input_annotation is Timeline:
+        return _TimelineItemLoader(content)
 
     # Otherwise it's a single item type (ChatMessage or Event)
     # Return item loader (yields individual items)

@@ -6,6 +6,7 @@ from inspect_ai.event._base import BaseEvent
 from inspect_ai.model import ChatMessage, ChatMessageBase
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
+from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript
 
 
@@ -16,7 +17,7 @@ def get_input_type_and_ids(
 
     Args:
         loader_result: Scanner input which can be a Transcript, ChatMessage, Event,
-          or a sequence of messages/events.
+          Timeline, or a sequence of messages/events/timelines.
 
     Returns:
         A tuple of (input type name, list of IDs) for the given input, or None if
@@ -28,6 +29,8 @@ def get_input_type_and_ids(
         return ("message", [_message_id(loader_result)])
     elif isinstance(loader_result, BaseEvent):
         return ("event", [_event_id(loader_result)])
+    elif isinstance(loader_result, Timeline):
+        return ("timeline", [loader_result.name])
     elif len(loader_result) == 0:
         return None
     elif isinstance(loader_result[0], ChatMessageBase):
@@ -40,6 +43,12 @@ def get_input_type_and_ids(
             "events",
             [_event_id(evt) for evt in cast(Sequence[Event], loader_result)],
         )
+    elif isinstance(loader_result[0], Timeline):
+        return (
+            "timelines",
+            [t.name for t in cast(Sequence[Timeline], loader_result)],
+        )
+    return None
 
 
 def _event_id(event: Event) -> str:

@@ -29,6 +29,7 @@ from .._transcript.types import (
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
+    normalize_timeline_filter,
 )
 from .types import ScannerInput
 
@@ -152,6 +153,7 @@ def loader(
     name: str | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
+    timeline: list[EventType] | Literal["all"] | None = None,
     content: TranscriptContent | None = None,
 ) -> Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]:
     """Decorator for registering loaders.
@@ -160,21 +162,27 @@ def loader(
        name: Loader name (defaults to function name).
        messages: Message types to load from.
        events: Event types to load from.
+       timeline: Event types to include in timelines.
        content: Transcript content filter.
 
     Returns:
         Loader with registry info.
     """
     if content is None:
-        if messages is None and events is None:
-            raise RuntimeError("Must filter on messages or events")
+        if messages is None and events is None and timeline is None:
+            raise RuntimeError("Must filter on messages, events, or timeline")
         content = TranscriptContent(
-            normalize_messages_filter(messages) if messages is not None else None,
-            normalize_events_filter(events) if events is not None else None,
+            messages=(
+                normalize_messages_filter(messages) if messages is not None else None
+            ),
+            events=normalize_events_filter(events) if events is not None else None,
+            timelines=(
+                normalize_timeline_filter(timeline) if timeline is not None else None
+            ),
         )
     else:
-        assert messages is None and events is None, (
-            "Don't pass messages or events if you pass content"
+        assert messages is None and events is None and timeline is None, (
+            "Don't pass messages, events, or timeline if you pass content"
         )
 
     def decorate(

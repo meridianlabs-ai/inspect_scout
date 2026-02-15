@@ -11,6 +11,7 @@ from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from .._util.zip_common import ZipCompressionMethod
+from .timeline import Timeline
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -60,6 +61,7 @@ EventType = Literal[
 
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
+TimelineFilter: TypeAlias = Literal["all"] | Sequence[EventType] | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -70,6 +72,7 @@ LogPaths: TypeAlias = (
 class TranscriptContent:
     messages: MessageFilter = field(default=None)
     events: EventFilter = field(default=None)
+    timelines: TimelineFilter = field(default=None)
 
 
 class BytesContextManager:
@@ -203,3 +206,6 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
+
+    timelines: list[Timeline] = Field(default_factory=list)
+    """Timeline views over the transcript."""

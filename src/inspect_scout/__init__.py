@@ -51,6 +51,12 @@ from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
 from ._transcript.sample_metadata import SampleMetadata
+from ._transcript.timeline import (
+    Timeline,
+    TimelineBranch,
+    TimelineEvent,
+    TimelineSpan,
+)
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
@@ -120,6 +126,11 @@ __all__ = [
     "LogColumns",
     "log_columns",
     "SampleMetadata",
+    # timeline
+    "Timeline",
+    "TimelineBranch",
+    "TimelineEvent",
+    "TimelineSpan",
     # scanner
     "Error",
     "Scanner",

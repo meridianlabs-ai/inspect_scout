@@ -166,6 +166,13 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         description="List of Event with event history (e.g. model events, tool events, etc.).",
         json_serialized=True,
     ),
+    SchemaField(
+        name="timelines",
+        pyarrow_type=pa.string(),
+        required=False,
+        description="List of Timeline views over the transcript.",
+        json_serialized=True,
+    ),
 ]
 
 

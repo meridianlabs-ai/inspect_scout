@@ -57,13 +57,21 @@ class TestTranscriptSchemaFields:
             "limit",
             "messages",
             "events",
+            "timelines",
         }
         assert field_names == expected
 
     def test_json_serialized_fields(self) -> None:
         """Correct fields are marked as JSON-serialized."""
         json_fields = {f.name for f in TRANSCRIPT_SCHEMA_FIELDS if f.json_serialized}
-        expected = {"agent_args", "model_options", "score", "messages", "events"}
+        expected = {
+            "agent_args",
+            "model_options",
+            "score",
+            "messages",
+            "events",
+            "timelines",
+        }
         assert json_fields == expected
 
     def test_all_fields_have_descriptions(self) -> None:
@@ -118,7 +126,7 @@ class TestTranscriptsDbSchema:
         """transcripts_db_schema('pyarrow') returns valid PyArrow Schema."""
         schema = transcripts_db_schema(format="pyarrow")
         assert isinstance(schema, pa.Schema)
-        assert len(schema) == 21
+        assert len(schema) == 22
         assert "transcript_id" in schema.names
 
     def test_pyarrow_field_types(self) -> None:
@@ -136,7 +144,7 @@ class TestTranscriptsDbSchema:
         assert schema["type"] == "record"
         assert schema["name"] == "Transcript"
         assert "fields" in schema
-        assert len(schema["fields"]) == 21
+        assert len(schema["fields"]) == 22
 
     def test_avro_field_structure(self) -> None:
         """Avro schema fields have correct structure."""
@@ -190,7 +198,7 @@ class TestTranscriptsDbSchema:
         df = transcripts_db_schema(format="pandas")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
-        assert len(df.columns) == 21
+        assert len(df.columns) == 22
 
     def test_pandas_column_dtypes(self) -> None:
         """Pandas DataFrame has correct column dtypes."""
@@ -226,9 +234,9 @@ class TestReservedColumns:
         assert "filename" in reserved
 
     def test_count(self) -> None:
-        """Should have correct count (21 schema fields + filename)."""
+        """Should have correct count (22 schema fields + filename)."""
         reserved = reserved_columns()
-        assert len(reserved) == 22
+        assert len(reserved) == 23
 
 
 class TestValidateTranscriptSchema:

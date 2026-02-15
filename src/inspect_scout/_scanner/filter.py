@@ -46,6 +46,21 @@ def validate_messages_filter(filter: list[MessageType] | None) -> None:
         )
 
 
+def normalize_timeline_filter(
+    filter: list[EventType] | Literal["all"],
+) -> list[EventType] | Literal["all"]:
+    if filter == "all":
+        return filter
+    uniq: list[EventType] = []
+    seen: set[EventType] = set()
+    for x in filter:
+        if x not in seen:
+            uniq.append(x)
+            seen.add(x)
+    validate_events_filter(uniq)
+    return uniq
+
+
 def validate_events_filter(filter: list[EventType] | None) -> None:
     if filter is None:
         return

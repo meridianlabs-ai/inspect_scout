@@ -16,9 +16,9 @@ from typing import Literal
 
 from inspect_ai.event import (
     Event,
+    EventTreeSpan,
     ModelEvent,
     SpanBeginEvent,
-    SpanNode,
     ToolEvent,
     event_sequence,
     event_tree,
@@ -31,7 +31,7 @@ from inspect_ai.model import (
 )
 
 # Type alias for tree items returned by event_tree
-TreeItem = SpanNode | Event
+TreeItem = EventTreeSpan | Event
 
 
 # =============================================================================
@@ -324,9 +324,13 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
     tree = event_tree(events)
 
     # Find top-level spans by name
-    top_spans: dict[str, SpanNode] = {}
+    top_spans: dict[str, EventTreeSpan] = {}
     for item in tree:
-        if isinstance(item, SpanNode) and item.name in ("init", "solvers", "scorers"):
+        if isinstance(item, EventTreeSpan) and item.name in (
+            "init",
+            "solvers",
+            "scorers",
+        ):
             top_spans[item.name] = item
 
     # Check for explicit phase spans (init, solvers, or scorers)
@@ -370,15 +374,15 @@ def build_transcript_nodes(events: list[Event]) -> TranscriptNodes:
 
 
 def _build_section_from_span(
-    section: Literal["init", "scoring"], span: SpanNode
+    section: Literal["init", "scoring"], span: EventTreeSpan
 ) -> SectionNode:
-    """Build a SectionNode from a SpanNode.
+    """Build a SectionNode from a EventTreeSpan.
 
     Uses event_sequence to flatten any nested spans into a list of events.
 
     Args:
         section: The section type ("init" or "scoring").
-        span: The SpanNode containing the section's events.
+        span: The EventTreeSpan containing the section's events.
 
     Returns:
         A SectionNode with EventNodes for all events in the span.
@@ -390,7 +394,7 @@ def _build_section_from_span(
 
 
 def _build_agent_from_solvers_span(
-    solvers_span: SpanNode, has_explicit_branches: bool
+    solvers_span: EventTreeSpan, has_explicit_branches: bool
 ) -> AgentNode | None:
     """Build agent hierarchy from the solvers span.
 
@@ -399,7 +403,7 @@ def _build_agent_from_solvers_span(
     the solvers span itself as the agent container.
 
     Args:
-        solvers_span: The top-level solvers SpanNode.
+        solvers_span: The top-level solvers EventTreeSpan.
         has_explicit_branches: Whether explicit branch spans exist globally.
 
     Returns:
@@ -409,11 +413,11 @@ def _build_agent_from_solvers_span(
         return None
 
     # Look for agent spans within solvers
-    agent_spans: list[SpanNode] = []
+    agent_spans: list[EventTreeSpan] = []
     other_items: list[TreeItem] = []
 
     for child in solvers_span.children:
-        if isinstance(child, SpanNode) and child.type == "agent":
+        if isinstance(child, EventTreeSpan) and child.type == "agent":
             agent_spans.append(child)
         else:
             other_items.append(child)
@@ -455,14 +459,14 @@ def _build_agent_from_solvers_span(
 
 
 def _build_agent_from_span(
-    span: SpanNode,
+    span: EventTreeSpan,
     has_explicit_branches: bool,
     extra_items: list[TreeItem] | None = None,
 ) -> AgentNode:
-    """Build an AgentNode from a SpanNode with type='agent'.
+    """Build an AgentNode from a EventTreeSpan with type='agent'.
 
     Args:
-        span: The agent SpanNode to convert.
+        span: The agent EventTreeSpan to convert.
         has_explicit_branches: Whether explicit branch spans exist globally.
         extra_items: Additional tree items (orphan events) to include
             at the start of the agent's content.
@@ -493,21 +497,21 @@ def _build_agent_from_span(
 def _tree_item_to_node(
     item: TreeItem, has_explicit_branches: bool
 ) -> EventNode | AgentNode:
-    """Convert a tree item (SpanNode or Event) to an EventNode or AgentNode.
+    """Convert a tree item (EventTreeSpan or Event) to an EventNode or AgentNode.
 
     Dispatches to the appropriate builder based on item type:
-    - SpanNode with type='agent' -> _build_agent_from_span
-    - Other SpanNode -> _build_agent_from_span_generic
+    - EventTreeSpan with type='agent' -> _build_agent_from_span
+    - Other EventTreeSpan -> _build_agent_from_span_generic
     - Event -> _event_to_node
 
     Args:
-        item: A tree item from event_tree() (SpanNode or Event).
+        item: A tree item from event_tree() (EventTreeSpan or Event).
         has_explicit_branches: Whether explicit branch spans exist globally.
 
     Returns:
         An EventNode or AgentNode representing the item.
     """
-    if isinstance(item, SpanNode):
+    if isinstance(item, EventTreeSpan):
         if item.type == "agent":
             return _build_agent_from_span(item, has_explicit_branches)
         else:
@@ -542,9 +546,9 @@ def _event_to_node(event: Event) -> EventNode | AgentNode:
 
 
 def _build_agent_from_span_generic(
-    span: SpanNode, has_explicit_branches: bool
+    span: EventTreeSpan, has_explicit_branches: bool
 ) -> AgentNode:
-    """Build an AgentNode from a non-agent SpanNode.
+    """Build an AgentNode from a non-agent EventTreeSpan.
 
     If the span is a tool span (type="tool") containing model events,
     we treat it as a tool-spawned agent.
@@ -568,17 +572,17 @@ def _build_agent_from_span_generic(
     )
 
 
-def _contains_model_events(span: SpanNode) -> bool:
+def _contains_model_events(span: EventTreeSpan) -> bool:
     """Check if a span contains any ModelEvent (recursively).
 
     Args:
-        span: The SpanNode to search.
+        span: The EventTreeSpan to search.
 
     Returns:
         True if any descendant is a ModelEvent, False otherwise.
     """
     for child in span.children:
-        if isinstance(child, SpanNode):
+        if isinstance(child, EventTreeSpan):
             if _contains_model_events(child):
                 return True
         elif isinstance(child, ModelEvent):
@@ -621,7 +625,7 @@ def _process_children(
 ) -> tuple[list[EventNode | AgentNode], list[Branch]]:
     """Process a span's children with branch awareness.
 
-    When explicit branches are active, collects adjacent type="branch" SpanNode
+    When explicit branches are active, collects adjacent type="branch" EventTreeSpan
     runs and builds Branch objects from them. Otherwise, standard processing.
 
     Args:
@@ -641,10 +645,10 @@ def _process_children(
     # Explicit branch mode: collect branch spans and build Branch objects
     content = []
     branches: list[Branch] = []
-    branch_run: list[SpanNode] = []
+    branch_run: list[EventTreeSpan] = []
 
     def _flush_branch_run(
-        branch_run: list[SpanNode],
+        branch_run: list[EventTreeSpan],
         parent_content: list[EventNode | AgentNode],
     ) -> list[Branch]:
         """Convert accumulated branch spans into Branch objects."""
@@ -663,7 +667,7 @@ def _process_children(
         return result
 
     for item in children:
-        if isinstance(item, SpanNode) and item.type == "branch":
+        if isinstance(item, EventTreeSpan) and item.type == "branch":
             branch_run.append(item)
         else:
             if branch_run:

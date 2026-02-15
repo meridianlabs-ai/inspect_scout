@@ -130,9 +130,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             model=data.get("model", "test-model"),
             usage=usage,
         )
-        input_messages: list[ChatMessage] = _parse_input_messages(
-            data.get("input", [])
-        )
+        input_messages: list[ChatMessage] = _parse_input_messages(data.get("input", []))
         return ModelEvent(
             uuid=uuid,
             span_id=span_id,
@@ -284,7 +282,9 @@ def create_model_event(
     """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc)
-    output = ModelOutput(model="test", usage=usage) if usage else ModelOutput(model="test")
+    output = (
+        ModelOutput(model="test", usage=usage) if usage else ModelOutput(model="test")
+    )
 
     return ModelEvent(
         uuid=uuid,

@@ -170,7 +170,9 @@ def to_tool_event(span: dict[str, Any]) -> ToolEvent:
     )
 
 
-def to_span_begin_event(span: dict[str, Any], *, is_agent: bool = False) -> SpanBeginEvent:
+def to_span_begin_event(
+    span: dict[str, Any], *, is_agent: bool = False
+) -> SpanBeginEvent:
     """Convert Logfire span to SpanBeginEvent.
 
     Args:

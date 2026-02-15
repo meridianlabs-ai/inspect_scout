@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  Branch,
+  TimelineBranch,
   TimelineEvent,
   TimelineSpan,
 } from "../../components/transcript/timeline";
@@ -77,7 +77,7 @@ function makeSpan(
   startSec: number,
   endSec: number,
   content: TimelineSpan["content"] = [],
-  options?: { branches?: Branch[]; utility?: boolean }
+  options?: { branches?: TimelineBranch[]; utility?: boolean }
 ): TimelineSpan {
   return {
     type: "span",
@@ -93,8 +93,8 @@ function makeSpan(
   };
 }
 
-/** Minimal Branch builder. */
-function makeBranch(forkedAt: string, startSec: number): Branch {
+/** Minimal TimelineBranch builder. */
+function makeBranch(forkedAt: string, startSec: number): TimelineBranch {
   return {
     type: "branch",
     forkedAt,

@@ -65,7 +65,7 @@ export interface TimelineSpan extends TranscriptNodeBase {
   name: string;
   spanType: string | null;
   content: (TimelineEvent | TimelineSpan)[];
-  branches: Branch[];
+  branches: TimelineBranch[];
   taskDescription?: string;
   utility: boolean;
   outline?: Outline;
@@ -74,7 +74,7 @@ export interface TimelineSpan extends TranscriptNodeBase {
 /**
  * A discarded alternative path from a branch point.
  */
-export interface Branch extends TranscriptNodeBase {
+export interface TimelineBranch extends TranscriptNodeBase {
   type: "branch";
   forkedAt: string;
   content: (TimelineEvent | TimelineSpan)[];
@@ -227,7 +227,7 @@ function createTimelineSpan(
   spanType: string | null,
   content: (TimelineEvent | TimelineSpan)[],
   utility: boolean = false,
-  branches: Branch[] = []
+  branches: TimelineBranch[] = []
 ): TimelineSpan {
   return {
     type: "span",
@@ -244,12 +244,12 @@ function createTimelineSpan(
 }
 
 /**
- * Create a Branch with computed properties.
+ * Create a TimelineBranch with computed properties.
  */
 function createBranch(
   forkedAt: string,
   content: (TimelineEvent | TimelineSpan)[]
-): Branch {
+): TimelineBranch {
   return {
     type: "branch",
     forkedAt,
@@ -554,19 +554,19 @@ function buildAgentFromTree(
 }
 
 // =============================================================================
-// Branch Processing
+// TimelineBranch Processing
 // =============================================================================
 
 /**
  * Process a span's children with branch awareness.
  *
  * When explicit branches are active, collects adjacent type="branch" SpanNode
- * runs and builds Branch objects from them. Otherwise, standard processing.
+ * runs and builds TimelineBranch objects from them. Otherwise, standard processing.
  */
 function processChildren(
   children: TreeItem[],
   hasExplicitBranches: boolean
-): [(TimelineEvent | TimelineSpan)[], Branch[]] {
+): [(TimelineEvent | TimelineSpan)[], TimelineBranch[]] {
   if (!hasExplicitBranches) {
     // Standard processing - no branch detection at build time
     const content: (TimelineEvent | TimelineSpan)[] = [];
@@ -576,16 +576,16 @@ function processChildren(
     return [content, []];
   }
 
-  // Explicit branch mode: collect branch spans and build Branch objects
+  // Explicit branch mode: collect branch spans and build TimelineBranch objects
   const content: (TimelineEvent | TimelineSpan)[] = [];
-  const branches: Branch[] = [];
+  const branches: TimelineBranch[] = [];
   let branchRun: SpanNode[] = [];
 
   function flushBranchRun(
     run: SpanNode[],
     parentContent: (TimelineEvent | TimelineSpan)[]
-  ): Branch[] {
-    const result: Branch[] = [];
+  ): TimelineBranch[] {
+    const result: TimelineBranch[] = [];
     for (const span of run) {
       const branchContent: (TimelineEvent | TimelineSpan)[] = [];
       for (const child of span.children) {
@@ -694,7 +694,7 @@ function getBranchInput(
 }
 
 // =============================================================================
-// Branch Auto-Detection
+// TimelineBranch Auto-Detection
 // =============================================================================
 
 /**

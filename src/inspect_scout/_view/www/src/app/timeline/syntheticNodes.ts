@@ -1,5 +1,5 @@
 import type {
-  Branch,
+  TimelineBranch,
   Timeline,
   TimelineEvent,
   TimelineSpan,
@@ -312,7 +312,7 @@ function makeSpan(
   tokens: number,
   content: TimelineSpan["content"] = [],
   options?: {
-    branches?: Branch[];
+    branches?: TimelineBranch[];
     utility?: boolean;
   }
 ): TimelineSpan {
@@ -1349,7 +1349,7 @@ function branchesSingleFork(): TimelineScenario {
     ]
   );
 
-  const branch1: Branch = {
+  const branch1: TimelineBranch = {
     type: "branch",
     forkedAt: "model-call-5",
     content: [branch1Refactor, branch1Validate],
@@ -1384,7 +1384,7 @@ function branchesSingleFork(): TimelineScenario {
     ]
   );
 
-  const branch2: Branch = {
+  const branch2: TimelineBranch = {
     type: "branch",
     forkedAt: "model-call-5",
     content: [branch2Rewrite],
@@ -1498,7 +1498,7 @@ function branchesMultipleForks(): TimelineScenario {
     ]
   );
 
-  const earlyBranch: Branch = {
+  const earlyBranch: TimelineBranch = {
     type: "branch",
     forkedAt: "model-call-3",
     content: [earlyAttempt],
@@ -1520,7 +1520,7 @@ function branchesMultipleForks(): TimelineScenario {
     makeModelEventNode("Retry showed improvement.", 36, 38, 1200),
   ]);
 
-  const lateBranch1: Branch = {
+  const lateBranch1: TimelineBranch = {
     type: "branch",
     forkedAt: "model-call-10",
     content: [lateRetry],
@@ -1555,7 +1555,7 @@ function branchesMultipleForks(): TimelineScenario {
     makeModelEventNode("Alternative approach succeeded.", 40, 42, 1100),
   ]);
 
-  const lateBranch2: Branch = {
+  const lateBranch2: TimelineBranch = {
     type: "branch",
     forkedAt: "model-call-10",
     content: [lateAlt],

@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import type { Event } from "../../types/api-types";
 
 import {
-  Branch,
+  TimelineBranch,
   type Timeline,
   TimelineEvent,
   TimelineSpan,
@@ -272,7 +272,10 @@ function getAllEventUuids(node: TimelineSpan): string[] {
 /**
  * Assert that a Branch matches expected values.
  */
-function assertBranchMatches(actual: Branch, expected: ExpectedBranch): void {
+function assertBranchMatches(
+  actual: TimelineBranch,
+  expected: ExpectedBranch
+): void {
   expect(actual.forkedAt).toBe(expected.forked_at);
   if (expected.event_uuids !== undefined) {
     const uuids = actual.content

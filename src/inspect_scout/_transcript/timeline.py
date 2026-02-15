@@ -37,7 +37,7 @@ TreeItem = EventTreeSpan | Event
 
 
 def _min_start_time(
-    nodes: Sequence["TimelineEvent | TimelineSpan | Branch"],
+    nodes: Sequence["TimelineEvent | TimelineSpan | TimelineBranch"],
 ) -> datetime:
     """Return the earliest start time among nodes.
 
@@ -52,7 +52,9 @@ def _min_start_time(
     return min(node.start_time for node in nodes)
 
 
-def _max_end_time(nodes: Sequence["TimelineEvent | TimelineSpan | Branch"]) -> datetime:
+def _max_end_time(
+    nodes: Sequence["TimelineEvent | TimelineSpan | TimelineBranch"],
+) -> datetime:
     """Return the latest end time among nodes.
 
     Requires at least one node (all nodes have non-null end_time).
@@ -66,7 +68,9 @@ def _max_end_time(nodes: Sequence["TimelineEvent | TimelineSpan | Branch"]) -> d
     return max(node.end_time for node in nodes)
 
 
-def _sum_tokens(nodes: Sequence["TimelineEvent | TimelineSpan | Branch"]) -> int:
+def _sum_tokens(
+    nodes: Sequence["TimelineEvent | TimelineSpan | TimelineBranch"],
+) -> int:
     """Sum total tokens across all nodes.
 
     Args:
@@ -122,7 +126,7 @@ class TimelineSpan:
     name: str
     span_type: str | None
     content: list["TimelineEvent | TimelineSpan"] = field(default_factory=list)
-    branches: list["Branch"] = field(default_factory=list)
+    branches: list["TimelineBranch"] = field(default_factory=list)
     task_description: str | None = None
     utility: bool = False
     outline: "Outline | None" = None
@@ -144,7 +148,7 @@ class TimelineSpan:
 
 
 @dataclass
-class Branch:
+class TimelineBranch:
     """A discarded alternative path from a branch point."""
 
     forked_at: str
@@ -530,17 +534,17 @@ def _build_agent_from_tree(
 
 
 # =============================================================================
-# Branch Processing
+# TimelineBranch Processing
 # =============================================================================
 
 
 def _process_children(
     children: list[TreeItem], has_explicit_branches: bool
-) -> tuple[list[TimelineEvent | TimelineSpan], list[Branch]]:
+) -> tuple[list[TimelineEvent | TimelineSpan], list[TimelineBranch]]:
     """Process a span's children with branch awareness.
 
     When explicit branches are active, collects adjacent type="branch" EventTreeSpan
-    runs and builds Branch objects from them. Otherwise, standard processing.
+    runs and builds TimelineBranch objects from them. Otherwise, standard processing.
 
     Args:
         children: List of tree items to process.
@@ -556,17 +560,17 @@ def _process_children(
             content.append(_tree_item_to_node(item, has_explicit_branches))
         return content, []
 
-    # Explicit branch mode: collect branch spans and build Branch objects
+    # Explicit branch mode: collect branch spans and build TimelineBranch objects
     content = []
-    branches: list[Branch] = []
+    branches: list[TimelineBranch] = []
     branch_run: list[EventTreeSpan] = []
 
     def _flush_branch_run(
         branch_run: list[EventTreeSpan],
         parent_content: list[TimelineEvent | TimelineSpan],
-    ) -> list[Branch]:
-        """Convert accumulated branch spans into Branch objects."""
-        result: list[Branch] = []
+    ) -> list[TimelineBranch]:
+        """Convert accumulated branch spans into TimelineBranch objects."""
+        result: list[TimelineBranch] = []
         for span in branch_run:
             branch_content: list[TimelineEvent | TimelineSpan] = []
             for child in span.children:
@@ -577,7 +581,7 @@ def _process_children(
                 if branch_input is not None
                 else ""
             )
-            result.append(Branch(forked_at=forked_at, content=branch_content))
+            result.append(TimelineBranch(forked_at=forked_at, content=branch_content))
         return result
 
     for item in children:
@@ -682,7 +686,7 @@ def _get_branch_input(
 
 
 # =============================================================================
-# Branch Auto-Detection
+# TimelineBranch Auto-Detection
 # =============================================================================
 
 
@@ -775,7 +779,7 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
         shared_input = list(first_item.event.input)
 
         for i, branch_start in enumerate(indices[:-1]):
-            # Branch extends from this ModelEvent to just before the next re-roll
+            # TimelineBranch extends from this ModelEvent to just before the next re-roll
             next_reroll = indices[i + 1]
             branch_ranges.append((branch_start, next_reroll, shared_input))
 
@@ -785,7 +789,9 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
     for start, end, shared_input in branch_ranges:
         branch_content = list(agent.content[start:end])
         forked_at = _find_forked_at(agent.content, shared_input)
-        agent.branches.append(Branch(forked_at=forked_at, content=branch_content))
+        agent.branches.append(
+            TimelineBranch(forked_at=forked_at, content=branch_content)
+        )
         del agent.content[start:end]
 
     # Reverse branches so they're in original order

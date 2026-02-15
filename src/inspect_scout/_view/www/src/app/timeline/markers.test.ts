@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  Branch,
+  TimelineBranch,
   TimelineEvent,
   TimelineSpan,
 } from "../../components/transcript/timeline";
@@ -157,7 +157,7 @@ function makeSpan(
   startSec: number,
   endSec: number,
   content: TimelineSpan["content"] = [],
-  options?: { branches?: Branch[] }
+  options?: { branches?: TimelineBranch[] }
 ): TimelineSpan {
   return {
     type: "span",
@@ -375,7 +375,7 @@ describe("collectMarkers", () => {
     it("creates branch markers when forkedAt matches an event UUID", () => {
       const event1 = makeModelEventNode(0, { uuid: "evt-1" });
       const event2 = makeModelEventNode(5, { uuid: "evt-2" });
-      const branch: Branch = {
+      const branch: TimelineBranch = {
         type: "branch",
         forkedAt: "evt-1",
         content: [makeModelEventNode(2)],
@@ -397,7 +397,7 @@ describe("collectMarkers", () => {
     });
 
     it("silently drops branch markers when forkedAt UUID is not found", () => {
-      const branch: Branch = {
+      const branch: TimelineBranch = {
         type: "branch",
         forkedAt: "nonexistent",
         content: [makeModelEventNode(2)],
@@ -416,7 +416,7 @@ describe("collectMarkers", () => {
     });
 
     it("silently drops branch markers with empty forkedAt", () => {
-      const branch: Branch = {
+      const branch: TimelineBranch = {
         type: "branch",
         forkedAt: "",
         content: [makeModelEventNode(2)],
@@ -478,7 +478,7 @@ describe("collectMarkers", () => {
       });
       const event3 = makeCompactionEventNode(25);
 
-      const branch: Branch = {
+      const branch: TimelineBranch = {
         type: "branch",
         forkedAt: "evt-fork",
         content: [makeModelEventNode(6)],

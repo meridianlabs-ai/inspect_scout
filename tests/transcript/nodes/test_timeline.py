@@ -29,8 +29,8 @@ from inspect_ai.model import (
     ModelUsage,
 )
 from inspect_scout._transcript.timeline import (
-    Branch,
     Timeline,
+    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
     build_timeline,
@@ -349,7 +349,7 @@ def assert_scoring_span_matches(
 
 
 def assert_branch_matches(
-    actual: Branch,
+    actual: TimelineBranch,
     expected: dict[str, Any],
     branch_name: str = "branch",
 ) -> None:

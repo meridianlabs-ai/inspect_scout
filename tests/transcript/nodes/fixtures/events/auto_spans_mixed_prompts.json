@@ -1,0 +1,83 @@
+{
+  "description": "Auto-span detection: 2 threads with prompt A and 1 thread with prompt B — produces Agent 1 (x2) and Agent 2 (x1)",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "You are prompt A"},
+        {"role": "user", "content": "Task A1"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "A1 response"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z",
+      "input": [
+        {"role": "system", "content": "You are prompt A"},
+        {"role": "user", "content": "Task A2"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "A2 response"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "system", "content": "You are prompt B"},
+        {"role": "user", "content": "Task B1"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "B1 response"}}]
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "children": [
+        {
+          "id": "auto-span-0",
+          "name": "Agent 1",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-001"],
+          "total_tokens": 150
+        },
+        {
+          "id": "auto-span-1",
+          "name": "Agent 1",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-002"],
+          "total_tokens": 150
+        },
+        {
+          "id": "auto-span-2",
+          "name": "Agent 2",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-003"],
+          "total_tokens": 150
+        }
+      ],
+      "total_tokens": 450
+    },
+    "scoring": null
+  }
+}

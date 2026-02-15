@@ -322,6 +322,9 @@ def build_timeline(events: list[Event]) -> Timeline:
                 )
 
         if agent_node is not None:
+            if not has_explicit_branches:
+                _detect_auto_branches(agent_node)
+            _classify_auto_spans(agent_node)
             _classify_utility_agents(agent_node)
             _classify_branches(agent_node, has_explicit_branches)
 
@@ -349,6 +352,9 @@ def build_timeline(events: list[Event]) -> Timeline:
     else:
         # No phase spans - treat entire tree as agent
         root = _build_agent_from_tree(tree, has_explicit_branches)
+        if not has_explicit_branches:
+            _detect_auto_branches(root)
+        _classify_auto_spans(root)
         _classify_utility_agents(root)
         _classify_branches(root, has_explicit_branches)
 
@@ -862,6 +868,186 @@ def _classify_branches(agent: TimelineSpan, has_explicit_branches: bool) -> None
         for item in branch.content:
             if isinstance(item, TimelineSpan):
                 _classify_branches(item, has_explicit_branches)
+
+
+# =============================================================================
+# Auto-Span Detection (Conversation Threading)
+# =============================================================================
+
+
+def _get_last_assistant_message(
+    input_msgs: list[ChatMessage],
+) -> ChatMessageAssistant | None:
+    """Extract the last assistant message from a ModelEvent's input.
+
+    Args:
+        input_msgs: The input message list.
+
+    Returns:
+        The last assistant message, or None if not found.
+    """
+    for msg in reversed(input_msgs):
+        if isinstance(msg, ChatMessageAssistant):
+            return msg
+    return None
+
+
+def _get_output_fingerprint(event: ModelEvent) -> str | None:
+    """Fingerprint a ModelEvent's output message.
+
+    Python output: event.output.choices[0].message (a ChatMessage).
+
+    Args:
+        event: The ModelEvent to fingerprint.
+
+    Returns:
+        The fingerprint string, or None if no output message.
+    """
+    output = getattr(event, "output", None)
+    if output is None:
+        return None
+    choices = getattr(output, "choices", None)
+    if not choices:
+        return None
+    message = getattr(choices[0], "message", None)
+    if message is None:
+        return None
+    return _message_fingerprint(message)
+
+
+def _system_prompt_fingerprint(input_msgs: list[ChatMessage]) -> str:
+    """Fingerprint just the system prompt from a ModelEvent's input messages.
+
+    Args:
+        input_msgs: The input message list.
+
+    Returns:
+        Fingerprint of the system message, or empty string if none.
+    """
+    for msg in input_msgs:
+        if isinstance(msg, ChatMessageSystem):
+            return _message_fingerprint(msg)
+    return ""
+
+
+def _detect_auto_spans_for_span(span: TimelineSpan) -> None:
+    """Detect conversation threads in a single flat span and create child spans.
+
+    Uses conversation threading: tracks which ModelEvent inputs continue a prior
+    ModelEvent's output via fingerprinting. Mutates span in-place.
+
+    Args:
+        span: The span node to process.
+    """
+    # Guard: only flat content (no child TimelineSpans)
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            return
+
+    # Guard: need at least 2 ModelEvents with output fingerprints
+    # (without output messages, threading detection cannot work)
+    model_with_output_count = sum(
+        1
+        for item in span.content
+        if isinstance(item, TimelineEvent)
+        and isinstance(item.event, ModelEvent)
+        and _get_output_fingerprint(item.event) is not None
+    )
+    if model_with_output_count < 2:
+        return
+
+    # Thread detection
+    threads: list[
+        dict[str, Any]
+    ] = []  # Each: {"items": [...], "system_prompt_fp": str}
+    output_fp_to_thread: dict[str, int] = {}  # output fingerprint → thread index
+    preamble: list[TimelineEvent | TimelineSpan] = []
+
+    for item in span.content:
+        if isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent):
+            input_msgs = list(item.event.input)
+            if input_msgs:
+                last_assistant = _get_last_assistant_message(input_msgs)
+                if last_assistant is not None:
+                    fp = _message_fingerprint(last_assistant)
+                    thread_idx = output_fp_to_thread.get(fp)
+                    if thread_idx is not None:
+                        # Match — append to existing thread
+                        threads[thread_idx]["items"].append(item)
+                        # Update output tracking
+                        del output_fp_to_thread[fp]
+                        new_output_fp = _get_output_fingerprint(item.event)
+                        if new_output_fp:
+                            output_fp_to_thread[new_output_fp] = thread_idx
+                        continue
+
+            # New thread
+            sys_fp = _system_prompt_fingerprint(input_msgs)
+            threads.append({"items": [item], "system_prompt_fp": sys_fp})
+            output_fp = _get_output_fingerprint(item.event)
+            if output_fp:
+                output_fp_to_thread[output_fp] = len(threads) - 1
+        else:
+            # Non-model event
+            if threads:
+                threads[-1]["items"].append(item)
+            else:
+                preamble.append(item)
+
+    # Only create structure if multiple threads found
+    if len(threads) <= 1:
+        return
+
+    # Name threads by prompt group (ordered by first occurrence)
+    prompt_group_order: list[str] = []
+    prompt_group_threads: dict[str, list[int]] = {}
+    for i, thread in enumerate(threads):
+        fp = thread["system_prompt_fp"]
+        if fp in prompt_group_threads:
+            prompt_group_threads[fp].append(i)
+        else:
+            prompt_group_order.append(fp)
+            prompt_group_threads[fp] = [i]
+
+    name_map: dict[int, str] = {}
+    group_num = 1
+    for fp in prompt_group_order:
+        thread_indices = prompt_group_threads[fp]
+        base_name = "Agent" if len(prompt_group_order) == 1 else f"Agent {group_num}"
+        for idx in thread_indices:
+            name_map[idx] = base_name
+        group_num += 1
+
+    # Build child spans
+    new_content: list[TimelineEvent | TimelineSpan] = list(preamble)
+    for i, thread in enumerate(threads):
+        child_span = TimelineSpan(
+            id=f"auto-span-{i}",
+            name=name_map[i],
+            span_type=None,
+            content=thread["items"],
+        )
+        new_content.append(child_span)
+
+    span.content = new_content
+
+
+def _classify_auto_spans(span: TimelineSpan) -> None:
+    """Recursively detect auto-spans via conversation threading.
+
+    Skips spans that already have child spans, recurses into children
+    (including newly created ones).
+
+    Args:
+        span: The span node to process.
+    """
+    # Try detection on this span (only works if flat)
+    _detect_auto_spans_for_span(span)
+
+    # Recurse into any child spans (including newly created ones)
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            _classify_auto_spans(item)
 
 
 # =============================================================================

@@ -43,6 +43,10 @@ interface JsonEvent {
       input_tokens?: number;
       output_tokens?: number;
     };
+    choices?: Array<{
+      message: { role: string; content: string };
+      stop_reason?: string;
+    }>;
   };
   events?: JsonEvent[];
 }
@@ -161,6 +165,15 @@ function createEvent(data: JsonEvent): Event | null {
         input: inputMsgs,
         output: data.output
           ? {
+              choices: data.output.choices
+                ? data.output.choices.map((c) => ({
+                    message: {
+                      role: c.message.role,
+                      content: c.message.content,
+                    },
+                    stop_reason: c.stop_reason ?? "stop",
+                  }))
+                : undefined,
               usage: data.output.usage
                 ? {
                     input_tokens: data.output.usage.input_tokens ?? 0,

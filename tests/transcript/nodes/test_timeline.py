@@ -123,10 +123,22 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             input_tokens=usage_data.get("input_tokens", 0),
             output_tokens=usage_data.get("output_tokens", 0),
         )
-        output = ModelOutput(
-            model=data.get("model", "test-model"),
-            usage=usage,
-        )
+        # Build choices with message if provided
+        choices_data = output_data.get("choices", [])
+        choices: list[dict[str, Any]] = []
+        for choice_data in choices_data:
+            msg_data = choice_data.get("message", {})
+            msg = ChatMessageAssistant(content=msg_data.get("content", ""))
+            choices.append(
+                {"message": msg, "stop_reason": choice_data.get("stop_reason", "stop")}
+            )
+        output_kwargs: dict[str, Any] = {
+            "model": data.get("model", "test-model"),
+            "usage": usage,
+        }
+        if choices:
+            output_kwargs["choices"] = choices
+        output = ModelOutput(**output_kwargs)
         input_messages: list[ChatMessage] = _parse_input_messages(data.get("input", []))
         return ModelEvent(
             uuid=uuid,

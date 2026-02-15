@@ -1,0 +1,95 @@
+{
+  "description": "Auto-span detection: 2 parallel conversations with the same system prompt, interleaved — produces 2 spans with same name",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "You are an explorer"},
+        {"role": "user", "content": "Explore path A"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Exploring A step 1"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z",
+      "input": [
+        {"role": "system", "content": "You are an explorer"},
+        {"role": "user", "content": "Explore path B"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Exploring B step 1"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "system", "content": "You are an explorer"},
+        {"role": "user", "content": "Explore path A"},
+        {"role": "assistant", "content": "Exploring A step 1"},
+        {"role": "user", "content": "Continue A"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Exploring A step 2"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z",
+      "input": [
+        {"role": "system", "content": "You are an explorer"},
+        {"role": "user", "content": "Explore path B"},
+        {"role": "assistant", "content": "Exploring B step 1"},
+        {"role": "user", "content": "Continue B"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Exploring B step 2"}}]
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "children": [
+        {
+          "id": "auto-span-0",
+          "name": "Agent",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-001", "e-003"],
+          "total_tokens": 300
+        },
+        {
+          "id": "auto-span-1",
+          "name": "Agent",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-002", "e-004"],
+          "total_tokens": 300
+        }
+      ],
+      "total_tokens": 600
+    },
+    "scoring": null
+  }
+}

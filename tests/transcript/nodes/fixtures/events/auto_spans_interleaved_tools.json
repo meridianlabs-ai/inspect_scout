@@ -1,0 +1,77 @@
+{
+  "description": "Auto-span detection: ToolEvents between ModelEvents are assigned to the preceding thread",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "Agent A"},
+        {"role": "user", "content": "Do task A"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "A step 1"}}]
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-tool-1",
+      "id": "tool-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z",
+      "input": [
+        {"role": "system", "content": "Agent B"},
+        {"role": "user", "content": "Do task B"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "B step 1"}}]
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-tool-2",
+      "id": "tool-2",
+      "function": "read_file",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "children": [
+        {
+          "id": "auto-span-0",
+          "name": "Agent 1",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-001", "e-tool-1"],
+          "total_tokens": 150
+        },
+        {
+          "id": "auto-span-1",
+          "name": "Agent 2",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-002", "e-tool-2"],
+          "total_tokens": 150
+        }
+      ],
+      "total_tokens": 300
+    },
+    "scoring": null
+  }
+}

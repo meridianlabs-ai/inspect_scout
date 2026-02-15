@@ -819,6 +819,190 @@ function classifyBranches(
 }
 
 // =============================================================================
+// Auto-Span Detection (Conversation Threading)
+// =============================================================================
+
+/**
+ * Extract the last assistant message from a ModelEvent's input.
+ */
+function getLastAssistantMessage(input: ChatMessage[]): ChatMessage | null {
+  for (let i = input.length - 1; i >= 0; i--) {
+    const msg = input[i];
+    if (msg && msg.role === "assistant") {
+      return msg;
+    }
+  }
+  return null;
+}
+
+/**
+ * Fingerprint a ModelEvent's output message.
+ *
+ * TS output: event.output.choices[0].message
+ */
+function getOutputFingerprint(event: Event): string | null {
+  if (event.event !== "model") return null;
+  const message = event.output?.choices?.[0]?.message;
+  if (!message) return null;
+  return messageFingerprint(message);
+}
+
+/**
+ * Fingerprint just the system prompt from a ModelEvent's input messages.
+ *
+ * Returns empty string if no system message found.
+ */
+function systemPromptFingerprint(input: ChatMessage[]): string {
+  for (const msg of input) {
+    if (msg.role === "system") {
+      return messageFingerprint(msg);
+    }
+  }
+  return "";
+}
+
+/**
+ * Detect conversation threads in a single flat span and create child spans.
+ *
+ * Uses conversation threading: tracks which ModelEvent inputs continue a prior
+ * ModelEvent's output via fingerprinting. Mutates span in-place.
+ */
+export function detectAutoSpansForSpan(span: TimelineSpan): void {
+  // Guard: only flat content (no child TimelineSpans)
+  for (const item of span.content) {
+    if (item.type === "span") return;
+  }
+
+  // Guard: need at least 2 ModelEvents with output fingerprints
+  // (without output messages, threading detection cannot work)
+  let modelWithOutputCount = 0;
+  for (const item of span.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      if (getOutputFingerprint(item.event) !== null) {
+        modelWithOutputCount++;
+      }
+    }
+  }
+  if (modelWithOutputCount < 2) return;
+
+  // Thread detection
+  interface Thread {
+    items: (TimelineEvent | TimelineSpan)[];
+    systemPromptFp: string;
+  }
+  const threads: Thread[] = [];
+  const outputFpToThread = new Map<string, number>(); // output fingerprint → thread index
+  const preamble: (TimelineEvent | TimelineSpan)[] = [];
+
+  for (const item of span.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const inputMsgs = item.event.input;
+      if (inputMsgs && inputMsgs.length > 0) {
+        const lastAssistant = getLastAssistantMessage(inputMsgs);
+        if (lastAssistant) {
+          const fp = messageFingerprint(lastAssistant);
+          const threadIdx = outputFpToThread.get(fp);
+          if (threadIdx !== undefined) {
+            // Match — append to existing thread
+            threads[threadIdx]!.items.push(item);
+            // Update output tracking
+            outputFpToThread.delete(fp);
+            const newOutputFp = getOutputFingerprint(item.event);
+            if (newOutputFp) {
+              outputFpToThread.set(newOutputFp, threadIdx);
+            }
+            continue;
+          }
+        }
+      }
+
+      // New thread
+      const sysFp = systemPromptFingerprint(inputMsgs ?? []);
+      threads.push({ items: [item], systemPromptFp: sysFp });
+      const outputFp = getOutputFingerprint(item.event);
+      if (outputFp) {
+        outputFpToThread.set(outputFp, threads.length - 1);
+      }
+    } else {
+      // Non-model event
+      if (threads.length > 0) {
+        threads[threads.length - 1]!.items.push(item);
+      } else {
+        preamble.push(item);
+      }
+    }
+  }
+
+  // Only create structure if multiple threads found
+  if (threads.length <= 1) return;
+
+  // Name threads by prompt group (ordered by first occurrence)
+  const promptGroupOrder: string[] = [];
+  const promptGroupThreads = new Map<string, number[]>();
+  for (let i = 0; i < threads.length; i++) {
+    const fp = threads[i]!.systemPromptFp;
+    const existing = promptGroupThreads.get(fp);
+    if (existing) {
+      existing.push(i);
+    } else {
+      promptGroupOrder.push(fp);
+      promptGroupThreads.set(fp, [i]);
+    }
+  }
+
+  const nameMap = new Map<number, string>();
+  let groupNum = 1;
+  for (const fp of promptGroupOrder) {
+    const threadIndices = promptGroupThreads.get(fp)!;
+    const baseName =
+      promptGroupOrder.length === 1 ? "Agent" : `Agent ${groupNum}`;
+    for (const idx of threadIndices) {
+      nameMap.set(idx, baseName);
+    }
+    groupNum++;
+  }
+
+  // Build child spans
+  const newContent: (TimelineEvent | TimelineSpan)[] = [...preamble];
+  for (let i = 0; i < threads.length; i++) {
+    const thread = threads[i]!;
+    const childSpan = createTimelineSpan(
+      `auto-span-${i}`,
+      nameMap.get(i)!,
+      null,
+      thread.items
+    );
+    newContent.push(childSpan);
+  }
+
+  span.content = newContent;
+  // Recompute timing aggregates
+  if (newContent.length > 0) {
+    span.startTime = minStartTime(newContent);
+    span.endTime = maxEndTime(newContent);
+    span.totalTokens = sumTokens(newContent);
+  }
+}
+
+/**
+ * Recursively detect auto-spans via conversation threading.
+ *
+ * Skips spans that already have child spans, recurses into children
+ * (including newly created ones).
+ */
+export function classifyAutoSpans(span: TimelineSpan): void {
+  // Try detection on this span (only works if flat)
+  detectAutoSpansForSpan(span);
+
+  // Recurse into any child spans (including newly created ones)
+  for (const item of span.content) {
+    if (item.type === "span") {
+      classifyAutoSpans(item);
+    }
+  }
+}
+
+// =============================================================================
 // Utility Agent Classification
 // =============================================================================
 
@@ -1004,6 +1188,8 @@ export function buildTimeline(events: Event[]): Timeline {
     }
 
     if (agentNode) {
+      if (!hasExplicitBranches) detectAutoBranches(agentNode);
+      classifyAutoSpans(agentNode);
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);
 
@@ -1035,6 +1221,8 @@ export function buildTimeline(events: Event[]): Timeline {
   } else {
     // No phase spans - treat entire tree as agent
     root = buildAgentFromTree(tree, hasExplicitBranches);
+    if (!hasExplicitBranches) detectAutoBranches(root);
+    classifyAutoSpans(root);
     classifyUtilityAgents(root);
     classifyBranches(root, hasExplicitBranches);
   }

@@ -1,0 +1,102 @@
+{
+  "description": "CompactionEvent as hard boundary: M1 and M3 have identical inputs but are separated by compaction, so no branch is detected. Span detection resets at compaction, producing 2 auto-spans.",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Solve the task"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Let me think"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Solve the task"},
+        {"role": "assistant", "content": "Let me think"},
+        {"role": "user", "content": "Continue"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Here is my answer"}}]
+      }
+    },
+    {
+      "event": "compaction",
+      "uuid": "e-compact",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "type": "summary"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:06Z",
+      "completed": "2024-01-01T00:00:07Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Solve the task"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Approach B"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:08Z",
+      "completed": "2024-01-01T00:00:09Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Solve the task"},
+        {"role": "assistant", "content": "Approach B"},
+        {"role": "user", "content": "Elaborate"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Details here"}}]
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "branches": [],
+      "children": [
+        {
+          "id": "auto-span-0",
+          "name": "Agent",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-001", "e-002", "e-compact"],
+          "total_tokens": 300
+        },
+        {
+          "id": "auto-span-1",
+          "name": "Agent",
+          "source": {"source": "tool"},
+          "event_uuids": ["e-003", "e-004"],
+          "total_tokens": 300
+        }
+      ],
+      "total_tokens": 600
+    },
+    "scoring": null
+  }
+}

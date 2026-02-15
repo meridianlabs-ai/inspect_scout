@@ -724,53 +724,71 @@ function inputFingerprint(messages: ChatMessage[]): string {
 /**
  * Detect re-rolled ModelEvents with identical inputs and create branches.
  *
+ * CompactionEvents act as hard boundaries: fingerprint grouping is done
+ * independently within each region separated by compaction events, so
+ * re-rolls are never matched across a compaction boundary.
+ *
  * Mutates span in-place.
  */
 function detectAutoBranches(span: TimelineSpan): void {
-  // Find ModelEvent indices and their fingerprints (skip empty inputs)
-  const modelIndices: [number, string][] = [];
+  // Split content into regions at compaction boundaries
+  const regions: [number, number][] = [];
+  let regionStart = 0;
   for (let i = 0; i < span.content.length; i++) {
     const item = span.content[i];
-    if (item && item.type === "event" && item.event.event === "model") {
-      const inputMsgs = item.event.input;
-      if (!inputMsgs || inputMsgs.length === 0) continue;
-      const fp = inputFingerprint(inputMsgs);
-      modelIndices.push([i, fp]);
+    if (item && item.type === "event" && item.event.event === "compaction") {
+      regions.push([regionStart, i]);
+      regionStart = i + 1;
     }
   }
+  regions.push([regionStart, span.content.length]);
 
-  // Group by fingerprint
-  const fingerprintGroups = new Map<string, number[]>();
-  for (const [idx, fp] of modelIndices) {
-    const group = fingerprintGroups.get(fp);
-    if (group) {
-      group.push(idx);
-    } else {
-      fingerprintGroups.set(fp, [idx]);
-    }
-  }
-
-  // Only process groups with duplicates
+  // Collect branch ranges across all regions
   const branchRanges: [number, number, ChatMessage[]][] = [];
 
-  for (const [, indices] of fingerprintGroups) {
-    if (indices.length <= 1) continue;
-
-    // Get the shared input from the first one
-    const firstItem = span.content[indices[0]!];
-    if (
-      !firstItem ||
-      firstItem.type !== "event" ||
-      firstItem.event.event !== "model"
-    ) {
-      continue;
+  for (const [rStart, rEnd] of regions) {
+    // Find ModelEvent indices and their fingerprints within this region
+    const modelIndices: [number, string][] = [];
+    for (let i = rStart; i < rEnd; i++) {
+      const item = span.content[i];
+      if (item && item.type === "event" && item.event.event === "model") {
+        const inputMsgs = item.event.input;
+        if (!inputMsgs || inputMsgs.length === 0) continue;
+        const fp = inputFingerprint(inputMsgs);
+        modelIndices.push([i, fp]);
+      }
     }
-    const sharedInput = firstItem.event.input ?? [];
 
-    for (let i = 0; i < indices.length - 1; i++) {
-      const branchStart = indices[i]!;
-      const nextReroll = indices[i + 1]!;
-      branchRanges.push([branchStart, nextReroll, sharedInput]);
+    // Group by fingerprint within this region
+    const fingerprintGroups = new Map<string, number[]>();
+    for (const [idx, fp] of modelIndices) {
+      const group = fingerprintGroups.get(fp);
+      if (group) {
+        group.push(idx);
+      } else {
+        fingerprintGroups.set(fp, [idx]);
+      }
+    }
+
+    // Only process groups with duplicates
+    for (const [, indices] of fingerprintGroups) {
+      if (indices.length <= 1) continue;
+
+      const firstItem = span.content[indices[0]!];
+      if (
+        !firstItem ||
+        firstItem.type !== "event" ||
+        firstItem.event.event !== "model"
+      ) {
+        continue;
+      }
+      const sharedInput = firstItem.event.input ?? [];
+
+      for (let i = 0; i < indices.length - 1; i++) {
+        const branchStart = indices[i]!;
+        const nextReroll = indices[i + 1]!;
+        branchRanges.push([branchStart, nextReroll, sharedInput]);
+      }
     }
   }
 
@@ -922,6 +940,14 @@ export function detectAutoSpansForSpan(span: TimelineSpan): void {
       const outputFp = getOutputFingerprint(item.event);
       if (outputFp) {
         outputFpToThread.set(outputFp, threads.length - 1);
+      }
+    } else if (item.type === "event" && item.event.event === "compaction") {
+      // Hard boundary: reset fingerprint tracking
+      outputFpToThread.clear();
+      if (threads.length > 0) {
+        threads[threads.length - 1]!.items.push(item);
+      } else {
+        preamble.push(item);
       }
     } else {
       // Non-model event

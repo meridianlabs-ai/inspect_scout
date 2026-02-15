@@ -231,6 +231,18 @@ function createEvent(data: JsonEvent): Event | null {
       } as Event;
     }
 
+    case "compaction": {
+      return {
+        ...baseFields,
+        event: "compaction",
+        type: data.type ?? "summary",
+        span_id: data.span_id ?? null,
+        source: null,
+        tokens_before: null,
+        tokens_after: null,
+      } as Event;
+    }
+
     default:
       // Skip unknown event types
       return null;

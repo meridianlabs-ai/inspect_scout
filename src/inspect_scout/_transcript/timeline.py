@@ -784,51 +784,62 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
     one stays in content and earlier ones (plus their trailing events up to
     the next re-roll) become branches.
 
+    CompactionEvents act as hard boundaries: fingerprint grouping is done
+    independently within each region separated by compaction events, so
+    re-rolls are never matched across a compaction boundary.
+
     Mutates agent in-place.
 
     Args:
         agent: The span node to process.
     """
-    # Find ModelEvent indices and their fingerprints (skip empty inputs)
-    model_indices: list[tuple[int, str]] = []
+    # Split content into regions at compaction boundaries
+    regions: list[tuple[int, int]] = []
+    region_start = 0
     for i, item in enumerate(agent.content):
-        if isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent):
-            input_msgs = list(item.event.input)
-            if not input_msgs:
-                continue
-            fp = _input_fingerprint(input_msgs)
-            model_indices.append((i, fp))
+        if isinstance(item, TimelineEvent) and item.event.event == "compaction":
+            regions.append((region_start, i))
+            region_start = i + 1
+    regions.append((region_start, len(agent.content)))
 
-    # Group by fingerprint
-    fingerprint_groups: dict[str, list[int]] = {}
-    for idx, fp in model_indices:
-        fingerprint_groups.setdefault(fp, []).append(idx)
-
-    # Only process groups with duplicates
-    duplicate_groups = {
-        fp: indices for fp, indices in fingerprint_groups.items() if len(indices) > 1
-    }
-
-    if not duplicate_groups:
-        return
-
-    # For each duplicate group, determine which indices become branches
+    # Collect branch ranges across all regions
     branch_ranges: list[tuple[int, int, list[ChatMessage]]] = []
 
-    for _fp, indices in duplicate_groups.items():
-        # Last re-roll stays in content, earlier ones become branches
-        # Get the shared input from any of them
-        first_idx = indices[0]
-        first_item = agent.content[first_idx]
-        assert isinstance(first_item, TimelineEvent) and isinstance(
-            first_item.event, ModelEvent
-        )
-        shared_input = list(first_item.event.input)
+    for r_start, r_end in regions:
+        # Find ModelEvent indices and their fingerprints within this region
+        model_indices: list[tuple[int, str]] = []
+        for i in range(r_start, r_end):
+            item = agent.content[i]
+            if isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent):
+                input_msgs = list(item.event.input)
+                if not input_msgs:
+                    continue
+                fp = _input_fingerprint(input_msgs)
+                model_indices.append((i, fp))
 
-        for i, branch_start in enumerate(indices[:-1]):
-            # TimelineBranch extends from this ModelEvent to just before the next re-roll
-            next_reroll = indices[i + 1]
-            branch_ranges.append((branch_start, next_reroll, shared_input))
+        # Group by fingerprint within this region
+        fingerprint_groups: dict[str, list[int]] = {}
+        for idx, fp in model_indices:
+            fingerprint_groups.setdefault(fp, []).append(idx)
+
+        # Only process groups with duplicates
+        for _fp, indices in fingerprint_groups.items():
+            if len(indices) <= 1:
+                continue
+
+            first_idx = indices[0]
+            first_item = agent.content[first_idx]
+            assert isinstance(first_item, TimelineEvent) and isinstance(
+                first_item.event, ModelEvent
+            )
+            shared_input = list(first_item.event.input)
+
+            for i, branch_start in enumerate(indices[:-1]):
+                next_reroll = indices[i + 1]
+                branch_ranges.append((branch_start, next_reroll, shared_input))
+
+    if not branch_ranges:
+        return
 
     # Sort by start index descending so we can remove from the end first
     branch_ranges.sort(key=lambda x: x[0], reverse=True)
@@ -987,6 +998,13 @@ def _detect_auto_spans_for_span(span: TimelineSpan) -> None:
             output_fp = _get_output_fingerprint(item.event)
             if output_fp:
                 output_fp_to_thread[output_fp] = len(threads) - 1
+        elif isinstance(item, TimelineEvent) and item.event.event == "compaction":
+            # Hard boundary: reset fingerprint tracking
+            output_fp_to_thread.clear()
+            if threads:
+                threads[-1]["items"].append(item)
+            else:
+                preamble.append(item)
         else:
             # Non-model event
             if threads:

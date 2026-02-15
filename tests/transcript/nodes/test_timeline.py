@@ -11,6 +11,7 @@ from typing import Any, cast
 
 import pytest
 from inspect_ai.event import (
+    CompactionEvent,
     Event,
     InfoEvent,
     ModelEvent,
@@ -234,6 +235,18 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             metadata=None,
             event="span_end",
             id=data.get("id", data.get("span_id", "")),
+        )
+
+    elif event_type == "compaction":
+        return CompactionEvent(
+            uuid=uuid,
+            span_id=span_id,
+            timestamp=timestamp,
+            working_start=working_start,
+            pending=False,
+            metadata=None,
+            event="compaction",
+            type=data.get("type", "summary"),
         )
 
     return None

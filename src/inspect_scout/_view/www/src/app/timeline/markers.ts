@@ -1,11 +1,14 @@
 /**
  * Marker computation for the timeline UI.
  *
- * Collects error, compaction, and branch markers from an AgentNode's
+ * Collects error, compaction, and branch markers from a TimelineSpan's
  * content at configurable depth levels (direct, children, recursive).
  */
 
-import type { AgentNode, EventNode } from "../../components/transcript/nodes";
+import type {
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 import type { Event } from "../../types/api-types";
 
 // =============================================================================
@@ -55,19 +58,19 @@ export function isCompactionEvent(event: Event): boolean {
 // =============================================================================
 
 /**
- * Collects timeline markers from an AgentNode at the specified depth.
+ * Collects timeline markers from a TimelineSpan at the specified depth.
  *
- * - `"direct"`: Only markers from the node's own EventNode content.
- * - `"children"`: Own events + events from direct child agents.
+ * - `"direct"`: Only markers from the span's own TimelineEvent content.
+ * - `"children"`: Own events + events from direct child spans.
  * - `"recursive"`: Full subtree traversal.
  *
- * Branch markers are always collected from the node's own branches
- * (not from child agents), regardless of depth.
+ * Branch markers are always collected from the span's own branches
+ * (not from child spans), regardless of depth.
  *
  * Results are sorted by timestamp.
  */
 export function collectMarkers(
-  node: AgentNode,
+  node: TimelineSpan,
   depth: MarkerDepth
 ): TimelineMarker[] {
   const markers: TimelineMarker[] = [];
@@ -75,7 +78,7 @@ export function collectMarkers(
   // Collect event markers at the specified depth
   collectEventMarkers(node, depth, 0, markers);
 
-  // Collect branch markers from this node's branches only
+  // Collect branch markers from this span's branches only
   collectBranchMarkers(node, markers);
 
   // Sort by timestamp
@@ -91,13 +94,13 @@ export function collectMarkers(
 /**
  * Collects error and compaction markers from event nodes.
  *
- * @param node The agent to scan
+ * @param node The span to scan
  * @param depth The depth mode
  * @param currentLevel 0 = the root node itself, 1 = direct children, etc.
  * @param markers Accumulator array
  */
 function collectEventMarkers(
-  node: AgentNode,
+  node: TimelineSpan,
   depth: MarkerDepth,
   currentLevel: number,
   markers: TimelineMarker[]
@@ -105,14 +108,14 @@ function collectEventMarkers(
   for (const item of node.content) {
     if (item.type === "event") {
       addEventMarker(item, markers);
-    } else if (item.type === "agent" && shouldDescend(depth, currentLevel)) {
+    } else if (item.type === "span" && shouldDescend(depth, currentLevel)) {
       collectEventMarkers(item, depth, currentLevel + 1, markers);
     }
   }
 }
 
 /**
- * Determines whether to descend into a child agent based on depth mode.
+ * Determines whether to descend into a child span based on depth mode.
  */
 function shouldDescend(depth: MarkerDepth, currentLevel: number): boolean {
   if (depth === "direct") return false;
@@ -122,9 +125,12 @@ function shouldDescend(depth: MarkerDepth, currentLevel: number): boolean {
 }
 
 /**
- * Adds a marker for an event node if it's an error or compaction event.
+ * Adds a marker for a timeline event if it's an error or compaction event.
  */
-function addEventMarker(eventNode: EventNode, markers: TimelineMarker[]): void {
+function addEventMarker(
+  eventNode: TimelineEvent,
+  markers: TimelineMarker[]
+): void {
   const event = eventNode.event;
   const uuid = event.uuid;
 
@@ -144,13 +150,13 @@ function addEventMarker(eventNode: EventNode, markers: TimelineMarker[]): void {
 }
 
 /**
- * Collects branch markers from an agent's branches.
+ * Collects branch markers from a span's branches.
  *
- * Resolves the forkedAt UUID to a timestamp by searching the node's content.
+ * Resolves the forkedAt UUID to a timestamp by searching the span's content.
  * Branches with unresolvable forkedAt are silently dropped.
  */
 function collectBranchMarkers(
-  node: AgentNode,
+  node: TimelineSpan,
   markers: TimelineMarker[]
 ): void {
   for (const branch of node.branches) {
@@ -167,10 +173,10 @@ function collectBranchMarkers(
 
 /**
  * Resolves a forkedAt UUID to a timestamp by searching for the matching
- * event in the agent's content.
+ * event in the span's content.
  */
 function resolveForkedAtTimestamp(
-  node: AgentNode,
+  node: TimelineSpan,
   forkedAt: string
 ): Date | null {
   if (!forkedAt) return null;

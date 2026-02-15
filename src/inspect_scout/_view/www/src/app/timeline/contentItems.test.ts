@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  AgentNode,
   Branch,
-  EventNode,
-} from "../../components/transcript/nodes";
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 import type { ModelEvent } from "../../types/api-types";
 
 import { buildContentItems } from "./contentItems";
@@ -20,8 +20,8 @@ function ts(offsetSeconds: number): Date {
   return new Date(BASE + offsetSeconds * 1000);
 }
 
-/** Minimal EventNode with a specific UUID. */
-function makeEventNode(uuid: string | null, startSec: number): EventNode {
+/** Minimal TimelineEvent with a specific UUID. */
+function makeEventNode(uuid: string | null, startSec: number): TimelineEvent {
   const event: ModelEvent = {
     event: "model",
     model: "test",
@@ -71,19 +71,19 @@ function makeEventNode(uuid: string | null, startSec: number): EventNode {
   };
 }
 
-/** Minimal AgentNode builder. */
-function makeAgent(
+/** Minimal TimelineSpan builder. */
+function makeSpan(
   name: string,
   startSec: number,
   endSec: number,
-  content: AgentNode["content"] = [],
+  content: TimelineSpan["content"] = [],
   options?: { branches?: Branch[]; utility?: boolean }
-): AgentNode {
+): TimelineSpan {
   return {
-    type: "agent",
+    type: "span",
     id: name.toLowerCase(),
     name,
-    source: { source: "span", spanId: name.toLowerCase() },
+    spanType: null,
     content,
     branches: options?.branches ?? [],
     utility: options?.utility ?? false,
@@ -115,12 +115,10 @@ const S10_UTILITY = 7;
 const S11A_BRANCHES = 8;
 const S11B_BRANCHES_MULTI = 9;
 
-function getScenarioAgent(index: number): AgentNode {
+function getScenarioRoot(index: number): TimelineSpan {
   const scenario = timelineScenarios[index];
   if (!scenario) throw new Error(`No scenario at index ${index}`);
-  const node = scenario.nodes.agent;
-  if (!node) throw new Error(`Scenario ${index} has no agent`);
-  return node;
+  return scenario.timeline.root;
 }
 
 // =============================================================================
@@ -133,10 +131,10 @@ describe("buildContentItems", () => {
   // ---------------------------------------------------------------------------
   describe("sequential agents (S1)", () => {
     it("produces a mix of event and agent_card items", () => {
-      const node = getScenarioAgent(S1_SEQUENTIAL);
+      const node = getScenarioRoot(S1_SEQUENTIAL);
       const items = buildContentItems(node);
 
-      // Transcript has: modelEvent, Explore, Plan, Build, modelEvent
+      // Transcript has: modelEvent, Explore, Plan, Build, modelEvent, Scoring
       expect(items.length).toBeGreaterThan(0);
 
       const types = items.map((i) => i.type);
@@ -146,7 +144,7 @@ describe("buildContentItems", () => {
     });
 
     it("preserves content order", () => {
-      const node = getScenarioAgent(S1_SEQUENTIAL);
+      const node = getScenarioRoot(S1_SEQUENTIAL);
       const items = buildContentItems(node);
 
       // Items should match content order: first item type matches first content type
@@ -166,8 +164,8 @@ describe("buildContentItems", () => {
   // Flat transcript (S7)
   // ---------------------------------------------------------------------------
   describe("flat transcript (S7)", () => {
-    it("produces all event items when no child agents exist", () => {
-      const node = getScenarioAgent(S7_FLAT);
+    it("produces all event items when no child spans exist", () => {
+      const node = getScenarioRoot(S7_FLAT);
       const items = buildContentItems(node);
 
       expect(items.length).toBeGreaterThan(0);
@@ -181,15 +179,15 @@ describe("buildContentItems", () => {
   // Parallel agents (S4)
   // ---------------------------------------------------------------------------
   describe("parallel agents (S4)", () => {
-    it("has consecutive agent_cards for parallel Explore agents", () => {
-      const node = getScenarioAgent(S4_PARALLEL);
+    it("has consecutive agent_cards for parallel Explore spans", () => {
+      const node = getScenarioRoot(S4_PARALLEL);
       const items = buildContentItems(node);
 
       const agentCards = items.filter((i) => i.type === "agent_card");
-      // S4 has: 3 Explore + Plan + Build = 5 agent cards
-      expect(agentCards.length).toBe(5);
+      // S4 has: 3 Explore + Plan + Build + Scoring = 6 agent cards
+      expect(agentCards.length).toBe(6);
 
-      // The 3 Explore agents should be consecutive
+      // The 3 Explore spans should be consecutive
       const exploreIndices = items
         .map((item, idx) => ({ item, idx }))
         .filter(
@@ -209,8 +207,8 @@ describe("buildContentItems", () => {
   // Iterative agents (S2)
   // ---------------------------------------------------------------------------
   describe("iterative agents (S2)", () => {
-    it("includes all iterative agent instances as separate cards", () => {
-      const node = getScenarioAgent(S2_ITERATIVE);
+    it("includes all iterative span instances as separate cards", () => {
+      const node = getScenarioRoot(S2_ITERATIVE);
       const items = buildContentItems(node);
 
       const agentNames = items
@@ -220,13 +218,14 @@ describe("buildContentItems", () => {
           return i.agentNode.name;
         });
 
-      // S2: explore1, plan1, explore2, plan2, build
+      // S2: explore1, plan1, explore2, plan2, build, scoring
       expect(agentNames).toEqual([
         "Explore",
         "Plan",
         "Explore",
         "Plan",
         "Build",
+        "Scoring",
       ]);
     });
   });
@@ -235,19 +234,19 @@ describe("buildContentItems", () => {
   // Utility agents (S10)
   // ---------------------------------------------------------------------------
   describe("utility agents (S10)", () => {
-    it("includes utility agents as agent_cards", () => {
-      const node = getScenarioAgent(S10_UTILITY);
+    it("includes utility spans as agent_cards", () => {
+      const node = getScenarioRoot(S10_UTILITY);
 
-      // Utility agents are children of Build, not Transcript
-      const buildAgent = node.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Build"
+      // Utility spans are children of Build, not Transcript
+      const buildSpan = node.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
-      expect(buildAgent).toBeDefined();
+      expect(buildSpan).toBeDefined();
 
-      const items = buildContentItems(buildAgent!);
+      const items = buildContentItems(buildSpan!);
 
       const agentCards = items.filter((i) => i.type === "agent_card");
-      expect(agentCards.length).toBe(4); // 4 utility agents
+      expect(agentCards.length).toBe(4); // 4 utility spans
 
       const utilityCards = agentCards.filter(
         (i) => i.type === "agent_card" && i.agentNode.utility
@@ -261,15 +260,15 @@ describe("buildContentItems", () => {
   // ---------------------------------------------------------------------------
   describe("deep nesting (S3)", () => {
     it("shows Build's direct children as agent_cards", () => {
-      const node = getScenarioAgent(S3_DEEP);
+      const node = getScenarioRoot(S3_DEEP);
 
       // Drill into Build
-      const buildAgent = node.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Build"
+      const buildSpan = node.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
-      expect(buildAgent).toBeDefined();
+      expect(buildSpan).toBeDefined();
 
-      const items = buildContentItems(buildAgent!);
+      const items = buildContentItems(buildSpan!);
       const agentNames = items
         .filter((i) => i.type === "agent_card")
         .map((i) => {
@@ -286,16 +285,16 @@ describe("buildContentItems", () => {
   // ---------------------------------------------------------------------------
   describe("branches — single fork (S11a)", () => {
     it("appends branch_cards when forkedAt UUID is not found", () => {
-      const node = getScenarioAgent(S11A_BRANCHES);
+      const node = getScenarioRoot(S11A_BRANCHES);
 
       // Drill into Build (which has the branches)
-      const buildAgent = node.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Build"
+      const buildSpan = node.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
-      expect(buildAgent).toBeDefined();
-      expect(buildAgent!.branches).toHaveLength(2);
+      expect(buildSpan).toBeDefined();
+      expect(buildSpan!.branches).toHaveLength(2);
 
-      const items = buildContentItems(buildAgent!);
+      const items = buildContentItems(buildSpan!);
       const branchCards = items.filter((i) => i.type === "branch_card");
 
       // 2 branches, both with forkedAt that doesn't match any event UUID
@@ -313,15 +312,15 @@ describe("buildContentItems", () => {
   // ---------------------------------------------------------------------------
   describe("branches — multiple forks (S11b)", () => {
     it("appends all branch_cards when forkedAt UUIDs are not found", () => {
-      const node = getScenarioAgent(S11B_BRANCHES_MULTI);
+      const node = getScenarioRoot(S11B_BRANCHES_MULTI);
 
-      const buildAgent = node.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Build"
+      const buildSpan = node.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
-      expect(buildAgent).toBeDefined();
-      expect(buildAgent!.branches).toHaveLength(3);
+      expect(buildSpan).toBeDefined();
+      expect(buildSpan!.branches).toHaveLength(3);
 
-      const items = buildContentItems(buildAgent!);
+      const items = buildContentItems(buildSpan!);
       const branchCards = items.filter((i) => i.type === "branch_card");
 
       expect(branchCards).toHaveLength(3);
@@ -338,7 +337,7 @@ describe("buildContentItems", () => {
       const event3 = makeEventNode("evt-3", 10);
       const branch = makeBranch("evt-2", 5);
 
-      const parent = makeAgent("Root", 0, 20, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 20, [event1, event2, event3], {
         branches: [branch],
       });
 
@@ -357,7 +356,7 @@ describe("buildContentItems", () => {
       const branch1 = makeBranch("evt-1", 2);
       const branch2 = makeBranch("evt-1", 3);
 
-      const parent = makeAgent("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, [event1, event2], {
         branches: [branch1, branch2],
       });
 
@@ -377,7 +376,7 @@ describe("buildContentItems", () => {
       const branchA = makeBranch("evt-1", 2);
       const branchB = makeBranch("evt-3", 12);
 
-      const parent = makeAgent("Root", 0, 20, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 20, [event1, event2, event3], {
         branches: [branchA, branchB],
       });
 
@@ -397,7 +396,7 @@ describe("buildContentItems", () => {
       const matchedBranch = makeBranch("evt-1", 2);
       const unmatchedBranch = makeBranch("nonexistent", 8);
 
-      const parent = makeAgent("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, [event1, event2], {
         branches: [matchedBranch, unmatchedBranch],
       });
 
@@ -415,16 +414,16 @@ describe("buildContentItems", () => {
   // Edge cases
   // ---------------------------------------------------------------------------
   describe("edge cases", () => {
-    it("returns empty array for agent with no content", () => {
-      const parent = makeAgent("Empty", 0, 10);
+    it("returns empty array for span with no content", () => {
+      const parent = makeSpan("Empty", 0, 10);
       const items = buildContentItems(parent);
 
       expect(items).toHaveLength(0);
     });
 
-    it("returns empty array for agent with no content but has branches", () => {
+    it("returns empty array for span with no content but has branches", () => {
       const branch = makeBranch("nonexistent", 5);
-      const parent = makeAgent("Empty", 0, 10, [], { branches: [branch] });
+      const parent = makeSpan("Empty", 0, 10, [], { branches: [branch] });
       const items = buildContentItems(parent);
 
       // Branch appended since no content to match UUID against
@@ -434,11 +433,11 @@ describe("buildContentItems", () => {
 
     it("handles agent_card items mixed with events for branch matching", () => {
       const event1 = makeEventNode("evt-1", 0);
-      const childAgent = makeAgent("Child", 5, 10);
+      const childSpan = makeSpan("Child", 5, 10);
       const event2 = makeEventNode("evt-2", 10);
       const branch = makeBranch("evt-2", 12);
 
-      const parent = makeAgent("Root", 0, 20, [event1, childAgent, event2], {
+      const parent = makeSpan("Root", 0, 20, [event1, childSpan, event2], {
         branches: [branch],
       });
 

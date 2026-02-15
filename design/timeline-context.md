@@ -496,7 +496,7 @@ Branch cards use dashed borders (`╌`) to distinguish from child agent cards (`
 
 ## 12. Multiple Timelines
 
-A single transcript can have multiple timeline interpretations. Each timeline is a named view with its own `TranscriptNodes` tree — the same event stream parsed with different groupings, filters, or analytical lenses. For example, a default agent-centric timeline alongside a phase-based or domain-specific grouping.
+A single transcript can have multiple timeline interpretations. Each timeline is a named view with its own `TimelineSpan` tree — the same event stream parsed with different groupings, filters, or analytical lenses. For example, a default agent-centric timeline alongside a phase-based or domain-specific grouping.
 
 ### Data Model
 
@@ -504,7 +504,7 @@ A `Timeline` is a lightweight container:
 
 - **name** — short label shown in the pill (e.g., "Agents", "Phases", "Tools")
 - **description** — tooltip or subtitle explaining the view
-- **transcript** — a full `TranscriptNodes` tree (init / agent / scoring)
+- **root** — a `TimelineSpan` tree (init events folded into root, scoring as a child span)
 
 ### UI: Timeline Pills
 
@@ -534,7 +534,7 @@ When multiple timelines are available, a row of pills appears above the timeline
 
 ## 13. Custom Outline
 
-By default, the content panel shows events in a flat chronological list. When an `AgentNode` has an `outline` attached, a sidebar appears on the left side of the content panel providing hierarchical navigation. This is primarily useful for custom timelines where the author wants to impose a meaningful structure on the event stream.
+By default, the content panel shows events in a flat chronological list. When a `TimelineSpan` has an `outline` attached, a sidebar appears on the left side of the content panel providing hierarchical navigation. This is primarily useful for custom timelines where the author wants to impose a meaningful structure on the event stream.
 
 ### Data Model
 
@@ -613,75 +613,56 @@ The timeline UI visualizes transcript execution as a swimlane-based timeline wit
 ### Multiple Timelines
 
 - Pill selector above the timeline for switching between named views (e.g., "Agents", "Phases", "Tools").
-- Each timeline has its own `TranscriptNodes` tree.
+- Each timeline has its own `Timeline` with a root `TimelineSpan` tree.
 - Switching resets drill-down, selection, and branch navigation.
 
 ### Custom Outline
 
-- Optional sidebar in the content panel when an `AgentNode` has an `outline`.
+- Optional sidebar in the content panel when a `TimelineSpan` has an `outline`.
 - Collapsible tree with scroll-tracking and click-to-scroll.
 
-## 2. Data Model (nodes.ts)
+## 2. Data Model (timeline.ts)
 
 The TypeScript data model that powers the timeline:
 
 ### Core Types
 
 ```typescript
-interface EventNode {
+interface TimelineEvent {
   type: "event";
   event: Event;
-  startTime: Date | null;
-  endTime: Date | null;
+  startTime: Date;
+  endTime: Date;
   totalTokens: number;
 }
 
-interface AgentNode {
-  type: "agent";
+interface TimelineSpan {
+  type: "span";
   id: string;
   name: string;
-  source: AgentSource;           // "span" or "tool"
-  content: (EventNode | AgentNode)[];
+  spanType: string | null;        // "agent", "scorer", "tool", or null
+  content: (TimelineEvent | TimelineSpan)[];
   branches: Branch[];
-  taskDescription?: string;
   utility: boolean;
   outline?: Outline;
-  startTime: Date | null;
-  endTime: Date | null;
+  startTime: Date;
+  endTime: Date;
   totalTokens: number;
 }
 
 interface Branch {
   type: "branch";
   forkedAt: string;              // UUID of the fork-point event
-  content: (EventNode | AgentNode)[];
-  startTime: Date | null;
-  endTime: Date | null;
-  totalTokens: number;
-}
-
-interface SectionNode {
-  type: "section";
-  section: "init" | "scoring";
-  content: EventNode[];
-  startTime: Date | null;
-  endTime: Date | null;
-  totalTokens: number;
-}
-
-interface TranscriptNodes {
-  init: SectionNode | null;
-  agent: AgentNode | null;
-  scoring: SectionNode | null;
-  startTime: Date | null;
-  endTime: Date | null;
+  content: (TimelineEvent | TimelineSpan)[];
+  startTime: Date;
+  endTime: Date;
   totalTokens: number;
 }
 
 interface Timeline {
   name: string;
   description: string;
-  transcript: TranscriptNodes;
+  root: TimelineSpan;
 }
 
 interface Outline {
@@ -694,29 +675,17 @@ interface OutlineNode {
 }
 ```
 
-### Agent Source Types
-
-```typescript
-interface AgentSourceSpan {
-  source: "span";
-  spanId: string;
-}
-
-interface AgentSourceTool {
-  source: "tool";
-  toolEvent?: ToolEvent;
-}
-```
-
 ### Processing Pipeline
 
-`buildTranscriptNodes(events: Event[]) -> TranscriptNodes`:
+`buildTimeline(events: Event[]) -> Timeline`:
 
 1. Build span tree from flat events (span_begin/span_end pairing)
 2. Find phase spans (init/solvers/scorers) or treat entire stream as agent
-3. Build agent hierarchy from explicit `type='agent'` spans or tool-spawned agents
-4. Classify utility agents (single-turn + different system prompt from parent)
-5. Detect branches (explicit `type='branch'` spans or auto-detected via duplicate input fingerprints)
+3. Init events are folded into the root `TimelineSpan.content` as early events
+4. Build agent hierarchy from explicit `type='agent'` spans or tool-spawned agents
+5. Scoring spans become `TimelineSpan` children with `spanType: "scorer"`
+6. Classify utility agents (single-turn + different system prompt from parent)
+7. Detect branches (explicit `type='branch'` spans or auto-detected via duplicate input fingerprints)
 
 ## 3. Application Architecture
 
@@ -740,7 +709,7 @@ src/
 │   ├── timeline/     # TimelinePanel (placeholder) + syntheticNodes.ts (10 test scenarios)
 │   └── server/       # React Query hooks (useTranscript, useScans, etc.)
 ├── components/
-│   ├── transcript/   # Rendering engine: nodes.ts, outline, event viewers, transforms
+│   ├── transcript/   # Rendering engine: timeline.ts, outline, event viewers, transforms
 │   └── chat/         # Chat message rendering
 ├── state/            # Zustand store (single store, multiple slices)
 ├── router/           # URL helpers, route definitions
@@ -761,7 +730,7 @@ Single Zustand store with slices for: app status, scans, transcripts, UI state (
 ### Existing Transcript Rendering
 
 1. Raw events fetched via API
-2. `buildTranscriptNodes()` builds the semantic tree
+2. `buildTimeline()` builds the semantic tree as a `Timeline` with root `TimelineSpan`
 3. `transform()` / `flatten()` / `treeify()` prepare the display tree
 4. `TranscriptVirtualList` renders via Virtuoso with event-specific viewers
 5. `TranscriptOutline` provides tree sidebar navigation
@@ -769,7 +738,7 @@ Single Zustand store with slices for: app status, scans, transcripts, UI state (
 ### Timeline Current State
 
 - `TimelinePanel` at `/timeline` route — placeholder with scenario dropdown
-- `syntheticNodes.ts` provides 10 mock `TranscriptNodes` scenarios (sequential, iterative, parallel, branches, utilities, deep nesting, etc.)
+- `syntheticNodes.ts` provides 10 mock `Timeline` scenarios (sequential, iterative, parallel, branches, utilities, deep nesting, etc.)
 - No visual implementation yet
 
 ### Key Patterns
@@ -796,7 +765,7 @@ Parameters (all lowercase, snake_case for multi-word):
 - `selected=code` — which row is selected
 - `timeline_view=agents` — which timeline pill is active (only when multiple timelines exist)
 
-Agent names in URL params are **case-insensitive** — resolved against `AgentNode.name` via `toLowerCase()` comparison.
+Agent names in URL params are **case-insensitive** — resolved against `TimelineSpan.name` via `toLowerCase()` comparison.
 
 ### Zustand State (persisted)
 
@@ -832,31 +801,30 @@ Container
   ├── passes resolved node to ContentPanel
 ```
 
-**Input:** `TranscriptNodes` (pre-built). Tree building happens upstream — typically a `useMemo` in the container:
+**Input:** `Timeline` (pre-built). Tree building happens upstream — typically a `useMemo` in the container:
 
 ```typescript
-const tree = useMemo(() => buildTranscriptNodes(events), [events]);
-const timeline = useTimeline(tree);
+const tl = useMemo(() => buildTimeline(events), [events]);
+const timeline = useTimeline(tl);
 ```
 
-For multiple timelines, the container selects which tree to pass:
+For multiple timelines, the container selects which one to pass:
 
 ```typescript
-const trees = useMemo(() => buildTimelines(events), [events]);
-const activeTree = trees[activeTimelineIndex].transcript;
-const timeline = useTimeline(activeTree);
+const timelines = useMemo(() => buildTimelines(events), [events]);
+const timeline = useTimeline(timelines[activeIndex]);
 ```
 
 **Responsibilities:**
 - Reads URL params (`path`, `selected`) to determine navigation state
-- Resolves the path to a specific `AgentNode` or `SectionNode` (case-insensitive matching)
+- Resolves the path to a specific `TimelineSpan` (case-insensitive matching)
 - Computes swimlane rows from the resolved node (separate `useMemo`)
 - Provides navigation actions that update URL via `replace`
 
 **Return value (sketch):**
 ```typescript
-const timeline = useTimeline(tree);
-timeline.node          // resolved AgentNode/SectionNode for current path
+const timeline = useTimeline(tl);
+timeline.node          // resolved TimelineSpan for current path
 timeline.rows          // SwimLaneRow[] for the current drill-down level
 timeline.breadcrumbs   // path segments for breadcrumb UI
 timeline.selected      // which row is selected
@@ -899,15 +867,15 @@ These are composed as a standalone prototype first, then integrated back into th
 ### Enhancements Required
 
 **TranscriptView:**
-- Accept an `AgentNode` (not just raw `Event[]`) as input
-- Render child `AgentNode`s inline as sub-agent cards (clickable)
+- Accept a `TimelineSpan` (not just raw `Event[]`) as input
+- Render child `TimelineSpan`s inline as sub-agent cards (clickable)
 - Render `Branch` cards with dashed borders at fork points
 - Sub-agent card clicks call `timeline.drillDown()` — navigation flows through the `useTimeline` hook
 - Error and compaction markers are not needed in the content panel — these are already visible as regular events in the content stream
 
 **TranscriptOutline:**
-- Accept an `AgentNode` to build its tree (currently works from raw events)
-- Support custom `Outline` attached to an `AgentNode` (replaces the auto-generated outline)
+- Accept a `TimelineSpan` to build its tree (currently works from raw events)
+- Support custom `Outline` attached to a `TimelineSpan` (replaces the auto-generated outline)
 - When a custom outline exists, use its `OutlineNode` tree directly instead of the visitor-based pipeline
 
 ### Utility Agent Visibility
@@ -922,7 +890,7 @@ Clicking a sub-agent card in the content panel is a drill-down navigation:
 User clicks "Build" card in ContentPanel
   → calls timeline.drillDown("build")
   → URL updated via replace: ?path=build
-  → useTimeline resolves new path → new AgentNode
+  → useTimeline resolves new path → new TimelineSpan
   → Timeline re-renders with new breadcrumbs + child rows
   → ContentPanel re-renders with Build's content
 ```
@@ -937,18 +905,18 @@ A swimlane row is a sequence of spans sharing an agent name. Each span is either
 
 ```typescript
 interface SingleSpan {
-  agent: AgentNode;
+  agent: TimelineSpan;
 }
 
 interface ParallelSpan {
-  agents: AgentNode[];
+  agents: TimelineSpan[];
 }
 
-type TimelineSpan = SingleSpan | ParallelSpan;
+type RowSpan = SingleSpan | ParallelSpan;
 
 interface SwimLaneRow {
   name: string;
-  spans: TimelineSpan[];
+  spans: RowSpan[];
   totalTokens: number;
   startTime: Date;
   endTime: Date;
@@ -959,16 +927,16 @@ Properties like `kind` (single/iterative/parallel) and `drillable` (has children
 
 ### Grouping Algorithm
 
-1. Collect child `AgentNode`s from the current node's `content` (skip `EventNode`s)
+1. Collect child `TimelineSpan`s from the current node's `content` (skip `TimelineEvent`s and utility spans)
 2. Group by name (case-insensitive)
 3. Within each name group, cluster into spans:
-   - Non-overlapping agents become separate `SingleSpan` entries on the row (iterative pattern)
-   - Overlapping agents (within a tolerance of ~100ms to account for spawn skew) become a `ParallelSpan`
+   - Non-overlapping spans become separate `SingleSpan` entries on the row (iterative pattern)
+   - Overlapping spans (within a tolerance of ~100ms to account for spawn skew) become a `ParallelSpan`
    - If any overlap exists within the name group, the entire group is treated as parallel
    - A row can mix single and parallel spans (e.g., a single Explore, then later three Explore in parallel)
 4. Order rows by earliest start time across their spans
-5. The parent `AgentNode` is always the top row (full-width bar)
-6. Scoring (`SectionNode`) is a standard swimlane row at the bottom
+5. The parent `TimelineSpan` is always the top row (full-width bar)
+6. Scoring is a standard child `TimelineSpan` with `spanType: "scorer"` — appears as a regular swimlane row
 
 ### Parallel Count Display
 
@@ -1030,7 +998,7 @@ All `left`/`width` percentages are computed from timestamps relative to the curr
 percent = (timestamp - viewStart) / (viewEnd - viewStart) * 100
 ```
 
-Where `viewStart`/`viewEnd` come from the current drill-down level's `AgentNode` time range.
+Where `viewStart`/`viewEnd` come from the current drill-down level's `TimelineSpan` time range.
 
 ### Theming
 
@@ -1041,16 +1009,15 @@ Fills, markers, and selection highlighting use CSS custom properties (VSCode the
 ### Edge Cases
 
 - **Invalid path**: If the URL `path` param doesn't resolve to a valid node (e.g., stale URL from a different transcript), fall back to the root. No error state — just silently reset.
-- **Empty events**: Return null/empty tree. No timeline or content panel to render.
-- **Flat transcript** (no agents): The single root `AgentNode` (named "main") is the parent row and the content source. Timeline shows one bar.
+- **Flat transcript** (no agents): The single root `TimelineSpan` is the parent row and the content source. Timeline shows one bar.
 
 ### Selection Semantics
 
-Selecting a row **fully replaces** the content panel with that node's content. It does not scroll within the parent's events — the selected node's `AgentNode` (or `SectionNode`) becomes the content panel's data source.
+Selecting a row **fully replaces** the content panel with that node's content. It does not scroll within the parent's events — the selected node's `TimelineSpan` becomes the content panel's data source.
 
-### Section Nodes
+### Init and Scoring
 
-`SectionNode` types (init, scoring) are treated uniformly alongside `AgentNode` in the timeline. Init, scoring, and agent nodes all appear as standard swimlane rows and are all selectable.
+Init events are folded into the root `TimelineSpan.content` as early events — there is no separate init section. Scoring is a child `TimelineSpan` with `spanType: "scorer"` that appears naturally in the root's content and as a swimlane row.
 
 ### Span Numbering for Drill-Down
 
@@ -1070,8 +1037,8 @@ This numbering applies uniformly to both iterative spans (sequential invocations
 
 ### Memoization Strategy
 
-- `buildTranscriptNodes(events)` — memoized via `useMemo` keyed on `events`
-- Swimlane row computation — separate `useMemo` keyed on the resolved `AgentNode`, deferred from the tree build
+- `buildTimeline(events)` — memoized via `useMemo` keyed on `events`
+- Swimlane row computation — separate `useMemo` keyed on the resolved `TimelineSpan`, deferred from the tree build
 - Navigation actions (`drillDown`, `goUp`, `select`) — stable callbacks via `useCallback`
 
 ## 7. Header Bar
@@ -1135,13 +1102,13 @@ The timeline panel is a focusable container (`tabIndex={0}`). Keyboard events ar
 - **No-ops are silent** — Enter on a non-drillable row (e.g., Scoring with no children) does nothing. No visual feedback.
 - **Escape does not cross boundaries** — Escape in the content panel does not move focus back to the timeline. The two panels have independent focus scopes.
 
-## 9. Content Panel ↔ AgentNode Integration
+## 9. Content Panel ↔ TimelineSpan Integration
 
-### Approach: Direct rendering from AgentNode content
+### Approach: Direct rendering from TimelineSpan content
 
-The content panel builds a flat rendering list directly from `AgentNode.content`, bypassing the existing transform pipeline (no fixups, treeify, transform, flatten). The `AgentNode` is already the structured form — the transform pipeline exists to build structure from raw events, which is unnecessary here.
+The content panel builds a flat rendering list directly from `TimelineSpan.content`, bypassing the existing transform pipeline (no fixups, treeify, transform, flatten). The `TimelineSpan` is already the structured form — the transform pipeline exists to build structure from raw events, which is unnecessary here.
 
-However, the existing pipeline encodes implicit rules and behaviors (e.g., collapsing pending events, sandbox event grouping, `sample_init` injection, default collapse decisions, span unwrapping). These rules must be audited during implementation — some are irrelevant in the AgentNode context (the tree is already structured), but others may need to be reflected in the new rendering path. Document each rule as it's encountered.
+However, the existing pipeline encodes implicit rules and behaviors (e.g., collapsing pending events, sandbox event grouping, `sample_init` injection, default collapse decisions, span unwrapping). These rules must be audited during implementation — some are irrelevant in the TimelineSpan context (the tree is already structured), but others may need to be reflected in the new rendering path. Document each rule as it's encountered.
 
 ### Content Item Types
 
@@ -1149,18 +1116,18 @@ A discriminated union for the virtual list:
 
 ```typescript
 type ContentItem =
-  | { type: "event"; eventNode: EventNode }
-  | { type: "agent_card"; agentNode: AgentNode }
+  | { type: "event"; eventNode: TimelineEvent }
+  | { type: "agent_card"; agentNode: TimelineSpan }
   | { type: "branch_card"; branch: Branch }
-  | { type: "parallel_group"; agents: AgentNode[] }
+  | { type: "parallel_group"; agents: TimelineSpan[] }
 ```
 
 ### Building the Content List
 
-Walk `AgentNode.content` chronologically:
+Walk `TimelineSpan.content` chronologically:
 
-1. **EventNode** items → `{ type: "event", eventNode }`
-2. **Child AgentNode** items → `{ type: "agent_card", agentNode }` (or `parallel_group` if consecutive same-name agents overlap)
+1. **TimelineEvent** items → `{ type: "event", eventNode }`
+2. **Child TimelineSpan** items → `{ type: "agent_card", agentNode }` (or `parallel_group` if consecutive same-name spans overlap)
 3. **Branches** → insert `{ type: "branch_card", branch }` at each branch's `forkedAt` position
 
 ### Rendering Dispatch
@@ -1178,7 +1145,7 @@ The virtual list dispatches on `ContentItem.type`:
 
 - **`▲` Error** — `ToolEvent` with error result, `ModelEvent` with error output. Classified by a function `isErrorEvent(event: Event) => boolean`.
 - **`┊` Compaction** — `CompactionEvent` (explicit event type in the inspect event stream).
-- **`↳` Branch** — from `AgentNode.branches`. Each branch's `forkedAt` UUID is resolved to a timestamp.
+- **`↳` Branch** — from `TimelineSpan.branches`. Each branch's `forkedAt` UUID is resolved to a timestamp.
 
 ### Scanning Depth
 
@@ -1200,8 +1167,8 @@ Markers are computed on render via `useMemo`, keyed on the agent node and depth 
 
 ```typescript
 const markers = useMemo(
-  () => collectMarkers(agentNode, depth),
-  [agentNode, depth]
+  () => collectMarkers(node, depth),
+  [node, depth]
 );
 ```
 
@@ -1217,7 +1184,7 @@ percent = (marker.timestamp - viewStart) / (viewEnd - viewStart) * 100
 
 ### Branch Markers
 
-Branch markers (`↳`) are separate from error/compaction markers. They come from `AgentNode.branches` — each branch's `forkedAt` UUID is resolved to the corresponding event's timestamp. Branch markers only appear on the row that owns the branches, not aggregated upward.
+Branch markers (`↳`) are separate from error/compaction markers. They come from `TimelineSpan.branches` — each branch's `forkedAt` UUID is resolved to the corresponding event's timestamp. Branch markers only appear on the row that owns the branches, not aggregated upward.
 
 ## 11. Resizable Divider
 
@@ -1245,7 +1212,7 @@ All new files go in `src/inspect_scout/_view/www/src/app/timeline/`.
 3. **Full tests at each step.** Every phase produces both an implementation file and a test file. Run `pnpm test` and `pnpm check` to verify.
 4. **Use synthetic scenarios.** Import `timelineScenarios` from `syntheticNodes.ts` for realistic test data. Build minimal inline helpers for edge cases.
 5. **Pure logic first.** Phases 1–3 are pure functions with no DOM or React dependencies. Phase 4 introduces the hook layer.
-6. **Mirror Python changes.** If a phase touches `nodes.ts`, the corresponding changes must be mirrored in `nodes.py` and both test suites must pass.
+6. **Mirror Python changes.** If a phase touches `timeline.ts`, the corresponding changes must be mirrored in `timeline.py` and both test suites must pass.
 
 ## Phase 1: Swimlane Row Computation (Complete)
 
@@ -1254,26 +1221,25 @@ All new files go in `src/inspect_scout/_view/www/src/app/timeline/`.
 
 ### What was done
 
-Implemented `computeSwimLaneRows(node: AgentNode): SwimLaneRow[]` which transforms an AgentNode's children into rows for rendering as horizontal swimlane bars.
+Implemented `computeSwimLaneRows(node: TimelineSpan): SwimLaneRow[]` which transforms a TimelineSpan's children into rows for rendering as horizontal swimlane bars.
 
 **Types:**
-- `SingleSpan { agent: AgentNode }` — one agent occupying a time range
-- `ParallelSpan { agents: AgentNode[] }` — overlapping agents on the same row
-- `TimelineSpan = SingleSpan | ParallelSpan` — with `isSingleSpan()` / `isParallelSpan()` guards
+- `SingleSpan { agent: TimelineSpan }` — one span occupying a time range
+- `ParallelSpan { agents: TimelineSpan[] }` — overlapping spans on the same row
+- `RowSpan = SingleSpan | ParallelSpan` — with `isSingleSpan()` / `isParallelSpan()` guards
 - `SwimLaneRow { name, spans, totalTokens, startTime, endTime }`
 
 **Algorithm:**
 1. Parent row first (the node itself as a SingleSpan)
-2. Filter children to non-utility AgentNodes
+2. Filter children to non-utility TimelineSpans
 3. Group by name (case-insensitive, display name from first encountered)
-4. Cluster spans: check pairwise overlap with 100ms tolerance — any overlap makes the entire group a ParallelSpan, otherwise each agent is a separate SingleSpan
+4. Cluster spans: check pairwise overlap with 100ms tolerance — any overlap makes the entire group a ParallelSpan, otherwise each span is a separate SingleSpan
 5. Order rows by earliest start time
-
-**Helper:** `sectionToAgent(section: SectionNode): AgentNode` — converts SectionNode (init/scoring) to AgentNode for uniform handling. Exported for use by the Phase 4 hook.
+6. Scoring is a regular child TimelineSpan with `spanType: "scorer"` — no special handling needed
 
 ### Non-nullable times
 
-Also made `startTime`/`endTime` non-nullable across both Python (`nodes.py`) and TypeScript (`nodes.ts`), since every Event has a required timestamp field. Container nodes use an epoch sentinel (`new Date(0)` / `datetime(1970, 1, 1, tzinfo=timezone.utc)`) for the degenerate empty-content case. `TranscriptNodes.startTime`/`endTime` remain `Date | null` since empty transcripts are valid.
+`startTime`/`endTime` are non-nullable across both Python (`timeline.py`) and TypeScript (`timeline.ts`), since every Event has a required timestamp field. Container nodes use an epoch sentinel (`new Date(0)` / `datetime(1970, 1, 1, tzinfo=timezone.utc)`) for the degenerate empty-content case.
 
 **Tests:** 20 tests covering sequential (S1), iterative (S2), parallel (S4), flat (S7), many-rows (S8), utility filtering (S10), custom edge cases (case-insensitive grouping, no children, token aggregation, time ranges).
 
@@ -1284,7 +1250,7 @@ Also made `startTime`/`endTime` non-nullable across both Python (`nodes.py`) and
 
 ### What was done
 
-Implemented `buildContentItems(node: AgentNode): ContentItem[]` which transforms an AgentNode into a flat list of items for the detail panel.
+Implemented `buildContentItems(node: TimelineSpan): ContentItem[]` which transforms a TimelineSpan into a flat list of items for the detail panel.
 
 **Types:**
 - `EventItem { type: "event", eventNode }` — a single event
@@ -1293,7 +1259,7 @@ Implemented `buildContentItems(node: AgentNode): ContentItem[]` which transforms
 - `ContentItem` — discriminated union of the above
 
 **Algorithm:**
-1. Walk `node.content` chronologically: EventNode → EventItem, AgentNode → AgentCardItem
+1. Walk `node.content` chronologically: TimelineEvent → EventItem, TimelineSpan → AgentCardItem
 2. Insert branch cards: for each branch, find the event matching `forkedAt` UUID and insert a BranchCardItem after it. Multiple branches at the same fork point appear consecutively. Unresolvable UUIDs → append at end.
 
 No parallel grouping type — parallel agents appear as consecutive AgentCardItems. The UI layer detects adjacency and renders visual grouping. Utility agents are always included; filtering is a UI concern.
@@ -1307,7 +1273,7 @@ No parallel grouping type — parallel agents appear as consecutive AgentCardIte
 
 ### What was done
 
-Implemented `collectMarkers(node: AgentNode, depth: MarkerDepth): TimelineMarker[]` which finds error, compaction, and branch markers at configurable depth.
+Implemented `collectMarkers(node: TimelineSpan, depth: MarkerDepth): TimelineMarker[]` which finds error, compaction, and branch markers at configurable depth.
 
 **Types:**
 - `MarkerKind = "error" | "compaction" | "branch"`
@@ -1336,16 +1302,16 @@ Implemented the `useTimeline` hook and three pure helper functions that drive UR
 **Pure functions** (exported, testable without DOM):
 
 - `parsePathSegment(segment)` — splits `"my-agent-3"` into `{ name: "my-agent", spanIndex: 3 }`. Only the trailing `-N` is consumed (N must be >= 1). `-0` is treated as part of the name.
-- `resolvePath(tree, pathString)` — walks the tree from `tree.agent`, splitting path on `/`, matching child agents case-insensitively. `-N` suffix selects the Nth same-named child (1-indexed). Special first-segment names: `"init"` → `tree.init`, `"scoring"` → `tree.scoring`. Returns `null` for invalid paths.
-- `buildBreadcrumbs(pathString, tree)` — builds `BreadcrumbSegment[]` starting with root. Each segment resolves its label from the actual agent name when possible, falls back to the raw segment string.
+- `resolvePath(timeline, pathString)` — walks the tree from `timeline.root`, splitting path on `/`, matching child spans case-insensitively. `-N` suffix selects the Nth same-named child (1-indexed). Returns `null` for invalid paths.
+- `buildBreadcrumbs(pathString, timeline)` — builds `BreadcrumbSegment[]` starting with root. Each segment resolves its label from the actual span name when possible, falls back to the raw segment string.
 
-**Hook:** `useTimeline(tree: TranscriptNodes): TimelineState`
+**Hook:** `useTimeline(timeline: Timeline): TimelineState`
 
 - Reads `path` and `selected` from `useSearchParams()`
-- Resolves path → `AgentNode | SectionNode` (SectionNodes converted via `sectionToAgent`)
+- Resolves path → `TimelineSpan`
 - Falls back to root on invalid path
-- At root level, folds `init`/`scoring` into the agent's content via `prepareRootNode()` so they appear as swimlane rows
+- Init events are already in root content; scoring is a child `TimelineSpan` with `spanType: "scorer"` — no special folding needed
 - Computes `rows` via `computeSwimLaneRows()`, `breadcrumbs` via `buildBreadcrumbs()`
 - Navigation: `drillDown(name, spanIndex?)`, `goUp()`, `select(name | null)` — all update URL via `setSearchParams(..., { replace: true })`
 
-**Tests:** 44 tests. Pure function tests (no jsdom): parsePathSegment (7 cases), resolvePath (12 cases including root, named, case-insensitive, nested S3, span index S2, invalid, empty tree, scoring, init, out-of-range), buildBreadcrumbs (5 cases). Hook tests (jsdom + `MemoryRouter` wrapper): S1 root resolution, drill-down, S7 flat, S4 parallel, selected param, nested breadcrumbs, invalid fallback, scoring fold at root vs drilled-in, scoring path conversion, drillDown/goUp/select navigation, span index drill-down, S2 iterative spans.
+**Tests:** Pure function tests (no jsdom): parsePathSegment (7 cases), resolvePath (12 cases including root, named, case-insensitive, nested S3, span index S2, invalid, scoring, init, out-of-range), buildBreadcrumbs (5 cases). Hook tests (jsdom + `MemoryRouter` wrapper): S1 root resolution, drill-down, S7 flat, S4 parallel, selected param, nested breadcrumbs, invalid fallback, scoring as child span, drillDown/goUp/select navigation, span index drill-down, S2 iterative spans.

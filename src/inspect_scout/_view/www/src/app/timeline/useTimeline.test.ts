@@ -5,10 +5,9 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import type {
-  AgentNode,
-  SectionNode,
-  TranscriptNodes,
-} from "../../components/transcript/nodes";
+  Timeline,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 
 import { isParallelSpan, isSingleSpan } from "./swimlaneRows";
 import { timelineScenarios } from "./syntheticNodes";
@@ -29,10 +28,10 @@ const S3_DEEP = 2;
 const S4_PARALLEL = 3;
 const S7_FLAT = 5;
 
-function getTree(index: number): TranscriptNodes {
+function getTimeline(index: number): Timeline {
   const scenario = timelineScenarios[index];
   if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.nodes;
+  return scenario.timeline;
 }
 
 // =============================================================================
@@ -95,109 +94,98 @@ describe("parsePathSegment", () => {
 // =============================================================================
 
 describe("resolvePath", () => {
-  it("returns root agent for empty path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "");
-    expect(result).toBe(tree.agent);
+  it("returns root span for empty path", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "");
+    expect(result).toBe(timeline.root);
   });
 
-  it("returns root agent for path with only whitespace segments", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "");
-    expect(result).toBe(tree.agent);
+  it("returns root span for path with only whitespace segments", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "");
+    expect(result).toBe(timeline.root);
   });
 
-  it("resolves a named child agent", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "explore");
+  it("resolves a named child span", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "explore");
     expect(result).not.toBeNull();
-    expect(result!.type).toBe("agent");
-    expect((result as AgentNode).name).toBe("Explore");
+    expect(result!.type).toBe("span");
+    expect((result as TimelineSpan).name).toBe("Explore");
   });
 
   it("resolves case-insensitively", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "EXPLORE");
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "EXPLORE");
     expect(result).not.toBeNull();
-    expect((result as AgentNode).name).toBe("Explore");
+    expect((result as TimelineSpan).name).toBe("Explore");
   });
 
   it("resolves nested paths (S3 deep nesting)", () => {
-    const tree = getTree(S3_DEEP);
-    const result = resolvePath(tree, "build/code");
+    const timeline = getTimeline(S3_DEEP);
+    const result = resolvePath(timeline, "build/code");
     expect(result).not.toBeNull();
-    expect((result as AgentNode).name).toBe("Code");
+    expect((result as TimelineSpan).name).toBe("Code");
   });
 
   it("resolves multi-level nested paths", () => {
-    const tree = getTree(S3_DEEP);
-    const result = resolvePath(tree, "build/code");
+    const timeline = getTimeline(S3_DEEP);
+    const result = resolvePath(timeline, "build/code");
     expect(result).not.toBeNull();
-    const code = result as AgentNode;
+    const code = result as TimelineSpan;
     expect(code.name).toBe("Code");
   });
 
   it("resolves span index for iterative agents (S2)", () => {
-    const tree = getTree(S2_ITERATIVE);
-    // S2 has 2 Explore agents
-    const first = resolvePath(tree, "explore-1");
-    const second = resolvePath(tree, "explore-2");
+    const timeline = getTimeline(S2_ITERATIVE);
+    // S2 has 2 Explore spans
+    const first = resolvePath(timeline, "explore-1");
+    const second = resolvePath(timeline, "explore-2");
     expect(first).not.toBeNull();
     expect(second).not.toBeNull();
     expect(first).not.toBe(second);
-    expect((first as AgentNode).name).toBe("Explore");
-    expect((second as AgentNode).name).toBe("Explore");
+    expect((first as TimelineSpan).name).toBe("Explore");
+    expect((second as TimelineSpan).name).toBe("Explore");
   });
 
   it("returns first match when no span index", () => {
-    const tree = getTree(S2_ITERATIVE);
-    const noIndex = resolvePath(tree, "explore");
-    const firstIndex = resolvePath(tree, "explore-1");
+    const timeline = getTimeline(S2_ITERATIVE);
+    const noIndex = resolvePath(timeline, "explore");
+    const firstIndex = resolvePath(timeline, "explore-1");
     expect(noIndex).toBe(firstIndex);
   });
 
   it("returns null for invalid path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "nonexistent");
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "nonexistent");
     expect(result).toBeNull();
   });
 
   it("returns null for invalid nested path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "explore/nonexistent");
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "explore/nonexistent");
     expect(result).toBeNull();
   });
 
-  it("returns null when tree has no agent", () => {
-    const emptyTree: TranscriptNodes = {
-      init: null,
-      agent: null,
-      scoring: null,
-      startTime: null,
-      endTime: null,
-      totalTokens: 0,
-    };
-    expect(resolvePath(emptyTree, "")).toBeNull();
-  });
-
-  it("resolves scoring section", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const result = resolvePath(tree, "scoring");
+  it("resolves scoring as a child span", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const result = resolvePath(timeline, "scoring");
     expect(result).not.toBeNull();
-    expect(result!.type).toBe("section");
-    expect((result as SectionNode).section).toBe("scoring");
+    expect(result!.type).toBe("span");
+    expect((result as TimelineSpan).name).toBe("Scoring");
+    expect((result as TimelineSpan).spanType).toBe("scorer");
   });
 
-  it("returns null for init when tree has no init", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    // S1 has no init section
-    const result = resolvePath(tree, "init");
+  it("returns null for init path (init events are not navigable)", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    // No child span named "init" exists
+    const result = resolvePath(timeline, "init");
     expect(result).toBeNull();
   });
 
   it("returns null for out-of-range span index", () => {
-    const tree = getTree(S2_ITERATIVE);
-    const result = resolvePath(tree, "explore-99");
+    const timeline = getTimeline(S2_ITERATIVE);
+    const result = resolvePath(timeline, "explore-99");
     expect(result).toBeNull();
   });
 });
@@ -208,26 +196,26 @@ describe("resolvePath", () => {
 
 describe("buildBreadcrumbs", () => {
   it("returns root breadcrumb for empty path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const crumbs = buildBreadcrumbs("", tree);
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const crumbs = buildBreadcrumbs("", timeline);
     expect(crumbs).toHaveLength(1);
-    expect(crumbs[0]!.label).toBe(tree.agent!.name);
+    expect(crumbs[0]!.label).toBe(timeline.root.name);
     expect(crumbs[0]!.path).toBe("");
   });
 
   it("builds breadcrumbs for single-level path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const crumbs = buildBreadcrumbs("build", tree);
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const crumbs = buildBreadcrumbs("build", timeline);
     expect(crumbs).toHaveLength(2);
-    expect(crumbs[0]!.label).toBe(tree.agent!.name);
+    expect(crumbs[0]!.label).toBe(timeline.root.name);
     expect(crumbs[0]!.path).toBe("");
     expect(crumbs[1]!.label).toBe("Build");
     expect(crumbs[1]!.path).toBe("build");
   });
 
   it("builds breadcrumbs for multi-level path (S3)", () => {
-    const tree = getTree(S3_DEEP);
-    const crumbs = buildBreadcrumbs("build/code", tree);
+    const timeline = getTimeline(S3_DEEP);
+    const crumbs = buildBreadcrumbs("build/code", timeline);
     expect(crumbs).toHaveLength(3);
     expect(crumbs[0]!.path).toBe("");
     expect(crumbs[1]!.label).toBe("Build");
@@ -237,16 +225,16 @@ describe("buildBreadcrumbs", () => {
   });
 
   it("builds breadcrumbs for scoring", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const crumbs = buildBreadcrumbs("scoring", tree);
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const crumbs = buildBreadcrumbs("scoring", timeline);
     expect(crumbs).toHaveLength(2);
     expect(crumbs[1]!.label).toBe("Scoring");
     expect(crumbs[1]!.path).toBe("scoring");
   });
 
   it("uses raw segment for unresolvable path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const crumbs = buildBreadcrumbs("nonexistent", tree);
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const crumbs = buildBreadcrumbs("nonexistent", timeline);
     expect(crumbs).toHaveLength(2);
     expect(crumbs[1]!.label).toBe("nonexistent");
   });
@@ -264,13 +252,13 @@ function createWrapper(initialEntries: string[] = ["/"]) {
 
 describe("useTimeline", () => {
   it("resolves root node with no path params (S1)", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
-    expect(result.current.node.name).toBe(tree.agent!.name);
-    // S1 has: Explore, Plan, Build children + Scoring folded in = 5 rows
+    expect(result.current.node.name).toBe(timeline.root.name);
+    // S1 has: Explore, Plan, Build, Scoring children = 5 rows
     // (Transcript parent + Explore + Plan + Build + Scoring)
     expect(result.current.rows).toHaveLength(5);
     expect(result.current.breadcrumbs).toHaveLength(1);
@@ -278,8 +266,8 @@ describe("useTimeline", () => {
   });
 
   it("resolves drilled-down node via path param", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build"]),
     });
 
@@ -288,18 +276,18 @@ describe("useTimeline", () => {
   });
 
   it("returns single row for flat transcript (S7)", () => {
-    const tree = getTree(S7_FLAT);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S7_FLAT);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
-    // S7 has no child agents, no init/scoring → just the parent row
+    // S7 has no child spans → just the parent row
     expect(result.current.rows).toHaveLength(1);
   });
 
   it("detects parallel spans (S4)", () => {
-    const tree = getTree(S4_PARALLEL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S4_PARALLEL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
@@ -310,8 +298,8 @@ describe("useTimeline", () => {
   });
 
   it("reads selected param", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?selected=explore"]),
     });
 
@@ -319,33 +307,33 @@ describe("useTimeline", () => {
   });
 
   it("builds breadcrumbs for nested path", () => {
-    const tree = getTree(S3_DEEP);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S3_DEEP);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build/code"]),
     });
 
     expect(result.current.breadcrumbs).toHaveLength(3);
-    expect(result.current.breadcrumbs[0]!.label).toBe(tree.agent!.name);
+    expect(result.current.breadcrumbs[0]!.label).toBe(timeline.root.name);
     expect(result.current.breadcrumbs[1]!.label).toBe("Build");
     expect(result.current.breadcrumbs[2]!.label).toBe("Code");
   });
 
   it("falls back to root for invalid path", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=nonexistent"]),
     });
 
-    // Should fall back to root with init/scoring folded in
-    expect(result.current.node.name).toBe(tree.agent!.name);
+    // Should fall back to root
+    expect(result.current.node.name).toBe(timeline.root.name);
     expect(result.current.rows.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("folds scoring into root rows but not when drilled in", () => {
-    const tree = getTree(S1_SEQUENTIAL);
+  it("scoring appears in root rows but not when drilled into Build", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
 
     // At root: scoring should be a row
-    const { result: rootResult } = renderHook(() => useTimeline(tree), {
+    const { result: rootResult } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
     const scoringRow = rootResult.current.rows.find(
@@ -354,7 +342,7 @@ describe("useTimeline", () => {
     expect(scoringRow).toBeDefined();
 
     // Drilled into Build: no scoring row
-    const { result: drillResult } = renderHook(() => useTimeline(tree), {
+    const { result: drillResult } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build"]),
     });
     const scoringInBuild = drillResult.current.rows.find(
@@ -363,14 +351,14 @@ describe("useTimeline", () => {
     expect(scoringInBuild).toBeUndefined();
   });
 
-  it("resolves scoring path to SectionNode converted to AgentNode", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+  it("resolves scoring path to scorer span", () => {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=scoring"]),
     });
 
     expect(result.current.node.name).toBe("Scoring");
-    expect(result.current.node.type).toBe("agent");
+    expect(result.current.node.type).toBe("span");
   });
 
   // ---------------------------------------------------------------------------
@@ -378,8 +366,8 @@ describe("useTimeline", () => {
   // ---------------------------------------------------------------------------
 
   it("drillDown appends to path and clears selection", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?selected=explore"]),
     });
 
@@ -392,8 +380,8 @@ describe("useTimeline", () => {
   });
 
   it("drillDown from nested path appends segment", () => {
-    const tree = getTree(S3_DEEP);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S3_DEEP);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build"]),
     });
 
@@ -406,8 +394,8 @@ describe("useTimeline", () => {
   });
 
   it("drillDown with span index", () => {
-    const tree = getTree(S2_ITERATIVE);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S2_ITERATIVE);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
@@ -417,15 +405,15 @@ describe("useTimeline", () => {
 
     expect(result.current.node.name).toBe("Explore");
     // Should be the second Explore, not the first
-    const firstExplore = tree.agent!.content.find(
-      (c): c is AgentNode => c.type === "agent" && c.name === "Explore"
+    const firstExplore = timeline.root.content.find(
+      (c): c is TimelineSpan => c.type === "span" && c.name === "Explore"
     );
     expect(result.current.node).not.toBe(firstExplore);
   });
 
   it("goUp removes last path segment", () => {
-    const tree = getTree(S3_DEEP);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S3_DEEP);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build/code"]),
     });
 
@@ -439,8 +427,8 @@ describe("useTimeline", () => {
   });
 
   it("goUp from single segment returns to root", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?path=build"]),
     });
 
@@ -448,13 +436,13 @@ describe("useTimeline", () => {
       result.current.goUp();
     });
 
-    expect(result.current.node.name).toBe(tree.agent!.name);
+    expect(result.current.node.name).toBe(timeline.root.name);
     expect(result.current.breadcrumbs).toHaveLength(1);
   });
 
   it("goUp at root is a no-op", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
@@ -468,8 +456,8 @@ describe("useTimeline", () => {
   });
 
   it("select sets the selected param", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 
@@ -481,8 +469,8 @@ describe("useTimeline", () => {
   });
 
   it("select(null) clears the selected param", () => {
-    const tree = getTree(S1_SEQUENTIAL);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S1_SEQUENTIAL);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?selected=explore"]),
     });
 
@@ -494,8 +482,8 @@ describe("useTimeline", () => {
   });
 
   it("iterative agents produce multiple SingleSpans on one row (S2)", () => {
-    const tree = getTree(S2_ITERATIVE);
-    const { result } = renderHook(() => useTimeline(tree), {
+    const timeline = getTimeline(S2_ITERATIVE);
+    const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
     });
 

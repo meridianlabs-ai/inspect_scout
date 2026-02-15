@@ -1,16 +1,16 @@
 /**
  * Content item building for the timeline detail panel.
  *
- * Transforms an AgentNode's content and branches into a flat list of
+ * Transforms a TimelineSpan's content and branches into a flat list of
  * ContentItems for rendering. Branch cards are inserted after the event
  * they forked from (matched by UUID).
  */
 
 import type {
-  AgentNode,
   Branch,
-  EventNode,
-} from "../../components/transcript/nodes";
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 
 // =============================================================================
 // Types
@@ -18,12 +18,12 @@ import type {
 
 export interface EventItem {
   type: "event";
-  eventNode: EventNode;
+  eventNode: TimelineEvent;
 }
 
 export interface AgentCardItem {
   type: "agent_card";
-  agentNode: AgentNode;
+  agentNode: TimelineSpan;
 }
 
 export interface BranchCardItem {
@@ -38,16 +38,16 @@ export type ContentItem = EventItem | AgentCardItem | BranchCardItem;
 // =============================================================================
 
 /**
- * Builds a flat list of content items from an AgentNode.
+ * Builds a flat list of content items from a TimelineSpan.
  *
- * Walks the node's content chronologically, converting each child to either
+ * Walks the span's content chronologically, converting each child to either
  * an event item or agent card. Then inserts branch cards after the event
  * whose UUID matches `branch.forkedAt`. Branches with unresolvable UUIDs
  * are appended at the end.
  *
- * Utility agents are always included — filtering is a UI concern.
+ * Utility spans are always included — filtering is a UI concern.
  */
-export function buildContentItems(node: AgentNode): ContentItem[] {
+export function buildContentItems(node: TimelineSpan): ContentItem[] {
   // 1. Walk content chronologically
   const items: ContentItem[] = node.content.map((child) =>
     child.type === "event"

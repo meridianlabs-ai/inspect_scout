@@ -1,10 +1,9 @@
 import type {
-  AgentNode,
   Branch,
-  EventNode,
-  SectionNode,
-  TranscriptNodes,
-} from "../../components/transcript/nodes";
+  Timeline,
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 import type {
   CompactionEvent,
   ModelEvent,
@@ -14,7 +13,7 @@ import type {
 export interface TimelineScenario {
   name: string;
   description: string;
-  nodes: TranscriptNodes;
+  timeline: Timeline;
 }
 
 /** Create a Date offset from a base time by the given number of seconds. */
@@ -73,7 +72,7 @@ function makeModelEventNode(
   startSec: number,
   endSec: number,
   tokens: number
-): EventNode {
+): TimelineEvent {
   const event: ModelEvent = {
     event: "model",
     model: "claude-sonnet-4-5-20250929",
@@ -144,7 +143,7 @@ function makeToolEventNode(
   startSec: number,
   endSec: number,
   tokens: number
-): EventNode {
+): TimelineEvent {
   const event: ToolEvent = {
     event: "tool",
     type: "function",
@@ -184,7 +183,7 @@ function makeToolErrorEventNode(
   startSec: number,
   endSec: number,
   tokens: number
-): EventNode {
+): TimelineEvent {
   const event: ToolEvent = {
     event: "tool",
     type: "function",
@@ -223,7 +222,7 @@ function makeModelErrorEventNode(
   startSec: number,
   endSec: number,
   tokens: number
-): EventNode {
+): TimelineEvent {
   const event: ModelEvent = {
     event: "model",
     model: "claude-sonnet-4-5-20250929",
@@ -278,7 +277,7 @@ function makeCompactionEventNode(
   tokensAfter: number,
   startSec: number,
   endSec: number
-): EventNode {
+): TimelineEvent {
   const event: CompactionEvent = {
     event: "compaction",
     tokens_before: tokensBefore,
@@ -304,23 +303,24 @@ function makeCompactionEventNode(
 // Helper factories
 // ---------------------------------------------------------------------------
 
-function makeAgent(
+function makeSpan(
   id: string,
   name: string,
+  spanType: string | null,
   startSec: number,
   endSec: number,
   tokens: number,
-  content: AgentNode["content"] = [],
+  content: TimelineSpan["content"] = [],
   options?: {
     branches?: Branch[];
     utility?: boolean;
   }
-): AgentNode {
+): TimelineSpan {
   return {
-    type: "agent",
+    type: "span",
     id,
     name,
-    source: { source: "span", spanId: id },
+    spanType,
     content,
     branches: options?.branches ?? [],
     utility: options?.utility ?? false,
@@ -330,36 +330,30 @@ function makeAgent(
   };
 }
 
-function makeSection(
-  section: "init" | "scoring",
-  startSec: number,
-  endSec: number,
-  tokens: number
-): SectionNode {
-  return {
-    type: "section",
-    section,
-    content: [],
-    startTime: ts(BASE, startSec),
-    endTime: ts(BASE, endSec),
-    totalTokens: tokens,
-  };
-}
-
-function makeNodes(
-  agent: AgentNode,
+function makeTimeline(
+  root: TimelineSpan,
   options?: {
-    init?: SectionNode;
-    scoring?: SectionNode;
+    scoring?: TimelineSpan;
   }
-): TranscriptNodes {
-  const init = options?.init ?? null;
-  const scoring = options?.scoring ?? null;
-  const startTime = init?.startTime ?? agent.startTime;
-  const endTime = scoring?.endTime ?? agent.endTime;
-  const totalTokens =
-    (init?.totalTokens ?? 0) + agent.totalTokens + (scoring?.totalTokens ?? 0);
-  return { init, agent, scoring, startTime, endTime, totalTokens };
+): Timeline {
+  if (options?.scoring) {
+    // Fold scoring into root content and adjust totals
+    const scoring = options.scoring;
+    const newContent = [...root.content, scoring];
+    const endTime =
+      scoring.endTime > root.endTime ? scoring.endTime : root.endTime;
+    return {
+      name: "Default",
+      description: "",
+      root: {
+        ...root,
+        content: newContent,
+        endTime,
+        totalTokens: root.totalTokens + scoring.totalTokens,
+      },
+    };
+  }
+  return { name: "Default", description: "", root };
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +362,7 @@ function makeNodes(
 
 // S1: Sequential agents
 function sequentialAgents(): TimelineScenario {
-  const explore = makeAgent("explore", "Explore", 2, 14, 8100, [
+  const explore = makeSpan("explore", "Explore", "agent", 2, 14, 8100, [
     makeModelEventNode("Let me examine the project structure.", 2, 5, 2400),
     makeToolEventNode(
       "bash",
@@ -394,7 +388,7 @@ function sequentialAgents(): TimelineScenario {
     ),
     makeModelEventNode("The main entry point is clear.", 12, 14, 1100),
   ]);
-  const plan = makeAgent("plan", "Plan", 15, 24, 5300, [
+  const plan = makeSpan("plan", "Plan", "agent", 15, 24, 5300, [
     makeModelEventNode(
       "Based on my exploration, I'll plan the implementation.",
       15,
@@ -416,7 +410,7 @@ function sequentialAgents(): TimelineScenario {
       3100
     ),
   ]);
-  const build = makeAgent("build", "Build", 25, 52, 31800, [
+  const build = makeSpan("build", "Build", "agent", 25, 52, 31800, [
     makeModelEventNode(
       "Starting implementation of the refactored module.",
       25,
@@ -469,26 +463,39 @@ function sequentialAgents(): TimelineScenario {
       11000
     ),
   ]);
-  const scoring = makeSection("scoring", 53, 58, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 53, 58, 3200);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 58, 48500, [
-    makeModelEventNode("I'll work through this task step by step.", 0, 2, 1500),
-    explore,
-    plan,
-    build,
-    makeModelEventNode("All phases complete. Task finished.", 52, 53, 700),
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    58,
+    48500,
+    [
+      makeModelEventNode(
+        "I'll work through this task step by step.",
+        0,
+        2,
+        1500
+      ),
+      explore,
+      plan,
+      build,
+      makeModelEventNode("All phases complete. Task finished.", 52, 53, 700),
+    ]
+  );
 
   return {
     name: "Sequential agents",
     description: "S1 — Explore → Plan → Build → Scoring",
-    nodes: makeNodes(transcript, { scoring }),
+    timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S2: Iterative agents (multiple spans for same agent name)
 function iterativeAgents(): TimelineScenario {
-  const explore1 = makeAgent("explore-1", "Explore", 2, 10, 7200, [
+  const explore1 = makeSpan("explore-1", "Explore", "agent", 2, 10, 7200, [
     makeModelEventNode("Initial exploration of the codebase.", 2, 5, 2800),
     makeToolEventNode(
       "bash",
@@ -508,7 +515,7 @@ function iterativeAgents(): TimelineScenario {
       1400
     ),
   ]);
-  const plan1 = makeAgent("plan-1", "Plan", 11, 18, 4600, [
+  const plan1 = makeSpan("plan-1", "Plan", "agent", 11, 18, 4600, [
     makeModelEventNode(
       "First iteration plan: focus on core module.",
       11,
@@ -525,7 +532,7 @@ function iterativeAgents(): TimelineScenario {
     ),
     makeModelEventNode("Need more info before finalizing plan.", 16, 18, 1400),
   ]);
-  const explore2 = makeAgent("explore-2", "Explore", 19, 26, 7300, [
+  const explore2 = makeSpan("explore-2", "Explore", "agent", 19, 26, 7300, [
     makeModelEventNode(
       "Second exploration pass: checking edge cases.",
       19,
@@ -542,7 +549,7 @@ function iterativeAgents(): TimelineScenario {
     ),
     makeModelEventNode("Found TODOs. Reviewing test coverage.", 23, 26, 3900),
   ]);
-  const plan2 = makeAgent("plan-2", "Plan", 27, 33, 4600, [
+  const plan2 = makeSpan("plan-2", "Plan", "agent", 27, 33, 4600, [
     makeModelEventNode("Revised plan with edge case handling.", 27, 30, 2400),
     makeModelEventNode(
       "Plan finalized: address TODOs and add error handling.",
@@ -551,7 +558,7 @@ function iterativeAgents(): TimelineScenario {
       2200
     ),
   ]);
-  const build = makeAgent("build", "Build", 34, 55, 34600, [
+  const build = makeSpan("build", "Build", "agent", 34, 55, 34600, [
     makeModelEventNode("Implementing planned changes.", 34, 38, 5200),
     makeToolEventNode(
       "write_file",
@@ -580,26 +587,28 @@ function iterativeAgents(): TimelineScenario {
     ),
     makeModelEventNode("All tests pass. Build complete.", 51, 55, 16600),
   ]);
-  const scoring = makeSection("scoring", 56, 60, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 56, 60, 3200);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 60, 61500, [
-    explore1,
-    plan1,
-    explore2,
-    plan2,
-    build,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    60,
+    61500,
+    [explore1, plan1, explore2, plan2, build]
+  );
 
   return {
     name: "Iterative agents",
     description: "S2 — Explore and Plan with multiple spans",
-    nodes: makeNodes(transcript, { scoring }),
+    timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S3: Deep nesting (3 levels)
 function deepNesting(): TimelineScenario {
-  const generate = makeAgent("generate", "Generate", 26, 38, 5800, [
+  const generate = makeSpan("generate", "Generate", "agent", 26, 38, 5800, [
     makeModelEventNode("Generating test cases for the module.", 26, 30, 2400),
     makeToolEventNode(
       "write_file",
@@ -611,7 +620,7 @@ function deepNesting(): TimelineScenario {
     ),
     makeModelEventNode("Test cases generated successfully.", 34, 38, 1600),
   ]);
-  const run = makeAgent("run", "Run", 39, 44, 400, [
+  const run = makeSpan("run", "Run", "agent", 39, 44, 400, [
     makeToolEventNode(
       "bash",
       { cmd: "pytest tests/test_gen.py" },
@@ -629,7 +638,7 @@ function deepNesting(): TimelineScenario {
       200
     ),
   ]);
-  const evaluate = makeAgent("evaluate", "Evaluate", 45, 55, 4200, [
+  const evaluate = makeSpan("evaluate", "Evaluate", "agent", 45, 55, 4200, [
     makeModelEventNode(
       "Evaluating test results despite timeout.",
       45,
@@ -652,7 +661,7 @@ function deepNesting(): TimelineScenario {
     ),
   ]);
 
-  const code = makeAgent("code", "Code", 2, 24, 15200, [
+  const code = makeSpan("code", "Code", "agent", 2, 24, 15200, [
     makeModelEventNode("Writing the core implementation.", 2, 6, 3200),
     makeToolEventNode(
       "write_file",
@@ -674,13 +683,13 @@ function deepNesting(): TimelineScenario {
     ),
     makeModelEventNode("Code implementation phase complete.", 20, 24, 2400),
   ]);
-  const test = makeAgent("test", "Test", 25, 55, 10400, [
+  const test = makeSpan("test", "Test", "agent", 25, 55, 10400, [
     makeModelEventNode("Setting up test infrastructure.", 25, 26, 600),
     generate,
     run,
     evaluate,
   ]);
-  const fix = makeAgent("fix", "Fix", 56, 68, 6200, [
+  const fix = makeSpan("fix", "Fix", "agent", 56, 68, 6200, [
     makeModelEventNode("Fixing the timeout issue in tests.", 56, 60, 2200),
     makeToolEventNode(
       "write_file",
@@ -701,28 +710,34 @@ function deepNesting(): TimelineScenario {
     makeModelEventNode("All tests pass after fixes.", 66, 68, 1400),
   ]);
 
-  const build = makeAgent("build", "Build", 1, 68, 31800, [
+  const build = makeSpan("build", "Build", "agent", 1, 68, 31800, [
     makeModelEventNode("Starting the build process.", 1, 2, 800),
     code,
     test,
     fix,
   ]);
-  const scoring = makeSection("scoring", 69, 72, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 69, 72, 3200);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 72, 35000, [
-    build,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    72,
+    35000,
+    [build]
+  );
 
   return {
     name: "Deep nesting (3 levels)",
     description: "S3 — Build → Code/Test/Fix, Test → Generate/Run/Evaluate",
-    nodes: makeNodes(transcript, { scoring }),
+    timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S4: Parallel agents
 function parallelAgents(): TimelineScenario {
-  const explore1 = makeAgent("explore-1", "Explore", 2, 14, 8100, [
+  const explore1 = makeSpan("explore-1", "Explore", "agent", 2, 14, 8100, [
     makeModelEventNode("Exploring API documentation.", 2, 5, 2800),
     makeToolEventNode(
       "bash",
@@ -742,7 +757,7 @@ function parallelAgents(): TimelineScenario {
       1700
     ),
   ]);
-  const explore2 = makeAgent("explore-2", "Explore", 3, 16, 9400, [
+  const explore2 = makeSpan("explore-2", "Explore", "agent", 3, 16, 9400, [
     makeModelEventNode("Exploring database schema.", 3, 7, 3200),
     makeToolEventNode(
       "bash",
@@ -762,7 +777,7 @@ function parallelAgents(): TimelineScenario {
       1800
     ),
   ]);
-  const explore3 = makeAgent("explore-3", "Explore", 2, 12, 6800, [
+  const explore3 = makeSpan("explore-3", "Explore", "agent", 2, 12, 6800, [
     makeModelEventNode("Exploring frontend components.", 2, 5, 2400),
     makeToolEventNode(
       "bash",
@@ -782,7 +797,7 @@ function parallelAgents(): TimelineScenario {
       1400
     ),
   ]);
-  const plan = makeAgent("plan", "Plan", 17, 25, 5300, [
+  const plan = makeSpan("plan", "Plan", "agent", 17, 25, 5300, [
     makeModelEventNode(
       "Synthesizing findings from all exploration tracks.",
       17,
@@ -791,7 +806,7 @@ function parallelAgents(): TimelineScenario {
     ),
     makeModelEventNode("Implementation plan ready.", 20, 25, 2900),
   ]);
-  const build = makeAgent("build", "Build", 26, 52, 27600, [
+  const build = makeSpan("build", "Build", "agent", 26, 52, 27600, [
     makeModelEventNode("Starting full-stack implementation.", 26, 30, 4200),
     makeToolEventNode(
       "write_file",
@@ -825,26 +840,28 @@ function parallelAgents(): TimelineScenario {
     ),
     makeModelEventNode("Build and integration complete.", 46, 52, 10600),
   ]);
-  const scoring = makeSection("scoring", 53, 57, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 53, 57, 3200);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 57, 60400, [
-    explore1,
-    explore2,
-    explore3,
-    plan,
-    build,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    57,
+    60400,
+    [explore1, explore2, explore3, plan, build]
+  );
 
   return {
     name: "Parallel agents",
     description: "S4 — Explore (3) parallel group + Plan + Build",
-    nodes: makeNodes(transcript, { scoring }),
+    timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S5: Inline markers (error and compaction events)
 function inlineMarkers(): TimelineScenario {
-  const agent = makeAgent("agent", "Agent", 2, 55, 42000, [
+  const agent = makeSpan("agent", "Agent", "agent", 2, 55, 42000, [
     makeModelEventNode("Starting work on the task.", 2, 6, 3200),
     makeToolEventNode(
       "bash",
@@ -915,88 +932,102 @@ function inlineMarkers(): TimelineScenario {
     ),
     makeModelEventNode("Feature implementation complete.", 49, 55, 7600),
   ]);
-  const scoring = makeSection("scoring", 56, 60, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 56, 60, 3200);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 60, 45200, [
-    agent,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    60,
+    45200,
+    [agent]
+  );
 
   return {
     name: "Inline markers",
     description: "S5 — Agent with error and compaction events",
-    nodes: makeNodes(transcript, { scoring }),
+    timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S7: Flat transcript (single agent, no children)
 function flatTranscript(): TimelineScenario {
-  const transcript = makeAgent("transcript", "Transcript", 0, 40, 12400, [
-    makeModelEventNode("Analyzing the user request.", 0, 4, 1800),
-    makeToolEventNode(
-      "bash",
-      { cmd: "ls -la" },
-      "total 42\ndrwxr-xr-x ...",
-      4,
-      6,
-      600
-    ),
-    makeModelEventNode(
-      "I see the project files. Let me read the config.",
-      6,
-      10,
-      2200
-    ),
-    makeToolEventNode(
-      "read_file",
-      { path: "config.yaml" },
-      "port: 8080\ndb: postgres",
-      10,
-      12,
-      800
-    ),
-    makeModelEventNode(
-      "Configuration loaded. Making the requested change.",
-      12,
-      18,
-      2400
-    ),
-    makeToolEventNode(
-      "write_file",
-      { path: "config.yaml" },
-      "port: 9090\ndb: postgres",
-      18,
-      20,
-      600
-    ),
-    makeToolEventNode(
-      "bash",
-      { cmd: "python validate.py" },
-      "Config valid",
-      20,
-      23,
-      400
-    ),
-    makeModelEventNode(
-      "Change applied and validated successfully.",
-      23,
-      28,
-      1800
-    ),
-    makeToolEventNode(
-      "bash",
-      { cmd: "python -m pytest" },
-      "12 passed",
-      28,
-      34,
-      800
-    ),
-    makeModelEventNode("All tests pass. Task complete.", 34, 40, 900),
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    40,
+    12400,
+    [
+      makeModelEventNode("Analyzing the user request.", 0, 4, 1800),
+      makeToolEventNode(
+        "bash",
+        { cmd: "ls -la" },
+        "total 42\ndrwxr-xr-x ...",
+        4,
+        6,
+        600
+      ),
+      makeModelEventNode(
+        "I see the project files. Let me read the config.",
+        6,
+        10,
+        2200
+      ),
+      makeToolEventNode(
+        "read_file",
+        { path: "config.yaml" },
+        "port: 8080\ndb: postgres",
+        10,
+        12,
+        800
+      ),
+      makeModelEventNode(
+        "Configuration loaded. Making the requested change.",
+        12,
+        18,
+        2400
+      ),
+      makeToolEventNode(
+        "write_file",
+        { path: "config.yaml" },
+        "port: 9090\ndb: postgres",
+        18,
+        20,
+        600
+      ),
+      makeToolEventNode(
+        "bash",
+        { cmd: "python validate.py" },
+        "Config valid",
+        20,
+        23,
+        400
+      ),
+      makeModelEventNode(
+        "Change applied and validated successfully.",
+        23,
+        28,
+        1800
+      ),
+      makeToolEventNode(
+        "bash",
+        { cmd: "python -m pytest" },
+        "12 passed",
+        28,
+        34,
+        800
+      ),
+      makeModelEventNode("All tests pass. Task complete.", 34, 40, 900),
+    ]
+  );
 
   return {
     name: "Flat transcript",
     description: "S7 — Single agent, no children, just events",
-    nodes: makeNodes(transcript),
+    timeline: makeTimeline(transcript),
   };
 }
 
@@ -1038,7 +1069,7 @@ function manyRows(): TimelineScenario {
     [["bash", { cmd: "rm -rf tmp/" }, "Cleaned"]],
   ];
 
-  const agents: AgentNode[] = [];
+  const agents: TimelineSpan[] = [];
   let offset = 2;
   let totalTokens = 0;
   for (let i = 0; i < names.length; i++) {
@@ -1048,7 +1079,7 @@ function manyRows(): TimelineScenario {
     const evts = agentEvents[i] ?? [];
     const mid = offset + Math.floor(duration / 2);
 
-    const content: (EventNode | AgentNode)[] = [
+    const content: (TimelineEvent | TimelineSpan)[] = [
       makeModelEventNode(
         `Starting ${name.toLowerCase()} phase.`,
         offset,
@@ -1098,15 +1129,24 @@ function manyRows(): TimelineScenario {
     );
 
     agents.push(
-      makeAgent(`agent-${i}`, name, offset, offset + duration, tokens, content)
+      makeSpan(
+        `agent-${i}`,
+        name,
+        "agent",
+        offset,
+        offset + duration,
+        tokens,
+        content
+      )
     );
     totalTokens += tokens;
     offset += duration + 1;
   }
 
-  const transcript = makeAgent(
+  const transcript = makeSpan(
     "transcript",
     "Transcript",
+    "agent",
     0,
     offset,
     totalTokens,
@@ -1116,15 +1156,16 @@ function manyRows(): TimelineScenario {
   return {
     name: "Many rows (8+)",
     description: "S8 — Tests 6-row cap / scrolling with 10 agents",
-    nodes: makeNodes(transcript),
+    timeline: makeTimeline(transcript),
   };
 }
 
 // S10: Utility agents
 function utilityAgents(): TimelineScenario {
-  const util1 = makeAgent(
+  const util1 = makeSpan(
     "util-1",
     "bash_checker",
+    "agent",
     3,
     4,
     300,
@@ -1142,9 +1183,10 @@ function utilityAgents(): TimelineScenario {
       utility: true,
     }
   );
-  const util2 = makeAgent(
+  const util2 = makeSpan(
     "util-2",
     "safety_validator",
+    "agent",
     8,
     9,
     200,
@@ -1153,9 +1195,10 @@ function utilityAgents(): TimelineScenario {
       utility: true,
     }
   );
-  const util3 = makeAgent(
+  const util3 = makeSpan(
     "util-3",
     "bash_checker",
+    "agent",
     14,
     15,
     300,
@@ -1173,9 +1216,10 @@ function utilityAgents(): TimelineScenario {
       utility: true,
     }
   );
-  const util4 = makeAgent(
+  const util4 = makeSpan(
     "util-4",
     "format_checker",
+    "agent",
     20,
     21,
     250,
@@ -1193,7 +1237,7 @@ function utilityAgents(): TimelineScenario {
       utility: true,
     }
   );
-  const mainAgent = makeAgent("main", "Build", 2, 45, 28000, [
+  const mainAgent = makeSpan("main", "Build", "agent", 2, 45, 28000, [
     makeModelEventNode("Starting build with safety checks.", 2, 3, 1200),
     util1,
     makeModelEventNode(
@@ -1245,22 +1289,29 @@ function utilityAgents(): TimelineScenario {
     makeModelEventNode("Package built and ready.", 40, 45, 3400),
   ]);
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 50, 29050, [
-    mainAgent,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    50,
+    29050,
+    [mainAgent]
+  );
 
   return {
     name: "Utility agents",
     description: "S10 — Agent with multiple utility children",
-    nodes: makeNodes(transcript),
+    timeline: makeTimeline(transcript),
   };
 }
 
 // S11a: Branches (single fork)
 function branchesSingleFork(): TimelineScenario {
-  const branch1Refactor = makeAgent(
+  const branch1Refactor = makeSpan(
     "branch1-refactor",
     "Refactor",
+    "agent",
     15,
     22,
     5200,
@@ -1277,9 +1328,10 @@ function branchesSingleFork(): TimelineScenario {
       makeModelEventNode("Refactoring complete.", 20, 22, 1200),
     ]
   );
-  const branch1Validate = makeAgent(
+  const branch1Validate = makeSpan(
     "branch1-validate",
     "Validate",
+    "agent",
     23,
     28,
     3500,
@@ -1306,23 +1358,31 @@ function branchesSingleFork(): TimelineScenario {
     totalTokens: 8700,
   };
 
-  const branch2Rewrite = makeAgent("branch2-rewrite", "Rewrite", 15, 25, 5100, [
-    makeModelEventNode(
-      "Taking a different approach: full rewrite.",
-      15,
-      19,
-      2200
-    ),
-    makeToolEventNode(
-      "write_file",
-      { path: "src/rewritten.py" },
-      "Written",
-      19,
-      22,
-      1800
-    ),
-    makeModelEventNode("Rewrite approach complete.", 22, 25, 1100),
-  ]);
+  const branch2Rewrite = makeSpan(
+    "branch2-rewrite",
+    "Rewrite",
+    "agent",
+    15,
+    25,
+    5100,
+    [
+      makeModelEventNode(
+        "Taking a different approach: full rewrite.",
+        15,
+        19,
+        2200
+      ),
+      makeToolEventNode(
+        "write_file",
+        { path: "src/rewritten.py" },
+        "Written",
+        19,
+        22,
+        1800
+      ),
+      makeModelEventNode("Rewrite approach complete.", 22, 25, 1100),
+    ]
+  );
 
   const branch2: Branch = {
     type: "branch",
@@ -1333,7 +1393,7 @@ function branchesSingleFork(): TimelineScenario {
     totalTokens: 5100,
   };
 
-  const code = makeAgent("code", "Code", 2, 24, 15200, [
+  const code = makeSpan("code", "Code", "agent", 2, 24, 15200, [
     makeModelEventNode("Writing initial implementation.", 2, 6, 4200),
     makeToolEventNode(
       "write_file",
@@ -1359,7 +1419,7 @@ function branchesSingleFork(): TimelineScenario {
     ),
     makeModelEventNode("Code phase finalized.", 20, 24, 1400),
   ]);
-  const test = makeAgent("test", "Test", 25, 40, 10400, [
+  const test = makeSpan("test", "Test", "agent", 25, 40, 10400, [
     makeModelEventNode("Setting up test suite.", 25, 28, 2200),
     makeToolEventNode(
       "write_file",
@@ -1380,9 +1440,10 @@ function branchesSingleFork(): TimelineScenario {
     makeModelEventNode("All tests passing.", 36, 40, 3600),
   ]);
 
-  const build = makeAgent(
+  const build = makeSpan(
     "build",
     "Build",
+    "agent",
     1,
     52,
     31800,
@@ -1397,31 +1458,45 @@ function branchesSingleFork(): TimelineScenario {
     }
   );
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 55, 31800, [
-    build,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    55,
+    31800,
+    [build]
+  );
 
   return {
     name: "Branches (single fork)",
     description: "S11 — Agent with 2 branches at one fork point",
-    nodes: makeNodes(transcript),
+    timeline: makeTimeline(transcript),
   };
 }
 
 // S11b: Branches (multiple forks)
 function branchesMultipleForks(): TimelineScenario {
-  const earlyAttempt = makeAgent("early-attempt", "Attempt", 8, 14, 4200, [
-    makeModelEventNode("Early attempt at solving the problem.", 8, 11, 2000),
-    makeToolEventNode(
-      "bash",
-      { cmd: "python solve.py" },
-      "Partial result",
-      11,
-      13,
-      1200
-    ),
-    makeModelEventNode("Attempt did not fully succeed.", 13, 14, 1000),
-  ]);
+  const earlyAttempt = makeSpan(
+    "early-attempt",
+    "Attempt",
+    "agent",
+    8,
+    14,
+    4200,
+    [
+      makeModelEventNode("Early attempt at solving the problem.", 8, 11, 2000),
+      makeToolEventNode(
+        "bash",
+        { cmd: "python solve.py" },
+        "Partial result",
+        11,
+        13,
+        1200
+      ),
+      makeModelEventNode("Attempt did not fully succeed.", 13, 14, 1000),
+    ]
+  );
 
   const earlyBranch: Branch = {
     type: "branch",
@@ -1432,7 +1507,7 @@ function branchesMultipleForks(): TimelineScenario {
     totalTokens: 4200,
   };
 
-  const lateRetry = makeAgent("late-retry", "Retry", 30, 38, 3800, [
+  const lateRetry = makeSpan("late-retry", "Retry", "agent", 30, 38, 3800, [
     makeModelEventNode("Retrying with modified parameters.", 30, 33, 1600),
     makeToolEventNode(
       "bash",
@@ -1454,7 +1529,7 @@ function branchesMultipleForks(): TimelineScenario {
     totalTokens: 3800,
   };
 
-  const lateAlt = makeAgent("late-alt", "Alternative", 30, 42, 6100, [
+  const lateAlt = makeSpan("late-alt", "Alternative", "agent", 30, 42, 6100, [
     makeModelEventNode(
       "Trying a completely different algorithm.",
       30,
@@ -1489,7 +1564,7 @@ function branchesMultipleForks(): TimelineScenario {
     totalTokens: 6100,
   };
 
-  const code = makeAgent("code", "Code", 2, 28, 15200, [
+  const code = makeSpan("code", "Code", "agent", 2, 28, 15200, [
     makeModelEventNode("Beginning code implementation.", 2, 6, 3600),
     makeToolEventNode(
       "write_file",
@@ -1510,7 +1585,7 @@ function branchesMultipleForks(): TimelineScenario {
     ),
     makeModelEventNode("Optimizing the solver.", 20, 28, 3200),
   ]);
-  const test = makeAgent("test", "Test", 29, 48, 10400, [
+  const test = makeSpan("test", "Test", "agent", 29, 48, 10400, [
     makeModelEventNode("Running comprehensive test suite.", 29, 33, 2800),
     makeToolEventNode(
       "bash",
@@ -1532,9 +1607,10 @@ function branchesMultipleForks(): TimelineScenario {
     makeModelEventNode("All edge cases handled.", 46, 48, 1800),
   ]);
 
-  const build = makeAgent(
+  const build = makeSpan(
     "build",
     "Build",
+    "agent",
     1,
     55,
     31800,
@@ -1559,14 +1635,20 @@ function branchesMultipleForks(): TimelineScenario {
     }
   );
 
-  const transcript = makeAgent("transcript", "Transcript", 0, 58, 31800, [
-    build,
-  ]);
+  const transcript = makeSpan(
+    "transcript",
+    "Transcript",
+    "agent",
+    0,
+    58,
+    31800,
+    [build]
+  );
 
   return {
     name: "Branches (multiple forks)",
     description: "S11 — Agent with branches at different fork points",
-    nodes: makeNodes(transcript),
+    timeline: makeTimeline(transcript),
   };
 }
 

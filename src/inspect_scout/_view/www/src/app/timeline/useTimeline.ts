@@ -1,7 +1,7 @@
 /**
  * Timeline navigation hook and pure helper functions.
  *
- * Provides URL-driven drill-down navigation through the transcript node tree.
+ * Provides URL-driven drill-down navigation through the timeline span tree.
  * Pure functions (parsePathSegment, resolvePath, buildBreadcrumbs) are exported
  * for unit testing without DOM dependencies.
  */
@@ -10,16 +10,11 @@ import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import type {
-  AgentNode,
-  SectionNode,
-  TranscriptNodes,
-} from "../../components/transcript/nodes";
+  Timeline,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 
-import {
-  type SwimLaneRow,
-  computeSwimLaneRows,
-  sectionToAgent,
-} from "./swimlaneRows";
+import { type SwimLaneRow, computeSwimLaneRows } from "./swimlaneRows";
 
 // =============================================================================
 // Query Parameter Constants
@@ -38,15 +33,15 @@ export interface BreadcrumbSegment {
 }
 
 export interface TimelineState {
-  /** The resolved AgentNode for the current path. */
-  node: AgentNode;
+  /** The resolved TimelineSpan for the current path. */
+  node: TimelineSpan;
   /** Swimlane rows computed from the resolved node. */
   rows: SwimLaneRow[];
   /** Breadcrumb trail from root to the current path. */
   breadcrumbs: BreadcrumbSegment[];
   /** Currently selected row name, or null. */
   selected: string | null;
-  /** Navigate into a child agent by name and optional span index. */
+  /** Navigate into a child span by name and optional span index. */
   drillDown: (name: string, spanIndex?: number) => void;
   /** Navigate up one level. */
   goUp: () => void;
@@ -87,47 +82,32 @@ export function parsePathSegment(segment: string): {
 }
 
 /**
- * Resolves a path string to a node in the transcript tree.
+ * Resolves a path string to a span in the timeline tree.
  *
  * Path format: slash-separated segments, e.g. "build/code/test".
- * Empty or missing path resolves to the root agent.
+ * Empty or missing path resolves to the root span.
  *
- * Special segment names (case-insensitive, first segment only):
- *   - "init"    → tree.init
- *   - "scoring" → tree.scoring
- *
- * Agent names are matched case-insensitively. The `-N` suffix selects the
+ * Span names are matched case-insensitively. The `-N` suffix selects the
  * Nth occurrence (1-indexed) among same-named children; without a suffix,
  * the first match is returned.
  *
- * Returns null if the tree has no agent or the path is invalid.
+ * Returns null if the path is invalid.
  */
 export function resolvePath(
-  tree: TranscriptNodes,
+  timeline: Timeline,
   pathString: string
-): AgentNode | SectionNode | null {
-  if (!tree.agent) return null;
-
-  if (!pathString) return tree.agent;
+): TimelineSpan | null {
+  if (!pathString) return timeline.root;
 
   const segments = pathString.split("/").filter((s) => s.length > 0);
-  if (segments.length === 0) return tree.agent;
+  if (segments.length === 0) return timeline.root;
 
-  // Check for special first-segment names
-  const firstSegment = segments[0]!.toLowerCase();
-  if (firstSegment === "init") {
-    return tree.init;
-  }
-  if (firstSegment === "scoring") {
-    return tree.scoring;
-  }
-
-  // Walk the tree from root agent
-  let current: AgentNode = tree.agent;
+  // Walk the tree from root
+  let current: TimelineSpan = timeline.root;
 
   for (const segment of segments) {
     const { name, spanIndex } = parsePathSegment(segment);
-    const child = findChildAgent(current, name, spanIndex);
+    const child = findChildSpan(current, name, spanIndex);
     if (!child) return null;
     current = child;
   }
@@ -139,20 +119,19 @@ export function resolvePath(
  * Builds a breadcrumb trail for the given path.
  *
  * Always starts with a "Root" breadcrumb at path "". Each subsequent segment
- * appends to the path. Labels use the resolved agent's display name when
+ * appends to the path. Labels use the resolved span's display name when
  * available, otherwise the raw segment.
  */
 export function buildBreadcrumbs(
   pathString: string,
-  tree: TranscriptNodes
+  timeline: Timeline
 ): BreadcrumbSegment[] {
-  const rootLabel = tree.agent?.name ?? "Root";
-  const crumbs: BreadcrumbSegment[] = [{ label: rootLabel, path: "" }];
+  const crumbs: BreadcrumbSegment[] = [{ label: timeline.root.name, path: "" }];
 
-  if (!pathString || !tree.agent) return crumbs;
+  if (!pathString) return crumbs;
 
   const segments = pathString.split("/").filter((s) => s.length > 0);
-  let current: AgentNode | null = tree.agent;
+  let current: TimelineSpan | null = timeline.root;
 
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]!;
@@ -160,23 +139,7 @@ export function buildBreadcrumbs(
 
     if (current) {
       const { name, spanIndex } = parsePathSegment(segment);
-
-      // Check for special names at the first segment
-      if (i === 0) {
-        const lower = name.toLowerCase();
-        if (lower === "init") {
-          crumbs.push({ label: "Init", path });
-          current = null;
-          continue;
-        }
-        if (lower === "scoring") {
-          crumbs.push({ label: "Scoring", path });
-          current = null;
-          continue;
-        }
-      }
-
-      const child = findChildAgent(current, name, spanIndex);
+      const child = findChildSpan(current, name, spanIndex);
       if (child) {
         crumbs.push({ label: child.name, path });
         current = child;
@@ -197,21 +160,21 @@ export function buildBreadcrumbs(
 // =============================================================================
 
 /**
- * Finds a child agent by name (case-insensitive) and optional span index.
+ * Finds a child span by name (case-insensitive) and optional span index.
  *
  * When spanIndex is null, returns the first match.
  * When spanIndex is N, returns the Nth same-named child (1-indexed).
  */
-function findChildAgent(
-  parent: AgentNode,
+function findChildSpan(
+  parent: TimelineSpan,
   name: string,
   spanIndex: number | null
-): AgentNode | null {
+): TimelineSpan | null {
   const lowerName = name.toLowerCase();
   let matchCount = 0;
 
   for (const item of parent.content) {
-    if (item.type === "agent" && item.name.toLowerCase() === lowerName) {
+    if (item.type === "span" && item.name.toLowerCase() === lowerName) {
       matchCount++;
       if (spanIndex === null || matchCount === spanIndex) {
         return item;
@@ -220,35 +183,6 @@ function findChildAgent(
   }
 
   return null;
-}
-
-/**
- * Prepares the root AgentNode for swimlane computation.
- *
- * At the root level, init and scoring sections are folded into the agent's
- * content as AgentNodes (via sectionToAgent) so they appear as swimlane rows.
- */
-function prepareRootNode(tree: TranscriptNodes): AgentNode {
-  const agent = tree.agent;
-  if (!agent) {
-    throw new Error("Cannot prepare root node: tree has no agent");
-  }
-
-  const extraContent: AgentNode[] = [];
-  if (tree.init) {
-    extraContent.push(sectionToAgent(tree.init));
-  }
-  if (tree.scoring) {
-    extraContent.push(sectionToAgent(tree.scoring));
-  }
-
-  if (extraContent.length === 0) return agent;
-
-  // Create a shallow copy with init/scoring folded in
-  return {
-    ...agent,
-    content: [...agent.content, ...extraContent],
-  };
 }
 
 // =============================================================================
@@ -264,49 +198,28 @@ function prepareRootNode(tree: TranscriptNodes): AgentNode {
  * All navigation updates the URL via search param replacement, preserving
  * other search params.
  */
-export function useTimeline(tree: TranscriptNodes): TimelineState {
+export function useTimeline(timeline: Timeline): TimelineState {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const pathString = searchParams.get(kPathParam) ?? "";
   const selected = searchParams.get(kSelectedParam) ?? null;
 
-  // Resolve the current path to a node
+  // Resolve the current path to a span
   const resolved = useMemo(
-    () => resolvePath(tree, pathString),
-    [tree, pathString]
+    () => resolvePath(timeline, pathString),
+    [timeline, pathString]
   );
 
-  // Convert SectionNode to AgentNode, or use agent directly
   // Fall back to root if path resolution fails
-  const node = useMemo(() => {
-    if (!tree.agent) {
-      throw new Error("useTimeline requires a tree with an agent");
-    }
-
-    if (!resolved) {
-      // Invalid path — fall back to root
-      return prepareRootNode(tree);
-    }
-
-    if (resolved.type === "section") {
-      return sectionToAgent(resolved);
-    }
-
-    // At root level, fold in init/scoring
-    if (!pathString) {
-      return prepareRootNode(tree);
-    }
-
-    return resolved;
-  }, [tree, resolved, pathString]);
+  const node = useMemo(() => resolved ?? timeline.root, [timeline, resolved]);
 
   // Compute swimlane rows
   const rows = useMemo(() => computeSwimLaneRows(node), [node]);
 
   // Build breadcrumbs
   const breadcrumbs = useMemo(
-    () => buildBreadcrumbs(pathString, tree),
-    [pathString, tree]
+    () => buildBreadcrumbs(pathString, timeline),
+    [pathString, timeline]
   );
 
   // Navigation functions

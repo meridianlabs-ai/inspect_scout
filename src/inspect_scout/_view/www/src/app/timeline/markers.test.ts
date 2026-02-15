@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  AgentNode,
   Branch,
-  EventNode,
-} from "../../components/transcript/nodes";
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
 import type {
   CompactionEvent,
   ModelEvent,
@@ -29,7 +29,7 @@ const NULL_CONFIG = {} as ModelEvent["config"];
 function makeModelEventNode(
   startSec: number,
   options?: { error?: string; outputError?: string; uuid?: string }
-): EventNode {
+): TimelineEvent {
   const event: ModelEvent = {
     event: "model",
     model: "test",
@@ -85,7 +85,7 @@ function makeToolEventNode(
     error?: { message: string; type: string };
     uuid?: string;
   }
-): EventNode {
+): TimelineEvent {
   const event: ToolEvent = {
     event: "tool",
     type: "function",
@@ -130,7 +130,7 @@ function makeToolEventNode(
 function makeCompactionEventNode(
   startSec: number,
   options?: { uuid?: string }
-): EventNode {
+): TimelineEvent {
   const event: CompactionEvent = {
     event: "compaction",
     tokens_before: 10000,
@@ -152,18 +152,18 @@ function makeCompactionEventNode(
   };
 }
 
-function makeAgent(
+function makeSpan(
   name: string,
   startSec: number,
   endSec: number,
-  content: AgentNode["content"] = [],
+  content: TimelineSpan["content"] = [],
   options?: { branches?: Branch[] }
-): AgentNode {
+): TimelineSpan {
   return {
-    type: "agent",
+    type: "span",
     id: name.toLowerCase(),
     name,
-    source: { source: "span", spanId: name.toLowerCase() },
+    spanType: null,
     content,
     branches: options?.branches ?? [],
     utility: false,
@@ -178,12 +178,10 @@ const S5_MARKERS = 4;
 const S7_FLAT = 5;
 const S11A_BRANCHES = 8;
 
-function getScenarioAgent(index: number): AgentNode {
+function getScenarioRoot(index: number): TimelineSpan {
   const scenario = timelineScenarios[index];
   if (!scenario) throw new Error(`No scenario at index ${index}`);
-  const node = scenario.nodes.agent;
-  if (!node) throw new Error(`Scenario ${index} has no agent`);
-  return node;
+  return scenario.timeline.root;
 }
 
 // =============================================================================
@@ -254,12 +252,12 @@ describe("collectMarkers", () => {
   // S5 (inline markers)
   // ---------------------------------------------------------------------------
   describe("S5 inline markers", () => {
-    it("collects error and compaction markers from child agent", () => {
-      const transcript = getScenarioAgent(S5_MARKERS);
+    it("collects error and compaction markers from child span", () => {
+      const transcript = getScenarioRoot(S5_MARKERS);
 
       // The markers are in the Agent child, not in Transcript directly
       const agent = transcript.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Agent"
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Agent"
       );
       expect(agent).toBeDefined();
 
@@ -274,7 +272,7 @@ describe("collectMarkers", () => {
     });
 
     it("collects markers from children when depth=children", () => {
-      const transcript = getScenarioAgent(S5_MARKERS);
+      const transcript = getScenarioRoot(S5_MARKERS);
 
       // Transcript → Agent; depth=children should find Agent's markers
       const markers = collectMarkers(transcript, "children");
@@ -292,7 +290,7 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("S7 flat transcript", () => {
     it("returns empty markers when no errors or compactions", () => {
-      const node = getScenarioAgent(S7_FLAT);
+      const node = getScenarioRoot(S7_FLAT);
       const markers = collectMarkers(node, "direct");
 
       expect(markers).toHaveLength(0);
@@ -304,14 +302,14 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("depth modes", () => {
     it("direct: collects only from own events", () => {
-      const childAgent = makeAgent("Child", 10, 20, [
+      const childSpan = makeSpan("Child", 10, 20, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
       ]);
-      const parent = makeAgent("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, [
         makeModelEventNode(2, { error: "parent error" }),
-        childAgent,
+        childSpan,
       ]);
 
       const markers = collectMarkers(parent, "direct");
@@ -321,17 +319,17 @@ describe("collectMarkers", () => {
       expect(markers[0]!.timestamp).toEqual(ts(2));
     });
 
-    it("children: collects from own events + direct child agents", () => {
-      const grandchild = makeAgent("Grandchild", 15, 18, [
+    it("children: collects from own events + direct child spans", () => {
+      const grandchild = makeSpan("Grandchild", 15, 18, [
         makeCompactionEventNode(16),
       ]);
-      const child = makeAgent("Child", 10, 20, [
+      const child = makeSpan("Child", 10, 20, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
         grandchild,
       ]);
-      const parent = makeAgent("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, [
         makeModelEventNode(2, { error: "parent error" }),
         child,
       ]);
@@ -344,16 +342,16 @@ describe("collectMarkers", () => {
     });
 
     it("recursive: collects from the full subtree", () => {
-      const grandchild = makeAgent("Grandchild", 15, 18, [
+      const grandchild = makeSpan("Grandchild", 15, 18, [
         makeCompactionEventNode(16),
       ]);
-      const child = makeAgent("Child", 10, 20, [
+      const child = makeSpan("Child", 10, 20, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
         grandchild,
       ]);
-      const parent = makeAgent("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, [
         makeModelEventNode(2, { error: "parent error" }),
         child,
       ]);
@@ -386,7 +384,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeAgent("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, [event1, event2], {
         branches: [branch],
       });
 
@@ -408,7 +406,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeAgent("Root", 0, 20, [makeModelEventNode(0)], {
+      const parent = makeSpan("Root", 0, 20, [makeModelEventNode(0)], {
         branches: [branch],
       });
 
@@ -427,7 +425,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeAgent("Root", 0, 20, [makeModelEventNode(0)], {
+      const parent = makeSpan("Root", 0, 20, [makeModelEventNode(0)], {
         branches: [branch],
       });
 
@@ -437,14 +435,14 @@ describe("collectMarkers", () => {
     });
 
     it("S11a: drops branch markers for synthetic forkedAt UUIDs", () => {
-      const transcript = getScenarioAgent(S11A_BRANCHES);
-      const buildAgent = transcript.content.find(
-        (c): c is AgentNode => c.type === "agent" && c.name === "Build"
+      const transcript = getScenarioRoot(S11A_BRANCHES);
+      const buildSpan = transcript.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
-      expect(buildAgent).toBeDefined();
-      expect(buildAgent!.branches).toHaveLength(2);
+      expect(buildSpan).toBeDefined();
+      expect(buildSpan!.branches).toHaveLength(2);
 
-      const markers = collectMarkers(buildAgent!, "direct");
+      const markers = collectMarkers(buildSpan!, "direct");
 
       // forkedAt is "model-call-5" which doesn't match any event UUID (all null)
       const branchMarkers = markers.filter((m) => m.kind === "branch");
@@ -457,7 +455,7 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("sort order", () => {
     it("sorts markers by timestamp", () => {
-      const parent = makeAgent("Root", 0, 30, [
+      const parent = makeSpan("Root", 0, 30, [
         makeCompactionEventNode(20),
         makeToolEventNode(5, {
           error: { message: "early error", type: "runtime" },
@@ -489,7 +487,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeAgent("Root", 0, 30, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 30, [event1, event2, event3], {
         branches: [branch],
       });
 
@@ -506,15 +504,15 @@ describe("collectMarkers", () => {
   // Edge cases
   // ---------------------------------------------------------------------------
   describe("edge cases", () => {
-    it("returns empty array for agent with no events", () => {
-      const parent = makeAgent("Empty", 0, 10);
+    it("returns empty array for span with no events", () => {
+      const parent = makeSpan("Empty", 0, 10);
       const markers = collectMarkers(parent, "direct");
 
       expect(markers).toHaveLength(0);
     });
 
-    it("returns empty array for agent with only normal events", () => {
-      const parent = makeAgent("Normal", 0, 10, [
+    it("returns empty array for span with only normal events", () => {
+      const parent = makeSpan("Normal", 0, 10, [
         makeModelEventNode(2),
         makeToolEventNode(5),
       ]);

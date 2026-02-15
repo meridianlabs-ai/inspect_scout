@@ -119,7 +119,7 @@ These are composed as a standalone prototype first, then integrated back into th
 **TranscriptView:**
 - Accept an `AgentNode` (not just raw `Event[]`) as input
 - Render child `AgentNode`s inline as sub-agent cards (clickable)
-- Render `Branch` cards with dashed borders at fork points
+- Render `TimelineBranch` cards with dashed borders at fork points
 - Sub-agent card clicks call `timeline.drillDown()` — navigation flows through the `useTimeline` hook
 - Error and compaction markers are not needed in the content panel — these are already visible as regular events in the content stream
 
@@ -369,7 +369,7 @@ A discriminated union for the virtual list:
 type ContentItem =
   | { type: "event"; eventNode: EventNode }
   | { type: "agent_card"; agentNode: AgentNode }
-  | { type: "branch_card"; branch: Branch }
+  | { type: "branch_card"; branch: TimelineBranch }
   | { type: "parallel_group"; agents: AgentNode[] }
 ```
 

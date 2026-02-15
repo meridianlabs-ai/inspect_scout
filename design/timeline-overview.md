@@ -9,7 +9,7 @@ The Timeline system transforms **flat event streams** from LLM evaluations into 
 | **`Timeline`** | Top-level container with `name`, `description`, and a `root` TimelineSpan |
 | **`TimelineSpan`** | Hierarchical node representing an agent, scorer, tool, or root. Has `content` (children), `branches`, `spanType` ("agent", "scorer", null), and computed `startTime`/`endTime`/`totalTokens` |
 | **`TimelineEvent`** | Leaf node wrapping a single raw `Event` (ModelEvent, ToolEvent, etc.) |
-| **`Branch`** | A discarded alternative execution path, with `forkedAt` UUID pointing to the decision point |
+| **`TimelineBranch`** | A discarded alternative execution path, with `forkedAt` UUID pointing to the decision point |
 
 ## Build Pipeline (`buildTimeline`)
 

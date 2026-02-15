@@ -642,7 +642,7 @@ interface TimelineSpan {
   name: string;
   spanType: string | null;        // "agent", "scorer", "tool", or null
   content: (TimelineEvent | TimelineSpan)[];
-  branches: Branch[];
+  branches: TimelineBranch[];
   utility: boolean;
   outline?: Outline;
   startTime: Date;
@@ -650,7 +650,7 @@ interface TimelineSpan {
   totalTokens: number;
 }
 
-interface Branch {
+interface TimelineBranch {
   type: "branch";
   forkedAt: string;              // UUID of the fork-point event
   content: (TimelineEvent | TimelineSpan)[];
@@ -869,7 +869,7 @@ These are composed as a standalone prototype first, then integrated back into th
 **TranscriptView:**
 - Accept a `TimelineSpan` (not just raw `Event[]`) as input
 - Render child `TimelineSpan`s inline as sub-agent cards (clickable)
-- Render `Branch` cards with dashed borders at fork points
+- Render `TimelineBranch` cards with dashed borders at fork points
 - Sub-agent card clicks call `timeline.drillDown()` — navigation flows through the `useTimeline` hook
 - Error and compaction markers are not needed in the content panel — these are already visible as regular events in the content stream
 
@@ -1118,7 +1118,7 @@ A discriminated union for the virtual list:
 type ContentItem =
   | { type: "event"; eventNode: TimelineEvent }
   | { type: "agent_card"; agentNode: TimelineSpan }
-  | { type: "branch_card"; branch: Branch }
+  | { type: "branch_card"; branch: TimelineBranch }
   | { type: "parallel_group"; agents: TimelineSpan[] }
 ```
 

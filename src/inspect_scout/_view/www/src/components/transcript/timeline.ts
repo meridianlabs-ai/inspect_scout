@@ -40,9 +40,9 @@ function isSpanNode(item: TreeItem): item is SpanNode {
 // =============================================================================
 
 /**
- * Base interface for computed properties on all transcript nodes.
+ * Base interface for computed properties on all timeline nodes.
  */
-interface TranscriptNodeBase {
+interface TimelineNode {
   startTime: Date;
   endTime: Date;
   totalTokens: number;
@@ -51,7 +51,7 @@ interface TranscriptNodeBase {
 /**
  * Wraps a single Event with computed timing and token properties.
  */
-export interface TimelineEvent extends TranscriptNodeBase {
+export interface TimelineEvent extends TimelineNode {
   type: "event";
   event: Event;
 }
@@ -59,7 +59,7 @@ export interface TimelineEvent extends TranscriptNodeBase {
 /**
  * A span of execution — agent, scorer, tool, or root.
  */
-export interface TimelineSpan extends TranscriptNodeBase {
+export interface TimelineSpan extends TimelineNode {
   type: "span";
   id: string;
   name: string;
@@ -74,7 +74,7 @@ export interface TimelineSpan extends TranscriptNodeBase {
 /**
  * A discarded alternative path from a branch point.
  */
-export interface TimelineBranch extends TranscriptNodeBase {
+export interface TimelineBranch extends TimelineNode {
   type: "branch";
   forkedAt: string;
   content: (TimelineEvent | TimelineSpan)[];
@@ -165,7 +165,7 @@ function getEventTokens(event: Event): number {
  * Return the earliest start time among nodes.
  * Requires at least one node (all nodes have non-null startTime).
  */
-function minStartTime(nodes: TranscriptNodeBase[]): Date {
+function minStartTime(nodes: TimelineNode[]): Date {
   const first = nodes[0];
   if (!first) {
     throw new Error("minStartTime requires at least one node");
@@ -180,7 +180,7 @@ function minStartTime(nodes: TranscriptNodeBase[]): Date {
  * Return the latest end time among nodes.
  * Requires at least one node (all nodes have non-null endTime).
  */
-function maxEndTime(nodes: TranscriptNodeBase[]): Date {
+function maxEndTime(nodes: TimelineNode[]): Date {
   const first = nodes[0];
   if (!first) {
     throw new Error("maxEndTime requires at least one node");
@@ -194,7 +194,7 @@ function maxEndTime(nodes: TranscriptNodeBase[]): Date {
 /**
  * Sum total tokens across all nodes.
  */
-function sumTokens(nodes: TranscriptNodeBase[]): number {
+function sumTokens(nodes: TimelineNode[]): number {
   return nodes.reduce((sum, n) => sum + n.totalTokens, 0);
 }
 

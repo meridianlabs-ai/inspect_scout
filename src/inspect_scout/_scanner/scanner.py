@@ -217,7 +217,7 @@ def scanner(
     loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
-    timeline: list[EventType] | Literal["all"] | None = None,
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
@@ -232,7 +232,7 @@ def scanner(
     loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
-    timeline: list[EventType] | Literal["all"] | None = None,
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]

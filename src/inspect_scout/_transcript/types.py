@@ -61,7 +61,7 @@ EventType = Literal[
 
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
-TimelineFilter: TypeAlias = Literal["all"] | Sequence[EventType] | None
+TimelineFilter: TypeAlias = Literal[True] | Literal["all"] | Sequence[EventType] | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]

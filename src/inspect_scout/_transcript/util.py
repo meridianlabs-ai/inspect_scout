@@ -269,6 +269,9 @@ def _union_filters(a: T, b: T) -> T:
     if b is None:
         return a
     # At this point, both a and b are non-None and non-"all".
+    # True is normalized before reaching here, but narrow for mypy.
+    if a is True or b is True:
+        return True
     return list(set(a) | set(b))
 
 
@@ -305,7 +308,7 @@ def filter_timelines(
     """
     if filter_value is None:
         return []
-    if filter_value == "all":
+    if filter_value is True or filter_value == "all":
         return timelines
     # filter_value is a list of event types — prune each timeline
     from .timeline import filter_timeline_events

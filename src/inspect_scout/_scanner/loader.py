@@ -153,7 +153,7 @@ def loader(
     name: str | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
-    timeline: list[EventType] | Literal["all"] | None = None,
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     content: TranscriptContent | None = None,
 ) -> Callable[[LoaderFactory[P, TLoaderResult]], LoaderFactory[P, TLoaderResult]]:
     """Decorator for registering loaders.

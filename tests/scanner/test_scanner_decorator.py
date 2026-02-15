@@ -202,6 +202,28 @@ def test_scanner_with_timeline() -> None:
     assert config.content.events == "all"
 
 
+def test_scanner_with_timeline_true() -> None:
+    """Scanner with timeline=True should use default event set."""
+    from inspect_scout._scanner.filter import TIMELINE_DEFAULT_EVENTS
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline=True)
+    def test_scanner() -> Scanner[Timeline]:
+        async def scan(timeline: Timeline) -> Result:
+            return Result(value={"name": timeline.name})
+
+        return scan
+
+    instance: Any = test_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timelines == TIMELINE_DEFAULT_EVENTS
+    # Events derived from timeline types + structural events
+    events = config.content.events
+    assert isinstance(events, list)
+    for event_type in TIMELINE_DEFAULT_EVENTS:
+        assert event_type in events
+
+
 def test_scanner_with_named_timeline() -> None:
     """Scanner decorator should handle event-type timeline filter."""
     from inspect_scout._transcript.timeline import Timeline

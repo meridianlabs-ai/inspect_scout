@@ -46,9 +46,22 @@ def validate_messages_filter(filter: list[MessageType] | None) -> None:
         )
 
 
+TIMELINE_DEFAULT_EVENTS: list[EventType] = [
+    "model",
+    "tool",
+    "approval",
+    "compaction",
+    "error",
+    "span_begin",
+    "span_end",
+]
+
+
 def normalize_timeline_filter(
-    filter: list[EventType] | Literal["all"],
+    filter: Literal[True] | list[EventType] | Literal["all"],
 ) -> list[EventType] | Literal["all"]:
+    if filter is True:
+        return list(TIMELINE_DEFAULT_EVENTS)
     if filter == "all":
         return filter
     uniq: list[EventType] = []

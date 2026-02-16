@@ -25,7 +25,7 @@ export const MetadataPanel: FC<MetadataPanelProps> = ({ resultData }) => {
             <CardBody>
               <LabeledValue label="Metadata">
                 <RecordTree
-                  id={`result-metadata-${resultData.uuid}`}
+                  id={`result-metadata-${resultData._rowIdentifier}`}
                   record={resultData.metadata || {}}
                 />
               </LabeledValue>

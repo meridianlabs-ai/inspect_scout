@@ -82,7 +82,11 @@ export async function expandResultsetRows(
       for (const result of results) {
         const expandedRow = { ...row };
 
+        // Record the source identifier
+        expandedRow._rowIdentifier = result.uuid ?? null;
+
         // Override values
+
         expandedRow.label = result.label ?? null;
         expandedRow.answer = result.answer ?? null;
         expandedRow.explanation = result.explanation ?? null;
@@ -142,7 +146,13 @@ export async function expandResultsetRows(
     return otherRows;
   } else {
     // Create an array merging all the rows and convert back to a column table
-    const otherRowsArray = otherRows.objects() as Record<string, unknown>[];
+    const otherRowsArray = (
+      otherRows.objects() as Record<string, unknown>[]
+    ).map((row) => {
+      row._rowIdentifier = row.uuid ?? null;
+      return row;
+    });
+
     const allRowsArray = [
       ...otherRowsArray,
       ...explodedResultsetRows,

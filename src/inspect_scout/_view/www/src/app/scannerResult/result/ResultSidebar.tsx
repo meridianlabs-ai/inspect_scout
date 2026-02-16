@@ -7,19 +7,21 @@ import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { Explanation } from "../../components/Explanation";
 import { ValidationResult } from "../../components/ValidationResult";
 import { Value } from "../../components/Value";
-import { useSelectedScanResultInputData } from "../../hooks/useSelectedScanResultInputData";
-import { ScanResultData } from "../../types";
+import { ScanResultData, ScanResultInputData } from "../../types";
 import { useMarkdownRefs } from "../../utils/refs";
 
 import styles from "./ResultSidebar.module.css";
 
 interface ResultSidebarProps {
+  inputData?: ScanResultInputData;
   resultData?: ScanResultData;
 }
 
-export const ResultSidebar: FC<ResultSidebarProps> = ({ resultData }) => {
-  const dfInput = useSelectedScanResultInputData();
-  const refs: MarkdownReference[] = useMarkdownRefs(resultData, dfInput.data);
+export const ResultSidebar: FC<ResultSidebarProps> = ({
+  inputData,
+  resultData,
+}) => {
+  const refs: MarkdownReference[] = useMarkdownRefs(resultData, inputData);
 
   if (!resultData) {
     return <NoContentsPanel text="No result to display." />;

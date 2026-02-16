@@ -105,7 +105,7 @@ export const ScannerResultPanel: FC = () => {
     useSelectedScanResultData(scanResultUuid);
 
   const { loading: inputLoading, data: inputData } =
-    useSelectedScanResultInputData();
+    useSelectedScanResultInputData(selectedResult?.uuid);
 
   // Set document title with task name and scan location
   const taskName =

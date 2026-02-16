@@ -223,6 +223,7 @@ export const parseScanResultSummaries = async (
       ]);
 
       const baseSummary = {
+        _rowIdentifier: r._rowIdentifier as string | undefined,
         uuid: r.uuid as string | undefined,
         label: r.label as string | undefined,
         explanation: r.explanation as string,

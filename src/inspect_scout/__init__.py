@@ -22,6 +22,7 @@ from ._scanlist import scan_list
 from ._scanner.extract import (
     MessageFormatOptions,
     MessagesPreprocessor,
+    message_numbering,
     messages_as_str,
     tool_callers,
 )
@@ -143,6 +144,7 @@ __all__ = [
     "EventType",
     "MessageType",
     "as_scorer",
+    "message_numbering",
     "messages_as_str",
     "MessageFormatOptions",
     "MessagesPreprocessor",

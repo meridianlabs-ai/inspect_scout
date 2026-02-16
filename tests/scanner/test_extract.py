@@ -22,6 +22,7 @@ from inspect_scout._scanner.extract import (
     MessagesPreprocessor,
     _extract_references,
     message_as_str,
+    message_numbering,
     messages_as_str,
 )
 from inspect_scout._scanner.result import Reference
@@ -977,3 +978,223 @@ async def test_messages_as_str_json_empty_list() -> None:
     parsed = json.loads(result)
 
     assert parsed == []
+
+
+# --- message_numbering() tests ---
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_single_call() -> None:
+    """Single call to message_numbering's messages_as_str produces M1..Mn."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi there", id="msg2"),
+        ChatMessageUser(content="How are you?", id="msg3"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering()
+    result = await messages_as_str_fn(messages)
+
+    assert "[M1] USER:\nHello\n" in result
+    assert "[M2] ASSISTANT:\nHi there\n" in result
+    assert "[M3] USER:\nHow are you?\n" in result
+
+    refs = extract_references("See [M1] and [M3]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[0].cite == "[M1]"
+    assert refs[1].id == "msg3"
+    assert refs[1].cite == "[M3]"
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_continues_across_calls() -> None:
+    """Multiple calls to messages_as_str continue numbering from prior calls."""
+    batch1: list[ChatMessage] = [
+        ChatMessageUser(content="First", id="msg1"),
+        ChatMessageAssistant(content="Second", id="msg2"),
+    ]
+    batch2: list[ChatMessage] = [
+        ChatMessageUser(content="Third", id="msg3"),
+        ChatMessageAssistant(content="Fourth", id="msg4"),
+        ChatMessageUser(content="Fifth", id="msg5"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering()
+
+    result1 = await messages_as_str_fn(batch1)
+    assert "[M1]" in result1
+    assert "[M2]" in result1
+
+    result2 = await messages_as_str_fn(batch2)
+    assert "[M3]" in result2
+    assert "[M4]" in result2
+    assert "[M5]" in result2
+    assert "[M1]" not in result2
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_extract_references_across_calls() -> None:
+    """extract_references resolves citations from any prior messages_as_str call."""
+    batch1: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg-a"),
+        ChatMessageAssistant(content="Hi", id="msg-b"),
+    ]
+    batch2: list[ChatMessage] = [
+        ChatMessageUser(content="More", id="msg-c"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering()
+
+    await messages_as_str_fn(batch1)
+    await messages_as_str_fn(batch2)
+
+    # References from batch1
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg-a"
+    assert refs[1].id == "msg-b"
+
+    # Reference from batch2
+    refs = extract_references("[M3]")
+    assert len(refs) == 1
+    assert refs[0].id == "msg-c"
+
+    # Mixed references across batches
+    refs = extract_references("See [M1] and [M3]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg-a"
+    assert refs[1].id == "msg-c"
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_empty_list_no_advance() -> None:
+    """Empty message list does not advance the counter."""
+    messages_as_str_fn, extract_references = message_numbering()
+
+    result_empty = await messages_as_str_fn([])
+    assert result_empty == ""
+
+    batch: list[ChatMessage] = [
+        ChatMessageUser(content="First", id="msg1"),
+    ]
+    result = await messages_as_str_fn(batch)
+    assert "[M1]" in result
+
+    refs = extract_references("[M1]")
+    assert len(refs) == 1
+    assert refs[0].id == "msg1"
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_default_excludes_system() -> None:
+    """Default (no preprocessor) excludes system messages."""
+    messages: list[ChatMessage] = [
+        ChatMessageSystem(content="System prompt", id="sys1"),
+        ChatMessageUser(content="Hello", id="msg1"),
+    ]
+
+    messages_as_str_fn, _ = message_numbering()
+    result = await messages_as_str_fn(messages)
+
+    assert "System" not in result
+    assert "[M1] USER:\nHello\n" in result
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_with_preprocessor_exclude_reasoning() -> None:
+    """Preprocessor exclude_reasoning option filters reasoning content."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(
+            content=[
+                ContentReasoning(reasoning="Let me think..."),
+                ContentText(text="The answer is 42"),
+            ],
+            id="msg2",
+        ),
+    ]
+
+    messages_as_str_fn, _ = message_numbering(
+        preprocessor=MessagesPreprocessor(exclude_reasoning=True)
+    )
+    result = await messages_as_str_fn(messages)
+
+    assert "[M1]" in result
+    assert "[M2]" in result
+    assert "think" not in result
+    assert "42" in result
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_exclude_tool_usage() -> None:
+    """Preprocessor exclude_tool_usage excludes tool messages from numbering."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageTool(content="Tool result", function="test", id="tool1"),
+        ChatMessageAssistant(content="Done", id="msg2"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering(
+        preprocessor=MessagesPreprocessor(exclude_tool_usage=True)
+    )
+    result = await messages_as_str_fn(messages)
+
+    assert "[M1] USER:\nHello\n" in result
+    assert "[M2] ASSISTANT:\nDone\n" in result
+    assert "Tool" not in result
+
+    refs = extract_references("[M1] [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_with_transform() -> None:
+    """Preprocessor with custom transform filters messages."""
+
+    async def keep_only_user(messages: list[ChatMessage]) -> list[ChatMessage]:
+        return [m for m in messages if m.role == "user"]
+
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="User 1", id="msg1"),
+        ChatMessageAssistant(content="Assistant 1", id="msg2"),
+        ChatMessageUser(content="User 2", id="msg3"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering(
+        preprocessor=MessagesPreprocessor(transform=keep_only_user)
+    )
+    result = await messages_as_str_fn(messages)
+
+    assert "[M1] USER:\nUser 1\n" in result
+    assert "[M2] USER:\nUser 2\n" in result
+    assert "Assistant" not in result
+
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg3"
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_filtered_messages_continue_numbering() -> None:
+    """Filtered messages don't consume numbers; numbering continues across calls."""
+    batch1: list[ChatMessage] = [
+        ChatMessageSystem(content="System", id="sys1"),
+        ChatMessageUser(content="Hello", id="msg1"),
+    ]
+    batch2: list[ChatMessage] = [
+        ChatMessageAssistant(content="Reply", id="msg2"),
+    ]
+
+    messages_as_str_fn, extract_references = message_numbering()
+    await messages_as_str_fn(batch1)
+    await messages_as_str_fn(batch2)
+
+    # System excluded, so batch1 has M1 only, batch2 has M2
+    refs = extract_references("[M1] [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"

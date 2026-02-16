@@ -2,7 +2,7 @@ import json
 import re
 from dataclasses import dataclass
 from functools import reduce
-from typing import Awaitable, Callable, Generic, Literal, TypeVar, overload
+from typing import Awaitable, Callable, Generic, Literal, TypeAlias, TypeVar, overload
 
 from inspect_ai.model import (
     ChatMessage,
@@ -134,6 +134,58 @@ async def messages_as_str(
         if include_ids
         else result
     )
+
+
+MessagesAsStr: TypeAlias = Callable[[list[ChatMessage]], Awaitable[str]]
+ExtractReferences: TypeAlias = Callable[[str], list[Reference]]
+
+
+def message_numbering(
+    preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
+) -> tuple[MessagesAsStr, ExtractReferences]:
+    """Create a messages_as_str / extract_references pair with shared numbering.
+
+    Returns two functions that share a closure-captured counter and id_map.
+    Each call to the returned messages_as_str auto-increments message IDs
+    globally, so multiple calls produce M1..M5, then M6..M10, etc.
+
+    The returned extract_references resolves citations from ANY prior
+    messages_as_str call within this numbering scope.
+
+    Args:
+        preprocessor: Message preprocessing options applied to every call
+            (e.g., exclude_system, exclude_reasoning). Defaults to excluding
+            system messages when no preprocessor is provided.
+
+    Returns:
+        Tuple of:
+        - messages_as_str: takes list[ChatMessage], returns formatted string
+          with globally unique [M1], [M2], etc. prefixes.
+        - extract_references: takes text, returns list of Reference objects
+          for any [M1], [M2], etc. references found across all prior calls.
+    """
+    counter = [0]
+    id_map: dict[str, str] = {}
+
+    async def _messages_as_str(messages: list[ChatMessage]) -> str:
+        if preprocessor is not None and preprocessor.transform is not None:
+            messages = await preprocessor.transform(messages)
+
+        items: list[str] = []
+        for message in messages:
+            content = message_as_str(message, preprocessor)
+            if content is not None:
+                counter[0] += 1
+                ordinal = f"M{counter[0]}"
+                id_map[ordinal] = _message_id(message)
+                items.append(f"[{ordinal}] {content}")
+
+        return "\n".join(items)
+
+    def _extract_refs(text: str) -> list[Reference]:
+        return _extract_references(text, id_map)
+
+    return _messages_as_str, _extract_refs
 
 
 def message_as_str(

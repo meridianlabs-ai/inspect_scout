@@ -35,15 +35,12 @@ When scanning a timeline with spans like `Explore → Plan → Build`:
 A factory function `message_numbering()` returns a pair of functions — a `messages_as_str` that auto-numbers with globally unique IDs, and an `extract_references` that resolves citations across all calls. The numbering state is hidden in the closure:
 
 ```python
-# Type of the returned messages_as_str function
-MessagesAsStrFn = Callable[[list[ChatMessage]], Awaitable[str]]
+MessagesAsStr: TypeAlias = Callable[[list[ChatMessage]], Awaitable[str]]
+ExtractReferences: TypeAlias = Callable[[str], list[Reference]]
 
 def message_numbering(
     preprocessor: MessagesPreprocessor | None = None,
-) -> tuple[
-    MessagesAsStrFn,
-    Callable[[str], list[Reference]]
-]:
+) -> tuple[MessagesAsStr, ExtractReferences]:
     """Create a messages_as_str / extract_references pair with shared numbering.
 
     Args:
@@ -117,7 +114,7 @@ The message extraction pipeline is composed of four layers, each independently u
 |-----------|--------|
 | `split_at_compaction()`, `chunked_messages()`, `transcript_messages()`, `RenderedMessages` | `_transcript/messages.py` (new) |
 | `timeline_messages()`, `TimelineMessages` | `_transcript/timeline.py` (existing) |
-| `message_numbering()`, `MessagesAsStrFn` | `_scanner/extract.py` (existing) |
+| `message_numbering()`, `MessagesAsStr` | `_scanner/extract.py` (existing) |
 | `parse_answer()`, `generate_for_answer()`, `generate_answer()` | `_llm_scanner/generate.py` (new) |
 
 ### Event Extraction from Spans
@@ -220,7 +217,7 @@ An async generator that renders and chunks messages to fit a context window. Acc
 async def chunked_messages(
     source: list[ChatMessage] | list[Event],
     *,
-    messages_as_str: MessagesAsStrFn,
+    messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
 ) -> AsyncIterator[RenderedMessages]:
@@ -348,7 +345,7 @@ A high-level async generator that walks a timeline tree, extracts events per spa
 async def timeline_messages(
     timeline: Timeline | TimelineSpan,
     *,
-    messages_as_str: MessagesAsStrFn,
+    messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
     include: Callable[[TimelineSpan], bool] | str | None = None,
@@ -437,7 +434,7 @@ A convenience generator that encapsulates the "do the right thing" logic for sca
 async def transcript_messages(
     transcript: Transcript,
     *,
-    messages_as_str: MessagesAsStrFn,
+    messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
 ) -> AsyncIterator[RenderedMessages]:
@@ -474,7 +471,7 @@ async def transcript_messages(
 async def transcript_messages(
     transcript: Transcript,
     *,
-    messages_as_str: MessagesAsStrFn,
+    messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
 ) -> AsyncIterator[RenderedMessages]:
@@ -1043,26 +1040,31 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 4. **Use synthetic scenarios.** Build minimal inline test helpers (e.g., `make_model_event()`, `make_compaction_event()`) using direct `inspect_ai` constructors. Reuse the existing `_parse_input_messages()` pattern from `tests/transcript/nodes/test_timeline.py`. Use the shared JSON fixtures in `tests/transcript/nodes/fixtures/events/` where they cover relevant scenarios (e.g., `compaction_boundary.json`).
 5. **Update this document.** After completing a phase but before committing, replace the phase's overview section below with a summary of what was actually built and tested — files created/modified, key design decisions made during implementation, and test coverage.
 
-### Phase 1: `message_numbering()`
+### Phase 1: `message_numbering()` ✓
 
 **Implements:** Section 1 (Universal Message Numbering)
 
-**Files:**
-- Modify: `src/inspect_scout/_scanner/extract.py`
-- Modify: `tests/scanner/test_extract.py`
+**Files modified:**
+- `src/inspect_scout/_scanner/extract.py` — added `message_numbering()` factory function
+- `src/inspect_scout/__init__.py` — added `message_numbering` to public exports
+- `tests/scanner/test_extract.py` — added 9 test cases
 
-**What to build:**
-- `message_numbering(preprocessor) -> (MessagesAsStrFn, extract_references)` factory function
-- `MessagesAsStrFn` type alias: `Callable[[list[ChatMessage]], Awaitable[str]]`
-- The returned `messages_as_str` wraps existing formatting logic with a closure-captured counter and `id_map`
-- The returned `extract_references` resolves citations across all prior `messages_as_str` calls
+**What was built:**
+- `message_numbering(preprocessor)` factory that returns a `(messages_as_str, extract_references)` pair with shared closure state (counter + id_map)
+- The returned `messages_as_str` takes `list[ChatMessage]`, applies preprocessing, and renders with globally unique `[M1]`, `[M2]`, etc. prefixes using a monotonically incrementing counter
+- The returned `extract_references` resolves `[M{n}]` citations from any prior `messages_as_str` call
+- `MessagesAsStr` and `ExtractReferences` type aliases for the returned callables
+- Existing `messages_as_str()` function unchanged (backward compatible)
 
-**What to test:**
-- Single call produces `M1..Mn` (same as today)
-- Multiple calls continue numbering (`M1..M5`, then `M6..M10`)
-- `extract_references` resolves citations from any prior call
-- Preprocessor options (`exclude_system`, `exclude_reasoning`) work correctly
+**Test coverage:**
+- Single call produces M1..Mn
+- Multiple calls continue numbering (M1..M2, then M3..M5)
+- `extract_references` resolves citations across all prior calls
 - Empty message lists don't advance the counter
+- Default excludes system messages
+- Preprocessor options: `exclude_reasoning`, `exclude_tool_usage`
+- Custom `transform` function
+- Filtered messages don't consume numbers across calls
 
 **Dependencies:** None — standalone.
 

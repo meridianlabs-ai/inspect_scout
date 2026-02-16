@@ -71,7 +71,8 @@ function makeModelEventNode(
   content: string,
   startSec: number,
   endSec: number,
-  tokens: number
+  tokens: number,
+  uuid?: string
 ): TimelineEvent {
   const event: ModelEvent = {
     event: "model",
@@ -125,7 +126,7 @@ function makeModelEventNode(
     span_id: null,
     traceback: null,
     traceback_ansi: null,
-    uuid: null,
+    uuid: uuid ?? null,
   };
   return {
     type: "event",
@@ -314,6 +315,7 @@ function makeSpan(
   options?: {
     branches?: TimelineBranch[];
     utility?: boolean;
+    taskDescription?: string;
   }
 ): TimelineSpan {
   return {
@@ -323,6 +325,7 @@ function makeSpan(
     spanType,
     content,
     branches: options?.branches ?? [],
+    taskDescription: options?.taskDescription,
     utility: options?.utility ?? false,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
@@ -362,107 +365,148 @@ function makeTimeline(
 
 // S1: Sequential agents
 function sequentialAgents(): TimelineScenario {
-  const explore = makeSpan("explore", "Explore", "agent", 2, 14, 8100, [
-    makeModelEventNode("Let me examine the project structure.", 2, 5, 2400),
-    makeToolEventNode(
-      "bash",
-      { cmd: "find . -type f" },
-      "src/\nlib/\ntests/",
-      5,
-      7,
-      800
-    ),
-    makeModelEventNode(
-      "I see a standard project layout. Let me look at the main module.",
-      7,
-      10,
-      2600
-    ),
-    makeToolEventNode(
-      "read_file",
-      { path: "src/main.py" },
-      "def main(): ...",
-      10,
-      12,
-      1200
-    ),
-    makeModelEventNode("The main entry point is clear.", 12, 14, 1100),
-  ]);
-  const plan = makeSpan("plan", "Plan", "agent", 15, 24, 5300, [
-    makeModelEventNode(
-      "Based on my exploration, I'll plan the implementation.",
-      15,
-      18,
-      1800
-    ),
-    makeToolEventNode(
-      "bash",
-      { cmd: "wc -l src/*.py" },
-      "142 total",
-      18,
-      19,
-      400
-    ),
-    makeModelEventNode(
-      "The plan is: 1) Refactor core module, 2) Add tests, 3) Update docs.",
-      19,
-      24,
-      3100
-    ),
-  ]);
-  const build = makeSpan("build", "Build", "agent", 25, 52, 31800, [
-    makeModelEventNode(
-      "Starting implementation of the refactored module.",
-      25,
-      29,
-      4200
-    ),
-    makeToolEventNode(
-      "write_file",
-      { path: "src/core.py" },
-      "File written successfully",
-      29,
-      32,
-      2800
-    ),
-    makeModelEventNode(
-      "Core module done. Now adding test coverage.",
-      32,
-      36,
-      3600
-    ),
-    makeToolEventNode(
-      "write_file",
-      { path: "tests/test_core.py" },
-      "File written successfully",
-      36,
-      40,
-      3200
-    ),
-    makeToolEventNode(
-      "bash",
-      { cmd: "pytest tests/" },
-      "5 passed",
-      40,
-      44,
-      1000
-    ),
-    makeModelEventNode("All tests pass. Updating documentation.", 44, 48, 3400),
-    makeToolEventNode(
-      "write_file",
-      { path: "docs/api.md" },
-      "File written successfully",
-      48,
-      50,
-      2600
-    ),
-    makeModelEventNode(
-      "Implementation complete with full test coverage.",
-      50,
-      52,
-      11000
-    ),
-  ]);
+  const explore = makeSpan(
+    "explore",
+    "Explore",
+    "agent",
+    2,
+    14,
+    8100,
+    [
+      makeModelEventNode("Let me examine the project structure.", 2, 5, 2400),
+      makeToolEventNode(
+        "bash",
+        { cmd: "find . -type f" },
+        "src/\nlib/\ntests/",
+        5,
+        7,
+        800
+      ),
+      makeModelEventNode(
+        "I see a standard project layout. Let me look at the main module.",
+        7,
+        10,
+        2600
+      ),
+      makeToolEventNode(
+        "read_file",
+        { path: "src/main.py" },
+        "def main(): ...",
+        10,
+        12,
+        1200
+      ),
+      makeModelEventNode("The main entry point is clear.", 12, 14, 1100),
+    ],
+    {
+      taskDescription:
+        "Explore the project structure and understand the codebase",
+    }
+  );
+  const plan = makeSpan(
+    "plan",
+    "Plan",
+    "agent",
+    15,
+    24,
+    5300,
+    [
+      makeModelEventNode(
+        "Based on my exploration, I'll plan the implementation.",
+        15,
+        18,
+        1800
+      ),
+      makeToolEventNode(
+        "bash",
+        { cmd: "wc -l src/*.py" },
+        "142 total",
+        18,
+        19,
+        400
+      ),
+      makeModelEventNode(
+        "The plan is: 1) Refactor core module, 2) Add tests, 3) Update docs.",
+        19,
+        24,
+        3100
+      ),
+    ],
+    {
+      taskDescription:
+        "Create an implementation plan based on exploration findings",
+    }
+  );
+  const build = makeSpan(
+    "build",
+    "Build",
+    "agent",
+    25,
+    52,
+    31800,
+    [
+      makeModelEventNode(
+        "Starting implementation of the refactored module.",
+        25,
+        29,
+        4200
+      ),
+      makeToolEventNode(
+        "write_file",
+        { path: "src/core.py" },
+        "File written successfully",
+        29,
+        32,
+        2800
+      ),
+      makeModelEventNode(
+        "Core module done. Now adding test coverage.",
+        32,
+        36,
+        3600
+      ),
+      makeToolEventNode(
+        "write_file",
+        { path: "tests/test_core.py" },
+        "File written successfully",
+        36,
+        40,
+        3200
+      ),
+      makeToolEventNode(
+        "bash",
+        { cmd: "pytest tests/" },
+        "5 passed",
+        40,
+        44,
+        1000
+      ),
+      makeModelEventNode(
+        "All tests pass. Updating documentation.",
+        44,
+        48,
+        3400
+      ),
+      makeToolEventNode(
+        "write_file",
+        { path: "docs/api.md" },
+        "File written successfully",
+        48,
+        50,
+        2600
+      ),
+      makeModelEventNode(
+        "Implementation complete with full test coverage.",
+        50,
+        52,
+        11000
+      ),
+    ],
+    {
+      taskDescription:
+        "Implement the refactored module with tests and documentation",
+    }
+  );
   const scoring = makeSpan("scoring", "Scoring", "scorer", 53, 58, 3200);
 
   const transcript = makeSpan(
@@ -608,195 +652,244 @@ function iterativeAgents(): TimelineScenario {
 
 // S3: Deep nesting (3 levels)
 function deepNesting(): TimelineScenario {
-  const generate = makeSpan("generate", "Generate", "agent", 26, 38, 5800, [
-    makeModelEventNode("Generating test cases for the module.", 26, 30, 2400),
+  const generate = makeSpan("generate", "Generate", "agent", 46, 58, 5800, [
+    makeModelEventNode("Generating test cases for the module.", 46, 50, 2400),
     makeToolEventNode(
       "write_file",
       { path: "tests/test_gen.py" },
       "File written",
-      30,
-      34,
+      50,
+      54,
       1800
     ),
-    makeModelEventNode("Test cases generated successfully.", 34, 38, 1600),
+    makeModelEventNode("Test cases generated successfully.", 54, 58, 1600),
   ]);
-  const run = makeSpan("run", "Run", "agent", 39, 44, 400, [
+  const run = makeSpan("run", "Run", "agent", 59, 64, 400, [
     makeToolEventNode(
       "bash",
       { cmd: "pytest tests/test_gen.py" },
       "Running...",
-      39,
-      41,
+      59,
+      61,
       200
     ),
     makeToolErrorEventNode(
       "bash",
       "Process timed out after 30s",
       "timeout",
-      41,
-      44,
+      61,
+      64,
       200
     ),
   ]);
-  const evaluate = makeSpan("evaluate", "Evaluate", "agent", 45, 55, 4200, [
+  const evaluate = makeSpan("evaluate", "Evaluate", "agent", 65, 75, 4200, [
     makeModelEventNode(
       "Evaluating test results despite timeout.",
-      45,
-      49,
+      65,
+      69,
       1800
     ),
     makeToolEventNode(
       "read_file",
       { path: "tests/test_gen.py" },
       "def test_basic(): ...",
-      49,
-      51,
+      69,
+      71,
       600
     ),
     makeModelEventNode(
       "Test needs adjustment for timeout. Evaluation complete.",
-      51,
-      55,
+      71,
+      75,
       1800
     ),
   ]);
 
-  const code = makeSpan("code", "Code", "agent", 2, 24, 15200, [
-    makeModelEventNode("Writing the core implementation.", 2, 6, 3200),
+  const code = makeSpan("code", "Code", "agent", 22, 44, 15200, [
+    makeModelEventNode("Writing the core implementation.", 22, 26, 3200),
     makeToolEventNode(
       "write_file",
       { path: "src/module.py" },
       "File written",
-      6,
-      10,
+      26,
+      30,
       2800
     ),
-    makeCompactionEventNode(12000, 6500, 10, 11),
-    makeModelEventNode("Continuing after context compaction.", 11, 16, 4400),
+    makeCompactionEventNode(12000, 6500, 30, 31),
+    makeModelEventNode("Continuing after context compaction.", 31, 36, 4400),
     makeToolEventNode(
       "write_file",
       { path: "src/helpers.py" },
       "File written",
-      16,
-      20,
+      36,
+      40,
       2400
     ),
-    makeModelEventNode("Code implementation phase complete.", 20, 24, 2400),
+    makeModelEventNode("Code implementation phase complete.", 40, 44, 2400),
   ]);
-  const test = makeSpan("test", "Test", "agent", 25, 55, 10400, [
-    makeModelEventNode("Setting up test infrastructure.", 25, 26, 600),
+  const test = makeSpan("test", "Test", "agent", 45, 75, 10400, [
+    makeModelEventNode("Setting up test infrastructure.", 45, 46, 600),
     generate,
     run,
     evaluate,
   ]);
-  const fix = makeSpan("fix", "Fix", "agent", 56, 68, 6200, [
-    makeModelEventNode("Fixing the timeout issue in tests.", 56, 60, 2200),
+  const fix = makeSpan("fix", "Fix", "agent", 76, 88, 6200, [
+    makeModelEventNode("Fixing the timeout issue in tests.", 76, 80, 2200),
     makeToolEventNode(
       "write_file",
       { path: "tests/test_gen.py" },
       "File updated",
-      60,
-      63,
+      80,
+      83,
       1800
     ),
     makeToolEventNode(
       "bash",
       { cmd: "pytest tests/" },
       "3 passed",
-      63,
-      66,
+      83,
+      86,
       800
     ),
-    makeModelEventNode("All tests pass after fixes.", 66, 68, 1400),
+    makeModelEventNode("All tests pass after fixes.", 86, 88, 1400),
   ]);
 
-  const build = makeSpan("build", "Build", "agent", 1, 68, 31800, [
-    makeModelEventNode("Starting the build process.", 1, 2, 800),
+  const explore = makeSpan("explore", "Explore", "agent", 2, 18, 6400, [
+    makeModelEventNode("Examining the project structure.", 2, 6, 2200),
+    makeToolEventNode(
+      "bash",
+      { cmd: "find . -type f" },
+      "src/\nlib/\ntests/",
+      6,
+      9,
+      800
+    ),
+    makeModelEventNode("Project structure understood.", 9, 14, 2000),
+    makeToolEventNode(
+      "read_file",
+      { path: "src/main.py" },
+      "def main(): ...",
+      14,
+      18,
+      1400
+    ),
+  ]);
+
+  const build = makeSpan("build", "Build", "agent", 20, 88, 31800, [
+    makeModelEventNode("Starting the build process.", 20, 22, 800),
     code,
     test,
     fix,
   ]);
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 69, 72, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorer", 90, 95, 3200);
 
   const transcript = makeSpan(
     "transcript",
     "Transcript",
     "agent",
     0,
-    72,
-    35000,
-    [build]
+    95,
+    41400,
+    [explore, build]
   );
 
   return {
     name: "Deep nesting (3 levels)",
-    description: "S3 — Build → Code/Test/Fix, Test → Generate/Run/Evaluate",
+    description:
+      "S3 — Explore → Build → Code/Test/Fix, Test → Generate/Run/Evaluate",
     timeline: makeTimeline(transcript, { scoring }),
   };
 }
 
 // S4: Parallel agents
 function parallelAgents(): TimelineScenario {
-  const explore1 = makeSpan("explore-1", "Explore", "agent", 2, 14, 8100, [
-    makeModelEventNode("Exploring API documentation.", 2, 5, 2800),
-    makeToolEventNode(
-      "bash",
-      { cmd: "curl api/docs" },
-      '{"endpoints": [...]}',
-      5,
-      8,
-      1400
-    ),
-    makeModelEventNode("API structure documented.", 8, 11, 2200),
-    makeToolEventNode(
-      "read_file",
-      { path: "api/schema.json" },
-      '{"type": "object"}',
-      11,
-      14,
-      1700
-    ),
-  ]);
-  const explore2 = makeSpan("explore-2", "Explore", "agent", 3, 16, 9400, [
-    makeModelEventNode("Exploring database schema.", 3, 7, 3200),
-    makeToolEventNode(
-      "bash",
-      { cmd: "sqlite3 db.sqlite .schema" },
-      "CREATE TABLE users ...",
-      7,
-      10,
-      1600
-    ),
-    makeModelEventNode("Database schema analyzed.", 10, 13, 2800),
-    makeToolEventNode(
-      "bash",
-      { cmd: "sqlite3 db.sqlite 'SELECT count(*) FROM users'" },
-      "1247",
-      13,
-      16,
-      1800
-    ),
-  ]);
-  const explore3 = makeSpan("explore-3", "Explore", "agent", 2, 12, 6800, [
-    makeModelEventNode("Exploring frontend components.", 2, 5, 2400),
-    makeToolEventNode(
-      "bash",
-      { cmd: "ls src/components/" },
-      "Header.tsx\nFooter.tsx",
-      5,
-      7,
-      800
-    ),
-    makeModelEventNode("Frontend component inventory complete.", 7, 10, 2200),
-    makeToolEventNode(
-      "read_file",
-      { path: "src/App.tsx" },
-      "function App() { ... }",
-      10,
-      12,
-      1400
-    ),
-  ]);
+  const explore1 = makeSpan(
+    "explore-1",
+    "Explore",
+    "agent",
+    2,
+    14,
+    8100,
+    [
+      makeModelEventNode("Exploring API documentation.", 2, 5, 2800),
+      makeToolEventNode(
+        "bash",
+        { cmd: "curl api/docs" },
+        '{"endpoints": [...]}',
+        5,
+        8,
+        1400
+      ),
+      makeModelEventNode("API structure documented.", 8, 11, 2200),
+      makeToolEventNode(
+        "read_file",
+        { path: "api/schema.json" },
+        '{"type": "object"}',
+        11,
+        14,
+        1700
+      ),
+    ],
+    { taskDescription: "Search for API documentation" }
+  );
+  const explore2 = makeSpan(
+    "explore-2",
+    "Explore",
+    "agent",
+    3,
+    16,
+    9400,
+    [
+      makeModelEventNode("Exploring database schema.", 3, 7, 3200),
+      makeToolEventNode(
+        "bash",
+        { cmd: "sqlite3 db.sqlite .schema" },
+        "CREATE TABLE users ...",
+        7,
+        10,
+        1600
+      ),
+      makeModelEventNode("Database schema analyzed.", 10, 13, 2800),
+      makeToolEventNode(
+        "bash",
+        { cmd: "sqlite3 db.sqlite 'SELECT count(*) FROM users'" },
+        "1247",
+        13,
+        16,
+        1800
+      ),
+    ],
+    { taskDescription: "Analyze existing database schema and data" }
+  );
+  const explore3 = makeSpan(
+    "explore-3",
+    "Explore",
+    "agent",
+    2,
+    12,
+    6800,
+    [
+      makeModelEventNode("Exploring frontend components.", 2, 5, 2400),
+      makeToolEventNode(
+        "bash",
+        { cmd: "ls src/components/" },
+        "Header.tsx\nFooter.tsx",
+        5,
+        7,
+        800
+      ),
+      makeModelEventNode("Frontend component inventory complete.", 7, 10, 2200),
+      makeToolEventNode(
+        "read_file",
+        { path: "src/App.tsx" },
+        "function App() { ... }",
+        10,
+        12,
+        1400
+      ),
+    ],
+    { taskDescription: "Inventory frontend components and architecture" }
+  );
   const plan = makeSpan("plan", "Plan", "agent", 17, 25, 5300, [
     makeModelEventNode(
       "Synthesizing findings from all exploration tracks.",
@@ -1448,7 +1541,13 @@ function branchesSingleFork(): TimelineScenario {
     52,
     31800,
     [
-      makeModelEventNode("Starting build with branching strategy.", 1, 2, 800),
+      makeModelEventNode(
+        "Starting build with branching strategy.",
+        1,
+        2,
+        800,
+        "model-call-5"
+      ),
       code,
       test,
       makeModelEventNode("Build complete. Best branch selected.", 40, 52, 5400),
@@ -1619,9 +1718,17 @@ function branchesMultipleForks(): TimelineScenario {
         "Starting build with exploration branches.",
         1,
         2,
-        600
+        600,
+        "model-call-3"
       ),
       code,
+      makeModelEventNode(
+        "Evaluating approaches.",
+        28,
+        29,
+        400,
+        "model-call-10"
+      ),
       test,
       makeModelEventNode(
         "Build finalized after exploring alternatives.",

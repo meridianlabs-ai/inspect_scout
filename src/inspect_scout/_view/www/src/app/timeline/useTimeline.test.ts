@@ -27,6 +27,7 @@ const S2_ITERATIVE = 1;
 const S3_DEEP = 2;
 const S4_PARALLEL = 3;
 const S7_FLAT = 5;
+const S11A_BRANCHES = 8;
 
 function getTimeline(index: number): Timeline {
   const scenario = timelineScenarios[index];
@@ -148,11 +149,23 @@ describe("resolvePath", () => {
     expect((second as TimelineSpan).name).toBe("Explore");
   });
 
-  it("returns first match when no span index", () => {
+  it("creates synthetic container when no span index and multiple matches", () => {
     const timeline = getTimeline(S2_ITERATIVE);
-    const noIndex = resolvePath(timeline, "explore");
+    const container = resolvePath(timeline, "explore");
+    expect(container).not.toBeNull();
+    // Container wraps all same-named children with numbered names
+    const children = container!.content.filter(
+      (c): c is TimelineSpan => c.type === "span"
+    );
+    expect(children).toHaveLength(2);
+    expect(children[0]!.name).toBe("Explore 1");
+    expect(children[1]!.name).toBe("Explore 2");
+    // Container aggregates tokens
     const firstIndex = resolvePath(timeline, "explore-1");
-    expect(noIndex).toBe(firstIndex);
+    const secondIndex = resolvePath(timeline, "explore-2");
+    expect(container!.totalTokens).toBe(
+      firstIndex!.totalTokens + secondIndex!.totalTokens
+    );
   });
 
   it("returns null for invalid path", () => {
@@ -186,6 +199,29 @@ describe("resolvePath", () => {
   it("returns null for out-of-range span index", () => {
     const timeline = getTimeline(S2_ITERATIVE);
     const result = resolvePath(timeline, "explore-99");
+    expect(result).toBeNull();
+  });
+
+  it("resolves @branch-N segments (S11a)", () => {
+    const timeline = getTimeline(S11A_BRANCHES);
+    const result = resolvePath(timeline, "build/@branch-1");
+    expect(result).not.toBeNull();
+    // Branch 1 has two child spans, so it returns a wrapper
+    expect(result!.name).toContain("Refactor");
+    expect(result!.content.length).toBeGreaterThan(0);
+  });
+
+  it("resolves single-span branch directly (S11a)", () => {
+    const timeline = getTimeline(S11A_BRANCHES);
+    const result = resolvePath(timeline, "build/@branch-2");
+    expect(result).not.toBeNull();
+    // Branch 2 has one child span (Rewrite), returned directly
+    expect(result!.name).toContain("Rewrite");
+  });
+
+  it("returns null for invalid branch index", () => {
+    const timeline = getTimeline(S11A_BRANCHES);
+    const result = resolvePath(timeline, "build/@branch-99");
     expect(result).toBeNull();
   });
 });
@@ -238,6 +274,23 @@ describe("buildBreadcrumbs", () => {
     expect(crumbs).toHaveLength(2);
     expect(crumbs[1]!.label).toBe("nonexistent");
   });
+
+  it("resolves branch segments with correct labels (S11a)", () => {
+    const timeline = getTimeline(S11A_BRANCHES);
+    const crumbs = buildBreadcrumbs("build/@branch-1", timeline);
+    expect(crumbs).toHaveLength(3);
+    expect(crumbs[0]!.label).toBe("Transcript");
+    expect(crumbs[1]!.label).toBe("Build");
+    expect(crumbs[2]!.label).toContain("Refactor");
+    expect(crumbs[2]!.path).toBe("build/@branch-1");
+  });
+
+  it("resolves single-span branch segments (S11a)", () => {
+    const timeline = getTimeline(S11A_BRANCHES);
+    const crumbs = buildBreadcrumbs("build/@branch-2", timeline);
+    expect(crumbs).toHaveLength(3);
+    expect(crumbs[2]!.label).toContain("Rewrite");
+  });
 });
 
 // =============================================================================
@@ -262,7 +315,7 @@ describe("useTimeline", () => {
     // (Transcript parent + Explore + Plan + Build + Scoring)
     expect(result.current.rows).toHaveLength(5);
     expect(result.current.breadcrumbs).toHaveLength(1);
-    expect(result.current.selected).toBeNull();
+    expect(result.current.selected).toBe("Transcript");
   });
 
   it("resolves drilled-down node via path param", () => {
@@ -376,7 +429,7 @@ describe("useTimeline", () => {
     });
 
     expect(result.current.node.name).toBe("Build");
-    expect(result.current.selected).toBeNull();
+    expect(result.current.selected).toBe("Build");
   });
 
   it("drillDown from nested path appends segment", () => {
@@ -468,7 +521,7 @@ describe("useTimeline", () => {
     expect(result.current.selected).toBe("explore");
   });
 
-  it("select(null) clears the selected param", () => {
+  it("select(null) clears the selected param and defaults to root", () => {
     const timeline = getTimeline(S1_SEQUENTIAL);
     const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(["/?selected=explore"]),
@@ -478,7 +531,8 @@ describe("useTimeline", () => {
       result.current.select(null);
     });
 
-    expect(result.current.selected).toBeNull();
+    // With no explicit selection, defaults to root row
+    expect(result.current.selected).toBe("Transcript");
   });
 
   it("iterative agents produce multiple SingleSpans on one row (S2)", () => {

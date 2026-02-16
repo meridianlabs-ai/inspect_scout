@@ -434,7 +434,7 @@ describe("collectMarkers", () => {
       expect(markers).toHaveLength(0);
     });
 
-    it("S11a: drops branch markers for synthetic forkedAt UUIDs", () => {
+    it("S11a: resolves branch markers from fork-point UUID", () => {
       const transcript = getScenarioRoot(S11A_BRANCHES);
       const buildSpan = transcript.content.find(
         (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
@@ -444,9 +444,11 @@ describe("collectMarkers", () => {
 
       const markers = collectMarkers(buildSpan!, "direct");
 
-      // forkedAt is "model-call-5" which doesn't match any event UUID (all null)
+      // Both branches share forkedAt "model-call-5" → 2 markers at the fork event
       const branchMarkers = markers.filter((m) => m.kind === "branch");
-      expect(branchMarkers).toHaveLength(0);
+      expect(branchMarkers).toHaveLength(2);
+      expect(branchMarkers[0]!.reference).toBe("model-call-5");
+      expect(branchMarkers[1]!.reference).toBe("model-call-5");
     });
   });
 

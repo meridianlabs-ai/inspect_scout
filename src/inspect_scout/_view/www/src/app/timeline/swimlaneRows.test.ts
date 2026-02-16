@@ -229,9 +229,10 @@ describe("computeSwimLaneRows", () => {
       const node = getScenarioRoot(S3_DEEP);
       const rows = computeSwimLaneRows(node);
 
-      // S3 top level: Transcript → Build + Scoring
+      // S3 top level: Transcript → Explore + Build + Scoring
       expect(rows.map((r) => r.name)).toEqual([
         "Transcript",
+        "Explore",
         "Build",
         "Scoring",
       ]);

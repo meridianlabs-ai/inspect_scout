@@ -11,10 +11,15 @@ import { useSearchParams } from "react-router-dom";
 
 import type {
   Timeline,
+  TimelineBranch,
   TimelineSpan,
 } from "../../components/transcript/timeline";
 
-import { type SwimLaneRow, computeSwimLaneRows } from "./swimlaneRows";
+import {
+  type SwimLaneRow,
+  compareByTime,
+  computeSwimLaneRows,
+} from "./swimlaneRows";
 
 // =============================================================================
 // Query Parameter Constants
@@ -39,14 +44,16 @@ export interface TimelineState {
   rows: SwimLaneRow[];
   /** Breadcrumb trail from root to the current path. */
   breadcrumbs: BreadcrumbSegment[];
-  /** Currently selected row name, or null. */
+  /** Currently selected span identifier, or null. Encoded as "name" or "name-N". */
   selected: string | null;
   /** Navigate into a child span by name and optional span index. */
   drillDown: (name: string, spanIndex?: number) => void;
   /** Navigate up one level. */
   goUp: () => void;
-  /** Set or clear the selected row. */
-  select: (name: string | null) => void;
+  /** Navigate directly to a specific path (for breadcrumb jumps). */
+  navigateTo: (path: string) => void;
+  /** Set or clear the selected span. Use spanIndex for multi-span rows. */
+  select: (name: string | null, spanIndex?: number) => void;
 }
 
 // =============================================================================
@@ -106,6 +113,11 @@ export function resolvePath(
   let current: TimelineSpan = timeline.root;
 
   for (const segment of segments) {
+    const branchSpan = resolveBranchSegment(current, segment);
+    if (branchSpan) {
+      current = branchSpan;
+      continue;
+    }
     const { name, spanIndex } = parsePathSegment(segment);
     const child = findChildSpan(current, name, spanIndex);
     if (!child) return null;
@@ -138,14 +150,21 @@ export function buildBreadcrumbs(
     const path = segments.slice(0, i + 1).join("/");
 
     if (current) {
-      const { name, spanIndex } = parsePathSegment(segment);
-      const child = findChildSpan(current, name, spanIndex);
-      if (child) {
-        crumbs.push({ label: child.name, path });
-        current = child;
+      // Try branch segment first (e.g. "@branch-1")
+      const branchSpan = resolveBranchSegment(current, segment);
+      if (branchSpan) {
+        crumbs.push({ label: branchSpan.name, path });
+        current = branchSpan;
       } else {
-        crumbs.push({ label: segment, path });
-        current = null;
+        const { name, spanIndex } = parsePathSegment(segment);
+        const child = findChildSpan(current, name, spanIndex);
+        if (child) {
+          crumbs.push({ label: child.name, path });
+          current = child;
+        } else {
+          crumbs.push({ label: segment, path });
+          current = null;
+        }
       }
     } else {
       crumbs.push({ label: segment, path });
@@ -162,7 +181,9 @@ export function buildBreadcrumbs(
 /**
  * Finds a child span by name (case-insensitive) and optional span index.
  *
- * When spanIndex is null, returns the first match.
+ * When spanIndex is null and there's exactly one match, returns it directly.
+ * When spanIndex is null and there are multiple matches (parallel group),
+ * returns a synthetic container span wrapping all matches as numbered children.
  * When spanIndex is N, returns the Nth same-named child (1-indexed).
  */
 function findChildSpan(
@@ -171,18 +192,145 @@ function findChildSpan(
   spanIndex: number | null
 ): TimelineSpan | null {
   const lowerName = name.toLowerCase();
-  let matchCount = 0;
+  const matches: TimelineSpan[] = [];
 
   for (const item of parent.content) {
     if (item.type === "span" && item.name.toLowerCase() === lowerName) {
-      matchCount++;
-      if (spanIndex === null || matchCount === spanIndex) {
-        return item;
-      }
+      matches.push(item);
     }
   }
 
-  return null;
+  if (matches.length === 0) return null;
+
+  // Specific index requested → return that occurrence
+  if (spanIndex !== null) {
+    return matches[spanIndex - 1] ?? null;
+  }
+
+  // Single match → return it directly
+  if (matches.length === 1) {
+    return matches[0]!;
+  }
+
+  // Multiple matches (parallel group) → create a synthetic container
+  // with numbered children (e.g., "Explore 1", "Explore 2", "Explore 3")
+  return createParallelContainer(matches);
+}
+
+/**
+ * Creates a synthetic TimelineSpan that wraps parallel agents as children.
+ * Each child is renamed with a 1-based index suffix (e.g., "Explore 1").
+ * The container's time range is the envelope of all agents, and tokens are summed.
+ */
+function createParallelContainer(agents: TimelineSpan[]): TimelineSpan {
+  const displayName = agents[0]!.name;
+  const startTime = agents.reduce(
+    (min, a) => (a.startTime.getTime() < min.getTime() ? a.startTime : min),
+    agents[0]!.startTime
+  );
+  const endTime = agents.reduce(
+    (max, a) => (a.endTime.getTime() > max.getTime() ? a.endTime : max),
+    agents[0]!.endTime
+  );
+  const totalTokens = agents.reduce((sum, a) => sum + a.totalTokens, 0);
+
+  // Sort by start time (end time as tiebreaker), then number sequentially
+  const sorted = [...agents].sort(compareByTime);
+  const numberedAgents: TimelineSpan[] = sorted.map((agent, i) => ({
+    ...agent,
+    name: `${displayName} ${i + 1}`,
+  }));
+
+  return {
+    type: "span",
+    id: `parallel-${displayName.toLowerCase()}`,
+    name: displayName,
+    spanType: "agent",
+    content: numberedAgents,
+    branches: [],
+    utility: false,
+    startTime,
+    endTime,
+    totalTokens,
+  };
+}
+
+// =============================================================================
+// Branch Resolution
+// =============================================================================
+
+const BRANCH_PREFIX = "@branch-";
+
+/**
+ * Parses a `@branch-N` path segment and resolves it to a synthetic span.
+ *
+ * Returns null if the segment is not a branch segment or the index is invalid.
+ * N is 1-indexed into the parent's branches array.
+ */
+function resolveBranchSegment(
+  parent: TimelineSpan,
+  segment: string
+): TimelineSpan | null {
+  if (!segment.startsWith(BRANCH_PREFIX)) return null;
+
+  const indexStr = segment.slice(BRANCH_PREFIX.length);
+  const index = parseInt(indexStr, 10);
+  if (isNaN(index) || index < 1) return null;
+
+  const branch = parent.branches[index - 1];
+  if (!branch) return null;
+
+  return createBranchSpan(branch, index);
+}
+
+/**
+ * Creates a TimelineSpan for a branch's content.
+ *
+ * If the branch has exactly one child span, returns that span directly
+ * (with a ↳ prefix on its name) to avoid a redundant wrapper level.
+ * Otherwise creates a synthetic container wrapping all branch content.
+ */
+export function createBranchSpan(
+  branch: TimelineBranch,
+  index: number
+): TimelineSpan {
+  const label = deriveBranchLabel(branch, index);
+
+  // If exactly one child span, return it directly with ↳ prefix
+  const childSpans = branch.content.filter(
+    (item): item is TimelineSpan => item.type === "span"
+  );
+  if (childSpans.length === 1) {
+    return {
+      ...childSpans[0]!,
+      name: `\u21B3 ${childSpans[0]!.name}`,
+    };
+  }
+
+  return {
+    type: "span",
+    id: `branch-${branch.forkedAt}-${index}`,
+    name: `\u21B3 ${label}`,
+    spanType: "branch",
+    content: branch.content,
+    branches: [],
+    utility: false,
+    startTime: branch.startTime,
+    endTime: branch.endTime,
+    totalTokens: branch.totalTokens,
+  };
+}
+
+/**
+ * Derives a display label for a branch.
+ *
+ * Uses the name of the first child span if one exists, otherwise "Branch N".
+ */
+function deriveBranchLabel(branch: TimelineBranch, index: number): string {
+  for (const item of branch.content) {
+    if (item.type === "span") return item.name;
+  }
+  return `Branch ${index}`;
 }
 
 // =============================================================================
@@ -202,7 +350,7 @@ export function useTimeline(timeline: Timeline): TimelineState {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const pathString = searchParams.get(kPathParam) ?? "";
-  const selected = searchParams.get(kSelectedParam) ?? null;
+  const selectedParam = searchParams.get(kSelectedParam) ?? null;
 
   // Resolve the current path to a span
   const resolved = useMemo(
@@ -215,6 +363,15 @@ export function useTimeline(timeline: Timeline): TimelineState {
 
   // Compute swimlane rows
   const rows = useMemo(() => computeSwimLaneRows(node), [node]);
+
+  // Default selection: explicit param > first child for parallel containers > root
+  const selected = useMemo(() => {
+    if (selectedParam !== null) return selectedParam;
+    if (node.id.startsWith("parallel-") && rows.length > 1) {
+      return rows[1]!.name;
+    }
+    return rows[0]?.name ?? null;
+  }, [selectedParam, node.id, rows]);
 
   // Build breadcrumbs
   const breadcrumbs = useMemo(
@@ -261,13 +418,33 @@ export function useTimeline(timeline: Timeline): TimelineState {
     );
   }, [pathString, setSearchParams]);
 
+  const navigateTo = useCallback(
+    (path: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (path) {
+            next.set(kPathParam, path);
+          } else {
+            next.delete(kPathParam);
+          }
+          next.delete(kSelectedParam);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
   const select = useCallback(
-    (name: string | null) => {
+    (name: string | null, spanIndex?: number) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           if (name) {
-            next.set(kSelectedParam, name);
+            const value = spanIndex ? `${name}-${spanIndex}` : name;
+            next.set(kSelectedParam, value);
           } else {
             next.delete(kSelectedParam);
           }
@@ -279,5 +456,14 @@ export function useTimeline(timeline: Timeline): TimelineState {
     [setSearchParams]
   );
 
-  return { node, rows, breadcrumbs, selected, drillDown, goUp, select };
+  return {
+    node,
+    rows,
+    breadcrumbs,
+    selected,
+    drillDown,
+    goUp,
+    navigateTo,
+    select,
+  };
 }

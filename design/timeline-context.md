@@ -1315,3 +1315,79 @@ Implemented the `useTimeline` hook and three pure helper functions that drive UR
 - Navigation: `drillDown(name, spanIndex?)`, `goUp()`, `select(name | null)` — all update URL via `setSearchParams(..., { replace: true })`
 
 **Tests:** Pure function tests (no jsdom): parsePathSegment (7 cases), resolvePath (12 cases including root, named, case-insensitive, nested S3, span index S2, invalid, scoring, init, out-of-range), buildBreadcrumbs (5 cases). Hook tests (jsdom + `MemoryRouter` wrapper): S1 root resolution, drill-down, S7 flat, S4 parallel, selected param, nested breadcrumbs, invalid fallback, scoring as child span, drillDown/goUp/select navigation, span index drill-down, S2 iterative spans.
+
+## Phase 5: Timeline UI Components (Complete)
+
+### Phase 5a: Swimlane Layout
+
+**Files:** `swimlaneLayout.ts`, `swimlaneLayout.test.ts`
+
+Implemented `computeRowLayouts(rows, viewStart, viewEnd)` which positions swimlane bars as percentage-based rectangles within a time range.
+
+**Types:**
+- `PositionedBar { left, width, agent, drillable }` — a bar with percentage position, the source `TimelineSpan`, and whether it has children to drill into
+- `PositionedMarker { left, kind, reference }` — a marker glyph at a percentage position. `reference` carries the event UUID (for error/compaction) or `forkedAt` UUID (for branch markers), enabling click handlers to look up related data.
+- `RowLayout { name, bars, markers, tokenLabel }` — complete layout for one swimlane row
+
+**Algorithm:**
+- `computeBarPosition(start, end, viewStart, viewEnd)` — clamps to `[0, 100]` percentage range
+- Drillability: a span is drillable if it has child spans (`content.some(c => c.type === "span")`)
+- Token labels use `formatTokenCount()` (e.g., `"8.1k"`, `"1.2M"`)
+- Markers collected via `collectMarkers(parentSpan, "children")` and positioned using the same percentage formula
+
+**Tests:** 15 tests covering S1 sequential (positions, drillability, token labels, markers), S2 iterative (multiple bars per row), S4 parallel, S7 flat, marker positioning, edge cases.
+
+### Phase 5b: Timeline Header Components
+
+**Files:** `TimelineBreadcrumb.tsx`, `TimelineBreadcrumb.module.css`, `TimelinePills.tsx`, `TimelinePills.module.css`, `TimelineMinimap.tsx`, `TimelineMinimap.module.css`
+
+**TimelineBreadcrumb:** Renders `← Transcript › Build › Refactor` with clickable segments. Uses `BreadcrumbSegment[]` from `buildBreadcrumbs()`. The `←` back button navigates up one level. Duration displayed on the right via `formatDuration()` from `utils/format.ts`.
+
+**TimelinePills:** Shows aggregate stats (total tokens, duration, model name) as small pill badges in the header area.
+
+**TimelineMinimap:** A thin horizontal strip showing the current zoom position within the root timeline when drilled into a child span. Rendered inside the swimlane grid using `display: contents` to participate in the 3-column layout. Shows a 2px rail track with two vertical blue bar markers at the zoom boundaries (the drilled-into span's start/end relative to the root). Uses `computeBarPosition()` for percentage positioning. Hidden at root level (when the view spans the full timeline).
+
+### Phase 5c: SwimLane Panel
+
+**Files:** `SwimLanePanel.tsx`, `SwimLanePanel.module.css`
+
+The main swimlane visualization component rendering a CSS grid with three columns: labels (left), bars (center), token counts (right).
+
+**Features:**
+- **Row rendering:** Each `RowLayout` renders as a grid row. Parent row has a distinct background. Child rows show bar fills with percentage-based `left`/`width` styling.
+- **Selection:** Clicking a row sets `selected` in URL search params. Selected row gets a highlight ring. Clicking the selected row deselects it.
+- **Keyboard navigation:** Arrow keys (`↑`/`↓`) cycle through rows, `Enter` drills into a drillable row, `Escape` clears selection. Parent row is included in the arrow key cycle.
+- **Marker glyphs:** Inline markers (`▲` error, `┊` compaction, `↳` branch) rendered at their percentage positions on the bar area.
+- **Branch popover:** Clicking a `↳` branch marker opens a popover listing branches at that fork point. Uses the existing `PopOver` component with `hoverDelay={-1}` (click-to-open pattern). Each entry shows branch label, token count, and duration. Clicking an entry drills into the branch.
+- **Branch lookup:** `findBranchesByForkedAt(content, forkedAt)` recursively searches the span tree for branches matching a `forkedAt` UUID, returning both the branches and the owner span's path. This is necessary because branches may be on deeply nested child spans, not the currently viewed node.
+- **Max height:** CSS variable `--swimlane-minimap-height: 14px` accounts for the minimap in the max-height calculation, preventing scrolling when 5 rows plus minimap are displayed.
+
+### Phase 5d: Timeline Panel
+
+**Files:** `TimelinePanel.tsx`
+
+Top-level panel wiring `useTimeline` state to the UI components. Passes `node`, `rows`, `breadcrumbs`, and navigation callbacks (`drillDown`, `goUp`, `select`) to child components. Connects `onBranchDrillDown` from SwimLanePanel to `state.drillDown`. Passes root timeline start/end times to the minimap for zoom position calculation.
+
+### Phase 5e: Branch Navigation
+
+**Files:** `useTimeline.ts` (extended), `useTimeline.test.ts` (extended)
+
+Extended the path system to support drilling into branches via `@branch-N` path segments, where N is the 1-indexed branch index among branches sharing the same `forkedAt` UUID.
+
+**Path resolution:** `resolveBranchSegment(segment, parent)` detects `@branch-` prefix, parses the index, looks up `parent.branches`, and returns a synthetic span wrapping the branch content via `createBranchSpan`.
+
+**`createBranchSpan` optimization:** For single-span branches (branch content contains exactly one child span), returns the child span directly with a `↳` prefix on its name. This avoids double-rendering where both a synthetic wrapper and the single child would appear as separate swimlane rows.
+
+**`deriveBranchLabel`:** Uses the first child span's name if one exists (e.g., "Refactor"), otherwise falls back to "Branch N".
+
+**Breadcrumb support:** `buildBreadcrumbs` handles `@branch-N` segments by calling `resolveBranchSegment` to get the resolved label (e.g., `↳ Refactor`) instead of showing the raw path segment.
+
+**Tests:** 5 new tests: branch path resolution (valid index, out-of-range), breadcrumb labels for branch paths, single-branch and multi-branch drill-down scenarios. Uses `S11A_BRANCHES` constant extracted from synthetic node data for stable test assertions.
+
+### Supporting Changes
+
+**`syntheticNodes.ts`:** Added optional `uuid` parameter to `makeModelEventNode()`. Set UUIDs on fork-point events in S11a/S11b so branch markers resolve correctly. Added Explore span to S3 for more realistic timeline proportions.
+
+**`utils/format.ts`:** `formatDuration(start, end)` extracted as a shared utility (was previously defined locally in `TimelineBreadcrumb.tsx`). Takes two `Date` objects and returns a human-readable duration string.
+
+

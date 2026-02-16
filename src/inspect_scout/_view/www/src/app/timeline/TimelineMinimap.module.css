@@ -1,0 +1,33 @@
+.row {
+  display: contents;
+}
+
+.minimap {
+  position: relative;
+  height: 10px;
+  margin: 2px 0;
+}
+
+/* Full-width track — thin rounded rail */
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-border-color);
+  opacity: 0.5;
+}
+
+/* Vertical bar markers showing zoom boundaries */
+.marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.55;
+  transform: translateX(-50%);
+}

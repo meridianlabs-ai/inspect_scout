@@ -9,6 +9,21 @@
 import type { TimelineSpan } from "../../components/transcript/timeline";
 
 // =============================================================================
+// Sorting
+// =============================================================================
+
+/** Compare spans by start time, with end time as tiebreaker. */
+export function compareByTime(
+  a: { startTime: Date; endTime: Date },
+  b: { startTime: Date; endTime: Date }
+): number {
+  return (
+    a.startTime.getTime() - b.startTime.getTime() ||
+    a.endTime.getTime() - b.endTime.getTime()
+  );
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -112,7 +127,7 @@ export function computeSwimLaneRows(node: TimelineSpan): SwimLaneRow[] {
   }
 
   // Sort child rows by earliest start time
-  childRows.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  childRows.sort(compareByTime);
 
   return [parentRow, ...childRows];
 }
@@ -157,10 +172,8 @@ function buildRowFromGroup(
   displayName: string,
   spans: TimelineSpan[]
 ): SwimLaneRow | null {
-  // Sort spans by start time
-  const sorted = [...spans].sort(
-    (a, b) => a.startTime.getTime() - b.startTime.getTime()
-  );
+  // Sort spans by start time, end time as tiebreaker
+  const sorted = [...spans].sort(compareByTime);
 
   const first = sorted[0];
   if (!first) {

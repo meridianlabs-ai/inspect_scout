@@ -1,0 +1,197 @@
+.swimlane {
+  --swimlane-row-height: 22px;
+  --swimlane-minimap-height: 14px;
+  --swimlane-grid-columns: auto 1fr auto;
+
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0;
+  outline: none;
+  flex-shrink: 0;
+}
+
+/* Pinned section: minimap + parent row — always visible */
+.pinnedSection {
+  display: grid;
+  grid-template-columns: var(--swimlane-grid-columns);
+  align-items: center;
+  row-gap: 1px;
+}
+
+/* Scrollable section: child rows */
+.scrollSection {
+  display: grid;
+  grid-template-columns: var(--swimlane-grid-columns);
+  align-items: center;
+  row-gap: 1px;
+  max-height: calc(4 * (var(--swimlane-row-height) + 1px));
+  overflow-y: auto;
+}
+
+.swimlane:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
+}
+
+/* Row — display:contents so all rows share the parent grid columns */
+
+.row {
+  display: contents;
+}
+
+/* Label cell */
+
+.label {
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-foreground);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.labelChild {
+  padding-left: 1.25rem;
+}
+
+.labelSelected {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Bar area */
+
+.barArea {
+  position: relative;
+  height: var(--swimlane-row-height);
+}
+
+.fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 2px;
+  background-color: var(--bs-primary);
+  opacity: 0.3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  cursor: pointer;
+}
+
+.fill:hover {
+  opacity: 0.5;
+}
+
+.fillParent {
+  opacity: 0.2;
+}
+
+.fillSelected {
+  opacity: 0.7;
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+.parallelBadge {
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Chevron */
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  transform: translate(-100%, -50%);
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  z-index: 1;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.chevron:hover {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Markers */
+
+.marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.6rem;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.markerError {
+  color: var(--vscode-errorForeground, #f44747);
+}
+
+.markerCompaction {
+  color: var(--vscode-descriptionForeground);
+}
+
+.markerBranch {
+  color: var(--vscode-textLink-foreground);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Branch popover */
+
+.branchPopover {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.branchEntry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 4px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-foreground);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.branchEntry:hover {
+  background-color: var(--bs-primary);
+  color: var(--bs-white, #fff);
+}
+
+.branchLabel {
+  font-weight: 500;
+}
+
+.branchMeta {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smaller, 0.75rem);
+}
+
+.branchEntry:hover .branchMeta {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* Token cell */
+
+.tokens {
+  padding: 0 0.75rem 0 0.5rem;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  text-align: right;
+}

@@ -1,0 +1,81 @@
+.breadcrumbRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.375rem 0.75rem 0.375rem 0.25rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  padding: 2px 6px;
+  font-size: 0.9rem;
+  line-height: 1;
+  border-radius: var(--bs-border-radius);
+  flex-shrink: 0;
+}
+
+.backButton:hover:not(:disabled) {
+  color: var(--vscode-textLink-foreground);
+  background-color: var(--bs-secondary-bg);
+}
+
+.backButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.segments {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.segmentGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.segmentButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  padding: 0 2px;
+  font-size: var(--inspect-font-size-small);
+}
+
+.segmentButton:hover {
+  text-decoration: underline;
+}
+
+.segmentCurrent {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-size: var(--inspect-font-size-small);
+  padding: 0 2px;
+}
+
+.divider {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.75rem;
+  padding: 0 2px;
+}
+
+.tokenCount {
+  margin-left: auto;
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-small);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

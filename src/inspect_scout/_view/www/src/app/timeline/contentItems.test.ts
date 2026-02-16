@@ -284,7 +284,7 @@ describe("buildContentItems", () => {
   // Branches — single fork (S11a)
   // ---------------------------------------------------------------------------
   describe("branches — single fork (S11a)", () => {
-    it("appends branch_cards when forkedAt UUID is not found", () => {
+    it("inserts branch_cards after the fork-point event", () => {
       const node = getScenarioRoot(S11A_BRANCHES);
 
       // Drill into Build (which has the branches)
@@ -297,13 +297,13 @@ describe("buildContentItems", () => {
       const items = buildContentItems(buildSpan!);
       const branchCards = items.filter((i) => i.type === "branch_card");
 
-      // 2 branches, both with forkedAt that doesn't match any event UUID
+      // 2 branches, both with forkedAt "model-call-5" matching the first event
       expect(branchCards).toHaveLength(2);
 
-      // Branch cards should be at the end (unmatched UUID)
-      const lastTwo = items.slice(-2);
-      expect(lastTwo[0]!.type).toBe("branch_card");
-      expect(lastTwo[1]!.type).toBe("branch_card");
+      // Branch cards should be after the first event (matched UUID), not at end
+      expect(items[0]!.type).toBe("event");
+      expect(items[1]!.type).toBe("branch_card");
+      expect(items[2]!.type).toBe("branch_card");
     });
   });
 
@@ -311,7 +311,7 @@ describe("buildContentItems", () => {
   // Branches — multiple forks (S11b)
   // ---------------------------------------------------------------------------
   describe("branches — multiple forks (S11b)", () => {
-    it("appends all branch_cards when forkedAt UUIDs are not found", () => {
+    it("inserts branch_cards after their fork-point events", () => {
       const node = getScenarioRoot(S11B_BRANCHES_MULTI);
 
       const buildSpan = node.content.find(
@@ -323,6 +323,7 @@ describe("buildContentItems", () => {
       const items = buildContentItems(buildSpan!);
       const branchCards = items.filter((i) => i.type === "branch_card");
 
+      // 3 branches at 2 fork points, all UUIDs now match
       expect(branchCards).toHaveLength(3);
     });
   });

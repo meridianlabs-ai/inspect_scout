@@ -1118,7 +1118,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **Dependencies:** Phase 1 (`message_numbering`), Phase 2 (`messages_by_compaction`).
 
-### Phase 4: `timeline_messages()` + `transcript_messages()`
+### Phase 4: `timeline_messages()` + `transcript_messages()` ✓ 3411c21f
 
 **Implements:** Section 2, Layers 3+4 (Timeline Messages + Transcript Messages)
 
@@ -1148,6 +1148,8 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 **Dependencies:** Phase 3 (`chunked_messages`).
 
 ### Phase 5: Answer Generation Functions
+
+We have a plan for this phase at ~/.claude/plans/nested-napping-feigenbaum.md
 
 **Implements:** Section 3 (Reusable Answer Generation)
 

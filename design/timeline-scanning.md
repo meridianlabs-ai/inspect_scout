@@ -1093,7 +1093,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **Dependencies:** None — standalone pure function.
 
-### Phase 3: `chunked_messages()` + `RenderedMessages`
+### Phase 3: `chunked_messages()` + `MessagesChunk` ✓ 8b2a3a22
 
 **Implements:** Section 2, Layer 2 (Chunked Messages)
 

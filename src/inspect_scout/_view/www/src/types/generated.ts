@@ -886,6 +886,12 @@ export interface components {
              */
             tokens_before: number | null;
             /**
+             * Type
+             * @default summary
+             * @enum {string}
+             */
+            type: "summary" | "edit" | "trim";
+            /**
              * Uuid
              * @default null
              */

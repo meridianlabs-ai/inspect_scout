@@ -1243,6 +1243,16 @@
             "default": null,
             "title": "Tokens Before"
           },
+          "type": {
+            "default": "summary",
+            "enum": [
+              "summary",
+              "edit",
+              "trim"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
           "uuid": {
             "anyOf": [
               {
@@ -1263,7 +1273,8 @@
         "required": [
           "timestamp",
           "working_start",
-          "event"
+          "event",
+          "type"
         ],
         "title": "CompactionEvent",
         "type": "object"

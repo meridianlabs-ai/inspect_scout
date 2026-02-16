@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
+import pytest
 from inspect_ai.event import CompactionEvent, Event, ModelEvent, ToolEvent
 from inspect_ai.model import (
     ChatMessage,
@@ -11,10 +12,16 @@ from inspect_ai.model import (
     ChatMessageSystem,
     ChatMessageUser,
     ModelOutput,
+    get_model,
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice
-from inspect_scout._transcript.messages import messages_by_compaction
+from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.messages import (
+    MessagesChunk,
+    chunked_messages,
+    messages_by_compaction,
+)
 
 
 def _make_model_event(
@@ -288,3 +295,151 @@ def test_no_model_events() -> None:
     ]
 
     assert messages_by_compaction(events) == []
+
+
+# -- chunked_messages tests --
+
+
+async def _collect(
+    source: list[ChatMessage] | list[Event],
+    *,
+    context_window: int | None = None,
+) -> list[MessagesChunk]:
+    """Helper to collect all MessagesChunk from chunked_messages."""
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    results: list[MessagesChunk] = []
+    async for chunk in chunked_messages(
+        source,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=context_window,
+    ):
+        results.append(chunk)
+    return results
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_single_segment() -> None:
+    """Small message list fits in budget → single MessagesChunk."""
+    msgs: list[ChatMessage] = [_user1, _asst1, _user2]
+    results = await _collect(msgs, context_window=10_000)
+
+    assert len(results) == 1
+    assert results[0].segment == 0
+    assert len(results[0].messages) == 3
+    assert results[0].messages[0] is _user1
+    assert results[0].messages[1] is _asst1
+    assert results[0].messages[2] is _user2
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_renders_text() -> None:
+    """Rendered text contains [M1], [M2] etc. from message_numbering()."""
+    msgs: list[ChatMessage] = [_user1, _asst1]
+    results = await _collect(msgs, context_window=10_000)
+
+    assert len(results) == 1
+    text = results[0].text
+    assert "[M1]" in text
+    assert "[M2]" in text
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_with_events() -> None:
+    """Events with compaction → delegates to messages_by_compaction, then chunks."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+    ]
+    results = await _collect(events, context_window=10_000)
+
+    assert len(results) == 2
+    assert results[0].segment == 0
+    assert results[1].segment == 1
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_chunking() -> None:
+    """Large messages exceeding budget → multiple chunks."""
+    # Create messages with enough content to exceed a tiny budget
+    long_text = "word " * 100  # ~100 tokens
+    msgs: list[ChatMessage] = [
+        ChatMessageUser(content=long_text, id="long-1"),
+        ChatMessageUser(content=long_text, id="long-2"),
+        ChatMessageUser(content=long_text, id="long-3"),
+    ]
+    # Set budget so each message is its own chunk (budget < single message tokens)
+    # 80% of 50 = 40 tokens, each message is ~100+ tokens
+    results = await _collect(msgs, context_window=50)
+
+    assert len(results) == 3
+    # Segments should increment
+    assert results[0].segment == 0
+    assert results[1].segment == 1
+    assert results[2].segment == 2
+    # Each chunk has one message
+    assert len(results[0].messages) == 1
+    assert len(results[1].messages) == 1
+    assert len(results[2].messages) == 1
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_continuous_numbering() -> None:
+    """Message numbering is continuous across chunks."""
+    long_text = "word " * 100
+    msgs: list[ChatMessage] = [
+        ChatMessageUser(content=long_text, id="long-1"),
+        ChatMessageUser(content=long_text, id="long-2"),
+    ]
+    results = await _collect(msgs, context_window=50)
+
+    assert len(results) == 2
+    assert "[M1]" in results[0].text
+    assert "[M2]" in results[1].text
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_segment_counter_across_compactions() -> None:
+    """Segment counter increments across compaction boundaries and chunks."""
+    long_text = "word " * 100
+    events: list[Event] = [
+        _make_model_event(
+            input=[ChatMessageUser(content=long_text, id="a")],
+            output_content=long_text,
+        ),
+        _make_compaction_event(type="summary"),
+        _make_model_event(
+            input=[ChatMessageUser(content=long_text, id="b")],
+            output_content=long_text,
+        ),
+    ]
+    results = await _collect(events, context_window=50)
+
+    # Each segment should produce at least one chunk, and segment counter
+    # should be monotonically increasing
+    segments = [r.segment for r in results]
+    assert segments == sorted(segments)
+    assert len(set(segments)) == len(segments)  # All unique
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_empty_input() -> None:
+    """Empty list yields nothing."""
+    results = await _collect([], context_window=10_000)
+    assert results == []
+
+
+@pytest.mark.anyio
+async def test_chunked_messages_skips_empty_renders() -> None:
+    """System messages excluded by default preprocessor are skipped."""
+    # message_numbering() defaults to excluding system messages
+    msgs: list[ChatMessage] = [_sys, _user1]
+    results = await _collect(msgs, context_window=10_000)
+
+    assert len(results) == 1
+    # Only user message should be in the chunk (system was filtered)
+    assert len(results[0].messages) == 1
+    assert results[0].messages[0] is _user1
+    assert "[M1]" in results[0].text

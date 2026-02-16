@@ -1,7 +1,136 @@
 """Message extraction from events, with compaction boundary handling."""
 
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+
+from inspect_ai._util._async import tg_collect
 from inspect_ai.event import CompactionEvent, Event, ModelEvent
-from inspect_ai.model import ChatMessage
+from inspect_ai.model import ChatMessage, Model
+from inspect_ai.model._chat_message import ChatMessageBase
+from inspect_ai.model._model_info import get_model_info
+
+from inspect_scout._scanner.extract import MessagesAsStr
+
+DEFAULT_CONTEXT_WINDOW = 128_000
+_BUDGET_DISCOUNT = 0.8
+
+
+@dataclass(frozen=True)
+class MessagesChunk:
+    """A chunk of rendered messages that fits within a token budget.
+
+    Attributes:
+        messages: The original ChatMessage objects in this chunk.
+        text: Pre-rendered string from messages_as_str.
+        segment: 0-based segment index, auto-increments across yields.
+    """
+
+    messages: list[ChatMessage]
+    text: str
+    segment: int
+
+
+async def chunked_messages(
+    source: list[ChatMessage] | list[Event],
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model,
+    context_window: int | None = None,
+) -> AsyncIterator[MessagesChunk]:
+    """Render messages and chunk them to fit within a token budget.
+
+    Renders each message individually via ``messages_as_str``, counts
+    tokens in parallel via ``tg_collect``, then accumulates chunks that
+    fit within the effective budget (context window * 80%).
+
+    When given events, delegates to ``messages_by_compaction()`` first
+    to split at compaction boundaries, then chunks each segment
+    independently.
+
+    Args:
+        source: Either a list of ChatMessage or a list of Event.
+            Events are split via ``messages_by_compaction()`` first.
+        messages_as_str: Rendering function from ``message_numbering()``.
+            Must be called sequentially to preserve counter ordering.
+        model: Model used for token counting.
+        context_window: Override for context window size. If None,
+            looked up via ``get_model_info(model)``.
+
+    Yields:
+        MessagesChunk chunks, each fitting within the token budget.
+        Segment counter increments across all yields.
+    """
+    # Determine segments
+    if source and isinstance(source[0], ChatMessageBase):
+        segments: list[list[ChatMessage]] = [source]  # type: ignore[list-item]
+    elif source:
+        segments = messages_by_compaction(source)  # type: ignore[arg-type]
+    else:
+        segments = []
+
+    # Compute effective budget
+    if context_window is not None:
+        budget = context_window
+    else:
+        model_info = get_model_info(model)
+        budget = (
+            model_info.input_tokens
+            if model_info is not None and model_info.input_tokens is not None
+            else DEFAULT_CONTEXT_WINDOW
+        )
+    effective_budget = int(budget * _BUDGET_DISCOUNT)
+
+    segment_counter = 0
+
+    for segment in segments:
+        if not segment:
+            continue
+
+        # Pass 1: Render each message sequentially (counter ordering matters)
+        rendered: list[tuple[ChatMessage, str]] = []
+        for msg in segment:
+            text = await messages_as_str([msg])
+            if text:  # Skip empty renders (e.g. filtered system messages)
+                rendered.append((msg, text))
+
+        if not rendered:
+            continue
+
+        # Pass 2: Count tokens in parallel
+        token_counts = await tg_collect(
+            [lambda t=text: model.count_tokens(t) for _, text in rendered]  # type: ignore[misc]
+        )
+
+        # Pass 3: Chunk based on accumulated token counts
+        chunk_messages: list[ChatMessage] = []
+        chunk_texts: list[str] = []
+        running_tokens = 0
+
+        for (msg, text), tokens in zip(rendered, token_counts, strict=False):
+            if chunk_messages and running_tokens + tokens > effective_budget:
+                # Yield current chunk
+                yield MessagesChunk(
+                    messages=chunk_messages,
+                    text="\n".join(chunk_texts),
+                    segment=segment_counter,
+                )
+                segment_counter += 1
+                chunk_messages = []
+                chunk_texts = []
+                running_tokens = 0
+
+            chunk_messages.append(msg)
+            chunk_texts.append(text)
+            running_tokens += tokens
+
+        # Yield remaining chunk
+        if chunk_messages:
+            yield MessagesChunk(
+                messages=chunk_messages,
+                text="\n".join(chunk_texts),
+                segment=segment_counter,
+            )
+            segment_counter += 1
 
 
 def messages_by_compaction(events: list[Event]) -> list[list[ChatMessage]]:

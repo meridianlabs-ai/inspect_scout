@@ -1032,3 +1032,191 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 - **Single segment fast path**: When there's only one segment (common case for short conversations), the stream pattern degenerates to a single send/receive with negligible overhead.
 - **Error handling**: `anyio.TaskGroup` propagates the first exception and cancels remaining tasks — the right behavior when one generation fails, since we can't produce a complete result set.
 - **Ordering**: Results are keyed by `segment.segment` (the 0-based index) and reassembled in order at the end, regardless of completion order.
+
+## 6. Implementation Phases
+
+### Working Guidelines
+
+1. **One phase at a time.** Implement, test, and verify each phase before moving to the next.
+2. **Review before commit.** After tests pass, pause and review the code together before committing. Do not auto-commit.
+3. **Full tests at each step.** Every phase produces both an implementation file and a test file.
+4. **Use synthetic scenarios.** Build minimal inline test helpers (e.g., `make_model_event()`, `make_compaction_event()`) using direct `inspect_ai` constructors. Reuse the existing `_parse_input_messages()` pattern from `tests/transcript/nodes/test_timeline.py`. Use the shared JSON fixtures in `tests/transcript/nodes/fixtures/events/` where they cover relevant scenarios (e.g., `compaction_boundary.json`).
+5. **Update this document.** After completing a phase but before committing, replace the phase's overview section below with a summary of what was actually built and tested — files created/modified, key design decisions made during implementation, and test coverage.
+
+### Phase 1: `message_numbering()`
+
+**Implements:** Section 1 (Universal Message Numbering)
+
+**Files:**
+- Modify: `src/inspect_scout/_scanner/extract.py`
+- Modify: `tests/scanner/test_extract.py`
+
+**What to build:**
+- `message_numbering(preprocessor) -> (MessagesAsStrFn, extract_references)` factory function
+- `MessagesAsStrFn` type alias: `Callable[[list[ChatMessage]], Awaitable[str]]`
+- The returned `messages_as_str` wraps existing formatting logic with a closure-captured counter and `id_map`
+- The returned `extract_references` resolves citations across all prior `messages_as_str` calls
+
+**What to test:**
+- Single call produces `M1..Mn` (same as today)
+- Multiple calls continue numbering (`M1..M5`, then `M6..M10`)
+- `extract_references` resolves citations from any prior call
+- Preprocessor options (`exclude_system`, `exclude_reasoning`) work correctly
+- Empty message lists don't advance the counter
+
+**Dependencies:** None — standalone.
+
+### Phase 2: `split_at_compaction()`
+
+**Implements:** Section 2, Layer 1 (Compaction Splitting)
+
+**Files:**
+- Create: `src/inspect_scout/_transcript/messages.py`
+- Create: `tests/transcript/test_messages.py`
+
+**What to build:**
+- `split_at_compaction(events: list[Event]) -> list[list[ChatMessage]]`
+- Pure function: filters for `ModelEvent` and `CompactionEvent`, splits by compaction type
+- Summary: full split — each segment uses last `ModelEvent`'s `input + output`
+- Trim: prefix-only split — yield trimmed prefix (dropped messages) as separate segment
+- Edit: no split
+- Trim prefix extraction: find overlap between pre/post compaction inputs using message `id` field (fall back to content equality)
+
+**What to test:**
+- No compaction → single segment with last `ModelEvent`'s `input + output`
+- Summary compaction → two segments, each from its last `ModelEvent`
+- Trim compaction → prefix segment (dropped messages) + post-compaction segment
+- Edit compaction → no split (single segment)
+- Multiple compactions in sequence
+- Empty segments omitted (no `ModelEvent`s before a boundary)
+- Non-Model/Compaction events ignored
+
+**Dependencies:** None — standalone pure function.
+
+### Phase 3: `chunked_messages()` + `RenderedMessages`
+
+**Implements:** Section 2, Layer 2 (Chunked Messages)
+
+**Files:**
+- Modify: `src/inspect_scout/_transcript/messages.py`
+- Modify: `tests/transcript/test_messages.py`
+
+**What to build:**
+- `RenderedMessages` dataclass (`messages`, `text`, `segment`)
+- `chunked_messages(source, messages_as_str, model, context_window)` async generator
+- Accepts `list[ChatMessage]` or `list[Event]` (delegates to `split_at_compaction()` for events)
+- Uses `model.count_tokens()` for budget checking, 80% discount factor
+- Yields `RenderedMessages` per segment/chunk
+
+**What to test:**
+- Small message list → single `RenderedMessages` (no chunking)
+- Large message list exceeding budget → multiple chunks with continuous numbering
+- Events with compaction → compaction split, then chunked
+- Budget calculation: 80% discount factor applied correctly
+- Empty input yields nothing
+- Uses a mock or stub model with controllable `count_tokens()` and context window
+
+**Dependencies:** Phase 1 (`message_numbering`), Phase 2 (`split_at_compaction`).
+
+### Phase 4: `timeline_messages()` + `transcript_messages()`
+
+**Implements:** Section 2, Layers 3+4 (Timeline Messages + Transcript Messages)
+
+**Files:**
+- Modify: `src/inspect_scout/_transcript/timeline.py`
+- Modify: `src/inspect_scout/_transcript/messages.py`
+- Modify: `tests/transcript/test_messages.py`
+
+**What to build:**
+- `TimelineMessages(RenderedMessages)` dataclass — adds `span: TimelineSpan`
+- `timeline_messages(timeline, messages_as_str, model, context_window, include)` async generator
+- Walks span tree, extracts `[item.event for item in span.content if isinstance(item, TimelineEvent)]`
+- Delegates to `chunked_messages()` per span, wraps results as `TimelineMessages`
+- `include` filter: `None` (non-utility spans with ModelEvents), `str` (name match), `callable`
+- `transcript_messages(transcript, messages_as_str, model, context_window)` async generator
+- Adaptive dispatch: `transcript.timelines` → `timeline_messages()`, `transcript.events` → `chunked_messages()`, else `transcript.messages` → `chunked_messages()`
+
+**What to test:**
+- Single-span timeline → yields `TimelineMessages` with correct span context
+- Multi-span timeline → yields segments in tree-walk order with continuous numbering
+- Nested spans → child spans visited recursively
+- `include=None` skips utility spans and empty container spans
+- `include="Build"` filters by name (case-insensitive)
+- `include=callable` with custom predicate
+- `transcript_messages` dispatches to correct layer based on available data
+
+**Dependencies:** Phase 3 (`chunked_messages`).
+
+### Phase 5: Answer Generation Functions
+
+**Implements:** Section 3 (Reusable Answer Generation)
+
+**Files:**
+- Create: `src/inspect_scout/_llm_scanner/generate.py`
+- Create: `tests/llm_scanner/test_generate.py`
+
+**What to build:**
+- `parse_answer(output, answer, extract_references, value_to_float)` → `Result`
+- `generate_for_answer(prompt, answer, model, retry_refusals)` → `ModelOutput`
+- `generate_answer(prompt, answer, extract_references, model, ...)` → `Result`
+- Extract logic from inline `llm_scanner` code — `parse_answer` wraps `answer.result_for_answer()`, `generate_for_answer` wraps `generate_retry_refusals()` / `structured_generate()`
+
+**What to test:**
+- `parse_answer` with boolean, numeric, string, label answer types
+- `parse_answer` with structured answer (null-value case)
+- `parse_answer` correctly passes `extract_references` through
+- `generate_for_answer` dispatches to structured vs. standard generation
+- `generate_answer` combines both steps
+
+**Dependencies:** None — independent of Phases 2-4. Can be done in parallel with message extraction work if desired.
+
+### Phase 6: Refactor `llm_scanner`
+
+**Implements:** Section 4 (Refactoring)
+
+**Files:**
+- Modify: `src/inspect_scout/_llm_scanner/_llm_scanner.py`
+- Modify: `src/inspect_scout/_scanner/scanner.py` (for `SCANNER_CONTENT_ATTR`)
+- Modify or add integration tests
+
+**What to build:**
+- Add `content: TranscriptContent | None` and `context_window: int | None` parameters
+- Replace inline message extraction with `message_numbering()` + `transcript_messages()`
+- Replace inline generation/parsing with `generate_answer()`
+- `SCANNER_CONTENT_ATTR` support in `@scanner` decorator
+- Return type: `Result | list[Result]` (single segment → `Result` for backward compat)
+- Public export of `TranscriptContent` and filter type aliases
+
+**What to test:**
+- Existing `llm_scanner` tests continue to pass (backward compatibility)
+- `content=TranscriptContent(timeline=True)` enables timeline scanning
+- `context_window` override works
+- Multi-segment transcript returns `list[Result]`
+- Single-segment transcript returns `Result` (not wrapped in list)
+
+**Dependencies:** All prior phases (1-5).
+
+### Phase 7: Parallel Generation
+
+**Implements:** Section 5 (Parallel Generation)
+
+**Files:**
+- Modify: `src/inspect_scout/_llm_scanner/_llm_scanner.py` (or new utility module)
+- Modify: tests for `llm_scanner`
+
+**What to build:**
+- `parallel_scan(segments, generate_fn, model)` using anyio memory streams
+- Producer: sequential `transcript_messages()` iterator (numbering must stay ordered)
+- Workers: `max_concurrency` parallel consumers calling `generate_answer()`
+- Concurrency derived from `model.config.max_connections` or `model.api.max_connections()`
+- Results reassembled in segment order via `segment.segment` index
+- Backpressure via `max_buffer_size=max_concurrency`
+
+**What to test:**
+- Single segment → degenerates to single send/receive (no overhead)
+- Multiple segments → results returned in order regardless of completion order
+- Worker count matches model's `max_connections`
+- Error in one generation cancels remaining tasks (anyio TaskGroup behavior)
+- Backpressure: producer blocks when buffer is full
+
+**Dependencies:** Phase 6 (`llm_scanner` refactor).

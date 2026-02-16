@@ -1068,7 +1068,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **Dependencies:** None — standalone.
 
-### Phase 2: `messages_by_compaction()` ✓
+### Phase 2: `messages_by_compaction()` ✓ `f38279f4`
 
 **Implements:** Section 2, Layer 1 (Compaction Splitting)
 

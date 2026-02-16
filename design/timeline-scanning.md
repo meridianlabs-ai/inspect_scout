@@ -103,7 +103,7 @@ For scanning, we need to extract the "conversation" from events. The natural rep
 
 The message extraction pipeline is composed of four layers, each independently useful:
 
-1. **`split_at_compaction()`** — splits events into message lists at compaction boundaries
+1. **`messages_by_compaction()`** — splits events into message lists at compaction boundaries
 2. **`chunked_messages()`** — renders and chunks message lists to fit a context window
 3. **`timeline_messages()`** — walks a timeline tree, delegates to `chunked_messages()` per span
 4. **`transcript_messages()`** — adaptive dispatch based on available transcript data
@@ -112,7 +112,7 @@ The message extraction pipeline is composed of four layers, each independently u
 
 | Component | Module |
 |-----------|--------|
-| `split_at_compaction()`, `chunked_messages()`, `transcript_messages()`, `RenderedMessages` | `_transcript/messages.py` (new) |
+| `messages_by_compaction()`, `chunked_messages()`, `transcript_messages()`, `RenderedMessages` | `_transcript/messages.py` (new) |
 | `timeline_messages()`, `TimelineMessages` | `_transcript/timeline.py` (existing) |
 | `message_numbering()`, `MessagesAsStr` | `_scanner/extract.py` (existing) |
 | `parse_answer()`, `generate_for_answer()`, `generate_answer()` | `_llm_scanner/generate.py` (new) |
@@ -132,7 +132,7 @@ Only direct events are extracted — child `TimelineSpan`s are visited recursive
 A pure function that extracts message lists from events, splitting at compaction boundaries:
 
 ```python
-def split_at_compaction(events: list[Event]) -> list[list[ChatMessage]]:
+def messages_by_compaction(events: list[Event]) -> list[list[ChatMessage]]:
     """Split events into message lists at compaction boundaries.
 
     Filters for ModelEvent and CompactionEvent, then splits based on
@@ -211,7 +211,7 @@ If the prefix is empty (trim removed no messages, or the inputs can't be aligned
 
 ### Layer 2: Chunked Messages
 
-An async generator that renders and chunks messages to fit a context window. Accepts either a plain message list or a list of events (in which case it delegates to `split_at_compaction()` internally):
+An async generator that renders and chunks messages to fit a context window. Accepts either a plain message list or a list of events (in which case it delegates to `messages_by_compaction()` internally):
 
 ```python
 async def chunked_messages(
@@ -223,7 +223,7 @@ async def chunked_messages(
 ) -> AsyncIterator[RenderedMessages]:
     """Render and chunk messages to fit a model's context window.
 
-    When given a list of events, delegates to split_at_compaction()
+    When given a list of events, delegates to messages_by_compaction()
     to handle compaction boundaries before chunking. When given a
     plain message list, treats it as a single segment.
 
@@ -507,7 +507,7 @@ The four layers compose into a clean pipeline:
 
 | Layer | Function | Input | Output |
 |-------|----------|-------|--------|
-| 1 | `split_at_compaction()` | `list[Event]` | `list[list[ChatMessage]]` |
+| 1 | `messages_by_compaction()` | `list[Event]` | `list[list[ChatMessage]]` |
 | 2 | `chunked_messages()` | `list[ChatMessage] \| list[Event]` | `RenderedMessages` |
 | 3 | `timeline_messages()` | `Timeline \| TimelineSpan` | `TimelineMessages` |
 | 4 | `transcript_messages()` | `Transcript` | `RenderedMessages` |
@@ -1068,30 +1068,28 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **Dependencies:** None — standalone.
 
-### Phase 2: `split_at_compaction()`
+### Phase 2: `messages_by_compaction()` ✓
 
 **Implements:** Section 2, Layer 1 (Compaction Splitting)
 
-**Files:**
-- Create: `src/inspect_scout/_transcript/messages.py`
-- Create: `tests/transcript/test_messages.py`
+**Files created:**
+- `src/inspect_scout/_transcript/messages.py` — `messages_by_compaction()`, `_segment_messages()`, `_trim_prefix()`
+- `tests/transcript/test_messages.py` — 11 test cases
+- `src/inspect_scout/__init__.py` — added `messages_by_compaction` to public exports
 
-**What to build:**
-- `split_at_compaction(events: list[Event]) -> list[list[ChatMessage]]`
-- Pure function: filters for `ModelEvent` and `CompactionEvent`, splits by compaction type
-- Summary: full split — each segment uses last `ModelEvent`'s `input + output`
-- Trim: prefix-only split — yield trimmed prefix (dropped messages) as separate segment
-- Edit: no split
-- Trim prefix extraction: find overlap between pre/post compaction inputs using message `id` field (fall back to content equality)
+**What was built:**
+- `messages_by_compaction(events)` — pure function that filters for `ModelEvent` and `CompactionEvent`, splits by compaction type (summary: full split, trim: prefix-only split, edit: no split)
+- Each segment's messages come from the **last** `ModelEvent` in that segment: `input + [output.choices[0].message]`
+- `_trim_prefix(pre_input, post_input)` — finds overlap point via message `id` matching, falls back to content equality (`text` + `role`)
+- `_segment_messages(model_event)` — extracts `input + output` with edge case handling for missing output
 
-**What to test:**
-- No compaction → single segment with last `ModelEvent`'s `input + output`
-- Summary compaction → two segments, each from its last `ModelEvent`
-- Trim compaction → prefix segment (dropped messages) + post-compaction segment
-- Edit compaction → no split (single segment)
+**Test coverage:**
+- No compaction, summary, trim, edit compaction types
 - Multiple compactions in sequence
-- Empty segments omitted (no `ModelEvent`s before a boundary)
-- Non-Model/Compaction events ignored
+- Empty segments omitted, non-model events ignored
+- Trim with empty prefix (all messages survive)
+- Trim prefix via id matching
+- Empty event list, only compaction events
 
 **Dependencies:** None — standalone pure function.
 
@@ -1106,7 +1104,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 **What to build:**
 - `RenderedMessages` dataclass (`messages`, `text`, `segment`)
 - `chunked_messages(source, messages_as_str, model, context_window)` async generator
-- Accepts `list[ChatMessage]` or `list[Event]` (delegates to `split_at_compaction()` for events)
+- Accepts `list[ChatMessage]` or `list[Event]` (delegates to `messages_by_compaction()` for events)
 - Uses `model.count_tokens()` for budget checking, 80% discount factor
 - Yields `RenderedMessages` per segment/chunk
 
@@ -1118,7 +1116,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 - Empty input yields nothing
 - Uses a mock or stub model with controllable `count_tokens()` and context window
 
-**Dependencies:** Phase 1 (`message_numbering`), Phase 2 (`split_at_compaction`).
+**Dependencies:** Phase 1 (`message_numbering`), Phase 2 (`messages_by_compaction`).
 
 ### Phase 4: `timeline_messages()` + `transcript_messages()`
 

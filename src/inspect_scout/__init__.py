@@ -51,6 +51,7 @@ from ._transcript.database.factory import transcripts_db
 from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
+from ._transcript.messages import messages_by_compaction
 from ._transcript.sample_metadata import SampleMetadata
 from ._transcript.timeline import (
     Timeline,
@@ -146,6 +147,7 @@ __all__ = [
     "as_scorer",
     "message_numbering",
     "messages_as_str",
+    "messages_by_compaction",
     "MessageFormatOptions",
     "MessagesPreprocessor",
     "tool_callers",

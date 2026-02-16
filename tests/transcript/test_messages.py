@@ -21,7 +21,16 @@ from inspect_scout._transcript.messages import (
     MessagesChunk,
     chunked_messages,
     messages_by_compaction,
+    transcript_messages,
 )
+from inspect_scout._transcript.timeline import (
+    Timeline,
+    TimelineEvent,
+    TimelineMessages,
+    TimelineSpan,
+    timeline_messages,
+)
+from inspect_scout._transcript.types import Transcript
 
 
 def _make_model_event(
@@ -443,3 +452,259 @@ async def test_chunked_messages_skips_empty_renders() -> None:
     assert len(results[0].messages) == 1
     assert results[0].messages[0] is _user1
     assert "[M1]" in results[0].text
+
+
+# -- timeline_messages tests --
+
+
+def _make_timeline_span(
+    name: str,
+    events: list[Event] | None = None,
+    children: list[TimelineSpan] | None = None,
+    *,
+    utility: bool = False,
+    span_id: str | None = None,
+) -> TimelineSpan:
+    """Helper to build a TimelineSpan with events and/or child spans."""
+    content: list[TimelineEvent | TimelineSpan] = []
+    if events:
+        content.extend(TimelineEvent(event=e) for e in events)
+    if children:
+        content.extend(children)
+    return TimelineSpan(
+        id=span_id or f"span-{name}",
+        name=name,
+        span_type=None,
+        content=content,
+        utility=utility,
+    )
+
+
+async def _collect_timeline(
+    timeline: Timeline | TimelineSpan,
+    *,
+    context_window: int = 10_000,
+    include: object = None,
+) -> list[TimelineMessages]:
+    """Helper to collect all TimelineMessages from timeline_messages."""
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    results: list[TimelineMessages] = []
+    async for chunk in timeline_messages(
+        timeline,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=context_window,
+        include=include,  # type: ignore[arg-type]
+    ):
+        results.append(chunk)
+    return results
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_single_span() -> None:
+    """Single span with events → yields TimelineMessages with correct span."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[
+            _make_model_event(input=[_user1], output_content="Response"),
+        ],
+    )
+    results = await _collect_timeline(span)
+
+    assert len(results) == 1
+    assert isinstance(results[0], TimelineMessages)
+    assert results[0].span is span
+    assert "[M1]" in results[0].text
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_nested_spans() -> None:
+    """Child spans visited recursively in depth-first order."""
+    child1 = _make_timeline_span(
+        "Child1",
+        events=[_make_model_event(input=[_user1], output_content="From child1")],
+    )
+    child2 = _make_timeline_span(
+        "Child2",
+        events=[_make_model_event(input=[_user2], output_content="From child2")],
+    )
+    root = _make_timeline_span("Root", children=[child1, child2])
+
+    results = await _collect_timeline(root)
+
+    assert len(results) == 2
+    assert results[0].span is child1
+    assert results[1].span is child2
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_include_none_skips_utility() -> None:
+    """Default filter skips utility spans."""
+    utility_span = _make_timeline_span(
+        "Helper",
+        events=[_make_model_event(input=[_user1], output_content="Utility response")],
+        utility=True,
+    )
+    normal_span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user2], output_content="Normal response")],
+    )
+    root = _make_timeline_span("Root", children=[utility_span, normal_span])
+
+    results = await _collect_timeline(root)
+
+    assert len(results) == 1
+    assert results[0].span is normal_span
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_include_none_skips_empty() -> None:
+    """Default filter skips container spans with no direct ModelEvents."""
+    # Container has only child spans, no direct events
+    child = _make_timeline_span(
+        "Child",
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+    container = _make_timeline_span("Container", children=[child])
+
+    results = await _collect_timeline(container)
+
+    assert len(results) == 1
+    assert results[0].span is child  # Container skipped, child yielded
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_include_name() -> None:
+    """String filter matches span name case-insensitively."""
+    build_span = _make_timeline_span(
+        "Build",
+        events=[_make_model_event(input=[_user1], output_content="Building")],
+    )
+    test_span = _make_timeline_span(
+        "Test",
+        events=[_make_model_event(input=[_user2], output_content="Testing")],
+    )
+    root = _make_timeline_span("Root", children=[build_span, test_span])
+
+    results = await _collect_timeline(root, include="build")
+
+    assert len(results) == 1
+    assert results[0].span is build_span
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_include_callable() -> None:
+    """Callable predicate filters spans."""
+    agent_span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="Agent response")],
+    )
+    agent_span.span_type = "agent"
+    other_span = _make_timeline_span(
+        "Other",
+        events=[_make_model_event(input=[_user2], output_content="Other response")],
+    )
+    root = _make_timeline_span("Root", children=[agent_span, other_span])
+
+    results = await _collect_timeline(root, include=lambda s: s.span_type == "agent")
+
+    assert len(results) == 1
+    assert results[0].span is agent_span
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_from_timeline_object() -> None:
+    """Accepts Timeline (extracts .root)."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+    tl = Timeline(name="Default", description="", root=span)
+
+    results = await _collect_timeline(tl)
+
+    assert len(results) == 1
+    assert results[0].span is span
+
+
+# -- transcript_messages tests --
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_with_timelines() -> None:
+    """Dispatches to timeline_messages when timelines present."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+    tl = Timeline(name="Default", description="", root=span)
+    transcript = Transcript(
+        transcript_id="t1",
+        messages=[_user1],
+        timelines=[tl],
+    )
+
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    results: list[MessagesChunk] = []
+    async for chunk in transcript_messages(
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=10_000,
+    ):
+        results.append(chunk)
+
+    assert len(results) == 1
+    assert isinstance(results[0], TimelineMessages)
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_with_events() -> None:
+    """Dispatches to chunked_messages with events."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Response"),
+    ]
+    transcript = Transcript(
+        transcript_id="t2",
+        messages=[_user1],
+        events=events,
+    )
+
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    results: list[MessagesChunk] = []
+    async for chunk in transcript_messages(
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=10_000,
+    ):
+        results.append(chunk)
+
+    assert len(results) == 1
+    assert not isinstance(results[0], TimelineMessages)
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_with_messages_only() -> None:
+    """Dispatches to chunked_messages with messages."""
+    transcript = Transcript(
+        transcript_id="t3",
+        messages=[_user1, _asst1],
+    )
+
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    results: list[MessagesChunk] = []
+    async for chunk in transcript_messages(
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=10_000,
+    ):
+        results.append(chunk)
+
+    assert len(results) == 1
+    assert not isinstance(results[0], TimelineMessages)

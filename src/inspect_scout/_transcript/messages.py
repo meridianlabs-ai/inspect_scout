@@ -1,7 +1,10 @@
 """Message extraction from events, with compaction boundary handling."""
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from inspect_ai._util._async import tg_collect
 from inspect_ai.event import CompactionEvent, Event, ModelEvent
@@ -10,6 +13,9 @@ from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
 
 from inspect_scout._scanner.extract import MessagesAsStr
+
+if TYPE_CHECKING:
+    from inspect_scout._transcript.types import Transcript
 
 DEFAULT_CONTEXT_WINDOW = 128_000
 _BUDGET_DISCOUNT = 0.8
@@ -131,6 +137,65 @@ async def chunked_messages(
                 segment=segment_counter,
             )
             segment_counter += 1
+
+
+async def transcript_messages(
+    transcript: "Transcript",
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model,
+    context_window: int | None = None,
+) -> AsyncIterator[MessagesChunk]:
+    """Yield pre-rendered message segments from a transcript.
+
+    Automatically selects the best extraction strategy based on
+    what data is available on the transcript:
+
+    - If timelines are present, delegates to ``timeline_messages()``
+    - If events are present (no timelines), delegates to
+      ``chunked_messages()`` with compaction handling
+    - If only messages are present, delegates to ``chunked_messages()``
+      for context window chunking only
+
+    Since ``TimelineMessages`` is structurally compatible with
+    ``MessagesChunk``, callers get a uniform interface. Those needing
+    span context can isinstance-check for ``TimelineMessages``.
+
+    Args:
+        transcript: The transcript to extract messages from.
+        messages_as_str: Rendering function from ``message_numbering()``.
+        model: The model used for scanning.
+        context_window: Override for the model's context window size.
+
+    Yields:
+        MessagesChunk (or TimelineMessages) for each segment.
+    """
+    if transcript.timelines:
+        from inspect_scout._transcript.timeline import timeline_messages
+
+        async for seg in timeline_messages(
+            transcript.timelines[0],
+            messages_as_str=messages_as_str,
+            model=model,
+            context_window=context_window,
+        ):
+            yield seg  # type: ignore[misc]
+    elif transcript.events:
+        async for chunk in chunked_messages(
+            transcript.events,
+            messages_as_str=messages_as_str,
+            model=model,
+            context_window=context_window,
+        ):
+            yield chunk
+    else:
+        async for chunk in chunked_messages(
+            transcript.messages,
+            messages_as_str=messages_as_str,
+            model=model,
+            context_window=context_window,
+        ):
+            yield chunk
 
 
 def messages_by_compaction(events: list[Event]) -> list[list[ChatMessage]]:

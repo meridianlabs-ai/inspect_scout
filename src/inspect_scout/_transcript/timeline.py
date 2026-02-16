@@ -5,11 +5,19 @@ Transforms flat event streams into a semantic tree with agent-centric interpreta
 Uses inspect_ai's event_tree() to parse span structure.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Callable, Literal
+
+if TYPE_CHECKING:
+    from inspect_ai.model import Model
+
+    from inspect_scout._scanner.extract import MessagesAsStr
 
 from inspect_ai.event import (
     Event,
@@ -1228,3 +1236,139 @@ def _filter_content_list(
             if filtered.content or filtered.branches:
                 result.append(filtered)
     return result
+
+
+# =============================================================================
+# Timeline Message Extraction
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class TimelineMessages:
+    """A chunk of messages from a specific timeline span.
+
+    Extends MessagesChunk with span context. Can be used anywhere
+    a MessagesChunk is expected via duck typing.
+
+    Attributes:
+        messages: The original ChatMessage objects in this chunk.
+        text: Pre-rendered string from messages_as_str.
+        segment: 0-based segment index, auto-increments across yields.
+        span: The TimelineSpan this chunk was extracted from.
+    """
+
+    messages: list[ChatMessage]
+    text: str
+    segment: int
+    span: TimelineSpan
+
+
+async def timeline_messages(
+    timeline: Timeline | TimelineSpan,
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model,
+    context_window: int | None = None,
+    include: Callable[[TimelineSpan], bool] | str | None = None,
+) -> AsyncIterator[TimelineMessages]:
+    """Yield pre-rendered message segments from timeline spans.
+
+    Walks the span tree, extracts events from each matching span,
+    and delegates to chunked_messages() for compaction splitting and
+    context window chunking. Each yielded item includes the span
+    context alongside the pre-rendered text.
+
+    Args:
+        timeline: The timeline (or a specific span subtree) to extract
+            messages from. If a Timeline, starts from timeline.root.
+        messages_as_str: Rendering function from message_numbering() that
+            formats messages with globally unique IDs.
+        model: The model used for scanning. Provides count_tokens() for
+            measuring rendered text.
+        context_window: Override for the model's context window size
+            (in tokens). When None, looked up via get_model_info().
+            An 80% discount factor is applied to leave room for system
+            prompts and scanning overhead.
+        include: Filter for which spans to process.
+            - None: all non-utility spans with direct ModelEvents (default)
+            - str: only spans whose name matches (case-insensitive)
+            - callable: predicate on TimelineSpan
+
+    Yields:
+        TimelineMessages for each segment. Empty spans are skipped.
+    """
+    from inspect_scout._transcript.messages import chunked_messages
+
+    root = timeline.root if isinstance(timeline, Timeline) else timeline
+
+    for span in _walk_spans(root, include):
+        events = [
+            item.event for item in span.content if isinstance(item, TimelineEvent)
+        ]
+        if not events:
+            continue
+
+        async for chunk in chunked_messages(
+            events,
+            messages_as_str=messages_as_str,
+            model=model,
+            context_window=context_window,
+        ):
+            yield TimelineMessages(
+                messages=chunk.messages,
+                text=chunk.text,
+                segment=chunk.segment,
+                span=span,
+            )
+
+
+def _walk_spans(
+    span: TimelineSpan,
+    include: Callable[[TimelineSpan], bool] | str | None,
+) -> Iterator[TimelineSpan]:
+    """Walk the span tree depth-first, yielding matching spans.
+
+    Non-matching spans are still traversed — the filter controls which
+    spans yield messages, not which subtrees are visited. Only content
+    children are traversed (not branches).
+
+    Args:
+        span: The root span to walk.
+        include: Filter for which spans to yield.
+
+    Yields:
+        Matching TimelineSpan nodes in depth-first order.
+    """
+    if _span_matches(span, include):
+        yield span
+
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            yield from _walk_spans(item, include)
+
+
+def _span_matches(
+    span: TimelineSpan,
+    include: Callable[[TimelineSpan], bool] | str | None,
+) -> bool:
+    """Check if a span matches the include filter.
+
+    Args:
+        span: The span to check.
+        include: The filter to apply.
+
+    Returns:
+        True if the span matches.
+    """
+    if include is None:
+        # Default: non-utility spans with at least one direct ModelEvent
+        if span.utility:
+            return False
+        return any(
+            isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
+            for item in span.content
+        )
+    elif isinstance(include, str):
+        return span.name.lower() == include.lower()
+    else:
+        return include(span)

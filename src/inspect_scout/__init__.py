@@ -55,13 +55,16 @@ from ._transcript.messages import (
     MessagesChunk,
     chunked_messages,
     messages_by_compaction,
+    transcript_messages,
 )
 from ._transcript.sample_metadata import SampleMetadata
 from ._transcript.timeline import (
     Timeline,
     TimelineBranch,
     TimelineEvent,
+    TimelineMessages,
     TimelineSpan,
+    timeline_messages,
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
@@ -136,7 +139,9 @@ __all__ = [
     "Timeline",
     "TimelineBranch",
     "TimelineEvent",
+    "TimelineMessages",
     "TimelineSpan",
+    "timeline_messages",
     # scanner
     "Error",
     "Scanner",
@@ -154,6 +159,7 @@ __all__ = [
     "messages_by_compaction",
     "chunked_messages",
     "MessagesChunk",
+    "transcript_messages",
     "MessageFormatOptions",
     "MessagesPreprocessor",
     "tool_callers",

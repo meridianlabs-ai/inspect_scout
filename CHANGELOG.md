@@ -1,3 +1,7 @@
+## Unreleased
+
+- LLM Scanner: Store model stop_reason result metadata.
+
 ## 0.4.18 (14 February 2026)
 
 - Bugfix: Fix token counting when a single worker task processes multiple scans sequentially.

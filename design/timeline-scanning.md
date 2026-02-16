@@ -1040,7 +1040,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 4. **Use synthetic scenarios.** Build minimal inline test helpers (e.g., `make_model_event()`, `make_compaction_event()`) using direct `inspect_ai` constructors. Reuse the existing `_parse_input_messages()` pattern from `tests/transcript/nodes/test_timeline.py`. Use the shared JSON fixtures in `tests/transcript/nodes/fixtures/events/` where they cover relevant scenarios (e.g., `compaction_boundary.json`).
 5. **Update this document.** After completing a phase but before committing, replace the phase's overview section below with a summary of what was actually built and tested — files created/modified, key design decisions made during implementation, and test coverage.
 
-### Phase 1: `message_numbering()` ✓
+### Phase 1: `message_numbering()` ✓ `563d43aa`
 
 **Implements:** Section 1 (Universal Message Numbering)
 

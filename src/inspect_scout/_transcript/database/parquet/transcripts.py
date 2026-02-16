@@ -613,7 +613,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Determine which columns we need to read
             need_messages = content.messages is not None
             need_events = content.events is not None
-            need_timelines = content.timelines is not None
+            need_timelines = content.timeline is not None
 
             if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict
@@ -733,7 +733,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Fallback: if timelines were requested but not stored, build from events
             if (
-                content.timelines is not None
+                content.timeline is not None
                 and not transcript.timelines
                 and transcript.events
             ):
@@ -741,7 +741,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 from ...util import filter_timelines
 
                 raw_timeline = build_timeline(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timelines)
+                timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
 
             return transcript

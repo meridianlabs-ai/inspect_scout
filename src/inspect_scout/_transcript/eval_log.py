@@ -467,7 +467,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
             # Fallback: eval logs don't store timelines, so build from events
             if (
-                content.timelines is not None
+                content.timeline is not None
                 and not transcript.timelines
                 and transcript.events
             ):
@@ -475,7 +475,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 from .util import filter_timelines
 
                 raw_timeline = build_timeline(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timelines)
+                timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
 
             return transcript

@@ -197,7 +197,7 @@ def test_scanner_with_timeline() -> None:
 
     instance: Any = test_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == "all"
+    assert config.content.timeline == "all"
     # timeline implies events="all"
     assert config.content.events == "all"
 
@@ -216,7 +216,7 @@ def test_scanner_with_timeline_true() -> None:
 
     instance: Any = test_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == TIMELINE_DEFAULT_EVENTS
+    assert config.content.timeline == TIMELINE_DEFAULT_EVENTS
     # Events derived from timeline types + structural events
     events = config.content.events
     assert isinstance(events, list)
@@ -237,7 +237,7 @@ def test_scanner_with_named_timeline() -> None:
 
     instance: Any = test_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == ["model"]
+    assert config.content.timeline == ["model"]
     # Events derived from timeline types + structural events
     events = config.content.events
     assert isinstance(events, list)
@@ -259,7 +259,7 @@ def test_scanner_timeline_with_explicit_events() -> None:
 
     instance: Any = test_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == "all"
+    assert config.content.timeline == "all"
     # Explicit events are preserved (implication only fires when events is None)
     assert config.content.events == ["model"]
 

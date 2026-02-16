@@ -366,7 +366,7 @@ def scanner(
             if inferred_events is not None:
                 scanner_config.content.events = inferred_events
             if inferred_timeline is not None:
-                scanner_config.content.timelines = inferred_timeline
+                scanner_config.content.timeline = inferred_timeline
             if loader is not None:
                 # TODO: how are we ensuring that the writer of a custom loader sets
                 # the proper content filter? We could do it for them, but I'm not

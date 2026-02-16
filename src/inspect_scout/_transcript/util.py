@@ -246,7 +246,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
         events=filter_list(transcript.events, content.events),
-        timelines=filter_timelines(transcript.timelines, content.timelines),
+        timelines=filter_timelines(transcript.timelines, content.timeline),
     )
 
 
@@ -254,7 +254,7 @@ def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptCon
     return TranscriptContent(
         _union_filters(a.messages, b.messages),
         _union_filters(a.events, b.events),
-        _union_filters(a.timelines, b.timelines),
+        _union_filters(a.timeline, b.timeline),
     )
 
 

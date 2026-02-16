@@ -176,7 +176,7 @@ def loader(
                 normalize_messages_filter(messages) if messages is not None else None
             ),
             events=normalize_events_filter(events) if events is not None else None,
-            timelines=(
+            timeline=(
                 normalize_timeline_filter(timeline) if timeline is not None else None
             ),
         )

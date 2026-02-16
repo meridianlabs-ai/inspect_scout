@@ -294,7 +294,7 @@ def test_infer_timeline_type() -> None:
 
     instance: Any = timeline_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == "all"
+    assert config.content.timeline == "all"
     assert config.content.events == "all"
 
 
@@ -311,7 +311,7 @@ def test_infer_list_timeline_type() -> None:
 
     instance: Any = timeline_list_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
-    assert config.content.timelines == "all"
+    assert config.content.timeline == "all"
     assert config.content.events == "all"
 
 

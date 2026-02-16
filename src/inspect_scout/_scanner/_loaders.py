@@ -77,7 +77,7 @@ def _TimelineListLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[list[Timeline]]:
-            yield filter_timelines(transcript.timelines, content.timelines)
+            yield filter_timelines(transcript.timelines, content.timeline)
 
         return the_loader
 
@@ -92,7 +92,7 @@ def _TimelineItemLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[Timeline]:
-            filtered = filter_timelines(transcript.timelines, content.timelines)
+            filtered = filter_timelines(transcript.timelines, content.timeline)
             if filtered:
                 yield filtered[0]
 

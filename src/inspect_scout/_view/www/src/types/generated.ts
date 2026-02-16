@@ -1303,20 +1303,13 @@ export interface components {
              * Effort
              * @default null
              */
-            effort: ("low" | "medium" | "high" | "max") | null;
+            effort: ("low" | "medium" | "high") | null;
             /**
              * Extra Body
              * @default null
              */
             extra_body: {
                 [key: string]: unknown;
-            } | null;
-            /**
-             * Extra Headers
-             * @default null
-             */
-            extra_headers: {
-                [key: string]: string;
             } | null;
             /**
              * Frequency Penalty
@@ -1459,14 +1452,10 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high" | "max") | null;
+            effort?: ("low" | "medium" | "high") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
-            } | null;
-            /** Extra Headers */
-            extra_headers?: {
-                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -1536,14 +1525,10 @@ export interface components {
             /** Cache Prompt */
             cache_prompt?: "auto" | boolean | null;
             /** Effort */
-            effort?: ("low" | "medium" | "high" | "max") | null;
+            effort?: ("low" | "medium" | "high") | null;
             /** Extra Body */
             extra_body?: {
                 [key: string]: unknown;
-            } | null;
-            /** Extra Headers */
-            extra_headers?: {
-                [key: string]: string;
             } | null;
             /** Frequency Penalty */
             frequency_penalty?: number | null;
@@ -1996,13 +1981,10 @@ export interface components {
             request: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
-            /**
-             * Response
-             * @default null
-             */
+            /** Response */
             response: {
                 [key: string]: components["schemas"]["JsonValue"];
-            } | null;
+            };
             /**
              * Time
              * @default null
@@ -2110,16 +2092,6 @@ export interface components {
             /** Tools */
             tools: components["schemas"]["ToolInfo"][];
             /**
-             * Traceback
-             * @default null
-             */
-            traceback: string | null;
-            /**
-             * Traceback Ansi
-             * @default null
-             */
-            traceback_ansi: string | null;
-            /**
              * Uuid
              * @default null
              */
@@ -2199,11 +2171,6 @@ export interface components {
              * @default null
              */
             reasoning_tokens: number | null;
-            /**
-             * Total Cost
-             * @default null
-             */
-            total_cost: number | null;
             /**
              * Total Tokens
              * @default 0
@@ -2558,7 +2525,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "message" | "time" | "working" | "token" | "cost" | "operator" | "custom";
+            type: "message" | "time" | "working" | "token" | "operator" | "custom";
             /**
              * Uuid
              * @default null

@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from inspect_ai.model import ModelOutput
+from inspect_ai.model import ModelOutput, StopReason
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
@@ -18,7 +18,7 @@ LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
     "stop_reason",
     ["stop", "max_tokens", "model_length", "tool_calls", "unknown"],
 )
-def test_stop_reason_in_result_metadata(stop_reason: str) -> None:
+def test_stop_reason_in_result_metadata(stop_reason: StopReason) -> None:
     """stop_reason from model output is stored in result metadata."""
 
     @scanner(name="stop_reason_test", messages="all")

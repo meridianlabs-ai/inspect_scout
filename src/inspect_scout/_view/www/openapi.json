@@ -2375,8 +2375,7 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high",
-                  "max"
+                  "high"
                 ],
                 "type": "string"
               },
@@ -2399,21 +2398,6 @@
             ],
             "default": null,
             "title": "Extra Body"
-          },
-          "extra_headers": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -2826,8 +2810,7 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high",
-                  "max"
+                  "high"
                 ],
                 "type": "string"
               },
@@ -2848,20 +2831,6 @@
               }
             ],
             "title": "Extra Body"
-          },
-          "extra_headers": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -3249,8 +3218,7 @@
                 "enum": [
                   "low",
                   "medium",
-                  "high",
-                  "max"
+                  "high"
                 ],
                 "type": "string"
               },
@@ -3271,20 +3239,6 @@
               }
             ],
             "title": "Extra Body"
-          },
-          "extra_headers": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Headers"
           },
           "frequency_penalty": {
             "anyOf": [
@@ -4725,19 +4679,11 @@
             "type": "object"
           },
           "response": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Response"
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Response",
+            "type": "object"
           },
           "time": {
             "anyOf": [
@@ -4753,7 +4699,8 @@
           }
         },
         "required": [
-          "request"
+          "request",
+          "response"
         ],
         "title": "ModelCall",
         "type": "object"
@@ -5008,30 +4955,6 @@
             "title": "Tools",
             "type": "array"
           },
-          "traceback": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Traceback"
-          },
-          "traceback_ansi": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Traceback Ansi"
-          },
           "uuid": {
             "anyOf": [
               {
@@ -5200,18 +5123,6 @@
             ],
             "default": null,
             "title": "Reasoning Tokens"
-          },
-          "total_cost": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total Cost"
           },
           "total_tokens": {
             "default": 0,
@@ -6347,7 +6258,6 @@
               "time",
               "working",
               "token",
-              "cost",
               "operator",
               "custom"
             ],

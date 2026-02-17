@@ -1,7 +1,14 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._grep_scanner import grep_scanner
-from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
+from ._llm_scanner import (
+    AnswerMultiLabel,
+    AnswerSpec,
+    AnswerStructured,
+    generate_answer,
+    llm_scanner,
+    parse_answer,
+)
 from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
 from ._query.condition import Condition
@@ -166,7 +173,10 @@ __all__ = [
     "RefusalError",
     "llm_scanner",
     "AnswerMultiLabel",
+    "AnswerSpec",
     "AnswerStructured",
+    "generate_answer",
+    "parse_answer",
     "grep_scanner",
     # validation
     "ValidationSet",

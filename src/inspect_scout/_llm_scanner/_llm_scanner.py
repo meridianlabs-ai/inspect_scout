@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Literal, overload
+from typing import Any, Awaitable, Callable, overload
 
 from inspect_ai.model import (
     Model,
@@ -19,17 +19,14 @@ from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import AnswerMultiLabel, AnswerStructured
+from .types import AnswerSpec, AnswerStructured
 
 
 @overload
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]],
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]
@@ -46,10 +43,7 @@ def llm_scanner(
 def llm_scanner(
     *,
     question: None = None,
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str,
     template_variables: dict[str, Any]
@@ -66,10 +60,7 @@ def llm_scanner(
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]] | None = None,
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]

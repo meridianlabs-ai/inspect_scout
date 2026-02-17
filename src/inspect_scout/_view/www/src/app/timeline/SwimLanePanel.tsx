@@ -7,6 +7,7 @@ import type {
   TimelineBranch,
   TimelineSpan,
 } from "../../components/transcript/timeline";
+import { useProperty } from "../../state/hooks/useProperty";
 import { formatTime } from "../../utils/format";
 
 import type {
@@ -120,6 +121,17 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
   breadcrumb,
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
+
+  // Collapse state — persisted across sessions
+  const [collapsed, setCollapsed] = useProperty<boolean>(
+    "timeline",
+    "swimlanesCollapsed",
+    { defaultValue: false, cleanup: false }
+  );
+  const isCollapsed = !!collapsed;
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(!isCollapsed);
+  }, [isCollapsed, setCollapsed]);
 
   // Branch popover state
   const [branchPopover, setBranchPopover] = useState<{
@@ -251,15 +263,30 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
       {/* Pinned: breadcrumb (with minimap) + parent row */}
       <div className={styles.pinnedSection}>
         {breadcrumb && <BreadcrumbRow {...breadcrumb} minimap={minimap} />}
-        {parentRow && renderRow(parentRow, 0)}
+        {!isCollapsed && parentRow && renderRow(parentRow, 0)}
       </div>
 
       {/* Scrollable: child rows */}
-      {childRows.length > 0 && (
+      {!isCollapsed && childRows.length > 0 && (
         <div className={styles.scrollSection}>
           {childRows.map((layout, i) => renderRow(layout, i + 1))}
         </div>
       )}
+
+      {/* Collapse toggle on bottom border */}
+      <button
+        className={styles.collapseToggle}
+        onClick={toggleCollapsed}
+        title={isCollapsed ? "Expand swimlanes" : "Collapse swimlanes"}
+      >
+        <i
+          className={
+            isCollapsed
+              ? ApplicationIcons.expand.down
+              : ApplicationIcons.collapse.up
+          }
+        />
+      </button>
 
       <BranchPopover
         isOpen={branchPopover !== null && branchLookup !== null}

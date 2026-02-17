@@ -42,5 +42,4 @@
 .eventList {
   flex: 1;
   overflow-y: auto;
-  border-top: 1px solid var(--bs-border-color);
 }

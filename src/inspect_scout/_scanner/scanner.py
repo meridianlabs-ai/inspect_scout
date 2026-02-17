@@ -61,6 +61,7 @@ SCANNER_VERSION = "scanner_version"
 
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
+SCANNER_CONTENT_ATTR = "___scanner_content___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -343,6 +344,17 @@ def scanner(
                         "messages=..., events=..., timeline=..., loader=..., "
                         "or specific type annotations"
                     )
+
+            # Allow scan functions to override content filters at runtime
+            # (e.g. llm_scanner sets this when content= is passed)
+            if hasattr(scanner_fn, SCANNER_CONTENT_ATTR):
+                override = getattr(scanner_fn, SCANNER_CONTENT_ATTR)
+                if override.messages is not None:
+                    inferred_messages = override.messages
+                if override.events is not None:
+                    inferred_events = override.events
+                if override.timeline is not None:
+                    inferred_timeline = override.timeline
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)

@@ -78,6 +78,7 @@ from ._transcript.types import (
     EventType,
     MessageType,
     Transcript,
+    TranscriptContent,
     TranscriptInfo,
 )
 from ._util.refusal import RefusalError
@@ -160,6 +161,7 @@ __all__ = [
     "loader",
     "EventType",
     "MessageType",
+    "TranscriptContent",
     "as_scorer",
     "message_numbering",
     "messages_as_str",

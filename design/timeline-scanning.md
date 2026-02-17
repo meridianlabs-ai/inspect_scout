@@ -1187,29 +1187,41 @@ The design doc proposed three separate functions (`parse_answer`, `generate_for_
 
 **Dependencies:** None — independent of Phases 2-4.
 
-### Phase 6: Refactor `llm_scanner`
+### Phase 6: Refactor `llm_scanner` (COMPLETE)
 
 **Implements:** Section 4 (Refactoring)
 
-**Files:**
-- Modify: `src/inspect_scout/_llm_scanner/_llm_scanner.py`
-- Modify: `src/inspect_scout/_scanner/scanner.py` (for `SCANNER_CONTENT_ATTR`)
-- Modify or add integration tests
+**What was built:**
 
-**What to build:**
-- Add `content: TranscriptContent | None` and `context_window: int | None` parameters
-- Replace inline message extraction with `message_numbering()` + `transcript_messages()`
-- Replace inline generation/parsing with `generate_answer()`
-- `SCANNER_CONTENT_ATTR` support in `@scanner` decorator
-- Return type: `Result | list[Result]` (single segment → `Result` for backward compat)
-- Public export of `TranscriptContent` and filter type aliases
+1. **`SCANNER_CONTENT_ATTR`** in `src/inspect_scout/_scanner/scanner.py` — new constant
+   and merge logic in `factory_wrapper` that reads the attribute from scan functions
+   and overrides inferred content filters. Inserted after filter inference but before
+   validation so overridden filters are validated and included in `ScannerConfig`.
 
-**What to test:**
-- Existing `llm_scanner` tests continue to pass (backward compatibility)
-- `content=TranscriptContent(timeline=True)` enables timeline scanning
-- `context_window` override works
-- Multi-segment transcript returns `list[Result]`
-- Single-segment transcript returns `Result` (not wrapped in list)
+2. **Refactored `_llm_scanner.py`:**
+   - Added `content: TranscriptContent | None` and `context_window: int | None` parameters
+     to all three signatures (two overloads + implementation)
+   - Replaced `messages_as_str(transcript, ...)` with `message_numbering()` +
+     `transcript_messages()` for context-window-aware, timeline-capable extraction
+   - Replaced inline `structured_generate`/`generate_retry_refusals` with `generate_answer()`
+   - Return type changed from `Result` to `Result | list[Result]`
+   - Preprocessor passed through with `cast()` for backward compat — `MessageFormatOptions`
+     fields work identically; custom `transform` taking `Transcript` is a documented limitation
+   - `content=` sets `SCANNER_CONTENT_ATTR` on the scan function for the decorator to merge
+
+3. **`_flatten_results()` helper** — prevents nested resultsets when structured answers
+   with `result_set=True` are used across multiple segments. Checks each result for
+   `type=="resultset"` with list value, deserializes sub-results via `Result.model_validate`,
+   and collects into a flat list.
+
+4. **`TranscriptContent` exported** from `src/inspect_scout/__init__.py`.
+
+**Tests:** 12 new tests in `tests/llm_scanner/test_llm_scanner.py`:
+- `_flatten_results`: passthrough, unrolling, mixed, edge cases (list value non-resultset,
+  resultset type non-list value), metadata preservation
+- `content` parameter: sets attr, no attr without content, events filter
+
+All 157 llm_scanner tests pass (145 existing + 12 new). Full suite: 2404 passed.
 
 **Dependencies:** All prior phases (1-5).
 

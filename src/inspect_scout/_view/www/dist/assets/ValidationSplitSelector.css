@@ -1,0 +1,254 @@
+._container_4r2t1_1 {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Trigger button (collapsed state) */
+._trigger_4r2t1_8 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: fit-content;
+  padding: 3px 3px;
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+._chevron_4r2t1_26 {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.6;
+  line-height: 1;
+  transform: rotate(180deg);
+}
+
+._trigger_4r2t1_8:hover {
+  background: var(--vscode-dropdown-background);
+  border-color: var(--vscode-focusBorder);
+}
+
+._trigger_4r2t1_8:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+._triggerContent_4r2t1_44 {
+  display: flex;
+  flex-direction: column;
+}
+
+._triggerSizer_4r2t1_49 {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+  height: 0;
+  overflow: hidden;
+  display: block;
+}
+
+._triggerPrimary_4r2t1_57 {
+  font-size: var(--vscode-font-size, 13px);
+  white-space: nowrap;
+}
+
+._triggerSecondary_4r2t1_62 {
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+._triggerPlaceholder_4r2t1_71 {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+/* Dropdown panel - rendered via portal */
+._dropdown_4r2t1_76 {
+  z-index: 10000;
+  background: var(
+    --vscode-dropdown-background,
+    var(--vscode-input-background, #252526)
+  );
+  border: 1px solid
+    var(--vscode-dropdown-border, var(--vscode-input-border, #3c3c3c));
+  border-radius: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Dropdown items */
+._item_4r2t1_91 {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+._item_4r2t1_91:last-child {
+  border-bottom: none;
+}
+
+._item_4r2t1_91:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Selected item - with proper contrast */
+._item_4r2t1_91._selected_4r2t1_106 {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+._item_4r2t1_91._selected_4r2t1_106 ._primaryText_4r2t1_110,
+._item_4r2t1_91._selected_4r2t1_106 ._secondaryText_4r2t1_111 {
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+._primaryText_4r2t1_110 {
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+._secondaryText_4r2t1_111 {
+  color: var(--vscode-descriptionForeground);
+  font-size: calc(var(--vscode-font-size, 13px) - 2px);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._loading_4r2t1_133 {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+._error_4r2t1_138 {
+  color: var(--vscode-errorForeground);
+}
+
+/* Divider between sets and create option */
+._divider_4r2t1_143 {
+  height: 1px;
+  background: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  margin: 4px 10px;
+}
+
+/* Remove border from item before divider */
+._item_4r2t1_91:has(+ ._divider_4r2t1_143) {
+  border-bottom: none;
+}
+
+/* Create option styling */
+._createOption_4r2t1_155 {
+  margin-top: 2px;
+}
+
+._createOption_4r2t1_155 ._primaryText_4r2t1_110 {
+  color: var(--vscode-textLink-foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+._createOption_4r2t1_155 ._primaryText_4r2t1_110::before {
+  content: "+";
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Modal content styles */
+._modalContent_4r2t1_173 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+._modalContent_4r2t1_173 p {
+  margin: 0;
+}
+
+._hint_4r2t1_183 {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+/* Modal button styles */
+._modalButton_4r2t1_190 {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+._modalButton_4r2t1_190:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+._modalButton_4r2t1_190:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+._modalButtonPrimary_4r2t1_209 {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+._modalButtonPrimary_4r2t1_209:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+/* Modal styles for the "New Split" dialog */
+._modalContent_cmqyy_2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+._modalContent_cmqyy_2 p {
+  margin: 0;
+}
+
+._modalButton_cmqyy_12 {
+  padding: 6px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+._modalButton_cmqyy_12:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26 {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+._modalButtonPrimary_cmqyy_26:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+._modalButtonPrimary_cmqyy_26:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

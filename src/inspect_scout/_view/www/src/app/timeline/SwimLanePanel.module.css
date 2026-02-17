@@ -1,27 +1,29 @@
 .swimlane {
   --swimlane-row-height: 22px;
-  --swimlane-minimap-height: 14px;
+  --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
 
-  display: flex;
-  flex-direction: column;
-  padding: 0.25rem 0;
+  display: grid;
+  grid-template-columns: var(--swimlane-grid-columns);
+  padding: 0.5rem 0;
   outline: none;
   flex-shrink: 0;
 }
 
 /* Pinned section: minimap + parent row — always visible */
 .pinnedSection {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: var(--swimlane-grid-columns);
+  grid-template-columns: subgrid;
   align-items: center;
   row-gap: 1px;
 }
 
 /* Scrollable section: child rows */
 .scrollSection {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: var(--swimlane-grid-columns);
+  grid-template-columns: subgrid;
   align-items: center;
   row-gap: 1px;
   max-height: calc(4 * (var(--swimlane-row-height) + 1px));
@@ -184,6 +186,73 @@
 .branchEntry:hover .branchMeta {
   color: inherit;
   opacity: 0.8;
+}
+
+/* Breadcrumb row */
+
+.breadcrumbRow {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0.5rem 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumbBack {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  line-height: 1;
+  border-radius: var(--bs-border-radius);
+  flex-shrink: 0;
+}
+
+.breadcrumbBack:hover:not(:disabled) {
+  color: var(--vscode-textLink-foreground);
+  background-color: var(--bs-secondary-bg);
+}
+
+.breadcrumbBack:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.breadcrumbGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.breadcrumbLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  padding: 0 2px;
+  font-size: var(--inspect-font-size-small);
+}
+
+.breadcrumbLink:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbCurrent {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-size: var(--inspect-font-size-small);
+  padding: 0 2px;
+}
+
+.breadcrumbDivider {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.75rem;
+  padding: 0 2px;
 }
 
 /* Token cell */

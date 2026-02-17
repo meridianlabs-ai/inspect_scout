@@ -1,17 +1,11 @@
 import { FC } from "react";
 
-import { formatDuration } from "../../utils/format";
-
 import styles from "./TimelineBreadcrumb.module.css";
 import type { BreadcrumbSegment } from "./useTimeline";
 
 interface TimelineBreadcrumbProps {
   /** Breadcrumb segments from useTimeline. */
   breadcrumbs: BreadcrumbSegment[];
-  /** Start time of the current node. */
-  startTime: Date;
-  /** End time of the current node. */
-  endTime: Date;
   /** Whether the user is at root (controls back arrow visibility). */
   atRoot: boolean;
   /** Navigate up one level. */
@@ -22,8 +16,6 @@ interface TimelineBreadcrumbProps {
 
 export const TimelineBreadcrumb: FC<TimelineBreadcrumbProps> = ({
   breadcrumbs,
-  startTime,
-  endTime,
   atRoot,
   onGoUp,
   onNavigate,
@@ -58,9 +50,7 @@ export const TimelineBreadcrumb: FC<TimelineBreadcrumbProps> = ({
           );
         })}
       </div>
-      <span className={styles.tokenCount}>
-        {formatDuration(startTime, endTime)}
-      </span>
+      <span className={styles.tokenCount}></span>
     </div>
   );
 };

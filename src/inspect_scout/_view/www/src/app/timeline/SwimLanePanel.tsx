@@ -16,7 +16,11 @@ import type {
 import { formatTokenCount } from "./swimlaneLayout";
 import styles from "./SwimLanePanel.module.css";
 import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
-import { createBranchSpan, parsePathSegment } from "./useTimeline";
+import {
+  type BreadcrumbSegment,
+  createBranchSpan,
+  parsePathSegment,
+} from "./useTimeline";
 
 // =============================================================================
 // Types
@@ -39,6 +43,15 @@ interface SwimLanePanelProps {
   onGoUp: () => void;
   /** Minimap props for the zoom indicator row. */
   minimap?: TimelineMinimapProps;
+  /** Breadcrumb props for the navigation row. */
+  breadcrumb?: BreadcrumbRowProps;
+}
+
+interface BreadcrumbRowProps {
+  breadcrumbs: BreadcrumbSegment[];
+  atRoot: boolean;
+  onGoUp: () => void;
+  onNavigate: (path: string) => void;
 }
 
 // =============================================================================
@@ -102,6 +115,7 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
   onBranchDrillDown,
   onGoUp,
   minimap,
+  breadcrumb,
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
 
@@ -232,8 +246,9 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
       role="grid"
       aria-label="Timeline swimlane"
     >
-      {/* Pinned: minimap + parent row */}
+      {/* Pinned: breadcrumb + minimap + parent row */}
       <div className={styles.pinnedSection}>
+        {breadcrumb && <BreadcrumbRow {...breadcrumb} />}
         {minimap && <TimelineMinimap {...minimap} />}
         {parentRow && renderRow(parentRow, 0)}
       </div>
@@ -319,6 +334,52 @@ const SwimLaneRow: FC<SwimLaneRowProps> = ({
       <div className={styles.tokens}>
         {formatTokenCount(layout.totalTokens)}
       </div>
+    </div>
+  );
+};
+
+// =============================================================================
+// BreadcrumbRow (internal)
+// =============================================================================
+
+const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
+  breadcrumbs,
+  atRoot,
+  onGoUp,
+  onNavigate,
+}) => {
+  return (
+    <div className={styles.breadcrumbRow}>
+      <button
+        className={styles.breadcrumbBack}
+        onClick={onGoUp}
+        disabled={atRoot}
+        title="Go up one level (Escape)"
+      >
+        {"\u2190"}
+      </button>
+      {breadcrumbs.map((segment, i) => {
+        const isLast = i === breadcrumbs.length - 1;
+        return (
+          <span key={segment.path + i} className={styles.breadcrumbGroup}>
+            {i > 0 && (
+              <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
+            )}
+            {isLast ? (
+              <span className={styles.breadcrumbCurrent}>
+                {segment.label}
+              </span>
+            ) : (
+              <button
+                className={styles.breadcrumbLink}
+                onClick={() => onNavigate(segment.path)}
+              >
+                {segment.label}
+              </button>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 };

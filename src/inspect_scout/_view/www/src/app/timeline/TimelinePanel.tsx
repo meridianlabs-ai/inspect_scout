@@ -9,7 +9,6 @@ import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { computeRowLayouts } from "./swimlaneLayout";
 import { SwimLanePanel } from "./SwimLanePanel";
 import { timelineScenarios } from "./syntheticNodes";
-import { TimelineBreadcrumb } from "./TimelineBreadcrumb";
 import styles from "./TimelinePanel.module.css";
 import { TimelinePills } from "./TimelinePills";
 import { useTimeline } from "./useTimeline";
@@ -61,14 +60,6 @@ export const TimelinePanel: FC = () => {
       </div>
       <div className={styles.content}>
         <TimelinePills timelines={[]} activeIndex={0} onSelect={() => {}} />
-        <TimelineBreadcrumb
-          breadcrumbs={state.breadcrumbs}
-          startTime={state.node.startTime}
-          endTime={state.node.endTime}
-          atRoot={atRoot}
-          onGoUp={state.goUp}
-          onNavigate={state.navigateTo}
-        />
         <SwimLanePanel
           layouts={layouts}
           selected={state.selected}
@@ -80,6 +71,12 @@ export const TimelinePanel: FC = () => {
           minimap={{
             root: timeline!.root,
             current: state.node,
+          }}
+          breadcrumb={{
+            breadcrumbs: state.breadcrumbs,
+            atRoot,
+            onGoUp: state.goUp,
+            onNavigate: state.navigateTo,
           }}
         />
       </div>

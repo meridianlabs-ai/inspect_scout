@@ -4826,49 +4826,51 @@ so disabling selection can break that functionality */
   min-height: 0;
   overflow: auto;
 }
-._swimlane_3nz9a_1 {
+._swimlane_11rpc_1 {
   --swimlane-row-height: 22px;
-  --swimlane-minimap-height: 14px;
+  --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
 
-  display: flex;
-  flex-direction: column;
-  padding: 0.25rem 0;
+  display: grid;
+  grid-template-columns: var(--swimlane-grid-columns);
+  padding: 0.5rem 0;
   outline: none;
   flex-shrink: 0;
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_3nz9a_14 {
+._pinnedSection_11rpc_14 {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: var(--swimlane-grid-columns);
+  grid-template-columns: subgrid;
   align-items: center;
   row-gap: 1px;
 }
 
 /* Scrollable section: child rows */
-._scrollSection_3nz9a_22 {
+._scrollSection_11rpc_23 {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: var(--swimlane-grid-columns);
+  grid-template-columns: subgrid;
   align-items: center;
   row-gap: 1px;
   max-height: calc(4 * (var(--swimlane-row-height) + 1px));
   overflow-y: auto;
 }
 
-._swimlane_3nz9a_1:focus-visible {
+._swimlane_11rpc_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_3nz9a_37 {
+._row_11rpc_39 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_3nz9a_43 {
+._label_11rpc_45 {
   padding: 0 0.5rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-small);
@@ -4879,22 +4881,22 @@ so disabling selection can break that functionality */
   gap: 2px;
 }
 
-._labelChild_3nz9a_54 {
+._labelChild_11rpc_56 {
   padding-left: 1.25rem;
 }
 
-._labelSelected_3nz9a_58 {
+._labelSelected_11rpc_60 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_3nz9a_64 {
+._barArea_11rpc_66 {
   position: relative;
   height: var(--swimlane-row-height);
 }
 
-._fill_3nz9a_69 {
+._fill_11rpc_71 {
   position: absolute;
   top: 3px;
   bottom: 3px;
@@ -4908,27 +4910,27 @@ so disabling selection can break that functionality */
   cursor: pointer;
 }
 
-._fill_3nz9a_69:hover {
+._fill_11rpc_71:hover {
   opacity: 0.5;
 }
 
-._fillParent_3nz9a_87 {
+._fillParent_11rpc_89 {
   opacity: 0.2;
 }
 
-._fillSelected_3nz9a_91 {
+._fillSelected_11rpc_93 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_3nz9a_96 {
+._parallelBadge_11rpc_98 {
   font-size: var(--inspect-font-size-small);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Chevron */
 
-._chevron_3nz9a_103 {
+._chevron_11rpc_105 {
   position: absolute;
   top: 50%;
   transform: translate(-100%, -50%);
@@ -4942,13 +4944,13 @@ so disabling selection can break that functionality */
   line-height: 1;
 }
 
-._chevron_3nz9a_103:hover {
+._chevron_11rpc_105:hover {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_3nz9a_123 {
+._marker_11rpc_125 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -4958,15 +4960,15 @@ so disabling selection can break that functionality */
   line-height: 1;
 }
 
-._markerError_3nz9a_133 {
+._markerError_11rpc_135 {
   color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_3nz9a_137 {
+._markerCompaction_11rpc_139 {
   color: var(--vscode-descriptionForeground);
 }
 
-._markerBranch_3nz9a_141 {
+._markerBranch_11rpc_143 {
   color: var(--vscode-textLink-foreground);
   pointer-events: auto;
   cursor: pointer;
@@ -4974,13 +4976,13 @@ so disabling selection can break that functionality */
 
 /* Branch popover */
 
-._branchPopover_3nz9a_149 {
+._branchPopover_11rpc_151 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_3nz9a_155 {
+._branchEntry_11rpc_157 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4995,116 +4997,67 @@ so disabling selection can break that functionality */
   white-space: nowrap;
 }
 
-._branchEntry_3nz9a_155:hover {
+._branchEntry_11rpc_157:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_3nz9a_175 {
+._branchLabel_11rpc_177 {
   font-weight: 500;
 }
 
-._branchMeta_3nz9a_179 {
+._branchMeta_11rpc_181 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_3nz9a_155:hover ._branchMeta_3nz9a_179 {
+._branchEntry_11rpc_157:hover ._branchMeta_11rpc_181 {
   color: inherit;
   opacity: 0.8;
 }
 
-/* Token cell */
+/* Breadcrumb row */
 
-._tokens_3nz9a_191 {
-  padding: 0 0.75rem 0 0.5rem;
-  font-size: var(--inspect-font-size-small);
-  color: var(--vscode-descriptionForeground);
-  white-space: nowrap;
-  text-align: right;
-}
-._row_o311u_1 {
-  display: contents;
-}
-
-._minimap_o311u_5 {
-  position: relative;
-  height: 10px;
-  margin: 2px 0;
-}
-
-/* Full-width track — thin rounded rail */
-._track_o311u_12 {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 4px;
-  height: 2px;
-  border-radius: 1px;
-  background-color: var(--bs-border-color);
-  opacity: 0.5;
-}
-
-/* Vertical bar markers showing zoom boundaries */
-._marker_o311u_24 {
-  position: absolute;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  border-radius: 1px;
-  background-color: var(--bs-primary);
-  opacity: 0.55;
-  transform: translateX(-50%);
-}
-._breadcrumbRow_hn02v_1 {
+._breadcrumbRow_11rpc_193 {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0.375rem 0.75rem 0.375rem 0.25rem;
-  border-bottom: 1px solid var(--bs-border-color);
-  flex-shrink: 0;
-  min-height: 32px;
+  gap: 2px;
+  padding: 2px 0.5rem 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-._backButton_hn02v_11 {
+._breadcrumbBack_11rpc_203 {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--vscode-foreground);
-  padding: 2px 6px;
-  font-size: 0.9rem;
+  padding: 2px 4px;
+  font-size: 0.85rem;
   line-height: 1;
   border-radius: var(--bs-border-radius);
   flex-shrink: 0;
 }
 
-._backButton_hn02v_11:hover:not(:disabled) {
+._breadcrumbBack_11rpc_203:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._backButton_hn02v_11:disabled {
+._breadcrumbBack_11rpc_203:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._segments_hn02v_33 {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-._segmentGroup_hn02v_42 {
+._breadcrumbGroup_11rpc_225 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._segmentButton_hn02v_49 {
+._breadcrumbLink_11rpc_232 {
   background: none;
   border: none;
   cursor: pointer;
@@ -5113,29 +5066,143 @@ so disabling selection can break that functionality */
   font-size: var(--inspect-font-size-small);
 }
 
-._segmentButton_hn02v_49:hover {
+._breadcrumbLink_11rpc_232:hover {
   text-decoration: underline;
 }
 
-._segmentCurrent_hn02v_62 {
+._breadcrumbCurrent_11rpc_245 {
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-small);
   padding: 0 2px;
 }
 
-._divider_hn02v_69 {
+._breadcrumbDivider_11rpc_252 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 2px;
 }
 
-._tokenCount_hn02v_75 {
-  margin-left: auto;
-  color: var(--vscode-descriptionForeground);
+/* Token cell */
+
+._tokens_11rpc_260 {
+  padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-small);
+  color: var(--vscode-descriptionForeground);
   white-space: nowrap;
-  flex-shrink: 0;
+  text-align: right;
+}
+._row_7xx92_1 {
+  display: contents;
+}
+
+/* Mode label in the label grid column — vertically aligned with track line */
+._modeLabel_7xx92_6 {
+  font-size: 0.6rem;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  user-select: none;
+  cursor: pointer;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  text-align: right;
+  align-self: start;
+  /* Track center is at ~6px from cell top (5px track + 1px minimap margin) */
+  margin-top: 6px;
+  transform: translateY(-50%);
+}
+
+._minimap_7xx92_22 {
+  position: relative;
+  height: 18px;
+  margin: 1px 0 0;
+}
+
+/* Time labels positioned at edges inside the bar area — pill style */
+._timeLabelLeft_7xx92_29,
+._timeLabelRight_7xx92_30 {
+  position: absolute;
+  top: 5px;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: none;
+  z-index: 1;
+  cursor: pointer;
+}
+
+._timeLabelLeft_7xx92_29 {
+  left: 0;
+}
+
+._timeLabelRight_7xx92_30 {
+  right: 0;
+}
+
+/* Full-width track — thin rounded rail, near the top */
+._track_7xx92_56 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.25;
+}
+
+/* Zoom region fill — subtle highlight between markers on the track */
+._regionFill_7xx92_68 {
+  position: absolute;
+  top: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.45;
+}
+
+/* Vertical bar markers at zoom boundaries — from track down to arm level */
+._marker_7xx92_78 {
+  position: absolute;
+  top: 1px;
+  height: 9px;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.55;
+  transform: translateX(-50%);
+}
+
+/* Section duration pill centered between the two markers */
+._sectionTime_7xx92_90 {
+  position: absolute;
+  top: 5px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+._sectionTimePill_7xx92_101 {
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-primary);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
 }
 ._container_5prjp_1 {
   display: flex;

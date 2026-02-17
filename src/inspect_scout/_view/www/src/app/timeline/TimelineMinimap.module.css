@@ -2,13 +2,57 @@
   display: contents;
 }
 
-.minimap {
-  position: relative;
-  height: 10px;
-  margin: 2px 0;
+/* Mode label in the label grid column — vertically aligned with track line */
+.modeLabel {
+  font-size: 0.6rem;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  user-select: none;
+  cursor: pointer;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  text-align: right;
+  align-self: start;
+  /* Track center is at ~6px from cell top (5px track + 1px minimap margin) */
+  margin-top: 6px;
+  transform: translateY(-50%);
 }
 
-/* Full-width track — thin rounded rail */
+.minimap {
+  position: relative;
+  height: 18px;
+  margin: 1px 0 0;
+}
+
+/* Time labels positioned at edges inside the bar area — pill style */
+.timeLabelLeft,
+.timeLabelRight {
+  position: absolute;
+  top: 5px;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: none;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.timeLabelLeft {
+  left: 0;
+}
+
+.timeLabelRight {
+  right: 0;
+}
+
+/* Full-width track — thin rounded rail, near the top */
 .track {
   position: absolute;
   left: 0;
@@ -16,18 +60,53 @@
   top: 4px;
   height: 2px;
   border-radius: 1px;
-  background-color: var(--bs-border-color);
-  opacity: 0.5;
+  background-color: var(--bs-primary);
+  opacity: 0.25;
 }
 
-/* Vertical bar markers showing zoom boundaries */
+/* Zoom region fill — subtle highlight between markers on the track */
+.regionFill {
+  position: absolute;
+  top: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.45;
+}
+
+/* Vertical bar markers at zoom boundaries — from track down to arm level */
 .marker {
   position: absolute;
-  top: 0;
+  top: 1px;
+  height: 9px;
   width: 2px;
-  height: 100%;
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.55;
   transform: translateX(-50%);
+}
+
+/* Section duration pill centered between the two markers */
+.sectionTime {
+  position: absolute;
+  top: 5px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sectionTimePill {
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-primary);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
 }

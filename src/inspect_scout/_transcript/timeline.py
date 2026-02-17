@@ -1245,16 +1245,18 @@ def _filter_content_list(
 
 @dataclass(frozen=True)
 class TimelineMessages:
-    """A chunk of messages from a specific timeline span.
+    """A segment of messages from a specific timeline span.
 
-    Extends MessagesChunk with span context. Can be used anywhere
-    a MessagesChunk is expected via duck typing.
+    Structurally compatible with ``MessagesSegment`` (shares
+    ``messages``, ``text``, ``segment`` fields) with additional
+    span context. Can be used anywhere a ``MessagesSegment``
+    is expected via duck typing.
 
     Attributes:
-        messages: The original ChatMessage objects in this chunk.
+        messages: The original ChatMessage objects in this segment.
         text: Pre-rendered string from messages_as_str.
-        segment: 0-based segment index, auto-increments across yields.
-        span: The TimelineSpan this chunk was extracted from.
+        segment: 0-based segment index, globally unique across yields.
+        span: The TimelineSpan this segment was extracted from.
     """
 
     messages: list[ChatMessage]
@@ -1276,8 +1278,8 @@ async def timeline_messages(
     """Yield pre-rendered message segments from timeline spans.
 
     Walks the span tree, passes each matching span to
-    ``chunked_messages()`` for message extraction and context window
-    chunking. Each yielded item includes the span context alongside
+    ``segment_messages()`` for message extraction and context window
+    segmentation. Each yielded item includes the span context alongside
     the pre-rendered text.
 
     Args:
@@ -1304,12 +1306,13 @@ async def timeline_messages(
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
     """
-    from inspect_scout._transcript.messages import chunked_messages
+    from inspect_scout._transcript.messages import segment_messages
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
+    counter = 0
     for span in _walk_spans(root, include, depth=depth):
-        async for chunk in chunked_messages(
+        async for seg in segment_messages(
             span,
             messages_as_str=messages_as_str,
             model=model,
@@ -1317,11 +1320,12 @@ async def timeline_messages(
             compaction=compaction,
         ):
             yield TimelineMessages(
-                messages=chunk.messages,
-                text=chunk.text,
-                segment=chunk.segment,
+                messages=seg.messages,
+                text=seg.text,
+                segment=counter,
                 span=span,
             )
+            counter += 1
 
 
 def _walk_spans(

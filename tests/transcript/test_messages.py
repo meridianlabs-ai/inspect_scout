@@ -18,8 +18,8 @@ from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
-    MessagesChunk,
-    chunked_messages,
+    MessagesSegment,
+    segment_messages,
     span_messages,
     transcript_messages,
 )
@@ -382,31 +382,31 @@ def test_span_messages_compaction_last_with_trim() -> None:
     assert len(result) == 4  # a1, u2, u3, output
 
 
-# -- chunked_messages tests --
+# -- segment_messages tests --
 
 
 async def _collect(
     source: list[ChatMessage] | list[Event],
     *,
     context_window: int | None = None,
-) -> list[MessagesChunk]:
-    """Helper to collect all MessagesChunk from chunked_messages."""
+) -> list[MessagesSegment]:
+    """Helper to collect all MessagesSegment from segment_messages."""
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
-    results: list[MessagesChunk] = []
-    async for chunk in chunked_messages(
+    results: list[MessagesSegment] = []
+    async for seg in segment_messages(
         source,
         messages_as_str=msgs_as_str,
         model=model,
         context_window=context_window,
     ):
-        results.append(chunk)
+        results.append(seg)
     return results
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_single_segment() -> None:
-    """Small message list fits in budget → single MessagesChunk."""
+async def test_segment_messages_single_segment() -> None:
+    """Small message list fits in budget → single MessagesSegment."""
     msgs: list[ChatMessage] = [_user1, _asst1, _user2]
     results = await _collect(msgs, context_window=10_000)
 
@@ -419,7 +419,7 @@ async def test_chunked_messages_single_segment() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_renders_text() -> None:
+async def test_segment_messages_renders_text() -> None:
     """Rendered text contains [M1], [M2] etc. from message_numbering()."""
     msgs: list[ChatMessage] = [_user1, _asst1]
     results = await _collect(msgs, context_window=10_000)
@@ -431,7 +431,7 @@ async def test_chunked_messages_renders_text() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_with_events() -> None:
+async def test_segment_messages_with_events() -> None:
     """Events with compaction → merged via span_messages, then chunked."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Seg 0"),
@@ -440,7 +440,7 @@ async def test_chunked_messages_with_events() -> None:
     ]
     results = await _collect(events, context_window=10_000)
 
-    # Now produces a single merged chunk (not two separate segments)
+    # Now produces a single merged segment (not two separate segments)
     assert len(results) == 1
     assert results[0].segment == 0
     # Contains messages from both pre and post compaction
@@ -450,7 +450,7 @@ async def test_chunked_messages_with_events() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_chunking() -> None:
+async def test_segment_messages_chunking() -> None:
     """Large messages exceeding budget → multiple chunks."""
     long_text = "word " * 100  # ~100 tokens
     msgs: list[ChatMessage] = [
@@ -458,7 +458,7 @@ async def test_chunked_messages_chunking() -> None:
         ChatMessageUser(content=long_text, id="long-2"),
         ChatMessageUser(content=long_text, id="long-3"),
     ]
-    # Set budget so each message is its own chunk (budget < single message tokens)
+    # Set budget so each message is its own segment (budget < single message tokens)
     # 80% of 50 = 40 tokens, each message is ~100+ tokens
     results = await _collect(msgs, context_window=50)
 
@@ -472,7 +472,7 @@ async def test_chunked_messages_chunking() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_continuous_numbering() -> None:
+async def test_segment_messages_continuous_numbering() -> None:
     """Message numbering is continuous across chunks."""
     long_text = "word " * 100
     msgs: list[ChatMessage] = [
@@ -487,7 +487,7 @@ async def test_chunked_messages_continuous_numbering() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_events_with_chunking() -> None:
+async def test_segment_messages_events_with_chunking() -> None:
     """Events with compaction merged then chunked by token budget."""
     long_text = "word " * 100
     events: list[Event] = [
@@ -512,14 +512,14 @@ async def test_chunked_messages_events_with_chunking() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_empty_input() -> None:
+async def test_segment_messages_empty_input() -> None:
     """Empty list yields nothing."""
     results = await _collect([], context_window=10_000)
     assert results == []
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_skips_empty_renders() -> None:
+async def test_segment_messages_skips_empty_renders() -> None:
     """System messages excluded by default preprocessor are skipped."""
     msgs: list[ChatMessage] = [_sys, _user1]
     results = await _collect(msgs, context_window=10_000)
@@ -544,7 +544,7 @@ async def _collect_timeline(
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
     results: list[TimelineMessages] = []
-    async for chunk in timeline_messages(
+    async for seg in timeline_messages(
         timeline,
         messages_as_str=msgs_as_str,
         model=model,
@@ -552,7 +552,7 @@ async def _collect_timeline(
         include=include,  # type: ignore[arg-type]
         depth=depth,
     ):
-        results.append(chunk)
+        results.append(seg)
     return results
 
 
@@ -745,14 +745,14 @@ async def test_transcript_messages_with_timelines() -> None:
 
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
-    results: list[MessagesChunk] = []
-    async for chunk in transcript_messages(
+    results: list[MessagesSegment] = []
+    async for seg in transcript_messages(
         transcript,
         messages_as_str=msgs_as_str,
         model=model,
         context_window=10_000,
     ):
-        results.append(chunk)
+        results.append(seg)
 
     assert len(results) == 1
     assert isinstance(results[0], TimelineMessages)
@@ -760,7 +760,7 @@ async def test_transcript_messages_with_timelines() -> None:
 
 @pytest.mark.anyio
 async def test_transcript_messages_with_events() -> None:
-    """Dispatches to chunked_messages with events."""
+    """Dispatches to segment_messages with events."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Response"),
     ]
@@ -772,14 +772,14 @@ async def test_transcript_messages_with_events() -> None:
 
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
-    results: list[MessagesChunk] = []
-    async for chunk in transcript_messages(
+    results: list[MessagesSegment] = []
+    async for seg in transcript_messages(
         transcript,
         messages_as_str=msgs_as_str,
         model=model,
         context_window=10_000,
     ):
-        results.append(chunk)
+        results.append(seg)
 
     assert len(results) == 1
     assert not isinstance(results[0], TimelineMessages)
@@ -787,7 +787,7 @@ async def test_transcript_messages_with_events() -> None:
 
 @pytest.mark.anyio
 async def test_transcript_messages_with_messages_only() -> None:
-    """Dispatches to chunked_messages with messages."""
+    """Dispatches to segment_messages with messages."""
     transcript = Transcript(
         transcript_id="t3",
         messages=[_user1, _asst1],
@@ -795,14 +795,14 @@ async def test_transcript_messages_with_messages_only() -> None:
 
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
-    results: list[MessagesChunk] = []
-    async for chunk in transcript_messages(
+    results: list[MessagesSegment] = []
+    async for seg in transcript_messages(
         transcript,
         messages_as_str=msgs_as_str,
         model=model,
         context_window=10_000,
     ):
-        results.append(chunk)
+        results.append(seg)
 
     assert len(results) == 1
     assert not isinstance(results[0], TimelineMessages)

@@ -23,11 +23,11 @@ _BUDGET_DISCOUNT = 0.8
 
 
 @dataclass(frozen=True)
-class MessagesChunk:
-    """A chunk of rendered messages that fits within a token budget.
+class MessagesSegment:
+    """A segment of rendered messages that fits within a token budget.
 
     Attributes:
-        messages: The original ChatMessage objects in this chunk.
+        messages: The original ChatMessage objects in this segment.
         text: Pre-rendered string from messages_as_str.
         segment: 0-based segment index, auto-increments across yields.
     """
@@ -37,23 +37,23 @@ class MessagesChunk:
     segment: int
 
 
-async def chunked_messages(
+async def segment_messages(
     source: list[ChatMessage] | list[Event] | TimelineSpan,
     *,
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
-) -> AsyncIterator[MessagesChunk]:
-    """Render messages and chunk them to fit within a token budget.
+) -> AsyncIterator[MessagesSegment]:
+    """Render messages and split them into segments that fit within a token budget.
 
     Renders each message individually via ``messages_as_str``, counts
-    tokens in parallel via ``tg_collect``, then accumulates chunks that
+    tokens in parallel via ``tg_collect``, then accumulates segments that
     fit within the effective budget (context window * 80%).
 
     When given events or a ``TimelineSpan``, delegates to
     ``span_messages()`` to extract and merge messages (handling
-    compaction boundaries), then chunks the result.
+    compaction boundaries), then segments the result.
 
     Args:
         source: A list of ChatMessage, a list of Event, or a
@@ -68,7 +68,7 @@ async def chunked_messages(
             contains events. Passed through to ``span_messages()``.
 
     Yields:
-        MessagesChunk chunks, each fitting within the token budget.
+        MessagesSegment instances, each fitting within the token budget.
         Segment counter increments across all yields.
     """
     # Resolve source to a flat message list
@@ -111,33 +111,33 @@ async def chunked_messages(
         [lambda t=text: model.count_tokens(t) for _, text in rendered]  # type: ignore[misc]
     )
 
-    # Pass 3: Chunk based on accumulated token counts
+    # Pass 3: Segment based on accumulated token counts
     segment_counter = 0
-    chunk_messages: list[ChatMessage] = []
-    chunk_texts: list[str] = []
+    current_messages: list[ChatMessage] = []
+    current_texts: list[str] = []
     running_tokens = 0
 
     for (msg, text), tokens in zip(rendered, token_counts, strict=False):
-        if chunk_messages and running_tokens + tokens > effective_budget:
-            yield MessagesChunk(
-                messages=chunk_messages,
-                text="\n".join(chunk_texts),
+        if current_messages and running_tokens + tokens > effective_budget:
+            yield MessagesSegment(
+                messages=current_messages,
+                text="\n".join(current_texts),
                 segment=segment_counter,
             )
             segment_counter += 1
-            chunk_messages = []
-            chunk_texts = []
+            current_messages = []
+            current_texts = []
             running_tokens = 0
 
-        chunk_messages.append(msg)
-        chunk_texts.append(text)
+        current_messages.append(msg)
+        current_texts.append(text)
         running_tokens += tokens
 
-    # Yield remaining chunk
-    if chunk_messages:
-        yield MessagesChunk(
-            messages=chunk_messages,
-            text="\n".join(chunk_texts),
+    # Yield remaining segment
+    if current_messages:
+        yield MessagesSegment(
+            messages=current_messages,
+            text="\n".join(current_texts),
             segment=segment_counter,
         )
 
@@ -150,7 +150,7 @@ async def transcript_messages(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     depth: int | None = None,
-) -> AsyncIterator[MessagesChunk]:
+) -> AsyncIterator[MessagesSegment]:
     """Yield pre-rendered message segments from a transcript.
 
     Automatically selects the best extraction strategy based on
@@ -158,12 +158,12 @@ async def transcript_messages(
 
     - If timelines are present, delegates to ``timeline_messages()``
     - If events are present (no timelines), delegates to
-      ``chunked_messages()`` with compaction handling
-    - If only messages are present, delegates to ``chunked_messages()``
-      for context window chunking only
+      ``segment_messages()`` with compaction handling
+    - If only messages are present, delegates to ``segment_messages()``
+      for context window segmentation only
 
     Since ``TimelineMessages`` is structurally compatible with
-    ``MessagesChunk``, callers get a uniform interface. Those needing
+    ``MessagesSegment``, callers get a uniform interface. Those needing
     span context can isinstance-check for ``TimelineMessages``.
 
     Args:
@@ -177,12 +177,12 @@ async def transcript_messages(
             are present. Ignored for events-only or messages-only paths.
 
     Yields:
-        MessagesChunk (or TimelineMessages) for each segment.
+        ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
     """
     if transcript.timelines:
         from inspect_scout._transcript.timeline import timeline_messages
 
-        async for seg in timeline_messages(
+        async for timeline_seg in timeline_messages(
             transcript.timelines[0],
             messages_as_str=messages_as_str,
             model=model,
@@ -190,24 +190,24 @@ async def transcript_messages(
             compaction=compaction,
             depth=depth,
         ):
-            yield seg  # type: ignore[misc]
+            yield timeline_seg  # type: ignore[misc]
     elif transcript.events:
-        async for chunk in chunked_messages(
+        async for seg in segment_messages(
             transcript.events,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
             compaction=compaction,
         ):
-            yield chunk
+            yield seg
     else:
-        async for chunk in chunked_messages(
+        async for seg in segment_messages(
             transcript.messages,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
         ):
-            yield chunk
+            yield seg
 
 
 def span_messages(

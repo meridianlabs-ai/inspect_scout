@@ -1,7 +1,7 @@
 """Tests for llm_scanner refactoring: content attr, flatten_results, integration."""
 
 from inspect_scout import llm_scanner
-from inspect_scout._llm_scanner._llm_scanner import _flatten_results
+from inspect_scout._llm_scanner._parallel import _flatten_results
 from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
 from inspect_scout._transcript.types import TranscriptContent

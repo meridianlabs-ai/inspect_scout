@@ -8,6 +8,7 @@ from ._llm_scanner import (
     generate_answer,
     llm_scanner,
     parse_answer,
+    scan_segments,
 )
 from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
@@ -59,8 +60,8 @@ from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
 from ._transcript.messages import (
-    MessagesChunk,
-    chunked_messages,
+    MessagesSegment,
+    segment_messages,
     span_messages,
     transcript_messages,
 )
@@ -166,8 +167,8 @@ __all__ = [
     "message_numbering",
     "messages_as_str",
     "span_messages",
-    "chunked_messages",
-    "MessagesChunk",
+    "segment_messages",
+    "MessagesSegment",
     "transcript_messages",
     "MessageFormatOptions",
     "MessagesPreprocessor",
@@ -179,6 +180,7 @@ __all__ = [
     "AnswerStructured",
     "generate_answer",
     "parse_answer",
+    "scan_segments",
     "grep_scanner",
     # validation
     "ValidationSet",

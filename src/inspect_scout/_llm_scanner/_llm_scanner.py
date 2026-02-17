@@ -20,8 +20,9 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import transcript_messages
+from .._transcript.messages import MessagesSegment, transcript_messages
 from .._transcript.types import Transcript, TranscriptContent
+from ._parallel import scan_segments
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .prompt import DEFAULT_SCANNER_TEMPLATE
@@ -182,16 +183,7 @@ def llm_scanner(
             ),
         )
 
-        # Scan each segment
-        results: list[Result] = []
-        async for segment in transcript_messages(
-            transcript,
-            messages_as_str=messages_as_str_fn,
-            model=model_instance,
-            context_window=context_window,
-            compaction=compaction,
-            depth=depth,
-        ):
+        async def scan_segment(segment: MessagesSegment) -> Result:
             prompt = await render_scanner_prompt(
                 template=template,
                 template_variables=template_variables,
@@ -200,8 +192,7 @@ def llm_scanner(
                 question=question,
                 answer=resolved_answer,
             )
-
-            result = await generate_answer(
+            return await generate_answer(
                 prompt,
                 answer,
                 model=resolved_model,
@@ -209,12 +200,20 @@ def llm_scanner(
                 extract_references=extract_references,
                 value_to_float=value_to_float,
             )
-            results.append(result)
 
-        # Flatten resultsets to prevent nesting when structured answers
-        # with result_set=True are used across multiple segments
-        all_results = _flatten_results(results)
-        return all_results[0] if len(all_results) == 1 else all_results
+        results = await scan_segments(
+            transcript_messages(
+                transcript,
+                messages_as_str=messages_as_str_fn,
+                model=model_instance,
+                context_window=context_window,
+                compaction=compaction,
+                depth=depth,
+            ),
+            scan_segment,
+        )
+
+        return results[0] if len(results) == 1 else results
 
     # set name for collection by @scanner if specified
     if name is not None:
@@ -225,24 +224,6 @@ def llm_scanner(
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
     return scan
-
-
-def _flatten_results(results: list[Result]) -> list[Result]:
-    """Flatten any resultset Results into individual Results.
-
-    When structured answers with result_set=True are used across
-    multiple segments, each segment produces a Result(type="resultset").
-    This function unrolls them so the caller can re-compose a single
-    flat resultset, preventing nesting.
-    """
-    flat: list[Result] = []
-    for r in results:
-        if r.type == "resultset" and isinstance(r.value, list):
-            for item in r.value:
-                flat.append(Result.model_validate(item))
-        else:
-            flat.append(r)
-    return flat
 
 
 async def render_scanner_prompt(

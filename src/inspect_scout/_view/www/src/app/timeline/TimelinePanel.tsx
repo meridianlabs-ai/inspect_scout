@@ -4,11 +4,14 @@ import {
 } from "@vscode-elements/react-elements";
 import { FC, useEffect, useMemo, useState } from "react";
 
+import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
+import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 import { computeRowLayouts } from "./swimlaneLayout";
 import { SwimLanePanel } from "./SwimLanePanel";
 import { timelineScenarios } from "./syntheticNodes";
+import { collectRawEvents, getSelectedSpans } from "./timelineEventNodes";
 import styles from "./TimelinePanel.module.css";
 import { TimelinePills } from "./TimelinePills";
 import { useTimeline } from "./useTimeline";
@@ -40,6 +43,17 @@ export const TimelinePanel: FC = () => {
   );
 
   const atRoot = state.breadcrumbs.length <= 1;
+
+  // Event list for the selected swimlane row
+  const selectedSpans = useMemo(
+    () => getSelectedSpans(state.rows, state.selected),
+    [state.rows, state.selected]
+  );
+  const rawEvents = useMemo(
+    () => collectRawEvents(selectedSpans),
+    [selectedSpans]
+  );
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(rawEvents, false);
 
   return (
     <div className={styles.container}>
@@ -85,6 +99,15 @@ export const TimelinePanel: FC = () => {
             onNavigate: state.navigateTo,
           }}
         />
+        {eventNodes.length > 0 && (
+          <div className={styles.eventList}>
+            <TranscriptViewNodes
+              id="timeline-events"
+              eventNodes={eventNodes}
+              defaultCollapsedIds={defaultCollapsedIds}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

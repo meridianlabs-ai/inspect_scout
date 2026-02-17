@@ -1139,53 +1139,60 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Bugfix: Fix token counting when a single worker task processes multiple scans sequentially."
+    "text": "LLM Scanner: Store model stop_reason result metadata.\nScout View: Fix incorrect behavior when attempting to view scanner results with result sets."
   },
   {
     "objectID": "CHANGELOG.html#february-2026",
     "href": "CHANGELOG.html#february-2026",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Bugfix: Fix token counting when a single worker task processes multiple scans sequentially."
+    "text": "LLM Scanner: Store model stop_reason result metadata.\nScout View: Fix incorrect behavior when attempting to view scanner results with result sets."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-1",
     "href": "CHANGELOG.html#february-2026-1",
     "title": "Inspect Scout",
-    "section": "0.4.17 (13 February 2026)",
-    "text": "0.4.17 (13 February 2026)\n\nTranscript DB: Improve Anthropic and Google tool call capture for pheonix() transcript source."
+    "section": "0.4.18 (14 February 2026)",
+    "text": "0.4.18 (14 February 2026)\n\nBugfix: Fix token counting when a single worker task processes multiple scans sequentially."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-2",
     "href": "CHANGELOG.html#february-2026-2",
     "title": "Inspect Scout",
-    "section": "0.4.16 (13 February 2026)",
-    "text": "0.4.16 (13 February 2026)\n\nTranscript DB: phoenix() transcript source for importing transcripts from Arize Phoenix."
+    "section": "0.4.17 (13 February 2026)",
+    "text": "0.4.17 (13 February 2026)\n\nTranscript DB: Improve Anthropic and Google tool call capture for pheonix() transcript source."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-3",
     "href": "CHANGELOG.html#february-2026-3",
     "title": "Inspect Scout",
-    "section": "0.4.15 (12 February 2026)",
-    "text": "0.4.15 (12 February 2026)\n\nScout View: Support for displaying cost limits."
+    "section": "0.4.16 (13 February 2026)",
+    "text": "0.4.16 (13 February 2026)\n\nTranscript DB: phoenix() transcript source for importing transcripts from Arize Phoenix."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-4",
     "href": "CHANGELOG.html#february-2026-4",
     "title": "Inspect Scout",
-    "section": "0.4.14 (12 February 2026)",
-    "text": "0.4.14 (12 February 2026)\n\nScout View: Improve display of large dictionary scan values.\nEnable customization of the scan buffer directory via SCOUT_SCANBUFFER_DIR environment variable.\nBugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker."
+    "section": "0.4.15 (12 February 2026)",
+    "text": "0.4.15 (12 February 2026)\n\nScout View: Support for displaying cost limits."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-5",
     "href": "CHANGELOG.html#february-2026-5",
     "title": "Inspect Scout",
-    "section": "0.4.13 (11 February 2026)",
-    "text": "0.4.13 (11 February 2026)\n\nValidation: Support for applying validation labels in Scout View.\nCompatibility with latest release of the Inspect VS Code Extension."
+    "section": "0.4.14 (12 February 2026)",
+    "text": "0.4.14 (12 February 2026)\n\nScout View: Improve display of large dictionary scan values.\nEnable customization of the scan buffer directory via SCOUT_SCANBUFFER_DIR environment variable.\nBugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker."
   },
   {
     "objectID": "CHANGELOG.html#february-2026-6",
     "href": "CHANGELOG.html#february-2026-6",
+    "title": "Inspect Scout",
+    "section": "0.4.13 (11 February 2026)",
+    "text": "0.4.13 (11 February 2026)\n\nValidation: Support for applying validation labels in Scout View.\nCompatibility with latest release of the Inspect VS Code Extension."
+  },
+  {
+    "objectID": "CHANGELOG.html#february-2026-7",
+    "href": "CHANGELOG.html#february-2026-7",
     "title": "Inspect Scout",
     "section": "0.4.12 (09 February 2026)",
     "text": "0.4.12 (09 February 2026)\n\nScoring: Apply content filter for scanners when using them as Inspect scorers.\nAdd SampleMetadata class for typed access to Inspect eval log metadata fields.\nAdd support for Inspect CompactionEvent and display of native compaction data from OpenAI and Anthropic.\nAdd “store” event to EventType enumeration.\nView Server: Add optimized /transcripts/{dir}/{id}/info and /transcripts/{dir}/{id}/messages-events endpoints for fetching transcript data. The messages-events endpoint streams raw (potentially compressed) JSON for improved performance.\nBugfix: Eliminate problem with stale transcript status when deleting validation cases."

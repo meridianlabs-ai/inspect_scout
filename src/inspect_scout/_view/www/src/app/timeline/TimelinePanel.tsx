@@ -2,7 +2,7 @@ import {
   VscodeOption,
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
-import { FC, useMemo, useState } from "react";
+import { FC, useEffect, useMemo, useState } from "react";
 
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
@@ -21,6 +21,12 @@ export const TimelinePanel: FC = () => {
 
   const timeline = scenario?.timeline;
   const state = useTimeline(timeline!);
+
+  // Clear drill-down path on mount so reloads start at root
+  useEffect(() => {
+    state.navigateTo("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const layouts = useMemo(
     () =>

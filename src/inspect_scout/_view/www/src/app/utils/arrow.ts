@@ -31,8 +31,28 @@ interface Result {
 export async function expandResultsetRows(
   columnTable: ColumnTable
 ): Promise<ColumnTable> {
-  // Check if we have any resultset rows
+  // Ensure that each row in the table has an "identifier" column (this is used as a unique key for
+  // referencing rows since code below may expand one row with a resultset into multiple rows.
+  // We use the existing "uuid" column if it exists, otherwise we generate a random UUID. It is expected that the resultset expansion
+  // will overwrite this value for expanded rows
   const colNames = columnTable.columnNames();
+  if (!colNames.includes("identifier")) {
+    const numRows = columnTable.numRows();
+    const identifiers = new Array<string>(numRows);
+    if (colNames.includes("uuid")) {
+      const uuids = columnTable.array("uuid") as (string | null | undefined)[];
+      for (let i = 0; i < numRows; i++) {
+        identifiers[i] = uuids[i] ?? crypto.randomUUID();
+      }
+    } else {
+      for (let i = 0; i < numRows; i++) {
+        identifiers[i] = crypto.randomUUID();
+      }
+    }
+    columnTable = columnTable.assign({ identifier: identifiers });
+  }
+
+  // Check if we have any resultset rows
   if (
     !colNames.includes("value_type") ||
     !colNames.includes("value") ||
@@ -83,7 +103,7 @@ export async function expandResultsetRows(
         const expandedRow = { ...row };
 
         // Record the source identifier
-        expandedRow._rowIdentifier = result.uuid ?? null;
+        expandedRow.identifier = result.uuid ?? crypto.randomUUID();
 
         // Override values
 
@@ -146,12 +166,7 @@ export async function expandResultsetRows(
     return otherRows;
   } else {
     // Create an array merging all the rows and convert back to a column table
-    const otherRowsArray = (
-      otherRows.objects() as Record<string, unknown>[]
-    ).map((row) => {
-      row._rowIdentifier = row.uuid ?? null;
-      return row;
-    });
+    const otherRowsArray = otherRows.objects() as Record<string, unknown>[];
 
     const allRowsArray = [
       ...otherRowsArray,

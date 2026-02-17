@@ -79,8 +79,7 @@ export const ScannerResultsBody: FC<{
               wrapText={dataframeWrapText}
               onRowDoubleClicked={(row) => {
                 // Navigate to the result detail view
-                const uuid = (row as { _rowIdentifier?: string })
-                  ._rowIdentifier;
+                const uuid = (row as { identifier?: string }).identifier;
                 if (uuid && scansDir) {
                   const route = scanResultRoute(
                     scansDir,

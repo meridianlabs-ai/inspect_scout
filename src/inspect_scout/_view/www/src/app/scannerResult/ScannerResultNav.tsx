@@ -22,7 +22,7 @@ export const ScannerResultNav: FC = () => {
       return -1;
     }
     return visibleScannerResults.findIndex(
-      (s) => s._rowIdentifier === scanResultUuid
+      (s) => s.identifier === scanResultUuid
     );
   }, [visibleScannerResults, scanResultUuid]);
 
@@ -43,7 +43,7 @@ export const ScannerResultNav: FC = () => {
     const route = scanResultRoute(
       scansDir,
       scanPath,
-      previousResult?._rowIdentifier,
+      previousResult?.identifier,
       searchParams
     );
     void navigate(route);
@@ -60,7 +60,7 @@ export const ScannerResultNav: FC = () => {
     const route = scanResultRoute(
       scansDir,
       scanPath,
-      nextResult?._rowIdentifier,
+      nextResult?.identifier,
       searchParams
     );
     void navigate(route);

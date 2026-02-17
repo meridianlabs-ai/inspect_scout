@@ -39,9 +39,9 @@ const ScannerResultsRowComponent: FC<ScannerResultsRowProps> = ({
   );
 
   // Generate the route to the scan result using the current scan path and the entry's uuid
-  const isNavigable = summary._rowIdentifier !== undefined && !!scansDir;
+  const isNavigable = summary.identifier !== undefined && !!scansDir;
   const scanResultUrl = isNavigable
-    ? scanResultRoute(scansDir, scanPath, summary._rowIdentifier, searchParams)
+    ? scanResultRoute(scansDir, scanPath, summary.identifier, searchParams)
     : "";
   const navigate = useLoggingNavigate("ScannerResultsRow");
 
@@ -65,12 +65,12 @@ const ScannerResultsRowComponent: FC<ScannerResultsRowProps> = ({
       className={clsx(
         styles.row,
         !isNavigable ? styles.disabled : "",
-        selectedScanResult === summary._rowIdentifier ? styles.selected : "",
+        selectedScanResult === summary.identifier ? styles.selected : "",
         hasExplanation ? "" : styles.noExplanation
       )}
       onClick={() => {
-        if (summary._rowIdentifier) {
-          setSelectedScanResult(summary._rowIdentifier);
+        if (summary.identifier) {
+          setSelectedScanResult(summary.identifier);
         }
       }}
     >

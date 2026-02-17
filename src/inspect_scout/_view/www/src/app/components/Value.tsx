@@ -256,7 +256,7 @@ const renderValue = (
       printObject(val, 35)
     ) : (
       <RecordTree
-        id={`value-record-${summary._rowIdentifier}-${index}`}
+        id={`value-record-${summary.identifier}-${index}`}
         record={val as Record<string, unknown>}
       />
     );

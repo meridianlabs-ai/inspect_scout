@@ -32,9 +32,9 @@ export type InputType =
 
 export interface ScanResultSummary {
   // Basic Info
-  _rowIdentifier?: string;
+  identifier: string;
   // the Scan UUID. Important to note that it is possible for the
-  // scan UUID to appear repeated for multiple summaries if there are multiple results per scan (e.g. multiple messages/events in transcript input) or for labels. In this case, the _rowIdentifier will be unique (otherwise it just matches the uuid)
+  // scan UUID to appear repeated for multiple summaries if there are multiple results per scan (e.g. multiple messages/events in transcript input) or for labels. In this case, the identifier will be unique (otherwise it just matches the uuid)
 
   uuid?: string;
   explanation?: string;

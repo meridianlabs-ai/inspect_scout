@@ -206,7 +206,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   const currentIndex = useMemo(() => {
     if (selectedScanResult) {
       return filteredSummaries.findIndex(
-        (s) => s._rowIdentifier === selectedScanResult
+        (s) => s.identifier === selectedScanResult
       );
     }
     return -1;
@@ -215,8 +215,8 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   const handleNext = useCallback(() => {
     if (currentIndex >= 0 && currentIndex < filteredSummaries.length - 1) {
       const nextResult = filteredSummaries[currentIndex + 1];
-      if (nextResult?._rowIdentifier) {
-        setSelectedScanResult(nextResult._rowIdentifier);
+      if (nextResult?.identifier) {
+        setSelectedScanResult(nextResult.identifier);
       }
     }
   }, [currentIndex, filteredSummaries, setSelectedScanResult]);
@@ -224,8 +224,8 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       const previousResult = filteredSummaries[currentIndex - 1];
-      if (previousResult?._rowIdentifier) {
-        setSelectedScanResult(previousResult._rowIdentifier);
+      if (previousResult?.identifier) {
+        setSelectedScanResult(previousResult.identifier);
       }
     }
   }, [currentIndex, filteredSummaries, setSelectedScanResult]);
@@ -239,7 +239,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
       const route = scanResultRoute(
         scansDir,
         scanPath,
-        selectedResult?._rowIdentifier,
+        selectedResult?.identifier,
         searchParams
       );
       if (newWindow) {
@@ -280,10 +280,10 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
             // Cmd/Ctrl+ArrowUp: Go to first item
             if (
               filteredSummaries.length > 0 &&
-              filteredSummaries[0]?._rowIdentifier
+              filteredSummaries[0]?.identifier
             ) {
               e.preventDefault();
-              setSelectedScanResult(filteredSummaries[0]._rowIdentifier);
+              setSelectedScanResult(filteredSummaries[0].identifier);
             }
           } else if (hasPrevious) {
             e.preventDefault();
@@ -295,7 +295,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
             if (filteredSummaries.length > 0) {
               e.preventDefault();
               const uuid =
-                filteredSummaries[filteredSummaries.length - 1]?._rowIdentifier;
+                filteredSummaries[filteredSummaries.length - 1]?.identifier;
               if (uuid) {
                 setSelectedScanResult(uuid);
               }
@@ -332,9 +332,9 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
     if (
       !selectedScanResult &&
       filteredSummaries.length > 0 &&
-      filteredSummaries[0]?._rowIdentifier
+      filteredSummaries[0]?.identifier
     ) {
-      setSelectedScanResult(filteredSummaries[0]._rowIdentifier);
+      setSelectedScanResult(filteredSummaries[0].identifier);
     }
   }, [filteredSummaries, selectedScanResult, setSelectedScanResult]);
 
@@ -350,7 +350,7 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   const selectedItemIndex = useMemo(() => {
     if (selectedScanResult) {
       const selectedIndex = filteredSummaries.findIndex(
-        (s) => s._rowIdentifier === selectedScanResult
+        (s) => s.identifier === selectedScanResult
       );
       if (selectedIndex >= 0) {
         return selectedIndex;

@@ -66,6 +66,7 @@ export const parseScanResultData = async (
       : Promise.resolve(undefined),
   ]);
 
+  const identifier = filtered.get("identifier", 0) as string;
   const uuid = filtered.get("uuid", 0) as string | undefined;
   const timestamp = getOptionalColumn<string>(filtered, "timestamp");
   const answer = filtered.get("answer", 0) as string | undefined;
@@ -142,6 +143,7 @@ export const parseScanResultData = async (
   );
 
   const baseData = {
+    identifier,
     uuid,
     timestamp,
     answer,
@@ -223,7 +225,7 @@ export const parseScanResultSummaries = async (
       ]);
 
       const baseSummary = {
-        _rowIdentifier: r._rowIdentifier as string | undefined,
+        identifier: r.identifier as string,
         uuid: r.uuid as string | undefined,
         label: r.label as string | undefined,
         explanation: r.explanation as string,

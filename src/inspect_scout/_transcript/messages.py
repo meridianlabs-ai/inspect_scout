@@ -149,6 +149,7 @@ async def transcript_messages(
     model: Model,
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
+    depth: int | None = None,
 ) -> AsyncIterator[MessagesChunk]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -172,6 +173,8 @@ async def transcript_messages(
         context_window: Override for the model's context window size.
         compaction: How to handle compaction boundaries when extracting
             messages from events.
+        depth: Maximum depth of the span tree to process when timelines
+            are present. Ignored for events-only or messages-only paths.
 
     Yields:
         MessagesChunk (or TimelineMessages) for each segment.
@@ -185,6 +188,7 @@ async def transcript_messages(
             model=model,
             context_window=context_window,
             compaction=compaction,
+            depth=depth,
         ):
             yield seg  # type: ignore[misc]
     elif transcript.events:

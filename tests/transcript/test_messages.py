@@ -538,6 +538,7 @@ async def _collect_timeline(
     *,
     context_window: int = 10_000,
     include: object = None,
+    depth: int | None = None,
 ) -> list[TimelineMessages]:
     """Helper to collect all TimelineMessages from timeline_messages."""
     model = get_model("mockllm/model")
@@ -549,6 +550,7 @@ async def _collect_timeline(
         model=model,
         context_window=context_window,
         include=include,  # type: ignore[arg-type]
+        depth=depth,
     ):
         results.append(chunk)
     return results
@@ -678,6 +680,50 @@ async def test_timeline_messages_from_timeline_object() -> None:
 
     assert len(results) == 1
     assert results[0].span is span
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_1() -> None:
+    """depth=1 processes only the root span, not children."""
+    child = _make_timeline_span(
+        "Child",
+        events=[_make_model_event(input=[_user2], output_content="From child")],
+    )
+    root = _make_timeline_span(
+        "Root",
+        events=[_make_model_event(input=[_user1], output_content="From root")],
+        children=[child],
+    )
+
+    results = await _collect_timeline(root, depth=1)
+
+    assert len(results) == 1
+    assert results[0].span is root
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_2() -> None:
+    """depth=2 processes root + immediate children, not grandchildren."""
+    grandchild = _make_timeline_span(
+        "Grandchild",
+        events=[_make_model_event(input=[_user3], output_content="From grandchild")],
+    )
+    child = _make_timeline_span(
+        "Child",
+        events=[_make_model_event(input=[_user2], output_content="From child")],
+        children=[grandchild],
+    )
+    root = _make_timeline_span(
+        "Root",
+        events=[_make_model_event(input=[_user1], output_content="From root")],
+        children=[child],
+    )
+
+    results = await _collect_timeline(root, depth=2)
+
+    assert len(results) == 2
+    assert results[0].span is root
+    assert results[1].span is child
 
 
 # -- transcript_messages tests --

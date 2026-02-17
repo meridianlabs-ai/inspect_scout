@@ -1271,6 +1271,7 @@ async def timeline_messages(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     include: Callable[[TimelineSpan], bool] | str | None = None,
+    depth: int | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
@@ -1296,6 +1297,9 @@ async def timeline_messages(
             - None: all non-utility spans with direct ModelEvents (default)
             - str: only spans whose name matches (case-insensitive)
             - callable: predicate on TimelineSpan
+        depth: Maximum depth of the span tree to process. ``1`` processes
+            only the root span, ``2`` includes immediate children, etc.
+            None (default) recurses without limit.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -1304,7 +1308,7 @@ async def timeline_messages(
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
-    for span in _walk_spans(root, include):
+    for span in _walk_spans(root, include, depth=depth):
         async for chunk in chunked_messages(
             span,
             messages_as_str=messages_as_str,
@@ -1323,16 +1327,22 @@ async def timeline_messages(
 def _walk_spans(
     span: TimelineSpan,
     include: Callable[[TimelineSpan], bool] | str | None,
+    *,
+    depth: int | None = None,
+    _current_depth: int = 1,
 ) -> Iterator[TimelineSpan]:
     """Walk the span tree depth-first, yielding matching spans.
 
-    Non-matching spans are still traversed — the filter controls which
-    spans yield messages, not which subtrees are visited. Only content
-    children are traversed (not branches).
+    Non-matching spans are still traversed (up to the depth limit) —
+    the filter controls which spans yield messages, not which subtrees
+    are visited. Only content children are traversed (not branches).
 
     Args:
         span: The root span to walk.
         include: Filter for which spans to yield.
+        depth: Maximum depth to recurse. 1 = root only, 2 = root +
+            children, None = unlimited.
+        _current_depth: Internal counter tracking current depth.
 
     Yields:
         Matching TimelineSpan nodes in depth-first order.
@@ -1340,9 +1350,14 @@ def _walk_spans(
     if _span_matches(span, include):
         yield span
 
+    if depth is not None and _current_depth >= depth:
+        return
+
     for item in span.content:
         if isinstance(item, TimelineSpan):
-            yield from _walk_spans(item, include)
+            yield from _walk_spans(
+                item, include, depth=depth, _current_depth=_current_depth + 1
+            )
 
 
 def _span_matches(

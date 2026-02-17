@@ -3,7 +3,6 @@ import logging
 from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
-import anyio
 import duckdb
 import pandas as pd
 import pyarrow as pa
@@ -435,14 +434,19 @@ class FileRecorder(ScanRecorder):
 async def _write_scanner_parquets(
     scan_dir: UPath, scan_spec: ScanSpec, scan_buffer_dir: UPath
 ) -> None:
-    """Compact per-transcript parquets into single scanner parquets in scan_dir."""
+    """Compact per-transcript parquets into single scanner parquets in scan_dir.
+
+    Note: scanner_table() runs inline (not on a worker thread) to avoid races
+    with concurrent record() calls that write new per-transcript parquets.
+    The await points in fs.write_file() still allow other coroutines to
+    interleave, so the summary copied by _sync_status_files() may reference
+    transcripts not yet in the compacted parquets. This is benign: resumption
+    reads transcript IDs from parquets (_read_synced_ids), not from the summary,
+    so the worst case is a few transcripts get re-scanned.
+    """
     async with AsyncFilesystem() as fs:
         for scanner in sorted(scan_spec.scanners.keys()):
-
-            def _compact(s: str = scanner) -> bytes | None:
-                return scanner_table(scan_buffer_dir, s)
-
-            parquet_bytes = await anyio.to_thread.run_sync(_compact)
+            parquet_bytes = scanner_table(scan_buffer_dir, scanner)
             if parquet_bytes is not None:
                 await fs.write_file(
                     _scanner_parquet_file(scan_dir, scanner), parquet_bytes

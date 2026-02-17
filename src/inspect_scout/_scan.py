@@ -113,6 +113,7 @@ def scan(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    log_buffer: int | None = None,
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -148,6 +149,7 @@ def scan(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        log_buffer: Flush intermediate results to the scan directory every N transcripts. Enables crash-resilient resume and intermediate visibility.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -176,6 +178,7 @@ def scan(
             log_level=log_level,
             fail_on_error=fail_on_error,
             dry_run=dry_run,
+            log_buffer=log_buffer,
             **deprecated,
         )
     )
@@ -206,6 +209,7 @@ async def scan_async(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    log_buffer: int | None = None,
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -240,6 +244,7 @@ async def scan_async(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        log_buffer: Flush intermediate results to the scan directory every N transcripts. Enables crash-resilient resume and intermediate visibility.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -337,7 +342,9 @@ async def scan_async(
     recorder = scan_recorder_for_location(scanjob._scans)
     await recorder.init(scan.spec, scanjob._scans)
 
-    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
+    return await _scan_async(
+        scan=scan, recorder=recorder, fail_on_error=fail_on_error, log_buffer=log_buffer
+    )
 
 
 def scan_resume(
@@ -345,6 +352,7 @@ def scan_resume(
     display: DisplayType | None = None,
     log_level: str | None = None,
     fail_on_error: bool = False,
+    log_buffer: int | None = None,
 ) -> Status:
     """Resume a previous scan.
 
@@ -354,6 +362,7 @@ def scan_resume(
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
+       log_buffer: Flush intermediate results every N transcripts.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -361,13 +370,19 @@ def scan_resume(
     top_level_sync_init(display)
     return run_coroutine(
         scan_resume_async(
-            scan_location, log_level=log_level, fail_on_error=fail_on_error
+            scan_location,
+            log_level=log_level,
+            fail_on_error=fail_on_error,
+            log_buffer=log_buffer,
         )
     )
 
 
 async def scan_resume_async(
-    scan_location: str, log_level: str | None = None, fail_on_error: bool = False
+    scan_location: str,
+    log_level: str | None = None,
+    fail_on_error: bool = False,
+    log_buffer: int | None = None,
 ) -> Status:
     """Resume a previous scan.
 
@@ -376,6 +391,7 @@ async def scan_resume_async(
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
+       log_buffer: Flush intermediate results every N transcripts.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -407,7 +423,9 @@ async def scan_resume_async(
     # create recorder and scan
     recorder = scan_recorder_for_location(scan_location)
     await recorder.resume(scan_location)
-    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
+    return await _scan_async(
+        scan=scan, recorder=recorder, fail_on_error=fail_on_error, log_buffer=log_buffer
+    )
 
 
 def scan_complete(
@@ -470,7 +488,11 @@ _scan_async_running = False
 
 
 async def _scan_async(
-    *, scan: ScanContext, recorder: ScanRecorder, fail_on_error: bool = False
+    *,
+    scan: ScanContext,
+    recorder: ScanRecorder,
+    fail_on_error: bool = False,
+    log_buffer: int | None = None,
 ) -> Status:
     result: Status | None = None
 
@@ -478,7 +500,11 @@ async def _scan_async(
         try:
             nonlocal result
             result = await _scan_async_inner(
-                scan=scan, recorder=recorder, tg=tg, fail_on_error=fail_on_error
+                scan=scan,
+                recorder=recorder,
+                tg=tg,
+                fail_on_error=fail_on_error,
+                log_buffer=log_buffer,
             )
         finally:
             tg.cancel_scope.cancel()
@@ -512,6 +538,7 @@ async def _scan_async_inner(
     recorder: ScanRecorder,
     tg: TaskGroup,
     fail_on_error: bool = False,
+    log_buffer: int | None = None,
 ) -> Status:
     """Execute a scan by orchestrating concurrent scanner execution across transcripts.
 
@@ -526,6 +553,7 @@ async def _scan_async_inner(
         recorder: The scan recorder for tracking completed work and persisting results
         tg: Task group we are running within
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
+        log_buffer: Flush intermediate results every N transcripts.
 
     Returns:
         ScanStatus indicating completion status, spec, and location for resumption
@@ -774,17 +802,30 @@ async def _scan_async_inner(
                         scan.spec.scan_id, scan.spec, total_scans, scan_location
                     )
 
+                    flush_counter = 0
+
                     async def record_results(
                         transcript: TranscriptInfo,
                         scanner: str,
                         results: Sequence[ResultReport],
                     ) -> None:
+                        nonlocal flush_counter
                         metrics = accumulate_metrics(scanner, results)
                         await recorder.record(transcript, scanner, results, metrics)
                         scan_display.results(transcript, scanner, results, metrics)
                         active_store.put_scanner_results(
                             scan.spec.scan_id, scanner, results
                         )
+                        if log_buffer is not None:
+                            flush_counter += 1
+                            if flush_counter >= log_buffer:
+                                flush_counter = 0
+                                try:
+                                    await recorder.flush()
+                                except Exception:
+                                    logger.warning(
+                                        "Periodic buffer sync failed", exc_info=True
+                                    )
 
                     def update_metrics(metrics: ScanMetrics) -> None:
                         active_store.put_metrics(scan.spec.scan_id, metrics)

@@ -50,10 +50,16 @@ class RecorderBuffer:
         normalized = normalize_for_hashing(scan_location)
         return scan_buffer_dir / f"{mm3_hash(normalized)}"
 
-    def __init__(self, scan_location: str, spec: ScanSpec):
+    def __init__(
+        self,
+        scan_location: str,
+        spec: ScanSpec,
+        synced_ids: set[tuple[str, str]] | None = None,
+    ):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
+        self._synced_ids = synced_ids or set()
 
         # establish scan summary if required
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
@@ -206,6 +212,8 @@ class RecorderBuffer:
             f.write(self._scan_summary.model_dump_json(indent=2))
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+        if (transcript_id, scanner) in self._synced_ids:
+            return True
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
         transcript_file = sdir / f"{transcript_id}.parquet"
         if transcript_file.exists():

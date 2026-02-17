@@ -1,7 +1,9 @@
 import io
+import logging
 from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
+import anyio
 import duckdb
 import pandas as pd
 import pyarrow as pa
@@ -116,7 +118,10 @@ class FileRecorder(ScanRecorder):
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
-        self._scan_buffer = RecorderBuffer(self._scan_dir.as_posix(), self.scan_spec)
+        synced_ids = _read_synced_ids(self._scan_dir, self._scan_spec)
+        self._scan_buffer = RecorderBuffer(
+            self._scan_dir.as_posix(), self.scan_spec, synced_ids=synced_ids
+        )
         return self._scan_spec
 
     @override
@@ -147,7 +152,17 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def flush(self) -> None:
-        pass
+        await _write_scanner_parquets(
+            self.scan_dir,
+            self.scan_spec,
+            RecorderBuffer.buffer_dir(self.scan_dir.as_posix()),
+        )
+        _sync_status_files(
+            self.scan_dir,
+            RecorderBuffer.buffer_dir(self.scan_dir.as_posix()),
+            self.scan_spec,
+            complete=False,
+        )
 
     @override
     async def errors(self) -> list[Error]:
@@ -186,13 +201,7 @@ class FileRecorder(ScanRecorder):
         scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
 
         # write scanners
-        async with AsyncFilesystem() as fs:
-            for scanner in sorted(scan_spec.scanners.keys()):
-                parquet_bytes = scanner_table(scan_buffer_dir, scanner)
-                if parquet_bytes is not None:
-                    await fs.write_file(
-                        _scanner_parquet_file(scan_dir, scanner), parquet_bytes
-                    )
+        await _write_scanner_parquets(scan_dir, scan_spec, scan_buffer_dir)
 
         # sync summary and errors
         _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
@@ -421,6 +430,43 @@ class FileRecorder(ScanRecorder):
             except FileNotFoundError:
                 pass
         return scans
+
+
+async def _write_scanner_parquets(
+    scan_dir: UPath, scan_spec: ScanSpec, scan_buffer_dir: UPath
+) -> None:
+    """Compact per-transcript parquets into single scanner parquets in scan_dir."""
+    async with AsyncFilesystem() as fs:
+        for scanner in sorted(scan_spec.scanners.keys()):
+
+            def _compact(s: str = scanner) -> bytes | None:
+                return scanner_table(scan_buffer_dir, s)
+
+            parquet_bytes = await anyio.to_thread.run_sync(_compact)
+            if parquet_bytes is not None:
+                await fs.write_file(
+                    _scanner_parquet_file(scan_dir, scanner), parquet_bytes
+                )
+
+
+def _read_synced_ids(scan_dir: UPath, spec: ScanSpec) -> set[tuple[str, str]]:
+    """Read transcript IDs already written to scanner parquets in scan_dir."""
+    synced: set[tuple[str, str]] = set()
+    for scanner in spec.scanners:
+        parquet_path = scan_dir / f"{scanner}.parquet"
+        if not parquet_path.exists():
+            continue
+        try:
+            pf = pq.ParquetFile(parquet_path.as_posix())
+            table = pf.read(columns=["transcript_id"])
+            for tid in pc.unique(table.column("transcript_id")).to_pylist():
+                if isinstance(tid, str):
+                    synced.add((tid, scanner))
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "Failed to read synced IDs from %s: %s", parquet_path, e
+            )
+    return synced
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:

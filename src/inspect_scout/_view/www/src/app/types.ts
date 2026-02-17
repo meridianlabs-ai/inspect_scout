@@ -33,9 +33,9 @@ export type InputType =
 export interface ScanResultSummary {
   // Basic Info
   identifier: string;
-  // the Scan UUID. Important to note that it is possible for the
-  // scan UUID to appear repeated for multiple summaries if there are multiple results per scan (e.g. multiple messages/events in transcript input) or for labels. In this case, the identifier will be unique (otherwise it just matches the uuid)
-
+  // The original DB result UUID. Shared across expanded resultset rows (e.g.
+  // multiple labels from one scan result will have the same uuid but different
+  // identifiers). Used to fetch the shared input data for the result.
   uuid?: string;
   explanation?: string;
   label?: string;

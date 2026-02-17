@@ -39,10 +39,10 @@ const useScanResultData = (
     }
 
     const filtered = columnTable
-      .params({ targetUuid: rowIdentifier })
+      .params({ targetIdentifier: rowIdentifier })
       .filter(
-        (d: { identifier: string }, $: { targetUuid: string }) =>
-          d.identifier === $.targetUuid
+        (d: { identifier: string }, $: { targetIdentifier: string }) =>
+          d.identifier === $.targetIdentifier
       );
 
     if (filtered.numRows() === 0) {

@@ -22,6 +22,7 @@ import {
 } from "../../types";
 
 import styles from "./ResultBody.module.css";
+import { NoContentsPanel } from "../../../components/NoContentsPanel";
 
 export interface ResultBodyProps {
   resultData: ScanResultData;
@@ -136,7 +137,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         />
       );
     } else {
-      return <div>No Transcript Input Available</div>;
+      return <NoContentsPanel text="No transcript input available" />;
     }
   } else if (isMessagesInput(inputData)) {
     return (

@@ -308,6 +308,7 @@ async function createSyntheticRows(
       templateRow.message_references = maybeSerializeValue([]);
       templateRow.event_references = maybeSerializeValue([]);
       templateRow.uuid = null;
+      templateRow.identifier = crypto.randomUUID();
 
       // Set validation result for this synthetic row
       templateRow.validation_result = validationResults[label] ?? null;

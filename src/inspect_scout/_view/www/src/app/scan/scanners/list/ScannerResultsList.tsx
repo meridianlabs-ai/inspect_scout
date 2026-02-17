@@ -294,10 +294,10 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
             // Cmd/Ctrl+ArrowDown: Go to last item
             if (filteredSummaries.length > 0) {
               e.preventDefault();
-              const uuid =
+              const identifier =
                 filteredSummaries[filteredSummaries.length - 1]?.identifier;
-              if (uuid) {
-                setSelectedScanResult(uuid);
+              if (identifier) {
+                setSelectedScanResult(identifier);
               }
             }
           } else if (hasNext) {

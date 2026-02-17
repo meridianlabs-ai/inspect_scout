@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../../components/chat/ChatViewVirtualList";
 import { ApplicationIcons } from "../../../components/icons";
+import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { TranscriptView } from "../../../components/transcript/TranscriptView";
 import { transcriptRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
@@ -22,7 +23,6 @@ import {
 } from "../../types";
 
 import styles from "./ResultBody.module.css";
-import { NoContentsPanel } from "../../../components/NoContentsPanel";
 
 export interface ResultBodyProps {
   resultData: ScanResultData;

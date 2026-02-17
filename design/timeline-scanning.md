@@ -1147,30 +1147,45 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **Dependencies:** Phase 3 (`chunked_messages`).
 
-### Phase 5: Answer Generation Functions
-
-We have a plan for this phase at ~/.claude/plans/nested-napping-feigenbaum.md
+### Phase 5: Answer Generation Functions ✓
 
 **Implements:** Section 3 (Reusable Answer Generation)
 
-**Files:**
-- Create: `src/inspect_scout/_llm_scanner/generate.py`
-- Create: `tests/llm_scanner/test_generate.py`
+**Files created:**
+- `src/inspect_scout/_llm_scanner/generate.py` — `parse_answer()` and `generate_answer()`
+- `tests/llm_scanner/test_generate.py` — 18 test cases
 
-**What to build:**
-- `parse_answer(output, answer, extract_references, value_to_float)` → `Result`
-- `generate_for_answer(prompt, answer, model, retry_refusals)` → `ModelOutput`
-- `generate_answer(prompt, answer, extract_references, model, ...)` → `Result`
-- Extract logic from inline `llm_scanner` code — `parse_answer` wraps `answer.result_for_answer()`, `generate_for_answer` wraps `generate_retry_refusals()` / `structured_generate()`
+**Files modified:**
+- `src/inspect_scout/_llm_scanner/types.py` — added `AnswerSpec` type alias (the answer union type, previously spelled out inline three times in `llm_scanner`)
+- `src/inspect_scout/_llm_scanner/_llm_scanner.py` — uses `AnswerSpec` instead of repeating the union; cleaned up unused imports
+- `src/inspect_scout/_llm_scanner/__init__.py` — re-exports new public API
+- `src/inspect_scout/__init__.py` — public exports
 
-**What to test:**
-- `parse_answer` with boolean, numeric, string, label answer types
-- `parse_answer` with structured answer (null-value case)
-- `parse_answer` correctly passes `extract_references` through
-- `generate_for_answer` dispatches to structured vs. standard generation
-- `generate_answer` combines both steps
+**What was built:**
 
-**Dependencies:** None — independent of Phases 2-4. Can be done in parallel with message extraction work if desired.
+The design doc proposed three separate functions (`parse_answer`, `generate_for_answer`, `generate_answer`). The implementation simplified this to two, combining generation and optional parsing into a single overloaded `generate_answer` function:
+
+- `parse_answer(output, answer, extract_references, value_to_float)` → `Result` — pure parsing, no LLM call. Accepts `AnswerSpec`, resolves internally via `answer_from_argument()`.
+
+- `generate_answer(prompt, answer, *, model, retry_refusals, parse, extract_references, value_to_float)` → `Result | ModelOutput` — overloaded on `parse`:
+  - `parse=True` (default): generates then parses → returns `Result`
+  - `parse=False`: generation only → returns `ModelOutput`
+  - Dispatches structured answers to `structured_generate()`, normal answers to `generate_retry_refusals()`
+  - Handles the structured null-value case (`value=None` → `Result(value=None, answer=completion)`)
+  - `extract_references` defaults to a no-op (no references), so callers who don't need references don't pass a dummy function
+
+- `AnswerSpec` type alias in `types.py` — defines the answer union once, used by both `llm_scanner` and `generate_answer`
+
+**Design decisions:**
+- `generate_for_answer` was merged into `generate_answer` with `parse=False` instead of being a separate function — reduces API surface without losing capability
+- `Answer` protocol and `answer_from_argument()` remain internal — external users construct `AnswerSpec` values directly; resolution happens inside the functions
+- Parameter ordering: generation params (`model`, `retry_refusals`) before parsing params (`parse`, `extract_references`, `value_to_float`)
+
+**Test coverage:**
+- `parse_answer`: boolean yes/no, numeric integer/decimal, string text/no-pattern, labels single/invalid, references extraction, value_to_float, structured
+- `generate_answer`: normal dispatch, structured dispatch, parse=False returns ModelOutput, parse=True returns Result, extract_references used/default, structured null value
+
+**Dependencies:** None — independent of Phases 2-4.
 
 ### Phase 6: Refactor `llm_scanner`
 

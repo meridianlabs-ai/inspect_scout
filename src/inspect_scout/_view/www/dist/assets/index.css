@@ -7258,8 +7258,8 @@ span.ap-marker-container:hover span.ap-marker {
 ._last_engat_21 {
   padding-bottom: 0.8rem;
 }
-._swimlane_11rpc_1 {
-  --swimlane-row-height: 22px;
+._swimlane_1qi6u_1 {
+  --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
 
@@ -7271,7 +7271,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_11rpc_14 {
+._pinnedSection_1qi6u_14 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7280,7 +7280,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Scrollable section: child rows */
-._scrollSection_11rpc_23 {
+._scrollSection_1qi6u_23 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7290,48 +7290,49 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: auto;
 }
 
-._swimlane_11rpc_1:focus-visible {
+._swimlane_1qi6u_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_11rpc_39 {
+._row_1qi6u_39 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_11rpc_45 {
+._label_1qi6u_45 {
   padding: 0 0.5rem;
   white-space: nowrap;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-foreground);
   user-select: none;
   display: flex;
   align-items: center;
   gap: 2px;
+  height: 100%;
 }
 
-._labelChild_11rpc_56 {
+._labelChild_1qi6u_57 {
   padding-left: 1.25rem;
 }
 
-._labelSelected_11rpc_60 {
+._labelSelected_1qi6u_61 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_11rpc_66 {
+._barArea_1qi6u_67 {
   position: relative;
   height: var(--swimlane-row-height);
 }
 
-._fill_11rpc_71 {
+._fill_1qi6u_72 {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
+  top: 2px;
+  bottom: 2px;
   border-radius: 2px;
   background-color: var(--bs-primary);
   opacity: 0.3;
@@ -7342,27 +7343,27 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._fill_11rpc_71:hover {
+._fill_1qi6u_72:hover {
   opacity: 0.5;
 }
 
-._fillParent_11rpc_89 {
+._fillParent_1qi6u_90 {
   opacity: 0.2;
 }
 
-._fillSelected_11rpc_93 {
+._fillSelected_1qi6u_94 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_11rpc_98 {
-  font-size: var(--inspect-font-size-small);
+._parallelBadge_1qi6u_99 {
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Chevron */
 
-._chevron_11rpc_105 {
+._chevron_1qi6u_106 {
   position: absolute;
   top: 50%;
   transform: translate(-100%, -50%);
@@ -7376,13 +7377,13 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._chevron_11rpc_105:hover {
+._chevron_1qi6u_106:hover {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_11rpc_125 {
+._marker_1qi6u_126 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -7392,15 +7393,15 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._markerError_11rpc_135 {
+._markerError_1qi6u_136 {
   color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_11rpc_139 {
+._markerCompaction_1qi6u_140 {
   color: var(--vscode-descriptionForeground);
 }
 
-._markerBranch_11rpc_143 {
+._markerBranch_1qi6u_144 {
   color: var(--vscode-textLink-foreground);
   pointer-events: auto;
   cursor: pointer;
@@ -7408,13 +7409,13 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Branch popover */
 
-._branchPopover_11rpc_151 {
+._branchPopover_1qi6u_152 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_11rpc_157 {
+._branchEntry_1qi6u_158 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7429,133 +7430,136 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._branchEntry_11rpc_157:hover {
+._branchEntry_1qi6u_158:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_11rpc_177 {
+._branchLabel_1qi6u_178 {
   font-weight: 500;
 }
 
-._branchMeta_11rpc_181 {
+._branchMeta_1qi6u_182 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_11rpc_157:hover ._branchMeta_11rpc_181 {
+._branchEntry_1qi6u_158:hover ._branchMeta_1qi6u_182 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_11rpc_193 {
+._breadcrumbRow_1qi6u_194 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   padding: 2px 0.5rem 6px;
   min-width: 0;
   overflow: hidden;
 }
 
-._breadcrumbBack_11rpc_203 {
+._breadcrumbBack_1qi6u_204 {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--vscode-foreground);
-  padding: 2px 4px;
-  font-size: 0.85rem;
+  padding: 2px 4px 2px 4px;
+  font-size: var(--inspect-font-size-smallest);
   line-height: 1;
   border-radius: var(--bs-border-radius);
   flex-shrink: 0;
+  margin-top: -1px;
 }
 
-._breadcrumbBack_11rpc_203:hover:not(:disabled) {
+._breadcrumbBack_1qi6u_204:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_11rpc_203:disabled {
+._breadcrumbBack_1qi6u_204:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_11rpc_225 {
+._breadcrumbGroup_1qi6u_227 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_11rpc_232 {
+._breadcrumbLink_1qi6u_234 {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--vscode-textLink-foreground);
   padding: 0 2px;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
 }
 
-._breadcrumbLink_11rpc_232:hover {
+._breadcrumbLink_1qi6u_234:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_11rpc_245 {
+._breadcrumbCurrent_1qi6u_247 {
   color: var(--vscode-foreground);
   font-weight: 600;
-  font-size: var(--inspect-font-size-small);
-  padding: 0 2px;
+  font-size: var(--inspect-font-size-smaller);
+  padding: 0;
 }
 
-._breadcrumbDivider_11rpc_252 {
+._breadcrumbDivider_1qi6u_254 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
-  padding: 0 2px;
+  padding: 0 1px;
 }
 
 /* Token cell */
 
-._tokens_11rpc_260 {
+._tokens_1qi6u_262 {
   padding: 0 0.75rem 0 0.5rem;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;
 }
-._row_7xx92_1 {
-  display: contents;
+/* Self-contained minimap — flex row: mode label + bar area */
+
+._container_b1f02_3 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 120px;
+  max-width: 50%;
 }
 
-/* Mode label in the label grid column — vertically aligned with track line */
-._modeLabel_7xx92_6 {
+/* Mode label — click to toggle time/tokens */
+._modeLabel_b1f02_14 {
   font-size: 0.6rem;
   line-height: 1.4;
   color: var(--vscode-descriptionForeground);
   opacity: 0.6;
   user-select: none;
   cursor: pointer;
-  padding: 0 0.5rem;
   white-space: nowrap;
-  text-align: right;
-  align-self: start;
-  /* Track center is at ~6px from cell top (5px track + 1px minimap margin) */
-  margin-top: 6px;
-  transform: translateY(-50%);
 }
 
-._minimap_7xx92_22 {
+._minimap_b1f02_24 {
   position: relative;
   height: 18px;
-  margin: 1px 0 0;
+  flex: 1;
 }
 
-/* Time labels positioned at edges inside the bar area — pill style */
-._timeLabelLeft_7xx92_29,
-._timeLabelRight_7xx92_30 {
+/* Time labels positioned at edges — vertically centered on track */
+._timeLabelLeft_b1f02_31,
+._timeLabelRight_b1f02_32 {
   position: absolute;
-  top: 5px;
+  top: 50%;
   transform: translateY(-50%);
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
@@ -7570,52 +7574,54 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._timeLabelLeft_7xx92_29 {
+._timeLabelLeft_b1f02_31 {
   left: 0;
 }
 
-._timeLabelRight_7xx92_30 {
+._timeLabelRight_b1f02_32 {
   right: 0;
 }
 
-/* Full-width track — thin rounded rail, near the top */
-._track_7xx92_56 {
+/* Full-width track — thin rounded rail, vertically centered */
+._track_b1f02_58 {
   position: absolute;
   left: 0;
   right: 0;
-  top: 4px;
+  top: 50%;
   height: 2px;
+  transform: translateY(-50%);
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.25;
 }
 
 /* Zoom region fill — subtle highlight between markers on the track */
-._regionFill_7xx92_68 {
+._regionFill_b1f02_71 {
   position: absolute;
-  top: 4px;
+  top: 50%;
   height: 2px;
+  transform: translateY(-50%);
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.45;
 }
 
-/* Vertical bar markers at zoom boundaries — from track down to arm level */
-._marker_7xx92_78 {
+/* Vertical bar markers at zoom boundaries */
+._marker_b1f02_82 {
   position: absolute;
-  top: 1px;
+  top: 50%;
   height: 9px;
   width: 2px;
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.55;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 /* Section duration pill centered between the two markers */
-._sectionTime_7xx92_90 {
+._sectionTime_b1f02_94 {
   position: absolute;
-  top: 5px;
+  top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
@@ -7624,7 +7630,7 @@ span.ap-marker-container:hover span.ap-marker {
   user-select: none;
 }
 
-._sectionTimePill_7xx92_101 {
+._sectionTimePill_b1f02_105 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);

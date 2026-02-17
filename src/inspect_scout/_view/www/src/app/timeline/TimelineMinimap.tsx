@@ -15,12 +15,10 @@ export interface TimelineMinimapProps {
 }
 
 /**
- * Minimap row rendered inside the swimlane grid.
+ * Compact minimap showing the current zoom position within the full timeline.
  *
- * Uses `display: contents` so it participates in the parent's 3-column grid.
- * The label and token grid columns are left empty so the minimap's bar area
- * aligns exactly with the swimlane rows. Time labels are positioned inside
- * the bar area at the edges.
+ * Renders as a self-contained flex row: mode label + bar area.
+ * Designed to sit inside the breadcrumb row, right-aligned.
  */
 export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
@@ -59,13 +57,13 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
     : formatDuration(current.startTime, current.endTime);
 
   return (
-    <div className={styles.row}>
-      {/* Mode label in the label column — right-aligned to sit next to "0" pill */}
+    <div className={styles.container}>
+      {/* Mode label — click to toggle time/tokens */}
       <div className={styles.modeLabel} onClick={toggle}>
         {isTokenMode ? "tokens" : "time"}
       </div>
 
-      {/* Bar area column — all minimap content lives here */}
+      {/* Bar area — all minimap content lives here */}
       <div className={styles.minimap}>
         {/* Edge labels — click to toggle time/tokens */}
         <span className={styles.timeLabelLeft} onClick={toggle}>
@@ -108,9 +106,6 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
           </div>
         )}
       </div>
-
-      {/* Empty token column — keeps grid alignment with swimlane rows */}
-      <div />
     </div>
   );
 };

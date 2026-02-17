@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC, useCallback, useMemo, useState } from "react";
 
+import { ApplicationIcons } from "../../components/icons";
 import { PopOver } from "../../components/PopOver";
 import type {
   TimelineBranch,
@@ -52,6 +53,7 @@ interface BreadcrumbRowProps {
   atRoot: boolean;
   onGoUp: () => void;
   onNavigate: (path: string) => void;
+  minimap?: TimelineMinimapProps;
 }
 
 // =============================================================================
@@ -246,10 +248,9 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
       role="grid"
       aria-label="Timeline swimlane"
     >
-      {/* Pinned: breadcrumb + minimap + parent row */}
+      {/* Pinned: breadcrumb (with minimap) + parent row */}
       <div className={styles.pinnedSection}>
-        {breadcrumb && <BreadcrumbRow {...breadcrumb} />}
-        {minimap && <TimelineMinimap {...minimap} />}
+        {breadcrumb && <BreadcrumbRow {...breadcrumb} minimap={minimap} />}
         {parentRow && renderRow(parentRow, 0)}
       </div>
 
@@ -347,6 +348,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
   atRoot,
   onGoUp,
   onNavigate,
+  minimap,
 }) => {
   return (
     <div className={styles.breadcrumbRow}>
@@ -356,7 +358,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
         disabled={atRoot}
         title="Go up one level (Escape)"
       >
-        {"\u2190"}
+        <i className={ApplicationIcons.navbar.back} />
       </button>
       {breadcrumbs.map((segment, i) => {
         const isLast = i === breadcrumbs.length - 1;
@@ -366,9 +368,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
               <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
             )}
             {isLast ? (
-              <span className={styles.breadcrumbCurrent}>
-                {segment.label}
-              </span>
+              <span className={styles.breadcrumbCurrent}>{segment.label}</span>
             ) : (
               <button
                 className={styles.breadcrumbLink}
@@ -380,6 +380,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
           </span>
         );
       })}
+      {minimap && <TimelineMinimap {...minimap} />}
     </div>
   );
 };

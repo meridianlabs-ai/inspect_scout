@@ -1,5 +1,5 @@
 .swimlane {
-  --swimlane-row-height: 22px;
+  --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
 
@@ -45,12 +45,13 @@
 .label {
   padding: 0 0.5rem;
   white-space: nowrap;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-foreground);
   user-select: none;
   display: flex;
   align-items: center;
   gap: 2px;
+  height: 100%;
 }
 
 .labelChild {
@@ -70,8 +71,8 @@
 
 .fill {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
+  top: 2px;
+  bottom: 2px;
   border-radius: 2px;
   background-color: var(--bs-primary);
   opacity: 0.3;
@@ -96,7 +97,7 @@
 }
 
 .parallelBadge {
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-descriptionForeground);
 }
 
@@ -194,7 +195,7 @@
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   padding: 2px 0.5rem 6px;
   min-width: 0;
   overflow: hidden;
@@ -205,11 +206,12 @@
   border: none;
   cursor: pointer;
   color: var(--vscode-foreground);
-  padding: 2px 4px;
-  font-size: 0.85rem;
+  padding: 2px 4px 2px 4px;
+  font-size: var(--inspect-font-size-smallest);
   line-height: 1;
   border-radius: var(--bs-border-radius);
   flex-shrink: 0;
+  margin-top: -1px;
 }
 
 .breadcrumbBack:hover:not(:disabled) {
@@ -235,7 +237,7 @@
   cursor: pointer;
   color: var(--vscode-textLink-foreground);
   padding: 0 2px;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
 }
 
 .breadcrumbLink:hover {
@@ -245,21 +247,21 @@
 .breadcrumbCurrent {
   color: var(--vscode-foreground);
   font-weight: 600;
-  font-size: var(--inspect-font-size-small);
-  padding: 0 2px;
+  font-size: var(--inspect-font-size-smaller);
+  padding: 0;
 }
 
 .breadcrumbDivider {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
-  padding: 0 2px;
+  padding: 0 1px;
 }
 
 /* Token cell */
 
 .tokens {
   padding: 0 0.75rem 0 0.5rem;
-  font-size: var(--inspect-font-size-small);
+  font-size: var(--inspect-font-size-smaller);
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;

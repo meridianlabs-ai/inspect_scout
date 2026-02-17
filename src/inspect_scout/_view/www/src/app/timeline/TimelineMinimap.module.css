@@ -1,8 +1,16 @@
-.row {
-  display: contents;
+/* Self-contained minimap — flex row: mode label + bar area */
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 120px;
+  max-width: 50%;
 }
 
-/* Mode label in the label grid column — vertically aligned with track line */
+/* Mode label — click to toggle time/tokens */
 .modeLabel {
   font-size: 0.6rem;
   line-height: 1.4;
@@ -10,26 +18,20 @@
   opacity: 0.6;
   user-select: none;
   cursor: pointer;
-  padding: 0 0.5rem;
   white-space: nowrap;
-  text-align: right;
-  align-self: start;
-  /* Track center is at ~6px from cell top (5px track + 1px minimap margin) */
-  margin-top: 6px;
-  transform: translateY(-50%);
 }
 
 .minimap {
   position: relative;
   height: 18px;
-  margin: 1px 0 0;
+  flex: 1;
 }
 
-/* Time labels positioned at edges inside the bar area — pill style */
+/* Time labels positioned at edges — vertically centered on track */
 .timeLabelLeft,
 .timeLabelRight {
   position: absolute;
-  top: 5px;
+  top: 50%;
   transform: translateY(-50%);
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
@@ -52,13 +54,14 @@
   right: 0;
 }
 
-/* Full-width track — thin rounded rail, near the top */
+/* Full-width track — thin rounded rail, vertically centered */
 .track {
   position: absolute;
   left: 0;
   right: 0;
-  top: 4px;
+  top: 50%;
   height: 2px;
+  transform: translateY(-50%);
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.25;
@@ -67,29 +70,30 @@
 /* Zoom region fill — subtle highlight between markers on the track */
 .regionFill {
   position: absolute;
-  top: 4px;
+  top: 50%;
   height: 2px;
+  transform: translateY(-50%);
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.45;
 }
 
-/* Vertical bar markers at zoom boundaries — from track down to arm level */
+/* Vertical bar markers at zoom boundaries */
 .marker {
   position: absolute;
-  top: 1px;
+  top: 50%;
   height: 9px;
   width: 2px;
   border-radius: 1px;
   background-color: var(--bs-primary);
   opacity: 0.55;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 /* Section duration pill centered between the two markers */
 .sectionTime {
   position: absolute;
-  top: 5px;
+  top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;

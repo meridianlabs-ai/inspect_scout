@@ -178,7 +178,7 @@ def llm_scanner(
     else:
         serializable_model = model
 
-    async def scan(transcript: Transcript) -> Result | list[Result]:
+    async def scan(transcript: Transcript) -> Result:
         resolved_model: str | Model | None = (
             model_config_to_model(serializable_model)
             if isinstance(serializable_model, ModelConfig)

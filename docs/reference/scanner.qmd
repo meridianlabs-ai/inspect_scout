@@ -16,6 +16,10 @@ reference: "inspect_scout"
 
 ### llm_scanner
 ### grep_scanner
+### generate_answer
+### parse_answer
+### ResultReducer
+### AnswerSpec
 ### AnswerMultiLabel
 ### AnswerStructured
 

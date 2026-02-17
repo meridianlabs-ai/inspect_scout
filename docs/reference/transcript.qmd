@@ -26,6 +26,14 @@ reference: "inspect_scout"
 ### LogColumns
 ### log_columns
 
+## Messages
+
+### scan_segments
+### transcript_messages
+### segment_messages
+### span_messages
+### MessagesSegment
+
 ## Observe
 
 ### observe

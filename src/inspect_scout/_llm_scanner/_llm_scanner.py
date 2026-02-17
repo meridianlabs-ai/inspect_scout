@@ -13,7 +13,7 @@ from jinja2 import Environment
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
 from .._scanner.extract import MessagesPreprocessor, message_numbering
-from .._scanner.result import Result
+from .._scanner.result import Result, as_resultset
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
@@ -23,6 +23,7 @@ from .._scanner.scanner import (
 from .._transcript.messages import MessagesSegment, transcript_messages
 from .._transcript.types import Transcript, TranscriptContent
 from ._parallel import scan_segments
+from ._reducer import default_reducer, is_resultset_answer
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .prompt import DEFAULT_SCANNER_TEMPLATE
@@ -47,6 +48,7 @@ def llm_scanner(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -68,6 +70,7 @@ def llm_scanner(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -89,6 +92,7 @@ def llm_scanner(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
@@ -141,6 +145,13 @@ def llm_scanner(
         depth: Maximum depth of the span tree to process when timelines
             are present. ``None`` (default) processes all depths. Ignored
             for events-only or messages-only transcripts.
+        reducer: Custom reducer for aggregating multi-segment results.
+            Accepts any ``Callable[[list[Result]], Awaitable[Result]]``.
+            If None, uses a default reducer based on the answer type
+            (e.g., ``ResultReducer.any`` for boolean, ``ResultReducer.mean``
+            for numeric). Standard reducers are available on
+            :class:`ResultReducer`. Timeline and resultset answers bypass
+            reduction and return a resultset.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
@@ -213,7 +224,18 @@ def llm_scanner(
             scan_segment,
         )
 
-        return results[0] if len(results) == 1 else results
+        # single result
+        if len(results) == 1:
+            return results[0]
+
+        # scenarios where resultset is the natural/expected return type
+        elif bool(transcript.timelines) or is_resultset_answer(answer):
+            return as_resultset(results)
+
+        # otherwise reduce
+        else:
+            effective_reducer = reducer or default_reducer(answer)
+            return await effective_reducer(results)
 
     # set name for collection by @scanner if specified
     if name is not None:

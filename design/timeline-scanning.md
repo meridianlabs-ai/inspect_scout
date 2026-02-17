@@ -1199,8 +1199,9 @@ The design doc proposed three separate functions (`parse_answer`, `generate_for_
    validation so overridden filters are validated and included in `ScannerConfig`.
 
 2. **Refactored `_llm_scanner.py`:**
-   - Added `content: TranscriptContent | None` and `context_window: int | None` parameters
-     to all three signatures (two overloads + implementation)
+   - Added `content: TranscriptContent | None`, `context_window: int | None`,
+     `compaction: Literal["all", "last"]` (default `"all"`), and `depth: int | None`
+     parameters to all three signatures (two overloads + implementation)
    - Replaced `messages_as_str(transcript, ...)` with `message_numbering()` +
      `transcript_messages()` for context-window-aware, timeline-capable extraction
    - Replaced inline `structured_generate`/`generate_retry_refusals` with `generate_answer()`
@@ -1208,6 +1209,9 @@ The design doc proposed three separate functions (`parse_answer`, `generate_for_
    - Preprocessor passed through with `cast()` for backward compat — `MessageFormatOptions`
      fields work identically; custom `transform` taking `Transcript` is a documented limitation
    - `content=` sets `SCANNER_CONTENT_ATTR` on the scan function for the decorator to merge
+   - `compaction` and `depth` passed through to `transcript_messages()` — `compaction`
+     controls how compaction boundaries in events are handled; `depth` limits the span
+     tree depth when timelines are present
 
 3. **`_flatten_results()` helper** — prevents nested resultsets when structured answers
    with `result_set=True` are used across multiple segments. Checks each result for

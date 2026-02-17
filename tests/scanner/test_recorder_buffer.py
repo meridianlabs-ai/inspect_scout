@@ -278,6 +278,4 @@ async def test_resume_skips_synced_transcripts(
     # Second recorder: resume — should recognize synced transcript
     recorder2 = FileRecorder()
     await recorder2.resume(str(UPath(await recorder.location())))
-    assert await recorder2.is_recorded(
-        sample_transcript.transcript_id, "test_scanner"
-    )
+    assert await recorder2.is_recorded(sample_transcript.transcript_id, "test_scanner")

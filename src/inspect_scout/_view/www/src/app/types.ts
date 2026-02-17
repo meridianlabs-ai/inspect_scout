@@ -32,6 +32,10 @@ export type InputType =
 
 export interface ScanResultSummary {
   // Basic Info
+  identifier: string;
+  // The original DB result UUID. Shared across expanded resultset rows (e.g.
+  // multiple labels from one scan result will have the same uuid but different
+  // identifiers). Used to fetch the shared input data for the result.
   uuid?: string;
   explanation?: string;
   label?: string;

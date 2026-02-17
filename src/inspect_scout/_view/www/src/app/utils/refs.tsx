@@ -32,7 +32,7 @@ export const useMarkdownRefs = (
   // TODO: lint react-hooks/preserve-manual-memoization - the lint seems to be a bug in the rule that doesn't account for the ?
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const buildUrl = useMemo(() => {
-    if (!summary?.uuid) {
+    if (!summary?.identifier) {
       return (queryParams: string) => `?${queryParams}`;
     }
 
@@ -47,11 +47,11 @@ export const useMarkdownRefs = (
       for (const [key, value] of newParams) {
         mergedParams.set(key, value);
       }
-      return `#${scanResultRoute(scansDir, scanPath, summary.uuid, mergedParams)}`;
+      return `#${scanResultRoute(scansDir, scanPath, summary.identifier, mergedParams)}`;
     };
     // Use .toString() for currentSearchParams since URLSearchParams object reference
     // may not change when URL changes, causing stale closures
-  }, [summary?.uuid, scanPath, scansDir, currentSearchParams]);
+  }, [summary?.identifier, scanPath, scansDir, currentSearchParams]);
 
   const refs: MarkdownReference[] = summary
     ? toMarkdownRefs(

@@ -31,8 +31,28 @@ interface Result {
 export async function expandResultsetRows(
   columnTable: ColumnTable
 ): Promise<ColumnTable> {
-  // Check if we have any resultset rows
+  // Ensure that each row in the table has an "identifier" column (this is used as a unique key for
+  // referencing rows since code below may expand one row with a resultset into multiple rows.
+  // We use the existing "uuid" column if it exists, otherwise we generate a random UUID. It is expected that the resultset expansion
+  // will overwrite this value for expanded rows
   const colNames = columnTable.columnNames();
+  if (!colNames.includes("identifier")) {
+    const numRows = columnTable.numRows();
+    const identifiers = new Array<string>(numRows);
+    if (colNames.includes("uuid")) {
+      const uuids = columnTable.array("uuid") as (string | null | undefined)[];
+      for (let i = 0; i < numRows; i++) {
+        identifiers[i] = uuids[i] ?? crypto.randomUUID();
+      }
+    } else {
+      for (let i = 0; i < numRows; i++) {
+        identifiers[i] = crypto.randomUUID();
+      }
+    }
+    columnTable = columnTable.assign({ identifier: identifiers });
+  }
+
+  // Check if we have any resultset rows
   if (
     !colNames.includes("value_type") ||
     !colNames.includes("value") ||
@@ -82,7 +102,11 @@ export async function expandResultsetRows(
       for (const result of results) {
         const expandedRow = { ...row };
 
+        // Record the source identifier
+        expandedRow.identifier = result.uuid ?? crypto.randomUUID();
+
         // Override values
+
         expandedRow.label = result.label ?? null;
         expandedRow.answer = result.answer ?? null;
         expandedRow.explanation = result.explanation ?? null;
@@ -143,6 +167,7 @@ export async function expandResultsetRows(
   } else {
     // Create an array merging all the rows and convert back to a column table
     const otherRowsArray = otherRows.objects() as Record<string, unknown>[];
+
     const allRowsArray = [
       ...otherRowsArray,
       ...explodedResultsetRows,
@@ -283,6 +308,7 @@ async function createSyntheticRows(
       templateRow.message_references = maybeSerializeValue([]);
       templateRow.event_references = maybeSerializeValue([]);
       templateRow.uuid = null;
+      templateRow.identifier = crypto.randomUUID();
 
       // Set validation result for this synthetic row
       templateRow.validation_result = validationResults[label] ?? null;

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from inspect_ai._util._async import tg_collect
 from inspect_ai.event import CompactionEvent, Event, ModelEvent
@@ -13,6 +13,7 @@ from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
 
 from inspect_scout._scanner.extract import MessagesAsStr
+from inspect_scout._transcript.timeline import TimelineEvent, TimelineSpan
 
 if TYPE_CHECKING:
     from inspect_scout._transcript.types import Transcript
@@ -37,11 +38,12 @@ class MessagesChunk:
 
 
 async def chunked_messages(
-    source: list[ChatMessage] | list[Event],
+    source: list[ChatMessage] | list[Event] | TimelineSpan,
     *,
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
+    compaction: Literal["all", "last"] = "all",
 ) -> AsyncIterator[MessagesChunk]:
     """Render messages and chunk them to fit within a token budget.
 
@@ -49,30 +51,38 @@ async def chunked_messages(
     tokens in parallel via ``tg_collect``, then accumulates chunks that
     fit within the effective budget (context window * 80%).
 
-    When given events, delegates to ``messages_by_compaction()`` first
-    to split at compaction boundaries, then chunks each segment
-    independently.
+    When given events or a ``TimelineSpan``, delegates to
+    ``span_messages()`` to extract and merge messages (handling
+    compaction boundaries), then chunks the result.
 
     Args:
-        source: Either a list of ChatMessage or a list of Event.
-            Events are split via ``messages_by_compaction()`` first.
+        source: A list of ChatMessage, a list of Event, or a
+            TimelineSpan. Events and spans are processed via
+            ``span_messages()`` first.
         messages_as_str: Rendering function from ``message_numbering()``.
             Must be called sequentially to preserve counter ordering.
         model: Model used for token counting.
         context_window: Override for context window size. If None,
             looked up via ``get_model_info(model)``.
+        compaction: How to handle compaction boundaries when source
+            contains events. Passed through to ``span_messages()``.
 
     Yields:
         MessagesChunk chunks, each fitting within the token budget.
         Segment counter increments across all yields.
     """
-    # Determine segments
-    if source and isinstance(source[0], ChatMessageBase):
-        segments: list[list[ChatMessage]] = [source]  # type: ignore[list-item]
+    # Resolve source to a flat message list
+    if isinstance(source, TimelineSpan):
+        messages = span_messages(source, compaction=compaction)
+    elif source and isinstance(source[0], ChatMessageBase):
+        messages = list(source)  # type: ignore[arg-type]
     elif source:
-        segments = messages_by_compaction(source)  # type: ignore[arg-type]
+        messages = span_messages(source, compaction=compaction)  # type: ignore[arg-type]
     else:
-        segments = []
+        messages = []
+
+    if not messages:
+        return
 
     # Compute effective budget
     if context_window is not None:
@@ -86,57 +96,50 @@ async def chunked_messages(
         )
     effective_budget = int(budget * _BUDGET_DISCOUNT)
 
+    # Pass 1: Render each message sequentially (counter ordering matters)
+    rendered: list[tuple[ChatMessage, str]] = []
+    for msg in messages:
+        text = await messages_as_str([msg])
+        if text:  # Skip empty renders (e.g. filtered system messages)
+            rendered.append((msg, text))
+
+    if not rendered:
+        return
+
+    # Pass 2: Count tokens in parallel
+    token_counts = await tg_collect(
+        [lambda t=text: model.count_tokens(t) for _, text in rendered]  # type: ignore[misc]
+    )
+
+    # Pass 3: Chunk based on accumulated token counts
     segment_counter = 0
+    chunk_messages: list[ChatMessage] = []
+    chunk_texts: list[str] = []
+    running_tokens = 0
 
-    for segment in segments:
-        if not segment:
-            continue
-
-        # Pass 1: Render each message sequentially (counter ordering matters)
-        rendered: list[tuple[ChatMessage, str]] = []
-        for msg in segment:
-            text = await messages_as_str([msg])
-            if text:  # Skip empty renders (e.g. filtered system messages)
-                rendered.append((msg, text))
-
-        if not rendered:
-            continue
-
-        # Pass 2: Count tokens in parallel
-        token_counts = await tg_collect(
-            [lambda t=text: model.count_tokens(t) for _, text in rendered]  # type: ignore[misc]
-        )
-
-        # Pass 3: Chunk based on accumulated token counts
-        chunk_messages: list[ChatMessage] = []
-        chunk_texts: list[str] = []
-        running_tokens = 0
-
-        for (msg, text), tokens in zip(rendered, token_counts, strict=False):
-            if chunk_messages and running_tokens + tokens > effective_budget:
-                # Yield current chunk
-                yield MessagesChunk(
-                    messages=chunk_messages,
-                    text="\n".join(chunk_texts),
-                    segment=segment_counter,
-                )
-                segment_counter += 1
-                chunk_messages = []
-                chunk_texts = []
-                running_tokens = 0
-
-            chunk_messages.append(msg)
-            chunk_texts.append(text)
-            running_tokens += tokens
-
-        # Yield remaining chunk
-        if chunk_messages:
+    for (msg, text), tokens in zip(rendered, token_counts, strict=False):
+        if chunk_messages and running_tokens + tokens > effective_budget:
             yield MessagesChunk(
                 messages=chunk_messages,
                 text="\n".join(chunk_texts),
                 segment=segment_counter,
             )
             segment_counter += 1
+            chunk_messages = []
+            chunk_texts = []
+            running_tokens = 0
+
+        chunk_messages.append(msg)
+        chunk_texts.append(text)
+        running_tokens += tokens
+
+    # Yield remaining chunk
+    if chunk_messages:
+        yield MessagesChunk(
+            messages=chunk_messages,
+            text="\n".join(chunk_texts),
+            segment=segment_counter,
+        )
 
 
 async def transcript_messages(
@@ -145,6 +148,7 @@ async def transcript_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
+    compaction: Literal["all", "last"] = "all",
 ) -> AsyncIterator[MessagesChunk]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -166,6 +170,8 @@ async def transcript_messages(
         messages_as_str: Rendering function from ``message_numbering()``.
         model: The model used for scanning.
         context_window: Override for the model's context window size.
+        compaction: How to handle compaction boundaries when extracting
+            messages from events.
 
     Yields:
         MessagesChunk (or TimelineMessages) for each segment.
@@ -178,6 +184,7 @@ async def transcript_messages(
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
+            compaction=compaction,
         ):
             yield seg  # type: ignore[misc]
     elif transcript.events:
@@ -186,6 +193,7 @@ async def transcript_messages(
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
+            compaction=compaction,
         ):
             yield chunk
     else:
@@ -198,32 +206,54 @@ async def transcript_messages(
             yield chunk
 
 
-def messages_by_compaction(events: list[Event]) -> list[list[ChatMessage]]:
-    """Split events into message lists at compaction boundaries.
+def span_messages(
+    source: TimelineSpan | list[Event],
+    *,
+    compaction: Literal["all", "last"] = "all",
+) -> list[ChatMessage]:
+    """Extract messages from a span or event list, handling compaction.
 
-    Filters for ModelEvent and CompactionEvent, then splits based on
-    compaction type:
-    - Summary: full split — each segment uses its last ModelEvent's
-      input + output
-    - Trim: prefix split — yields trimmed prefix (dropped messages)
-      as a separate segment, followed by the post-compaction segment
-    - Edit: ignored — no split
-
-    Each segment's messages come from the **last** ModelEvent in that
-    segment: ``input + [output.choices[0].message]``.
+    Filters for ``ModelEvent`` and ``CompactionEvent``, then merges
+    messages into a single list based on the ``compaction`` strategy.
 
     Args:
-        events: Events to process (non-Model/Compaction events are
-            ignored).
+        source: A ``TimelineSpan`` (events extracted from its content)
+            or a raw list of events. Non-Model/Compaction events are
+            ignored.
+        compaction: How to handle compaction boundaries:
+            - ``"all"``: merge across boundaries for full coverage.
+              Summary grafts pre + post messages. Trim prepends the
+              trimmed prefix. Edit is transparent.
+            - ``"last"``: ignore compaction history, return only the
+              last ``ModelEvent``'s input + output.
 
     Returns:
-        List of message lists, one per segment. Empty segments
-        (no ModelEvents before a compaction boundary, or empty trim
-        prefix) are omitted.
+        Merged message list. Empty if no ``ModelEvent`` is found.
     """
-    segments: list[list[ChatMessage]] = []
+    # Extract events from TimelineSpan if needed
+    if isinstance(source, TimelineSpan):
+        events = [
+            item.event for item in source.content if isinstance(item, TimelineEvent)
+        ]
+    else:
+        events = source
+
+    # Filter to ModelEvents and CompactionEvents
+    model_events: list[ModelEvent] = []
+    for event in events:
+        if isinstance(event, ModelEvent):
+            model_events.append(event)
+
+    if not model_events:
+        return []
+
+    # "last" mode: just return the final ModelEvent's messages
+    if compaction == "last":
+        return _segment_messages(model_events[-1])
+
+    # "all" mode: merge across compaction boundaries
+    merged: list[ChatMessage] = []
     current_model_events: list[ModelEvent] = []
-    # For trim compaction, we need to know the first post-compaction ModelEvent
     pending_trim_pre_input: list[ChatMessage] | None = None
 
     for event in events:
@@ -232,37 +262,31 @@ def messages_by_compaction(events: list[Event]) -> list[list[ChatMessage]]:
             # the first post-compaction ModelEvent
             if pending_trim_pre_input is not None:
                 prefix = _trim_prefix(pending_trim_pre_input, list(event.input))
-                if prefix:
-                    segments.append(prefix)
+                merged.extend(prefix)
                 pending_trim_pre_input = None
 
             current_model_events.append(event)
 
         elif isinstance(event, CompactionEvent):
             if event.type == "summary":
-                # Full split: flush current segment, start fresh
+                # Graft pre-compaction messages onto the merged list
                 if current_model_events:
-                    messages = _segment_messages(current_model_events[-1])
-                    if messages:
-                        segments.append(messages)
+                    merged.extend(_segment_messages(current_model_events[-1]))
                 current_model_events = []
 
             elif event.type == "trim":
-                # Prefix split: save pre-compaction input for comparison
-                # with the first post-compaction ModelEvent
+                # Save pre-compaction input for prefix extraction
                 if current_model_events:
                     pending_trim_pre_input = list(current_model_events[-1].input)
                 current_model_events = []
 
-            # Edit: no split, continue accumulating
+            # Edit: no action, continue accumulating
 
-    # Flush final segment
+    # Append final segment
     if current_model_events:
-        messages = _segment_messages(current_model_events[-1])
-        if messages:
-            segments.append(messages)
+        merged.extend(_segment_messages(current_model_events[-1]))
 
-    return segments
+    return merged
 
 
 def _segment_messages(model_event: ModelEvent) -> list[ChatMessage]:

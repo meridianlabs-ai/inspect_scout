@@ -20,7 +20,7 @@ from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesChunk,
     chunked_messages,
-    messages_by_compaction,
+    span_messages,
     transcript_messages,
 )
 from inspect_scout._transcript.timeline import (
@@ -83,6 +83,29 @@ def _make_tool_event() -> ToolEvent:
     )
 
 
+def _make_timeline_span(
+    name: str,
+    events: list[Event] | None = None,
+    children: list[TimelineSpan] | None = None,
+    *,
+    utility: bool = False,
+    span_id: str | None = None,
+) -> TimelineSpan:
+    """Helper to build a TimelineSpan with events and/or child spans."""
+    content: list[TimelineEvent | TimelineSpan] = []
+    if events:
+        content.extend(TimelineEvent(event=e) for e in events)
+    if children:
+        content.extend(children)
+    return TimelineSpan(
+        id=span_id or f"span-{name}",
+        name=name,
+        span_type=None,
+        content=content,
+        utility=utility,
+    )
+
+
 # -- Shared messages for tests --
 
 _sys = ChatMessageSystem(content="You are an assistant", id="sys-1")
@@ -93,8 +116,11 @@ _asst1 = ChatMessageAssistant(content="Hi there", id="a-1")
 _asst2 = ChatMessageAssistant(content="Here is more", id="a-2")
 
 
+# -- span_messages tests --
+
+
 def test_no_compaction() -> None:
-    """Events with no compaction produce a single segment from the last ModelEvent."""
+    """Events with no compaction return messages from the last ModelEvent."""
     events: list[Event] = [
         _make_model_event(
             input=[_sys, _user1],
@@ -106,21 +132,20 @@ def test_no_compaction() -> None:
         ),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 1
-    segment = result[0]
     # Last ModelEvent's input + output
-    assert len(segment) == 5  # sys, user1, asst1, user2, output
-    assert segment[0].role == "system"
-    assert segment[1] is _user1
-    assert segment[3] is _user2
-    assert segment[4].role == "assistant"
-    assert segment[4].text == "Second response"
+    assert len(result) == 5  # sys, user1, asst1, user2, output
+    assert result[0].role == "system"
+    assert result[1] is _user1
+    assert result[3] is _user2
+    assert result[4].role == "assistant"
+    assert result[4].text == "Second response"
 
 
 def test_summary_compaction() -> None:
-    """Summary compaction produces two segments, each from its last ModelEvent."""
+    """Summary compaction grafts pre + post messages into one merged list."""
+    _u_sum = ChatMessageUser(content="Summary of prior", id="u-sum")
     events: list[Event] = [
         _make_model_event(
             input=[_sys, _user1],
@@ -132,27 +157,28 @@ def test_summary_compaction() -> None:
         ),
         _make_compaction_event(type="summary"),
         _make_model_event(
-            input=[_sys, ChatMessageUser(content="Summary of prior", id="u-sum")],
+            input=[_sys, _u_sum],
             output_content="Post-compaction answer",
         ),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 2
-
-    # Segment 0: last pre-compaction ModelEvent (the second one)
-    seg0 = result[0]
-    assert seg0[-1].text == "More pre-compaction"
-    assert seg0[0].role == "system"
-
-    # Segment 1: post-compaction ModelEvent
-    seg1 = result[1]
-    assert seg1[-1].text == "Post-compaction answer"
+    # Pre-compaction (last pre-compaction ModelEvent's input + output)
+    # + post-compaction (input + output), all merged
+    assert result[0].role == "system"
+    assert result[1] is _user1
+    assert result[2] is _asst1
+    assert result[3] is _user2
+    assert result[4].text == "More pre-compaction"  # pre output
+    # Post-compaction segment grafted on
+    assert result[5].role == "system"
+    assert result[6] is _u_sum
+    assert result[-1].text == "Post-compaction answer"  # post output
 
 
 def test_trim_compaction() -> None:
-    """Trim compaction produces a prefix segment + post-compaction segment."""
+    """Trim compaction merges trimmed prefix + post-compaction messages."""
     # Pre-compaction: [sys, u1, a1, u2] — full conversation
     # Post-compaction: [a1, u2, u3] — sys and u1 were trimmed
     pre_msgs: list[ChatMessage] = [_sys, _user1, _asst1, _user2]
@@ -164,24 +190,20 @@ def test_trim_compaction() -> None:
         _make_model_event(input=post_msgs, output_content="After trim"),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 2
-
-    # Segment 0: trimmed prefix — messages dropped by trim
-    prefix = result[0]
-    assert len(prefix) == 2  # sys, u1
-    assert prefix[0] is _sys
-    assert prefix[1] is _user1
-
-    # Segment 1: post-compaction ModelEvent's input + output
-    seg1 = result[1]
-    assert seg1[0] is _asst1
-    assert seg1[-1].text == "After trim"
+    # Trimmed prefix [sys, u1] + post-compaction input [a1, u2, u3] + output
+    assert result[0] is _sys
+    assert result[1] is _user1
+    assert result[2] is _asst1
+    assert result[3] is _user2
+    assert result[4] is _user3
+    assert result[-1].text == "After trim"
+    assert len(result) == 6  # prefix(2) + post input(3) + post output(1)
 
 
 def test_edit_compaction() -> None:
-    """Edit compaction produces no split — single segment."""
+    """Edit compaction is transparent — returns last ModelEvent's messages."""
     events: list[Event] = [
         _make_model_event(input=[_sys, _user1], output_content="Before edit"),
         _make_compaction_event(type="edit"),
@@ -191,16 +213,14 @@ def test_edit_compaction() -> None:
         ),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 1
-    seg = result[0]
-    assert seg[-1].text == "After edit"
-    assert len(seg) == 5  # sys, u1, a1, u2, output
+    assert result[-1].text == "After edit"
+    assert len(result) == 5  # sys, u1, a1, u2, output
 
 
 def test_multiple_compactions() -> None:
-    """Two summary compactions produce three segments."""
+    """Two summary compactions graft all three segments together."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Seg 0"),
         _make_compaction_event(type="summary"),
@@ -209,26 +229,29 @@ def test_multiple_compactions() -> None:
         _make_model_event(input=[_user3], output_content="Seg 2"),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 3
-    assert result[0][-1].text == "Seg 0"
-    assert result[1][-1].text == "Seg 1"
-    assert result[2][-1].text == "Seg 2"
+    # All grafted: [u1, "Seg 0", u2, "Seg 1", u3, "Seg 2"]
+    assert result[0] is _user1
+    assert result[1].text == "Seg 0"
+    assert result[2] is _user2
+    assert result[3].text == "Seg 1"
+    assert result[4] is _user3
+    assert result[5].text == "Seg 2"
+    assert len(result) == 6
 
 
 def test_empty_segment_omitted() -> None:
-    """No ModelEvents before a compaction boundary → segment omitted."""
+    """No ModelEvents before a compaction boundary — nothing grafted."""
     events: list[Event] = [
-        # Compaction with no preceding ModelEvents
         _make_compaction_event(type="summary"),
         _make_model_event(input=[_user1], output_content="Only segment"),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 1
-    assert result[0][-1].text == "Only segment"
+    assert result[-1].text == "Only segment"
+    assert len(result) == 2  # u1 + output
 
 
 def test_non_model_events_ignored() -> None:
@@ -239,15 +262,14 @@ def test_non_model_events_ignored() -> None:
         _make_tool_event(),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 1
-    assert result[0][-1].text == "Response"
+    assert result[-1].text == "Response"
+    assert len(result) == 2
 
 
 def test_trim_empty_prefix() -> None:
-    """Trim where all messages survive produces no prefix segment."""
-    # Same messages in pre and post — nothing was trimmed
+    """Trim where all messages survive — no prefix prepended."""
     msgs: list[ChatMessage] = [_sys, _user1]
 
     events: list[Event] = [
@@ -256,44 +278,45 @@ def test_trim_empty_prefix() -> None:
         _make_model_event(input=msgs + [_user2], output_content="After trim"),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    # No prefix segment, just the post-compaction segment
-    assert len(result) == 1
-    assert result[0][-1].text == "After trim"
+    # No prefix, just the post-compaction messages
+    assert result[-1].text == "After trim"
+    assert result[0] is _sys
+    assert result[1] is _user1
+    assert result[2] is _user2
 
 
 def test_trim_prefix_id_matching() -> None:
     """Trim prefix is found via message id matching."""
-    # Create messages with explicit IDs
     a = ChatMessageUser(content="Message A", id="id-a")
     b = ChatMessageUser(content="Message B", id="id-b")
     c = ChatMessageUser(content="Message C", id="id-c")
     d = ChatMessageUser(content="Message D", id="id-d")
+    e = ChatMessageUser(content="Message E", id="id-e")
 
     # Pre: [a, b, c, d], Post: [c, d, e] — a and b were trimmed
-    e = ChatMessageUser(content="Message E", id="id-e")
-    pre_msgs = [a, b, c, d]
-    post_msgs = [c, d, e]
-
     events: list[Event] = [
-        _make_model_event(input=pre_msgs, output_content="Before"),
+        _make_model_event(input=[a, b, c, d], output_content="Before"),
         _make_compaction_event(type="trim"),
-        _make_model_event(input=post_msgs, output_content="After"),
+        _make_model_event(input=[c, d, e], output_content="After"),
     ]
 
-    result = messages_by_compaction(events)
+    result = span_messages(events)
 
-    assert len(result) == 2
-    prefix = result[0]
-    assert len(prefix) == 2
-    assert prefix[0] is a
-    assert prefix[1] is b
+    # prefix [a, b] + post [c, d, e] + output
+    assert result[0] is a
+    assert result[1] is b
+    assert result[2] is c
+    assert result[3] is d
+    assert result[4] is e
+    assert result[-1].text == "After"
+    assert len(result) == 6
 
 
 def test_no_events() -> None:
     """Empty event list produces empty result."""
-    assert messages_by_compaction([]) == []
+    assert span_messages([]) == []
 
 
 def test_no_model_events() -> None:
@@ -303,7 +326,60 @@ def test_no_model_events() -> None:
         _make_compaction_event(type="trim"),
     ]
 
-    assert messages_by_compaction(events) == []
+    assert span_messages(events) == []
+
+
+def test_span_messages_from_timeline_span() -> None:
+    """Accepts TimelineSpan and extracts events from its content."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[
+            _make_model_event(input=[_user1], output_content="From span"),
+        ],
+    )
+
+    result = span_messages(span)
+
+    assert result[0] is _user1
+    assert result[-1].text == "From span"
+    assert len(result) == 2
+
+
+def test_span_messages_compaction_last() -> None:
+    """compaction="last" returns only the last ModelEvent's messages."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user3], output_content="Final"),
+    ]
+
+    result = span_messages(events, compaction="last")
+
+    # Only the last ModelEvent's input + output
+    assert result[0] is _user3
+    assert result[-1].text == "Final"
+    assert len(result) == 2
+
+
+def test_span_messages_compaction_last_with_trim() -> None:
+    """compaction="last" ignores trim boundaries too."""
+    pre_msgs: list[ChatMessage] = [_sys, _user1, _asst1, _user2]
+    post_msgs: list[ChatMessage] = [_asst1, _user2, _user3]
+
+    events: list[Event] = [
+        _make_model_event(input=pre_msgs, output_content="Before"),
+        _make_compaction_event(type="trim"),
+        _make_model_event(input=post_msgs, output_content="After"),
+    ]
+
+    result = span_messages(events, compaction="last")
+
+    # Only the last ModelEvent: post input + output
+    assert result[0] is _asst1
+    assert result[-1].text == "After"
+    assert len(result) == 4  # a1, u2, u3, output
 
 
 # -- chunked_messages tests --
@@ -356,7 +432,7 @@ async def test_chunked_messages_renders_text() -> None:
 
 @pytest.mark.anyio
 async def test_chunked_messages_with_events() -> None:
-    """Events with compaction → delegates to messages_by_compaction, then chunks."""
+    """Events with compaction → merged via span_messages, then chunked."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Seg 0"),
         _make_compaction_event(type="summary"),
@@ -364,15 +440,18 @@ async def test_chunked_messages_with_events() -> None:
     ]
     results = await _collect(events, context_window=10_000)
 
-    assert len(results) == 2
+    # Now produces a single merged chunk (not two separate segments)
+    assert len(results) == 1
     assert results[0].segment == 0
-    assert results[1].segment == 1
+    # Contains messages from both pre and post compaction
+    texts = [m.text for m in results[0].messages]
+    assert "Hello" in texts  # _user1
+    assert "Continue" in texts  # _user2
 
 
 @pytest.mark.anyio
 async def test_chunked_messages_chunking() -> None:
     """Large messages exceeding budget → multiple chunks."""
-    # Create messages with enough content to exceed a tiny budget
     long_text = "word " * 100  # ~100 tokens
     msgs: list[ChatMessage] = [
         ChatMessageUser(content=long_text, id="long-1"),
@@ -384,11 +463,9 @@ async def test_chunked_messages_chunking() -> None:
     results = await _collect(msgs, context_window=50)
 
     assert len(results) == 3
-    # Segments should increment
     assert results[0].segment == 0
     assert results[1].segment == 1
     assert results[2].segment == 2
-    # Each chunk has one message
     assert len(results[0].messages) == 1
     assert len(results[1].messages) == 1
     assert len(results[2].messages) == 1
@@ -410,8 +487,8 @@ async def test_chunked_messages_continuous_numbering() -> None:
 
 
 @pytest.mark.anyio
-async def test_chunked_messages_segment_counter_across_compactions() -> None:
-    """Segment counter increments across compaction boundaries and chunks."""
+async def test_chunked_messages_events_with_chunking() -> None:
+    """Events with compaction merged then chunked by token budget."""
     long_text = "word " * 100
     events: list[Event] = [
         _make_model_event(
@@ -426,11 +503,12 @@ async def test_chunked_messages_segment_counter_across_compactions() -> None:
     ]
     results = await _collect(events, context_window=50)
 
-    # Each segment should produce at least one chunk, and segment counter
-    # should be monotonically increasing
+    # Messages are merged then chunked — segment counter should be
+    # monotonically increasing
     segments = [r.segment for r in results]
     assert segments == sorted(segments)
     assert len(set(segments)) == len(segments)  # All unique
+    assert len(results) >= 2  # Merged messages should still exceed budget
 
 
 @pytest.mark.anyio
@@ -443,41 +521,16 @@ async def test_chunked_messages_empty_input() -> None:
 @pytest.mark.anyio
 async def test_chunked_messages_skips_empty_renders() -> None:
     """System messages excluded by default preprocessor are skipped."""
-    # message_numbering() defaults to excluding system messages
     msgs: list[ChatMessage] = [_sys, _user1]
     results = await _collect(msgs, context_window=10_000)
 
     assert len(results) == 1
-    # Only user message should be in the chunk (system was filtered)
     assert len(results[0].messages) == 1
     assert results[0].messages[0] is _user1
     assert "[M1]" in results[0].text
 
 
 # -- timeline_messages tests --
-
-
-def _make_timeline_span(
-    name: str,
-    events: list[Event] | None = None,
-    children: list[TimelineSpan] | None = None,
-    *,
-    utility: bool = False,
-    span_id: str | None = None,
-) -> TimelineSpan:
-    """Helper to build a TimelineSpan with events and/or child spans."""
-    content: list[TimelineEvent | TimelineSpan] = []
-    if events:
-        content.extend(TimelineEvent(event=e) for e in events)
-    if children:
-        content.extend(children)
-    return TimelineSpan(
-        id=span_id or f"span-{name}",
-        name=name,
-        span_type=None,
-        content=content,
-        utility=utility,
-    )
 
 
 async def _collect_timeline(
@@ -561,7 +614,6 @@ async def test_timeline_messages_include_none_skips_utility() -> None:
 @pytest.mark.anyio
 async def test_timeline_messages_include_none_skips_empty() -> None:
     """Default filter skips container spans with no direct ModelEvents."""
-    # Container has only child spans, no direct events
     child = _make_timeline_span(
         "Child",
         events=[_make_model_event(input=[_user1], output_content="Response")],
@@ -571,7 +623,7 @@ async def test_timeline_messages_include_none_skips_empty() -> None:
     results = await _collect_timeline(container)
 
     assert len(results) == 1
-    assert results[0].span is child  # Container skipped, child yielded
+    assert results[0].span is child
 
 
 @pytest.mark.anyio

@@ -54,7 +54,7 @@ from ._transcript.log import LogColumns, log_columns
 from ._transcript.messages import (
     MessagesChunk,
     chunked_messages,
-    messages_by_compaction,
+    span_messages,
     transcript_messages,
 )
 from ._transcript.sample_metadata import SampleMetadata
@@ -156,7 +156,7 @@ __all__ = [
     "as_scorer",
     "message_numbering",
     "messages_as_str",
-    "messages_by_compaction",
+    "span_messages",
     "chunked_messages",
     "MessagesChunk",
     "transcript_messages",

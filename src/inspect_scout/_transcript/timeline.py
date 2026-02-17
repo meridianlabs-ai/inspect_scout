@@ -1269,14 +1269,15 @@ async def timeline_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
+    compaction: Literal["all", "last"] = "all",
     include: Callable[[TimelineSpan], bool] | str | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
-    Walks the span tree, extracts events from each matching span,
-    and delegates to chunked_messages() for compaction splitting and
-    context window chunking. Each yielded item includes the span
-    context alongside the pre-rendered text.
+    Walks the span tree, passes each matching span to
+    ``chunked_messages()`` for message extraction and context window
+    chunking. Each yielded item includes the span context alongside
+    the pre-rendered text.
 
     Args:
         timeline: The timeline (or a specific span subtree) to extract
@@ -1289,6 +1290,8 @@ async def timeline_messages(
             (in tokens). When None, looked up via get_model_info().
             An 80% discount factor is applied to leave room for system
             prompts and scanning overhead.
+        compaction: How to handle compaction boundaries when extracting
+            messages from span events.
         include: Filter for which spans to process.
             - None: all non-utility spans with direct ModelEvents (default)
             - str: only spans whose name matches (case-insensitive)
@@ -1302,17 +1305,12 @@ async def timeline_messages(
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
     for span in _walk_spans(root, include):
-        events = [
-            item.event for item in span.content if isinstance(item, TimelineEvent)
-        ]
-        if not events:
-            continue
-
         async for chunk in chunked_messages(
-            events,
+            span,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
+            compaction=compaction,
         ):
             yield TimelineMessages(
                 messages=chunk.messages,

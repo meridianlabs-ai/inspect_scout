@@ -68,7 +68,7 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = Path(__file__).parent / "www" / "dist"
+    dist = Path(__file__).parent / "dist"
     app.mount(
         "/", NoCacheStaticFiles(directory=dist.as_posix(), html=True), name="static"
     )

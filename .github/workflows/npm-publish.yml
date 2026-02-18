@@ -24,7 +24,7 @@ jobs:
     environment: npm
     defaults:
       run:
-        working-directory: src/inspect_scout/_view/www
+        working-directory: src/inspect_scout/_view/frontend/apps/scout
     permissions:
       contents: read
       id-token: write
@@ -33,11 +33,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: true
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -45,18 +44,22 @@ jobs:
           node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
-          cache-dependency-path: "src/inspect_scout/_view/www/pnpm-lock.yaml"
+          cache-dependency-path: src/inspect_scout/_view/frontend/pnpm-lock.yaml
 
       - name: Upgrade npm (for Trusted Publishing)
         run: |
           npm i -g npm@^11.5.1
-          npm --version    
-          
+          npm --version
+
       - name: Install dependencies
+        working-directory: src/inspect_scout/_view/frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Sync version from git tag
-        run: npm version from-git --no-git-tag-version
+      - name: Prepare package for publishing
+        run: |
+          npm pkg set name="@meridianlabs/inspect-scout-viewer"
+          npm pkg delete private
+          npm version from-git --no-git-tag-version
 
       - name: Bump to prerelease version
         if: ${{ inputs.prerelease }}
@@ -68,6 +71,7 @@ jobs:
           npm version "${NEW_VERSION}-beta.${TIMESTAMP}" --no-git-tag-version
 
       - name: Run quality checks
+        working-directory: src/inspect_scout/_view/frontend
         run: pnpm check
 
       - name: Build library for prerelease

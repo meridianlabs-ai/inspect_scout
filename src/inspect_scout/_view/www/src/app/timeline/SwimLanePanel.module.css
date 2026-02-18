@@ -303,9 +303,14 @@
 
 .breadcrumbCurrent {
   color: var(--vscode-foreground);
-  font-weight: 600;
   font-size: var(--inspect-font-size-smaller);
-  padding: 0;
+  padding: 0 2px;
+}
+
+.breadcrumbSelection {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smaller);
+  padding: 0 2px;
 }
 
 .breadcrumbDivider {

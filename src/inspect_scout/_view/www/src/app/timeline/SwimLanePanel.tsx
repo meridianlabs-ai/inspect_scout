@@ -55,6 +55,8 @@ interface BreadcrumbRowProps {
   onGoUp: () => void;
   onNavigate: (path: string) => void;
   minimap?: TimelineMinimapProps;
+  /** Currently selected row name, shown as a read-only tail segment. */
+  selected?: string | null;
 }
 
 // =============================================================================
@@ -376,7 +378,17 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
   onGoUp,
   onNavigate,
   minimap,
+  selected,
 }) => {
+  // Extract display name from selected (strip span index suffix)
+  const selectedLabel = selected ? parsePathSegment(selected).name : null;
+
+  // Suppress selection when it duplicates the last breadcrumb (parent row = current node)
+  const lastBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
+  const showSelection =
+    selectedLabel !== null &&
+    selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
+
   return (
     <div className={styles.breadcrumbRow}>
       <button
@@ -407,6 +419,12 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
           </span>
         );
       })}
+      {showSelection && (
+        <span className={styles.breadcrumbGroup}>
+          <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
+          <span className={styles.breadcrumbSelection}>{selectedLabel}</span>
+        </span>
+      )}
       {minimap && <TimelineMinimap {...minimap} />}
     </div>
   );

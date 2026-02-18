@@ -155,6 +155,7 @@ export const TimelinePanel: FC = () => {
             atRoot,
             onGoUp: state.goUp,
             onNavigate: state.navigateTo,
+            selected: state.selected,
           }}
         />
         {eventNodes.length > 0 && (

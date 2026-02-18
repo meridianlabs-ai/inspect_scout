@@ -28,7 +28,6 @@ reference: "inspect_scout"
 
 ## Messages
 
-### scan_segments
 ### transcript_messages
 ### segment_messages
 ### span_messages

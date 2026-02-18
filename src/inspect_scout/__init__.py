@@ -9,7 +9,6 @@ from ._llm_scanner import (
     generate_answer,
     llm_scanner,
     parse_answer,
-    scan_segments,
 )
 from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
@@ -182,7 +181,6 @@ __all__ = [
     "AnswerStructured",
     "generate_answer",
     "parse_answer",
-    "scan_segments",
     "grep_scanner",
     # validation
     "ValidationSet",

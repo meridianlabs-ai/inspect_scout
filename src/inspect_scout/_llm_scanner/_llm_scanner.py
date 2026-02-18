@@ -20,9 +20,8 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import MessagesSegment, transcript_messages
+from .._transcript.messages import transcript_messages
 from .._transcript.types import Transcript, TranscriptContent
-from ._parallel import scan_segments
 from ._reducer import default_reducer, is_resultset_answer
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
@@ -194,7 +193,15 @@ def llm_scanner(
             ),
         )
 
-        async def scan_segment(segment: MessagesSegment) -> Result:
+        results: list[Result] = []
+        async for segment in transcript_messages(
+            transcript,
+            messages_as_str=messages_as_str_fn,
+            model=model_instance,
+            context_window=context_window,
+            compaction=compaction,
+            depth=depth,
+        ):
             prompt = await render_scanner_prompt(
                 template=template,
                 template_variables=template_variables,
@@ -203,26 +210,16 @@ def llm_scanner(
                 question=question,
                 answer=resolved_answer,
             )
-            return await generate_answer(
-                prompt,
-                answer,
-                model=resolved_model,
-                retry_refusals=retry_refusals,
-                extract_references=extract_references,
-                value_to_float=value_to_float,
+            results.append(
+                await generate_answer(
+                    prompt,
+                    answer,
+                    model=resolved_model,
+                    retry_refusals=retry_refusals,
+                    extract_references=extract_references,
+                    value_to_float=value_to_float,
+                )
             )
-
-        results = await scan_segments(
-            transcript_messages(
-                transcript,
-                messages_as_str=messages_as_str_fn,
-                model=model_instance,
-                context_window=context_window,
-                compaction=compaction,
-                depth=depth,
-            ),
-            scan_segment,
-        )
 
         # single result
         if len(results) == 1:

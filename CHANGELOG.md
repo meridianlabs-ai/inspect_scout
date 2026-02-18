@@ -1,6 +1,7 @@
-## Unreleased
+## 0.4.19 (17 February 2026)
 
 - LLM Scanner: Store model stop_reason result metadata.
+- Scout View: Fix incorrect behavior when attempting to view scanner results with result sets.
 
 ## 0.4.18 (14 February 2026)
 

@@ -7,6 +7,7 @@ import { parseScanResultData, parseScanResultSummaries } from "./arrowHelpers";
 
 // Typical row data as it would come from arquero .objects()
 const typicalSummaryRow = {
+  identifier: "test-uuid-123",
   uuid: "test-uuid-123",
   label: "test-label",
   explanation: "Test explanation",
@@ -30,6 +31,7 @@ const typicalSummaryRow = {
 };
 
 const expectedSummary: Partial<ScanResultSummary> = {
+  identifier: "test-uuid-123",
   uuid: "test-uuid-123",
   label: "test-label",
   explanation: "Test explanation",
@@ -51,6 +53,7 @@ const expectedSummary: Partial<ScanResultSummary> = {
 
 // Typical column data as it would come from a ColumnTable
 const typicalColumnData: Record<string, unknown> = {
+  identifier: "data-identifier-456",
   uuid: "data-uuid-456",
   input_type: "message",
   value_type: "number",
@@ -84,6 +87,7 @@ const typicalColumnData: Record<string, unknown> = {
 };
 
 const expectedData: Partial<ScanResultData> = {
+  identifier: "data-identifier-456",
   uuid: "data-uuid-456",
   inputType: "message",
   valueType: "number",

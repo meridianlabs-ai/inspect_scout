@@ -20,7 +20,7 @@ const useScanResultData = (
   // Better would be to refactor the parent so that it doesn't even render until
   // it has the params so that it can avoid the hook call altogether.
   columnTable: ColumnTable | undefined,
-  scanResultUuid: string | undefined
+  rowIdentifier: string | undefined
 ): AsyncData<ScanResultData | undefined> => {
   const [scanResultData, setScanResultData] = useState<
     ScanResultData | undefined
@@ -29,7 +29,7 @@ const useScanResultData = (
 
   const filtered = useMemo((): ColumnTable | undefined => {
     // Not a valid index
-    if (!scanResultUuid || !columnTable) {
+    if (!rowIdentifier || !columnTable) {
       return undefined;
     }
 
@@ -39,10 +39,10 @@ const useScanResultData = (
     }
 
     const filtered = columnTable
-      .params({ targetUuid: scanResultUuid })
+      .params({ targetIdentifier: rowIdentifier })
       .filter(
-        (d: { uuid: string }, $: { targetUuid: string }) =>
-          d.uuid === $.targetUuid
+        (d: { identifier: string }, $: { targetIdentifier: string }) =>
+          d.identifier === $.targetIdentifier
       );
 
     if (filtered.numRows() === 0) {
@@ -50,7 +50,7 @@ const useScanResultData = (
     }
 
     return filtered;
-  }, [columnTable, scanResultUuid]);
+  }, [columnTable, rowIdentifier]);
 
   useEffect(() => {
     if (!filtered) {

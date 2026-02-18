@@ -58,7 +58,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
               <CardHeader label="Metadata" type="modern" />
               <CardBody>
                 <RecordTree
-                  id={`scan-metadata-${resultData?.uuid}`}
+                  id={`scan-metadata-${resultData?.identifier}`}
                   record={resultData?.scanMetadata || {}}
                 />
               </CardBody>
@@ -94,7 +94,7 @@ export const ScannerInfoPanel: FC<InfoPanelProps> = ({ resultData }) => {
         Object.keys(resultData.scannerParams).length > 0 && (
           <LabeledValue label="Params">
             <RecordTree
-              id={`scanner-params-${resultData?.uuid}`}
+              id={`scanner-params-${resultData?.identifier}`}
               record={resultData?.scannerParams}
             />
           </LabeledValue>

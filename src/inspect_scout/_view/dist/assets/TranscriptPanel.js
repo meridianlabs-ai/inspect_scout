@@ -1,4 +1,4 @@
-import { bP as useParams, r as reactExports, w as loading, x as data, y as skipToken, u as useApi, a as useAsyncDataFromQuery, j as jsxRuntimeExports, g as clsx, bT as Link, bU as PulsingDots, e as ApplicationIcons, l as useStore, m as useSearchParams, D as getValidationParam, F as updateValidationParam, n as useLoggingNavigate, B as transcriptRoute, f as useAppConfig, E as ErrorPanel, A as ApiError } from "./index.js";
+import { bP as useParams, r as reactExports, j as jsxRuntimeExports, w as loading, x as data, y as skipToken, u as useApi, a as useAsyncDataFromQuery, g as clsx, bT as Link, bU as PulsingDots, e as ApplicationIcons, l as useStore, m as useSearchParams, D as getValidationParam, F as updateValidationParam, n as useLoggingNavigate, B as transcriptRoute, f as useAppConfig, E as ErrorPanel, A as ApiError } from "./index.js";
 import { P as PopOver, T as ToolButton, b as formatDateTime, d as formatNumber, e as formatTime, L as LoadingBar } from "./ToolButton.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { u as useFilterConditions, T as TranscriptsNavbar } from "./useFilterConditions.js";
@@ -35,63 +35,6 @@ function useRequiredParams(...keys) {
   }
   return result;
 }
-const useAdjacentTranscriptIds = (id, location, pageSize, filter, sorting) => {
-  const {
-    data: queryData,
-    error,
-    isLoading,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage
-  } = useServerTranscriptsInfinite(
-    location ? { location, pageSize, filter, sorting } : skipToken
-  );
-  const pages = queryData?.pages;
-  const position = reactExports.useMemo(
-    () => pages ? findPosition(pages, id) : null,
-    [pages, id]
-  );
-  const needsNextPage = pages !== void 0 && position !== null && isLastLoadedItem(pages, position) && hasNextPage && !isFetchingNextPage;
-  reactExports.useEffect(() => {
-    if (needsNextPage) {
-      fetchNextPage().catch(console.error);
-    }
-  }, [needsNextPage, fetchNextPage]);
-  if (isLoading) {
-    return loading;
-  }
-  if (error) {
-    return { loading: false, error };
-  }
-  if (pages === void 0 || position === null) {
-    return loading;
-  }
-  return data(getAdjacentIds(pages, position));
-};
-const findPosition = (pages, id) => {
-  for (let p = 0; p < pages.length; p++) {
-    const page = pages[p];
-    if (!page) continue;
-    const i = page.items.findIndex((item) => item.transcript_id === id);
-    if (i >= 0) return { pageIndex: p, itemIndex: i };
-  }
-  return null;
-};
-const getAdjacentIds = (pages, pos) => {
-  const page = pages[pos.pageIndex];
-  const prevId = pos.itemIndex > 0 ? page.items[pos.itemIndex - 1]?.transcript_id : pages[pos.pageIndex - 1]?.items.at(-1)?.transcript_id;
-  const nextId = pos.itemIndex < page.items.length - 1 ? page.items[pos.itemIndex + 1]?.transcript_id : pages[pos.pageIndex + 1]?.items[0]?.transcript_id;
-  return [prevId, nextId];
-};
-const isLastLoadedItem = (pages, pos) => pos.pageIndex === pages.length - 1 && pos.itemIndex === pages[pos.pageIndex].items.length - 1;
-const useTranscript = (params) => {
-  const api = useApi();
-  return useAsyncDataFromQuery({
-    queryKey: params === skipToken ? [skipToken] : ["transcript", params],
-    queryFn: params === skipToken ? skipToken : () => api.getTranscript(params.location, params.id),
-    staleTime: Infinity
-  });
-};
 const StickyScroll = ({
   children,
   scrollRef,
@@ -204,6 +147,63 @@ const StickyScroll = ({
   } : {};
   const contentClassName = isSticky && stickyClassName ? `${className} ${stickyClassName}`.trim() : className;
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapperRef, style: wrapperStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: contentRef, className: contentClassName, style: contentStyle, children }) });
+};
+const useAdjacentTranscriptIds = (id, location, pageSize, filter, sorting) => {
+  const {
+    data: queryData,
+    error,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage
+  } = useServerTranscriptsInfinite(
+    location ? { location, pageSize, filter, sorting } : skipToken
+  );
+  const pages = queryData?.pages;
+  const position = reactExports.useMemo(
+    () => pages ? findPosition(pages, id) : null,
+    [pages, id]
+  );
+  const needsNextPage = pages !== void 0 && position !== null && isLastLoadedItem(pages, position) && hasNextPage && !isFetchingNextPage;
+  reactExports.useEffect(() => {
+    if (needsNextPage) {
+      fetchNextPage().catch(console.error);
+    }
+  }, [needsNextPage, fetchNextPage]);
+  if (isLoading) {
+    return loading;
+  }
+  if (error) {
+    return { loading: false, error };
+  }
+  if (pages === void 0 || position === null) {
+    return loading;
+  }
+  return data(getAdjacentIds(pages, position));
+};
+const findPosition = (pages, id) => {
+  for (let p = 0; p < pages.length; p++) {
+    const page = pages[p];
+    if (!page) continue;
+    const i = page.items.findIndex((item) => item.transcript_id === id);
+    if (i >= 0) return { pageIndex: p, itemIndex: i };
+  }
+  return null;
+};
+const getAdjacentIds = (pages, pos) => {
+  const page = pages[pos.pageIndex];
+  const prevId = pos.itemIndex > 0 ? page.items[pos.itemIndex - 1]?.transcript_id : pages[pos.pageIndex - 1]?.items.at(-1)?.transcript_id;
+  const nextId = pos.itemIndex < page.items.length - 1 ? page.items[pos.itemIndex + 1]?.transcript_id : pages[pos.pageIndex + 1]?.items[0]?.transcript_id;
+  return [prevId, nextId];
+};
+const isLastLoadedItem = (pages, pos) => pos.pageIndex === pages.length - 1 && pos.itemIndex === pages[pos.pageIndex].items.length - 1;
+const useTranscript = (params) => {
+  const api = useApi();
+  return useAsyncDataFromQuery({
+    queryKey: params === skipToken ? [skipToken] : ["transcript", params],
+    queryFn: params === skipToken ? skipToken : () => api.getTranscript(params.location, params.id),
+    staleTime: Infinity
+  });
 };
 const eventRow = "_eventRow_1j0jk_1";
 const selected$1 = "_selected_1j0jk_8";

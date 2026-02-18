@@ -198,6 +198,7 @@ const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
     if (urlColumns) {
       setFilteredColumns(urlColumns);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // On column changes: update URL param (skip first render after mount init)
@@ -212,8 +213,7 @@ const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
 };
 
 const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
-  const presets =
-    useStore((state) => state.dataframeColumnPresets) ?? [];
+  const presets = useStore((state) => state.dataframeColumnPresets) ?? [];
   const setPresets = useStore((state) => state.setDataframeColumnPresets);
   const setFilteredColumns = useStore(
     (state) => state.setDataframeFilterColumns

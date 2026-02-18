@@ -17,12 +17,30 @@ import type {
   SpanEndEvent,
 } from "../../types/api-types";
 
+import type { MinimapSelection } from "./components/TimelineMinimap";
 import { parsePathSegment } from "./hooks/useTimeline";
 import {
-  type SwimLaneRow,
-  isSingleSpan,
+  type SwimlaneRow,
+  getAgents,
   isParallelSpan,
+  isSingleSpan,
 } from "./utils/swimlaneRows";
+
+// =============================================================================
+// Row lookup
+// =============================================================================
+
+/** Find a swimlane row by name (case-insensitive). */
+function findRowByName(
+  rows: SwimlaneRow[],
+  name: string
+): SwimlaneRow | undefined {
+  return rows.find((r) => r.name.toLowerCase() === name.toLowerCase());
+}
+
+// =============================================================================
+// Selected spans
+// =============================================================================
 
 /**
  * Resolves the selected swimlane row identifier to TimelineSpan(s).
@@ -32,13 +50,13 @@ import {
  * parallel rows without a suffix, returns all agents.
  */
 export function getSelectedSpans(
-  rows: SwimLaneRow[],
+  rows: SwimlaneRow[],
   selected: string | null
 ): TimelineSpan[] {
   if (!selected) return [];
 
   const { name, spanIndex } = parsePathSegment(selected);
-  const row = rows.find((r) => r.name.toLowerCase() === name.toLowerCase());
+  const row = findRowByName(rows, name);
   if (!row) return [];
 
   const result: TimelineSpan[] = [];
@@ -55,6 +73,68 @@ export function getSelectedSpans(
     }
   }
   return result;
+}
+
+// =============================================================================
+// Minimap selection
+// =============================================================================
+
+/**
+ * Computes the minimap selection for the currently selected swimlane row.
+ *
+ * Resolves a single visually-highlighted span: for iterative rows, the
+ * specific SingleSpan is selected; for parallel rows with a span index,
+ * the specific agent. Without an index, the envelope of all parallel agents
+ * is returned.
+ */
+export function computeMinimapSelection(
+  rows: SwimlaneRow[],
+  selected: string | null
+): MinimapSelection | undefined {
+  if (!selected) return undefined;
+  const { name, spanIndex } = parsePathSegment(selected);
+  const row = findRowByName(rows, name);
+  if (!row) return undefined;
+
+  const targetIndex = (spanIndex ?? 1) - 1;
+  for (const rowSpan of row.spans) {
+    if (isSingleSpan(rowSpan)) {
+      const singleIndex = row.spans.indexOf(rowSpan);
+      if (singleIndex === targetIndex || row.spans.length === 1) {
+        const agent = rowSpan.agent;
+        return {
+          startTime: agent.startTime,
+          endTime: agent.endTime,
+          totalTokens: agent.totalTokens,
+        };
+      }
+    } else if (isParallelSpan(rowSpan)) {
+      if (spanIndex !== null) {
+        const agent = rowSpan.agents[spanIndex - 1];
+        if (agent) {
+          return {
+            startTime: agent.startTime,
+            endTime: agent.endTime,
+            totalTokens: agent.totalTokens,
+          };
+        }
+      }
+      // No index → envelope of all parallel agents
+      const agents = getAgents(rowSpan);
+      const first = agents[0]!;
+      let start = first.startTime;
+      let end = first.endTime;
+      let tokens = first.totalTokens;
+      for (let i = 1; i < agents.length; i++) {
+        const a = agents[i]!;
+        if (a.startTime < start) start = a.startTime;
+        if (a.endTime > end) end = a.endTime;
+        tokens += a.totalTokens;
+      }
+      return { startTime: start, endTime: end, totalTokens: tokens };
+    }
+  }
+  return undefined;
 }
 
 /**

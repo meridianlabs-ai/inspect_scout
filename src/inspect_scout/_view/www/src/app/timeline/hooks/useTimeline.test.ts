@@ -4,11 +4,16 @@ import { type PropsWithChildren, createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
-import type {
-  Timeline,
-  TimelineSpan,
-} from "../../../components/transcript/timeline";
-import { timelineScenarios } from "../syntheticNodes";
+import type { TimelineSpan } from "../../../components/transcript/timeline";
+import {
+  S1_SEQUENTIAL,
+  S2_ITERATIVE,
+  S3_DEEP,
+  S4_PARALLEL,
+  S7_FLAT,
+  S11A_BRANCHES,
+  getTimeline,
+} from "../testHelpers";
 import { isParallelSpan, isSingleSpan } from "../utils/swimlaneRows";
 
 import {
@@ -17,23 +22,6 @@ import {
   resolvePath,
   useTimeline,
 } from "./useTimeline";
-
-// =============================================================================
-// Scenario helpers
-// =============================================================================
-
-const S1_SEQUENTIAL = 0;
-const S2_ITERATIVE = 1;
-const S3_DEEP = 2;
-const S4_PARALLEL = 3;
-const S7_FLAT = 5;
-const S11A_BRANCHES = 8;
-
-function getTimeline(index: number): Timeline {
-  const scenario = timelineScenarios[index];
-  if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.timeline;
-}
 
 // =============================================================================
 // parsePathSegment

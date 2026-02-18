@@ -1,75 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import type { TimelineSpan } from "../../../components/transcript/timeline";
-import { timelineScenarios } from "../syntheticNodes";
+import {
+  S1_SEQUENTIAL,
+  S2_ITERATIVE,
+  S3_DEEP,
+  S4_PARALLEL,
+  S7_FLAT,
+  S8_MANY,
+  S10_UTILITY,
+  getScenarioRoot,
+  makeSpan,
+  timelineScenarios,
+  ts,
+} from "../testHelpers";
 
 import {
-  computeSwimLaneRows,
+  computeSwimlaneRows,
   isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
 
 // =============================================================================
-// Test helpers
+// computeSwimlaneRows
 // =============================================================================
 
-const BASE = new Date("2025-01-15T10:00:00Z").getTime();
-
-function ts(offsetSeconds: number): Date {
-  return new Date(BASE + offsetSeconds * 1000);
-}
-
-/** Minimal TimelineSpan builder for edge-case tests. */
-function makeSpan(
-  name: string,
-  startSec: number,
-  endSec: number,
-  tokens: number,
-  content: TimelineSpan["content"] = [],
-  options?: { utility?: boolean }
-): TimelineSpan {
-  return {
-    type: "span",
-    id: name.toLowerCase(),
-    name,
-    spanType: null,
-    content,
-    branches: [],
-    utility: options?.utility ?? false,
-    startTime: ts(startSec),
-    endTime: ts(endSec),
-    totalTokens: tokens,
-  };
-}
-
-/** Scenario lookup by index (matches timelineScenarios order). */
-const S1_SEQUENTIAL = 0;
-const S2_ITERATIVE = 1;
-const S3_DEEP = 2;
-const S4_PARALLEL = 3;
-// S5_MARKERS = 4 (not needed for swimlane tests)
-const S7_FLAT = 5;
-const S8_MANY = 6;
-const S10_UTILITY = 7;
-
-function getScenarioRoot(index: number): TimelineSpan {
-  const scenario = timelineScenarios[index];
-  if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.timeline.root;
-}
-
-// =============================================================================
-// computeSwimLaneRows
-// =============================================================================
-
-describe("computeSwimLaneRows", () => {
+describe("computeSwimlaneRows", () => {
   // ---------------------------------------------------------------------------
   // Sequential agents (S1)
   // ---------------------------------------------------------------------------
   describe("sequential agents (S1)", () => {
     it("produces parent + 4 child rows (including scoring), all SingleSpan", () => {
       const node = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       expect(rows).toHaveLength(5);
 
@@ -96,7 +59,7 @@ describe("computeSwimLaneRows", () => {
   describe("flat transcript (S7)", () => {
     it("produces only the parent row when there are no child spans", () => {
       const node = getScenarioRoot(S7_FLAT);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       expect(rows).toHaveLength(1);
       expect(rows[0]!.name).toBe("Transcript");
@@ -109,7 +72,7 @@ describe("computeSwimLaneRows", () => {
   describe("iterative agents (S2)", () => {
     it("groups same-name spans into multiple SingleSpans on one row", () => {
       const node = getScenarioRoot(S2_ITERATIVE);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       expect(rows).toHaveLength(5);
       expect(rows[0]!.name).toBe("Transcript");
@@ -131,7 +94,7 @@ describe("computeSwimLaneRows", () => {
 
     it("aggregates tokens across all spans in a row", () => {
       const node = getScenarioRoot(S2_ITERATIVE);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       const exploreRow = rows[1]!;
       // explore1 (7200) + explore2 (7300) = 14500
@@ -145,7 +108,7 @@ describe("computeSwimLaneRows", () => {
   describe("parallel agents (S4)", () => {
     it("groups overlapping same-name spans into a ParallelSpan", () => {
       const node = getScenarioRoot(S4_PARALLEL);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       expect(rows).toHaveLength(5);
 
@@ -162,7 +125,7 @@ describe("computeSwimLaneRows", () => {
 
     it("computes time range from earliest start to latest end", () => {
       const node = getScenarioRoot(S4_PARALLEL);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       const exploreRow = rows[1]!;
       // explore1: 2-14, explore2: 3-16, explore3: 2-12
@@ -172,7 +135,7 @@ describe("computeSwimLaneRows", () => {
 
     it("aggregates tokens across all parallel spans", () => {
       const node = getScenarioRoot(S4_PARALLEL);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       const exploreRow = rows[1]!;
       // 8100 + 9400 + 6800 = 24300
@@ -186,7 +149,7 @@ describe("computeSwimLaneRows", () => {
   describe("utility agents (S10)", () => {
     it("excludes utility spans from swimlane rows", () => {
       const node = getScenarioRoot(S10_UTILITY);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       // Parent (Transcript) + Build only — 4 utility agents excluded
       expect(rows).toHaveLength(2);
@@ -201,7 +164,7 @@ describe("computeSwimLaneRows", () => {
   describe("many rows (S8)", () => {
     it("produces parent + 10 child rows", () => {
       const node = getScenarioRoot(S8_MANY);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       expect(rows).toHaveLength(11);
       expect(rows[0]!.name).toBe("Transcript");
@@ -209,7 +172,7 @@ describe("computeSwimLaneRows", () => {
 
     it("orders child rows by start time", () => {
       const node = getScenarioRoot(S8_MANY);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       for (let i = 2; i < rows.length; i++) {
         const current = rows[i]!;
@@ -227,7 +190,7 @@ describe("computeSwimLaneRows", () => {
   describe("deep nesting (S3)", () => {
     it("shows only direct children, not grandchildren", () => {
       const node = getScenarioRoot(S3_DEEP);
-      const rows = computeSwimLaneRows(node);
+      const rows = computeSwimlaneRows(node);
 
       // S3 top level: Transcript → Explore + Build + Scoring
       expect(rows.map((r) => r.name)).toEqual([
@@ -242,7 +205,7 @@ describe("computeSwimLaneRows", () => {
         (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
       );
       expect(buildSpan).toBeDefined();
-      const buildRows = computeSwimLaneRows(buildSpan!);
+      const buildRows = computeSwimlaneRows(buildSpan!);
       expect(buildRows.map((r) => r.name)).toEqual([
         "Build",
         "Code",
@@ -255,7 +218,7 @@ describe("computeSwimLaneRows", () => {
         (c): c is TimelineSpan => c.type === "span" && c.name === "Test"
       );
       expect(testSpan).toBeDefined();
-      const testRows = computeSwimLaneRows(testSpan!);
+      const testRows = computeSwimlaneRows(testSpan!);
       expect(testRows.map((r) => r.name)).toEqual([
         "Test",
         "Generate",
@@ -272,7 +235,7 @@ describe("computeSwimLaneRows", () => {
     it("parent row is always first", () => {
       for (const scenario of timelineScenarios) {
         const node = scenario.timeline.root;
-        const rows = computeSwimLaneRows(node);
+        const rows = computeSwimlaneRows(node);
         if (rows.length > 0) {
           expect(rows[0]!.name).toBe(node.name);
         }
@@ -290,7 +253,7 @@ describe("computeSwimLaneRows", () => {
         makeSpan("Explore", 12, 20, 3000),
         makeSpan("EXPLORE", 22, 30, 3000),
       ]);
-      const rows = computeSwimLaneRows(parent);
+      const rows = computeSwimlaneRows(parent);
 
       expect(rows).toHaveLength(2); // parent + one Explore row
 
@@ -306,7 +269,7 @@ describe("computeSwimLaneRows", () => {
   describe("edge cases", () => {
     it("returns just the parent row when content has only events", () => {
       const parent = makeSpan("Transcript", 0, 50, 10000);
-      const rows = computeSwimLaneRows(parent);
+      const rows = computeSwimlaneRows(parent);
 
       expect(rows).toHaveLength(1);
       expect(rows[0]!.name).toBe("Transcript");
@@ -317,7 +280,7 @@ describe("computeSwimLaneRows", () => {
         makeSpan("util1", 5, 10, 1000, [], { utility: true }),
         makeSpan("util2", 15, 20, 1000, [], { utility: true }),
       ]);
-      const rows = computeSwimLaneRows(parent);
+      const rows = computeSwimlaneRows(parent);
 
       expect(rows).toHaveLength(1);
     });

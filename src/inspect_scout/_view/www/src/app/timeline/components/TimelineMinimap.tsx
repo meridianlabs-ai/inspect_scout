@@ -73,7 +73,10 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
     <div className={styles.container}>
       {/* Mode label — click to toggle time/tokens.
           Both values are rendered so the cell sizes to the wider one. */}
-      <div className={clsx(styles.stableLabel, styles.alignRight)} onClick={toggle}>
+      <div
+        className={clsx(styles.stableLabel, styles.alignRight)}
+        onClick={toggle}
+      >
         <span className={isTokenMode ? styles.hidden : undefined}>time</span>
         <span className={isTokenMode ? undefined : styles.hidden}>tokens</span>
       </div>
@@ -115,7 +118,10 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
       </div>
 
       {/* Right edge label — both values rendered for stable width */}
-      <div className={clsx(styles.stableLabel, styles.alignLeft)} onClick={toggle}>
+      <div
+        className={clsx(styles.stableLabel, styles.alignLeft)}
+        onClick={toggle}
+      >
         <span className={isTokenMode ? styles.hidden : undefined}>
           {timeRightLabel}
         </span>

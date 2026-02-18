@@ -10,19 +10,20 @@ import type {
   ModelEvent,
   ToolEvent,
 } from "../../../types/api-types";
-import { timelineScenarios } from "../syntheticNodes";
+import {
+  S11A_BRANCHES,
+  S5_MARKERS,
+  S7_FLAT,
+  getScenarioRoot,
+  makeSpan,
+  ts,
+} from "../testHelpers";
 
 import { collectMarkers, isCompactionEvent, isErrorEvent } from "./markers";
 
 // =============================================================================
 // Test helpers
 // =============================================================================
-
-const BASE = new Date("2025-01-15T10:00:00Z").getTime();
-
-function ts(offsetSeconds: number): Date {
-  return new Date(BASE + offsetSeconds * 1000);
-}
 
 const NULL_CONFIG = {} as ModelEvent["config"];
 
@@ -152,38 +153,6 @@ function makeCompactionEventNode(
   };
 }
 
-function makeSpan(
-  name: string,
-  startSec: number,
-  endSec: number,
-  content: TimelineSpan["content"] = [],
-  options?: { branches?: TimelineBranch[] }
-): TimelineSpan {
-  return {
-    type: "span",
-    id: name.toLowerCase(),
-    name,
-    spanType: null,
-    content,
-    branches: options?.branches ?? [],
-    utility: false,
-    startTime: ts(startSec),
-    endTime: ts(endSec),
-    totalTokens: 1000,
-  };
-}
-
-/** Scenario indices. */
-const S5_MARKERS = 4;
-const S7_FLAT = 5;
-const S11A_BRANCHES = 8;
-
-function getScenarioRoot(index: number): TimelineSpan {
-  const scenario = timelineScenarios[index];
-  if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.timeline.root;
-}
-
 // =============================================================================
 // isErrorEvent
 // =============================================================================
@@ -302,12 +271,12 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("depth modes", () => {
     it("direct: collects only from own events", () => {
-      const childSpan = makeSpan("Child", 10, 20, [
+      const childSpan = makeSpan("Child", 10, 20, 1000, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
       ]);
-      const parent = makeSpan("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, 1000, [
         makeModelEventNode(2, { error: "parent error" }),
         childSpan,
       ]);
@@ -320,16 +289,16 @@ describe("collectMarkers", () => {
     });
 
     it("children: collects from own events + direct child spans", () => {
-      const grandchild = makeSpan("Grandchild", 15, 18, [
+      const grandchild = makeSpan("Grandchild", 15, 18, 1000, [
         makeCompactionEventNode(16),
       ]);
-      const child = makeSpan("Child", 10, 20, [
+      const child = makeSpan("Child", 10, 20, 1000, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
         grandchild,
       ]);
-      const parent = makeSpan("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, 1000, [
         makeModelEventNode(2, { error: "parent error" }),
         child,
       ]);
@@ -342,16 +311,16 @@ describe("collectMarkers", () => {
     });
 
     it("recursive: collects from the full subtree", () => {
-      const grandchild = makeSpan("Grandchild", 15, 18, [
+      const grandchild = makeSpan("Grandchild", 15, 18, 1000, [
         makeCompactionEventNode(16),
       ]);
-      const child = makeSpan("Child", 10, 20, [
+      const child = makeSpan("Child", 10, 20, 1000, [
         makeToolEventNode(12, {
           error: { message: "child error", type: "runtime" },
         }),
         grandchild,
       ]);
-      const parent = makeSpan("Parent", 0, 30, [
+      const parent = makeSpan("Parent", 0, 30, 1000, [
         makeModelEventNode(2, { error: "parent error" }),
         child,
       ]);
@@ -384,7 +353,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeSpan("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, 1000, [event1, event2], {
         branches: [branch],
       });
 
@@ -406,7 +375,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeSpan("Root", 0, 20, [makeModelEventNode(0)], {
+      const parent = makeSpan("Root", 0, 20, 1000, [makeModelEventNode(0)], {
         branches: [branch],
       });
 
@@ -425,7 +394,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeSpan("Root", 0, 20, [makeModelEventNode(0)], {
+      const parent = makeSpan("Root", 0, 20, 1000, [makeModelEventNode(0)], {
         branches: [branch],
       });
 
@@ -457,7 +426,7 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("sort order", () => {
     it("sorts markers by timestamp", () => {
-      const parent = makeSpan("Root", 0, 30, [
+      const parent = makeSpan("Root", 0, 30, 1000, [
         makeCompactionEventNode(20),
         makeToolEventNode(5, {
           error: { message: "early error", type: "runtime" },
@@ -489,7 +458,7 @@ describe("collectMarkers", () => {
         totalTokens: 100,
       };
 
-      const parent = makeSpan("Root", 0, 30, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 30, 1000, [event1, event2, event3], {
         branches: [branch],
       });
 
@@ -507,14 +476,14 @@ describe("collectMarkers", () => {
   // ---------------------------------------------------------------------------
   describe("edge cases", () => {
     it("returns empty array for span with no events", () => {
-      const parent = makeSpan("Empty", 0, 10);
+      const parent = makeSpan("Empty", 0, 10, 1000);
       const markers = collectMarkers(parent, "direct");
 
       expect(markers).toHaveLength(0);
     });
 
     it("returns empty array for span with only normal events", () => {
-      const parent = makeSpan("Normal", 0, 10, [
+      const parent = makeSpan("Normal", 0, 10, 1000, [
         makeModelEventNode(2),
         makeToolEventNode(5),
       ]);

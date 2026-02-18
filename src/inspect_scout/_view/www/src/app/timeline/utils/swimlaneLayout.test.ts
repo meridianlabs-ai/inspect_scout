@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import type { TimelineSpan } from "../../../components/transcript/timeline";
-import { timelineScenarios } from "../syntheticNodes";
+import {
+  S1_SEQUENTIAL,
+  S2_ITERATIVE,
+  S4_PARALLEL,
+  S5_MARKERS,
+  S7_FLAT,
+  S8_MANY,
+  getScenarioRoot,
+  makeSpan,
+  ts,
+} from "../testHelpers";
 
 import {
   computeBarPosition,
@@ -10,54 +19,7 @@ import {
   isDrillable,
   timestampToPercent,
 } from "./swimlaneLayout";
-import { computeSwimLaneRows } from "./swimlaneRows";
-
-// =============================================================================
-// Test helpers
-// =============================================================================
-
-const BASE = new Date("2025-01-15T10:00:00Z").getTime();
-
-function ts(offsetSeconds: number): Date {
-  return new Date(BASE + offsetSeconds * 1000);
-}
-
-/** Minimal TimelineSpan builder for edge-case tests. */
-function makeSpan(
-  name: string,
-  startSec: number,
-  endSec: number,
-  tokens: number,
-  content: TimelineSpan["content"] = [],
-  options?: { utility?: boolean; spanType?: string | null }
-): TimelineSpan {
-  return {
-    type: "span",
-    id: name.toLowerCase(),
-    name,
-    spanType: options?.spanType ?? null,
-    content,
-    branches: [],
-    utility: options?.utility ?? false,
-    startTime: ts(startSec),
-    endTime: ts(endSec),
-    totalTokens: tokens,
-  };
-}
-
-/** Scenario lookup by index. */
-const S1_SEQUENTIAL = 0;
-const S2_ITERATIVE = 1;
-const S4_PARALLEL = 3;
-const S5_MARKERS = 4;
-const S7_FLAT = 5;
-const S8_MANY = 6;
-
-function getScenarioRoot(index: number): TimelineSpan {
-  const scenario = timelineScenarios[index];
-  if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.timeline.root;
-}
+import { computeSwimlaneRows } from "./swimlaneRows";
 
 // =============================================================================
 // timestampToPercent
@@ -202,7 +164,7 @@ describe("computeRowLayouts", () => {
   describe("S1 sequential agents", () => {
     it("produces 5 row layouts with correct structure", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -218,7 +180,7 @@ describe("computeRowLayouts", () => {
 
     it("positions parent bar at full width", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -233,7 +195,7 @@ describe("computeRowLayouts", () => {
 
     it("positions child bars proportionally within the view range", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -251,7 +213,7 @@ describe("computeRowLayouts", () => {
 
     it("marks parent as not drillable", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -264,7 +226,7 @@ describe("computeRowLayouts", () => {
 
     it("marks child agents with children as drillable", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -282,7 +244,7 @@ describe("computeRowLayouts", () => {
 
     it("has no parallel counts on sequential spans", () => {
       const root = getScenarioRoot(S1_SEQUENTIAL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -301,7 +263,7 @@ describe("computeRowLayouts", () => {
   describe("S2 iterative agents", () => {
     it("produces multiple positioned spans for iterative rows", () => {
       const root = getScenarioRoot(S2_ITERATIVE);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -322,7 +284,7 @@ describe("computeRowLayouts", () => {
   describe("S4 parallel agents", () => {
     it("shows parallel count for parallel spans", () => {
       const root = getScenarioRoot(S4_PARALLEL);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -341,7 +303,7 @@ describe("computeRowLayouts", () => {
   describe("S5 inline markers", () => {
     it("collects error and compaction markers at correct positions", () => {
       const root = getScenarioRoot(S5_MARKERS);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -367,7 +329,7 @@ describe("computeRowLayouts", () => {
   describe("S7 flat transcript", () => {
     it("produces a single parent row", () => {
       const root = getScenarioRoot(S7_FLAT);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -384,7 +346,7 @@ describe("computeRowLayouts", () => {
   describe("S8 many rows", () => {
     it("produces 11 row layouts (parent + 10 children)", () => {
       const root = getScenarioRoot(S8_MANY);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
         root.startTime,
@@ -403,7 +365,7 @@ describe("computeRowLayouts", () => {
   describe("marker depth modes", () => {
     it("direct depth only shows markers from the span itself", () => {
       const root = getScenarioRoot(S5_MARKERS);
-      const rows = computeSwimLaneRows(root);
+      const rows = computeSwimlaneRows(root);
 
       const directLayouts = computeRowLayouts(
         rows,

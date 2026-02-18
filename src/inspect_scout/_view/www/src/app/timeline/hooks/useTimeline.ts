@@ -15,9 +15,9 @@ import type {
   TimelineSpan,
 } from "../../../components/transcript/timeline";
 import {
-  type SwimLaneRow,
+  type SwimlaneRow,
   compareByTime,
-  computeSwimLaneRows,
+  computeSwimlaneRows,
 } from "../utils/swimlaneRows";
 
 // =============================================================================
@@ -40,7 +40,7 @@ export interface TimelineState {
   /** The resolved TimelineSpan for the current path. */
   node: TimelineSpan;
   /** Swimlane rows computed from the resolved node. */
-  rows: SwimLaneRow[];
+  rows: SwimlaneRow[];
   /** Breadcrumb trail from root to the current path. */
   breadcrumbs: BreadcrumbSegment[];
   /** Currently selected span identifier, or null. Encoded as "name" or "name-N". */
@@ -333,6 +333,54 @@ function deriveBranchLabel(branch: TimelineBranch, index: number): string {
 }
 
 // =============================================================================
+// Branch Lookup
+// =============================================================================
+
+export interface BranchLookupResult {
+  /** The span that owns the branches. */
+  owner: TimelineSpan;
+  /** Path segments from the search root to the owner (empty if owner is root). */
+  ownerPath: string[];
+  /** Matching branches with their 1-indexed position. */
+  branches: Array<{ branch: TimelineBranch; index: number }>;
+}
+
+/**
+ * Finds all branches matching a forkedAt UUID anywhere in the span tree.
+ * Returns the owning span, its path from root, and matching branches.
+ */
+export function findBranchesByForkedAt(
+  node: TimelineSpan,
+  forkedAt: string,
+  pathSoFar: string[] = []
+): BranchLookupResult | null {
+  // Check this node's branches
+  const matches: Array<{ branch: TimelineBranch; index: number }> = [];
+  for (let i = 0; i < node.branches.length; i++) {
+    const branch = node.branches[i]!;
+    if (branch.forkedAt === forkedAt) {
+      matches.push({ branch, index: i + 1 });
+    }
+  }
+  if (matches.length > 0) {
+    return { owner: node, ownerPath: pathSoFar, branches: matches };
+  }
+
+  // Recurse into child spans
+  for (const item of node.content) {
+    if (item.type === "span") {
+      const found = findBranchesByForkedAt(item, forkedAt, [
+        ...pathSoFar,
+        item.name.toLowerCase(),
+      ]);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+// =============================================================================
 // Hook
 // =============================================================================
 
@@ -361,7 +409,7 @@ export function useTimeline(timeline: Timeline): TimelineState {
   const node = useMemo(() => resolved ?? timeline.root, [timeline, resolved]);
 
   // Compute swimlane rows
-  const rows = useMemo(() => computeSwimLaneRows(node), [node]);
+  const rows = useMemo(() => computeSwimlaneRows(node), [node]);
 
   // Default selection: explicit param > first child for parallel containers > root
   const selected = useMemo(() => {

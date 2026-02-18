@@ -240,7 +240,13 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
         );
       }
     },
-    [outlineNodeList, running, selectedOutlineId, getEventUrl, setSelectedOutlineId]
+    [
+      outlineNodeList,
+      running,
+      selectedOutlineId,
+      getEventUrl,
+      setSelectedOutlineId,
+    ]
   );
 
   return (

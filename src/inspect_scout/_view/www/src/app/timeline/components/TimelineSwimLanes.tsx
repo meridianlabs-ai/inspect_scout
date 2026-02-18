@@ -12,6 +12,7 @@ import { formatTime } from "../../../utils/format";
 import {
   type BreadcrumbSegment,
   createBranchSpan,
+  findBranchesByForkedAt,
   parsePathSegment,
 } from "../hooks/useTimeline";
 import type {
@@ -103,7 +104,10 @@ function isSpanSelected(
 
 const MARKER_ICONS: Record<string, { icon: string; tooltip: string }> = {
   error: { icon: ApplicationIcons.error, tooltip: "Error event" },
-  compaction: { icon: ApplicationIcons.compactionMarker, tooltip: "Context compaction" },
+  compaction: {
+    icon: ApplicationIcons.compactionMarker,
+    tooltip: "Context compaction",
+  },
   branch: { icon: ApplicationIcons.fork, tooltip: "View branches" },
 };
 
@@ -233,7 +237,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   const childRows = layouts.slice(1);
 
   const renderRow = (layout: RowLayout, rowIndex: number) => (
-    <SwimLaneRow
+    <SwimlaneRow
       key={`${layout.name}-${rowIndex}`}
       layout={layout}
       parsedSelection={parsedSelection}
@@ -313,10 +317,10 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 };
 
 // =============================================================================
-// SwimLaneRow (internal)
+// SwimlaneRow (internal)
 // =============================================================================
 
-interface SwimLaneRowProps {
+interface SwimlaneRowProps {
   layout: RowLayout;
   parsedSelection: ParsedSelection | null;
   onSelect: (spanIndex: number) => void;
@@ -324,7 +328,7 @@ interface SwimLaneRowProps {
   onBranchClick: (forkedAt: string, element: HTMLElement) => void;
 }
 
-const SwimLaneRow: FC<SwimLaneRowProps> = ({
+const SwimlaneRow: FC<SwimlaneRowProps> = ({
   layout,
   parsedSelection,
   onSelect,
@@ -528,8 +532,7 @@ interface MarkerGlyphProps {
 }
 
 const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
-  const icon =
-    MARKER_ICONS[marker.kind]?.icon ?? "bi bi-question-circle";
+  const icon = MARKER_ICONS[marker.kind]?.icon ?? "bi bi-question-circle";
   const kindClass =
     marker.kind === "error"
       ? styles.markerError
@@ -558,54 +561,6 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
     </span>
   );
 };
-
-// =============================================================================
-// Branch lookup helpers
-// =============================================================================
-
-interface BranchLookupResult {
-  /** The span that owns the branches. */
-  owner: TimelineSpan;
-  /** Path segments from the search root to the owner (empty if owner is root). */
-  ownerPath: string[];
-  /** Matching branches with their 1-indexed position. */
-  branches: Array<{ branch: TimelineBranch; index: number }>;
-}
-
-/**
- * Finds all branches matching a forkedAt UUID anywhere in the span tree.
- * Returns the owning span, its path from root, and matching branches.
- */
-function findBranchesByForkedAt(
-  node: TimelineSpan,
-  forkedAt: string,
-  pathSoFar: string[] = []
-): BranchLookupResult | null {
-  // Check this node's branches
-  const matches: Array<{ branch: TimelineBranch; index: number }> = [];
-  for (let i = 0; i < node.branches.length; i++) {
-    const branch = node.branches[i]!;
-    if (branch.forkedAt === forkedAt) {
-      matches.push({ branch, index: i + 1 });
-    }
-  }
-  if (matches.length > 0) {
-    return { owner: node, ownerPath: pathSoFar, branches: matches };
-  }
-
-  // Recurse into child spans
-  for (const item of node.content) {
-    if (item.type === "span") {
-      const found = findBranchesByForkedAt(item, forkedAt, [
-        ...pathSoFar,
-        item.name.toLowerCase(),
-      ]);
-      if (found) return found;
-    }
-  }
-
-  return null;
-}
 
 // =============================================================================
 // BranchPopover (internal)

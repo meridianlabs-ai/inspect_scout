@@ -11,7 +11,8 @@ import { formatPrettyDecimal } from "../../../utils/format";
 import { type MarkerDepth, type MarkerKind, collectMarkers } from "./markers";
 import {
   type RowSpan,
-  type SwimLaneRow,
+  type SwimlaneRow,
+  getAgents,
   isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
@@ -152,7 +153,7 @@ export function formatTokenCount(tokens: number): string {
  * specified depth for each row's spans.
  */
 export function computeRowLayouts(
-  rows: SwimLaneRow[],
+  rows: SwimlaneRow[],
   viewStart: Date,
   viewEnd: Date,
   markerDepth: MarkerDepth
@@ -233,7 +234,7 @@ export function computeRowLayouts(
  * For child rows, markers are collected from each span's agent and merged.
  */
 function collectRowMarkers(
-  row: SwimLaneRow,
+  row: SwimlaneRow,
   isParent: boolean,
   depth: MarkerDepth,
   viewStart: Date,
@@ -242,7 +243,7 @@ function collectRowMarkers(
   const allMarkers: PositionedMarker[] = [];
 
   for (const rowSpan of row.spans) {
-    const agents = isSingleSpan(rowSpan) ? [rowSpan.agent] : rowSpan.agents;
+    const agents = getAgents(rowSpan);
 
     for (const agent of agents) {
       // For parent row, use the depth as-is.

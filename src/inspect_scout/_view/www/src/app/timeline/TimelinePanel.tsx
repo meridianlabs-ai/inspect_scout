@@ -12,16 +12,18 @@ import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewN
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useProperty } from "../../state/hooks/useProperty";
 
-import type { MinimapSelection } from "./components/TimelineMinimap";
 import { TimelinePills } from "./components/TimelinePills";
 import { TimelineSwimLanes } from "./components/TimelineSwimLanes";
-import { parsePathSegment, useTimeline } from "./hooks/useTimeline";
+import { useTimeline } from "./hooks/useTimeline";
 import { timelineScenarios } from "./syntheticNodes";
-import { collectRawEvents, getSelectedSpans } from "./timelineEventNodes";
+import {
+  collectRawEvents,
+  computeMinimapSelection,
+  getSelectedSpans,
+} from "./timelineEventNodes";
 import styles from "./TimelinePanel.module.css";
 import type { MarkerDepth } from "./utils/markers";
 import { computeRowLayouts } from "./utils/swimlaneLayout";
-import { isSingleSpan, isParallelSpan } from "./utils/swimlaneRows";
 
 export const TimelinePanel: FC = () => {
   useDocumentTitle("Timeline");
@@ -64,59 +66,10 @@ export const TimelinePanel: FC = () => {
     [state.rows, state.selected]
   );
 
-  // Minimap selection — resolve the single visually-highlighted span.
-  // For multi-span rows (iterative), only the specific span is highlighted,
-  // not the whole row envelope.
-  const minimapSelection = useMemo((): MinimapSelection | undefined => {
-    if (!state.selected) return undefined;
-    const { name, spanIndex } = parsePathSegment(state.selected);
-    const row = state.rows.find(
-      (r) => r.name.toLowerCase() === name.toLowerCase()
-    );
-    if (!row) return undefined;
-
-    // Resolve the specific span matching the visual selection
-    const targetIndex = (spanIndex ?? 1) - 1; // 0-indexed, default to first
-    for (const rowSpan of row.spans) {
-      if (isSingleSpan(rowSpan)) {
-        // For iterative rows, each SingleSpan corresponds to one index
-        const singleIndex = row.spans.indexOf(rowSpan);
-        if (singleIndex === targetIndex || row.spans.length === 1) {
-          const agent = rowSpan.agent;
-          return {
-            startTime: agent.startTime,
-            endTime: agent.endTime,
-            totalTokens: agent.totalTokens,
-          };
-        }
-      } else if (isParallelSpan(rowSpan)) {
-        if (spanIndex !== null) {
-          const agent = rowSpan.agents[spanIndex - 1];
-          if (agent) {
-            return {
-              startTime: agent.startTime,
-              endTime: agent.endTime,
-              totalTokens: agent.totalTokens,
-            };
-          }
-        }
-        // No index → envelope of all parallel agents
-        const agents = rowSpan.agents;
-        const first = agents[0]!;
-        let start = first.startTime;
-        let end = first.endTime;
-        let tokens = first.totalTokens;
-        for (let i = 1; i < agents.length; i++) {
-          const a = agents[i]!;
-          if (a.startTime < start) start = a.startTime;
-          if (a.endTime > end) end = a.endTime;
-          tokens += a.totalTokens;
-        }
-        return { startTime: start, endTime: end, totalTokens: tokens };
-      }
-    }
-    return undefined;
-  }, [state.selected, state.rows]);
+  const minimapSelection = useMemo(
+    () => computeMinimapSelection(state.rows, state.selected),
+    [state.rows, state.selected]
+  );
 
   const rawEvents = useMemo(
     () => collectRawEvents(selectedSpans),

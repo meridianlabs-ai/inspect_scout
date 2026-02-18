@@ -1,7 +1,7 @@
 /**
  * Swimlane row computation for the timeline UI.
  *
- * Transforms a TimelineSpan's children into SwimLaneRow[] for rendering
+ * Transforms a TimelineSpan's children into SwimlaneRow[] for rendering
  * as horizontal swimlane bars. Handles sequential, iterative (multiple spans),
  * and parallel (overlapping) span patterns.
  */
@@ -37,7 +37,7 @@ export interface ParallelSpan {
 
 export type RowSpan = SingleSpan | ParallelSpan;
 
-export interface SwimLaneRow {
+export interface SwimlaneRow {
   name: string;
   spans: RowSpan[];
   totalTokens: number;
@@ -55,6 +55,11 @@ export function isSingleSpan(span: RowSpan): span is SingleSpan {
 
 export function isParallelSpan(span: RowSpan): span is ParallelSpan {
   return "agents" in span;
+}
+
+/** Unwrap a RowSpan to a flat array of TimelineSpan agents. */
+export function getAgents(span: RowSpan): TimelineSpan[] {
+  return isSingleSpan(span) ? [span.agent] : span.agents;
 }
 
 // =============================================================================
@@ -98,10 +103,10 @@ function groupHasOverlap(spans: TimelineSpan[]): boolean {
 /**
  * Computes swimlane rows from a TimelineSpan's children.
  *
- * @returns Array of SwimLaneRow, with the parent row always first,
+ * @returns Array of SwimlaneRow, with the parent row always first,
  *          followed by child rows ordered by earliest start time.
  */
-export function computeSwimLaneRows(node: TimelineSpan): SwimLaneRow[] {
+export function computeSwimlaneRows(node: TimelineSpan): SwimlaneRow[] {
   // Parent row is always first
   const parentRow = buildParentRow(node);
 
@@ -118,7 +123,7 @@ export function computeSwimLaneRows(node: TimelineSpan): SwimLaneRow[] {
   const groups = groupByName(children);
 
   // Build rows from groups
-  const childRows: SwimLaneRow[] = [];
+  const childRows: SwimlaneRow[] = [];
   for (const [displayName, spans] of groups) {
     const row = buildRowFromGroup(displayName, spans);
     if (row) {
@@ -136,7 +141,7 @@ export function computeSwimLaneRows(node: TimelineSpan): SwimLaneRow[] {
 // Internal Helpers
 // =============================================================================
 
-function buildParentRow(node: TimelineSpan): SwimLaneRow {
+function buildParentRow(node: TimelineSpan): SwimlaneRow {
   return {
     name: node.name,
     spans: [{ agent: node }],
@@ -171,7 +176,7 @@ function groupByName(spans: TimelineSpan[]): [string, TimelineSpan[]][] {
 function buildRowFromGroup(
   displayName: string,
   spans: TimelineSpan[]
-): SwimLaneRow | null {
+): SwimlaneRow | null {
   // Sort spans by start time, end time as tiebreaker
   const sorted = [...spans].sort(compareByTime);
 

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { FC, useCallback } from "react";
 
 import type { TimelineSpan } from "../../components/transcript/timeline";
@@ -56,10 +57,9 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   const showRegion = bar !== null;
   const useShortFormat = bar !== null && bar.width <= 15;
 
-  // Labels depend on toggle mode
-  const rightLabel = isTokenMode
-    ? formatTokenCount(root.totalTokens)
-    : formatDuration(root.startTime, root.endTime);
+  // Compute both labels so the container can size to the wider one
+  const timeRightLabel = formatDuration(root.startTime, root.endTime);
+  const tokenRightLabel = formatTokenCount(root.totalTokens);
   const sectionLabel =
     selection && isTokenMode
       ? formatTokenCount(selection.totalTokens)
@@ -71,21 +71,15 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
 
   return (
     <div className={styles.container}>
-      {/* Mode label — click to toggle time/tokens */}
-      <div className={styles.modeLabel} onClick={toggle}>
-        {isTokenMode ? "tokens" : "time"}
+      {/* Mode label — click to toggle time/tokens.
+          Both values are rendered so the cell sizes to the wider one. */}
+      <div className={clsx(styles.stableLabel, styles.alignRight)} onClick={toggle}>
+        <span className={isTokenMode ? styles.hidden : undefined}>time</span>
+        <span className={isTokenMode ? undefined : styles.hidden}>tokens</span>
       </div>
 
-      {/* Bar area — all minimap content lives here */}
+      {/* Bar area */}
       <div className={styles.minimap}>
-        {/* Edge labels — click to toggle time/tokens */}
-        <span className={styles.timeLabelLeft} onClick={toggle}>
-          0
-        </span>
-        <span className={styles.timeLabelRight} onClick={toggle}>
-          {rightLabel}
-        </span>
-
         <div className={styles.track} />
 
         {/* Selection region fill between markers */}
@@ -118,6 +112,16 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
             </span>
           </div>
         )}
+      </div>
+
+      {/* Right edge label — both values rendered for stable width */}
+      <div className={clsx(styles.stableLabel, styles.alignLeft)} onClick={toggle}>
+        <span className={isTokenMode ? styles.hidden : undefined}>
+          {timeRightLabel}
+        </span>
+        <span className={isTokenMode ? undefined : styles.hidden}>
+          {tokenRightLabel}
+        </span>
       </div>
     </div>
   );

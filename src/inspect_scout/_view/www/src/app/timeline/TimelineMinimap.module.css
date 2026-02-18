@@ -10,8 +10,12 @@
   max-width: 50%;
 }
 
-/* Mode label — click to toggle time/tokens */
-.modeLabel {
+/*
+ * Stable-width label — renders both time/token values in a CSS grid stack.
+ * The cell sizes to the wider value; only the active one is visible.
+ */
+.stableLabel {
+  display: grid;
   font-size: 0.6rem;
   line-height: 1.4;
   color: var(--vscode-descriptionForeground);
@@ -21,37 +25,27 @@
   white-space: nowrap;
 }
 
+.stableLabel > * {
+  grid-area: 1 / 1;
+}
+
+.alignRight {
+  justify-items: end;
+}
+
+.alignLeft {
+  justify-items: start;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
 .minimap {
   position: relative;
   height: 18px;
   flex: 1;
-}
-
-/* Time labels positioned at edges — vertically centered on track */
-.timeLabelLeft,
-.timeLabelRight {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.6rem;
-  color: var(--vscode-descriptionForeground);
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 3px;
-  padding: 0 3px;
-  line-height: 1.4;
-  white-space: nowrap;
-  user-select: none;
-  z-index: 1;
-  cursor: pointer;
-}
-
-.timeLabelLeft {
-  left: 0;
-}
-
-.timeLabelRight {
-  right: 0;
+  overflow: hidden;
 }
 
 /* Full-width track — thin rounded rail, vertically centered */

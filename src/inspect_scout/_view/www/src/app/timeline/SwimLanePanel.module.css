@@ -77,12 +77,12 @@
   padding: 0 0.5rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smaller);
+  line-height: var(--swimlane-row-height);
   color: var(--vscode-foreground);
   user-select: none;
   display: flex;
   align-items: center;
   gap: 2px;
-  height: 100%;
 }
 
 .labelChild {
@@ -293,6 +293,7 @@
 .tokens {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smaller);
+  line-height: var(--swimlane-row-height);
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;

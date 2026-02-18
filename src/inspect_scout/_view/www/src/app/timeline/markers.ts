@@ -6,10 +6,12 @@
  */
 
 import type {
+  TimelineBranch,
   TimelineEvent,
   TimelineSpan,
 } from "../../components/transcript/timeline";
-import type { Event } from "../../types/api-types";
+import type { CompactionEvent, Event } from "../../types/api-types";
+import { formatDuration, formatPrettyDecimal } from "../../utils/format";
 
 // =============================================================================
 // Types
@@ -21,6 +23,8 @@ export interface TimelineMarker {
   kind: MarkerKind;
   timestamp: Date;
   reference: string;
+  /** Human-readable detail for tooltip display. */
+  tooltip: string;
 }
 
 export type MarkerDepth = "direct" | "children" | "recursive";
@@ -51,6 +55,24 @@ export function isErrorEvent(event: Event): boolean {
  */
 export function isCompactionEvent(event: Event): boolean {
   return event.event === "compaction";
+}
+
+/**
+ * Builds a tooltip string for an error event.
+ */
+function errorTooltip(event: Event): string {
+  if (event.event === "tool") {
+    const msg = event.error?.message ?? "Unknown error";
+    return `Error (${event.function}): ${msg}`;
+  }
+  if (event.event === "model") {
+    const msg =
+      (typeof event.error === "string" ? event.error : null) ??
+      (typeof event.output.error === "string" ? event.output.error : null) ??
+      "Unknown error";
+    return `Error (${event.model}): ${msg}`;
+  }
+  return "Error";
 }
 
 // =============================================================================
@@ -139,12 +161,17 @@ function addEventMarker(
       kind: "error",
       timestamp: eventNode.startTime,
       reference: uuid ?? "",
+      tooltip: errorTooltip(event),
     });
   } else if (isCompactionEvent(event)) {
+    const ce = event as CompactionEvent;
+    const before = ce.tokens_before?.toLocaleString() ?? "?";
+    const after = ce.tokens_after?.toLocaleString() ?? "?";
     markers.push({
       kind: "compaction",
       timestamp: eventNode.startTime,
       reference: uuid ?? "",
+      tooltip: `Context compaction: ${before} → ${after} tokens`,
     });
   }
 }
@@ -152,23 +179,72 @@ function addEventMarker(
 /**
  * Collects branch markers from a span's branches.
  *
- * Resolves the forkedAt UUID to a timestamp by searching the span's content.
- * Branches with unresolvable forkedAt are silently dropped.
+ * Groups branches by forkedAt UUID so a single marker represents all branches
+ * at a fork point. Resolves each forkedAt to a timestamp by searching the
+ * span's content. Fork points with unresolvable forkedAt are silently dropped.
  */
 function collectBranchMarkers(
   node: TimelineSpan,
   markers: TimelineMarker[]
 ): void {
+  // Group branches by forkedAt UUID
+  const groups = new Map<string, TimelineBranch[]>();
   for (const branch of node.branches) {
-    const timestamp = resolveForkedAtTimestamp(node, branch.forkedAt);
+    const existing = groups.get(branch.forkedAt);
+    if (existing) {
+      existing.push(branch);
+    } else {
+      groups.set(branch.forkedAt, [branch]);
+    }
+  }
+
+  for (const [forkedAt, branches] of groups) {
+    const timestamp = resolveForkedAtTimestamp(node, forkedAt);
     if (timestamp) {
       markers.push({
         kind: "branch",
         timestamp,
-        reference: branch.forkedAt,
+        reference: forkedAt,
+        tooltip: branchTooltip(branches),
       });
     }
   }
+}
+
+/**
+ * Builds a tooltip string summarizing branches at a fork point.
+ */
+function branchTooltip(branches: TimelineBranch[]): string {
+  const count = branches.length;
+  const totalTokens = branches.reduce((sum, b) => sum + b.totalTokens, 0);
+  const tokenStr = formatCompactTokens(totalTokens);
+
+  // Compute combined duration: earliest start to latest end
+  const earliest = branches.reduce(
+    (min, b) => (b.startTime < min ? b.startTime : min),
+    branches[0]!.startTime
+  );
+  const latest = branches.reduce(
+    (max, b) => (b.endTime > max ? b.endTime : max),
+    branches[0]!.endTime
+  );
+  const duration = formatDuration(earliest, latest);
+
+  const label = count === 1 ? "1 branch" : `${count} branches`;
+  return `${label} (${tokenStr}, ${duration})`;
+}
+
+/**
+ * Formats a token count compactly: "48.5k", "1.2M", etc.
+ */
+function formatCompactTokens(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${formatPrettyDecimal(tokens / 1_000_000)}M tokens`;
+  }
+  if (tokens >= 1_000) {
+    return `${formatPrettyDecimal(tokens / 1_000)}k tokens`;
+  }
+  return `${tokens} tokens`;
 }
 
 /**

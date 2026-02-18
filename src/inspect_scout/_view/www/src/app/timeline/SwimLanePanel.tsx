@@ -99,10 +99,10 @@ function isSpanSelected(
 // Marker glyphs
 // =============================================================================
 
-const MARKER_GLYPHS: Record<string, string> = {
-  error: "\u25B2", // ▲
-  compaction: "\u250A", // ┊
-  branch: "\u21B3", // ↳
+const MARKER_ICONS: Record<string, { icon: string; tooltip: string }> = {
+  error: { icon: ApplicationIcons.error, tooltip: "Error event" },
+  compaction: { icon: ApplicationIcons.compactionMarker, tooltip: "Context compaction" },
+  branch: { icon: ApplicationIcons.fork, tooltip: "View branches" },
 };
 
 // =============================================================================
@@ -499,7 +499,8 @@ interface MarkerGlyphProps {
 }
 
 const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
-  const glyph = MARKER_GLYPHS[marker.kind] ?? "?";
+  const icon =
+    MARKER_ICONS[marker.kind]?.icon ?? "bi bi-question-circle";
   const kindClass =
     marker.kind === "error"
       ? styles.markerError
@@ -521,10 +522,10 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
     <span
       className={clsx(styles.marker, kindClass)}
       style={{ left: `${marker.left}%` }}
-      title={marker.kind === "branch" ? "View branches" : marker.kind}
+      title={marker.tooltip}
       onClick={handleClick}
     >
-      {glyph}
+      <i className={icon} />
     </span>
   );
 };

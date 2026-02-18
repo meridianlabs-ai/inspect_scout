@@ -46,6 +46,8 @@ export interface PositionedMarker {
   kind: MarkerKind;
   /** Reference identifier (forkedAt UUID for branches, event UUID for others). */
   reference: string;
+  /** Human-readable detail for tooltip display. */
+  tooltip: string;
 }
 
 /** Complete layout data for a single swimlane row. */
@@ -254,6 +256,7 @@ function collectRowMarkers(
           left: timestampToPercent(m.timestamp, viewStart, viewEnd),
           kind: m.kind,
           reference: m.reference,
+          tooltip: m.tooltip,
         });
       }
     }

@@ -444,11 +444,11 @@ describe("collectMarkers", () => {
 
       const markers = collectMarkers(buildSpan!, "direct");
 
-      // Both branches share forkedAt "model-call-5" → 2 markers at the fork event
+      // Both branches share forkedAt "model-call-5" → grouped into 1 marker
       const branchMarkers = markers.filter((m) => m.kind === "branch");
-      expect(branchMarkers).toHaveLength(2);
+      expect(branchMarkers).toHaveLength(1);
       expect(branchMarkers[0]!.reference).toBe("model-call-5");
-      expect(branchMarkers[1]!.reference).toBe("model-call-5");
+      expect(branchMarkers[0]!.tooltip).toContain("2 branches");
     });
   });
 

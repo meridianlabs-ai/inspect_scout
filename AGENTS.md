@@ -48,6 +48,11 @@ Architecture and design decisions in `/design/`.
 - [React Query patterns](src/inspect_scout/_view/frontend/apps/scout/design/react-query.md)
 - [Frontend specific testing](src/inspect_scout/_view/frontend/apps/scout/design/front-end-testing.md)
 
+### Guides
+Developer workflow guides in `/guides/`.
+
+- [Frontend submodule guide](guides/frontend-submodule.md)
+
 ## Python
 
 Directory: `src/inspect_scout/`

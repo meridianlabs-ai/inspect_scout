@@ -69,6 +69,7 @@ Changes that don't touch the Python API.
    cd src/inspect_scout/_view/frontend
    git checkout -b my-feature
    pnpm dev    # hot reload dev server
+   # or: pnpm watch
    ```
 2. Build into the Python repo:
    ```bash

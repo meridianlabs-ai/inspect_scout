@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { TimelineSpan } from "../../components/transcript/timeline";
+import type { TimelineSpan } from "../../../components/transcript/timeline";
+import { timelineScenarios } from "../syntheticNodes";
 
 import {
   computeSwimLaneRows,
   isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
-import { timelineScenarios } from "./syntheticNodes";
 
 // =============================================================================
 // Test helpers

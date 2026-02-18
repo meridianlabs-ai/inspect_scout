@@ -8,21 +8,21 @@
  */
 
 import type {
+  TimelineEvent,
+  TimelineSpan,
+} from "../../components/transcript/timeline";
+import type {
   Event,
   SpanBeginEvent,
   SpanEndEvent,
 } from "../../types/api-types";
-import type {
-  TimelineEvent,
-  TimelineSpan,
-} from "../../components/transcript/timeline";
 
+import { parsePathSegment } from "./hooks/useTimeline";
 import {
   type SwimLaneRow,
   isSingleSpan,
   isParallelSpan,
-} from "./swimlaneRows";
-import { parsePathSegment } from "./useTimeline";
+} from "./utils/swimlaneRows";
 
 /**
  * Resolves the selected swimlane row identifier to TimelineSpan(s).

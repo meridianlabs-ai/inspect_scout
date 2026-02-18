@@ -12,16 +12,16 @@ import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewN
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useProperty } from "../../state/hooks/useProperty";
 
-import type { MarkerDepth } from "./markers";
-import { computeRowLayouts } from "./swimlaneLayout";
-import { SwimLanePanel } from "./SwimLanePanel";
-import { isSingleSpan, isParallelSpan } from "./swimlaneRows";
+import type { MinimapSelection } from "./components/TimelineMinimap";
+import { TimelinePills } from "./components/TimelinePills";
+import { TimelineSwimLanes } from "./components/TimelineSwimLanes";
+import { parsePathSegment, useTimeline } from "./hooks/useTimeline";
 import { timelineScenarios } from "./syntheticNodes";
 import { collectRawEvents, getSelectedSpans } from "./timelineEventNodes";
-import type { MinimapSelection } from "./TimelineMinimap";
 import styles from "./TimelinePanel.module.css";
-import { TimelinePills } from "./TimelinePills";
-import { parsePathSegment, useTimeline } from "./useTimeline";
+import type { MarkerDepth } from "./utils/markers";
+import { computeRowLayouts } from "./utils/swimlaneLayout";
+import { isSingleSpan, isParallelSpan } from "./utils/swimlaneRows";
 
 export const TimelinePanel: FC = () => {
   useDocumentTitle("Timeline");
@@ -161,7 +161,7 @@ export const TimelinePanel: FC = () => {
       </div>
       <div className={styles.content}>
         <TimelinePills timelines={[]} activeIndex={0} onSelect={() => {}} />
-        <SwimLanePanel
+        <TimelineSwimLanes
           layouts={layouts}
           selected={state.selected}
           node={state.node}

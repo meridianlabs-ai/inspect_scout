@@ -9,9 +9,9 @@ import type {
   TimelineBranch,
   TimelineEvent,
   TimelineSpan,
-} from "../../components/transcript/timeline";
-import type { CompactionEvent, Event } from "../../types/api-types";
-import { formatDuration, formatPrettyDecimal } from "../../utils/format";
+} from "../../../components/transcript/timeline";
+import type { CompactionEvent, Event } from "../../../types/api-types";
+import { formatDuration, formatPrettyDecimal } from "../../../utils/format";
 
 // =============================================================================
 // Types

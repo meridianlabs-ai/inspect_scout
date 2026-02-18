@@ -7,10 +7,10 @@ import { describe, expect, it } from "vitest";
 import type {
   Timeline,
   TimelineSpan,
-} from "../../components/transcript/timeline";
+} from "../../../components/transcript/timeline";
+import { timelineScenarios } from "../syntheticNodes";
+import { isParallelSpan, isSingleSpan } from "../utils/swimlaneRows";
 
-import { isParallelSpan, isSingleSpan } from "./swimlaneRows";
-import { timelineScenarios } from "./syntheticNodes";
 import {
   buildBreadcrumbs,
   parsePathSegment,

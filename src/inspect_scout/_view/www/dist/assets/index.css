@@ -7313,6 +7313,143 @@ span.ap-marker-container:hover span.ap-marker {
 ._last_engat_21 {
   padding-bottom: 0.8rem;
 }
+._pillRow_1kmry_1 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+._pill_1kmry_1 {
+  background: none;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 2px 12px;
+  cursor: pointer;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-foreground);
+}
+
+._pill_1kmry_1:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+._pillActive_1kmry_24 {
+  background-color: var(--bs-secondary-bg);
+  font-weight: 600;
+}
+/* Self-contained minimap — flex row: mode label + bar area */
+
+._container_1s11p_3 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 120px;
+  max-width: 50%;
+}
+
+/*
+ * Stable-width label — renders both time/token values in a CSS grid stack.
+ * The cell sizes to the wider value; only the active one is visible.
+ */
+._stableLabel_1s11p_17 {
+  display: grid;
+  font-size: 0.6rem;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+._stableLabel_1s11p_17 > * {
+  grid-area: 1 / 1;
+}
+
+._alignRight_1s11p_32 {
+  justify-items: end;
+}
+
+._alignLeft_1s11p_36 {
+  justify-items: start;
+}
+
+._hidden_1s11p_40 {
+  visibility: hidden;
+}
+
+._minimap_1s11p_44 {
+  position: relative;
+  height: 18px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Full-width track — thin rounded rail, vertically centered */
+._track_1s11p_52 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.25;
+}
+
+/* Selection region fill — highlight between markers on the track */
+._regionFill_1s11p_65 {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.45;
+}
+
+/* Vertical bar markers at selection boundaries */
+._marker_1s11p_76 {
+  position: absolute;
+  top: 50%;
+  height: 9px;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.55;
+  transform: translate(-50%, -50%);
+}
+
+/* Section duration pill centered between the two markers */
+._sectionTime_1s11p_88 {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+._sectionTimePill_1s11p_99 {
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-primary);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
 ._swimlane_scxvq_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
@@ -7667,116 +7804,6 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
   text-align: right;
 }
-/* Self-contained minimap — flex row: mode label + bar area */
-
-._container_1s11p_3 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  flex: 1;
-  min-width: 120px;
-  max-width: 50%;
-}
-
-/*
- * Stable-width label — renders both time/token values in a CSS grid stack.
- * The cell sizes to the wider value; only the active one is visible.
- */
-._stableLabel_1s11p_17 {
-  display: grid;
-  font-size: 0.6rem;
-  line-height: 1.4;
-  color: var(--vscode-descriptionForeground);
-  opacity: 0.6;
-  user-select: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-._stableLabel_1s11p_17 > * {
-  grid-area: 1 / 1;
-}
-
-._alignRight_1s11p_32 {
-  justify-items: end;
-}
-
-._alignLeft_1s11p_36 {
-  justify-items: start;
-}
-
-._hidden_1s11p_40 {
-  visibility: hidden;
-}
-
-._minimap_1s11p_44 {
-  position: relative;
-  height: 18px;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Full-width track — thin rounded rail, vertically centered */
-._track_1s11p_52 {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-50%);
-  border-radius: 1px;
-  background-color: var(--bs-primary);
-  opacity: 0.25;
-}
-
-/* Selection region fill — highlight between markers on the track */
-._regionFill_1s11p_65 {
-  position: absolute;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-50%);
-  border-radius: 1px;
-  background-color: var(--bs-primary);
-  opacity: 0.45;
-}
-
-/* Vertical bar markers at selection boundaries */
-._marker_1s11p_76 {
-  position: absolute;
-  top: 50%;
-  height: 9px;
-  width: 2px;
-  border-radius: 1px;
-  background-color: var(--bs-primary);
-  opacity: 0.55;
-  transform: translate(-50%, -50%);
-}
-
-/* Section duration pill centered between the two markers */
-._sectionTime_1s11p_88 {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  user-select: none;
-}
-
-._sectionTimePill_1s11p_99 {
-  font-size: 0.6rem;
-  color: var(--vscode-descriptionForeground);
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--bs-primary);
-  border-radius: 3px;
-  padding: 0 4px;
-  line-height: 1.4;
-  white-space: nowrap;
-  pointer-events: auto;
-  cursor: pointer;
-}
 ._container_1w6el_1 {
   display: flex;
   flex-direction: column;
@@ -7869,33 +7896,6 @@ span.ap-marker-container:hover span.ap-marker {
   justify-content: center;
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
-}
-._pillRow_1kmry_1 {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0.375rem 0.75rem;
-  border-bottom: 1px solid var(--bs-border-color);
-  flex-shrink: 0;
-}
-
-._pill_1kmry_1 {
-  background: none;
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  padding: 2px 12px;
-  cursor: pointer;
-  font-size: var(--inspect-font-size-small);
-  color: var(--vscode-foreground);
-}
-
-._pill_1kmry_1:hover {
-  background-color: var(--bs-secondary-bg);
-}
-
-._pillActive_1kmry_24 {
-  background-color: var(--bs-secondary-bg);
-  font-weight: 600;
 }
 ._container_w24zj_1 {
   height: 100%;

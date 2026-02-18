@@ -1,34 +1,34 @@
 import clsx from "clsx";
 import { FC, useCallback, useMemo, useState } from "react";
 
-import { ApplicationIcons } from "../../components/icons";
-import { PopOver } from "../../components/PopOver";
+import { ApplicationIcons } from "../../../components/icons";
+import { PopOver } from "../../../components/PopOver";
 import type {
   TimelineBranch,
   TimelineSpan,
-} from "../../components/transcript/timeline";
-import { useProperty } from "../../state/hooks/useProperty";
-import { formatTime } from "../../utils/format";
-
-import type {
-  PositionedMarker,
-  PositionedSpan,
-  RowLayout,
-} from "./swimlaneLayout";
-import { formatTokenCount } from "./swimlaneLayout";
-import styles from "./SwimLanePanel.module.css";
-import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
+} from "../../../components/transcript/timeline";
+import { useProperty } from "../../../state/hooks/useProperty";
+import { formatTime } from "../../../utils/format";
 import {
   type BreadcrumbSegment,
   createBranchSpan,
   parsePathSegment,
-} from "./useTimeline";
+} from "../hooks/useTimeline";
+import type {
+  PositionedMarker,
+  PositionedSpan,
+  RowLayout,
+} from "../utils/swimlaneLayout";
+import { formatTokenCount } from "../utils/swimlaneLayout";
+
+import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
+import styles from "./TimelineSwimLanes.module.css";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-interface SwimLanePanelProps {
+interface TimelineSwimLanesProps {
   /** Row layouts computed by computeRowLayouts. */
   layouts: RowLayout[];
   /** Currently selected span identifier (e.g. "explore" or "explore-2"), or null. */
@@ -108,10 +108,10 @@ const MARKER_ICONS: Record<string, { icon: string; tooltip: string }> = {
 };
 
 // =============================================================================
-// SwimLanePanel
+// TimelineSwimLanes
 // =============================================================================
 
-export const SwimLanePanel: FC<SwimLanePanelProps> = ({
+export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   layouts,
   selected,
   node,

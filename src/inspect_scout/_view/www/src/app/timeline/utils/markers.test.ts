@@ -4,15 +4,15 @@ import type {
   TimelineBranch,
   TimelineEvent,
   TimelineSpan,
-} from "../../components/transcript/timeline";
+} from "../../../components/transcript/timeline";
 import type {
   CompactionEvent,
   ModelEvent,
   ToolEvent,
-} from "../../types/api-types";
+} from "../../../types/api-types";
+import { timelineScenarios } from "../syntheticNodes";
 
 import { collectMarkers, isCompactionEvent, isErrorEvent } from "./markers";
-import { timelineScenarios } from "./syntheticNodes";
 
 // =============================================================================
 // Test helpers

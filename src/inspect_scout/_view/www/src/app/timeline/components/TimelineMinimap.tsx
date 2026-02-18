@@ -1,11 +1,11 @@
 import clsx from "clsx";
 import { FC, useCallback } from "react";
 
-import type { TimelineSpan } from "../../components/transcript/timeline";
-import { useProperty } from "../../state/hooks/useProperty";
-import { formatDuration, formatDurationShort } from "../../utils/format";
+import type { TimelineSpan } from "../../../components/transcript/timeline";
+import { useProperty } from "../../../state/hooks/useProperty";
+import { formatDuration, formatDurationShort } from "../../../utils/format";
+import { computeBarPosition, formatTokenCount } from "../utils/swimlaneLayout";
 
-import { computeBarPosition, formatTokenCount } from "./swimlaneLayout";
 import styles from "./TimelineMinimap.module.css";
 
 export interface MinimapSelection {

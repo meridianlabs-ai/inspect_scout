@@ -6,7 +6,7 @@
  * and parallel (overlapping) span patterns.
  */
 
-import type { TimelineSpan } from "../../components/transcript/timeline";
+import type { TimelineSpan } from "../../../components/transcript/timeline";
 
 // =============================================================================
 // Sorting

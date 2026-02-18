@@ -7,13 +7,14 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { ChatMessage, Event } from "../../types/api-types";
+
 import {
   type TimelineEvent,
   type TimelineSpan,
   classifyAutoSpans,
   detectAutoSpansForSpan,
-} from "../../components/transcript/timeline";
-import type { ChatMessage, Event } from "../../types/api-types";
+} from "./timeline";
 
 // =============================================================================
 // Test Helpers

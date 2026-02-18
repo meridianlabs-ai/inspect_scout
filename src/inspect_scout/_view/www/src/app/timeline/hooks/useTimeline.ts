@@ -13,13 +13,12 @@ import type {
   Timeline,
   TimelineBranch,
   TimelineSpan,
-} from "../../components/transcript/timeline";
-
+} from "../../../components/transcript/timeline";
 import {
   type SwimLaneRow,
   compareByTime,
   computeSwimLaneRows,
-} from "./swimlaneRows";
+} from "../utils/swimlaneRows";
 
 // =============================================================================
 // Query Parameter Constants

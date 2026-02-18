@@ -5,6 +5,7 @@ import {
 import { FC, useEffect, useMemo, useState } from "react";
 
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
+import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
@@ -157,12 +158,20 @@ export const TimelinePanel: FC = () => {
           }}
         />
         {eventNodes.length > 0 && (
-          <div className={styles.eventList}>
-            <TranscriptViewNodes
-              id="timeline-events"
+          <div className={styles.eventsContainer}>
+            <TranscriptOutline
               eventNodes={eventNodes}
               defaultCollapsedIds={defaultCollapsedIds}
+              className={styles.outline}
             />
+            <div className={styles.eventsSeparator} />
+            <div className={styles.eventList}>
+              <TranscriptViewNodes
+                id="timeline-events"
+                eventNodes={eventNodes}
+                defaultCollapsedIds={defaultCollapsedIds}
+              />
+            </div>
           </div>
         )}
       </div>

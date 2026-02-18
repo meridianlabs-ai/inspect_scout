@@ -39,7 +39,23 @@
   padding: 0;
 }
 
-.eventList {
+.eventsContainer {
   flex: 1;
+  display: grid;
+  grid-template-columns: 180px 1px 1fr;
+  overflow: hidden;
+}
+
+.outline {
+  padding-left: 0.5rem;
+  padding-top: 0.5rem;
+  overflow-y: auto;
+}
+
+.eventsSeparator {
+  background-color: var(--bs-border-color);
+}
+
+.eventList {
   overflow-y: auto;
 }

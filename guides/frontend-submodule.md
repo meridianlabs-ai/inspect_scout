@@ -14,9 +14,9 @@ The built `dist/` is still committed to this repo, so **Python-only contributors
 
 ## One-Time Setup
 
-### Existing clone (you already have the repo)
+### Already have a clone, or just ran `git clone` without extra flags
 
-After pulling the commit that adds the submodule:
+This applies whether you've had the repo for a while or you just cloned it fresh with a plain `git clone`. Either way, the submodule directory exists but is empty. Run:
 
 ```bash
 git submodule update --init
@@ -24,7 +24,9 @@ cd src/inspect_scout/_view/frontend
 pnpm install
 ```
 
-### Fresh clone
+### Cloning for the first time (and want submodules right away)
+
+You can skip the extra step above by telling `git clone` to pull submodules automatically:
 
 ```bash
 git clone --recurse-submodules https://github.com/meridianlabs-ai/inspect_scout.git

@@ -65,15 +65,55 @@ This is a common prerequisite and is already required by many repositories. Afte
 
 When a user clones or checks out the repo without Git LFS installed, git delivers LFS pointer files instead of the real content. The `dist/` directory will contain small text files (~130 bytes each) instead of working JavaScript and CSS.
 
-Two mechanisms ensure this doesn't block anyone:
+### Why not download at `pip install` time?
 
-**Build hook (automatic).** A pip build hook runs during `pip install` (both `pip install git+https://...` and `pip install -e .`). It checks whether the files at the serving path are LFS pointer files. If so, it parses the OID and size from each pointer, calls the GitHub LFS batch API to obtain download URLs, and fetches the real files. If the files are already real content (LFS was installed, or they were placed by `pnpm build`), the hook does nothing.
+An earlier design used a pip build hook to download real files during `pip install`, overwriting the LFS pointers in the working tree. This has a critical UX problem:
 
-LFS pointer files are easy to detect — they start with `version https://git-lfs.github.com/spec/v1` and contain an `oid sha256:...` line and a `size` line.
+1. User clones without LFS — pointer files in `dist/`
+2. `pip install -e .` build hook downloads real files over the pointers
+3. Git now sees every file in `dist/` as modified (real content vs. pointer in the index)
+4. User runs `git pull` after an upstream update
+5. Git refuses: "Your local changes would be overwritten by merge"
+6. The user never edited these files — `pip install` did — so the message is confusing
 
-**Manual script (escape hatch).** A standalone script (`scripts/fetch-dist.sh`) provides the same logic for users who cloned without LFS and want the real files without running pip install. It uses `curl` and the GitHub LFS batch API.
+Downloading in-place also means the user must manually restore pointers (`git checkout -- dist/`) before every pull. This is fragile and surprising.
 
-The result: `pip install` works regardless of whether Git LFS is installed. Users with LFS get the files on clone; users without LFS get them on pip install.
+### Runtime resolution with a cache directory
+
+Instead, `scout view` resolves dist files **at startup**, using a cache directory (`~/.cache/inspect_scout/dist/`) that is entirely outside the working tree. The repo's `dist/` is never modified, so `git pull` always works cleanly.
+
+**On startup, the server determines what to serve:**
+
+1. **In-repo `dist/` contains real files** (LFS installed, or local dev `pnpm build`) → serve directly from the repo. Cache not involved.
+2. **In-repo `dist/` contains LFS pointer files** → serve from the cache directory, downloading if needed.
+
+**How the cache works:**
+
+LFS pointer files are easy to detect — they start with `version https://git-lfs.github.com/spec/v1` and contain an `oid sha256:...` line and a `size` line. The SHA-256 OID is a content hash, which serves as a natural cache key.
+
+When `dist/` contains pointers:
+- Parse the OID from each pointer file
+- Compare against what's in the cache
+- **Cache hit** (OIDs match) → serve from cache, no download
+- **Cache miss** (new OIDs, or empty cache) → call the GitHub LFS batch API, download the real files into the cache, then serve
+
+This handles every scenario:
+
+| Scenario | What happens |
+|----------|-------------|
+| LFS installed, clone/pull worked normally | Real files in repo → serve directly |
+| Local dev, `pnpm build` output | Real files in repo → serve directly |
+| No LFS, fresh clone | Pointers in repo → cache miss → download → serve from cache |
+| No LFS, `git pull` brings new dist | New pointers in repo → OIDs change → cache miss → re-download |
+| No LFS, `git pull`, no dist changes | Same pointers → OIDs match → cache hit → serve from cache |
+| `dist/` missing entirely | Error with helpful message |
+
+**Key properties:**
+- The working tree is never modified — `git status` stays clean, `git pull` always works
+- Cache is keyed by content hash — no invalidation logic needed, the pointers themselves declare freshness
+- First launch (or first launch after an update) has a one-time download delay of a few seconds, with a clear progress message
+
+**Manual script (escape hatch).** A standalone script (`scripts/fetch-dist.sh`) provides the same download logic for users who want the real files outside of `scout view`. It uses `curl` and the GitHub LFS batch API, writing to the same cache directory.
 
 ## Open Topics
 

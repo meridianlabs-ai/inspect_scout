@@ -26,6 +26,10 @@
   width: 240px;
 }
 
+.markerDepthSelect {
+  width: 180px;
+}
+
 .scenarioDescription {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;

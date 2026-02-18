@@ -9,6 +9,7 @@ import { TranscriptOutline } from "../../components/transcript/outline/Transcrip
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
+import type { MarkerDepth } from "./markers";
 import { computeRowLayouts } from "./swimlaneLayout";
 import { SwimLanePanel } from "./SwimLanePanel";
 import { isSingleSpan, isParallelSpan } from "./swimlaneRows";
@@ -23,6 +24,7 @@ export const TimelinePanel: FC = () => {
   useDocumentTitle("Timeline");
 
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [markerDepth, setMarkerDepth] = useState<MarkerDepth>("children");
   const scenario = timelineScenarios[selectedIndex];
 
   const timeline = scenario?.timeline;
@@ -40,9 +42,9 @@ export const TimelinePanel: FC = () => {
         state.rows,
         state.node.startTime,
         state.node.endTime,
-        "children"
+        markerDepth
       ),
-    [state.rows, state.node.startTime, state.node.endTime]
+    [state.rows, state.node.startTime, state.node.endTime, markerDepth]
   );
 
   const atRoot = state.breadcrumbs.length <= 1;
@@ -131,6 +133,18 @@ export const TimelinePanel: FC = () => {
               {s.name}
             </VscodeOption>
           ))}
+        </VscodeSingleSelect>
+        <VscodeSingleSelect
+          value={markerDepth}
+          onChange={(e) => {
+            const target = e.target as HTMLSelectElement;
+            setMarkerDepth(target.value as MarkerDepth);
+          }}
+          className={styles.markerDepthSelect}
+        >
+          <VscodeOption value="direct">Markers: direct</VscodeOption>
+          <VscodeOption value="children">Markers: children</VscodeOption>
+          <VscodeOption value="recursive">Markers: recursive</VscodeOption>
         </VscodeSingleSelect>
         <span className={styles.scenarioDescription}>
           {scenario?.description}

@@ -265,15 +265,26 @@ export const SwimLanePanel: FC<SwimLanePanelProps> = ({
       {/* Pinned: breadcrumb (with minimap) + parent row */}
       <div className={styles.pinnedSection}>
         {breadcrumb && <BreadcrumbRow {...breadcrumb} minimap={minimap} />}
-        {!isCollapsed && parentRow && renderRow(parentRow, 0)}
       </div>
 
-      {/* Scrollable: child rows */}
-      {!isCollapsed && childRows.length > 0 && (
-        <div className={styles.scrollSection}>
-          {childRows.map((layout, i) => renderRow(layout, i + 1))}
+      {/* Collapsible rows: parent + children */}
+      <div
+        className={clsx(
+          styles.collapsibleSection,
+          isCollapsed && styles.collapsibleCollapsed
+        )}
+      >
+        <div className={styles.collapsibleInner}>
+          <div className={styles.pinnedSection}>
+            {parentRow && renderRow(parentRow, 0)}
+          </div>
+          {childRows.length > 0 && (
+            <div className={styles.scrollSection}>
+              {childRows.map((layout, i) => renderRow(layout, i + 1))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Collapse toggle on bottom border */}
       <button

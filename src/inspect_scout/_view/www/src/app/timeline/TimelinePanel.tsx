@@ -2,12 +2,15 @@ import {
   VscodeOption,
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
+import clsx from "clsx";
 import { FC, useEffect, useMemo, useState } from "react";
 
+import { ApplicationIcons } from "../../components/icons";
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { useProperty } from "../../state/hooks/useProperty";
 
 import type { MarkerDepth } from "./markers";
 import { computeRowLayouts } from "./swimlaneLayout";
@@ -25,6 +28,12 @@ export const TimelinePanel: FC = () => {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [markerDepth, setMarkerDepth] = useState<MarkerDepth>("children");
+  const [outlineCollapsed, setOutlineCollapsed] = useProperty<boolean>(
+    "timeline",
+    "outlineCollapsed",
+    { defaultValue: true, cleanup: false }
+  );
+  const isOutlineCollapsed = !!outlineCollapsed;
   const scenario = timelineScenarios[selectedIndex];
 
   const timeline = scenario?.timeline;
@@ -172,13 +181,28 @@ export const TimelinePanel: FC = () => {
             selected: state.selected,
           }}
         />
-        {eventNodes.length > 0 && (
-          <div className={styles.eventsContainer}>
-            <TranscriptOutline
-              eventNodes={eventNodes}
-              defaultCollapsedIds={defaultCollapsedIds}
-              className={styles.outline}
-            />
+        {eventNodes.length > 0 ? (
+          <div
+            className={clsx(
+              styles.eventsContainer,
+              isOutlineCollapsed && styles.outlineCollapsed
+            )}
+          >
+            <div className={styles.outlinePane}>
+              {!isOutlineCollapsed && (
+                <TranscriptOutline
+                  eventNodes={eventNodes}
+                  defaultCollapsedIds={defaultCollapsedIds}
+                  className={styles.outline}
+                />
+              )}
+              <div
+                className={styles.outlineToggle}
+                onClick={() => setOutlineCollapsed(!isOutlineCollapsed)}
+              >
+                <i className={ApplicationIcons.sidebar} />
+              </div>
+            </div>
             <div className={styles.eventsSeparator} />
             <div className={styles.eventList}>
               <TranscriptViewNodes
@@ -187,6 +211,10 @@ export const TimelinePanel: FC = () => {
                 defaultCollapsedIds={defaultCollapsedIds}
               />
             </div>
+          </div>
+        ) : (
+          <div className={styles.emptyEvents}>
+            Select a swimlane row to view events
           </div>
         )}
       </div>

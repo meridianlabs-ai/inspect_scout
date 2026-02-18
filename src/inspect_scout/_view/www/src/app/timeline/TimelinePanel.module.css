@@ -40,7 +40,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0;
 }
 
 .eventsContainer {
@@ -48,12 +47,32 @@
   display: grid;
   grid-template-columns: 180px 1px 1fr;
   overflow: hidden;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.eventsContainer.outlineCollapsed {
+  grid-template-columns: 28px 1px 1fr;
+}
+
+.outlinePane {
+  position: relative;
+  overflow: hidden;
 }
 
 .outline {
   padding-left: 0.5rem;
   padding-top: 0.5rem;
+  margin-top: 0.5rem;
   overflow-y: auto;
+  height: 100%;
+}
+
+.outlineToggle {
+  cursor: pointer;
+  font-size: 0.8em;
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
 }
 
 .eventsSeparator {
@@ -62,4 +81,13 @@
 
 .eventList {
   overflow-y: auto;
+}
+
+.emptyEvents {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
 }

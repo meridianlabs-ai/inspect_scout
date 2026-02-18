@@ -65,22 +65,9 @@ This is a common prerequisite and is already required by many repositories. Afte
 
 When a user clones or checks out the repo without Git LFS installed, git delivers LFS pointer files instead of the real content. The `dist/` directory will contain small text files (~130 bytes each) instead of working JavaScript and CSS.
 
-### Why not download at `pip install` time?
-
-An earlier design used a pip build hook to download real files during `pip install`, overwriting the LFS pointers in the working tree. This has a critical UX problem:
-
-1. User clones without LFS — pointer files in `dist/`
-2. `pip install -e .` build hook downloads real files over the pointers
-3. Git now sees every file in `dist/` as modified (real content vs. pointer in the index)
-4. User runs `git pull` after an upstream update
-5. Git refuses: "Your local changes would be overwritten by merge"
-6. The user never edited these files — `pip install` did — so the message is confusing
-
-Downloading in-place also means the user must manually restore pointers (`git checkout -- dist/`) before every pull. This is fragile and surprising.
-
 ### Runtime resolution with a cache directory
 
-Instead, `scout view` resolves dist files **at startup**, using a cache directory (`~/.cache/inspect_scout/dist/`) that is entirely outside the working tree. The repo's `dist/` is never modified, so `git pull` always works cleanly.
+`scout view` resolves dist files **at startup**, using a cache directory (`~/.cache/inspect_scout/dist/`) that is entirely outside the working tree. The repo's `dist/` is never modified, so `git pull` always works cleanly.
 
 **On startup, the server determines what to serve:**
 
@@ -96,6 +83,54 @@ When `dist/` contains pointers:
 - Compare against what's in the cache
 - **Cache hit** (OIDs match) → serve from cache, no download
 - **Cache miss** (new OIDs, or empty cache) → call the GitHub LFS batch API, download the real files into the cache, then serve
+
+**LFS batch API download protocol (verified):**
+
+The GitHub LFS batch API allows anonymous downloads from public repos — no authentication required. The protocol is:
+
+1. **Parse pointer files.** Each pointer is a small text file:
+   ```
+   version https://git-lfs.github.com/spec/v1
+   oid sha256:<64-char-hex>
+   size <bytes>
+   ```
+
+2. **POST to the batch endpoint** at `https://github.com/{owner}/{repo}.git/info/lfs/objects/batch`:
+   ```json
+   {
+     "operation": "download",
+     "transfers": ["basic"],
+     "objects": [
+       { "oid": "<sha256-hex>", "size": <bytes> }
+     ]
+   }
+   ```
+   With headers:
+   - `Content-Type: application/vnd.git-lfs+json`
+   - `Accept: application/vnd.git-lfs+json`
+
+   Multiple objects can be batched in a single request.
+
+3. **Response** contains a pre-signed S3 URL per object:
+   ```json
+   {
+     "objects": [{
+       "oid": "...",
+       "size": 620773,
+       "actions": {
+         "download": {
+           "href": "https://github-cloud.githubusercontent.com/alambic/media/...",
+           "expires_at": "2026-02-19T00:10:28Z",
+           "expires_in": 3600
+         }
+       }
+     }]
+   }
+   ```
+
+4. **Download** from the `href` URL. Verify the downloaded file's SHA-256 matches the OID.
+
+Tested against `Schoonology/git-lfs-test` (public repo) — anonymous batch API request returned a valid pre-signed URL, downloaded content matched the declared size (620,773 bytes) and SHA-256 OID exactly.
 
 This handles every scenario:
 

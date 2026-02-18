@@ -2,27 +2,33 @@ import { FC, useCallback } from "react";
 
 import type { TimelineSpan } from "../../components/transcript/timeline";
 import { useProperty } from "../../state/hooks/useProperty";
-import { formatDuration } from "../../utils/format";
+import { formatDuration, formatDurationShort } from "../../utils/format";
 
 import { computeBarPosition, formatTokenCount } from "./swimlaneLayout";
 import styles from "./TimelineMinimap.module.css";
 
+export interface MinimapSelection {
+  startTime: Date;
+  endTime: Date;
+  totalTokens: number;
+}
+
 export interface TimelineMinimapProps {
   /** Root timeline span (always the full timeline). */
   root: TimelineSpan;
-  /** Currently drilled-into node. */
-  current: TimelineSpan;
+  /** Currently selected swimlane row, if any. */
+  selection?: MinimapSelection;
 }
 
 /**
- * Compact minimap showing the current zoom position within the full timeline.
+ * Compact minimap showing the selected row's position within the full timeline.
  *
  * Renders as a self-contained flex row: mode label + bar area.
  * Designed to sit inside the breadcrumb row, right-aligned.
  */
 export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
-  current,
+  selection,
 }) => {
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
@@ -38,23 +44,30 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
     [isTokenMode, setShowTokens]
   );
 
-  const { left, width } = computeBarPosition(
-    current.startTime,
-    current.endTime,
-    root.startTime,
-    root.endTime
-  );
+  const bar = selection
+    ? computeBarPosition(
+        selection.startTime,
+        selection.endTime,
+        root.startTime,
+        root.endTime
+      )
+    : null;
 
-  const atRoot = current === root;
-  const showSectionLabel = !atRoot && width > 15;
+  const showRegion = bar !== null;
+  const useShortFormat = bar !== null && bar.width <= 15;
 
   // Labels depend on toggle mode
   const rightLabel = isTokenMode
     ? formatTokenCount(root.totalTokens)
     : formatDuration(root.startTime, root.endTime);
-  const sectionLabel = isTokenMode
-    ? formatTokenCount(current.totalTokens)
-    : formatDuration(current.startTime, current.endTime);
+  const sectionLabel =
+    selection && isTokenMode
+      ? formatTokenCount(selection.totalTokens)
+      : selection
+        ? useShortFormat
+          ? formatDurationShort(selection.startTime, selection.endTime)
+          : formatDuration(selection.startTime, selection.endTime)
+        : "";
 
   return (
     <div className={styles.container}>
@@ -75,30 +88,30 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
 
         <div className={styles.track} />
 
-        {/* Zoom region fill between markers */}
-        {!atRoot && (
+        {/* Selection region fill between markers */}
+        {showRegion && (
           <div
             className={styles.regionFill}
-            style={{ left: `${left}%`, width: `${width}%` }}
+            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
           />
         )}
 
-        {/* Vertical tick markers at zoom boundaries */}
-        {!atRoot && (
+        {/* Vertical tick markers at selection boundaries */}
+        {showRegion && (
           <>
-            <div className={styles.marker} style={{ left: `${left}%` }} />
+            <div className={styles.marker} style={{ left: `${bar.left}%` }} />
             <div
               className={styles.marker}
-              style={{ left: `${left + width}%` }}
+              style={{ left: `${bar.left + bar.width}%` }}
             />
           </>
         )}
 
         {/* Section label pill between markers */}
-        {showSectionLabel && (
+        {showRegion && (
           <div
             className={styles.sectionTime}
-            style={{ left: `${left}%`, width: `${width}%` }}
+            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
           >
             <span className={styles.sectionTimePill} onClick={toggle}>
               {sectionLabel}

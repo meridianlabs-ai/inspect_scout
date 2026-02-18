@@ -67,7 +67,7 @@
   opacity: 0.25;
 }
 
-/* Zoom region fill — subtle highlight between markers on the track */
+/* Selection region fill — highlight between markers on the track */
 .regionFill {
   position: absolute;
   top: 50%;
@@ -78,7 +78,7 @@
   opacity: 0.45;
 }
 
-/* Vertical bar markers at zoom boundaries */
+/* Vertical bar markers at selection boundaries */
 .marker {
   position: absolute;
   top: 50%;

@@ -7559,7 +7559,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 /* Self-contained minimap — flex row: mode label + bar area */
 
-._container_b1f02_3 {
+._container_1qbjp_3 {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -7570,7 +7570,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Mode label — click to toggle time/tokens */
-._modeLabel_b1f02_14 {
+._modeLabel_1qbjp_14 {
   font-size: 0.6rem;
   line-height: 1.4;
   color: var(--vscode-descriptionForeground);
@@ -7580,15 +7580,15 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._minimap_b1f02_24 {
+._minimap_1qbjp_24 {
   position: relative;
   height: 18px;
   flex: 1;
 }
 
 /* Time labels positioned at edges — vertically centered on track */
-._timeLabelLeft_b1f02_31,
-._timeLabelRight_b1f02_32 {
+._timeLabelLeft_1qbjp_31,
+._timeLabelRight_1qbjp_32 {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -7605,16 +7605,16 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._timeLabelLeft_b1f02_31 {
+._timeLabelLeft_1qbjp_31 {
   left: 0;
 }
 
-._timeLabelRight_b1f02_32 {
+._timeLabelRight_1qbjp_32 {
   right: 0;
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
-._track_b1f02_58 {
+._track_1qbjp_58 {
   position: absolute;
   left: 0;
   right: 0;
@@ -7626,8 +7626,8 @@ span.ap-marker-container:hover span.ap-marker {
   opacity: 0.25;
 }
 
-/* Zoom region fill — subtle highlight between markers on the track */
-._regionFill_b1f02_71 {
+/* Selection region fill — highlight between markers on the track */
+._regionFill_1qbjp_71 {
   position: absolute;
   top: 50%;
   height: 2px;
@@ -7637,8 +7637,8 @@ span.ap-marker-container:hover span.ap-marker {
   opacity: 0.45;
 }
 
-/* Vertical bar markers at zoom boundaries */
-._marker_b1f02_82 {
+/* Vertical bar markers at selection boundaries */
+._marker_1qbjp_82 {
   position: absolute;
   top: 50%;
   height: 9px;
@@ -7650,7 +7650,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Section duration pill centered between the two markers */
-._sectionTime_b1f02_94 {
+._sectionTime_1qbjp_94 {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -7661,7 +7661,7 @@ span.ap-marker-container:hover span.ap-marker {
   user-select: none;
 }
 
-._sectionTimePill_b1f02_105 {
+._sectionTimePill_1qbjp_105 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);

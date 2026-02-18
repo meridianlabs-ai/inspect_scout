@@ -113,7 +113,9 @@ Changes that require new or modified Python API endpoints.
 
 ## Git Commands Reference
 
-All commands run from the Python repo root.
+All commands run from the Python repo root. The `git -C <path>` flag runs a git command as if you'd `cd`'d into that directory, so you never need to leave the repo root.
+
+Of course, you can also keep a dedicated terminal `cd`'d into `src/inspect_scout/_view/frontend/apps/scout/` for day-to-day frontend work — whatever feels natural.
 
 ```bash
 # Initialize the submodule (once)
@@ -128,8 +130,9 @@ git submodule status
 # Advance submodule to latest upstream commit
 git -C src/inspect_scout/_view/frontend pull
 
-# Run any git command in the submodule without cd-ing
+# Run any git command in the submodule from the repo root
 git -C src/inspect_scout/_view/frontend status
+git -C src/inspect_scout/_view/frontend diff
 git -C src/inspect_scout/_view/frontend log --oneline -5
 
 # Auto-update submodule on pull (set once)

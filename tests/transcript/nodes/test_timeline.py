@@ -338,14 +338,14 @@ def assert_scoring_span_matches(
 ) -> None:
     """Assert a scoring span in the root matches expected structure.
 
-    Scoring is now a TimelineSpan with span_type="scorer" in the root's content.
+    Scoring is now a TimelineSpan with span_type="scorers" in the root's content.
     """
     if expected is None:
         # No scoring expected — verify no scorer span exists
         scorer_spans = [
             item
             for item in root.content
-            if isinstance(item, TimelineSpan) and item.span_type == "scorer"
+            if isinstance(item, TimelineSpan) and item.span_type == "scorers"
         ]
         assert len(scorer_spans) == 0, "Expected no scoring span"
         return
@@ -354,7 +354,7 @@ def assert_scoring_span_matches(
     scorer_spans = [
         item
         for item in root.content
-        if isinstance(item, TimelineSpan) and item.span_type == "scorer"
+        if isinstance(item, TimelineSpan) and item.span_type == "scorers"
     ]
     assert len(scorer_spans) == 1, "Expected exactly one scoring span"
     scoring = scorer_spans[0]
@@ -578,7 +578,7 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
             actual_children = [
                 item
                 for item in root.content
-                if isinstance(item, TimelineSpan) and item.span_type != "scorer"
+                if isinstance(item, TimelineSpan) and item.span_type != "scorers"
             ]
             expected_children = expected_agent["children"]
             assert len(actual_children) == len(expected_children), (

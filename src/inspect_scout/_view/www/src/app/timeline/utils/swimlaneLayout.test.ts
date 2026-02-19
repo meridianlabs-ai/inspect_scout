@@ -128,7 +128,7 @@ describe("isDrillable", () => {
 
   it("returns false for a scoring span (leaf with no children)", () => {
     const agent = makeSpan("Scoring", 40, 50, 3200, [], {
-      spanType: "scorer",
+      spanType: "scorers",
     });
     expect(isDrillable({ agent })).toBe(false);
   });

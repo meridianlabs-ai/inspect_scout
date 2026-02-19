@@ -325,7 +325,7 @@ def build_timeline(events: list[Event]) -> Timeline:
                 scoring_span = TimelineSpan(
                     id=scorers_span.id,
                     name="Scoring",
-                    span_type="scorer",
+                    span_type="scorers",
                     content=scoring_content,
                 )
 

@@ -1207,7 +1207,7 @@ export function buildTimeline(events: Event[]): Timeline {
         scoringSpan = createTimelineSpan(
           scorersSpan.id,
           "Scoring",
-          "scorer",
+          "scorers",
           scoringContent
         );
       }

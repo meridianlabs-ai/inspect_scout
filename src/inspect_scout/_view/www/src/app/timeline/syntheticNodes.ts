@@ -507,7 +507,7 @@ function sequentialAgents(): TimelineScenario {
         "Implement the refactored module with tests and documentation",
     }
   );
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 53, 58, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorers", 53, 58, 3200);
 
   const transcript = makeSpan(
     "transcript",
@@ -631,7 +631,7 @@ function iterativeAgents(): TimelineScenario {
     ),
     makeModelEventNode("All tests pass. Build complete.", 51, 55, 16600),
   ]);
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 56, 60, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorers", 56, 60, 3200);
 
   const transcript = makeSpan(
     "transcript",
@@ -781,7 +781,7 @@ function deepNesting(): TimelineScenario {
     test,
     fix,
   ]);
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 90, 95, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorers", 90, 95, 3200);
 
   const transcript = makeSpan(
     "transcript",
@@ -933,7 +933,7 @@ function parallelAgents(): TimelineScenario {
     ),
     makeModelEventNode("Build and integration complete.", 46, 52, 10600),
   ]);
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 53, 57, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorers", 53, 57, 3200);
 
   const transcript = makeSpan(
     "transcript",
@@ -1025,7 +1025,7 @@ function inlineMarkers(): TimelineScenario {
     ),
     makeModelEventNode("Feature implementation complete.", 49, 55, 7600),
   ]);
-  const scoring = makeSpan("scoring", "Scoring", "scorer", 56, 60, 3200);
+  const scoring = makeSpan("scoring", "Scoring", "scorers", 56, 60, 3200);
 
   const transcript = makeSpan(
     "transcript",

@@ -314,14 +314,14 @@ function assertBranchMatches(
 /**
  * Assert that a scoring span matches expected values.
  *
- * Scoring is now a TimelineSpan with spanType="scorer" in the root's content.
+ * Scoring is now a TimelineSpan with spanType="scorers" in the root's content.
  */
 function assertScoringSpanMatches(
   root: TimelineSpan,
   expected: ExpectedSection | null
 ): void {
   const scorerSpans = root.content.filter(
-    (c): c is TimelineSpan => c.type === "span" && c.spanType === "scorer"
+    (c): c is TimelineSpan => c.type === "span" && c.spanType === "scorers"
   );
 
   if (expected === null) {
@@ -460,7 +460,7 @@ function assertSpanMatches(
  * Maps the old fixture format (init/agent/scoring) to the new Timeline structure:
  * - init events are folded into root content
  * - agent maps to root
- * - scoring maps to a child TimelineSpan with spanType="scorer"
+ * - scoring maps to a child TimelineSpan with spanType="scorers"
  */
 function assertTimelineMatches(
   actual: Timeline,
@@ -539,7 +539,7 @@ function assertTimelineMatches(
     // Check children if specified (filter out scorer spans)
     if (expected.agent.children !== undefined) {
       const childSpans = root.content.filter(
-        (c): c is TimelineSpan => c.type === "span" && c.spanType !== "scorer"
+        (c): c is TimelineSpan => c.type === "span" && c.spanType !== "scorers"
       );
       expect(childSpans.length).toBe(expected.agent.children.length);
       for (let i = 0; i < expected.agent.children.length; i++) {
@@ -566,7 +566,7 @@ function assertTimelineMatches(
       }
       // Filter out scorer spans
       contentToCheck = contentToCheck.filter(
-        (item) => !(item.type === "span" && item.spanType === "scorer")
+        (item) => !(item.type === "span" && item.spanType === "scorers")
       );
 
       expect(contentToCheck.length).toBe(
@@ -618,7 +618,7 @@ function assertTimelineMatches(
     }
   }
 
-  // Check scoring (now a child TimelineSpan with spanType="scorer")
+  // Check scoring (now a child TimelineSpan with spanType="scorers")
   assertScoringSpanMatches(root, expected.scoring);
 }
 

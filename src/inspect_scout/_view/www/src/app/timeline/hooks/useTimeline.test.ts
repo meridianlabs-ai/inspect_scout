@@ -174,7 +174,7 @@ describe("resolvePath", () => {
     expect(result).not.toBeNull();
     expect(result!.type).toBe("span");
     expect((result as TimelineSpan).name).toBe("Scoring");
-    expect((result as TimelineSpan).spanType).toBe("scorer");
+    expect((result as TimelineSpan).spanType).toBe("scorers");
   });
 
   it("returns null for init path (init events are not navigable)", () => {

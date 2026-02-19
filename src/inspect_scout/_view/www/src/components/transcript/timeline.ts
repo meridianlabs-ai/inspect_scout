@@ -573,7 +573,10 @@ function processChildren(
     // Standard processing - no branch detection at build time
     const content: (TimelineEvent | TimelineSpan)[] = [];
     for (const item of children) {
-      content.push(treeItemToNode(item, hasExplicitBranches));
+      const node = treeItemToNode(item, hasExplicitBranches);
+      // Skip empty spans (e.g. agent spans with no nested events)
+      if (node.type === "span" && node.content.length === 0) continue;
+      content.push(node);
     }
     return [content, []];
   }
@@ -591,7 +594,9 @@ function processChildren(
     for (const span of run) {
       const branchContent: (TimelineEvent | TimelineSpan)[] = [];
       for (const child of span.children) {
-        branchContent.push(treeItemToNode(child, hasExplicitBranches));
+        const node = treeItemToNode(child, hasExplicitBranches);
+        if (node.type === "span" && node.content.length === 0) continue;
+        branchContent.push(node);
       }
       const branchInput = getBranchInput(branchContent);
       const forkedAt =
@@ -609,7 +614,9 @@ function processChildren(
         branches.push(...flushBranchRun(branchRun, content));
         branchRun = [];
       }
-      content.push(treeItemToNode(item, hasExplicitBranches));
+      const node = treeItemToNode(item, hasExplicitBranches);
+      if (node.type === "span" && node.content.length === 0) continue;
+      content.push(node);
     }
   }
 
@@ -912,6 +919,7 @@ export function detectAutoSpansForSpan(span: TimelineSpan): void {
   }
   const threads: Thread[] = [];
   const outputFpToThread = new Map<string, number>(); // output fingerprint → thread index
+  let compactionContinueThread: number | null = null; // thread to continue after compaction
   const preamble: (TimelineEvent | TimelineSpan)[] = [];
 
   for (const item of span.content) {
@@ -936,18 +944,34 @@ export function detectAutoSpansForSpan(span: TimelineSpan): void {
         }
       }
 
-      // New thread
+      // Check compaction continuation: same system prompt → same agent
       const sysFp = systemPromptFingerprint(inputMsgs ?? []);
+      if (compactionContinueThread !== null) {
+        const contFp = threads[compactionContinueThread]!.systemPromptFp;
+        if (sysFp === contFp) {
+          threads[compactionContinueThread]!.items.push(item);
+          const newOutputFp = getOutputFingerprint(item.event);
+          if (newOutputFp) {
+            outputFpToThread.set(newOutputFp, compactionContinueThread);
+          }
+          compactionContinueThread = null;
+          continue;
+        }
+        compactionContinueThread = null;
+      }
+
+      // New thread
       threads.push({ items: [item], systemPromptFp: sysFp });
       const outputFp = getOutputFingerprint(item.event);
       if (outputFp) {
         outputFpToThread.set(outputFp, threads.length - 1);
       }
     } else if (item.type === "event" && item.event.event === "compaction") {
-      // Hard boundary: reset fingerprint tracking
+      // Hard boundary: reset fingerprint tracking but preserve continuity
       outputFpToThread.clear();
       if (threads.length > 0) {
         threads[threads.length - 1]!.items.push(item);
+        compactionContinueThread = threads.length - 1;
       } else {
         preamble.push(item);
       }

@@ -84,7 +84,7 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
       const next = new URLSearchParams(prev);
       next.set("tab", tabId);
       return next;
-    });
+    }, { replace: true });
   };
 
   const selectedResultsView =

@@ -463,11 +463,37 @@ const sortByColumns = (
         break;
       }
       case "value": {
-        const valueA =
-          a.value !== null && a.value !== undefined ? String(a.value) : "";
-        const valueB =
-          b.value !== null && b.value !== undefined ? String(b.value) : "";
-        comparison = valueA.localeCompare(valueB);
+        const numericA =
+          a.valueType === "number"
+            ? typeof a.value === "number"
+              ? a.value
+              : typeof a.value === "string"
+                ? Number(a.value)
+                : undefined
+            : undefined;
+        const numericB =
+          b.valueType === "number"
+            ? typeof b.value === "number"
+              ? b.value
+              : typeof b.value === "string"
+                ? Number(b.value)
+                : undefined
+            : undefined;
+
+        if (
+          numericA !== undefined &&
+          numericB !== undefined &&
+          Number.isFinite(numericA) &&
+          Number.isFinite(numericB)
+        ) {
+          comparison = numericA - numericB;
+        } else {
+          const valueA =
+            a.value !== null && a.value !== undefined ? String(a.value) : "";
+          const valueB =
+            b.value !== null && b.value !== undefined ? String(b.value) : "";
+          comparison = valueA.localeCompare(valueB);
+        }
         break;
       }
       case "error": {

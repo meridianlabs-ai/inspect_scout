@@ -284,6 +284,11 @@ const createDebouncedPersistStorage = (
     storage.setItem(key, value);
   }, delay);
 
+  // Flush any pending write before the page unloads so data is never lost
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", () => debouncedSetItem.flush());
+  }
+
   return {
     ...storage,
     setItem: (key: string, value: StorageValue) => {

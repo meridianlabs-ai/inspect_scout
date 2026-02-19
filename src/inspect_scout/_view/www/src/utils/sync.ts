@@ -67,11 +67,18 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
  * until after `wait` milliseconds have passed since the last time it was invoked.
  */
 
+export type DebouncedFunction<T extends (...args: any[]) => unknown> = ((
+  ...args: Parameters<T>
+) => ReturnType<T>) & {
+  /** Execute the pending debounced call immediately, if any. */
+  flush: () => void;
+};
+
 export function debounce<T extends (...args: any[]) => unknown>(
   func: T,
   wait: number,
   options: { leading?: boolean; trailing?: boolean } = {}
-): (...args: Parameters<T>) => ReturnType<T> {
+): DebouncedFunction<T> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let args: Parameters<T>;
   let result: ReturnType<T>;
@@ -97,7 +104,7 @@ export function debounce<T extends (...args: any[]) => unknown>(
     }
   };
 
-  const debounced = (...callArgs: Parameters<T>): ReturnType<T> => {
+  const debounced = ((...callArgs: Parameters<T>): ReturnType<T> => {
     args = callArgs;
     lastCallTime = Date.now();
 
@@ -114,6 +121,17 @@ export function debounce<T extends (...args: any[]) => unknown>(
     }
 
     return result;
+  }) as DebouncedFunction<T>;
+
+  debounced.flush = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+      if (args) {
+        result = func(...args) as ReturnType<T>;
+        args = null!;
+      }
+    }
   };
 
   return debounced;

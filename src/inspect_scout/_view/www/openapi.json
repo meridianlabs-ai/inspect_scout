@@ -1254,6 +1254,16 @@
             "default": null,
             "title": "Tokens Before"
           },
+          "type": {
+            "default": "summary",
+            "enum": [
+              "summary",
+              "edit",
+              "trim"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
           "uuid": {
             "anyOf": [
               {
@@ -1274,7 +1284,8 @@
         "required": [
           "timestamp",
           "working_start",
-          "event"
+          "event",
+          "type"
         ],
         "title": "CompactionEvent",
         "type": "object"
@@ -5212,6 +5223,18 @@
             "default": null,
             "title": "Reasoning Tokens"
           },
+          "total_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Cost"
+          },
           "total_tokens": {
             "default": 0,
             "title": "Total Tokens",
@@ -6368,6 +6391,7 @@
               "time",
               "working",
               "token",
+              "cost",
               "operator",
               "custom"
             ],

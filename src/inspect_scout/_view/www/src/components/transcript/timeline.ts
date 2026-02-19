@@ -154,8 +154,10 @@ function getEventTokens(event: Event): number {
     const usage = event.output?.usage;
     if (usage) {
       const inputTokens = usage.input_tokens ?? 0;
+      const cacheRead = usage.input_tokens_cache_read ?? 0;
+      const cacheWrite = usage.input_tokens_cache_write ?? 0;
       const outputTokens = usage.output_tokens ?? 0;
-      return inputTokens + outputTokens;
+      return inputTokens + cacheRead + cacheWrite + outputTokens;
     }
   }
   return 0;

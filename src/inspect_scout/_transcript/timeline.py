@@ -253,19 +253,6 @@ class Timeline(BaseModel):
 # =============================================================================
 
 
-def _classify_spans(root: TimelineSpan, has_explicit_branches: bool) -> None:
-    """Run all span classification passes on a root span.
-
-    Detects auto-branches (unless explicit branches exist), classifies
-    auto-spawned spans, utility agents, and branch structure.
-    """
-    if not has_explicit_branches:
-        _detect_auto_branches(root)
-    _classify_auto_spans(root)
-    _classify_utility_agents(root)
-    _classify_branches(root, has_explicit_branches)
-
-
 def build_timeline(events: list[Event]) -> Timeline:
     """Build a Timeline from a flat event list.
 
@@ -372,6 +359,19 @@ def build_timeline(events: list[Event]) -> Timeline:
         _classify_spans(root, has_explicit_branches)
 
     return Timeline(name="Default", description="", root=root)
+
+
+def _classify_spans(root: TimelineSpan, has_explicit_branches: bool) -> None:
+    """Run all span classification passes on a root span.
+
+    Detects auto-branches (unless explicit branches exist), classifies
+    auto-spawned spans, utility agents, and branch structure.
+    """
+    if not has_explicit_branches:
+        _detect_auto_branches(root)
+    _classify_auto_spans(root)
+    _classify_utility_agents(root)
+    _classify_branches(root, has_explicit_branches)
 
 
 def _build_agent_from_solvers_span(

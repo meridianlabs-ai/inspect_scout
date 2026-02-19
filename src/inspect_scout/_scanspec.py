@@ -72,6 +72,9 @@ class ScanOptions(BaseModel):
     shuffle: bool | int | None = Field(default=None)
     """Shuffle order of transcripts."""
 
+    log_buffer: int | None = Field(default=None)
+    """Flush intermediate results to the scan directory every N transcripts."""
+
 
 class TranscriptField(TypedDict, total=False):
     """Field in transcript data frame."""

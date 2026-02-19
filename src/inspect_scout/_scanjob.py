@@ -77,6 +77,7 @@ class ScanJob:
         shuffle: bool | int | None = None,
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
+        log_buffer: int | None = None,
         log_level: str | None = None,
         name: str | None = None,
         **deprecated: Unpack[ScanDeprecatedArgs],
@@ -116,6 +117,7 @@ class ScanJob:
         self._shuffle = shuffle
         self._tags = tags
         self._metadata = metadata
+        self._log_buffer = log_buffer
         self._log_level = log_level
 
         # resolve scanners and candidate names (we will ensure no duplicates)
@@ -273,6 +275,11 @@ class ScanJob:
     def metadata(self) -> dict[str, Any] | None:
         """Metadata for this scan."""
         return self._metadata
+
+    @property
+    def log_buffer(self) -> int | None:
+        """Flush intermediate results to the scan directory every N transcripts."""
+        return self._log_buffer
 
     @property
     def log_level(self) -> str | None:

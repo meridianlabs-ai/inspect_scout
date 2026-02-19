@@ -119,6 +119,17 @@
             ],
             "title": "Limit"
           },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
+          },
           "log_level": {
             "anyOf": [
               {
@@ -5356,6 +5367,17 @@
             ],
             "title": "Limit"
           },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
+          },
           "log_level": {
             "anyOf": [
               {
@@ -5641,6 +5663,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "log_level": {
             "anyOf": [
@@ -6624,6 +6657,17 @@
             ],
             "title": "Limit"
           },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
+          },
           "log_level": {
             "anyOf": [
               {
@@ -6963,6 +7007,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "max_processes": {
             "anyOf": [

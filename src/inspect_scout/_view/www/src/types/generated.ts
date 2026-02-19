@@ -496,6 +496,8 @@ export interface components {
             home_dir: string;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2259,6 +2261,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2317,6 +2321,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Output"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2679,6 +2685,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2786,6 +2794,8 @@ export interface components {
         ScanOptions: {
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Max Processes */
             max_processes?: number | null;
             /**

@@ -44,11 +44,14 @@ def ensure_cached(
     """
     # Collect pointers and check cache status.
     needs_download: list[tuple[Path, LFSPointer]] = []
+    source_rel_paths: set[Path] = set()
 
     for repo_file in _walk_files(repo_dist_dir):
+        rel = repo_file.relative_to(repo_dist_dir)
+        source_rel_paths.add(rel)
+
         if not is_lfs_pointer(repo_file):
             # Real file — copy to cache if not already there.
-            rel = repo_file.relative_to(repo_dist_dir)
             cache_file = cache_dist_dir / rel
             if not cache_file.exists():
                 cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -60,7 +63,6 @@ def ensure_cached(
             logger.warning("Could not parse LFS pointer: %s", repo_file)
             continue
 
-        rel = repo_file.relative_to(repo_dist_dir)
         cache_file = cache_dist_dir / rel
         oid_file = cache_file.with_suffix(cache_file.suffix + ".oid")
 
@@ -81,6 +83,7 @@ def ensure_cached(
 
     if not needs_download:
         logger.debug("LFS cache is up to date")
+        _prune_cache(cache_dist_dir, source_rel_paths)
         return
 
     logger.info("Downloading %d LFS objects...", len(needs_download))
@@ -138,6 +141,33 @@ def ensure_cached(
         raise LFSDownloadError(
             f"Failed to download {len(failed)} LFS object(s): {', '.join(failed)}"
         )
+
+    _prune_cache(cache_dist_dir, source_rel_paths)
+
+
+def _prune_cache(cache_dir: Path, source_rel_paths: set[Path]) -> None:
+    """Remove cached files that no longer exist in the source directory."""
+    if not cache_dir.is_dir():
+        return
+
+    # Metadata suffixes managed by this module.
+    metadata_suffixes = {".oid", ".downloading"}
+
+    for cached_file in _walk_files(cache_dir):
+        rel = cached_file.relative_to(cache_dir)
+
+        # Skip metadata files — they'll be orphaned when their parent is removed.
+        if rel.suffix in metadata_suffixes:
+            continue
+
+        if rel not in source_rel_paths:
+            cached_file.unlink(missing_ok=True)
+            # Clean up associated metadata.
+            for suffix in metadata_suffixes:
+                cached_file.with_suffix(cached_file.suffix + suffix).unlink(
+                    missing_ok=True
+                )
+            logger.debug("Pruned orphaned cache entry: %s", rel)
 
 
 def _walk_files(directory: Path) -> list[Path]:

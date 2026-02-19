@@ -712,7 +712,15 @@ function getBranchInput(
  * Serializes role + content, ignoring auto-generated fields.
  * Uses full string as fingerprint (no crypto hash needed in TS).
  */
-function messageFingerprint(msg: ChatMessage): string {
+function messageFingerprint(
+  msg: ChatMessage,
+  cache?: WeakMap<ChatMessage, string>
+): string {
+  if (cache) {
+    const cached = cache.get(msg);
+    if (cached !== undefined) return cached;
+  }
+
   const role = msg.role;
   let serialized: string;
   if (typeof msg.content === "string") {
@@ -720,14 +728,22 @@ function messageFingerprint(msg: ChatMessage): string {
   } else {
     serialized = JSON.stringify(msg.content);
   }
-  return `${role}:${serialized}`;
+  const result = `${role}:${serialized}`;
+
+  if (cache) {
+    cache.set(msg, result);
+  }
+  return result;
 }
 
 /**
  * Compute a fingerprint for a sequence of input messages.
  */
-function inputFingerprint(messages: ChatMessage[]): string {
-  return messages.map((m) => messageFingerprint(m)).join("|");
+function inputFingerprint(
+  messages: ChatMessage[],
+  cache?: WeakMap<ChatMessage, string>
+): string {
+  return messages.map((m) => messageFingerprint(m, cache)).join("|");
 }
 
 /**
@@ -740,6 +756,9 @@ function inputFingerprint(messages: ChatMessage[]): string {
  * Mutates span in-place.
  */
 function detectAutoBranches(span: TimelineSpan): void {
+  // Cache message fingerprints by object identity to avoid re-serializing
+  const fpCache = new WeakMap<ChatMessage, string>();
+
   // Split content into regions at compaction boundaries
   const regions: [number, number][] = [];
   let regionStart = 0;
@@ -763,7 +782,7 @@ function detectAutoBranches(span: TimelineSpan): void {
       if (item && item.type === "event" && item.event.event === "model") {
         const inputMsgs = item.event.input;
         if (!inputMsgs || inputMsgs.length === 0) continue;
-        const fp = inputFingerprint(inputMsgs);
+        const fp = inputFingerprint(inputMsgs, fpCache);
         modelIndices.push([i, fp]);
       }
     }
@@ -819,19 +838,23 @@ function detectAutoBranches(span: TimelineSpan): void {
 
 /**
  * Recursively detect branches in the span tree.
+ *
+ * Skips root since _classify_spans already ran detectAutoBranches on it
+ * before auto-span detection.
  */
 function classifyBranches(
   span: TimelineSpan,
-  hasExplicitBranches: boolean
+  hasExplicitBranches: boolean,
+  isRoot: boolean = true
 ): void {
-  if (!hasExplicitBranches) {
+  if (!hasExplicitBranches && !isRoot) {
     detectAutoBranches(span);
   }
 
   // Recurse into child spans in content
   for (const item of span.content) {
     if (item.type === "span") {
-      classifyBranches(item, hasExplicitBranches);
+      classifyBranches(item, hasExplicitBranches, false);
     }
   }
 
@@ -839,7 +862,7 @@ function classifyBranches(
   for (const branch of span.branches) {
     for (const item of branch.content) {
       if (item.type === "span") {
-        classifyBranches(item, hasExplicitBranches);
+        classifyBranches(item, hasExplicitBranches, false);
       }
     }
   }

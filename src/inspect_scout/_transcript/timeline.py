@@ -783,7 +783,7 @@ def _get_branch_input(
 # =============================================================================
 
 
-def _message_fingerprint(msg: ChatMessage) -> str:
+def _message_fingerprint(msg: ChatMessage, cache: dict[int, str] | None = None) -> str:
     """Compute a fingerprint for a single ChatMessage.
 
     Serializes role + content, ignoring auto-generated fields like id, source,
@@ -791,10 +791,17 @@ def _message_fingerprint(msg: ChatMessage) -> str:
 
     Args:
         msg: The chat message to fingerprint.
+        cache: Optional cache keyed by object id for repeated calls on the
+            same message objects.
 
     Returns:
         SHA-256 hex digest of the message content.
     """
+    if cache is not None:
+        cached = cache.get(id(msg))
+        if cached is not None:
+            return cached
+
     role = getattr(msg, "role", "")
     content = getattr(msg, "content", "")
     if isinstance(content, str):
@@ -806,19 +813,27 @@ def _message_fingerprint(msg: ChatMessage) -> str:
             sort_keys=True,
         )
     raw = f"{role}:{serialized}"
-    return hashlib.sha256(raw.encode()).hexdigest()
+    result = hashlib.sha256(raw.encode()).hexdigest()
+
+    if cache is not None:
+        cache[id(msg)] = result
+    return result
 
 
-def _input_fingerprint(messages: list[ChatMessage]) -> str:
+def _input_fingerprint(
+    messages: list[ChatMessage], cache: dict[int, str] | None = None
+) -> str:
     """Compute a fingerprint for a sequence of input messages.
 
     Args:
         messages: The input message list.
+        cache: Optional cache keyed by object id, shared across calls
+            to avoid re-hashing the same message objects.
 
     Returns:
         SHA-256 hex digest of the concatenated message fingerprints.
     """
-    parts = [_message_fingerprint(m) for m in messages]
+    parts = [_message_fingerprint(m, cache) for m in messages]
     combined = "|".join(parts)
     return hashlib.sha256(combined.encode()).hexdigest()
 
@@ -839,6 +854,9 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
     Args:
         agent: The span node to process.
     """
+    # Cache message fingerprints by object identity to avoid rehashing
+    fp_cache: dict[int, str] = {}
+
     # Split content into regions at compaction boundaries
     regions: list[tuple[int, int]] = []
     region_start = 0
@@ -860,7 +878,7 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
                 input_msgs = list(item.event.input)
                 if not input_msgs:
                     continue
-                fp = _input_fingerprint(input_msgs)
+                fp = _input_fingerprint(input_msgs, fp_cache)
                 model_indices.append((i, fp))
 
         # Group by fingerprint within this region
@@ -902,7 +920,9 @@ def _detect_auto_branches(agent: TimelineSpan) -> None:
     agent.branches.reverse()
 
 
-def _classify_branches(agent: TimelineSpan, has_explicit_branches: bool) -> None:
+def _classify_branches(
+    agent: TimelineSpan, has_explicit_branches: bool, *, _is_root: bool = True
+) -> None:
     """Recursively detect branches in the agent tree.
 
     If not in explicit mode, calls _detect_auto_branches on each agent.
@@ -911,20 +931,22 @@ def _classify_branches(agent: TimelineSpan, has_explicit_branches: bool) -> None
     Args:
         agent: The span node to process.
         has_explicit_branches: Whether explicit branch spans exist globally.
+        _is_root: Internal flag — skips root since _classify_spans already
+            ran _detect_auto_branches on it before auto-span detection.
     """
-    if not has_explicit_branches:
+    if not has_explicit_branches and not _is_root:
         _detect_auto_branches(agent)
 
     # Recurse into child spans in content
     for item in agent.content:
         if isinstance(item, TimelineSpan):
-            _classify_branches(item, has_explicit_branches)
+            _classify_branches(item, has_explicit_branches, _is_root=False)
 
     # Recurse into spans within branches
     for branch in agent.branches:
         for item in branch.content:
             if isinstance(item, TimelineSpan):
-                _classify_branches(item, has_explicit_branches)
+                _classify_branches(item, has_explicit_branches, _is_root=False)
 
 
 # =============================================================================

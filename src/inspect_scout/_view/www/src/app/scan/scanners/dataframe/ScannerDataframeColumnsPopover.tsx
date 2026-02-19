@@ -188,6 +188,7 @@ const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
     (state) => state.setDataframeFilterColumns
   );
   const initializedRef = useRef(false);
+  const skipFirstSyncRef = useRef(true);
 
   // On mount: apply URL columns if present
   useEffect(() => {
@@ -201,9 +202,13 @@ const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // On column changes: update URL param (skip first render after mount init)
+  // On column changes: update URL param (skip first run to avoid overwriting
+  // the URL before the store has re-rendered with the URL-sourced columns)
   useEffect(() => {
-    if (!initializedRef.current) return;
+    if (skipFirstSyncRef.current) {
+      skipFirstSyncRef.current = false;
+      return;
+    }
 
     setSearchParams(
       (prev) => updateColumnsParam(prev, isDefault ? undefined : filtered),

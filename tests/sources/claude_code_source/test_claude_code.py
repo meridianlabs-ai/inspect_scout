@@ -27,6 +27,7 @@ from inspect_scout.sources._claude_code.extraction import (
 from inspect_scout.sources._claude_code.models import (
     AssistantEvent,
     AssistantMessage,
+    BaseEvent,
     CompactMetadata,
     SystemEvent,
     Usage,
@@ -40,6 +41,13 @@ from inspect_scout.sources._claude_code.tree import (
     flatten_tree_chronological,
     split_on_clear,
 )
+
+
+def _parse(raw: dict[str, Any]) -> BaseEvent:
+    """Parse a raw event dict, asserting it succeeds."""
+    result = parse_event(raw)
+    assert result is not None
+    return result
 
 
 class TestPathEncoding:
@@ -341,7 +349,7 @@ class TestTreeBuilding:
     def test_build_simple_tree(self) -> None:
         """Test building a simple conversation tree."""
         events = [
-            parse_event(
+            _parse(
                 {
                     "uuid": "1",
                     "parentUuid": None,
@@ -351,7 +359,7 @@ class TestTreeBuilding:
                     "message": {"content": "Hello"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "2",
                     "parentUuid": "1",
@@ -361,7 +369,7 @@ class TestTreeBuilding:
                     "message": {"content": []},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "3",
                     "parentUuid": "2",
@@ -384,7 +392,7 @@ class TestTreeBuilding:
     def test_flatten_tree_chronological(self) -> None:
         """Test flattening tree to chronological order."""
         events = [
-            parse_event(
+            _parse(
                 {
                     "uuid": "1",
                     "parentUuid": None,
@@ -394,7 +402,7 @@ class TestTreeBuilding:
                     "message": {"content": "Hello"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "2",
                     "parentUuid": "1",
@@ -404,7 +412,7 @@ class TestTreeBuilding:
                     "message": {"content": []},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "3",
                     "parentUuid": "2",
@@ -427,7 +435,7 @@ class TestTreeBuilding:
     def test_find_clear_indices(self) -> None:
         """Test finding /clear command indices."""
         events = [
-            parse_event(
+            _parse(
                 {
                     "uuid": "1",
                     "timestamp": "2026-01-01T00:00:00Z",
@@ -436,7 +444,7 @@ class TestTreeBuilding:
                     "message": {"content": "Hello"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "2",
                     "timestamp": "2026-01-01T00:01:00Z",
@@ -445,7 +453,7 @@ class TestTreeBuilding:
                     "message": {"content": []},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "3",
                     "timestamp": "2026-01-01T00:02:00Z",
@@ -454,7 +462,7 @@ class TestTreeBuilding:
                     "message": {"content": "<command-name>/clear</command-name>"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "4",
                     "timestamp": "2026-01-01T00:03:00Z",
@@ -471,7 +479,7 @@ class TestTreeBuilding:
     def test_split_on_clear(self) -> None:
         """Test splitting events on /clear boundaries."""
         events = [
-            parse_event(
+            _parse(
                 {
                     "uuid": "1",
                     "timestamp": "2026-01-01T00:00:00Z",
@@ -480,7 +488,7 @@ class TestTreeBuilding:
                     "message": {"content": "Hello"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "2",
                     "timestamp": "2026-01-01T00:01:00Z",
@@ -489,7 +497,7 @@ class TestTreeBuilding:
                     "message": {"content": []},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "3",
                     "timestamp": "2026-01-01T00:02:00Z",
@@ -498,7 +506,7 @@ class TestTreeBuilding:
                     "message": {"content": "<command-name>/clear</command-name>"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "4",
                     "timestamp": "2026-01-01T00:03:00Z",
@@ -507,7 +515,7 @@ class TestTreeBuilding:
                     "message": {"content": "New conversation"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "5",
                     "timestamp": "2026-01-01T00:04:00Z",
@@ -526,7 +534,7 @@ class TestTreeBuilding:
     def test_split_on_clear_no_splits(self) -> None:
         """Test that no splits returns single segment."""
         events = [
-            parse_event(
+            _parse(
                 {
                     "uuid": "1",
                     "timestamp": "2026-01-01T00:00:00Z",
@@ -535,7 +543,7 @@ class TestTreeBuilding:
                     "message": {"content": "Hello"},
                 }
             ),
-            parse_event(
+            _parse(
                 {
                     "uuid": "2",
                     "timestamp": "2026-01-01T00:01:00Z",

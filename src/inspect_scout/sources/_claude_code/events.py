@@ -10,7 +10,7 @@ Converts Claude Code events to Scout event types:
 import re
 from collections.abc import AsyncIterable, AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -58,6 +58,11 @@ from .tree import build_event_tree, flatten_tree_chronological, get_conversation
 logger = getLogger(__name__)
 
 T = TypeVar("T")
+
+
+# Sentinel timestamp for events with unparseable timestamps.
+# Using epoch avoids extending timelines to the present day.
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def _parse_timestamp(ts_str: str | None) -> datetime | None:
@@ -144,7 +149,7 @@ def to_model_event(
         tool_choice="auto",
         config=GenerateConfig(),
         output=output,
-        timestamp=timestamp or _parse_timestamp(get_timestamp(event)),
+        timestamp=timestamp or _parse_timestamp(get_timestamp(event)) or _EPOCH,
     )
 
 
@@ -427,7 +432,7 @@ async def claude_code_events(
         event_stream = _to_async_iter(raw_events)
 
     state = ProcessingState()
-    last_timestamp: datetime | None = None
+    last_timestamp: datetime = _EPOCH
 
     async for raw_event in event_stream:
         session_id = raw_event.get("sessionId", "")
@@ -474,8 +479,7 @@ async def claude_code_events(
             continue
 
         timestamp = _parse_timestamp(get_timestamp(pydantic_event)) or last_timestamp
-        if timestamp is not None:
-            last_timestamp = timestamp
+        last_timestamp = timestamp
 
         if isinstance(pydantic_event, AssistantEvent):
             # Yield ModelEvent immediately
@@ -603,13 +607,12 @@ async def process_parsed_events(
 
     # Track messages for ModelEvent input
     accumulated_messages: list[Any] = []
-    last_timestamp: datetime | None = None
+    last_timestamp: datetime = _EPOCH
 
     for event in events:
         event_type = get_event_type(event)
         timestamp = _parse_timestamp(get_timestamp(event)) or last_timestamp
-        if timestamp is not None:
-            last_timestamp = timestamp
+        last_timestamp = timestamp
 
         if isinstance(event, AssistantEvent):
             # Yield ModelEvent

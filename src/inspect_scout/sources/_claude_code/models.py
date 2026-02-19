@@ -191,9 +191,7 @@ class SystemEvent(BaseEvent):
 
 # Union of all event types
 Event = Annotated[
-    UserEvent
-    | AssistantEvent
-    | SystemEvent,
+    UserEvent | AssistantEvent | SystemEvent,
     Field(discriminator="type"),
 ]
 

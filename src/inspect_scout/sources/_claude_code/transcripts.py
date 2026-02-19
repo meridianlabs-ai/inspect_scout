@@ -190,7 +190,9 @@ async def _create_transcript(
 
     # Convert to Scout events using process_parsed_events (already Pydantic models)
     scout_events: list[Event] = []
-    async for event in process_parsed_events(events, project_dir, session_file=session_path):
+    async for event in process_parsed_events(
+        events, project_dir, session_file=session_path
+    ):
         scout_events.append(event)
 
     # Extract messages from Scout events

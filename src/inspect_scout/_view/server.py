@@ -8,12 +8,13 @@ from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from inspect_scout._lfs import LFSError, resolve_lfs_directory
+from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
     DEFAULT_SCANS_DIR,
     DEFAULT_SERVER_HOST,
     DEFAULT_VIEW_PORT,
 )
-from inspect_scout._view._lfs import resolve_dist_directory
 from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
@@ -44,8 +45,20 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    repo_dist = Path(__file__).parent / "dist"
-    dist = resolve_dist_directory(repo_dist)
+    try:
+        dist = resolve_lfs_directory(
+            Path(__file__).parent / "dist",
+            cache_dir=scout_cache_dir("dist"),
+            repo_url="https://github.com/meridianlabs-ai/inspect_scout.git",
+        )
+    except LFSError as e:
+        raise RuntimeError(
+            f"{e}\n"
+            "To fix this, either:\n"
+            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
+            "  2. Check your network connection\n"
+            "  3. Build locally: cd src/inspect_scout/_view/frontend && pnpm build"
+        ) from e
     app.mount("/", StaticFiles(directory=dist.as_posix(), html=True), name="static")
 
     # run app

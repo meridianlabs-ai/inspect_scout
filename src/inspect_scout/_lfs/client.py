@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 _LFS_MEDIA_TYPE = "application/vnd.git-lfs+json"
 
-# Default repo URL — can be overridden for testing.
-DEFAULT_REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
-
 
 @dataclass(frozen=True)
 class LFSDownloadInfo:
@@ -32,7 +29,7 @@ class LFSDownloadInfo:
 
 def fetch_download_urls(
     objects: list[tuple[str, int]],
-    repo_url: str = DEFAULT_REPO_URL,
+    repo_url: str,
 ) -> list[LFSDownloadInfo]:
     """Get download URLs for LFS objects via the batch API.
 

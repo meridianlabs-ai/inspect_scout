@@ -11,7 +11,6 @@ import time
 from pathlib import Path
 
 from .client import (
-    DEFAULT_REPO_URL,
     LFSDownloadInfo,
     download_lfs_object,
     fetch_download_urls,
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 def ensure_cached(
     repo_dist_dir: Path,
     cache_dist_dir: Path,
-    repo_url: str = DEFAULT_REPO_URL,
+    repo_url: str,
 ) -> None:
     """Populate the cache with real files for all LFS pointers in dist/.
 

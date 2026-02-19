@@ -72,9 +72,9 @@ from ._transcript.timeline import (
     TimelineEvent,
     TimelineMessages,
     TimelineSpan,
+    build_timeline,
     filter_timeline,
     timeline_messages,
-    build_timeline,
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (

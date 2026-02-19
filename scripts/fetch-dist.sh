@@ -6,9 +6,17 @@
 # resolver that the server uses at startup.
 #
 # Usage:
-#   ./scripts/fetch-dist.sh
+#   ./scripts/fetch-dist.sh [--force-cache]
 
 set -euo pipefail
+
+FORCE_CACHE=False
+for arg in "$@"; do
+    case "$arg" in
+        --force-cache) FORCE_CACHE=True ;;
+        *) echo "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -24,6 +32,7 @@ result = resolve_lfs_directory(
     source,
     cache_dir=scout_cache_dir('dist'),
     repo_url='https://github.com/meridianlabs-ai/inspect_scout.git',
+    force_cache=$FORCE_CACHE,
 )
 if result == source:
     print('dist/ already contains real files. Nothing to fetch.')

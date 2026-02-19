@@ -15,18 +15,22 @@ def resolve_lfs_directory(
     source_dir: Path,
     cache_dir: Path,
     repo_url: str,
+    *,
+    force_cache: bool = False,
 ) -> Path:
     """Resolve a directory that may contain LFS pointer files.
 
-    Recursively checks `source_dir` for LFS pointers. If none is found, returns
-    `source_dir` as-is. If any pointer is found, populates `cache_dir` with real
-    content for all files (downloading pointers, copying real files) and returns
-    `cache_dir`.
+    Recursively checks source_dir for LFS pointers. If none are found,
+    returns source_dir as-is (unless force_cache is True). If any pointer
+    is found, populates cache_dir with real content for all files
+    (downloading pointers, copying real files) and returns cache_dir.
 
     Args:
         source_dir: Directory to check recursively for LFS pointer files.
         cache_dir: Cache directory for downloaded LFS content.
         repo_url: HTTPS URL of the git repository (for LFS downloads).
+        force_cache: Always populate and return cache_dir, even when source_dir
+            contains no LFS pointers.
 
     Returns:
         Path to a directory tree containing real file content.
@@ -37,7 +41,7 @@ def resolve_lfs_directory(
     if not source_dir.is_dir():
         raise LFSResolverError(f"Directory not found: {source_dir}")
 
-    if not _has_lfs_pointers(source_dir):
+    if not force_cache and not _has_lfs_pointers(source_dir):
         return source_dir
 
     try:

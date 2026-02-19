@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -8,8 +7,9 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import Scope
 
+from inspect_scout._lfs import LFSError, resolve_lfs_directory
+from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
     DEFAULT_SCANS_DIR,
     DEFAULT_SERVER_HOST,
@@ -19,29 +19,6 @@ from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
 from ._api_v2 import v2_api_app
-
-
-class NoCacheStaticFiles(StaticFiles):
-    """StaticFiles that prevents caching of JS files during development."""
-
-    def file_response(
-        self,
-        full_path: str | os.PathLike[str],
-        stat_result: os.stat_result,
-        scope: Scope,
-        status_code: int = 200,
-    ) -> Response:
-        response = super().file_response(full_path, stat_result, scope, status_code)
-
-        # We have seen sporadic caching of the core JS file in safari though I
-        # wasn't able to consistently reproduce it. To be safe, disable caching
-        # for all JS files for the time being
-        if str(full_path).endswith(".js"):
-            response.headers["cache-control"] = "no-cache, no-store, must-revalidate"
-            response.headers["pragma"] = "no-cache"
-            response.headers["expires"] = "0"
-
-        return response
 
 
 def view_server(
@@ -68,10 +45,21 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = Path(__file__).parent / "dist"
-    app.mount(
-        "/", NoCacheStaticFiles(directory=dist.as_posix(), html=True), name="static"
-    )
+    try:
+        dist = resolve_lfs_directory(
+            Path(__file__).parent / "dist",
+            cache_dir=scout_cache_dir("dist"),
+            repo_url="https://github.com/meridianlabs-ai/inspect_scout.git",
+        )
+    except LFSError as e:
+        raise RuntimeError(
+            f"{e}\n"
+            "To fix this, either:\n"
+            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
+            "  2. Check your network connection\n"
+            "  3. Build locally: cd src/inspect_scout/_view/frontend && pnpm build"
+        ) from e
+    app.mount("/", StaticFiles(directory=dist.as_posix(), html=True), name="static")
 
     # run app
     display().print("Scout View")

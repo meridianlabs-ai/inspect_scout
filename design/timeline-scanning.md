@@ -348,14 +348,16 @@ async def timeline_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
-    include: Callable[[TimelineSpan], bool] | str | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
-    Walks the span tree, extracts events from each matching span,
-    and delegates to chunked_messages() for compaction splitting and
-    context window chunking. Each yielded item includes the span
-    context alongside the pre-rendered text.
+    Walks the span tree, extracts events from each non-utility span
+    with direct ModelEvents, and delegates to chunked_messages() for
+    compaction splitting and context window chunking. Each yielded
+    item includes the span context alongside the pre-rendered text.
+
+    To filter which spans are processed, use filter_timeline() before
+    calling this function.
 
     Args:
         timeline: The timeline (or a specific span subtree) to extract
@@ -369,10 +371,6 @@ async def timeline_messages(
             (in tokens). When None, looked up via get_model_info().
             An 80% discount factor is applied to leave room for system
             prompts and scanning overhead.
-        include: Filter for which spans to process.
-            - None: all non-utility spans with direct ModelEvents (default)
-            - str: only spans whose name matches (case-insensitive)
-            - callable: predicate on TimelineSpan
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -393,15 +391,25 @@ class TimelineMessages(RenderedMessages):
 
 Since `TimelineMessages` inherits from `RenderedMessages`, it can be used anywhere a `RenderedMessages` is expected. `timeline_messages()` constructs these from the `RenderedMessages` yielded by `chunked_messages()`, adding the span context for each.
 
-#### Filtering
+#### Built-in Filtering
 
-The `include` parameter controls which spans yield messages:
+`timeline_messages()` always applies two built-in filters:
 
-- **`None` (default)**: all non-utility spans that have at least one `ModelEvent` in their direct `content` (not inherited from child spans). A span that contains only child `TimelineSpan`s and no `ModelEvent`s of its own is a pure container and yields nothing — its children are visited instead.
-- **`str`**: only spans whose name matches (case-insensitive) — e.g., `include="Build"` processes only spans named "Build"
-- **`callable`**: arbitrary predicate — e.g., `include=lambda s: s.span_type == "agent"`
+- **Utility spans** are skipped (single-turn agents with different system prompts).
+- **Empty container spans** (no direct `ModelEvent` in their content) are skipped — their children are still visited.
 
-The generator walks the tree recursively. Non-matching spans are skipped but their children are still visited — the filter controls *which spans yield messages*, not *which subtrees are traversed*.
+#### Pre-filtering with `filter_timeline()`
+
+To select specific spans, use `filter_timeline()` to prune the tree before passing it to `timeline_messages()`:
+
+```python
+def filter_timeline(
+    timeline: Timeline,
+    predicate: Callable[[TimelineSpan], bool],
+) -> Timeline:
+```
+
+Non-matching spans and their entire subtrees are removed. The built-in utility and ModelEvent checks in `timeline_messages()` still apply after filtering.
 
 #### Usage
 
@@ -410,13 +418,15 @@ messages_as_str, extract_references = message_numbering(
     preprocessor=MessagesPreprocessor(exclude_reasoning=True)
 )
 
+# Filter to only "Build" spans
+filtered = filter_timeline(timeline, lambda s: s.name == "Build")
+
 segments: list[TimelineMessages] = []
 
 async for span_msgs in timeline_messages(
-    timeline,
+    filtered,
     messages_as_str=messages_as_str,
     model=model,
-    include="Build",
 ):
     # span_msgs.text is already pre-rendered with unique message IDs
     segments.append(span_msgs)
@@ -1129,10 +1139,11 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 
 **What to build:**
 - `TimelineMessages(RenderedMessages)` dataclass — adds `span: TimelineSpan`
-- `timeline_messages(timeline, messages_as_str, model, context_window, include)` async generator
+- `timeline_messages(timeline, messages_as_str, model, context_window)` async generator
 - Walks span tree, extracts `[item.event for item in span.content if isinstance(item, TimelineEvent)]`
 - Delegates to `chunked_messages()` per span, wraps results as `TimelineMessages`
-- `include` filter: `None` (non-utility spans with ModelEvents), `str` (name match), `callable`
+- Built-in: skips utility spans and spans without direct ModelEvents
+- `filter_timeline(timeline, predicate)` — prunes non-matching spans and subtrees before scanning
 - `transcript_messages(transcript, messages_as_str, model, context_window)` async generator
 - Adaptive dispatch: `transcript.timelines` → `timeline_messages()`, `transcript.events` → `chunked_messages()`, else `transcript.messages` → `chunked_messages()`
 
@@ -1140,9 +1151,8 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 - Single-span timeline → yields `TimelineMessages` with correct span context
 - Multi-span timeline → yields segments in tree-walk order with continuous numbering
 - Nested spans → child spans visited recursively
-- `include=None` skips utility spans and empty container spans
-- `include="Build"` filters by name (case-insensitive)
-- `include=callable` with custom predicate
+- Default skips utility spans and empty container spans
+- `filter_timeline` prunes by predicate, subtrees removed
 - `transcript_messages` dispatches to correct layer based on available data
 
 **Dependencies:** Phase 3 (`chunked_messages`).

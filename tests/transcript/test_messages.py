@@ -28,6 +28,7 @@ from inspect_scout._transcript.timeline import (
     TimelineEvent,
     TimelineMessages,
     TimelineSpan,
+    filter_timeline,
     timeline_messages,
 )
 from inspect_scout._transcript.types import Transcript
@@ -537,7 +538,6 @@ async def _collect_timeline(
     timeline: Timeline | TimelineSpan,
     *,
     context_window: int = 10_000,
-    include: object = None,
     depth: int | None = None,
 ) -> list[TimelineMessages]:
     """Helper to collect all TimelineMessages from timeline_messages."""
@@ -549,7 +549,6 @@ async def _collect_timeline(
         messages_as_str=msgs_as_str,
         model=model,
         context_window=context_window,
-        include=include,  # type: ignore[arg-type]
         depth=depth,
     ):
         results.append(seg)
@@ -629,8 +628,8 @@ async def test_timeline_messages_include_none_skips_empty() -> None:
 
 
 @pytest.mark.anyio
-async def test_timeline_messages_include_name() -> None:
-    """String filter matches span name case-insensitively."""
+async def test_filter_timeline_by_name() -> None:
+    """filter_timeline prunes spans not matching the predicate."""
     build_span = _make_timeline_span(
         "Build",
         events=[_make_model_event(input=[_user1], output_content="Building")],
@@ -640,16 +639,18 @@ async def test_timeline_messages_include_name() -> None:
         events=[_make_model_event(input=[_user2], output_content="Testing")],
     )
     root = _make_timeline_span("Root", children=[build_span, test_span])
+    tl = Timeline(name="t", description="", root=root)
 
-    results = await _collect_timeline(root, include="build")
+    filtered = filter_timeline(tl, lambda s: s.name.lower() == "build")
+    results = await _collect_timeline(filtered)
 
     assert len(results) == 1
-    assert results[0].span is build_span
+    assert results[0].span.name == "Build"
 
 
 @pytest.mark.anyio
-async def test_timeline_messages_include_callable() -> None:
-    """Callable predicate filters spans."""
+async def test_filter_timeline_by_span_type() -> None:
+    """filter_timeline with span_type predicate."""
     agent_span = _make_timeline_span(
         "Agent",
         events=[_make_model_event(input=[_user1], output_content="Agent response")],
@@ -660,11 +661,55 @@ async def test_timeline_messages_include_callable() -> None:
         events=[_make_model_event(input=[_user2], output_content="Other response")],
     )
     root = _make_timeline_span("Root", children=[agent_span, other_span])
+    tl = Timeline(name="t", description="", root=root)
 
-    results = await _collect_timeline(root, include=lambda s: s.span_type == "agent")
+    filtered = filter_timeline(tl, lambda s: s.span_type == "agent")
+    results = await _collect_timeline(filtered)
 
     assert len(results) == 1
-    assert results[0].span is agent_span
+    assert results[0].span.name == "Agent"
+
+
+def test_filter_timeline_prunes_subtrees() -> None:
+    """Non-matching spans and their children are removed."""
+    grandchild = _make_timeline_span(
+        "Grandchild",
+        events=[_make_model_event(input=[_user1], output_content="Deep")],
+    )
+    parent = _make_timeline_span("Parent", children=[grandchild])
+    sibling = _make_timeline_span(
+        "Sibling",
+        events=[_make_model_event(input=[_user2], output_content="Sibling")],
+    )
+    root = _make_timeline_span("Root", children=[parent, sibling])
+    tl = Timeline(name="t", description="", root=root)
+
+    # Prune "Parent" — grandchild should also be gone
+    filtered = filter_timeline(tl, lambda s: s.name != "Parent")
+    child_spans = [
+        item for item in filtered.root.content if isinstance(item, TimelineSpan)
+    ]
+    assert len(child_spans) == 1
+    assert child_spans[0].name == "Sibling"
+
+
+def test_filter_timeline_preserves_events() -> None:
+    """TimelineEvent items in parent content are kept after filtering."""
+    child = _make_timeline_span(
+        "Child",
+        events=[_make_model_event(input=[_user1], output_content="Child")],
+    )
+    root = _make_timeline_span(
+        "Root",
+        events=[_make_model_event(input=[_user2], output_content="Root event")],
+        children=[child],
+    )
+    tl = Timeline(name="t", description="", root=root)
+
+    # Remove child span — root's own events should remain
+    filtered = filter_timeline(tl, lambda s: s.name != "Child")
+    events = [item for item in filtered.root.content if isinstance(item, TimelineEvent)]
+    assert len(events) >= 1
 
 
 @pytest.mark.anyio

@@ -1265,6 +1265,50 @@ class TimelineMessages:
     span: TimelineSpan
 
 
+def filter_timeline(
+    timeline: Timeline,
+    predicate: Callable[[TimelineSpan], bool],
+) -> Timeline:
+    """Return a new timeline with only spans matching the predicate.
+
+    Recursively walks the span tree, keeping ``TimelineSpan`` items
+    where ``predicate(span)`` returns ``True``. Non-matching spans and
+    their entire subtrees are pruned. ``TimelineEvent`` items are always
+    kept (they belong to the parent span).
+
+    Use this to pre-filter a timeline before passing it to
+    ``timeline_messages()``.
+
+    Args:
+        timeline: The timeline to filter.
+        predicate: Function that receives a ``TimelineSpan`` and returns
+            ``True`` to keep it (and its subtree), ``False`` to prune it.
+
+    Returns:
+        A new ``Timeline`` with a filtered copy of the root.
+    """
+    return Timeline(
+        name=timeline.name,
+        description=timeline.description,
+        root=_filter_span_by_predicate(timeline.root, predicate),
+    )
+
+
+def _filter_span_by_predicate(
+    span: TimelineSpan,
+    predicate: Callable[[TimelineSpan], bool],
+) -> TimelineSpan:
+    """Recursively filter a span's content, pruning non-matching child spans."""
+    filtered_content: list[TimelineEvent | TimelineSpan] = []
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            if predicate(item):
+                filtered_content.append(_filter_span_by_predicate(item, predicate))
+        else:
+            filtered_content.append(item)
+    return span.model_copy(update={"content": filtered_content})
+
+
 async def timeline_messages(
     timeline: Timeline | TimelineSpan,
     *,
@@ -1272,15 +1316,17 @@ async def timeline_messages(
     model: Model,
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
-    include: Callable[[TimelineSpan], bool] | str | None = None,
     depth: int | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
-    Walks the span tree, passes each matching span to
-    ``segment_messages()`` for message extraction and context window
-    segmentation. Each yielded item includes the span context alongside
-    the pre-rendered text.
+    Walks the span tree, passes each non-utility span with direct
+    ``ModelEvent`` content to ``segment_messages()`` for message
+    extraction and context window segmentation. Each yielded item
+    includes the span context alongside the pre-rendered text.
+
+    To filter which spans are processed, use ``filter_timeline()``
+    before calling this function.
 
     Args:
         timeline: The timeline (or a specific span subtree) to extract
@@ -1295,10 +1341,6 @@ async def timeline_messages(
             prompts and scanning overhead.
         compaction: How to handle compaction boundaries when extracting
             messages from span events.
-        include: Filter for which spans to process.
-            - None: all non-utility spans with direct ModelEvents (default)
-            - str: only spans whose name matches (case-insensitive)
-            - callable: predicate on TimelineSpan
         depth: Maximum depth of the span tree to process. ``1`` processes
             only the root span, ``2`` includes immediate children, etc.
             None (default) recurses without limit.
@@ -1311,7 +1353,7 @@ async def timeline_messages(
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
     counter = 0
-    for span in _walk_spans(root, include, depth=depth):
+    for span in _walk_spans(root, depth=depth):
         async for seg in segment_messages(
             span,
             messages_as_str=messages_as_str,
@@ -1330,28 +1372,29 @@ async def timeline_messages(
 
 def _walk_spans(
     span: TimelineSpan,
-    include: Callable[[TimelineSpan], bool] | str | None,
     *,
     depth: int | None = None,
     _current_depth: int = 1,
 ) -> Iterator[TimelineSpan]:
-    """Walk the span tree depth-first, yielding matching spans.
+    """Walk the span tree depth-first, yielding scannable spans.
 
-    Non-matching spans are still traversed (up to the depth limit) —
-    the filter controls which spans yield messages, not which subtrees
-    are visited. Only content children are traversed (not branches).
+    A span is yielded if it is not a utility span and has at least one
+    direct ``ModelEvent`` in its content. Non-matching spans are still
+    traversed so their children can be checked.
 
     Args:
         span: The root span to walk.
-        include: Filter for which spans to yield.
         depth: Maximum depth to recurse. 1 = root only, 2 = root +
             children, None = unlimited.
         _current_depth: Internal counter tracking current depth.
 
     Yields:
-        Matching TimelineSpan nodes in depth-first order.
+        Scannable TimelineSpan nodes in depth-first order.
     """
-    if _span_matches(span, include):
+    if not span.utility and any(
+        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
+        for item in span.content
+    ):
         yield span
 
     if depth is not None and _current_depth >= depth:
@@ -1359,33 +1402,4 @@ def _walk_spans(
 
     for item in span.content:
         if isinstance(item, TimelineSpan):
-            yield from _walk_spans(
-                item, include, depth=depth, _current_depth=_current_depth + 1
-            )
-
-
-def _span_matches(
-    span: TimelineSpan,
-    include: Callable[[TimelineSpan], bool] | str | None,
-) -> bool:
-    """Check if a span matches the include filter.
-
-    Args:
-        span: The span to check.
-        include: The filter to apply.
-
-    Returns:
-        True if the span matches.
-    """
-    if include is None:
-        # Default: non-utility spans with at least one direct ModelEvent
-        if span.utility:
-            return False
-        return any(
-            isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
-            for item in span.content
-        )
-    elif isinstance(include, str):
-        return span.name.lower() == include.lower()
-    else:
-        return include(span)
+            yield from _walk_spans(item, depth=depth, _current_depth=_current_depth + 1)

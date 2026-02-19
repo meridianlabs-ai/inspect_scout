@@ -7,7 +7,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from inspect_ai._util._async import tg_collect
-from inspect_ai.event import CompactionEvent, Event, ModelEvent
+from inspect_ai.event import (
+    CompactionEvent,
+    Event,
+    EventTreeSpan,
+    ModelEvent,
+    event_sequence,
+    event_tree,
+)
 from inspect_ai.model import ChatMessage, Model
 from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
@@ -150,6 +157,7 @@ async def transcript_messages(
     context_window: int | None = None,
     compaction: Literal["all", "last"] = "all",
     depth: int | None = None,
+    include_scorers: bool = False,
 ) -> AsyncIterator[MessagesSegment]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -161,6 +169,10 @@ async def transcript_messages(
       ``segment_messages()`` with compaction handling
     - If only messages are present, delegates to ``segment_messages()``
       for context window segmentation only
+
+    By default, scorer events are excluded from extraction. This
+    applies to both the timeline path (the scorers span is pruned)
+    and the events path (the scorers section is removed).
 
     Since ``TimelineMessages`` is structurally compatible with
     ``MessagesSegment``, callers get a uniform interface. Those needing
@@ -175,15 +187,24 @@ async def transcript_messages(
             messages from events.
         depth: Maximum depth of the span tree to process when timelines
             are present. Ignored for events-only or messages-only paths.
+        include_scorers: Whether to include scorer events in message
+            extraction. Defaults to ``False``.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
     """
     if transcript.timelines:
-        from inspect_scout._transcript.timeline import timeline_messages
+        from inspect_scout._transcript.timeline import (
+            filter_timeline,
+            timeline_messages,
+        )
+
+        timeline = transcript.timelines[0]
+        if not include_scorers:
+            timeline = filter_timeline(timeline, lambda s: s.span_type != "scorers")
 
         async for timeline_seg in timeline_messages(
-            transcript.timelines[0],
+            timeline,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
@@ -192,8 +213,12 @@ async def transcript_messages(
         ):
             yield timeline_seg  # type: ignore[misc]
     elif transcript.events:
+        events = transcript.events
+        if not include_scorers:
+            events = _exclude_scorers(events)
+
         async for seg in segment_messages(
-            transcript.events,
+            events,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
@@ -208,6 +233,23 @@ async def transcript_messages(
             context_window=context_window,
         ):
             yield seg
+
+
+def _exclude_scorers(events: list[Event]) -> list[Event]:
+    """Remove events belonging to the top-level scorers section.
+
+    Uses ``event_tree()`` to find the scorers span, removes it from the
+    tree, then flattens back to a sequence with ``event_sequence()``.
+    """
+    tree = event_tree(events)
+    filtered = [
+        item
+        for item in tree
+        if not (isinstance(item, EventTreeSpan) and item.name == "scorers")
+    ]
+    if len(filtered) == len(tree):
+        return events  # no scorers found, return original
+    return list(event_sequence(filtered))
 
 
 def span_messages(

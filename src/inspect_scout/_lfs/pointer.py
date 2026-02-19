@@ -49,7 +49,7 @@ def parse_lfs_pointer(file_path: Path) -> LFSPointer | None:
 def _parse_pointer_text(text: str) -> LFSPointer | None:
     """Parse LFS pointer content from a string."""
     lines = text.strip().splitlines()
-    if len(lines) != 3:
+    if len(lines) < 3:
         return None
 
     if lines[0] != LFS_POINTER_VERSION:

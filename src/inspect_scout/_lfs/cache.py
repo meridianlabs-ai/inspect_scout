@@ -172,11 +172,7 @@ def _prune_cache(cache_dir: Path, source_rel_paths: set[Path]) -> None:
 
 def _walk_files(directory: Path) -> list[Path]:
     """Recursively list all files in a directory."""
-    files: list[Path] = []
-    for entry in sorted(directory.rglob("*")):
-        if entry.is_file():
-            files.append(entry)
-    return files
+    return [e for e in sorted(directory.rglob("*")) if e.is_file()]
 
 
 def _copy_file(src: Path, dest: Path) -> None:
@@ -195,7 +191,7 @@ def _try_create_marker(marker_file: Path) -> bool:
         return False
 
 
-def _wait_for_marker(marker_file: Path, timeout_seconds: int = 60) -> None:
+def _wait_for_marker(marker_file: Path, timeout_seconds: int = 180) -> None:
     """Wait for a marker file to be removed (another process finished).
 
     If the marker still exists after timeout, removes it as likely orphaned.

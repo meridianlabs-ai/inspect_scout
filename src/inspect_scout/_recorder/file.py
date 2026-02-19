@@ -24,6 +24,7 @@ from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
     RecorderBuffer,
+    _sanitize_component,
     cleanup_buffer_dir,
     read_scan_errors,
     read_scan_summary,
@@ -118,6 +119,13 @@ class FileRecorder(ScanRecorder):
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
         synced_ids = _read_synced_ids(self._scan_dir, self._scan_spec)
+
+        # Seed buffer with remote parquets to prevent data loss on compaction
+        buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
+        await _seed_buffer_from_remote(
+            self._scan_dir, self._scan_spec, buffer_dir, synced_ids
+        )
+
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(), self.scan_spec, synced_ids=synced_ids
         )
@@ -451,6 +459,53 @@ async def _write_scanner_parquets(
                 await fs.write_file(
                     _scanner_parquet_file(scan_dir, scanner), parquet_bytes
                 )
+
+
+async def _seed_buffer_from_remote(
+    scan_dir: UPath,
+    scan_spec: ScanSpec,
+    buffer_dir: UPath,
+    synced_ids: set[tuple[str, str]],
+) -> None:
+    """Download remote scanner parquets into the local buffer on resume.
+
+    When resuming a scan on a different machine (or after disk loss), the local
+    buffer may be missing. Without seeding, ``scanner_table()`` compaction would
+    overwrite the remote parquets with only newly-scanned results, losing all
+    previously-flushed data.
+
+    If the buffer directory already exists, it's from an interrupted run on this
+    machine — skip seeding and use the existing buffer.
+    """
+    if buffer_dir.exists():
+        return
+
+    scanners_with_remote = {scanner for _, scanner in synced_ids}
+    if not scanners_with_remote:
+        return
+
+    log = logging.getLogger(__name__)
+    log.info("Seeding buffer from remote scan directory")
+
+    async with AsyncFilesystem() as fs:
+        for scanner in sorted(scanners_with_remote):
+            remote_path = (scan_dir / f"{scanner}.parquet").as_posix()
+            sdir = buffer_dir / f"scanner={_sanitize_component(scanner)}"
+            sdir.mkdir(parents=True, exist_ok=True)
+            local_path = sdir / "_synced.parquet"
+            try:
+                data = await fs.read_file(remote_path)
+                local_path.write_bytes(data)
+            except Exception as e:
+                log.warning("Failed to seed %s from remote: %s", scanner, e)
+
+        remote_summary = (scan_dir / SCAN_SUMMARY).as_posix()
+        local_summary = buffer_dir / SCAN_SUMMARY
+        try:
+            data = await fs.read_file(remote_summary)
+            local_summary.write_bytes(data)
+        except Exception as e:
+            log.warning("Failed to seed summary from remote: %s", e)
 
 
 def _read_synced_ids(scan_dir: UPath, spec: ScanSpec) -> set[tuple[str, str]]:

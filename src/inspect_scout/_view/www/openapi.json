@@ -119,6 +119,17 @@
             ],
             "title": "Limit"
           },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
+          },
           "log_level": {
             "anyOf": [
               {
@@ -1243,16 +1254,6 @@
             "default": null,
             "title": "Tokens Before"
           },
-          "type": {
-            "default": "summary",
-            "enum": [
-              "summary",
-              "edit",
-              "trim"
-            ],
-            "title": "Type",
-            "type": "string"
-          },
           "uuid": {
             "anyOf": [
               {
@@ -1273,8 +1274,7 @@
         "required": [
           "timestamp",
           "working_start",
-          "event",
-          "type"
+          "event"
         ],
         "title": "CompactionEvent",
         "type": "object"
@@ -5212,18 +5212,6 @@
             "default": null,
             "title": "Reasoning Tokens"
           },
-          "total_cost": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total Cost"
-          },
           "total_tokens": {
             "default": 0,
             "title": "Total Tokens",
@@ -5355,6 +5343,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "log_level": {
             "anyOf": [
@@ -5641,6 +5640,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "log_level": {
             "anyOf": [
@@ -6358,7 +6368,6 @@
               "time",
               "working",
               "token",
-              "cost",
               "operator",
               "custom"
             ],
@@ -6623,6 +6632,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "log_level": {
             "anyOf": [
@@ -6963,6 +6983,17 @@
               }
             ],
             "title": "Limit"
+          },
+          "log_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Buffer"
           },
           "max_processes": {
             "anyOf": [

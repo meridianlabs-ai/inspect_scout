@@ -84,6 +84,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         max_processes=scanjob.max_processes,
         limit=scanjob.limit,
         shuffle=scanjob.shuffle,
+        log_buffer=scanjob.log_buffer,
     )
 
     # resolve model

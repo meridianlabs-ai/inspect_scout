@@ -496,6 +496,8 @@ export interface components {
             home_dir: string;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -885,12 +887,6 @@ export interface components {
              * @default null
              */
             tokens_before: number | null;
-            /**
-             * Type
-             * @default summary
-             * @enum {string}
-             */
-            type: "summary" | "edit" | "trim";
             /**
              * Uuid
              * @default null
@@ -2206,11 +2202,6 @@ export interface components {
              */
             reasoning_tokens: number | null;
             /**
-             * Total Cost
-             * @default null
-             */
-            total_cost: number | null;
-            /**
              * Total Tokens
              * @default 0
              */
@@ -2259,6 +2250,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2317,6 +2310,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Output"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2564,7 +2559,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "message" | "time" | "working" | "token" | "cost" | "operator" | "custom";
+            type: "message" | "time" | "working" | "token" | "operator" | "custom";
             /**
              * Uuid
              * @default null
@@ -2679,6 +2674,8 @@ export interface components {
             generate_config?: components["schemas"]["GenerateConfig-Input"] | null;
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Log Level */
             log_level?: ("debug" | "http" | "sandbox" | "info" | "warning" | "error" | "critical" | "notset") | null;
             /** Max Processes */
@@ -2786,6 +2783,8 @@ export interface components {
         ScanOptions: {
             /** Limit */
             limit?: number | null;
+            /** Log Buffer */
+            log_buffer?: number | null;
             /** Max Processes */
             max_processes?: number | null;
             /**

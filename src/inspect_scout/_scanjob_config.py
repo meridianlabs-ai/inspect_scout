@@ -74,6 +74,9 @@ class ScanJobConfig(BaseModel):
     metadata: dict[str, Any] | None = Field(default=None)
     """Metadata for this scan."""
 
+    log_buffer: int | None = Field(default=None)
+    """Flush intermediate results to the scan directory every N transcripts."""
+
     log_level: (
         Literal[
             "debug", "http", "sandbox", "info", "warning", "error", "critical", "notset"

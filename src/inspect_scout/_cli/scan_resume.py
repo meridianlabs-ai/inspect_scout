@@ -11,8 +11,8 @@ from .scan import scan_command
 @click.argument("scan_location", nargs=1)
 @click.option(
     "--log-buffer",
-    type=int,
-    help="Flush intermediate results to the scan directory every N transcripts.",
+    type=click.IntRange(min=1),
+    help="Flush intermediate results to the scan directory every N transcripts. If not specified, uses the value from the original scan.",
     envvar="SCOUT_SCAN_LOG_BUFFER",
 )
 @common_options

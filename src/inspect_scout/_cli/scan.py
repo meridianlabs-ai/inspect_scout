@@ -349,7 +349,7 @@ class ScanGroup(click.Group):
 )
 @click.option(
     "--log-buffer",
-    type=int,
+    type=click.IntRange(min=1),
     help="Flush intermediate results to the scan directory every N transcripts.",
     envvar="SCOUT_SCAN_LOG_BUFFER",
 )

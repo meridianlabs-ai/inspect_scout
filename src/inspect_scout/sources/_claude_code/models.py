@@ -114,7 +114,7 @@ class ToolUseResult(BaseModel):
     status: str = "completed"
     agentId: str | None = None
     prompt: str | None = None
-    content: list[dict[str, Any]] = Field(default_factory=list)
+    content: list[dict[str, Any]] | str = Field(default_factory=list)
     totalDurationMs: int | None = None
     totalTokens: int | None = None
     totalToolUseCount: int | None = None
@@ -150,7 +150,7 @@ class BaseEvent(BaseModel):
     uuid: str
     parentUuid: str | None = None
     timestamp: str
-    sessionId: str
+    sessionId: str | None = None
     type: str
     isSidechain: bool = False
     cwd: str | None = None
@@ -170,7 +170,7 @@ class UserEvent(BaseEvent):
     type: Literal["user"] = "user"
     message: UserMessage
     isCompactSummary: bool = False
-    toolUseResult: ToolUseResult | None = None
+    toolUseResult: ToolUseResult | list[dict[str, Any]] | str | None = None
 
 
 class AssistantEvent(BaseEvent):
@@ -189,32 +189,11 @@ class SystemEvent(BaseEvent):
     compactMetadata: CompactMetadata | None = None
 
 
-class ProgressEvent(BaseEvent):
-    """Progress/streaming event (to be skipped)."""
-
-    type: Literal["progress"] = "progress"
-
-
-class FileHistoryEvent(BaseEvent):
-    """File history snapshot event (to be skipped)."""
-
-    type: Literal["file-history-snapshot"] = "file-history-snapshot"
-
-
-class QueueOperationEvent(BaseEvent):
-    """Queue operation event (to be skipped)."""
-
-    type: Literal["queue-operation"] = "queue-operation"
-
-
 # Union of all event types
 Event = Annotated[
     UserEvent
     | AssistantEvent
-    | SystemEvent
-    | ProgressEvent
-    | FileHistoryEvent
-    | QueueOperationEvent,
+    | SystemEvent,
     Field(discriminator="type"),
 ]
 
@@ -224,17 +203,14 @@ Event = Annotated[
 # =============================================================================
 
 
-def parse_event(raw: dict[str, Any]) -> BaseEvent:
+def parse_event(raw: dict[str, Any]) -> BaseEvent | None:
     """Parse a raw event dict into a typed event model.
 
     Args:
         raw: Raw event dictionary from JSONL
 
     Returns:
-        Typed event model
-
-    Raises:
-        ValidationError: If the event doesn't match expected schema
+        Typed event model, or None for unsupported event types.
     """
     event_type = raw.get("type", "unknown")
 
@@ -244,19 +220,20 @@ def parse_event(raw: dict[str, Any]) -> BaseEvent:
         return AssistantEvent.model_validate(raw)
     elif event_type == "system":
         return SystemEvent.model_validate(raw)
-    elif event_type == "progress":
-        return ProgressEvent.model_validate(raw)
-    elif event_type == "file-history-snapshot":
-        return FileHistoryEvent.model_validate(raw)
-    elif event_type == "queue-operation":
-        return QueueOperationEvent.model_validate(raw)
     else:
-        # For unknown event types, use base model
-        return BaseEvent.model_validate(raw)
+        return None
+
+
+# Event types we know how to parse. Unknown types are silently skipped
+# since the Claude Code JSONL format may add new event types over time.
+_SUPPORTED_EVENT_TYPES = {"user", "assistant", "system"}
 
 
 def parse_events(raw_events: list[dict[str, Any]]) -> list[BaseEvent]:
     """Parse a list of raw events into typed event models.
+
+    Only parses known event types; unknown types are silently skipped
+    since the Claude Code JSONL format is a moving target.
 
     Args:
         raw_events: List of raw event dictionaries
@@ -264,7 +241,13 @@ def parse_events(raw_events: list[dict[str, Any]]) -> list[BaseEvent]:
     Returns:
         List of typed event models
     """
-    return [parse_event(e) for e in raw_events]
+    result: list[BaseEvent] = []
+    for e in raw_events:
+        if e.get("type") in _SUPPORTED_EVENT_TYPES:
+            parsed = parse_event(e)
+            if parsed is not None:
+                result.append(parsed)
+    return result
 
 
 def parse_content_block(

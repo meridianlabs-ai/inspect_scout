@@ -10,10 +10,8 @@ from .models import (
     AssistantEvent,
     BaseEvent,
     ContentToolUse,
-    FileHistoryEvent,
-    ProgressEvent,
-    QueueOperationEvent,
     SystemEvent,
+    ToolUseResult,
     UserEvent,
 )
 
@@ -40,19 +38,9 @@ def is_assistant_event(event: BaseEvent) -> bool:
     return isinstance(event, AssistantEvent)
 
 
-def is_progress_event(event: BaseEvent) -> bool:
-    """Check if event is a progress/streaming event."""
-    return isinstance(event, ProgressEvent)
-
-
 def is_system_event(event: BaseEvent) -> bool:
     """Check if event is a system event."""
     return isinstance(event, SystemEvent)
-
-
-def is_file_history_event(event: BaseEvent) -> bool:
-    """Check if event is a file history snapshot."""
-    return isinstance(event, FileHistoryEvent)
 
 
 def is_clear_command(event: BaseEvent) -> bool:
@@ -174,10 +162,8 @@ def is_skill_command(event: BaseEvent) -> str | None:
 def should_skip_event(event: BaseEvent) -> bool:
     """Check if an event should be skipped during processing.
 
-    Events to skip:
-    - progress events (streaming indicators)
-    - queue-operation events
-    - file-history-snapshot events
+    Only checks events that pass the allowlist in parse_events()
+    (user, assistant, system). Events to skip:
     - turn_duration system events
     - /clear and /exit commands
 
@@ -187,18 +173,6 @@ def should_skip_event(event: BaseEvent) -> bool:
     Returns:
         True if the event should be skipped
     """
-    # Skip progress events
-    if isinstance(event, ProgressEvent):
-        return True
-
-    # Skip queue operations
-    if isinstance(event, QueueOperationEvent):
-        return True
-
-    # Skip file history snapshots
-    if isinstance(event, FileHistoryEvent):
-        return True
-
     # Skip turn duration events
     if is_turn_duration_event(event):
         return True
@@ -289,7 +263,7 @@ def get_agent_id(event: BaseEvent) -> str | None:
     if not isinstance(event, UserEvent):
         return None
 
-    if event.toolUseResult and event.toolUseResult.agentId:
+    if isinstance(event.toolUseResult, ToolUseResult) and event.toolUseResult.agentId:
         return event.toolUseResult.agentId
 
     return None

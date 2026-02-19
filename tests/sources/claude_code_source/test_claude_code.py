@@ -28,9 +28,6 @@ from inspect_scout.sources._claude_code.models import (
     AssistantEvent,
     AssistantMessage,
     CompactMetadata,
-    FileHistoryEvent,
-    ProgressEvent,
-    QueueOperationEvent,
     SystemEvent,
     Usage,
     UserEvent,
@@ -143,14 +140,6 @@ class TestEventDetection:
             message=AssistantMessage(content=[]),
         )
         assert get_event_type(assistant_event) == "assistant"
-
-        progress_event = ProgressEvent(
-            uuid="3",
-            timestamp="2026-01-01T00:00:00Z",
-            sessionId="test",
-            type="progress",
-        )
-        assert get_event_type(progress_event) == "progress"
 
     def test_is_user_event(self) -> None:
         """Test user event detection."""
@@ -267,30 +256,6 @@ class TestEventDetection:
 
     def test_should_skip_event(self) -> None:
         """Test event skip detection."""
-        progress = ProgressEvent(
-            uuid="1",
-            timestamp="2026-01-01T00:00:00Z",
-            sessionId="test",
-            type="progress",
-        )
-        assert should_skip_event(progress)
-
-        queue_op = QueueOperationEvent(
-            uuid="2",
-            timestamp="2026-01-01T00:00:00Z",
-            sessionId="test",
-            type="queue-operation",
-        )
-        assert should_skip_event(queue_op)
-
-        file_history = FileHistoryEvent(
-            uuid="3",
-            timestamp="2026-01-01T00:00:00Z",
-            sessionId="test",
-            type="file-history-snapshot",
-        )
-        assert should_skip_event(file_history)
-
         turn_duration = SystemEvent(
             uuid="4",
             timestamp="2026-01-01T00:00:00Z",

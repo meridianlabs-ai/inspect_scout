@@ -247,6 +247,22 @@ class Timeline(BaseModel):
     description: str
     root: TimelineSpan
 
+    def __repr__(self) -> str:
+        return self.render()
+
+    def render(self, width: int | None = None) -> str:
+        """Render an ASCII swimlane diagram of the timeline.
+
+        Args:
+            width: Total width of the output in characters. Defaults to 120.
+
+        Returns:
+            Multi-line string with the ASCII diagram.
+        """
+        from inspect_scout._transcript.timeline_repr import render_timeline
+
+        return render_timeline(self, width=width)
+
 
 # =============================================================================
 # Builder
@@ -617,7 +633,10 @@ def _process_children(
         # Standard processing - no branch detection at build time
         content: list[TimelineEvent | TimelineSpan] = []
         for item in children:
-            content.append(_tree_item_to_node(item, has_explicit_branches))
+            node = _tree_item_to_node(item, has_explicit_branches)
+            if isinstance(node, TimelineSpan) and not node.content:
+                continue
+            content.append(node)
         return content, []
 
     # Explicit branch mode: collect branch spans and build TimelineBranch objects
@@ -634,7 +653,10 @@ def _process_children(
         for span in branch_run:
             branch_content: list[TimelineEvent | TimelineSpan] = []
             for child in span.children:
-                branch_content.append(_tree_item_to_node(child, has_explicit_branches))
+                node = _tree_item_to_node(child, has_explicit_branches)
+                if isinstance(node, TimelineSpan) and not node.content:
+                    continue
+                branch_content.append(node)
             branch_input = _get_branch_input(branch_content)
             forked_at = (
                 _find_forked_at(parent_content, branch_input)
@@ -651,7 +673,10 @@ def _process_children(
             if branch_run:
                 branches.extend(_flush_branch_run(branch_run, content))
                 branch_run = []
-            content.append(_tree_item_to_node(item, has_explicit_branches))
+            node = _tree_item_to_node(item, has_explicit_branches)
+            if isinstance(node, TimelineSpan) and not node.content:
+                continue
+            content.append(node)
 
     if branch_run:
         branches.extend(_flush_branch_run(branch_run, content))
@@ -985,6 +1010,7 @@ def _detect_auto_spans_for_span(span: TimelineSpan) -> None:
         dict[str, Any]
     ] = []  # Each: {"items": [...], "system_prompt_fp": str}
     output_fp_to_thread: dict[str, int] = {}  # output fingerprint → thread index
+    compaction_continue_thread: int | None = None  # thread to continue after compaction
     preamble: list[TimelineEvent | TimelineSpan] = []
 
     for item in span.content:
@@ -1005,17 +1031,30 @@ def _detect_auto_spans_for_span(span: TimelineSpan) -> None:
                             output_fp_to_thread[new_output_fp] = thread_idx
                         continue
 
-            # New thread
+            # Check compaction continuation: same system prompt → same agent
             sys_fp = _system_prompt_fingerprint(input_msgs)
+            if compaction_continue_thread is not None:
+                cont_fp = threads[compaction_continue_thread]["system_prompt_fp"]
+                if sys_fp == cont_fp:
+                    threads[compaction_continue_thread]["items"].append(item)
+                    new_output_fp = _get_output_fingerprint(item.event)
+                    if new_output_fp:
+                        output_fp_to_thread[new_output_fp] = compaction_continue_thread
+                    compaction_continue_thread = None
+                    continue
+                compaction_continue_thread = None
+
+            # New thread
             threads.append({"items": [item], "system_prompt_fp": sys_fp})
             output_fp = _get_output_fingerprint(item.event)
             if output_fp:
                 output_fp_to_thread[output_fp] = len(threads) - 1
         elif isinstance(item, TimelineEvent) and item.event.event == "compaction":
-            # Hard boundary: reset fingerprint tracking
+            # Hard boundary: reset fingerprint tracking but preserve continuity
             output_fp_to_thread.clear()
             if threads:
                 threads[-1]["items"].append(item)
+                compaction_continue_thread = len(threads) - 1
             else:
                 preamble.append(item)
         else:

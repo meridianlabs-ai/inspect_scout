@@ -246,19 +246,41 @@ def _find_sessions_in_directory(
     return sessions
 
 
-def find_agent_file(project_dir: Path, agent_id: str) -> Path | None:
+def find_agent_file(
+    project_dir: Path,
+    agent_id: str,
+    session_file: Path | None = None,
+) -> Path | None:
     """Find an agent session file by ID.
+
+    Searches for agent files in the session's subagents directory,
+    falling back to legacy flat layout.
 
     Args:
         project_dir: The project directory containing session files
         agent_id: The agent ID (e.g., "a038f97")
+        session_file: Path to the parent session JSONL file. When provided,
+            searches {session_file.stem}/subagents/ for the agent file.
 
     Returns:
         Path to agent file, or None if not found
     """
+    # Check session-scoped subagents directory
+    if session_file is not None:
+        agent_file = (
+            session_file.parent
+            / session_file.stem
+            / "subagents"
+            / f"agent-{agent_id}.jsonl"
+        )
+        if agent_file.exists():
+            return agent_file
+
+    # Fall back to legacy location (direct in project dir)
     agent_file = project_dir / f"agent-{agent_id}.jsonl"
     if agent_file.exists():
         return agent_file
+
     return None
 
 

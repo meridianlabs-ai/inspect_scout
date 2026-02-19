@@ -190,11 +190,15 @@ async def _create_transcript(
 
     # Convert to Scout events using process_parsed_events (already Pydantic models)
     scout_events: list[Event] = []
-    async for event in process_parsed_events(events, project_dir):
+    async for event in process_parsed_events(events, project_dir, session_file=session_path):
         scout_events.append(event)
 
     # Extract messages from Scout events
     messages: list[ChatMessage] = extract_messages_from_scout_events(scout_events)
+
+    # Skip transcripts with no messages (e.g., system-only segments)
+    if not messages:
+        return None
 
     # Apply stable message IDs
     apply_ids = stable_message_ids()
@@ -216,13 +220,6 @@ async def _create_transcript(
     # Source URI
     source_uri = get_source_uri(session_path, transcript_id)
 
-    # Check for any errors in events
-    error: str | None = None
-    for evt in events:
-        if evt.type == "error":
-            # Error events would need a specific model, for now skip
-            pass
-
     return Transcript(
         transcript_id=transcript_id,
         source_type=CLAUDE_CODE_SOURCE_TYPE,
@@ -241,7 +238,7 @@ async def _create_transcript(
         message_count=len(messages),
         total_tokens=total_tokens if total_tokens > 0 else None,
         total_time=total_time if total_time > 0 else None,
-        error=error,
+        error=None,
         limit=None,
         messages=messages,
         events=scout_events,

@@ -1,5 +1,5 @@
 {
-  "description": "CompactionEvent as hard boundary: M1 and M3 have identical inputs but are separated by compaction, so no branch is detected. Span detection resets at compaction, producing 2 auto-spans.",
+  "description": "CompactionEvent as hard boundary: M1 and M3 have identical inputs but are separated by compaction. Sequential same-agent auto-spans get flattened back into main.",
   "events": [
     {
       "event": "model",
@@ -79,22 +79,8 @@
       "name": "main",
       "source": {"source": "span", "span_id": "main"},
       "branches": [],
-      "children": [
-        {
-          "id": "auto-span-0",
-          "name": "Agent",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-001", "e-002", "e-compact"],
-          "total_tokens": 300
-        },
-        {
-          "id": "auto-span-1",
-          "name": "Agent",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-003", "e-004"],
-          "total_tokens": 300
-        }
-      ],
+      "children": [],
+      "event_uuids": ["e-001", "e-002", "e-compact", "e-003", "e-004"],
       "total_tokens": 600
     },
     "scoring": null

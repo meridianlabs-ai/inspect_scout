@@ -344,9 +344,7 @@ async def scan_async(
     recorder = scan_recorder_for_location(scanjob._scans)
     await recorder.init(scan.spec, scanjob._scans)
 
-    return await _scan_async(
-        scan=scan, recorder=recorder, fail_on_error=fail_on_error
-    )
+    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 
 
 def scan_resume(
@@ -429,9 +427,7 @@ async def scan_resume_async(
     # create recorder and scan
     recorder = scan_recorder_for_location(scan_location)
     await recorder.resume(scan_location)
-    return await _scan_async(
-        scan=scan, recorder=recorder, fail_on_error=fail_on_error
-    )
+    return await _scan_async(scan=scan, recorder=recorder, fail_on_error=fail_on_error)
 
 
 def scan_complete(

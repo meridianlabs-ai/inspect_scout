@@ -494,6 +494,7 @@ class _EventProcessor:
                         timestamp=timestamp,
                     )
                 )
+                self.accumulated_messages.clear()
         return result
 
     async def flush_pending(self) -> list[Event]:
@@ -655,7 +656,7 @@ async def claude_code_events(
 
         # Skip non-conversation events
         event_type = raw_event.get("type")
-        if event_type not in ("user", "assistant"):
+        if event_type not in ("user", "assistant", "system"):
             continue
 
         # Parse to Pydantic model
@@ -712,6 +713,15 @@ async def claude_code_events(
 
             timestamp = proc.update_timestamp(pydantic_event)
             for evt in await proc.process_user(pydantic_event, timestamp):
+                yield evt
+
+        elif isinstance(pydantic_event, SystemEvent):
+            # Flush any pending assistant fragments before processing system event
+            async for evt in _flush_assistant_buffer():
+                yield evt
+
+            timestamp = proc.update_timestamp(pydantic_event)
+            for evt in await proc.process_system(pydantic_event, timestamp):
                 yield evt
 
     # Flush any remaining assistant fragments

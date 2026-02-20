@@ -427,6 +427,95 @@ class TestProcessParsedEvents:
         assert agent_spans[0].name == "Explore"
 
 
+    @pytest.mark.asyncio
+    async def test_compaction_resets_accumulated_messages(self) -> None:
+        """Post-compaction ModelEvent.input contains only post-compaction messages."""
+        events = [
+            # Pre-compaction: user + assistant
+            UserEvent(
+                uuid="1",
+                timestamp="2026-01-15T12:00:00Z",
+                sessionId="test",
+                type="user",
+                message=UserMessage(content="Hello before compaction"),
+            ),
+            AssistantEvent(
+                uuid="2",
+                parentUuid="1",
+                timestamp="2026-01-15T12:00:01Z",
+                sessionId="test",
+                type="assistant",
+                message=AssistantMessage(
+                    model="claude-sonnet-4-20250514",
+                    content=[{"type": "text", "text": "Response before compaction"}],
+                    usage=Usage(input_tokens=50, output_tokens=20),
+                ),
+            ),
+            # Compaction boundary
+            SystemEvent(
+                uuid="3",
+                timestamp="2026-01-15T12:01:00Z",
+                sessionId="test",
+                type="system",
+                subtype="compact_boundary",
+                content="Conversation compacted",
+                compactMetadata=CompactMetadata(trigger="auto", preTokens=100000),
+            ),
+            # Post-compaction: summary + new user + assistant
+            UserEvent(
+                uuid="4",
+                timestamp="2026-01-15T12:01:01Z",
+                sessionId="test",
+                type="user",
+                message=UserMessage(content="Summary of previous conversation"),
+            ),
+            UserEvent(
+                uuid="5",
+                timestamp="2026-01-15T12:01:02Z",
+                sessionId="test",
+                type="user",
+                message=UserMessage(content="Continue the work"),
+            ),
+            AssistantEvent(
+                uuid="6",
+                parentUuid="5",
+                timestamp="2026-01-15T12:01:03Z",
+                sessionId="test",
+                type="assistant",
+                message=AssistantMessage(
+                    model="claude-sonnet-4-20250514",
+                    content=[{"type": "text", "text": "Continuing after compaction"}],
+                    usage=Usage(input_tokens=80, output_tokens=15),
+                ),
+            ),
+        ]
+
+        result: list[Any] = []
+        async for evt in process_parsed_events(events, max_depth=0):
+            result.append(evt)
+
+        model_events = [e for e in result if isinstance(e, ModelEvent)]
+        assert len(model_events) == 2
+
+        # Pre-compaction ModelEvent should have the user message
+        pre_input = model_events[0].input
+        pre_content = [
+            m.content for m in pre_input if hasattr(m, "content")
+        ]
+        assert any("Hello before compaction" in str(c) for c in pre_content)
+
+        # Post-compaction ModelEvent should NOT have pre-compaction messages
+        post_input = model_events[1].input
+        post_content = [
+            m.content for m in post_input if hasattr(m, "content")
+        ]
+        assert not any("Hello before compaction" in str(c) for c in post_content)
+        assert not any("Response before compaction" in str(c) for c in post_content)
+        # But should have the summary and new user message
+        assert any("Summary of previous conversation" in str(c) for c in post_content)
+        assert any("Continue the work" in str(c) for c in post_content)
+
+
 class TestSumScoutTokens:
     """Tests for sum_scout_tokens()."""
 

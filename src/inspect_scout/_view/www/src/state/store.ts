@@ -272,7 +272,7 @@ interface StoreState {
 
 const createDebouncedPersistStorage = (
   storage: ReturnType<typeof createJSONStorage>,
-  delay = 2000
+  delay = 500
 ) => {
   if (!storage) {
     throw new Error("Storage is required");

@@ -325,9 +325,16 @@
 }
 
 .breadcrumbCurrent {
+  background: none;
+  border: none;
+  cursor: pointer;
   color: var(--vscode-foreground);
   font-size: var(--inspect-font-size-smaller);
   padding: 0 2px;
+}
+
+.breadcrumbCurrent:hover {
+  text-decoration: underline;
 }
 
 .breadcrumbSelection {

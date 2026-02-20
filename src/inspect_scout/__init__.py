@@ -61,6 +61,7 @@ from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
 from ._transcript.messages import (
     MessagesSegment,
+    messages_by_compaction,
     segment_messages,
     span_messages,
     transcript_messages,
@@ -171,6 +172,7 @@ __all__ = [
     "message_numbering",
     "messages_as_str",
     "span_messages",
+    "messages_by_compaction",
     "segment_messages",
     "MessagesSegment",
     "transcript_messages",

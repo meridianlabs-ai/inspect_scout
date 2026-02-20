@@ -19,6 +19,7 @@ from inspect_ai.model._model_output import ChatCompletionChoice
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesSegment,
+    messages_by_compaction,
     segment_messages,
     span_messages,
     transcript_messages,
@@ -940,3 +941,114 @@ async def test_transcript_messages_with_messages_only() -> None:
 
     assert len(results) == 1
     assert not isinstance(results[0], TimelineMessages)
+
+
+# -- messages_by_compaction tests --
+
+
+def test_messages_by_compaction_no_compaction() -> None:
+    """No CompactionEvents → single region with last ModelEvent's messages."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[
+            _make_model_event(input=[_sys, _user1], output_content="First"),
+            _make_model_event(
+                input=[_sys, _user1, _asst1, _user2], output_content="Second"
+            ),
+        ],
+    )
+
+    regions = messages_by_compaction(span)
+
+    assert len(regions) == 1
+    assert regions[0][0] is _sys
+    assert regions[0][1] is _user1
+    assert regions[0][2] is _asst1
+    assert regions[0][3] is _user2
+    assert regions[0][-1].text == "Second"
+    assert len(regions[0]) == 5
+
+
+def test_messages_by_compaction_summary() -> None:
+    """Two summary compactions → three regions."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user3], output_content="Seg 2"),
+    ]
+    span = _make_timeline_span("Agent", events=events)
+
+    regions = messages_by_compaction(span)
+
+    assert len(regions) == 3
+    assert regions[0][0] is _user1
+    assert regions[0][-1].text == "Seg 0"
+    assert regions[1][0] is _user2
+    assert regions[1][-1].text == "Seg 1"
+    assert regions[2][0] is _user3
+    assert regions[2][-1].text == "Seg 2"
+
+
+def test_messages_by_compaction_empty() -> None:
+    """No ModelEvents → empty list."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_compaction_event(type="summary")],
+    )
+
+    regions = messages_by_compaction(span)
+
+    assert regions == []
+
+
+def test_messages_by_compaction_timeline_span() -> None:
+    """Accepts TimelineSpan directly."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+
+    regions = messages_by_compaction(span)
+
+    assert len(regions) == 1
+    assert regions[0][0] is _user1
+    assert regions[0][-1].text == "Response"
+
+
+def test_messages_by_compaction_timeline() -> None:
+    """Accepts Timeline (extracts .root)."""
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+    tl = Timeline(name="Default", description="", root=span)
+
+    regions = messages_by_compaction(tl)
+
+    assert len(regions) == 1
+    assert regions[0][0] is _user1
+    assert regions[0][-1].text == "Response"
+
+
+def test_messages_by_compaction_mixed_types() -> None:
+    """Mix of summary/trim/edit compactions all create region boundaries."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Region 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Region 1"),
+        _make_compaction_event(type="trim"),
+        _make_model_event(input=[_user3], output_content="Region 2"),
+        _make_compaction_event(type="edit"),
+        _make_model_event(input=[_sys], output_content="Region 3"),
+    ]
+    span = _make_timeline_span("Agent", events=events)
+
+    regions = messages_by_compaction(span)
+
+    assert len(regions) == 4
+    assert regions[0][-1].text == "Region 0"
+    assert regions[1][-1].text == "Region 1"
+    assert regions[2][-1].text == "Region 2"
+    assert regions[3][-1].text == "Region 3"

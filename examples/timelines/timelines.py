@@ -10,6 +10,10 @@ from inspect_scout import (
 )
 from inspect_scout.sources import claude_code
 
+# async def read_all_transcripts() -> None:
+#     async for t in claude_code():
+#         print(t.source_uri)
+
 
 async def import_transcripts() -> None:
     shutil.rmtree("cc-transcripts", ignore_errors=True)
@@ -28,7 +32,8 @@ async def read_transcripts() -> None:
 
 
 async def main() -> None:
-    await import_transcripts()
+    # await read_all_transcripts()
+    # await import_transcripts()
     await read_transcripts()
 
 

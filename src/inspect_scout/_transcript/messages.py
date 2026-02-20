@@ -20,7 +20,7 @@ from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
 
 from inspect_scout._scanner.extract import MessagesAsStr
-from inspect_scout._transcript.timeline import TimelineEvent, TimelineSpan
+from inspect_scout._transcript.timeline import Timeline, TimelineEvent, TimelineSpan
 
 if TYPE_CHECKING:
     from inspect_scout._transcript.types import Transcript
@@ -359,6 +359,54 @@ def span_messages(
         merged.extend(_segment_messages(current_model_events[-1]))
 
     return merged
+
+
+def messages_by_compaction(
+    source: Timeline | TimelineSpan,
+) -> list[list[ChatMessage]]:
+    """Extract messages grouped by compaction region.
+
+    Unlike ``span_messages()`` which merges messages across compaction
+    boundaries into a single flat list, this function returns one inner
+    list per compaction region, giving callers visibility into the
+    compaction structure.
+
+    Args:
+        source: A ``Timeline`` (extracts ``.root``) or ``TimelineSpan``.
+
+    Returns:
+        One ``list[ChatMessage]`` per compaction region. Each inner list
+        contains the last ``ModelEvent``'s input + output for that region.
+        If there are no ``CompactionEvent``s, returns a single-element
+        list. If there are no ``ModelEvent``s, returns ``[]``.
+    """
+    # Normalize to TimelineSpan
+    if isinstance(source, Timeline):
+        span = source.root
+    else:
+        span = source
+
+    # Extract events from TimelineSpan
+    events = [item.event for item in span.content if isinstance(item, TimelineEvent)]
+
+    # Walk events, collecting ModelEvents into the current region
+    regions: list[list[ChatMessage]] = []
+    current_model_events: list[ModelEvent] = []
+
+    for event in events:
+        if isinstance(event, ModelEvent):
+            current_model_events.append(event)
+        elif isinstance(event, CompactionEvent):
+            # Flush the current region
+            if current_model_events:
+                regions.append(_segment_messages(current_model_events[-1]))
+            current_model_events = []
+
+    # Flush the final region
+    if current_model_events:
+        regions.append(_segment_messages(current_model_events[-1]))
+
+    return regions
 
 
 def _segment_messages(model_event: ModelEvent) -> list[ChatMessage]:

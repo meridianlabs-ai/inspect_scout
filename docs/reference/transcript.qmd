@@ -32,7 +32,9 @@ reference: "inspect_scout"
 ### segment_messages
 ### span_messages
 ### MessagesSegment
+### build_timeline
 ### filter_timeline
+### messages_by_compaction
 
 ## Observe
 

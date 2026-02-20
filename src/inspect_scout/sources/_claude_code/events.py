@@ -103,14 +103,16 @@ def to_model_event(
     usage_data = extract_usage(event)
     usage = None
     if usage_data:
+        input_tokens = usage_data.get("input_tokens", 0)
+        output_tokens = usage_data.get("output_tokens", 0)
+        cache_read = usage_data.get("cache_read_input_tokens", 0)
+        cache_create = usage_data.get("cache_creation_input_tokens", 0)
         usage = ModelUsage(
-            input_tokens=usage_data.get("input_tokens", 0),
-            output_tokens=usage_data.get("output_tokens", 0),
-            total_tokens=(
-                usage_data.get("input_tokens", 0) + usage_data.get("output_tokens", 0)
-            ),
-            input_tokens_cache_read=usage_data.get("cache_read_input_tokens"),
-            input_tokens_cache_write=usage_data.get("cache_creation_input_tokens"),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens + cache_read + cache_create,
+            input_tokens_cache_read=cache_read if cache_read else None,
+            input_tokens_cache_write=cache_create if cache_create else None,
         )
 
     # Determine stop reason

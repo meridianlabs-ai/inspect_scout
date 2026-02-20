@@ -425,6 +425,25 @@ def get_first_timestamp(events: list[BaseEvent]) -> str | None:
     return timestamps[0]
 
 
+def sum_scout_tokens(events: list[Event]) -> int:
+    """Sum total tokens from converted Scout ModelEvent objects.
+
+    Unlike sum_tokens() which only counts main-session BaseEvent tokens,
+    this counts tokens from all ModelEvents including loaded subagent events.
+
+    Args:
+        events: List of Inspect AI events
+
+    Returns:
+        Total token count across all ModelEvents
+    """
+    total = 0
+    for event in events:
+        if isinstance(event, ModelEvent) and event.output and event.output.usage:
+            total += event.output.usage.total_tokens
+    return total
+
+
 def extract_messages_from_scout_events(events: list[Event]) -> list[ChatMessage]:
     """Extract conversation messages from Inspect AI events.
 

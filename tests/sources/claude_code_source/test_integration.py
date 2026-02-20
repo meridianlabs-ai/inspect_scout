@@ -419,6 +419,36 @@ async def test_token_counting(fixtures_dir: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_token_counting_includes_subagents(
+    streaming_events_with_subagent: list[dict[str, Any]],
+) -> None:
+    """Token counts include both main and subagent ModelEvent usage.
+
+    The streaming_events_with_subagent fixture has:
+    - Main assistant (main-002): input=100, output=50 → 150
+    - Subagent assistant (sub-002): input=80, output=30 → 110
+    - Subagent assistant (sub-004): input=100, output=40 → 140
+    - Main assistant (main-004): input=150, output=30 → 180
+    Total: 580
+    """
+    from inspect_ai.event import Event, ModelEvent
+    from inspect_scout.sources._claude_code.events import claude_code_events
+    from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+
+    scout_events: list[Event] = []
+    async for event in claude_code_events(streaming_events_with_subagent):
+        scout_events.append(event)
+
+    model_events = [e for e in scout_events if isinstance(e, ModelEvent)]
+    # Should have model events from both main and subagent sessions
+    assert len(model_events) >= 3
+
+    total = sum_scout_tokens(scout_events)
+    # Main: 150 + 180 = 330, Subagent: 110 + 140 = 250, Total: 580
+    assert total == 580
+
+
+@pytest.mark.asyncio
 async def test_claude_code_events_streaming(
     streaming_events_with_subagent: list[dict[str, Any]],
 ) -> None:

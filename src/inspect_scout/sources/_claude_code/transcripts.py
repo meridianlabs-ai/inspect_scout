@@ -40,7 +40,7 @@ from .extraction import (
     extract_session_metadata,
     get_first_timestamp,
     sum_latency,
-    sum_tokens,
+    sum_scout_tokens,
 )
 from .models import BaseEvent, parse_events
 from .tree import (
@@ -212,7 +212,7 @@ async def _create_transcript(
     # Extract metadata
     metadata = extract_session_metadata(events)
     model_name = extract_model_name(events)
-    total_tokens = sum_tokens(events)
+    total_tokens = sum_scout_tokens(scout_events)
     total_time = sum_latency(events)
     first_timestamp = get_first_timestamp(events)
 

@@ -11,7 +11,10 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import ContentReasoning, ContentText
+from inspect_ai.model import ContentReasoning, ContentText, ModelOutput, ModelUsage
+from inspect_ai.model._chat_message import ChatMessageAssistant
+from inspect_ai.model._generate_config import GenerateConfig
+from inspect_ai.model._model_output import ChatCompletionChoice
 from inspect_scout.sources._claude_code.events import (
     _extract_agent_id_from_result,
     process_parsed_events,
@@ -422,3 +425,78 @@ class TestProcessParsedEvents:
         agent_spans = [s for s in span_begins if s.type == "agent"]
         assert len(agent_spans) == 1
         assert agent_spans[0].name == "Explore"
+
+
+class TestSumScoutTokens:
+    """Tests for sum_scout_tokens()."""
+
+    def _make_model_event(
+        self, input_tokens: int, output_tokens: int
+    ) -> ModelEvent:
+        """Helper to create a ModelEvent with usage."""
+        msg = ChatMessageAssistant(content="response")
+        return ModelEvent(
+            model="test-model",
+            input=[],
+            tools=[],
+            tool_choice="auto",
+            config=GenerateConfig(),
+            output=ModelOutput(
+                model="test-model",
+                choices=[ChatCompletionChoice(message=msg, stop_reason="stop")],
+                usage=ModelUsage(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    total_tokens=input_tokens + output_tokens,
+                ),
+            ),
+        )
+
+    def test_sums_across_multiple_events(self) -> None:
+        """Multiple ModelEvents → sums all total_tokens."""
+        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+
+        events: list[Any] = [
+            self._make_model_event(100, 50),
+            self._make_model_event(200, 80),
+        ]
+        assert sum_scout_tokens(events) == 430
+
+    def test_skips_non_model_events(self) -> None:
+        """Non-ModelEvent objects are ignored."""
+        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+
+        events: list[Any] = [
+            self._make_model_event(100, 50),
+            ToolEvent(
+                function="Read",
+                id="t1",
+                arguments={},
+                result="ok",
+            ),
+        ]
+        assert sum_scout_tokens(events) == 150
+
+    def test_empty_list(self) -> None:
+        """Empty event list → returns 0."""
+        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+
+        assert sum_scout_tokens([]) == 0
+
+    def test_model_event_without_usage(self) -> None:
+        """ModelEvent with no usage → contributes 0."""
+        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+
+        msg = ChatMessageAssistant(content="response")
+        event = ModelEvent(
+            model="test-model",
+            input=[],
+            tools=[],
+            tool_choice="auto",
+            config=GenerateConfig(),
+            output=ModelOutput(
+                model="test-model",
+                choices=[ChatCompletionChoice(message=msg, stop_reason="stop")],
+            ),
+        )
+        assert sum_scout_tokens([event]) == 0

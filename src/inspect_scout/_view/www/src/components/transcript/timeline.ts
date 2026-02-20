@@ -21,6 +21,7 @@ interface SpanNode {
   name: string;
   type?: string;
   parentId?: string | null;
+  metadata?: Record<string, unknown>;
   children: TreeItem[];
 }
 
@@ -66,7 +67,7 @@ export interface TimelineSpan extends TimelineNode {
   spanType: string | null;
   content: (TimelineEvent | TimelineSpan)[];
   branches: TimelineBranch[];
-  taskDescription?: string;
+  description?: string;
   utility: boolean;
   outline?: Outline;
 }
@@ -229,7 +230,8 @@ function createTimelineSpan(
   spanType: string | null,
   content: (TimelineEvent | TimelineSpan)[],
   utility: boolean = false,
-  branches: TimelineBranch[] = []
+  branches: TimelineBranch[] = [],
+  description?: string
 ): TimelineSpan {
   return {
     type: "span",
@@ -238,6 +240,7 @@ function createTimelineSpan(
     spanType,
     content,
     branches,
+    description,
     utility,
     startTime: content.length > 0 ? minStartTime(content) : EPOCH,
     endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
@@ -284,6 +287,7 @@ function buildSpanTree(events: Event[]): TreeItem[] {
         name: event.name,
         type: event.type ?? undefined,
         parentId: event.parent_id,
+        metadata: event.metadata ?? undefined,
         children: [],
       };
       spansById.set(span.id, span);
@@ -436,13 +440,19 @@ function buildSpanFromAgentSpan(
   );
   content.push(...childContent);
 
+  const description =
+    typeof span.metadata?.description === "string"
+      ? span.metadata.description
+      : undefined;
+
   return createTimelineSpan(
     span.id,
     span.name,
     "agent",
     content,
     false,
-    branches
+    branches,
+    description
   );
 }
 

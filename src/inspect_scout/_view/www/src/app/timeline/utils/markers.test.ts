@@ -134,6 +134,7 @@ function makeCompactionEventNode(
 ): TimelineEvent {
   const event: CompactionEvent = {
     event: "compaction",
+    type: "summary",
     tokens_before: 10000,
     tokens_after: 5000,
     timestamp: ts(startSec).toISOString(),

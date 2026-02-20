@@ -1243,6 +1243,16 @@
             "default": null,
             "title": "Tokens Before"
           },
+          "type": {
+            "default": "summary",
+            "enum": [
+              "summary",
+              "edit",
+              "trim"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
           "uuid": {
             "anyOf": [
               {
@@ -1263,7 +1273,8 @@
         "required": [
           "timestamp",
           "working_start",
-          "event"
+          "event",
+          "type"
         ],
         "title": "CompactionEvent",
         "type": "object"
@@ -4705,11 +4716,19 @@
             },
             "title": "Messages",
             "type": "array"
+          },
+          "timelines": {
+            "items": {
+              "$ref": "#/components/schemas/Timeline"
+            },
+            "title": "Timelines",
+            "type": "array"
           }
         },
         "required": [
           "messages",
-          "events"
+          "events",
+          "timelines"
         ],
         "title": "MessagesEventsResponse",
         "type": "object"
@@ -5270,6 +5289,45 @@
           "direction"
         ],
         "title": "OrderBy",
+        "type": "object"
+      },
+      "Outline": {
+        "description": "Hierarchical outline of events for an agent.",
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/OutlineNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes"
+        ],
+        "title": "Outline",
+        "type": "object"
+      },
+      "OutlineNode": {
+        "description": "A node in an agent's outline, referencing an event by UUID.",
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/OutlineNode"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "children"
+        ],
+        "title": "OutlineNode",
         "type": "object"
       },
       "Pagination": {
@@ -8824,6 +8882,233 @@
         "title": "Summary",
         "type": "object"
       },
+      "Timeline": {
+        "description": "A named timeline view over a transcript.\n\nMultiple timelines allow different interpretations of the same event\nstream \u2014 e.g. a default agent-centric view alongside an alternative\ngrouping or filtered view.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "root": {
+            "$ref": "#/components/schemas/TimelineSpan"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "root"
+        ],
+        "title": "Timeline",
+        "type": "object"
+      },
+      "TimelineBranch": {
+        "description": "A discarded alternative path from a branch point.",
+        "properties": {
+          "content": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TimelineEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/TimelineSpan"
+                }
+              ]
+            },
+            "title": "Content",
+            "type": "array"
+          },
+          "forked_at": {
+            "title": "Forked At",
+            "type": "string"
+          },
+          "type": {
+            "const": "branch",
+            "default": "branch",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "forked_at",
+          "content"
+        ],
+        "title": "TimelineBranch",
+        "type": "object"
+      },
+      "TimelineEvent": {
+        "description": "Wraps a single Event.",
+        "properties": {
+          "event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SampleInitEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SampleLimitEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SandboxEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StateEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StoreEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ModelEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ToolEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ApprovalEvent"
+              },
+              {
+                "$ref": "#/components/schemas/CompactionEvent"
+              },
+              {
+                "$ref": "#/components/schemas/InputEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreEditEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ErrorEvent"
+              },
+              {
+                "$ref": "#/components/schemas/LoggerEvent"
+              },
+              {
+                "$ref": "#/components/schemas/InfoEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SpanBeginEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SpanEndEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StepEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SubtaskEvent"
+              }
+            ],
+            "title": "Event"
+          },
+          "type": {
+            "const": "event",
+            "default": "event",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "event"
+        ],
+        "title": "TimelineEvent",
+        "type": "object"
+      },
+      "TimelineSpan": {
+        "description": "A span of execution \u2014 agent, scorer, tool, or root.",
+        "properties": {
+          "branches": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineBranch"
+            },
+            "title": "Branches",
+            "type": "array"
+          },
+          "content": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TimelineEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/TimelineSpan"
+                }
+              ]
+            },
+            "title": "Content",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Outline"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "span_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Type"
+          },
+          "type": {
+            "const": "span",
+            "default": "span",
+            "title": "Type",
+            "type": "string"
+          },
+          "utility": {
+            "default": false,
+            "title": "Utility",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "content",
+          "branches",
+          "utility"
+        ],
+        "title": "TimelineSpan",
+        "type": "object"
+      },
       "ToolCall": {
         "properties": {
           "arguments": {
@@ -9636,6 +9921,13 @@
             ],
             "title": "Task Set"
           },
+          "timelines": {
+            "items": {
+              "$ref": "#/components/schemas/Timeline"
+            },
+            "title": "Timelines",
+            "type": "array"
+          },
           "total_time": {
             "anyOf": [
               {
@@ -9667,7 +9959,8 @@
           "transcript_id",
           "metadata",
           "messages",
-          "events"
+          "events",
+          "timelines"
         ],
         "title": "Transcript",
         "type": "object"

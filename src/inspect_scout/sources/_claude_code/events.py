@@ -845,16 +845,6 @@ async def _create_tool_span_events(
         tool_event.span_id = agent_span_id
         events.append(tool_event)
 
-        # InfoEvent with task description
-        if agent_info.description:
-            info_event = to_info_event(
-                source="agent_task",
-                data=agent_info.description,
-                timestamp=tool_timestamp,
-            )
-            info_event.span_id = agent_span_id
-            events.append(info_event)
-
         # Load and process nested agent events
         if tool_result:
             agent_events = await _load_agent_events(

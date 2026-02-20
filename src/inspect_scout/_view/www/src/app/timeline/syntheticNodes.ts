@@ -281,6 +281,7 @@ function makeCompactionEventNode(
 ): TimelineEvent {
   const event: CompactionEvent = {
     event: "compaction",
+    type: "summary",
     tokens_before: tokensBefore,
     tokens_after: tokensAfter,
     timestamp: ts(BASE, startSec).toISOString(),
@@ -315,7 +316,7 @@ function makeSpan(
   options?: {
     branches?: TimelineBranch[];
     utility?: boolean;
-    taskDescription?: string;
+    description?: string;
   }
 ): TimelineSpan {
   return {
@@ -325,7 +326,7 @@ function makeSpan(
     spanType,
     content,
     branches: options?.branches ?? [],
-    taskDescription: options?.taskDescription,
+    description: options?.description,
     utility: options?.utility ?? false,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
@@ -399,8 +400,7 @@ function sequentialAgents(): TimelineScenario {
       makeModelEventNode("The main entry point is clear.", 12, 14, 1100),
     ],
     {
-      taskDescription:
-        "Explore the project structure and understand the codebase",
+      description: "Explore the project structure and understand the codebase",
     }
   );
   const plan = makeSpan(
@@ -433,7 +433,7 @@ function sequentialAgents(): TimelineScenario {
       ),
     ],
     {
-      taskDescription:
+      description:
         "Create an implementation plan based on exploration findings",
     }
   );
@@ -503,7 +503,7 @@ function sequentialAgents(): TimelineScenario {
       ),
     ],
     {
-      taskDescription:
+      description:
         "Implement the refactored module with tests and documentation",
     }
   );
@@ -830,7 +830,7 @@ function parallelAgents(): TimelineScenario {
         1700
       ),
     ],
-    { taskDescription: "Search for API documentation" }
+    { description: "Search for API documentation" }
   );
   const explore2 = makeSpan(
     "explore-2",
@@ -859,7 +859,7 @@ function parallelAgents(): TimelineScenario {
         1800
       ),
     ],
-    { taskDescription: "Analyze existing database schema and data" }
+    { description: "Analyze existing database schema and data" }
   );
   const explore3 = makeSpan(
     "explore-3",
@@ -888,7 +888,7 @@ function parallelAgents(): TimelineScenario {
         1400
       ),
     ],
-    { taskDescription: "Inventory frontend components and architecture" }
+    { description: "Inventory frontend components and architecture" }
   );
   const plan = makeSpan("plan", "Plan", "agent", 17, 25, 5300, [
     makeModelEventNode(

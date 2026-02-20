@@ -174,7 +174,7 @@ export function computeRowLayouts(
           bar,
           drillable: !isParent && isDrillable(rowSpan),
           parallelCount: null,
-          description: rowSpan.agent.taskDescription ?? null,
+          description: rowSpan.agent.description ?? null,
         };
       }
 

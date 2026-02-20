@@ -60,7 +60,7 @@ interface AgentNode {
   source: AgentSource;           // "span" or "tool"
   content: (EventNode | AgentNode)[];
   branches: Branch[];
-  taskDescription?: string;
+  description?: string;
   utility: boolean;
   outline?: Outline;
   startTime: Date | null;

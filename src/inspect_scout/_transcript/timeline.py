@@ -182,7 +182,7 @@ class TimelineSpan(BaseModel):
     span_type: str | None
     content: list[TimelineContentItem] = Field(default_factory=list)
     branches: list["TimelineBranch"] = Field(default_factory=list)
-    task_description: str | None = None
+    description: str | None = None
     utility: bool = False
     outline: "Outline | None" = None
 
@@ -485,12 +485,15 @@ def _build_span_from_agent_span(
     child_content, branches = _process_children(span.children, has_explicit_branches)
     content.extend(child_content)
 
+    description = (span.begin.metadata or {}).get("description") if span.begin else None
+
     return TimelineSpan(
         id=span.id,
         name=span.name,
         span_type="agent",
         content=content,
         branches=branches,
+        description=description,
     )
 
 
@@ -1274,7 +1277,7 @@ def _filter_span(span: TimelineSpan, allowed: set[str]) -> TimelineSpan:
         span_type=span.span_type,
         content=filtered_content,
         branches=filtered_branches,
-        task_description=span.task_description,
+        description=span.description,
         utility=span.utility,
         outline=span.outline,
     )

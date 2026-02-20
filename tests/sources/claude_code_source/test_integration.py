@@ -579,3 +579,272 @@ async def test_claude_code_events_no_subagent_events() -> None:
     model_events = [e for e in events if isinstance(e, ModelEvent)]
     assert len(model_events) == 1
     assert model_events[0].model == "claude-opus-4-5-20251101"
+
+
+def _make_main_user(
+    uuid: str, content: str | list[dict[str, Any]], ts: str
+) -> dict[str, Any]:
+    """Helper to build a main-session user event."""
+    msg: dict[str, Any] = {"role": "user", "content": content}
+    return {
+        "uuid": uuid,
+        "parentUuid": None,
+        "isSidechain": False,
+        "sessionId": "main",
+        "type": "user",
+        "message": msg,
+        "timestamp": ts,
+    }
+
+
+def _make_main_assistant(
+    uuid: str,
+    parent: str,
+    content: list[dict[str, Any]],
+    ts: str,
+    *,
+    stop_reason: str = "tool_use",
+) -> dict[str, Any]:
+    """Helper to build a main-session assistant event."""
+    return {
+        "uuid": uuid,
+        "parentUuid": parent,
+        "isSidechain": False,
+        "sessionId": "main",
+        "type": "assistant",
+        "message": {
+            "id": f"msg_{uuid}",
+            "model": "claude-opus-4-5-20251101",
+            "role": "assistant",
+            "content": content,
+            "stop_reason": stop_reason,
+            "usage": {"input_tokens": 100, "output_tokens": 50},
+        },
+        "timestamp": ts,
+    }
+
+
+def _make_subagent_event(
+    uuid: str,
+    session_id: str,
+    event_type: str,
+    message: dict[str, Any],
+    ts: str,
+) -> dict[str, Any]:
+    """Helper to build a subagent (sidechain) event."""
+    return {
+        "uuid": uuid,
+        "parentUuid": None,
+        "isSidechain": True,
+        "sessionId": session_id,
+        "type": event_type,
+        "message": message,
+        "timestamp": ts,
+    }
+
+
+def _task_tool_use(tool_id: str) -> dict[str, Any]:
+    """Build a Task tool_use content block."""
+    return {
+        "type": "tool_use",
+        "id": tool_id,
+        "name": "Task",
+        "input": {
+            "description": "do work",
+            "prompt": "do the work",
+            "subagent_type": "Explore",
+        },
+    }
+
+
+def _tool_result_block(tool_id: str, text: str = "done") -> dict[str, Any]:
+    """Build a tool_result content block."""
+    return {
+        "type": "tool_result",
+        "tool_use_id": tool_id,
+        "content": text,
+    }
+
+
+@pytest.mark.asyncio
+async def test_claude_code_events_subagent_arrives_first() -> None:
+    """Subagent events arriving before their Task tool_use are buffered, not dropped."""
+    from inspect_ai.event import SpanBeginEvent, ToolEvent
+    from inspect_scout.sources._claude_code.events import claude_code_events
+
+    raw: list[dict[str, Any]] = [
+        # Subagent events arrive BEFORE the main assistant emits the Task tool_use
+        _make_subagent_event(
+            "s1",
+            "sub-sess-1",
+            "user",
+            {"role": "user", "content": "explore"},
+            "2026-01-31T10:00:00.000Z",
+        ),
+        _make_subagent_event(
+            "s2",
+            "sub-sess-1",
+            "assistant",
+            {
+                "id": "msg_s2",
+                "model": "claude-sonnet-4-20250514",
+                "role": "assistant",
+                "content": [{"type": "text", "text": "Found stuff."}],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+            "2026-01-31T10:00:01.000Z",
+        ),
+        # Now main session: user, then assistant with Task tool
+        _make_main_user("m1", "Hello", "2026-01-31T10:00:02.000Z"),
+        _make_main_assistant(
+            "m2",
+            "m1",
+            [
+                {"type": "text", "text": "Let me explore."},
+                _task_tool_use("toolu_task_1"),
+            ],
+            "2026-01-31T10:00:03.000Z",
+        ),
+        # Tool result for the Task
+        _make_main_user(
+            "m3",
+            [_tool_result_block("toolu_task_1", "explored")],
+            "2026-01-31T10:00:04.000Z",
+        ),
+    ]
+
+    events: list[Any] = []
+    async for event in claude_code_events(raw):
+        events.append(event)
+
+    # The subagent events should be buffered and matched to the Task tool
+    agent_spans = [
+        e for e in events if isinstance(e, SpanBeginEvent) and e.type == "agent"
+    ]
+    assert len(agent_spans) == 1, "Early subagent events should be matched to Task tool"
+
+    task_tools = [
+        e for e in events if isinstance(e, ToolEvent) and e.function == "Task"
+    ]
+    assert len(task_tools) == 1
+
+
+@pytest.mark.asyncio
+async def test_claude_code_events_parallel_subagents() -> None:
+    """Two Task tools in one assistant message get correct FIFO subagent assignment."""
+    from inspect_ai.event import SpanBeginEvent
+    from inspect_scout.sources._claude_code.events import claude_code_events
+
+    raw: list[dict[str, Any]] = [
+        _make_main_user("m1", "Do two things", "2026-01-31T10:00:00.000Z"),
+        # Assistant emits two Task tool_use blocks
+        _make_main_assistant(
+            "m2",
+            "m1",
+            [
+                {"type": "text", "text": "I'll do both."},
+                _task_tool_use("toolu_A"),
+                _task_tool_use("toolu_B"),
+            ],
+            "2026-01-31T10:00:01.000Z",
+        ),
+        # First subagent session arrives — should bind to toolu_A (FIFO)
+        _make_subagent_event(
+            "sa1",
+            "sub-A",
+            "user",
+            {"role": "user", "content": "task A prompt"},
+            "2026-01-31T10:00:02.000Z",
+        ),
+        _make_subagent_event(
+            "sa2",
+            "sub-A",
+            "assistant",
+            {
+                "id": "msg_sa2",
+                "model": "claude-sonnet-4-20250514",
+                "role": "assistant",
+                "content": [{"type": "text", "text": "A done."}],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+            "2026-01-31T10:00:03.000Z",
+        ),
+        # Second subagent session arrives — should bind to toolu_B (FIFO)
+        _make_subagent_event(
+            "sb1",
+            "sub-B",
+            "user",
+            {"role": "user", "content": "task B prompt"},
+            "2026-01-31T10:00:04.000Z",
+        ),
+        _make_subagent_event(
+            "sb2",
+            "sub-B",
+            "assistant",
+            {
+                "id": "msg_sb2",
+                "model": "claude-sonnet-4-20250514",
+                "role": "assistant",
+                "content": [{"type": "text", "text": "B done."}],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
+            "2026-01-31T10:00:05.000Z",
+        ),
+        # Tool results
+        _make_main_user(
+            "m3",
+            [
+                _tool_result_block("toolu_A", "result A"),
+                _tool_result_block("toolu_B", "result B"),
+            ],
+            "2026-01-31T10:00:06.000Z",
+        ),
+    ]
+
+    events: list[Any] = []
+    async for event in claude_code_events(raw):
+        events.append(event)
+
+    agent_spans = [
+        e for e in events if isinstance(e, SpanBeginEvent) and e.type == "agent"
+    ]
+    assert len(agent_spans) == 2, "Both Task tools should get agent spans"
+
+
+@pytest.mark.asyncio
+async def test_claude_code_events_isSidechain_routing() -> None:
+    """IsSidechain flag is used for routing — first event being subagent doesn't corrupt main."""
+    from inspect_ai.event import ModelEvent
+    from inspect_scout.sources._claude_code.events import claude_code_events
+
+    raw: list[dict[str, Any]] = [
+        # Very first event in the stream is a subagent event
+        _make_subagent_event(
+            "s1",
+            "sub-sess",
+            "user",
+            {"role": "user", "content": "subagent prompt"},
+            "2026-01-31T10:00:00.000Z",
+        ),
+        # Main session events follow
+        _make_main_user("m1", "Hello", "2026-01-31T10:00:01.000Z"),
+        _make_main_assistant(
+            "m2",
+            "m1",
+            [{"type": "text", "text": "Hi there!"}],
+            "2026-01-31T10:00:02.000Z",
+            stop_reason="end_turn",
+        ),
+    ]
+
+    events: list[Any] = []
+    async for event in claude_code_events(raw):
+        events.append(event)
+
+    # Main session should NOT be corrupted by the subagent arriving first
+    model_events = [e for e in events if isinstance(e, ModelEvent)]
+    assert len(model_events) == 1, "Main session ModelEvent should still be produced"
+    assert model_events[0].model == "claude-opus-4-5-20251101"

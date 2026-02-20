@@ -230,7 +230,7 @@ async def _create_transcript(
         date=first_timestamp,
         task_set=project_path,
         task_id=metadata.get("slug"),
-        task_repeat=segment_index,
+        task_repeat=1,
         agent="claude-code",
         agent_args=None,
         model=model_name,

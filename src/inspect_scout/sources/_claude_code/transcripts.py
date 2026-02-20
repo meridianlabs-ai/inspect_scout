@@ -42,7 +42,7 @@ from .extraction import (
     sum_latency,
     sum_scout_tokens,
 )
-from .models import BaseEvent, parse_events
+from .models import BaseEvent, consolidate_assistant_events, parse_events
 from .tree import (
     build_event_tree,
     flatten_tree_chronological,
@@ -118,6 +118,7 @@ async def _process_session_file(
 
     # Parse raw events to Pydantic models (validates format)
     events = parse_events(raw_events)
+    events = consolidate_assistant_events(events)
 
     # Build tree and flatten for proper ordering
     tree = build_event_tree(events)

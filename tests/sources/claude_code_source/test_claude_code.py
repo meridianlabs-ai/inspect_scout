@@ -39,6 +39,7 @@ from inspect_scout.sources._claude_code.models import (
     Usage,
     UserEvent,
     UserMessage,
+    consolidate_assistant_events,
     parse_event,
 )
 from inspect_scout.sources._claude_code.tree import (
@@ -755,9 +756,7 @@ class TestCommandDetection:
             timestamp="2026-01-01T00:00:00Z",
             sessionId="test",
             type="user",
-            message=UserMessage(
-                content=[{"type": "text", "text": "Hello"}]
-            ),
+            message=UserMessage(content=[{"type": "text", "text": "Hello"}]),
         )
         assert _get_command_name(event) is None
         assert is_skill_command(event) is None
@@ -967,3 +966,135 @@ class TestToolResultExtraction:
             message=AssistantMessage(content=[]),
         )
         assert extract_tool_result_messages(event) == []
+
+
+def _make_assistant(
+    uuid: str,
+    message_id: str | None,
+    content: list[dict[str, Any]],
+    *,
+    usage: Usage | None = None,
+    stop_reason: str | None = None,
+) -> AssistantEvent:
+    """Helper to create an AssistantEvent for consolidation tests."""
+    return AssistantEvent(
+        uuid=uuid,
+        timestamp="2026-01-01T00:00:00Z",
+        sessionId="test",
+        type="assistant",
+        message=AssistantMessage(
+            id=message_id,
+            content=content,
+            usage=usage,
+            stop_reason=stop_reason,
+        ),
+    )
+
+
+class TestConsolidateAssistantEvents:
+    """Tests for consolidate_assistant_events()."""
+
+    def test_merges_fragments(self) -> None:
+        """3 assistant events with same message.id → 1 event with combined content."""
+        events: list[BaseEvent] = [
+            _make_assistant(
+                "u1",
+                "msg_123",
+                [{"type": "thinking", "thinking": "hmm"}],
+            ),
+            _make_assistant(
+                "u2",
+                "msg_123",
+                [{"type": "text", "text": "Hello"}],
+            ),
+            _make_assistant(
+                "u3",
+                "msg_123",
+                [{"type": "tool_use", "id": "t1", "name": "Bash", "input": {}}],
+                usage=Usage(input_tokens=100, output_tokens=50),
+                stop_reason="tool_use",
+            ),
+        ]
+
+        result = consolidate_assistant_events(events)
+        assert len(result) == 1
+        merged = result[0]
+        assert isinstance(merged, AssistantEvent)
+        assert len(merged.message.content) == 3
+        assert merged.message.content[0]["type"] == "thinking"
+        assert merged.message.content[1]["type"] == "text"
+        assert merged.message.content[2]["type"] == "tool_use"
+        assert merged.message.usage is not None
+        assert merged.message.usage.input_tokens == 100
+        assert merged.message.stop_reason == "tool_use"
+
+    def test_preserves_non_assistant(self) -> None:
+        """User events pass through unchanged."""
+        user = UserEvent(
+            uuid="u1",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Hello"),
+        )
+        events: list[BaseEvent] = [user]
+        result = consolidate_assistant_events(events)
+        assert len(result) == 1
+        assert result[0] is user
+
+    def test_no_message_id(self) -> None:
+        """Assistant events with id=None are not merged."""
+        events: list[BaseEvent] = [
+            _make_assistant("u1", None, [{"type": "text", "text": "A"}]),
+            _make_assistant("u2", None, [{"type": "text", "text": "B"}]),
+        ]
+        result = consolidate_assistant_events(events)
+        assert len(result) == 2
+
+    def test_different_message_ids(self) -> None:
+        """Different message.id values stay separate."""
+        events: list[BaseEvent] = [
+            _make_assistant("u1", "msg_1", [{"type": "text", "text": "A"}]),
+            _make_assistant("u2", "msg_2", [{"type": "text", "text": "B"}]),
+        ]
+        result = consolidate_assistant_events(events)
+        assert len(result) == 2
+        assert isinstance(result[0], AssistantEvent)
+        assert result[0].message.content == [{"type": "text", "text": "A"}]
+        assert isinstance(result[1], AssistantEvent)
+        assert result[1].message.content == [{"type": "text", "text": "B"}]
+
+    def test_interleaved(self) -> None:
+        """Assistant-user-assistant pattern flushes correctly."""
+        user = UserEvent(
+            uuid="u2",
+            timestamp="2026-01-01T00:00:00Z",
+            sessionId="test",
+            type="user",
+            message=UserMessage(content="Reply"),
+        )
+        events: list[BaseEvent] = [
+            _make_assistant("u1", "msg_1", [{"type": "text", "text": "First"}]),
+            user,
+            _make_assistant("u3", "msg_2", [{"type": "text", "text": "Second"}]),
+        ]
+        result = consolidate_assistant_events(events)
+        assert len(result) == 3
+        assert isinstance(result[0], AssistantEvent)
+        assert result[0].message.id == "msg_1"
+        assert isinstance(result[1], UserEvent)
+        assert isinstance(result[2], AssistantEvent)
+        assert result[2].message.id == "msg_2"
+
+    def test_empty_input(self) -> None:
+        """Empty list returns empty list."""
+        assert consolidate_assistant_events([]) == []
+
+    def test_single_assistant_no_merge_needed(self) -> None:
+        """Single assistant event passes through without copying."""
+        events: list[BaseEvent] = [
+            _make_assistant("u1", "msg_1", [{"type": "text", "text": "Solo"}]),
+        ]
+        result = consolidate_assistant_events(events)
+        assert len(result) == 1
+        assert result[0] is events[0]

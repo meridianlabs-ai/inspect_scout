@@ -268,6 +268,78 @@ def parse_events(raw_events: list[dict[str, Any]]) -> list[BaseEvent]:
     return result
 
 
+def consolidate_assistant_events(events: list[BaseEvent]) -> list[BaseEvent]:
+    """Merge consecutive assistant fragments sharing the same message.id.
+
+    Claude Code streams assistant responses as multiple JSONL events per API
+    call. Each fragment has the same message.id but contains different content
+    blocks (thinking, text, tool_use). This function merges them into single
+    AssistantEvents with combined content and the final fragment's
+    usage/stop_reason.
+
+    Non-assistant events and assistant events without a message.id pass through
+    unchanged.
+
+    Args:
+        events: List of parsed events
+
+    Returns:
+        List of events with consecutive assistant fragments merged
+    """
+    if not events:
+        return events
+
+    result: list[BaseEvent] = []
+    # Pending group: list of AssistantEvents sharing the same message.id
+    pending: list[AssistantEvent] = []
+    pending_id: str | None = None
+
+    def _flush_pending() -> None:
+        """Merge pending assistant events and append to result."""
+        if not pending:
+            return
+        if len(pending) == 1:
+            result.append(pending[0])
+        else:
+            # Merge: combine content lists, keep last fragment's metadata
+            merged_content: list[dict[str, Any]] = []
+            for evt in pending:
+                merged_content.extend(evt.message.content)
+
+            last = pending[-1]
+            merged_message = AssistantMessage(
+                role="assistant",
+                model=last.message.model,
+                id=last.message.id,
+                content=merged_content,
+                stop_reason=last.message.stop_reason,
+                usage=last.message.usage,
+            )
+            merged_event = last.model_copy(update={"message": merged_message})
+            result.append(merged_event)
+
+    for event in events:
+        if isinstance(event, AssistantEvent) and event.message.id is not None:
+            msg_id = event.message.id
+            if msg_id == pending_id:
+                # Same group — accumulate
+                pending.append(event)
+            else:
+                # New group — flush previous, start new
+                _flush_pending()
+                pending = [event]
+                pending_id = msg_id
+        else:
+            # Non-assistant or no id — flush and pass through
+            _flush_pending()
+            pending = []
+            pending_id = None
+            result.append(event)
+
+    _flush_pending()
+    return result
+
+
 def parse_content_block(
     raw: dict[str, Any],
 ) -> ContentText | ContentThinking | ContentToolUse | dict[str, Any]:

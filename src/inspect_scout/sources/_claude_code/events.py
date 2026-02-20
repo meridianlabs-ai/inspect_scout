@@ -46,6 +46,7 @@ from .extraction import (
 )
 from .models import (
     AssistantEvent,
+    AssistantMessage,
     BaseEvent,
     ContentToolUse,
     SystemEvent,
@@ -575,6 +576,61 @@ async def claude_code_events(
     unmatched_task_tools: list[str] = []  # FIFO queue
     unmatched_subagent_events: dict[str, list[dict[str, Any]]] = {}
 
+    # Consolidation buffer for consecutive assistant fragments
+    pending_assistant: list[AssistantEvent] = []
+    pending_assistant_id: str | None = None
+
+    async def _flush_assistant_buffer() -> AsyncIterator[Event]:
+        """Merge buffered assistant fragments and process the consolidated event."""
+        nonlocal pending_assistant, pending_assistant_id
+        if not pending_assistant:
+            return
+
+        # Merge fragments into a single AssistantEvent
+        if len(pending_assistant) == 1:
+            merged = pending_assistant[0]
+        else:
+            merged_content: list[dict[str, Any]] = []
+            for frag in pending_assistant:
+                merged_content.extend(frag.message.content)
+            last = pending_assistant[-1]
+            merged_message = AssistantMessage(
+                role="assistant",
+                model=last.message.model,
+                id=last.message.id,
+                content=merged_content,
+                stop_reason=last.message.stop_reason,
+                usage=last.message.usage,
+            )
+            merged = last.model_copy(update={"message": merged_message})
+
+        pending_assistant = []
+        pending_assistant_id = None
+
+        # Process the consolidated event
+        timestamp = proc.update_timestamp(merged)
+        pending_before = set(proc.pending_tools.keys())
+        for evt in await proc.process_assistant(merged, timestamp):
+            yield evt
+
+        # Enqueue newly registered Task tools (FIFO order)
+        new_task_ids = [
+            tid
+            for tid in proc.pending_tools
+            if tid not in pending_before and proc.pending_tools[tid].is_task
+        ]
+        unmatched_task_tools.extend(new_task_ids)
+
+        # Drain early-arrival buffer for subagent sessions
+        for sid in list(unmatched_subagent_events):
+            if not unmatched_task_tools:
+                break
+            tool_id = unmatched_task_tools.pop(0)
+            session_to_tool[sid] = tool_id
+            proc.pending_tools[tool_id].buffered_subagent_events.extend(
+                unmatched_subagent_events.pop(sid)
+            )
+
     async for raw_event in event_stream:
         # Route subagent events by isSidechain flag
         if raw_event.get("isSidechain", False):
@@ -611,34 +667,56 @@ async def claude_code_events(
         if pydantic_event is None:
             continue
 
-        timestamp = proc.update_timestamp(pydantic_event)
-
         if isinstance(pydantic_event, AssistantEvent):
-            pending_before = set(proc.pending_tools.keys())
-            for evt in await proc.process_assistant(pydantic_event, timestamp):
-                yield evt
+            msg_id = pydantic_event.message.id
+            if msg_id is not None:
+                if msg_id == pending_assistant_id:
+                    # Same group — accumulate
+                    pending_assistant.append(pydantic_event)
+                else:
+                    # New group — flush previous, start new
+                    async for evt in _flush_assistant_buffer():
+                        yield evt
+                    pending_assistant = [pydantic_event]
+                    pending_assistant_id = msg_id
+            else:
+                # No message id — flush buffer, process standalone
+                async for evt in _flush_assistant_buffer():
+                    yield evt
 
-            # Enqueue newly registered Task tools (FIFO order)
-            new_task_ids = [
-                tid
-                for tid in proc.pending_tools
-                if tid not in pending_before and proc.pending_tools[tid].is_task
-            ]
-            unmatched_task_tools.extend(new_task_ids)
+                timestamp = proc.update_timestamp(pydantic_event)
+                pending_before = set(proc.pending_tools.keys())
+                for evt in await proc.process_assistant(pydantic_event, timestamp):
+                    yield evt
 
-            # Drain early-arrival buffer for subagent sessions
-            for sid in list(unmatched_subagent_events):
-                if not unmatched_task_tools:
-                    break
-                tool_id = unmatched_task_tools.pop(0)
-                session_to_tool[sid] = tool_id
-                proc.pending_tools[tool_id].buffered_subagent_events.extend(
-                    unmatched_subagent_events.pop(sid)
-                )
+                new_task_ids = [
+                    tid
+                    for tid in proc.pending_tools
+                    if tid not in pending_before and proc.pending_tools[tid].is_task
+                ]
+                unmatched_task_tools.extend(new_task_ids)
+
+                for sid in list(unmatched_subagent_events):
+                    if not unmatched_task_tools:
+                        break
+                    tool_id = unmatched_task_tools.pop(0)
+                    session_to_tool[sid] = tool_id
+                    proc.pending_tools[tool_id].buffered_subagent_events.extend(
+                        unmatched_subagent_events.pop(sid)
+                    )
 
         elif isinstance(pydantic_event, UserEvent):
+            # Flush any pending assistant fragments before processing user event
+            async for evt in _flush_assistant_buffer():
+                yield evt
+
+            timestamp = proc.update_timestamp(pydantic_event)
             for evt in await proc.process_user(pydantic_event, timestamp):
                 yield evt
+
+    # Flush any remaining assistant fragments
+    async for evt in _flush_assistant_buffer():
+        yield evt
 
     # Flush pending tool calls
     for evt in await proc.flush_pending():
@@ -917,8 +995,11 @@ async def _load_agent_events(
     if not raw_events:
         return []
 
-    # Parse to Pydantic models
+    # Parse to Pydantic models and consolidate assistant fragments
+    from .models import consolidate_assistant_events
+
     agent_events = parse_events(raw_events)
+    agent_events = consolidate_assistant_events(agent_events)
 
     # Build tree and flatten
     tree = build_event_tree(agent_events)

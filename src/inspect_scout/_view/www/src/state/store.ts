@@ -23,6 +23,12 @@ import type { SimpleCondition } from "../query/types";
 import { TranscriptInfo } from "../types/api-types";
 import { debounce } from "../utils/sync";
 
+// Column preset for dataframe view
+export interface ColumnPreset {
+  name: string;
+  columns: string[];
+}
+
 // Filter types for columns
 export type FilterType =
   | "string"
@@ -117,6 +123,7 @@ interface StoreState {
   dataframeWrapText?: boolean;
   dataframeShowFilterColumns?: boolean;
   dataframeFilterColumns?: string[];
+  dataframeColumnPresets?: ColumnPreset[];
 
   // Transcript
   transcriptCollapsedEvents: Record<string, Record<string, boolean>>;
@@ -234,6 +241,7 @@ interface StoreState {
   setDataframeWrapText: (wrap: boolean) => void;
   setDataframeFilterColumns: (columns: string[]) => void;
   setDataframeShowFilterColumns: (show: boolean) => void;
+  setDataframeColumnPresets: (presets: ColumnPreset[]) => void;
 
   setUserScansDir: (path: string) => void;
   setUserTranscriptsDir: (path: string) => void;
@@ -264,7 +272,7 @@ interface StoreState {
 
 const createDebouncedPersistStorage = (
   storage: ReturnType<typeof createJSONStorage>,
-  delay = 2000
+  delay = 500
 ) => {
   if (!storage) {
     throw new Error("Storage is required");
@@ -275,6 +283,11 @@ const createDebouncedPersistStorage = (
   const debouncedSetItem = debounce((key: string, value: StorageValue) => {
     storage.setItem(key, value);
   }, delay);
+
+  // Flush any pending write before the page unloads so data is never lost
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", () => debouncedSetItem.flush());
+  }
 
   return {
     ...storage,
@@ -647,6 +660,11 @@ export const createStore = (api: ScoutApiV2) =>
           setDataframeShowFilterColumns: (show: boolean) => {
             set((state) => {
               state.dataframeShowFilterColumns = show;
+            });
+          },
+          setDataframeColumnPresets: (presets: ColumnPreset[]) => {
+            set((state) => {
+              state.dataframeColumnPresets = presets;
             });
           },
           setUserScansDir: (path: string) => {

@@ -146,10 +146,10 @@ class TimelineEvent(BaseModel):
     def total_tokens(self) -> int:
         """Tokens from this event (ModelEvent only).
 
-        Includes cache_read and cache_write tokens in the input count,
-        since cached tokens represent actual context window usage.
-        Without them, Claude Code sessions (which use aggressive prompt
-        caching) show misleadingly low token counts.
+        Includes input_tokens_cache_read and input_tokens_cache_write in
+        the total, as these represent actual token consumption for any LLM
+        system using prompt caching. The sum of all token fields provides
+        an accurate measure of total context window usage across all sources.
         """
         if isinstance(self.event, ModelEvent):
             output = getattr(self.event, "output", None)

@@ -4,7 +4,6 @@ Extracts ChatMessage objects, token usage, metadata, and other
 information from Claude Code events.
 """
 
-from datetime import datetime
 from logging import getLogger
 from typing import Any
 
@@ -23,7 +22,6 @@ from inspect_ai.model._chat_message import (
 from inspect_ai.tool import ToolCall
 
 from .detection import (
-    get_event_type,
     get_timestamp,
     is_compact_summary,
 )
@@ -33,6 +31,7 @@ from .models import (
     SystemEvent,
     UserEvent,
 )
+from .util import parse_timestamp
 
 logger = getLogger(__name__)
 
@@ -231,9 +230,7 @@ def extract_messages_from_events(
     messages: list[ChatMessage] = []
 
     for event in events:
-        event_type = get_event_type(event)
-
-        if event_type == "user":
+        if isinstance(event, UserEvent):
             # Check for tool results first
             tool_msgs = extract_tool_result_messages(event)
             if tool_msgs:
@@ -244,7 +241,7 @@ def extract_messages_from_events(
                 if user_msg:
                     messages.append(user_msg)
 
-        elif event_type == "assistant":
+        elif isinstance(event, AssistantEvent):
             assistant_msg = extract_assistant_message(event)
             if assistant_msg:
                 messages.append(assistant_msg)
@@ -320,13 +317,9 @@ def sum_latency(events: list[BaseEvent]) -> float:
 
     timestamps = []
     for event in events:
-        ts_str = get_timestamp(event)
-        if ts_str:
-            try:
-                ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                timestamps.append(ts)
-            except ValueError:
-                continue
+        ts = parse_timestamp(get_timestamp(event))
+        if ts:
+            timestamps.append(ts)
 
     if len(timestamps) < 2:
         return 0.0

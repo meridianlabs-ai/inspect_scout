@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .models import BaseEvent
+from .util import parse_timestamp
 
 
 @dataclass
@@ -35,11 +36,7 @@ class EventNode:
         if isinstance(ts, datetime):
             return ts
         if isinstance(ts, str):
-            try:
-                # Handle ISO format with timezone
-                return datetime.fromisoformat(ts.replace("Z", "+00:00"))
-            except ValueError:
-                return None
+            return parse_timestamp(ts)
         return None
 
     @property

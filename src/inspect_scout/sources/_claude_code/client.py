@@ -5,6 +5,7 @@ Each session is a JSONL file with UUID filename.
 Agent sessions are stored as agent-{agentId}.jsonl in the same directory.
 """
 
+import json
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
@@ -293,8 +294,6 @@ def read_jsonl_events(path: Path) -> list[dict[str, Any]]:
     Returns:
         List of parsed JSON events
     """
-    import json
-
     events = []
     with open(path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):

@@ -31,7 +31,6 @@ from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage
 from inspect_ai.tool._tool_call import ToolCallError
 
 from .detection import (
-    get_event_type,
     get_task_agent_info,
     get_timestamp,
     is_compact_boundary,
@@ -49,11 +48,14 @@ from .models import (
     AssistantEvent,
     BaseEvent,
     ContentToolUse,
+    SystemEvent,
+    TaskAgentInfo,
     ToolUseResult,
     UserEvent,
     parse_events,
 )
 from .tree import build_event_tree, flatten_tree_chronological, get_conversation_events
+from .util import parse_timestamp as _parse_timestamp
 
 logger = getLogger(__name__)
 
@@ -63,23 +65,6 @@ T = TypeVar("T")
 # Sentinel timestamp for events with unparseable timestamps.
 # Using epoch avoids extending timelines to the present day.
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def _parse_timestamp(ts_str: str | None) -> datetime | None:
-    """Parse an ISO timestamp string to datetime.
-
-    Args:
-        ts_str: ISO format timestamp string (with optional 'Z' suffix)
-
-    Returns:
-        Parsed datetime, or None if parsing fails or input is empty
-    """
-    if not ts_str:
-        return None
-    try:
-        return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-    except ValueError:
-        return None
 
 
 def to_model_event(
@@ -296,7 +281,7 @@ def to_span_end_event(
 def _extract_tool_use_blocks(
     message_content: list[Any],
     timestamp: datetime,
-) -> list[tuple[ContentToolUse, datetime, bool, dict[str, Any] | None]]:
+) -> list[tuple[ContentToolUse, datetime, bool, TaskAgentInfo | None]]:
     """Extract and parse tool_use blocks from an assistant message.
 
     Args:
@@ -344,33 +329,198 @@ def _accumulate_user_messages(
 
 
 # =============================================================================
-# Streaming Event Processing
+# Event Processing Core
 # =============================================================================
 
 
 @dataclass
-class PendingTool:
-    """Tracks a pending tool call with optional subagent event buffering.
+class _PendingTool:
+    """Tracks a pending tool call awaiting its result.
 
-    Used by claude_code_events() for streaming mode where subagent events
-    need to be buffered until the parent Task completes.
+    In streaming mode, also buffers subagent events that arrive between
+    the tool_use block and the tool_result.
     """
 
     tool_use_block: ContentToolUse
     timestamp: datetime
     is_task: bool
-    agent_info: dict[str, Any] | None
+    agent_info: TaskAgentInfo | None
     buffered_subagent_events: list[dict[str, Any]] = field(default_factory=list)
 
 
-@dataclass
-class ProcessingState:
-    """State for streaming event processing in claude_code_events()."""
+class _EventProcessor:
+    """Shared event-processing logic for both batch and streaming modes.
 
-    main_session_id: str | None = None
-    accumulated_messages: list[Any] = field(default_factory=list)
-    pending_tools: dict[str, PendingTool] = field(default_factory=dict)
-    session_to_tool: dict[str, str] = field(default_factory=dict)
+    Tracks accumulated input messages and pending tool calls. Both
+    ``process_parsed_events()`` and ``claude_code_events()`` delegate
+    their core assistant/user/system event handling here.
+    """
+
+    def __init__(
+        self,
+        project_dir: Path | None,
+        max_depth: int,
+        session_file: Path | None = None,
+    ) -> None:
+        self.project_dir = project_dir
+        self.max_depth = max_depth
+        self.session_file = session_file
+
+        self.accumulated_messages: list[Any] = []
+        self.pending_tools: dict[str, _PendingTool] = {}
+        self.last_timestamp: datetime = _EPOCH
+
+    async def process_assistant(
+        self,
+        event: AssistantEvent,
+        timestamp: datetime,
+    ) -> list[Event]:
+        """Process an assistant event and return Scout events.
+
+        Yields a ModelEvent and tracks any tool_use blocks for later matching.
+        """
+        model_event = to_model_event(
+            event, self.accumulated_messages, timestamp=timestamp
+        )
+        result: list[Event] = [model_event]
+
+        # Add assistant message to accumulated
+        if model_event.output and model_event.output.message:
+            self.accumulated_messages.append(model_event.output.message)
+
+        # Extract and track tool_use blocks
+        for tool_info in _extract_tool_use_blocks(event.message.content, timestamp):
+            tool_use_block, ts, is_task, agent_info = tool_info
+            self.pending_tools[tool_use_block.id] = _PendingTool(
+                tool_use_block=tool_use_block,
+                timestamp=ts,
+                is_task=is_task,
+                agent_info=agent_info,
+            )
+
+        return result
+
+    async def process_user(
+        self,
+        event: UserEvent,
+        timestamp: datetime,
+        *,
+        subagent_events_for_tool: (
+            dict[str, dict[str, list[dict[str, Any]]]] | None
+        ) = None,
+    ) -> list[Event]:
+        """Process a user event and return Scout events.
+
+        Matches tool results to pending tool calls and yields completed
+        tool spans. ``subagent_events_for_tool`` is an optional mapping
+        from tool_use_id to grouped subagent events (used in streaming mode).
+        """
+        result: list[Event] = []
+        content = event.message.content
+
+        # Check for skill commands
+        skill_name = is_skill_command(event)
+        if skill_name:
+            result.append(
+                to_info_event(
+                    source="skill_command",
+                    data={"skill": skill_name},
+                    timestamp=timestamp,
+                )
+            )
+
+        # Extract agentId from toolUseResult if available
+        event_agent_id: str | None = None
+        if isinstance(event.toolUseResult, ToolUseResult):
+            event_agent_id = event.toolUseResult.agentId
+
+        # Process tool results
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_result":
+                    tool_use_id = str(block.get("tool_use_id", ""))
+
+                    if tool_use_id in self.pending_tools:
+                        pending = self.pending_tools.pop(tool_use_id)
+
+                        # Get subagent events (streaming mode buffers these)
+                        subagent_dict: dict[str, list[dict[str, Any]]] | None = None
+                        if subagent_events_for_tool:
+                            subagent_dict = subagent_events_for_tool.get(tool_use_id)
+                        elif pending.buffered_subagent_events:
+                            subagent_dict = {}
+                            for evt in pending.buffered_subagent_events:
+                                sid = evt.get("sessionId", "")
+                                subagent_dict.setdefault(sid, []).append(evt)
+
+                        span_events = await _create_tool_span_events(
+                            tool_use_block=pending.tool_use_block,
+                            tool_result=block,
+                            tool_timestamp=pending.timestamp,
+                            result_timestamp=timestamp,
+                            is_task=pending.is_task,
+                            agent_info=pending.agent_info,
+                            project_dir=self.project_dir,
+                            subagent_events=subagent_dict,
+                            max_depth=self.max_depth,
+                            session_file=self.session_file,
+                            agent_id=event_agent_id,
+                        )
+                        result.extend(span_events)
+
+        # Accumulate user and tool result messages
+        _accumulate_user_messages(event, self.accumulated_messages)
+
+        return result
+
+    async def process_system(
+        self,
+        event: SystemEvent,
+        timestamp: datetime,
+    ) -> list[Event]:
+        """Process a system event and return Scout events."""
+        result: list[Event] = []
+        if is_compact_boundary(event):
+            compaction_info = extract_compaction_info(event)
+            if compaction_info:
+                result.append(
+                    CompactionEvent(
+                        source="claude_code",
+                        tokens_before=compaction_info.pop("preTokens", None),
+                        metadata=compaction_info,
+                        timestamp=timestamp,
+                    )
+                )
+        return result
+
+    async def flush_pending(self) -> list[Event]:
+        """Yield events for any tool calls that never received a result."""
+        result: list[Event] = []
+        for pending in self.pending_tools.values():
+            span_events = await _create_tool_span_events(
+                tool_use_block=pending.tool_use_block,
+                tool_result=None,
+                tool_timestamp=pending.timestamp,
+                result_timestamp=pending.timestamp,
+                is_task=pending.is_task,
+                agent_info=pending.agent_info,
+                project_dir=None,  # Don't load agents for incomplete tools
+                subagent_events=None,
+                max_depth=0,
+            )
+            result.extend(span_events)
+        return result
+
+    def update_timestamp(self, event: BaseEvent) -> datetime:
+        """Parse and track the latest timestamp."""
+        timestamp = _parse_timestamp(get_timestamp(event)) or self.last_timestamp
+        self.last_timestamp = timestamp
+        return timestamp
+
+
+# =============================================================================
+# Public Entry Points
+# =============================================================================
 
 
 async def _to_async_iter(items: Iterable[T]) -> AsyncIterator[T]:
@@ -387,41 +537,26 @@ async def claude_code_events(
 ) -> AsyncIterator[Event]:
     """Convert raw Claude Code JSONL events to Inspect AI events.
 
-    Processes events incrementally - yields Inspect AI events as soon as
+    Processes events incrementally — yields Inspect AI events as soon as
     possible rather than buffering all input first. This enables real-time
     streaming from stdout in headless mode.
 
-    Handles:
-    - Parsing raw dicts to Pydantic models (validation)
-    - Filtering to conversation events (user/assistant)
-    - Converting to Inspect AI event types incrementally
-    - Subagent event inlining (buffers by sessionId, yields when Task completes)
-
-    Does NOT handle:
-    - File discovery
-    - /clear command splitting (yields continuous event stream)
-    - Transcript creation
-    - Complex tree building (assumes events arrive in chronological order)
+    Handles subagent event inlining: buffers events from non-main sessionIds
+    and associates them with the parent Task tool call.
 
     Ordering Assumption:
         Subagent events must arrive AFTER the parent Task tool_use block has
         been processed. Events with non-main sessionIds that arrive before any
-        Task tool_use block will be silently dropped. This assumption holds for
-        Claude Code's normal operation where the assistant message containing
-        the Task tool_use is logged before the subagent begins execution.
+        Task tool_use block will be silently dropped.
 
     Args:
         raw_events: Iterable or AsyncIterable of raw event dictionaries.
-            Accepts both sync sequences (list, generator) and async streams.
-            May include subagent events with different sessionIds.
         project_dir: Path to project directory for loading nested agent files.
-            If None, relies on subagent events being in the raw_events stream.
         max_depth: Maximum depth for loading nested subagent events (0 = no loading)
         session_file: Path to the session JSONL file (for locating subagent files)
 
     Yields:
         Inspect AI Event objects (ModelEvent, ToolEvent, SpanBeginEvent, etc.)
-        as they become available.
     """
     from .models import parse_event
 
@@ -431,33 +566,33 @@ async def claude_code_events(
     else:
         event_stream = _to_async_iter(raw_events)
 
-    state = ProcessingState()
-    last_timestamp: datetime = _EPOCH
+    proc = _EventProcessor(project_dir, max_depth, session_file)
+
+    # Streaming-specific state for session routing
+    main_session_id: str | None = None
+    session_to_tool: dict[str, str] = {}
 
     async for raw_event in event_stream:
         session_id = raw_event.get("sessionId", "")
 
         # First event determines main session
-        if state.main_session_id is None:
-            state.main_session_id = session_id
+        if main_session_id is None:
+            main_session_id = session_id
 
-        # Is this a subagent event? Buffer it for later
-        if session_id != state.main_session_id:
-            # Associate with pending Task tool if not already
-            if session_id not in state.session_to_tool:
-                # Find pending Task without assigned subagent
-                for tool_id, tool in state.pending_tools.items():
+        # Subagent event? Buffer it for later
+        if session_id != main_session_id:
+            if session_id not in session_to_tool:
+                for tool_id, tool in proc.pending_tools.items():
                     if tool.is_task:
-                        state.session_to_tool[session_id] = tool_id
+                        session_to_tool[session_id] = tool_id
                         break
 
-            pending_tool_id = state.session_to_tool.get(session_id)
-            if pending_tool_id and pending_tool_id in state.pending_tools:
-                state.pending_tools[pending_tool_id].buffered_subagent_events.append(
+            pending_tool_id = session_to_tool.get(session_id)
+            if pending_tool_id and pending_tool_id in proc.pending_tools:
+                proc.pending_tools[pending_tool_id].buffered_subagent_events.append(
                     raw_event
                 )
             else:
-                # Subagent event arrived before Task tool_use - see Ordering Assumption
                 logger.debug(
                     f"Dropping subagent event for session {session_id}: "
                     "no pending Task tool found"
@@ -478,103 +613,19 @@ async def claude_code_events(
         if pydantic_event is None:
             continue
 
-        timestamp = _parse_timestamp(get_timestamp(pydantic_event)) or last_timestamp
-        last_timestamp = timestamp
+        timestamp = proc.update_timestamp(pydantic_event)
 
         if isinstance(pydantic_event, AssistantEvent):
-            # Yield ModelEvent immediately
-            model_event = to_model_event(
-                pydantic_event, state.accumulated_messages, timestamp=timestamp
-            )
-            yield model_event
-
-            # Add assistant message to accumulated
-            if model_event.output and model_event.output.message:
-                state.accumulated_messages.append(model_event.output.message)
-
-            # Extract and track tool_use blocks (with subagent buffering support)
-            for tool_info in _extract_tool_use_blocks(
-                pydantic_event.message.content, timestamp
-            ):
-                tool_use_block, ts, is_task, agent_info = tool_info
-                state.pending_tools[tool_use_block.id] = PendingTool(
-                    tool_use_block=tool_use_block,
-                    timestamp=ts,
-                    is_task=is_task,
-                    agent_info=agent_info,
-                )
+            for evt in await proc.process_assistant(pydantic_event, timestamp):
+                yield evt
 
         elif isinstance(pydantic_event, UserEvent):
-            content = pydantic_event.message.content
+            for evt in await proc.process_user(pydantic_event, timestamp):
+                yield evt
 
-            # Check for skill commands
-            skill_name = is_skill_command(pydantic_event)
-            if skill_name:
-                yield to_info_event(
-                    source="skill_command",
-                    data={"skill": skill_name},
-                    timestamp=timestamp,
-                )
-
-            # Extract agentId from toolUseResult if available
-            event_agent_id: str | None = None
-            if isinstance(pydantic_event.toolUseResult, ToolUseResult):
-                event_agent_id = pydantic_event.toolUseResult.agentId
-
-            # Process tool results - yield complete spans
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_result":
-                        tool_use_id = str(block.get("tool_use_id", ""))
-
-                        if tool_use_id in state.pending_tools:
-                            pending = state.pending_tools.pop(tool_use_id)
-
-                            # Build subagent_events dict from buffered events
-                            subagent_events_dict: (
-                                dict[str, list[dict[str, Any]]] | None
-                            ) = None
-                            if pending.buffered_subagent_events:
-                                subagent_events_dict = {}
-                                for evt in pending.buffered_subagent_events:
-                                    sid = evt.get("sessionId", "")
-                                    subagent_events_dict.setdefault(sid, []).append(evt)
-
-                            # Yield complete tool span
-                            span_events = await _create_tool_span_events(
-                                tool_use_block=pending.tool_use_block,
-                                tool_result=block,
-                                tool_timestamp=pending.timestamp,
-                                result_timestamp=timestamp,
-                                is_task=pending.is_task,
-                                agent_info=pending.agent_info,
-                                project_dir=project_dir,
-                                subagent_events=subagent_events_dict,
-                                max_depth=max_depth,
-                                session_file=session_file,
-                                agent_id=event_agent_id,
-                            )
-                            for span_evt in span_events:
-                                yield span_evt
-
-            # Accumulate user and tool result messages
-            _accumulate_user_messages(pydantic_event, state.accumulated_messages)
-
-    # Handle any remaining pending tool calls without results
-    for pending in state.pending_tools.values():
-        remaining_events = await _create_tool_span_events(
-            tool_use_block=pending.tool_use_block,
-            tool_result=None,
-            tool_timestamp=pending.timestamp,
-            result_timestamp=pending.timestamp,
-            is_task=pending.is_task,
-            agent_info=pending.agent_info,
-            project_dir=None,  # Don't load agents for incomplete tools
-            subagent_events=None,
-            max_depth=0,
-        )
-        for remaining_evt in remaining_events:
-            yield remaining_evt
+    # Flush pending tool calls
+    for evt in await proc.flush_pending():
+        yield evt
 
 
 async def process_parsed_events(
@@ -599,114 +650,26 @@ async def process_parsed_events(
     Yields:
         Scout Event objects (ModelEvent, ToolEvent, SpanBeginEvent, etc.)
     """
-    # Track pending tool calls to match with results
-    # Format: tool_id -> (tool_use_block, timestamp, is_task, agent_info)
-    pending_tool_calls: dict[
-        str, tuple[ContentToolUse, datetime, bool, dict[str, Any] | None]
-    ] = {}
-
-    # Track messages for ModelEvent input
-    accumulated_messages: list[Any] = []
-    last_timestamp: datetime = _EPOCH
+    proc = _EventProcessor(project_dir, max_depth, session_file)
 
     for event in events:
-        event_type = get_event_type(event)
-        timestamp = _parse_timestamp(get_timestamp(event)) or last_timestamp
-        last_timestamp = timestamp
+        timestamp = proc.update_timestamp(event)
 
         if isinstance(event, AssistantEvent):
-            # Yield ModelEvent
-            model_event = to_model_event(
-                event, accumulated_messages, timestamp=timestamp
-            )
-            yield model_event
-
-            # Add assistant message to accumulated
-            if model_event.output and model_event.output.message:
-                accumulated_messages.append(model_event.output.message)
-
-            # Extract and track tool_use blocks
-            for tool_info in _extract_tool_use_blocks(event.message.content, timestamp):
-                tool_use_block = tool_info[0]
-                pending_tool_calls[tool_use_block.id] = tool_info
+            for evt in await proc.process_assistant(event, timestamp):
+                yield evt
 
         elif isinstance(event, UserEvent):
-            content = event.message.content
+            for evt in await proc.process_user(event, timestamp):
+                yield evt
 
-            # Check for skill commands
-            skill_name = is_skill_command(event)
-            if skill_name:
-                yield to_info_event(
-                    source="skill_command",
-                    data={"skill": skill_name},
-                    timestamp=timestamp,
-                )
+        elif isinstance(event, SystemEvent):
+            for evt in await proc.process_system(event, timestamp):
+                yield evt
 
-            # Extract agentId from toolUseResult if available
-            event_agent_id: str | None = None
-            if isinstance(event.toolUseResult, ToolUseResult):
-                event_agent_id = event.toolUseResult.agentId
-
-            # Process tool results
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_result":
-                        tool_use_id = str(block.get("tool_use_id", ""))
-
-                        if tool_use_id in pending_tool_calls:
-                            tool_use_block, tool_timestamp, is_task, agent_info = (
-                                pending_tool_calls.pop(tool_use_id)
-                            )
-
-                            tool_events = await _create_tool_span_events(
-                                tool_use_block=tool_use_block,
-                                tool_result=block,
-                                tool_timestamp=tool_timestamp,
-                                result_timestamp=timestamp,
-                                is_task=is_task,
-                                agent_info=agent_info,
-                                project_dir=project_dir,
-                                max_depth=max_depth,
-                                session_file=session_file,
-                                agent_id=event_agent_id,
-                            )
-                            for tool_evt in tool_events:
-                                yield tool_evt
-
-            # Accumulate user and tool result messages
-            _accumulate_user_messages(event, accumulated_messages)
-
-        elif event_type == "system":
-            # Handle compaction boundaries
-            if is_compact_boundary(event):
-                compaction_info = extract_compaction_info(event)
-                if compaction_info:
-                    yield CompactionEvent(
-                        source="claude_code",
-                        tokens_before=compaction_info.pop("preTokens", None),
-                        metadata=compaction_info,
-                        timestamp=timestamp,
-                    )
-
-    # Handle any remaining tool calls without results
-    for (
-        tool_use_block,
-        tool_timestamp,
-        is_task,
-        agent_info,
-    ) in pending_tool_calls.values():
-        tool_events = await _create_tool_span_events(
-            tool_use_block=tool_use_block,
-            tool_result=None,
-            tool_timestamp=tool_timestamp,
-            result_timestamp=tool_timestamp,
-            is_task=is_task,
-            agent_info=agent_info,
-            project_dir=None,
-            max_depth=0,
-        )
-        for tool_evt in tool_events:
-            yield tool_evt
+    # Flush pending tool calls
+    for evt in await proc.flush_pending():
+        yield evt
 
 
 async def _create_tool_span_events(
@@ -715,7 +678,7 @@ async def _create_tool_span_events(
     tool_timestamp: datetime,
     result_timestamp: datetime,
     is_task: bool,
-    agent_info: dict[str, Any] | None,
+    agent_info: TaskAgentInfo | None,
     project_dir: Path | None,
     subagent_events: dict[str, list[dict[str, Any]]] | None = None,
     max_depth: int = 5,
@@ -762,7 +725,7 @@ async def _create_tool_span_events(
     # For Task tools with agent info, emit just the agent span (no tool wrapper)
     if is_task and agent_info:
         agent_span_id = f"agent-{tool_id}"
-        agent_name = agent_info.get("subagent_type", "agent")
+        agent_name = agent_info.subagent_type
 
         # SpanBeginEvent for agent (directly under parent, no tool wrapper)
         events.append(
@@ -772,7 +735,7 @@ async def _create_tool_span_events(
                 span_type="agent",
                 timestamp=tool_timestamp,
                 metadata={
-                    "description": agent_info.get("description", ""),
+                    "description": agent_info.description,
                 },
             )
         )
@@ -788,10 +751,10 @@ async def _create_tool_span_events(
         events.append(tool_event)
 
         # InfoEvent with task description
-        if agent_info.get("description"):
+        if agent_info.description:
             info_event = to_info_event(
                 source="agent_task",
-                data=agent_info.get("description"),
+                data=agent_info.description,
                 timestamp=tool_timestamp,
             )
             info_event.span_id = agent_span_id

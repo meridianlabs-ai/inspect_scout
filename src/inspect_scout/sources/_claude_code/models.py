@@ -121,6 +121,26 @@ class ToolUseResult(BaseModel):
 
 
 # =============================================================================
+# Task Agent Info (extracted from Task tool_use blocks)
+# =============================================================================
+
+
+class TaskAgentInfo(BaseModel):
+    """Typed info extracted from a Task tool call (agent spawn).
+
+    Replaces the untyped dict[str, Any] previously threaded through the
+    event processing pipeline.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    subagent_type: str
+    description: str
+    prompt: str
+    tool_use_id: str
+
+
+# =============================================================================
 # Compaction Metadata Model
 # =============================================================================
 

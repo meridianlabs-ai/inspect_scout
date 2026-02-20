@@ -11,9 +11,14 @@ from .models import (
     BaseEvent,
     ContentToolUse,
     SystemEvent,
+    TaskAgentInfo,
     ToolUseResult,
     UserEvent,
 )
+
+# Command tag constants for Claude Code's XML-wrapped slash commands.
+_COMMAND_TAG_PATTERN = re.compile(r"<command-name>/([^<]+)</command-name>")
+_BUILTIN_COMMANDS = frozenset({"clear", "exit", "compact"})
 
 
 def get_event_type(event: BaseEvent) -> str:
@@ -26,6 +31,24 @@ def get_event_type(event: BaseEvent) -> str:
         Event type string (user, assistant, progress, system, etc.)
     """
     return event.type
+
+
+def _get_command_name(event: BaseEvent) -> str | None:
+    """Extract the command name from a user event with a command tag.
+
+    Args:
+        event: Claude Code event
+
+    Returns:
+        The command name (e.g. "clear", "feature-dev:feature-dev"), or None
+    """
+    if not isinstance(event, UserEvent):
+        return None
+    content = event.message.content
+    if not isinstance(content, str):
+        return None
+    match = _COMMAND_TAG_PATTERN.search(content)
+    return match.group(1) if match else None
 
 
 def is_user_event(event: BaseEvent) -> bool:
@@ -46,23 +69,13 @@ def is_system_event(event: BaseEvent) -> bool:
 def is_clear_command(event: BaseEvent) -> bool:
     """Check if event is a /clear command.
 
-    /clear commands appear in user events with content like:
-    '<command-name>/clear</command-name>...'
-
     Args:
         event: Claude Code event
 
     Returns:
         True if this is a /clear command
     """
-    if not isinstance(event, UserEvent):
-        return False
-
-    content = event.message.content
-
-    if isinstance(content, str):
-        return "<command-name>/clear</command-name>" in content
-    return False
+    return _get_command_name(event) == "clear"
 
 
 def is_exit_command(event: BaseEvent) -> bool:
@@ -74,14 +87,7 @@ def is_exit_command(event: BaseEvent) -> bool:
     Returns:
         True if this is a /exit command
     """
-    if not isinstance(event, UserEvent):
-        return False
-
-    content = event.message.content
-
-    if isinstance(content, str):
-        return "<command-name>/exit</command-name>" in content
-    return False
+    return _get_command_name(event) == "exit"
 
 
 def is_compact_boundary(event: BaseEvent) -> bool:
@@ -130,33 +136,16 @@ def is_sidechain_event(event: BaseEvent) -> bool:
 def is_skill_command(event: BaseEvent) -> str | None:
     """Check if event is a skill command and return the skill name.
 
-    Skill commands appear in user messages with content like:
-    '<command-name>/feature-dev:feature-dev</command-name>...'
-
     Args:
         event: Claude Code event
 
     Returns:
         The skill name if this is a skill command, None otherwise
     """
-    if not isinstance(event, UserEvent):
+    command = _get_command_name(event)
+    if command is None or command in _BUILTIN_COMMANDS:
         return None
-
-    content = event.message.content
-
-    if not isinstance(content, str):
-        return None
-
-    # Match skill commands like /feature-dev:feature-dev, /commit, etc.
-    match = re.search(r"<command-name>/([^<]+)</command-name>", content)
-    if match:
-        command = match.group(1)
-        # Skip built-in commands
-        if command in ("clear", "exit", "compact"):
-            return None
-        return command
-
-    return None
+    return command
 
 
 def should_skip_event(event: BaseEvent) -> bool:
@@ -281,23 +270,23 @@ def is_task_tool_call(content_block: ContentToolUse) -> bool:
     return content_block.name == "Task"
 
 
-def get_task_agent_info(content_block: ContentToolUse) -> dict[str, str] | None:
+def get_task_agent_info(content_block: ContentToolUse) -> TaskAgentInfo | None:
     """Extract agent info from a Task tool call.
 
     Args:
         content_block: A Task tool_use content block
 
     Returns:
-        Dict with subagent_type, description, prompt, or None if invalid
+        TaskAgentInfo, or None if not a Task tool call
     """
     if not is_task_tool_call(content_block):
         return None
 
     input_data = content_block.input
 
-    return {
-        "subagent_type": str(input_data.get("subagent_type", "unknown")),
-        "description": str(input_data.get("description", "")),
-        "prompt": str(input_data.get("prompt", "")),
-        "tool_use_id": content_block.id,
-    }
+    return TaskAgentInfo(
+        subagent_type=str(input_data.get("subagent_type", "unknown")),
+        description=str(input_data.get("description", "")),
+        prompt=str(input_data.get("prompt", "")),
+        tool_use_id=content_block.id,
+    )

@@ -45,7 +45,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
@@ -67,7 +67,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
@@ -89,7 +89,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]:

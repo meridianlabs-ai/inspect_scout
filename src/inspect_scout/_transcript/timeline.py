@@ -1377,7 +1377,7 @@ async def timeline_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.

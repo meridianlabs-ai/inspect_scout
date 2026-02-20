@@ -50,7 +50,7 @@ async def segment_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
 ) -> AsyncIterator[MessagesSegment]:
     """Render messages and split them into segments that fit within a token budget.
 
@@ -155,7 +155,7 @@ async def transcript_messages(
     messages_as_str: MessagesAsStr,
     model: Model,
     context_window: int | None = None,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     include_scorers: bool = False,
 ) -> AsyncIterator[MessagesSegment]:
@@ -255,7 +255,7 @@ def _exclude_scorers(events: list[Event]) -> list[Event]:
 def span_messages(
     source: TimelineSpan | list[Event],
     *,
-    compaction: Literal["all", "last"] = "all",
+    compaction: Literal["all", "last"] | int = "all",
 ) -> list[ChatMessage]:
     """Extract messages from a span or event list, handling compaction.
 
@@ -272,6 +272,9 @@ def span_messages(
               trimmed prefix. Edit is transparent.
             - ``"last"``: ignore compaction history, return only the
               last ``ModelEvent``'s input + output.
+            - ``int``: keep the last *N* compaction regions.  ``1`` is
+              equivalent to ``"last"``.  If *N* exceeds the number of
+              regions the result is the same as ``"all"``.
 
     Returns:
         Merged message list. Empty if no ``ModelEvent`` is found.
@@ -293,11 +296,34 @@ def span_messages(
     if not model_events:
         return []
 
-    # "last" mode: just return the final ModelEvent's messages
+    # Normalize compaction to n: int | None
+    n: int | None
     if compaction == "last":
+        n = 1
+    elif compaction == "all":
+        n = None
+    else:
+        n = compaction
+
+    # "last 1" shortcut: just return the final ModelEvent's messages
+    if n == 1:
         return _segment_messages(model_events[-1])
 
-    # "all" mode: merge across compaction boundaries
+    # If n is specified, slice events to keep only the last n regions.
+    # Regions are separated by CompactionEvents.
+    if n is not None:
+        compaction_indices = [
+            i for i, event in enumerate(events) if isinstance(event, CompactionEvent)
+        ]
+        num_regions = len(compaction_indices) + 1
+        if n < num_regions:
+            # Keep the last n regions.  The nth-from-last region starts
+            # right after the compaction event at position -(n) from the
+            # end of compaction_indices.
+            cut_index = compaction_indices[-(n)]
+            events = events[cut_index:]
+
+    # Merge across compaction boundaries
     merged: list[ChatMessage] = []
     current_model_events: list[ModelEvent] = []
     pending_trim_pre_input: list[ChatMessage] | None = None

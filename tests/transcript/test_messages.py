@@ -364,6 +364,95 @@ def test_span_messages_compaction_last() -> None:
     assert len(result) == 2
 
 
+def test_span_messages_compaction_int_1_same_as_last() -> None:
+    """compaction=1 behaves identically to compaction="last"."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user3], output_content="Final"),
+    ]
+
+    result = span_messages(events, compaction=1)
+
+    assert result[0] is _user3
+    assert result[-1].text == "Final"
+    assert len(result) == 2
+
+
+def test_span_messages_compaction_last_2_regions() -> None:
+    """compaction=2 keeps the last two compaction regions."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user3], output_content="Seg 2"),
+    ]
+
+    result = span_messages(events, compaction=2)
+
+    # Should include regions 1 and 2 (the last two), merged via summary graft.
+    # Region 1: [u2, "Seg 1"], Region 2: [u3, "Seg 2"]
+    assert result[0] is _user2
+    assert result[1].text == "Seg 1"
+    assert result[2] is _user3
+    assert result[3].text == "Seg 2"
+    assert len(result) == 4
+
+
+def test_span_messages_compaction_int_exceeds_regions() -> None:
+    """compaction=N where N >= number of regions returns everything (like "all")."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Seg 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=[_user2], output_content="Seg 1"),
+    ]
+
+    result_int = span_messages(events, compaction=10)
+    result_all = span_messages(events, compaction="all")
+
+    assert len(result_int) == len(result_all)
+    assert [m.text for m in result_int] == [m.text for m in result_all]
+
+
+def test_span_messages_compaction_int_with_trim() -> None:
+    """compaction=2 with a trim boundary correctly merges the last 2 regions."""
+    pre_msgs: list[ChatMessage] = [_sys, _user1, _asst1, _user2]
+    post_msgs: list[ChatMessage] = [_asst1, _user2, _user3]
+
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Region 0"),
+        _make_compaction_event(type="summary"),
+        _make_model_event(input=pre_msgs, output_content="Region 1"),
+        _make_compaction_event(type="trim"),
+        _make_model_event(input=post_msgs, output_content="Region 2"),
+    ]
+
+    # Last 2 regions: region 1 and region 2, joined by a trim boundary
+    result = span_messages(events, compaction=2)
+
+    # Should have trim prefix [sys, u1] + post input [a1, u2, u3] + output
+    assert result[0] is _sys
+    assert result[1] is _user1
+    assert result[2] is _asst1
+    assert result[-1].text == "Region 2"
+
+
+def test_span_messages_compaction_int_no_compaction_events() -> None:
+    """compaction=N with no CompactionEvents returns all messages (single region)."""
+    events: list[Event] = [
+        _make_model_event(input=[_user1], output_content="Only response"),
+    ]
+
+    result = span_messages(events, compaction=1)
+
+    assert result[0] is _user1
+    assert result[-1].text == "Only response"
+    assert len(result) == 2
+
+
 def test_span_messages_compaction_last_with_trim() -> None:
     """compaction="last" ignores trim boundaries too."""
     pre_msgs: list[ChatMessage] = [_sys, _user1, _asst1, _user2]

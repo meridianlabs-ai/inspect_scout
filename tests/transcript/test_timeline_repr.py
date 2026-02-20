@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 from inspect_scout._transcript.timeline import (
@@ -40,33 +41,40 @@ def _make_mock_event(
 ) -> TimelineEvent:
     """Build a TimelineEvent with a minimal mock event object.
 
-    Uses a SimpleNamespace to avoid needing real inspect_ai Event objects.
+    Uses model_construct on real event classes to bypass validation while
+    still passing isinstance checks.
     """
     from types import SimpleNamespace
 
+    from inspect_ai.event import ModelEvent, ToolEvent
+    from inspect_ai.model import ModelOutput, ModelUsage
+
+    event: Any
     if event_type == "model":
-        usage = SimpleNamespace(input_tokens=input_tokens, output_tokens=output_tokens)
-        output_ns = SimpleNamespace(usage=usage, error=output_error)
-        event = SimpleNamespace(
+        usage = ModelUsage.model_construct(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+            input_tokens_cache_read=None,
+            input_tokens_cache_write=None,
+        )
+        output_obj = ModelOutput.model_construct(
+            model="mock",
+            choices=[],
+            usage=usage,
+            error=output_error,
+        )
+        event = ModelEvent.model_construct(
             event=event_type,
             timestamp=timestamp,
             completed=completed or timestamp,
             uuid=f"evt-{id(timestamp)}",
             input=[],
-            output=output_ns,
+            output=output_obj,
             error=error,
         )
-        # Make it pass isinstance checks for ModelEvent by duck typing
-        # We need to use model_construct to bypass validation
-    elif event_type == "compaction":
-        event = SimpleNamespace(
-            event="compaction",
-            timestamp=timestamp,
-            completed=completed or timestamp,
-            uuid=f"evt-compaction-{id(timestamp)}",
-        )
     elif event_type == "tool":
-        event = SimpleNamespace(
+        event = ToolEvent.model_construct(
             event="tool",
             timestamp=timestamp,
             completed=completed or timestamp,

@@ -129,17 +129,14 @@ class TimelineEvent(BaseModel):
     @property
     def start_time(self) -> datetime:
         """Event timestamp (required field on all events)."""
-        ts = getattr(self.event, "timestamp", None)
-        if not isinstance(ts, datetime):
-            raise ValueError("Event missing required timestamp field")
-        return ts
+        return self.event.timestamp
 
     @property
     def end_time(self) -> datetime:
         """Event completion time if available, else timestamp."""
-        completed = getattr(self.event, "completed", None)
-        if isinstance(completed, datetime):
-            return completed
+        if isinstance(self.event, (ModelEvent, ToolEvent)):
+            if self.event.completed is not None:
+                return self.event.completed
         return self.start_time
 
     @property
@@ -152,15 +149,13 @@ class TimelineEvent(BaseModel):
         an accurate measure of total context window usage across all sources.
         """
         if isinstance(self.event, ModelEvent):
-            output = getattr(self.event, "output", None)
-            if output is not None:
-                usage = getattr(output, "usage", None)
-                if usage is not None:
-                    input_tokens = getattr(usage, "input_tokens", 0) or 0
-                    cache_read = getattr(usage, "input_tokens_cache_read", 0) or 0
-                    cache_write = getattr(usage, "input_tokens_cache_write", 0) or 0
-                    output_tokens = getattr(usage, "output_tokens", 0) or 0
-                    return input_tokens + cache_read + cache_write + output_tokens
+            usage = self.event.output.usage
+            if usage is not None:
+                input_tokens = usage.input_tokens or 0
+                cache_read = usage.input_tokens_cache_read or 0
+                cache_write = usage.input_tokens_cache_write or 0
+                output_tokens = usage.output_tokens or 0
+                return input_tokens + cache_read + cache_write + output_tokens
         return 0
 
 
@@ -532,8 +527,8 @@ def _event_to_node(event: Event) -> TimelineEvent | TimelineSpan:
     nested events to detect further agent spawning.
     """
     if isinstance(event, ToolEvent):
-        agent_name = getattr(event, "agent", None)
-        nested_events = getattr(event, "events", None)
+        agent_name = event.agent
+        nested_events = event.events
         if agent_name and nested_events:
             # Recursively process nested events to handle nested tool agents
             nested_content: list[TimelineEvent | TimelineSpan] = [
@@ -715,7 +710,7 @@ def _find_forked_at(
 
     if isinstance(last_msg, ChatMessageTool):
         # Match tool_call_id to a ToolEvent.id
-        tool_call_id = getattr(last_msg, "tool_call_id", None)
+        tool_call_id = last_msg.tool_call_id
         if tool_call_id:
             for item in agent_content:
                 if (
@@ -728,33 +723,29 @@ def _find_forked_at(
 
     if isinstance(last_msg, ChatMessageAssistant):
         # Match message id to ModelEvent.output.message.id
-        msg_id = getattr(last_msg, "id", None)
+        msg_id = last_msg.id
         if msg_id:
             for item in agent_content:
                 if isinstance(item, TimelineEvent) and isinstance(
                     item.event, ModelEvent
                 ):
-                    output = getattr(item.event, "output", None)
-                    if output is not None:
-                        out_msg = getattr(output, "message", None)
-                        if out_msg is not None:
-                            out_id = getattr(out_msg, "id", None)
-                            if out_id == msg_id:
-                                return item.event.uuid or ""
+                    output = item.event.output
+                    if output.choices:
+                        out_msg = output.choices[0].message
+                        if out_msg.id == msg_id:
+                            return item.event.uuid or ""
         # Fallback: compare content
-        msg_content = getattr(last_msg, "content", None)
+        msg_content = last_msg.content
         if msg_content:
             for item in agent_content:
                 if isinstance(item, TimelineEvent) and isinstance(
                     item.event, ModelEvent
                 ):
-                    output = getattr(item.event, "output", None)
-                    if output is not None:
-                        out_msg = getattr(output, "message", None)
-                        if out_msg is not None:
-                            out_content = getattr(out_msg, "content", None)
-                            if out_content == msg_content:
-                                return item.event.uuid or ""
+                    output = item.event.output
+                    if output.choices:
+                        out_msg = output.choices[0].message
+                        if out_msg.content == msg_content:
+                            return item.event.uuid or ""
         return ""
 
     # ChatMessageUser / ChatMessageSystem - fork at beginning
@@ -802,8 +793,8 @@ def _message_fingerprint(msg: ChatMessage, cache: dict[int, str] | None = None) 
         if cached is not None:
             return cached
 
-    role = getattr(msg, "role", "")
-    content = getattr(msg, "content", "")
+    role = msg.role
+    content = msg.content
     if isinstance(content, str):
         serialized = content
     else:
@@ -982,16 +973,10 @@ def _get_output_fingerprint(event: ModelEvent) -> str | None:
     Returns:
         The fingerprint string, or None if no output message.
     """
-    output = getattr(event, "output", None)
-    if output is None:
+    output = event.output
+    if not output.choices:
         return None
-    choices = getattr(output, "choices", None)
-    if not choices:
-        return None
-    message = getattr(choices[0], "message", None)
-    if message is None:
-        return None
-    return _message_fingerprint(message)
+    return _message_fingerprint(output.choices[0].message)
 
 
 def _system_prompt_fingerprint(input_msgs: list[ChatMessage]) -> str:

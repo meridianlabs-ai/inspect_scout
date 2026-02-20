@@ -4,7 +4,15 @@ import json
 from logging import getLogger
 
 from inspect_ai._util.logger import warn_once
-from inspect_ai.event import Event
+from inspect_ai.event import (
+    ApprovalEvent,
+    ErrorEvent,
+    Event,
+    InfoEvent,
+    LoggerEvent,
+    ModelEvent,
+    ToolEvent,
+)
 
 logger = getLogger(__name__)
 
@@ -42,107 +50,92 @@ def event_as_str(event: Event) -> str | None:
 
 def _model_event_as_str(event: Event) -> str | None:
     """Extract completion text from ModelEvent."""
-    # ModelEvent has output.completion
-    if hasattr(event, "output") and event.output is not None:
-        completion = getattr(event.output, "completion", None)
-        if completion:
-            return f"MODEL:\n{completion}\n"
+    if not isinstance(event, ModelEvent):
+        return None
+    completion = event.output.completion
+    if completion:
+        return f"MODEL:\n{completion}\n"
     return None
 
 
 def _tool_event_as_str(event: Event) -> str | None:
     """Format ToolEvent with function, arguments, and result."""
-    # ToolEvent has function, arguments, result, error
-    function = getattr(event, "function", "unknown")
-    arguments = getattr(event, "arguments", {})
-    result = getattr(event, "result", None)
-    error = getattr(event, "error", None)
+    if not isinstance(event, ToolEvent):
+        return None
 
-    parts = [f"TOOL ({function}):"]
+    parts = [f"TOOL ({event.function}):"]
 
-    if arguments:
-        if isinstance(arguments, dict):
-            args_text = "\n".join(f"  {k}: {v}" for k, v in arguments.items())
+    if event.arguments:
+        if isinstance(event.arguments, dict):
+            args_text = "\n".join(f"  {k}: {v}" for k, v in event.arguments.items())
             parts.append(f"Arguments:\n{args_text}")
         else:
-            parts.append(f"Arguments: {arguments}")
+            parts.append(f"Arguments: {event.arguments}")
 
-    if result is not None:
-        result_str = str(result) if not isinstance(result, str) else result
+    if event.result is not None:
+        result_str = (
+            str(event.result) if not isinstance(event.result, str) else event.result
+        )
         parts.append(f"Result: {result_str}")
 
-    if error is not None:
-        error_msg = getattr(error, "message", str(error))
-        parts.append(f"Error: {error_msg}")
+    if event.error is not None:
+        parts.append(f"Error: {event.error.message}")
 
     return "\n".join(parts) + "\n"
 
 
 def _error_event_as_str(event: Event) -> str | None:
     """Extract error message from ErrorEvent."""
-    # ErrorEvent has error (EvalError with message)
-    error = getattr(event, "error", None)
-    if error is not None:
-        message = getattr(error, "message", str(error))
-        return f"ERROR:\n{message}\n"
-    return None
+    if not isinstance(event, ErrorEvent):
+        return None
+    return f"ERROR:\n{event.error.message}\n"
 
 
 def _info_event_as_str(event: Event) -> str | None:
     """Format InfoEvent data as string or JSON."""
-    # InfoEvent has source, data
-    source = getattr(event, "source", None)
-    data = getattr(event, "data", None)
+    if not isinstance(event, InfoEvent):
+        return None
 
-    if data is None:
+    if event.data is None:
         return None
 
     # Convert data to string - JSON dump if not already a string
-    if isinstance(data, str):
-        data_str = data
+    if isinstance(event.data, str):
+        data_str = event.data
     else:
-        data_str = json.dumps(data, default=str)
+        data_str = json.dumps(event.data, default=str)
 
-    source_part = f" ({source})" if source else ""
+    source_part = f" ({event.source})" if event.source else ""
     return f"INFO{source_part}:\n{data_str}\n"
 
 
 def _logger_event_as_str(event: Event) -> str | None:
     """Extract log message from LoggerEvent."""
-    # LoggerEvent has message (LoggingMessage with message, level)
-    msg = getattr(event, "message", None)
-    if msg is not None:
-        level = getattr(msg, "level", "info")
-        message = getattr(msg, "message", str(msg))
-        return f"LOG ({level}):\n{message}\n"
-    return None
+    if not isinstance(event, LoggerEvent):
+        return None
+    return f"LOG ({event.message.level}):\n{event.message.message}\n"
 
 
 def _approval_event_as_str(event: Event) -> str | None:
     """Format ApprovalEvent with message, tool call, and decision."""
-    # ApprovalEvent has message, call (ToolCall), decision, explanation
-    message = getattr(event, "message", "")
-    call = getattr(event, "call", None)
-    decision = getattr(event, "decision", "unknown")
-    explanation = getattr(event, "explanation", None)
+    if not isinstance(event, ApprovalEvent):
+        return None
 
-    parts = [f"APPROVAL ({decision}):"]
+    parts = [f"APPROVAL ({event.decision}):"]
 
-    if message:
-        parts.append(f"Message: {message}")
+    if event.message:
+        parts.append(f"Message: {event.message}")
 
-    if call is not None:
-        function = getattr(call, "function", "unknown")
-        arguments = getattr(call, "arguments", {})
-        parts.append(f"Tool: {function}")
-        if arguments:
-            if isinstance(arguments, dict):
-                args_text = ", ".join(f"{k}={v}" for k, v in arguments.items())
-                parts.append(f"Args: {args_text}")
-            else:
-                parts.append(f"Args: {arguments}")
+    call = event.call
+    parts.append(f"Tool: {call.function}")
+    if call.arguments:
+        if isinstance(call.arguments, dict):
+            args_text = ", ".join(f"{k}={v}" for k, v in call.arguments.items())
+            parts.append(f"Args: {args_text}")
+        else:
+            parts.append(f"Args: {call.arguments}")
 
-    if explanation:
-        parts.append(f"Explanation: {explanation}")
+    if event.explanation:
+        parts.append(f"Explanation: {event.explanation}")
 
     return "\n".join(parts) + "\n"

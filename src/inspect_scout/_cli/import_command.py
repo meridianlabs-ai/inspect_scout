@@ -314,6 +314,12 @@ async def _run_dry_run(
     default=False,
     help="Fetch and display summary without writing.",
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing transcripts directory without prompting.",
+)
 @common_options
 def import_command(
     source: str | None,
@@ -324,6 +330,7 @@ def import_command(
     params: tuple[str, ...],
     sources: bool,
     dry_run: bool,
+    overwrite: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
@@ -360,21 +367,26 @@ def import_command(
         # Check if transcripts directory exists
         transcripts_path = Path(transcripts)
         if transcripts_path.exists():
-            from rich.prompt import Prompt
-
-            choice = Prompt.ask(
-                f"\nTranscripts directory '{transcripts}' already exists\n"
-                "  [bold]1[/bold]) Add transcripts (existing transcripts won't be re-imported)\n"
-                "  [bold]2[/bold]) Overwrite (delete existing transcripts first)\n"
-                "  [bold]3[/bold]) Cancel\n",
-                choices=["1", "2", "3"],
-                default="1",
-            )
-            if choice == "3":
-                raise SystemExit(0)
-            if choice == "2":
+            if overwrite:
                 import shutil
 
                 shutil.rmtree(transcripts_path)
+            else:
+                from rich.prompt import Prompt
+
+                choice = Prompt.ask(
+                    f"\nTranscripts directory '{transcripts}' already exists\n"
+                    "  [bold]1[/bold]) Add transcripts (existing transcripts won't be re-imported)\n"
+                    "  [bold]2[/bold]) Overwrite (delete existing transcripts first)\n"
+                    "  [bold]3[/bold]) Cancel\n",
+                    choices=["1", "2", "3"],
+                    default="1",
+                )
+                if choice == "3":
+                    raise SystemExit(0)
+                if choice == "2":
+                    import shutil
+
+                    shutil.rmtree(transcripts_path)
 
         asyncio.run(_run_import(source_fn, source, kwargs, transcripts))

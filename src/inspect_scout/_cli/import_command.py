@@ -117,14 +117,21 @@ def _has_int_annotation(annotation: Any) -> bool:
 
 def _is_str_only_annotation(annotation: Any) -> bool:
     """Check if annotation is strictly str or str | None (no other types)."""
+    import types
+
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return parts == ["str"] or set(parts) == {"str", "None"}
     if annotation is str:
         return True
-    args = getattr(annotation, "__args__", ())
-    if not args:
+    # Only check args for union types (not e.g. list[str])
+    origin = getattr(annotation, "__origin__", None)
+    is_union = isinstance(annotation, types.UnionType) or (
+        origin is not None and str(origin) == "typing.Union"
+    )
+    if not is_union:
         return False
+    args = getattr(annotation, "__args__", ())
     non_none = [a for a in args if a is not type(None)]
     return len(non_none) == 1 and non_none[0] is str
 

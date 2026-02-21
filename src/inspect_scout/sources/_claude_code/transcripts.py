@@ -13,7 +13,7 @@ split by /clear commands into multiple transcripts.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
@@ -225,7 +225,11 @@ async def _merge_slug_group(
     yield merged
 
     # Yield standalone (post-/clear) segments in chronological order
-    standalones.sort(key=lambda t: t.events[0].timestamp if t.events else datetime.min)
+    standalones.sort(
+        key=lambda t: t.events[0].timestamp
+        if t.events
+        else datetime.min.replace(tzinfo=timezone.utc)
+    )
     for standalone in standalones:
         yield standalone
 

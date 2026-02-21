@@ -1103,3 +1103,79 @@ async def test_slug_backfill_with_time_filter(slug_fixtures_dir: Path) -> None:
     merged = transcripts[0]
     assert merged.task_id == "merged-slug-test"
     assert merged.message_count == 4  # both sessions merged
+
+
+# =========================================================================
+# Multi-file /clear standalone ordering tests
+# =========================================================================
+
+
+@pytest.fixture
+def multi_clear_fixtures_dir(tmp_path: Path) -> Path:
+    """Create a temp dir with two slug-sharing session files, each with a /clear.
+
+    Timeline:
+    - File1 primary:    10:00:00
+    - File2 primary:    10:01:00
+    - File2 standalone: 10:03:00  (earlier standalone)
+    - File1 standalone: 10:05:00  (later standalone)
+
+    Standalones should be yielded in chronological order (file2 before file1).
+    """
+    fixtures = Path(__file__).parent / "fixtures"
+    for name in ["slug_multi_clear_file1.jsonl", "slug_multi_clear_file2.jsonl"]:
+        src = fixtures / name
+        (tmp_path / name).write_text(src.read_text())
+    return tmp_path
+
+
+@pytest.mark.asyncio
+async def test_multi_file_clear_standalones_chronological(
+    multi_clear_fixtures_dir: Path,
+) -> None:
+    """Standalone post-/clear segments from multiple files are in chronological order."""
+    from inspect_scout.sources import claude_code
+
+    transcripts = []
+    async for transcript in claude_code(path=multi_clear_fixtures_dir):
+        transcripts.append(transcript)
+
+    # Should yield 3 transcripts:
+    # 1) Merged primary (file1-seg0 + file2-seg0)
+    # 2) File2 standalone (10:03, earlier)
+    # 3) File1 standalone (10:05, later)
+    assert len(transcripts) == 3
+
+    merged = transcripts[0]
+    standalone_1 = transcripts[1]
+    standalone_2 = transcripts[2]
+
+    # Merged primary should have task_id = slug
+    assert merged.task_id == "multi-clear-slug"
+    assert merged.message_count == 4  # 2 from each file's primary
+
+    # Standalones should be in chronological order
+    # File2's standalone (10:03) comes before File1's standalone (10:05)
+    assert standalone_1.source_id == "session-mc2"
+    assert standalone_2.source_id == "session-mc1"
+
+    # Each standalone has 2 messages
+    assert standalone_1.message_count == 2
+    assert standalone_2.message_count == 2
+
+
+@pytest.mark.asyncio
+async def test_multi_file_clear_limit_includes_standalones(
+    multi_clear_fixtures_dir: Path,
+) -> None:
+    """Limit applies across merged primary and standalone transcripts."""
+    from inspect_scout.sources import claude_code
+
+    transcripts = []
+    async for transcript in claude_code(path=multi_clear_fixtures_dir, limit=2):
+        transcripts.append(transcript)
+
+    # limit=2 should yield merged primary + first standalone only
+    assert len(transcripts) == 2
+    assert transcripts[0].task_id == "multi-clear-slug"  # merged primary
+    assert transcripts[1].source_id == "session-mc2"  # first chronological standalone

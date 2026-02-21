@@ -285,6 +285,64 @@ def find_agent_file(
     return None
 
 
+def _peek_field(session_file: Path, field: str, max_lines: int = 10) -> str | None:
+    """Read a field value from the first few lines of a JSONL session file.
+
+    Streams the file and stops as soon as the field is found, avoiding
+    reading the entire file.
+
+    Args:
+        session_file: Path to a JSONL session file
+        field: JSON field name to extract
+        max_lines: Maximum number of lines to scan
+
+    Returns:
+        The field value as a string, or None if not found
+    """
+    try:
+        with open(session_file, encoding="utf-8") as f:
+            for _, line in zip(range(max_lines), f, strict=False):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                    value = event.get(field)
+                    if value:
+                        return str(value)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        logger.warning(f"Could not read session file: {session_file}")
+    return None
+
+
+def peek_slug(session_file: Path, max_lines: int = 10) -> str | None:
+    """Read the slug from the first few lines of a session file.
+
+    Args:
+        session_file: Path to a JSONL session file
+        max_lines: Maximum number of lines to scan
+
+    Returns:
+        The slug string, or None if not found
+    """
+    return _peek_field(session_file, "slug", max_lines)
+
+
+def peek_first_timestamp(session_file: Path, max_lines: int = 10) -> str | None:
+    """Read the first timestamp from a session file without reading the whole file.
+
+    Args:
+        session_file: Path to a JSONL session file
+        max_lines: Maximum number of lines to scan
+
+    Returns:
+        ISO timestamp string, or None if not found
+    """
+    return _peek_field(session_file, "timestamp", max_lines)
+
+
 def read_jsonl_events(path: Path) -> list[dict[str, Any]]:
     """Read all events from a JSONL file.
 

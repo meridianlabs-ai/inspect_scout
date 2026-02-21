@@ -1,5 +1,6 @@
 """Integration tests for Claude Code import source."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,21 @@ import pytest
 def fixtures_dir() -> Path:
     """Get the fixtures directory."""
     return Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def slug_fixtures_dir(tmp_path: Path) -> Path:
+    """Create a temp directory with two session files sharing the same slug.
+
+    Returns a directory (like a Claude Code project dir) containing
+    the two fixture files, so discover_session_files can find them.
+    """
+    fixtures = Path(__file__).parent / "fixtures"
+    # Copy slug fixtures into tmp_path so they form their own isolated directory
+    for name in ["slug_session_1.jsonl", "slug_session_2.jsonl"]:
+        src = fixtures / name
+        (tmp_path / name).write_text(src.read_text())
+    return tmp_path
 
 
 @pytest.fixture
@@ -838,3 +854,201 @@ async def test_claude_code_events_isSidechain_routing() -> None:
     model_events = [e for e in events if isinstance(e, ModelEvent)]
     assert len(model_events) == 1, "Main session ModelEvent should still be produced"
     assert model_events[0].model == "claude-opus-4-5-20251101"
+
+
+# =========================================================================
+# Slug merging tests
+# =========================================================================
+
+
+class TestPeekSlug:
+    """Tests for peek_slug()."""
+
+    def test_extracts_slug_from_first_line(self, tmp_path: Path) -> None:
+        """Reads slug from a JSONL file's first event."""
+        from inspect_scout.sources._claude_code.client import peek_slug
+
+        f = tmp_path / "session.jsonl"
+        f.write_text(
+            json.dumps(
+                {
+                    "uuid": "1",
+                    "type": "user",
+                    "sessionId": "s1",
+                    "slug": "my-slug",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "message": {"content": "hi"},
+                }
+            )
+            + "\n"
+        )
+        assert peek_slug(f) == "my-slug"
+
+    def test_returns_none_when_no_slug(self, tmp_path: Path) -> None:
+        """Returns None when no slug field is present."""
+        from inspect_scout.sources._claude_code.client import peek_slug
+
+        f = tmp_path / "session.jsonl"
+        f.write_text(
+            json.dumps(
+                {
+                    "uuid": "1",
+                    "type": "user",
+                    "sessionId": "s1",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "message": {"content": "hi"},
+                }
+            )
+            + "\n"
+        )
+        assert peek_slug(f) is None
+
+    def test_returns_none_for_missing_file(self, tmp_path: Path) -> None:
+        """Returns None for a non-existent file."""
+        from inspect_scout.sources._claude_code.client import peek_slug
+
+        assert peek_slug(tmp_path / "nonexistent.jsonl") is None
+
+    def test_skips_empty_lines(self, tmp_path: Path) -> None:
+        """Skips blank lines to find slug."""
+        from inspect_scout.sources._claude_code.client import peek_slug
+
+        f = tmp_path / "session.jsonl"
+        lines = [
+            "",
+            "",
+            json.dumps(
+                {
+                    "uuid": "1",
+                    "type": "user",
+                    "sessionId": "s1",
+                    "slug": "found-it",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "message": {"content": "hi"},
+                }
+            ),
+        ]
+        f.write_text("\n".join(lines) + "\n")
+        assert peek_slug(f) == "found-it"
+
+
+@pytest.mark.asyncio
+async def test_slug_merge_combines_sessions(slug_fixtures_dir: Path) -> None:
+    """Two session files with same slug produce one merged transcript."""
+    from inspect_ai.event import InfoEvent
+    from inspect_scout.sources import claude_code
+
+    transcripts = []
+    async for transcript in claude_code(path=slug_fixtures_dir):
+        transcripts.append(transcript)
+
+    # Should merge into a single transcript
+    assert len(transcripts) == 1
+    merged = transcripts[0]
+
+    # transcript_id should be from the first session (chronologically)
+    assert merged.transcript_id == "session-aaa"
+
+    # task_id should be the slug
+    assert merged.task_id == "merged-slug-test"
+
+    # Messages from both sessions should be combined
+    assert merged.message_count == 4  # 2 from each session
+
+    # Events should include an InfoEvent boundary separator
+    info_events = [e for e in merged.events if isinstance(e, InfoEvent)]
+    assert len(info_events) >= 1
+    assert "Context reset" in str(info_events[0].data)
+
+    # Tokens should be summed (100+50 + 200+100 = 450)
+    assert merged.total_tokens == 450
+
+    # Metadata should contain session_ids
+    assert "session_ids" in merged.metadata
+    assert "session-aaa" in merged.metadata["session_ids"]
+    assert "session-bbb" in merged.metadata["session_ids"]
+
+
+@pytest.mark.asyncio
+async def test_single_session_slug_unchanged(fixtures_dir: Path) -> None:
+    """A single session file with a slug produces unchanged output."""
+    from inspect_scout.sources import claude_code
+
+    session_file = fixtures_dir / "simple_conversation.jsonl"
+    if not session_file.exists():
+        pytest.skip("Test fixture not available")
+
+    transcripts = []
+    async for transcript in claude_code(path=session_file):
+        transcripts.append(transcript)
+
+    # Single file should produce one transcript as before
+    assert len(transcripts) == 1
+    transcript = transcripts[0]
+
+    # Should preserve existing behavior
+    assert transcript.transcript_id == "test-session-001"
+    assert transcript.task_id == "simple-conv-slug"
+    assert transcript.message_count == 4
+    # No session_ids metadata for single sessions
+    assert "session_ids" not in transcript.metadata
+
+
+@pytest.mark.asyncio
+async def test_slug_backfill_from_single_file(slug_fixtures_dir: Path) -> None:
+    """Passing a single slug file as path backfills its partner from siblings."""
+    from inspect_scout.sources import claude_code
+
+    # Pass only one of the two slug partner files
+    single_file = slug_fixtures_dir / "slug_session_1.jsonl"
+
+    transcripts = []
+    async for transcript in claude_code(path=single_file):
+        transcripts.append(transcript)
+
+    # Backfill should find the partner, producing one merged transcript
+    assert len(transcripts) == 1
+    merged = transcripts[0]
+    assert merged.task_id == "merged-slug-test"
+    assert merged.message_count == 4  # 2 from each session
+    assert "session_ids" in merged.metadata
+    assert len(merged.metadata["session_ids"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_slug_backfill_with_time_filter(slug_fixtures_dir: Path) -> None:
+    """Time filter that excludes one slug partner still produces merged result."""
+    from datetime import datetime, timezone
+
+    from inspect_scout.sources import claude_code
+
+    # slug_session_1 timestamps are at 10:00:00, slug_session_2 at 10:01:00
+    # Use a from_time that excludes session_1 but includes session_2
+    from_time = datetime(2026, 1, 31, 10, 0, 30, tzinfo=timezone.utc)
+
+    # Set the mtime of session_1 to be before from_time so it gets excluded
+    import os
+    import time
+
+    session_1 = slug_fixtures_dir / "slug_session_1.jsonl"
+    session_2 = slug_fixtures_dir / "slug_session_2.jsonl"
+
+    # Set session_1 mtime to the past (before from_time)
+    old_time = time.mktime(datetime(2026, 1, 31, 9, 0, 0).timetuple())
+    os.utime(session_1, (old_time, old_time))
+
+    # Set session_2 mtime to after from_time
+    new_time = time.mktime(datetime(2026, 1, 31, 11, 0, 0).timetuple())
+    os.utime(session_2, (new_time, new_time))
+
+    transcripts = []
+    async for transcript in claude_code(
+        path=slug_fixtures_dir, from_time=from_time.replace(tzinfo=None)
+    ):
+        transcripts.append(transcript)
+
+    # Only session_2 passes the time filter, but backfill should find session_1
+    assert len(transcripts) == 1
+    merged = transcripts[0]
+    assert merged.task_id == "merged-slug-test"
+    assert merged.message_count == 4  # both sessions merged

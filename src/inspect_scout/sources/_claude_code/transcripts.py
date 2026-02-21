@@ -27,9 +27,12 @@ if TYPE_CHECKING:
 
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
+    _find_sessions_in_directory,
     discover_session_files,
     get_project_path_from_file,
     get_source_uri,
+    peek_first_timestamp,
+    peek_slug,
     read_jsonl_events,
 )
 from .detection import get_session_id
@@ -64,6 +67,10 @@ async def claude_code(
     Each Claude Code session can contain multiple conversations separated
     by /clear commands. Each conversation becomes one Scout transcript.
 
+    When Claude Code enters plan mode and executes a plan, it creates
+    separate session files that share the same slug. These related sessions
+    are merged into a single transcript.
+
     Args:
         path: Path to Claude Code project directory or specific session file.
             If None, scans all projects in ~/.claude/projects/
@@ -82,18 +89,179 @@ async def claude_code(
         logger.info("No Claude Code session files found")
         return
 
+    # Group files by slug for merging plan+execute sessions
+    slug_groups: dict[str | None, list[Path]] = {}
+    for f in session_files:
+        slug = peek_slug(f)
+        slug_groups.setdefault(slug, []).append(f)
+
+    # Backfill missing slug partners from sibling files in the same project dir
+    _backfill_slug_groups(slug_groups, session_files)
+
     count = 0
 
-    for session_file in session_files:
+    for slug, files in slug_groups.items():
         if limit and count >= limit:
             return
 
-        async for transcript in _process_session_file(session_file):
-            yield transcript
-            count += 1
+        if len(files) == 1 or slug is None:
+            # Single session or no slug — existing behavior
+            for f in files:
+                if limit and count >= limit:
+                    return
+                async for transcript in _process_session_file(f):
+                    yield transcript
+                    count += 1
+                    if limit and count >= limit:
+                        return
+        else:
+            # Multi-session slug group — merge into one transcript
+            merged = await _merge_slug_group(files, slug)
+            if merged:
+                yield merged
+                count += 1
 
-            if limit and count >= limit:
-                return
+
+def _backfill_slug_groups(
+    slug_groups: dict[str | None, list[Path]],
+    session_files: list[Path],
+) -> None:
+    """Backfill missing slug partners from sibling files in the same project dir.
+
+    When time filters, session_id filters, or specific file paths cause only
+    one half of a slug pair to be discovered, this function scans sibling
+    files in the same project directory to find the missing partners.
+
+    Mutates slug_groups in place.
+
+    Args:
+        slug_groups: Mapping of slug → list of discovered file paths
+        session_files: All originally discovered session files
+    """
+    discovered_paths = {f.resolve() for f in session_files}
+    dir_cache: dict[Path, list[Path]] = {}
+    slug_cache: dict[Path, str | None] = {}
+
+    for slug, files in list(slug_groups.items()):
+        if slug is None:
+            continue
+
+        # Collect project directories for this slug group
+        project_dirs = {f.parent for f in files}
+
+        for project_dir in project_dirs:
+            if project_dir not in dir_cache:
+                dir_cache[project_dir] = _find_sessions_in_directory(project_dir)
+
+            for sibling in dir_cache[project_dir]:
+                resolved = sibling.resolve()
+                if resolved in discovered_paths:
+                    continue
+                if sibling not in slug_cache:
+                    slug_cache[sibling] = peek_slug(sibling)
+                if slug_cache[sibling] == slug:
+                    files.append(sibling)
+                    discovered_paths.add(resolved)
+
+
+async def _merge_slug_group(
+    files: list[Path],
+    slug: str,
+) -> "Transcript" | None:
+    """Merge multiple session files sharing the same slug into one transcript.
+
+    When Claude Code enters plan mode and executes the plan, it creates
+    separate session files with different sessionIds but the same slug.
+    This function merges them into a single transcript.
+
+    Args:
+        files: List of session file paths sharing the same slug
+        slug: The shared slug identifier
+
+    Returns:
+        Merged Transcript, or None if no valid transcripts produced
+    """
+    from inspect_ai.event import InfoEvent
+
+    from .util import parse_timestamp
+
+    # Sort files by first event timestamp (chronological order)
+    files_sorted = sorted(files, key=lambda f: peek_first_timestamp(f) or "")
+
+    # Process each file through existing pipeline to get transcripts
+    all_transcripts: list["Transcript"] = []
+    for f in files_sorted:
+        async for transcript in _process_session_file(f):
+            all_transcripts.append(transcript)
+
+    if not all_transcripts:
+        return None
+
+    if len(all_transcripts) == 1:
+        return all_transcripts[0]
+
+    # Merge transcripts
+    first = all_transcripts[0]
+    merged_events: list[Event] = list(first.events)
+    merged_messages: list[ChatMessage] = list(first.messages)
+    total_tokens = first.total_tokens or 0
+    total_time = first.total_time or 0.0
+    session_ids = [first.source_id] if first.source_id else []
+
+    for i, transcript in enumerate(all_transcripts[1:], start=2):
+        # Insert session boundary InfoEvent
+        boundary_ts = parse_timestamp(transcript.date) or datetime.now()
+        boundary_event = InfoEvent(
+            source="claude-code",
+            data=f"---\n\n*Context reset — session {i} of {len(all_transcripts)}*\n\n---",
+            timestamp=boundary_ts,
+        )
+        merged_events.append(boundary_event)
+        merged_events.extend(transcript.events)
+        merged_messages.extend(transcript.messages)
+
+        if transcript.total_tokens:
+            total_tokens += transcript.total_tokens
+        if transcript.total_time:
+            total_time += transcript.total_time
+        if transcript.source_id:
+            session_ids.append(transcript.source_id)
+
+    # Rebuild unified timeline from merged events
+    from inspect_scout._transcript.timeline import build_timeline
+
+    build_timeline(merged_events)
+
+    # Build merged metadata
+    metadata = dict(first.metadata)
+    metadata["session_ids"] = session_ids
+
+    from inspect_scout import Transcript
+
+    return Transcript(
+        transcript_id=first.transcript_id,
+        source_type=CLAUDE_CODE_SOURCE_TYPE,
+        source_id=first.source_id,
+        source_uri=first.source_uri,
+        date=first.date,
+        task_set=first.task_set,
+        task_id=slug,
+        task_repeat=1,
+        agent="claude-code",
+        agent_args=None,
+        model=first.model,
+        model_options=None,
+        score=None,
+        success=None,
+        message_count=len(merged_messages),
+        total_tokens=total_tokens if total_tokens > 0 else None,
+        total_time=total_time if total_time > 0.0 else None,
+        error=None,
+        limit=None,
+        messages=merged_messages,
+        events=merged_events,
+        metadata=metadata,
+    )
 
 
 async def _process_session_file(

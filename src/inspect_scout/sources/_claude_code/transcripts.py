@@ -224,7 +224,8 @@ async def _merge_slug_group(
 
     yield merged
 
-    # Yield standalone (post-/clear) segments
+    # Yield standalone (post-/clear) segments in chronological order
+    standalones.sort(key=lambda t: t.events[0].timestamp if t.events else datetime.min)
     for standalone in standalones:
         yield standalone
 
@@ -261,8 +262,10 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
         seen_ids.add(first.source_id)
 
     for i, transcript in enumerate(transcripts[1:], start=2):
-        # Derive boundary timestamp from last event of previous transcript
-        boundary_ts = merged_events[-1].timestamp if merged_events else datetime.now()
+        # Use next transcript's first-event timestamp to avoid clock-skew issues
+        boundary_ts = (
+            transcript.events[0].timestamp if transcript.events else datetime.now()
+        )
         boundary_event = InfoEvent(
             source="claude-code",
             data=f"---\n\n*Context reset — session {i} of {len(transcripts)}*\n\n---",

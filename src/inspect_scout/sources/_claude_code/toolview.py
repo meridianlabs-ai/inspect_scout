@@ -38,8 +38,8 @@ def tool_view(tool: str, arguments: dict[str, Any]) -> ToolCallContent | None:
 
 
 def write_tool_view(arguments: dict[str, Any]) -> ToolCallContent:
-    file_path = arguments.get("file_path", "")
-    file_content = arguments.get("content", "")
+    file_path = str(arguments.get("file_path", "") or "")
+    file_content = str(arguments.get("content", "") or "")
     _, ext = splitext(file_path)
     ext_lower = ext.lower()
     if ext_lower in _MARKDOWN_EXTENSIONS:

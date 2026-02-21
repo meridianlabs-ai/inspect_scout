@@ -115,15 +115,18 @@ def _has_int_annotation(annotation: Any) -> bool:
     return any(a is int for a in args)
 
 
-def _has_str_annotation(annotation: Any) -> bool:
-    """Check if a parameter annotation includes str."""
+def _is_str_only_annotation(annotation: Any) -> bool:
+    """Check if annotation is strictly str or str | None (no other types)."""
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
-        return "str" in parts
+        return parts == ["str"] or set(parts) == {"str", "None"}
     if annotation is str:
         return True
     args = getattr(annotation, "__args__", ())
-    return any(a is str for a in args)
+    if not args:
+        return False
+    non_none = [a for a in args if a is not type(None)]
+    return len(non_none) == 1 and non_none[0] is str
 
 
 def _coerce_value(value: str, annotation: Any) -> Any:
@@ -134,7 +137,7 @@ def _coerce_value(value: str, annotation: Any) -> Any:
         return int(value)
     # String-annotated params should stay as strings (YAML parsing would
     # coerce values like "123" or "true" into int/bool).
-    if _has_str_annotation(annotation):
+    if _is_str_only_annotation(annotation):
         return value
     # Use YAML parsing for everything else (handles lists, dicts, bools)
     try:
@@ -323,18 +326,6 @@ async def _run_dry_run(
     default=False,
     help="Fetch and display summary without writing.",
 )
-def _remove_transcripts_dir(path: Path) -> None:
-    """Remove a transcripts directory, validating it is a real directory."""
-    import shutil
-
-    if not path.is_dir():
-        raise click.UsageError(f"'{path}' exists but is not a directory.")
-    if path.is_symlink():
-        path.unlink()
-    else:
-        shutil.rmtree(path)
-
-
 @click.option(
     "--overwrite",
     is_flag=True,
@@ -407,3 +398,15 @@ def import_command(
                     _remove_transcripts_dir(transcripts_path)
 
         asyncio.run(_run_import(source_fn, source, kwargs, transcripts))
+
+
+def _remove_transcripts_dir(path: Path) -> None:
+    """Remove a transcripts directory, validating it is a real directory."""
+    import shutil
+
+    if not path.is_dir():
+        raise click.UsageError(f"'{path}' exists but is not a directory.")
+    if path.is_symlink():
+        path.unlink()
+    else:
+        shutil.rmtree(path)

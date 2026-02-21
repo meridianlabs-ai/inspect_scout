@@ -1,7 +1,7 @@
 """Event type detection for Claude Code sessions.
 
-Detects event types, /clear commands, model names, and filters
-conversation events from internal events.
+Detects event types, /clear commands, local-command wrappers, model names,
+and filters conversation events from internal events.
 """
 
 import re
@@ -148,13 +148,55 @@ def is_skill_command(event: BaseEvent) -> str | None:
     return command
 
 
+def is_local_command_caveat(event: BaseEvent) -> bool:
+    """Check if event is a local-command-caveat wrapper message.
+
+    Claude Code wraps slash commands in a three-message sequence. The first
+    message is a caveat instructing the model to ignore the command messages.
+    These are pure UI chrome and should be filtered from transcripts.
+
+    Args:
+        event: Claude Code event
+
+    Returns:
+        True if this is a local-command-caveat message
+    """
+    if not isinstance(event, UserEvent):
+        return False
+    content = event.message.content
+    if not isinstance(content, str):
+        return False
+    return content.startswith("<local-command-caveat>")
+
+
+def is_local_command_stdout(event: BaseEvent) -> bool:
+    """Check if event is a local-command-stdout wrapper message.
+
+    Claude Code wraps slash commands in a three-message sequence. The third
+    message contains the command's stdout output (often empty). These are
+    pure UI chrome and should be filtered from transcripts.
+
+    Args:
+        event: Claude Code event
+
+    Returns:
+        True if this is a local-command-stdout message
+    """
+    if not isinstance(event, UserEvent):
+        return False
+    content = event.message.content
+    if not isinstance(content, str):
+        return False
+    return content.startswith("<local-command-stdout>")
+
+
 def should_skip_event(event: BaseEvent) -> bool:
     """Check if an event should be skipped during processing.
 
     Only checks events that pass the allowlist in parse_events()
     (user, assistant, system). Events to skip:
     - turn_duration system events
-    - /clear and /exit commands
+    - All slash command events (command-name, caveat, stdout)
 
     Args:
         event: Claude Code event
@@ -166,12 +208,16 @@ def should_skip_event(event: BaseEvent) -> bool:
     if is_turn_duration_event(event):
         return True
 
-    # Skip /clear commands (they're split boundaries, not content)
-    if is_clear_command(event):
+    # Skip all slash command events (/clear, /exit, /fast, /plan, skills, etc.)
+    if _get_command_name(event) is not None:
         return True
 
-    # Skip /exit commands
-    if is_exit_command(event):
+    # Skip local-command-caveat wrapper messages
+    if is_local_command_caveat(event):
+        return True
+
+    # Skip local-command-stdout wrapper messages
+    if is_local_command_stdout(event):
         return True
 
     return False

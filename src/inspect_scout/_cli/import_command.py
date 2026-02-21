@@ -7,7 +7,6 @@ import asyncio
 import importlib
 import inspect
 from datetime import datetime
-from logging import getLogger
 from pathlib import Path
 from typing import Any, Callable
 
@@ -22,8 +21,6 @@ from inspect_scout._cli.common import (
 )
 from inspect_scout._display._display import display
 from inspect_scout._util.constants import DEFAULT_TRANSCRIPTS_DIR
-
-logger = getLogger(__name__)
 
 
 def _discover_sources() -> dict[str, Callable[..., Any]]:
@@ -118,16 +115,30 @@ def _has_int_annotation(annotation: Any) -> bool:
     return any(a is int for a in args)
 
 
+def _has_str_annotation(annotation: Any) -> bool:
+    """Check if a parameter annotation includes str."""
+    if isinstance(annotation, str):
+        parts = [p.strip() for p in annotation.split("|")]
+        return "str" in parts
+    if annotation is str:
+        return True
+    args = getattr(annotation, "__args__", ())
+    return any(a is str for a in args)
+
+
 def _coerce_value(value: str, annotation: Any) -> Any:
     """Coerce a string value based on the parameter's type annotation."""
     if _has_datetime_annotation(annotation):
         return datetime.fromisoformat(value)
     if _has_int_annotation(annotation):
         return int(value)
-    # Use YAML parsing for everything else (handles lists, dicts, strings, bools)
+    # String-annotated params should stay as strings (YAML parsing would
+    # coerce values like "123" or "true" into int/bool).
+    if _has_str_annotation(annotation):
+        return value
+    # Use YAML parsing for everything else (handles lists, dicts, bools)
     try:
         parsed = yaml.safe_load(value)
-        # If YAML parsed it as something other than a string, use that
         if parsed is not None:
             return parsed
         return value
@@ -188,7 +199,6 @@ def _parse_params(
 
     if from_time is not None:
         if "from_time" in valid_params:
-            annotation = sig.parameters["from_time"].annotation
             try:
                 kwargs["from_time"] = datetime.fromisoformat(from_time)
             except ValueError as e:
@@ -200,7 +210,6 @@ def _parse_params(
 
     if to_time is not None:
         if "to_time" in valid_params:
-            annotation = sig.parameters["to_time"].annotation
             try:
                 kwargs["to_time"] = datetime.fromisoformat(to_time)
             except ValueError as e:

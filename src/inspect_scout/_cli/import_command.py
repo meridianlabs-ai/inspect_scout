@@ -323,6 +323,18 @@ async def _run_dry_run(
     default=False,
     help="Fetch and display summary without writing.",
 )
+def _remove_transcripts_dir(path: Path) -> None:
+    """Remove a transcripts directory, validating it is a real directory."""
+    import shutil
+
+    if not path.is_dir():
+        raise click.UsageError(f"'{path}' exists but is not a directory.")
+    if path.is_symlink():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
+
+
 @click.option(
     "--overwrite",
     is_flag=True,
@@ -377,9 +389,7 @@ def import_command(
         transcripts_path = Path(transcripts)
         if transcripts_path.exists():
             if overwrite:
-                import shutil
-
-                shutil.rmtree(transcripts_path)
+                _remove_transcripts_dir(transcripts_path)
             else:
                 from rich.prompt import Prompt
 
@@ -394,8 +404,6 @@ def import_command(
                 if choice == "3":
                     raise SystemExit(0)
                 if choice == "2":
-                    import shutil
-
-                    shutil.rmtree(transcripts_path)
+                    _remove_transcripts_dir(transcripts_path)
 
         asyncio.run(_run_import(source_fn, source, kwargs, transcripts))

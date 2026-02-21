@@ -25,14 +25,6 @@ from inspect_scout._util.constants import DEFAULT_TRANSCRIPTS_DIR
 
 logger = getLogger(__name__)
 
-# Standard .gitignore content for Scout projects
-SCOUT_GITIGNORE = """\
-.env
-transcripts/
-scans/
-scout.local.yaml
-"""
-
 
 def _discover_sources() -> dict[str, Callable[..., Any]]:
     """Discover available source functions from inspect_scout.sources.
@@ -219,14 +211,6 @@ def _parse_params(
     return kwargs
 
 
-def _write_gitignore() -> None:
-    """Write a standard Scout .gitignore if one doesn't exist."""
-    gitignore_path = Path.cwd() / ".gitignore"
-    if not gitignore_path.exists():
-        gitignore_path.write_text(SCOUT_GITIGNORE)
-        display().print(f"Created {gitignore_path}")
-
-
 async def _run_import(
     source_fn: Callable[..., Any],
     source_name: str,
@@ -330,12 +314,6 @@ async def _run_dry_run(
     default=False,
     help="Fetch and display summary without writing.",
 )
-@click.option(
-    "--no-gitignore",
-    is_flag=True,
-    default=False,
-    help="Skip writing .gitignore file.",
-)
 @common_options
 def import_command(
     source: str | None,
@@ -346,7 +324,6 @@ def import_command(
     params: tuple[str, ...],
     sources: bool,
     dry_run: bool,
-    no_gitignore: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
@@ -390,7 +367,3 @@ def import_command(
             )
 
         asyncio.run(_run_import(source_fn, source, kwargs, transcripts))
-
-        # Write .gitignore if needed
-        if not no_gitignore:
-            _write_gitignore()

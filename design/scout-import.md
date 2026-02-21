@@ -47,7 +47,6 @@ scout import claude_code --dry-run --limit 5
 | `-P` | | Source parameter as `name=value` (repeatable) | None |
 | `--sources` | | List available sources and their parameters | False |
 | `--dry-run` | | Fetch and display summary without writing | False |
-| `--no-gitignore` | | Skip writing `.gitignore` file | False |
 
 The import command always prints the `scout view` command after a successful import.
 
@@ -128,19 +127,6 @@ Add transcripts to it? (existing transcripts won't be re-imported) [y/N]
 If the user confirms, proceed with the import — the database's built-in deduplication by `transcript_id` ensures no duplicates. If declined, exit without importing.
 
 This prompt is skipped when the directory does not exist (fresh import).
-
-## `.gitignore` File
-
-On successful import, if no `.gitignore` exists in the current directory, write one with standard Scout entries:
-
-```
-.env
-transcripts/
-scans/
-scout.local.yaml
-```
-
-Use `--no-gitignore` to skip this behavior.
 
 ## Error Handling
 

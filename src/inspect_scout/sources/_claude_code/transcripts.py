@@ -120,10 +120,11 @@ async def claude_code(
         if slug is not None and len(slug_groups.get(slug, [])) > 1:
             # Multi-file slug group — merge and mark as processed
             processed_slugs.add(slug)
-            merged = await _merge_slug_group(slug_groups[slug], slug)
-            if merged:
-                yield merged
+            async for transcript in _merge_slug_group(slug_groups[slug], slug):
+                yield transcript
                 count += 1
+                if limit and count >= limit:
+                    return
         else:
             # Single file (no slug or only one file for this slug)
             if slug is not None:
@@ -180,53 +181,91 @@ def _backfill_slug_groups(
 async def _merge_slug_group(
     files: list[Path],
     slug: str,
-) -> "Transcript" | None:
+) -> AsyncIterator["Transcript"]:
     """Merge multiple session files sharing the same slug into one transcript.
 
     When Claude Code enters plan mode and executes the plan, it creates
     separate session files with different sessionIds but the same slug.
-    This function merges them into a single transcript.
+    This function merges the primary transcript (first segment) from each
+    file, then yields post-/clear segments as standalone transcripts.
 
     Args:
         files: List of session file paths sharing the same slug
         slug: The shared slug identifier
 
-    Returns:
-        Merged Transcript, or None if no valid transcripts produced
+    Yields:
+        Merged primary transcript, then any standalone post-/clear segments
     """
-    from inspect_ai.event import InfoEvent
-
-    from .util import parse_timestamp
-
     # Sort files by first event timestamp (chronological order)
     files_sorted = sorted(files, key=lambda f: peek_first_timestamp(f) or "")
 
-    # Process each file through existing pipeline to get transcripts
-    all_transcripts: list["Transcript"] = []
+    # Process each file, partitioning into primary (first) and standalone (rest)
+    primaries: list["Transcript"] = []
+    standalones: list["Transcript"] = []
     for f in files_sorted:
+        first_from_file = True
         async for transcript in _process_session_file(f):
-            all_transcripts.append(transcript)
+            if first_from_file:
+                primaries.append(transcript)
+                first_from_file = False
+            else:
+                standalones.append(transcript)
 
-    if not all_transcripts:
-        return None
+    if not primaries:
+        return
 
-    if len(all_transcripts) == 1:
-        return all_transcripts[0]
+    # Merge primaries (or yield single primary as-is)
+    if len(primaries) == 1:
+        merged = primaries[0]
+        # Still set task_id to slug for consistency
+        merged = _with_task_id(merged, slug)
+    else:
+        merged = _merge_transcripts(primaries, slug)
 
-    # Merge transcripts
-    first = all_transcripts[0]
+    yield merged
+
+    # Yield standalone (post-/clear) segments
+    for standalone in standalones:
+        yield standalone
+
+
+def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcript":
+    """Merge a list of transcripts into a single transcript.
+
+    Combines events and messages, inserts session boundary markers between
+    transcripts, sums tokens and time, and deduplicates session IDs.
+
+    Args:
+        transcripts: Non-empty list of transcripts to merge (at least 2)
+        slug: The shared slug identifier (used as task_id)
+
+    Returns:
+        Merged Transcript
+    """
+    from inspect_ai.event import InfoEvent
+
+    from inspect_scout import Transcript
+    from inspect_scout._transcript.timeline import build_timeline
+
+    first = transcripts[0]
     merged_events: list[Event] = list(first.events)
     merged_messages: list[ChatMessage] = list(first.messages)
     total_tokens = first.total_tokens or 0
     total_time = first.total_time or 0.0
-    session_ids = [first.source_id] if first.source_id else []
 
-    for i, transcript in enumerate(all_transcripts[1:], start=2):
-        # Insert session boundary InfoEvent
-        boundary_ts = parse_timestamp(transcript.date) or datetime.now()
+    # Deduplicate session IDs while preserving order
+    seen_ids: set[str] = set()
+    session_ids: list[str] = []
+    if first.source_id and first.source_id not in seen_ids:
+        session_ids.append(first.source_id)
+        seen_ids.add(first.source_id)
+
+    for i, transcript in enumerate(transcripts[1:], start=2):
+        # Derive boundary timestamp from last event of previous transcript
+        boundary_ts = merged_events[-1].timestamp if merged_events else datetime.now()
         boundary_event = InfoEvent(
             source="claude-code",
-            data=f"---\n\n*Context reset — session {i} of {len(all_transcripts)}*\n\n---",
+            data=f"---\n\n*Context reset — session {i} of {len(transcripts)}*\n\n---",
             timestamp=boundary_ts,
         )
         merged_events.append(boundary_event)
@@ -237,19 +276,16 @@ async def _merge_slug_group(
             total_tokens += transcript.total_tokens
         if transcript.total_time:
             total_time += transcript.total_time
-        if transcript.source_id:
+        if transcript.source_id and transcript.source_id not in seen_ids:
             session_ids.append(transcript.source_id)
+            seen_ids.add(transcript.source_id)
 
     # Rebuild unified timeline from merged events
-    from inspect_scout._transcript.timeline import build_timeline
-
     build_timeline(merged_events)
 
     # Build merged metadata
     metadata = dict(first.metadata)
     metadata["session_ids"] = session_ids
-
-    from inspect_scout import Transcript
 
     return Transcript(
         transcript_id=first.transcript_id,
@@ -275,6 +311,11 @@ async def _merge_slug_group(
         events=merged_events,
         metadata=metadata,
     )
+
+
+def _with_task_id(transcript: "Transcript", task_id: str) -> "Transcript":
+    """Return a copy of the transcript with the given task_id."""
+    return transcript.model_copy(update={"task_id": task_id})
 
 
 async def _process_session_file(

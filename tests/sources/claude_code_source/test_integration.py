@@ -1015,6 +1015,57 @@ async def test_slug_backfill_from_single_file(slug_fixtures_dir: Path) -> None:
     assert len(merged.metadata["session_ids"]) == 2
 
 
+@pytest.fixture
+def slug_clear_fixtures_dir(tmp_path: Path) -> Path:
+    """Create a temp directory with a /clear session and a partner, same slug.
+
+    - slug_clear_session.jsonl: 2 segments (split by /clear), slug="clear-merge-slug"
+    - slug_clear_partner.jsonl: 1 segment, slug="clear-merge-slug"
+    """
+    fixtures = Path(__file__).parent / "fixtures"
+    for name in ["slug_clear_session.jsonl", "slug_clear_partner.jsonl"]:
+        src = fixtures / name
+        (tmp_path / name).write_text(src.read_text())
+    return tmp_path
+
+
+@pytest.mark.asyncio
+async def test_slug_merge_with_clear_segments(slug_clear_fixtures_dir: Path) -> None:
+    """Slug merge only merges primary segments; post-/clear segments are standalone."""
+    from inspect_scout.sources import claude_code
+
+    transcripts = []
+    async for transcript in claude_code(path=slug_clear_fixtures_dir):
+        transcripts.append(transcript)
+
+    # Should yield 2 transcripts:
+    # 1) Merged primary: file1-seg0 + file2
+    # 2) Standalone: file1-seg1 (post-/clear)
+    assert len(transcripts) == 2
+
+    merged = transcripts[0]
+    standalone = transcripts[1]
+
+    # Merged transcript should have task_id = slug
+    assert merged.task_id == "clear-merge-slug"
+
+    # Merged should combine messages from both primaries
+    # file1-seg0 has 2 messages, file2 has 2 messages
+    assert merged.message_count == 4
+
+    # Merged metadata should have deduplicated session_ids
+    assert "session_ids" in merged.metadata
+    session_ids = merged.metadata["session_ids"]
+    assert "session-clear" in session_ids
+    assert "session-partner" in session_ids
+    assert len(session_ids) == len(set(session_ids))  # no duplicates
+
+    # Standalone should be the post-/clear segment from file1
+    assert standalone.message_count == 2
+    # Standalone should have its own transcript_id (segment index 1)
+    assert "-1" in standalone.transcript_id
+
+
 @pytest.mark.asyncio
 async def test_slug_backfill_with_time_filter(slug_fixtures_dir: Path) -> None:
     """Time filter that excludes one slug partner still produces merged result."""

@@ -120,6 +120,7 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
             description={description}
             contentType={contentType}
             output={resolvedToolOutput}
+            view={tool_call.view ?? undefined}
           />
         );
       }

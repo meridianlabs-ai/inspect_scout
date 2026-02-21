@@ -31,6 +31,7 @@ from .models import (
     SystemEvent,
     UserEvent,
 )
+from .toolview import tool_view
 from .util import parse_timestamp
 
 logger = getLogger(__name__)
@@ -167,13 +168,15 @@ def extract_assistant_content(
             tool_id = str(block.get("id", ""))
             tool_name = str(block.get("name", ""))
             tool_input = block.get("input", {})
-
+            if not isinstance(tool_input, dict):
+                tool_input = {}
             tool_calls.append(
                 ToolCall(
                     id=tool_id,
                     function=tool_name,
-                    arguments=tool_input if isinstance(tool_input, dict) else {},
+                    arguments=tool_input,
                     type="function",
+                    view=tool_view(tool_name, tool_input),
                 )
             )
 

@@ -98,28 +98,41 @@ async def claude_code(
     # Backfill missing slug partners from sibling files in the same project dir
     _backfill_slug_groups(slug_groups, session_files)
 
+    # Iterate files in mtime order (newest first, as returned by
+    # discover_session_files).  For each file we either process it
+    # directly (no slug / single-file slug) or process the full merged
+    # slug group the first time we encounter it.  This lets us stop
+    # early when limit is set — the newest transcripts come from the
+    # newest files so we avoid touching old ones entirely.
+    processed_slugs: set[str] = set()
     count = 0
 
-    for slug, files in slug_groups.items():
+    for f in session_files:
         if limit and count >= limit:
             return
 
-        if len(files) == 1 or slug is None:
-            # Single session or no slug — existing behavior
-            for f in files:
-                if limit and count >= limit:
-                    return
-                async for transcript in _process_session_file(f):
-                    yield transcript
-                    count += 1
-                    if limit and count >= limit:
-                        return
-        else:
-            # Multi-session slug group — merge into one transcript
-            merged = await _merge_slug_group(files, slug)
+        slug = peek_slug(f)
+
+        if slug is not None and slug in processed_slugs:
+            # Already handled as part of a merged slug group
+            continue
+
+        if slug is not None and len(slug_groups.get(slug, [])) > 1:
+            # Multi-file slug group — merge and mark as processed
+            processed_slugs.add(slug)
+            merged = await _merge_slug_group(slug_groups[slug], slug)
             if merged:
                 yield merged
                 count += 1
+        else:
+            # Single file (no slug or only one file for this slug)
+            if slug is not None:
+                processed_slugs.add(slug)
+            async for transcript in _process_session_file(f):
+                yield transcript
+                count += 1
+                if limit and count >= limit:
+                    return
 
 
 def _backfill_slug_groups(

@@ -531,46 +531,6 @@ async def test_claude_code_events_async_iterable(
 
 
 @pytest.mark.asyncio
-async def test_extract_messages_from_scout_events() -> None:
-    """Test extracting messages from Scout events."""
-    from inspect_ai.event import ModelEvent
-    from inspect_ai.model import ModelOutput
-    from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
-    from inspect_ai.model._generate_config import GenerateConfig
-    from inspect_ai.model._model_output import ChatCompletionChoice
-    from inspect_scout.sources._claude_code.extraction import (
-        extract_messages_from_scout_events,
-    )
-
-    # Create mock events
-    user_msg = ChatMessageUser(content="Hello")
-    assistant_msg = ChatMessageAssistant(content="Hi there")
-
-    model_event = ModelEvent(
-        model="test-model",
-        input=[user_msg],
-        tools=[],
-        tool_choice="auto",
-        config=GenerateConfig(),
-        output=ModelOutput(
-            model="test-model",
-            choices=[
-                ChatCompletionChoice(message=assistant_msg, stop_reason="stop"),
-            ],
-        ),
-    )
-
-    events: list[Any] = [model_event]
-    messages = extract_messages_from_scout_events(events)
-
-    assert len(messages) == 2
-    assert messages[0].role == "user"
-    assert messages[0].content == "Hello"
-    assert messages[1].role == "assistant"
-    assert messages[1].content == "Hi there"
-
-
-@pytest.mark.asyncio
 async def test_claude_code_events_no_subagent_events() -> None:
     """Test claude_code_events with simple events (no subagents)."""
     from inspect_ai.event import ModelEvent

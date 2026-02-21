@@ -35,7 +35,6 @@ from .client import (
 from .detection import get_session_id
 from .events import process_parsed_events
 from .extraction import (
-    extract_messages_from_scout_events,
     extract_model_name,
     extract_session_metadata,
     get_first_timestamp,
@@ -179,6 +178,8 @@ async def _create_transcript(
         Transcript object, or None if creation fails
     """
     from inspect_scout import Transcript
+    from inspect_scout._transcript.messages import span_messages
+    from inspect_scout._transcript.timeline import build_timeline
 
     session_path = session_file
     project_dir = session_path.parent
@@ -196,8 +197,9 @@ async def _create_transcript(
     ):
         scout_events.append(event)
 
-    # Extract messages from Scout events
-    messages: list[ChatMessage] = extract_messages_from_scout_events(scout_events)
+    # Extract messages via timeline (excludes subagent messages, handles compaction)
+    timeline = build_timeline(scout_events)
+    messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
 
     # Skip transcripts with no messages (e.g., system-only segments)
     if not messages:

@@ -426,7 +426,6 @@ class TestProcessParsedEvents:
         assert len(agent_spans) == 1
         assert agent_spans[0].name == "Explore"
 
-
     @pytest.mark.asyncio
     async def test_compaction_resets_accumulated_messages(self) -> None:
         """Post-compaction ModelEvent.input contains only post-compaction messages."""
@@ -499,16 +498,12 @@ class TestProcessParsedEvents:
 
         # Pre-compaction ModelEvent should have the user message
         pre_input = model_events[0].input
-        pre_content = [
-            m.content for m in pre_input if hasattr(m, "content")
-        ]
+        pre_content = [m.content for m in pre_input if hasattr(m, "content")]
         assert any("Hello before compaction" in str(c) for c in pre_content)
 
         # Post-compaction ModelEvent should NOT have pre-compaction messages
         post_input = model_events[1].input
-        post_content = [
-            m.content for m in post_input if hasattr(m, "content")
-        ]
+        post_content = [m.content for m in post_input if hasattr(m, "content")]
         assert not any("Hello before compaction" in str(c) for c in post_content)
         assert not any("Response before compaction" in str(c) for c in post_content)
         # But should have the summary and new user message
@@ -519,9 +514,7 @@ class TestProcessParsedEvents:
 class TestSumScoutTokens:
     """Tests for sum_scout_tokens()."""
 
-    def _make_model_event(
-        self, input_tokens: int, output_tokens: int
-    ) -> ModelEvent:
+    def _make_model_event(self, input_tokens: int, output_tokens: int) -> ModelEvent:
         """Helper to create a ModelEvent with usage."""
         msg = ChatMessageAssistant(content="response")
         return ModelEvent(

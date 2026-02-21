@@ -442,32 +442,3 @@ def sum_scout_tokens(events: list[Event]) -> int:
         if isinstance(event, ModelEvent) and event.output and event.output.usage:
             total += event.output.usage.total_tokens
     return total
-
-
-def extract_messages_from_scout_events(events: list[Event]) -> list[ChatMessage]:
-    """Extract conversation messages from Inspect AI events.
-
-    Extracts messages from ModelEvent objects. Each ModelEvent contains:
-    - input: list of messages up to that point
-    - output.message: the assistant's response
-
-    Args:
-        events: List of Inspect AI events
-
-    Returns:
-        List of ChatMessage in conversation order
-    """
-    model_events = [e for e in events if isinstance(e, ModelEvent)]
-
-    if not model_events:
-        return []
-
-    # Last ModelEvent.input has all previous messages
-    # Add its output.message as the final assistant message
-    last_event = model_events[-1]
-    messages: list[ChatMessage] = list(last_event.input)
-
-    if last_event.output and last_event.output.message:
-        messages.append(last_event.output.message)
-
-    return messages

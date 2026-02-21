@@ -5,7 +5,7 @@
 
   display: grid;
   grid-template-columns: var(--swimlane-grid-columns);
-  padding: 0.3rem 0 0.3rem;
+  padding: 0rem 0 0rem;
   outline: none;
   flex-shrink: 0;
   position: relative;
@@ -45,10 +45,13 @@
   grid-template-columns: subgrid;
   grid-template-rows: 1fr;
   transition: grid-template-rows 0.25s ease;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
 }
 
 .collapsibleCollapsed {
   grid-template-rows: 0fr;
+  padding-bottom: 0;
 }
 
 .collapsibleInner {
@@ -276,7 +279,7 @@
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 2px 0.5rem 2px 0.2rem;
+  padding: 4px 0.5rem 2px 0.2rem;
   min-width: 0;
   overflow: hidden;
 }
@@ -317,7 +320,7 @@
   cursor: pointer;
   color: var(--vscode-textLink-foreground);
   padding: 0 2px;
-  font-size: var(--inspect-font-size-smaller);
+  font-size: var(--inspect-font-size-base);
 }
 
 .breadcrumbLink:hover {
@@ -325,14 +328,21 @@
 }
 
 .breadcrumbCurrent {
+  background: none;
+  border: none;
+  cursor: pointer;
   color: var(--vscode-foreground);
-  font-size: var(--inspect-font-size-smaller);
+  font-size: var(--inspect-font-size-base);
   padding: 0 2px;
+}
+
+.breadcrumbCurrent:hover {
+  text-decoration: underline;
 }
 
 .breadcrumbSelection {
   color: var(--vscode-descriptionForeground);
-  font-size: var(--inspect-font-size-smaller);
+  font-size: var(--inspect-font-size-base);
   padding: 0 2px;
 }
 

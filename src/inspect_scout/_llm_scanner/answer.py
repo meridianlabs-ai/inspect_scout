@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Literal, Protocol, Sequence
+from typing import Callable, Literal, Protocol, Sequence, runtime_checkable
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -62,6 +62,7 @@ def _strip_markdown_formatting(text: str) -> str:
     return text
 
 
+@runtime_checkable
 class Answer(Protocol):
     """Protocol for LLM scanner answer types."""
 
@@ -106,6 +107,28 @@ def answer_from_argument(
             return _StructuredAnswer(answer)
         case _:
             raise ValueError(f"Invalid answer type: {answer}")
+
+
+def answer_type(
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
+) -> Answer:
+    """Resolve an answer specification into an Answer object.
+
+    The returned object exposes ``.prompt`` and ``.format`` properties
+    containing the prompt text and format instructions for the answer type.
+
+    Args:
+        answer: Answer specification (``"boolean"``, ``"numeric"``,
+            ``"string"``, ``list[str]``, ``AnswerMultiLabel``, or
+            ``AnswerStructured``).
+
+    Returns:
+        An ``Answer`` with ``.prompt`` and ``.format`` properties.
+    """
+    return answer_from_argument(answer)
 
 
 class _BoolAnswer(Answer):

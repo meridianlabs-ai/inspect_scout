@@ -1,0 +1,64 @@
+---
+title: "Scanning Tools"
+code-annotations: select
+---
+
+## Overview
+
+Here is roughly the implementation of `llm_scanner()`, but using the lower level tools that we'll cover in more depth below (click on the numbers at right for further explanation):
+
+```python
+from inspect_scout import (
+    Result, ResultReducer, Scanner, Transcript, 
+    scanner, scanner_prompt, transcript_messages, generate_answer
+)
+
+@scanner(messages="all")
+def environment_scanner() -> Scanner[Transcript]:
+   
+    async def scan(transcript: Transcript) -> Result:
+       
+        # setup numbering and references
+        messages_as_str, extract_refs = message_numbering() # <1>
+
+        # define question to ask llm
+        question = "Did the agent fail to complete the task due to " +
+            "a broken or misconfigured environment?"
+
+        # scan segments (breaks up transcript to fit in context window)
+        results: list[Result] = []
+        async for segment in transcript_messages( # <2>
+            transcript,                           # <2>
+            messages_as_str=messages_as_str       # <2>
+        ):                                        # <2>
+            # generate prompt using segment, question, and answer type
+            prompt = scanner_prompt(              # <3>
+                messages=segment.messages_str,    # <3>
+                question=question,                # <3>
+                answer="boolean"                  # <3>
+            )                                     # <3>
+
+            # generate, extract answer/explanation and append results
+            results.append(
+                await generate_answer(            # <4>
+                    prompt,                       # <4>
+                    answer,                       # <4>
+                    extract_refs=extract_refs,    # <4>
+                )                                 # <4>
+            )
+
+        # reduce results (as multiple scanner passes may have run)
+        return ResultReducer.any(results)         # <5>
+
+    return scan
+```
+
+1. Setup message numbering (returns a function that can be used to number and a function that can be used to extract references to messages from model explanations).
+
+2. Iterate over transcript segments (if the transcript exceeds the size of the scanning model's context window it will need to be broken into segments).
+
+3. Build a prompt for the scanner using the string for this segment (numbered messages), the question, and the answser type.
+
+4. Call the model to genreate an answer, extracting references from its explanation using the `extract_refs` function.
+
+5. Multiple scanned segments require reduction. In this case we use the `.any()` reducer which will return `True` if any of the segment results were `True`.

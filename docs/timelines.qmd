@@ -1,0 +1,221 @@
+---
+title: "Timelines"
+---
+
+## Overview
+
+As AI agents become more sophisticated — orchestrating sub-agents, branching across parallel tool calls, and running long conversations that require context compaction — flat message lists lose critical structure. A multi-agent transcript might contain thousands of messages spanning multiple nested agent invocations, but a flat list gives no indication of which agent produced which messages, where tool boundaries fall, or which attempts were discarded and re-rolled.
+
+A **timeline** is a hierarchical tree of **spans** built automatically from transcript events. Each span represents an agent, tool, or scorer invocation, containing events (model calls, tool calls, compaction) with optional child spans. Timelines automatically detect:
+
+- Agent hierarchies (nested agent invocations)
+- Conversation threads via message fingerprinting
+- Re-rolled attempts (branches where the agent discarded and retried)
+- Utility agents (single-turn helpers like title generators)
+
+When you enable `timeline=True` on a scanner, the timeline is built from the transcript's events and made available on `Transcript.timelines`.
+
+## Scanning Timelines
+
+The primary use case for timelines is scanning — analyzing each agent's conversation independently rather than treating the entire transcript as a flat message list.
+
+### Opting In
+
+To scan timelines instead of raw messages, set `timeline=True` on the `@scanner` decorator:
+
+``` python
+from inspect_scout import llm_scanner, scanner
+
+@scanner(timeline=True)
+def my_scanner():
+    return llm_scanner(
+        question="Did the agent exhibit any harmful behavior?",
+        answer="boolean",
+    )
+```
+
+When timeline scanning is enabled, each span in the timeline tree is scanned independently — the LLM sees only that span's conversation. Results from multiple spans are combined using a reducer.
+
+See [LLM Scanner: Scanning Timelines](llm_scanner.qmd#scanning-timelines) for `llm_scanner()`-specific features like structured list answers, and [Custom Scanners: Timeline Scanners](custom_scanner.qmd#timelines) for writing custom timeline scanners.
+
+### Depth Control {#depth}
+
+The `depth` parameter controls how deep into the span tree to scan:
+
+| `depth` | Behavior |
+|---------|----------|
+| `1` | Scan only the root span — the top-level agent's full conversation thread. Treats the timeline like a flat transcript. |
+| `2` | Scan the root span and its immediate children. Covers the main agent plus its direct sub-agents. |
+| `None` (default) | Scan all levels recursively. Every non-utility span with model events is scanned independently. |
+
+: {tbl-colwidths=\[20,80\]}
+
+With `depth=1` you get a single scan of the entire main conversation thread. With deeper values, each sub-agent's conversation is scanned separately and results are combined. For example, `depth=2` on an agent that delegates to three sub-agents produces up to four independent scans (the root plus each child).
+
+``` python
+@scanner(timeline=True)
+def shallow_scan():
+    return llm_scanner(
+        question="Was the overall task completed successfully?",
+        answer="boolean",
+        depth=1,  # scan only the root agent's conversation
+    )
+```
+
+### Compaction {#compaction}
+
+Long-running agents may have their context window compressed mid-conversation (via summarization or trimming), creating compaction boundaries that divide the conversation into regions. The `compaction` parameter controls how these boundaries are handled:
+
+| `compaction` | Behavior |
+|--------------|----------|
+| `"all"` (default) | Merge messages across compaction boundaries, reconstructing the full conversation. The scanner sees everything. |
+| `"last"` | Scan only the final region after the last compaction. Useful when you only care about recent behavior or when earlier context is too noisy. |
+| `N` (int) | Keep the last *N* compaction regions. `1` is equivalent to `"last"`. |
+
+: {tbl-colwidths=\[25,75\]}
+
+``` python
+@scanner(timeline=True)
+def recent_behavior():
+    return llm_scanner(
+        question="Did the agent make any errors in its recent actions?",
+        answer="boolean",
+        compaction="last",  # scan only the most recent context window
+    )
+```
+
+### Result Reduction {#reducers}
+
+When scanning produces multiple results — from multiple spans (depth > 1) or from context-window segmentation within a single span — results are combined using a **reducer**.
+
+Default reducers by answer type:
+
+| Answer Type | Default Reducer |
+|-------------|----------------|
+| `"boolean"` | `ResultReducer.any` |
+| `"numeric"` | `ResultReducer.mean` |
+| `"string"` | `ResultReducer.last` |
+| labels | `ResultReducer.last` |
+| `AnswerMultiLabel` | `ResultReducer.union` |
+| `AnswerStructured` | `ResultReducer.last` |
+
+Override with the `reducer` parameter:
+
+``` python
+from inspect_scout import ResultReducer, llm_scanner, scanner
+
+@scanner(timeline=True)
+def synthesized_analysis():
+    return llm_scanner(
+        question="Summarize the agent's key decisions.",
+        answer="string",
+        reducer=ResultReducer.llm(),  # LLM-based synthesis
+    )
+```
+
+Available static reducers: `ResultReducer.any`, `.mean`, `.median`, `.mode`, `.max`, `.min`, `.union`, `.last`.
+
+::: {.callout-tip}
+Structured list answers (`list[MyModel]`) are particularly well-suited for timeline scanning. Per-span findings naturally roll up into a combined result set without needing reduction — each span produces its own list, and the lists are concatenated. See [LLM Scanner: Structured Lists](llm_scanner.qmd#structured-lists) for details.
+:::
+
+### Utility Spans
+
+Single-turn helper agents with different system prompts (e.g., a title-generation helper) are automatically classified as **utility spans** and excluded from scanning. This ensures scanning focuses on substantive agent interactions rather than mechanical helpers.
+
+## Building Timelines
+
+The `build_timeline()` function converts a flat event list into a hierarchical timeline:
+
+``` python
+from inspect_scout import build_timeline, TranscriptContent, transcripts_from
+
+async with transcripts_from("my-project").reader() as reader:
+    async for t in reader.index():
+        transcript = await reader.read(t, TranscriptContent(events="all"))
+        timeline = build_timeline(transcript.events)
+        print(timeline)
+```
+
+In a scanner context, timelines are built automatically when `timeline=True` — you rarely need to call `build_timeline()` directly. It's primarily useful for programmatic exploration of transcript structure.
+
+The builder automatically detects:
+
+- **Top-level structure**: init → solvers → scorers phases
+- **Agent spans**: explicit `type="agent"` spans or tool-spawned agents
+- **Conversation threads**: via message fingerprinting across events
+- **Re-rolled attempts**: discarded retries become `TimelineBranch` objects
+- **Utility agents**: single-turn agents with different system prompts
+
+## Timeline Data Model {#data-model}
+
+The timeline is composed of four types that form a recursive tree:
+
+### `Timeline`
+
+The root container for a timeline view.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `str` | Name of the timeline view |
+| `description` | `str` | Description of the timeline |
+| `root` | `TimelineSpan` | Root span containing all content |
+
+### `TimelineSpan`
+
+An execution span representing an agent, tool, scorer, or other invocation.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `str` | Unique identifier |
+| `name` | `str` | Display name of the span |
+| `span_type` | `str \| None` | `"agent"`, `"tool"`, `"scorers"`, or `None` |
+| `content` | `list[TimelineEvent \| TimelineSpan]` | Child events and spans |
+| `branches` | `list[TimelineBranch]` | Discarded alternative paths |
+| `utility` | `bool` | Whether this is a utility span (excluded from scanning) |
+| `description` | `str \| None` | Optional description |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+### `TimelineEvent`
+
+Wraps a single `Event` from the transcript.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | `Event` | The wrapped event (e.g., `ModelEvent`, `ToolEvent`) |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+### `TimelineBranch`
+
+A discarded alternative path from a branch point (re-rolled attempt).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `forked_at` | `str` | ID of the event where the branch diverged |
+| `content` | `list[TimelineEvent \| TimelineSpan]` | Events and spans in the discarded path |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+### Nesting Structure
+
+The tree nests as: `Timeline` → root `TimelineSpan` → `content` (a mix of `TimelineEvent` and child `TimelineSpan` nodes). Each span can also have `branches` containing `TimelineBranch` objects that capture discarded retries.
+
+## Filtering Timelines {#filtering}
+
+Use `filter_timeline()` to create a new timeline containing only spans that match a predicate:
+
+``` python
+from inspect_scout import build_timeline, filter_timeline
+
+timeline = build_timeline(events)
+
+# Keep only agent spans
+agents_only = filter_timeline(timeline, lambda s: s.span_type == "agent")
+
+# Exclude scorer spans
+no_scorers = filter_timeline(timeline, lambda s: s.span_type != "scorers")
+```
+
+The filter recursively walks the span tree, pruning non-matching spans and their subtrees. `TimelineEvent` items are always kept (they belong to the parent span). This is useful for pre-filtering a timeline before programmatic analysis.

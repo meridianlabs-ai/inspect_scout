@@ -60,3 +60,5 @@ To learn more about using and developing scanners, see the following articles:
 - [Grep Scanner](grep_scanner.qmd): High level scanner for pattern matching in transcripts.
 
 - [Custom Scanners](custom_scanner.qmd): Comprehensive documentation on creating custom scanners.
+
+- [Scanner Tools](scanner_tools.qmd): Create custom scanners with the same tools used under the hood by `llm_scanner()`.

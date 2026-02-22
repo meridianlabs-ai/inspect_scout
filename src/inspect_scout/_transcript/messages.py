@@ -35,12 +35,12 @@ class MessagesSegment:
 
     Attributes:
         messages: The original ChatMessage objects in this segment.
-        text: Pre-rendered string from messages_as_str.
+        messages_str: Pre-rendered string from messages_as_str.
         segment: 0-based segment index, auto-increments across yields.
     """
 
     messages: list[ChatMessage]
-    text: str
+    messages_str: str
     segment: int
 
 
@@ -131,7 +131,7 @@ async def segment_messages(
         if current_messages and running_tokens + tokens > effective_budget:
             yield MessagesSegment(
                 messages=current_messages,
-                text="\n".join(current_texts),
+                messages_str="\n".join(current_texts),
                 segment=segment_counter,
             )
             segment_counter += 1
@@ -147,7 +147,7 @@ async def segment_messages(
     if current_messages:
         yield MessagesSegment(
             messages=current_messages,
-            text="\n".join(current_texts),
+            messages_str="\n".join(current_texts),
             segment=segment_counter,
         )
 

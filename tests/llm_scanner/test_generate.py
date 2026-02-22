@@ -222,7 +222,7 @@ class TestGenerateAnswerParse:
                 "Question?",
                 "boolean",
                 model="mockllm/model",
-                extract_references=_regex_refs,
+                extract_refs=_regex_refs,
             )
 
         assert isinstance(result, Result)

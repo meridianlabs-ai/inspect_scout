@@ -515,7 +515,7 @@ async def test_segment_messages_renders_text() -> None:
     results = await _collect(msgs, context_window=10_000)
 
     assert len(results) == 1
-    text = results[0].text
+    text = results[0].messages_str
     assert "[M1]" in text
     assert "[M2]" in text
 
@@ -572,8 +572,8 @@ async def test_segment_messages_continuous_numbering() -> None:
     results = await _collect(msgs, context_window=50)
 
     assert len(results) == 2
-    assert "[M1]" in results[0].text
-    assert "[M2]" in results[1].text
+    assert "[M1]" in results[0].messages_str
+    assert "[M2]" in results[1].messages_str
 
 
 @pytest.mark.anyio
@@ -617,7 +617,7 @@ async def test_segment_messages_skips_empty_renders() -> None:
     assert len(results) == 1
     assert len(results[0].messages) == 1
     assert results[0].messages[0] is _user1
-    assert "[M1]" in results[0].text
+    assert "[M1]" in results[0].messages_str
 
 
 # -- timeline_messages tests --

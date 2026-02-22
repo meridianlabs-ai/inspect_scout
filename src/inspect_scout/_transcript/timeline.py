@@ -1425,7 +1425,7 @@ async def timeline_messages(
         ):
             yield TimelineMessages(
                 messages=seg.messages,
-                text=seg.text,
+                text=seg.messages_str,
                 segment=counter,
                 span=span,
             )

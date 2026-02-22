@@ -198,7 +198,7 @@ def llm_scanner(
                 template=template,
                 template_variables=template_variables,
                 transcript=transcript,
-                messages=segment.text,
+                messages=segment.messages_str,
                 question=question,
                 answer=resolved_answer,
             )
@@ -208,7 +208,7 @@ def llm_scanner(
                     answer,
                     model=resolved_model,
                     retry_refusals=retry_refusals,
-                    extract_references=extract_references,
+                    extract_refs=extract_references,
                     value_to_float=value_to_float,
                 )
             )

@@ -16,10 +16,13 @@ from inspect_ai.model import (
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
+from jinja2 import Environment
 
 from .._scanner.result import Reference, Result
+from .._util.jinja import StrictOnUseUndefined
 from .._util.refusal import generate_retry_refusals
-from .answer import answer_from_argument
+from .answer import Answer, answer_from_argument
+from .prompt import DEFAULT_SCANNER_TEMPLATE
 from .structured import structured_generate, structured_schema
 from .types import AnswerSpec, AnswerStructured
 
@@ -27,7 +30,7 @@ from .types import AnswerSpec, AnswerStructured
 def parse_answer(
     output: ModelOutput,
     answer: AnswerSpec,
-    extract_references: Callable[[str], list[Reference]],
+    extract_refs: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None = None,
 ) -> Result:
     """Parse a model output into a Result using the answer specification.
@@ -39,7 +42,7 @@ def parse_answer(
         output: The model's response to parse.
         answer: Answer specification (``"boolean"``, ``"numeric"``,
             ``"string"``, ``list[str]``, or :class:`AnswerStructured`).
-        extract_references: Function to extract ``[M1]``-style references
+        extract_refs: Function to extract ``[M1]``-style references
             from the explanation text.
         value_to_float: Optional function to convert the parsed value
             to a float.
@@ -48,7 +51,7 @@ def parse_answer(
         A Result with value, answer, explanation, and references.
     """
     resolved = answer_from_argument(answer)
-    return resolved.result_for_answer(output, extract_references, value_to_float)
+    return resolved.result_for_answer(output, extract_refs, value_to_float)
 
 
 @overload
@@ -59,7 +62,7 @@ async def generate_answer(
     model: str | Model | None = None,
     retry_refusals: int = 3,
     parse: Literal[True] = True,
-    extract_references: Callable[[str], list[Reference]] | None = None,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
     value_to_float: ValueToFloat | None = None,
 ) -> Result: ...
 
@@ -82,7 +85,7 @@ async def generate_answer(
     model: str | Model | None = None,
     retry_refusals: int = 3,
     parse: bool = True,
-    extract_references: Callable[[str], list[Reference]] | None = None,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
     value_to_float: ValueToFloat | None = None,
 ) -> Result | ModelOutput:
     """Generate a model response, optionally parsing it into a Result.
@@ -104,7 +107,7 @@ async def generate_answer(
         parse: When ``True`` (default), parse the model output into a
             :class:`Result`. When ``False``, return the raw
             :class:`ModelOutput`.
-        extract_references: Function to extract ``[M1]``-style references
+        extract_refs: Function to extract ``[M1]``-style references
             from the explanation text. Only used when ``parse=True``.
             Defaults to a no-op that returns no references.
         value_to_float: Optional function to convert the parsed value
@@ -140,9 +143,46 @@ async def generate_answer(
     if not parse:
         return model_output
 
-    refs_fn = extract_references or _no_references
+    refs_fn = extract_refs or _no_references
     return resolved_answer.result_for_answer(model_output, refs_fn, value_to_float)
 
 
 def _no_references(_text: str) -> list[Reference]:
     return []
+
+
+def scanner_prompt(
+    messages: str,
+    question: str,
+    answer: AnswerSpec | Answer,
+) -> str:
+    """Render the default scanner prompt template.
+
+    Combines the transcript messages, question, and answer type into a
+    complete prompt using the standard scanner template. Use this when
+    you want the default prompt structure but need control over generation
+    (via ``generate_answer()``) or other scanning steps.
+
+    For fully custom prompt templates, use ``answer_type()`` to access
+    the ``.prompt`` and ``.format`` strings directly.
+
+    Args:
+        messages: Pre-formatted message string (from ``messages_as_str``
+            or ``message_numbering``).
+        question: Question for the scanner to answer.
+        answer: Answer specification or resolved ``Answer`` object.
+
+    Returns:
+        Rendered prompt string.
+    """
+    resolved = answer if isinstance(answer, Answer) else answer_from_argument(answer)
+    return (
+        Environment(undefined=StrictOnUseUndefined)
+        .from_string(DEFAULT_SCANNER_TEMPLATE)
+        .render(
+            messages=messages,
+            question=question,
+            answer_prompt=resolved.prompt,
+            answer_format=resolved.format,
+        )
+    )

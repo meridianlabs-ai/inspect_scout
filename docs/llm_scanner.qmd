@@ -59,6 +59,24 @@ The `answer` type determines how the LLM is prompted to respond, the way that an
 | labels (multiple) | ANSWER: C, D      | `list[str]`           |
 | structured        | JSON object       | `dict[str,JsonValue]` |
 
+Note that passing `list[str]` prompts the model to select a **single** label. To allow **multiple** label selections, wrap the labels in `AnswerMultiLabel`:
+
+``` python
+from inspect_scout import AnswerMultiLabel
+
+@scanner(messages="all")
+def issue_categories() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="What issues are present in this conversation?",
+        answer=AnswerMultiLabel(labels=[
+            "Factual error",
+            "Refusal",
+            "Off-topic response",
+            "Hallucination",
+        ])
+    )
+```
+
 For details on JSON object answers, see the [Structured Answers](#structured-answers) section below.
 
 ## Prompt Template

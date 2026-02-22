@@ -6,16 +6,15 @@ dispatch and resultset detection.
 """
 
 import builtins
-import re
 import statistics
 from collections.abc import Awaitable, Callable
 from typing import get_args, get_origin
 
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser, Model, get_model
+from inspect_ai.model import Model
 from pydantic import BaseModel, JsonValue
 
 from .._scanner.result import Reference, Result
-from .._util.refusal import generate_retry_refusals
+from .generate import generate_answer
 from .types import AnswerMultiLabel, AnswerSpec, AnswerStructured
 
 
@@ -185,37 +184,16 @@ class ResultReducer:
             synthesis_prompt = prompt or _DEFAULT_SYNTHESIS_PROMPT
             user_message = f"{synthesis_prompt}\n\n{segments_text}"
 
-            model_instance = get_model(model)
-            output = await generate_retry_refusals(
-                model_instance,
-                [
-                    ChatMessageSystem(
-                        content="You are synthesizing multiple analysis segments into a single coherent answer."
-                    ),
-                    ChatMessageUser(content=user_message),
-                ],
-                tools=[],
-                tool_choice=None,
-                config=None,
-                retry_refusals=3,
+            result = await generate_answer(
+                user_message,
+                answer="string",
+                model=model,
             )
 
-            # Extract answer from the model output
-            completion = output.completion
-            answer_match = re.search(r"(?i)ANSWER\s*:[^\S\n]*(.*)", completion)
-            if answer_match:
-                answer_text = answer_match.group(1).strip()
-                explanation = completion[: answer_match.start()].strip()
-            else:
-                answer_text = completion.strip()
-                explanation = None
-
-            return Result(
-                value=answer_text if answer_text else None,
-                answer=answer_text if answer_text else None,
-                explanation=explanation or _merge_explanations(results),
-                metadata=_merge_metadata(results),
-                references=_merge_references(results),
+            return _build_result(
+                results,
+                value=result.value,
+                answer=result.answer,
             )
 
         return reducer

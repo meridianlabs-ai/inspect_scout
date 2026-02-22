@@ -165,14 +165,18 @@ class ResultReducer:
         max_count = builtins.max(counts.values())
         winners = [v for v, c in counts.items() if c == max_count]
 
-        last_result = results[-1]
         if len(winners) == 1:
             winning_key = winners[0]
         else:
-            winning_key = str(last_result.value)
+            # Tiebreak: pick the last result whose value is among the winners
+            winning_key = winners[0]  # fallback
+            for r in reversed(results):
+                if str(r.value) in winners:
+                    winning_key = str(r.value)
+                    break
 
-        # Find the result whose value matches the winner (prefer last match)
-        matched = last_result
+        # Find the last result whose value matches the winner
+        matched = results[-1]  # fallback
         for r in reversed(results):
             if str(r.value) == winning_key:
                 matched = r

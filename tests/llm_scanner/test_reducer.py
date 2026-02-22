@@ -198,6 +198,21 @@ class TestMajority:
         assert r.value == "C"
         assert r.answer == "C"
 
+    @pytest.mark.anyio
+    async def test_tie_last_result_not_in_winners(self) -> None:
+        """When last result isn't among tied winners, pick last tied winner."""
+        results = [
+            Result(value="A", answer="A"),
+            Result(value="A", answer="A"),
+            Result(value="B", answer="B"),
+            Result(value="B", answer="B"),
+            Result(value="C", answer="C"),
+        ]
+        r = await ResultReducer.majority(results)
+        # A and B are tied; last tied winner is B (index 3), not C (index 4)
+        assert r.value == "B"
+        assert r.answer == "B"
+
 
 # ---------------------------------------------------------------------------
 # Last reducer

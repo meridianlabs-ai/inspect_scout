@@ -306,7 +306,7 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
         user, assistant = messages
         return Result(
             value=is_refusal(assistant.text),
-            explanation=messages_as_str(messages)
+            explanation=await messages_as_str(messages)
         )
 
     return scan

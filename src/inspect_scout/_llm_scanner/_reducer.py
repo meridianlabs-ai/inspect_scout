@@ -10,7 +10,7 @@ import statistics
 from collections.abc import Awaitable, Callable
 from typing import get_args, get_origin
 
-from inspect_ai.model import Model
+from inspect_ai.model import ChatMessage, ChatMessageSystem, ChatMessageUser, Model
 from pydantic import BaseModel, JsonValue
 
 from .._scanner.result import Reference, Result
@@ -182,10 +182,14 @@ class ResultReducer:
         async def reducer(results: list[Result]) -> Result:
             segments_text = _format_segments_for_llm(results)
             synthesis_prompt = prompt or _DEFAULT_SYNTHESIS_PROMPT
-            user_message = f"{synthesis_prompt}\n\n{segments_text}"
+
+            messages: list[ChatMessage] = [
+                ChatMessageSystem(content=_SYNTHESIS_SYSTEM_PROMPT),
+                ChatMessageUser(content=f"{synthesis_prompt}\n\n{segments_text}"),
+            ]
 
             result = await generate_answer(
-                user_message,
+                messages,
                 answer="string",
                 model=model,
             )
@@ -198,6 +202,11 @@ class ResultReducer:
 
         return reducer
 
+
+_SYNTHESIS_SYSTEM_PROMPT = """\
+You are an expert analyst synthesizing results from a multi-segment transcript analysis. \
+Your task is to combine per-segment findings into a single coherent answer. \
+Be concise and focus on the overall assessment rather than restating each segment."""
 
 _DEFAULT_SYNTHESIS_PROMPT = """\
 The following are results from analyzing different segments of a conversation transcript. \

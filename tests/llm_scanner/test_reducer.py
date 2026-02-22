@@ -1,7 +1,11 @@
 """Tests for ResultReducer and reducer dispatch."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_scout._llm_scanner._reducer import (
+    _SYNTHESIS_SYSTEM_PROMPT,
     ResultReducer,
     default_reducer,
     is_resultset_answer,
@@ -293,3 +297,109 @@ class TestIsResultsetAnswer:
             x: int
 
         assert is_resultset_answer(AnswerStructured(type=list[M])) is True
+
+
+# ---------------------------------------------------------------------------
+# LLM synthesis reducer
+# ---------------------------------------------------------------------------
+
+
+class TestLlmReducer:
+    @pytest.mark.anyio
+    @patch(
+        "inspect_scout._llm_scanner._reducer.generate_answer", new_callable=AsyncMock
+    )
+    async def test_llm_reducer_synthesizes(self, mock_generate: AsyncMock) -> None:
+        """LLM reducer calls generate_answer and merges segment fields."""
+        mock_generate.return_value = Result(
+            value="synthesized answer",
+            answer="synthesized answer",
+            explanation="LLM synthesis reasoning",
+        )
+
+        ref1 = Reference(type="message", id="m1", cite="[M1]")
+        ref2 = Reference(type="message", id="m2", cite="[M2]")
+        segment_results = [
+            Result(
+                value="partial A",
+                answer="partial A",
+                explanation="Reason A",
+                metadata={"key_a": 1},
+                references=[ref1],
+            ),
+            Result(
+                value="partial B",
+                answer="partial B",
+                explanation="Reason B",
+                metadata={"key_b": 2},
+                references=[ref2],
+            ),
+        ]
+
+        reducer = ResultReducer.llm()
+        result = await reducer(segment_results)
+
+        # Value/answer come from the LLM synthesis
+        assert result.value == "synthesized answer"
+        assert result.answer == "synthesized answer"
+
+        # Explanation comes from merged segments, not the LLM's reasoning
+        assert result.explanation is not None
+        assert "Reason A" in result.explanation
+        assert "Reason B" in result.explanation
+        assert "[Segment 1]" in result.explanation
+        assert "[Segment 2]" in result.explanation
+        assert "LLM synthesis reasoning" not in result.explanation
+
+        # Metadata and references are merged from segments
+        assert result.metadata == {"key_a": 1, "key_b": 2}
+        assert len(result.references) == 2
+
+    @pytest.mark.anyio
+    @patch(
+        "inspect_scout._llm_scanner._reducer.generate_answer", new_callable=AsyncMock
+    )
+    async def test_llm_reducer_passes_system_message(
+        self, mock_generate: AsyncMock
+    ) -> None:
+        """LLM reducer sends a system message and user message."""
+        mock_generate.return_value = Result(value="answer", answer="answer")
+
+        segment_results = [
+            Result(value="seg1", answer="seg1", explanation="Reason"),
+        ]
+
+        reducer = ResultReducer.llm()
+        await reducer(segment_results)
+
+        # Verify generate_answer was called with a message list
+        call_args = mock_generate.call_args
+        messages = call_args.args[0]
+        assert len(messages) == 2
+        assert isinstance(messages[0], ChatMessageSystem)
+        assert messages[0].content == _SYNTHESIS_SYSTEM_PROMPT
+        assert isinstance(messages[1], ChatMessageUser)
+        assert "Segment 1" in messages[1].content
+
+        # Verify answer type is "string"
+        assert call_args.kwargs["answer"] == "string"
+
+    @pytest.mark.anyio
+    @patch(
+        "inspect_scout._llm_scanner._reducer.generate_answer", new_callable=AsyncMock
+    )
+    async def test_llm_reducer_custom_prompt(self, mock_generate: AsyncMock) -> None:
+        """LLM reducer uses custom prompt when provided."""
+        mock_generate.return_value = Result(value="answer", answer="answer")
+
+        segment_results = [
+            Result(value="seg1", answer="seg1"),
+        ]
+
+        custom_prompt = "Custom synthesis instructions."
+        reducer = ResultReducer.llm(prompt=custom_prompt)
+        await reducer(segment_results)
+
+        messages = mock_generate.call_args.args[0]
+        user_content = messages[1].content
+        assert custom_prompt in user_content

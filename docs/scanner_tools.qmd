@@ -13,8 +13,7 @@ Here is roughly the implementation of `llm_scanner()`, but using the lower level
 
 ```python
 from inspect_scout import (
-    Result, ResultReducer, Scanner, Transcript, message_numbering,
-    scanner, scanner_prompt, transcript_messages, generate_answer
+    Result, ResultReducer, Scanner, Transcript, generate_answer, message_numbering, scanner, scanner_prompt, transcript_messages
 )
 
 @scanner(messages="all")

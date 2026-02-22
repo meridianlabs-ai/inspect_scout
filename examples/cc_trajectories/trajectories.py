@@ -3,7 +3,7 @@
 
 from inspect_scout import (
     build_timeline,
-    messages_by_compaction,
+    span_messages,
 )
 from inspect_scout.sources import claude_code
 
@@ -20,7 +20,7 @@ async def main() -> None:
         print(transcript.source_uri)
 
         # extract compaction steps from main thread
-        steps = messages_by_compaction(timeline)
+        steps = span_messages(timeline, split_compactions=True)
         for i in range(1, len(steps) + 1):
             print(f"  step {i}: {len(steps[i - 1])} messages")
 

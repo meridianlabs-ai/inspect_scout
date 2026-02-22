@@ -3,9 +3,7 @@
 from datetime import datetime
 
 import pytest
-
 from inspect_scout._cli.import_command import _coerce_value, _is_str_only_annotation
-
 
 # --- _is_str_only_annotation table-driven tests ---
 
@@ -69,30 +67,30 @@ def test_coerce_str_stays_raw() -> None:
 
 
 def test_coerce_str_or_none_stays_raw() -> None:
-    """str | None annotation keeps value as-is."""
+    """Str | None annotation keeps value as-is."""
     assert _coerce_value("true", str | None) == "true"
     assert _coerce_value("[a, b]", str | None) == "[a, b]"
 
 
 def test_coerce_str_or_list_parses_yaml_list() -> None:
-    """str | list[str] | None annotation YAML-parses lists."""
+    """Str | list[str] | None annotation YAML-parses lists."""
     result = _coerce_value("[a, b, c]", str | list[str] | None)
     assert result == ["a", "b", "c"]
 
 
 def test_coerce_str_or_list_parses_yaml_scalar() -> None:
-    """str | list[str] | None passes through plain strings via YAML."""
+    """Str | list[str] | None passes through plain strings via YAML."""
     result = _coerce_value("hello", str | list[str] | None)
     assert result == "hello"
 
 
 def test_coerce_int_annotation() -> None:
-    """int annotation coerces to int."""
+    """Int annotation coerces to int."""
     assert _coerce_value("42", int) == 42
 
 
 def test_coerce_datetime_annotation() -> None:
-    """datetime annotation coerces to datetime."""
+    """Datetime annotation coerces to datetime."""
     result = _coerce_value("2025-01-15T10:30:00", datetime)
     assert isinstance(result, datetime)
     assert result.year == 2025

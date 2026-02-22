@@ -14,11 +14,10 @@
 
 - **`transcript_messages(transcript, ...)`** — Unified entry point; auto-selects strategy (timelines → events → messages)
 - **`segment_messages(source, ...)`** — Lower-level: segments messages to fit context windows
-- **`span_messages(source, ...)`** — Extract messages from a span/event list with compaction handling
+- **`span_messages(source, ...)`** — Extract messages from a span/event list with compaction handling (use `split_compactions=True` to preserve compaction region structure)
 - **`timeline_messages(timeline, ...)`** — Walk span tree yielding `TimelineMessages` per non-utility span
-- **`messages_by_compaction(source)`** — Preserves compaction region structure
 - **`MessagesSegment`** / **`TimelineMessages`** — Return types
-- **Docs:** `transcript_messages` and `timeline_messages` well documented in `scanners.qmd` toolkit section. `segment_messages`, `span_messages`, `messages_by_compaction` are stub-only or one-liners.
+- **Docs:** `transcript_messages` and `timeline_messages` well documented in `scanners.qmd` toolkit section. `segment_messages`, `span_messages` are stub-only or one-liners.
 
 ### 3. Claude Code Source (entirely new)
 
@@ -77,7 +76,7 @@
 | `Transcript.timelines` in field table | Medium — quick fix |
 | `scout import` CLI command | High — entirely undocumented |
 | `llm_scanner()` consolidated parameter table | Medium — params documented in prose but no reference table |
-| `segment_messages` / `span_messages` / `messages_by_compaction` examples | Low — advanced/lower-level APIs |
+| `segment_messages` / `span_messages` examples | Low — advanced/lower-level APIs |
 | CLI reference stubs (all empty) | Pre-existing gap |
 
 ## Coverage Notes

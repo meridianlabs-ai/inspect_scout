@@ -19,7 +19,6 @@ from inspect_ai.model._model_output import ChatCompletionChoice
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesSegment,
-    messages_by_compaction,
     segment_messages,
     span_messages,
     transcript_messages,
@@ -943,10 +942,10 @@ async def test_transcript_messages_with_messages_only() -> None:
     assert not isinstance(results[0], TimelineMessages)
 
 
-# -- messages_by_compaction tests --
+# -- span_messages split_compactions tests --
 
 
-def test_messages_by_compaction_no_compaction() -> None:
+def test_split_compactions_no_compaction() -> None:
     """No CompactionEvents → single region with last ModelEvent's messages."""
     span = _make_timeline_span(
         "Agent",
@@ -958,7 +957,7 @@ def test_messages_by_compaction_no_compaction() -> None:
         ],
     )
 
-    regions = messages_by_compaction(span)
+    regions = span_messages(span, split_compactions=True)
 
     assert len(regions) == 1
     assert regions[0][0] is _sys
@@ -969,7 +968,7 @@ def test_messages_by_compaction_no_compaction() -> None:
     assert len(regions[0]) == 5
 
 
-def test_messages_by_compaction_summary() -> None:
+def test_split_compactions_summary() -> None:
     """Two summary compactions → three regions."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Seg 0"),
@@ -980,7 +979,7 @@ def test_messages_by_compaction_summary() -> None:
     ]
     span = _make_timeline_span("Agent", events=events)
 
-    regions = messages_by_compaction(span)
+    regions = span_messages(span, split_compactions=True)
 
     assert len(regions) == 3
     assert regions[0][0] is _user1
@@ -991,33 +990,33 @@ def test_messages_by_compaction_summary() -> None:
     assert regions[2][-1].text == "Seg 2"
 
 
-def test_messages_by_compaction_empty() -> None:
+def test_split_compactions_empty() -> None:
     """No ModelEvents → empty list."""
     span = _make_timeline_span(
         "Agent",
         events=[_make_compaction_event(type="summary")],
     )
 
-    regions = messages_by_compaction(span)
+    regions = span_messages(span, split_compactions=True)
 
     assert regions == []
 
 
-def test_messages_by_compaction_timeline_span() -> None:
+def test_split_compactions_timeline_span() -> None:
     """Accepts TimelineSpan directly."""
     span = _make_timeline_span(
         "Agent",
         events=[_make_model_event(input=[_user1], output_content="Response")],
     )
 
-    regions = messages_by_compaction(span)
+    regions = span_messages(span, split_compactions=True)
 
     assert len(regions) == 1
     assert regions[0][0] is _user1
     assert regions[0][-1].text == "Response"
 
 
-def test_messages_by_compaction_timeline() -> None:
+def test_split_compactions_timeline() -> None:
     """Accepts Timeline (extracts .root)."""
     span = _make_timeline_span(
         "Agent",
@@ -1025,14 +1024,14 @@ def test_messages_by_compaction_timeline() -> None:
     )
     tl = Timeline(name="Default", description="", root=span)
 
-    regions = messages_by_compaction(tl)
+    regions = span_messages(tl, split_compactions=True)
 
     assert len(regions) == 1
     assert regions[0][0] is _user1
     assert regions[0][-1].text == "Response"
 
 
-def test_messages_by_compaction_mixed_types() -> None:
+def test_split_compactions_mixed_types() -> None:
     """Mix of summary/trim/edit compactions all create region boundaries."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Region 0"),
@@ -1045,7 +1044,7 @@ def test_messages_by_compaction_mixed_types() -> None:
     ]
     span = _make_timeline_span("Agent", events=events)
 
-    regions = messages_by_compaction(span)
+    regions = span_messages(span, split_compactions=True)
 
     assert len(regions) == 4
     assert regions[0][-1].text == "Region 0"

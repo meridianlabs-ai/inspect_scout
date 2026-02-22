@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, overload
 
 from inspect_ai._util._async import tg_collect
 from inspect_ai.event import (
@@ -252,20 +252,39 @@ def _exclude_scorers(events: list[Event]) -> list[Event]:
     return list(event_sequence(filtered))
 
 
+@overload
 def span_messages(
-    source: TimelineSpan | list[Event],
+    source: Timeline | TimelineSpan | list[Event],
     *,
     compaction: Literal["all", "last"] | int = "all",
-) -> list[ChatMessage]:
+    split_compactions: Literal[False] = False,
+) -> list[ChatMessage]: ...
+
+
+@overload
+def span_messages(
+    source: Timeline | TimelineSpan | list[Event],
+    *,
+    compaction: Literal["all", "last"] | int = "all",
+    split_compactions: Literal[True],
+) -> list[list[ChatMessage]]: ...
+
+
+def span_messages(
+    source: Timeline | TimelineSpan | list[Event],
+    *,
+    compaction: Literal["all", "last"] | int = "all",
+    split_compactions: bool = False,
+) -> list[ChatMessage] | list[list[ChatMessage]]:
     """Extract messages from a span or event list, handling compaction.
 
     Filters for ``ModelEvent`` and ``CompactionEvent``, then merges
     messages into a single list based on the ``compaction`` strategy.
 
     Args:
-        source: A ``TimelineSpan`` (events extracted from its content)
-            or a raw list of events. Non-Model/Compaction events are
-            ignored.
+        source: A ``Timeline`` (extracts ``.root``), ``TimelineSpan``
+            (events extracted from its content), or a raw list of events.
+            Non-Model/Compaction events are ignored.
         compaction: How to handle compaction boundaries:
             - ``"all"``: merge across boundaries for full coverage.
               Summary grafts pre + post messages. Trim prepends the
@@ -275,10 +294,20 @@ def span_messages(
             - ``int``: keep the last *N* compaction regions.  ``1`` is
               equivalent to ``"last"``.  If *N* exceeds the number of
               regions the result is the same as ``"all"``.
+        split_compactions: When ``True``, return one inner list per
+            compaction region instead of merging into a flat list.
+            The ``compaction`` parameter still controls how many regions
+            to keep before splitting.
 
     Returns:
-        Merged message list. Empty if no ``ModelEvent`` is found.
+        When ``split_compactions`` is ``False`` (default): merged message
+        list. When ``True``: one ``list[ChatMessage]`` per kept region.
+        Empty list if no ``ModelEvent`` is found.
     """
+    # Normalize Timeline to TimelineSpan
+    if isinstance(source, Timeline):
+        source = source.root
+
     # Extract events from TimelineSpan if needed
     if isinstance(source, TimelineSpan):
         events = [
@@ -307,7 +336,8 @@ def span_messages(
 
     # "last 1" shortcut: just return the final ModelEvent's messages
     if n == 1:
-        return _segment_messages(model_events[-1])
+        msgs = _segment_messages(model_events[-1])
+        return [msgs] if split_compactions else msgs
 
     # If n is specified, slice events to keep only the last n regions.
     # Regions are separated by CompactionEvents.
@@ -323,9 +353,27 @@ def span_messages(
             cut_index = compaction_indices[-(n)]
             events = events[cut_index:]
 
+    # Split mode: return one list per compaction region
+    if split_compactions:
+        regions: list[list[ChatMessage]] = []
+        current_model_events: list[ModelEvent] = []
+
+        for event in events:
+            if isinstance(event, ModelEvent):
+                current_model_events.append(event)
+            elif isinstance(event, CompactionEvent):
+                if current_model_events:
+                    regions.append(_segment_messages(current_model_events[-1]))
+                current_model_events = []
+
+        if current_model_events:
+            regions.append(_segment_messages(current_model_events[-1]))
+
+        return regions
+
     # Merge across compaction boundaries
     merged: list[ChatMessage] = []
-    current_model_events: list[ModelEvent] = []
+    current_model_events_merge: list[ModelEvent] = []
     pending_trim_pre_input: list[ChatMessage] | None = None
 
     for event in events:
@@ -337,76 +385,28 @@ def span_messages(
                 merged.extend(prefix)
                 pending_trim_pre_input = None
 
-            current_model_events.append(event)
+            current_model_events_merge.append(event)
 
         elif isinstance(event, CompactionEvent):
             if event.type == "summary":
                 # Graft pre-compaction messages onto the merged list
-                if current_model_events:
-                    merged.extend(_segment_messages(current_model_events[-1]))
-                current_model_events = []
+                if current_model_events_merge:
+                    merged.extend(_segment_messages(current_model_events_merge[-1]))
+                current_model_events_merge = []
 
             elif event.type == "trim":
                 # Save pre-compaction input for prefix extraction
-                if current_model_events:
-                    pending_trim_pre_input = list(current_model_events[-1].input)
-                current_model_events = []
+                if current_model_events_merge:
+                    pending_trim_pre_input = list(current_model_events_merge[-1].input)
+                current_model_events_merge = []
 
             # Edit: no action, continue accumulating
 
     # Append final segment
-    if current_model_events:
-        merged.extend(_segment_messages(current_model_events[-1]))
+    if current_model_events_merge:
+        merged.extend(_segment_messages(current_model_events_merge[-1]))
 
     return merged
-
-
-def messages_by_compaction(
-    source: Timeline | TimelineSpan,
-) -> list[list[ChatMessage]]:
-    """Extract messages grouped by compaction region.
-
-    Unlike ``span_messages()`` which merges messages across compaction
-    boundaries into a single flat list, this function returns one inner
-    list per compaction region, giving callers visibility into the
-    compaction structure.
-
-    Args:
-        source: A ``Timeline`` (extracts ``.root``) or ``TimelineSpan``.
-
-    Returns:
-        One ``list[ChatMessage]`` per compaction region. Each inner list
-        contains the last ``ModelEvent``'s input + output for that region.
-        If there are no ``CompactionEvent``s, returns a single-element
-        list. If there are no ``ModelEvent``s, returns ``[]``.
-    """
-    # Normalize to TimelineSpan
-    if isinstance(source, Timeline):
-        span = source.root
-    else:
-        span = source
-
-    # Extract events from TimelineSpan
-    events = [item.event for item in span.content if isinstance(item, TimelineEvent)]
-
-    # Walk events, collecting ModelEvents into the current region
-    regions: list[list[ChatMessage]] = []
-    current_model_events: list[ModelEvent] = []
-
-    for event in events:
-        if isinstance(event, ModelEvent):
-            current_model_events.append(event)
-        elif isinstance(event, CompactionEvent):
-            # Flush the current region
-            if current_model_events:
-                regions.append(_segment_messages(current_model_events[-1]))
-            current_model_events = []
-
-    # Flush the final region
-    if current_model_events:
-        regions.append(_segment_messages(current_model_events[-1]))
-
-    return regions
 
 
 def _segment_messages(model_event: ModelEvent) -> list[ChatMessage]:

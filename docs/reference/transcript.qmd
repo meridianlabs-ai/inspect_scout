@@ -34,7 +34,6 @@ reference: "inspect_scout"
 ### MessagesSegment
 ### build_timeline
 ### filter_timeline
-### messages_by_compaction
 
 ## Observe
 

@@ -7,6 +7,7 @@ reference: "inspect_scout"
 
 ### transcripts_from
 ### Transcript
+### TranscriptInfo
 ### Transcripts
 ### TranscriptsReader
 ### SampleMetadata
@@ -32,8 +33,17 @@ reference: "inspect_scout"
 ### segment_messages
 ### span_messages
 ### MessagesSegment
+
+## Timeline
+
 ### build_timeline
 ### filter_timeline
+### timeline_messages
+### Timeline
+### TimelineBranch
+### TimelineEvent
+### TimelineMessages
+### TimelineSpan
 
 ## Observe
 

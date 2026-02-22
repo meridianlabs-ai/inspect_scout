@@ -15,13 +15,16 @@ reference: "inspect_scout"
 ## Scanners
 
 ### llm_scanner
-### grep_scanner
+### scanner_prompt
 ### generate_answer
 ### parse_answer
 ### ResultReducer
+### Answer
+### answer_type
 ### AnswerSpec
 ### AnswerMultiLabel
 ### AnswerStructured
+### grep_scanner
 
 ## Utils
 
@@ -35,6 +38,7 @@ reference: "inspect_scout"
 
 ### MessageType
 ### EventType
+### TranscriptContent
 ### RefusalError
 
 ## Registration

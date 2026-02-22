@@ -70,9 +70,20 @@ LogPaths: TypeAlias = (
 
 @dataclass
 class TranscriptContent:
+    """Content filters for transcript loading.
+
+    Specifies which messages, events, and timeline data to include
+    when loading transcript content for scanning.
+    """
+
     messages: MessageFilter = field(default=None)
+    """Filter for which message types to include."""
+
     events: EventFilter = field(default=None)
+    """Filter for which event types to include."""
+
     timeline: TimelineFilter = field(default=None)
+    """Filter for which timeline events to include."""
 
 
 class BytesContextManager:

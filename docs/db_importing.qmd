@@ -21,6 +21,20 @@ You can populate a transcript database in a variety of ways depending on where y
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
 
+::: {.callout-tip}
+## CLI Import
+
+The `scout import` command provides a CLI alternative to the Python API for importing transcripts from any registered source. For example:
+
+```bash
+scout import claude_code
+scout import phoenix -P project=my-project
+scout import langsmith -P project=my-project --limit 100
+```
+
+Use `scout import --sources` to list available sources and their parameters, or `--dry-run` to preview what would be imported without writing. See [scout import](reference/scout_import.qmd) for full details.
+:::
+
 
 ## Inspect Logs
 

@@ -450,6 +450,276 @@ def versioned() -> Scanner[Transcript]:
         assert result.scanner.decorator.version == 2
 
 
+class TestParseLLMScannerNewParams:
+    """Tests for parsing new llm_scanner parameters."""
+
+    def test_parse_name_parameter(self) -> None:
+        """Parse llm_scanner with name parameter."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        name="custom_name",
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.name == "custom_name"
+
+    def test_parse_context_window_parameter(self) -> None:
+        """Parse llm_scanner with context_window parameter."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        context_window=4096,
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.context_window == 4096
+
+    def test_parse_compaction_string_parameter(self) -> None:
+        """Parse llm_scanner with string compaction parameter."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        compaction="summarize",
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.compaction == "summarize"
+
+    def test_parse_compaction_int_parameter(self) -> None:
+        """Parse llm_scanner with integer compaction parameter."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        compaction=2000,
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.compaction == 2000
+
+    def test_parse_depth_parameter(self) -> None:
+        """Parse llm_scanner with depth parameter."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        depth=3,
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.depth == 3
+
+    def test_value_to_float_is_advanced(self) -> None:
+        """Scanner with value_to_float is advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        value_to_float=lambda x: float(x),
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "value_to_float" in result.advanced_reason.lower()
+
+    def test_content_is_advanced(self) -> None:
+        """Scanner with content is advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        content=TranscriptContent(messages=True),
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "content" in result.advanced_reason.lower()
+
+    def test_reducer_is_advanced(self) -> None:
+        """Scanner with reducer is advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        reducer=my_reducer,
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "reducer" in result.advanced_reason.lower()
+
+    def test_unknown_param_is_advanced(self) -> None:
+        """Scanner with unrecognized parameter is advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+        some_future_param="value",
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "unsupported parameter" in result.advanced_reason.lower()
+
+
+class TestParseDecoratorTimeline:
+    """Tests for parsing timeline parameter in @scanner decorator."""
+
+    def test_parse_timeline_all(self) -> None:
+        """Parse timeline='all' in decorator."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all", timeline="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(question="Q?", answer="boolean")
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.decorator.timeline == "all"
+
+    def test_parse_timeline_list(self) -> None:
+        """Parse timeline as list of event types."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all", timeline=["model", "tool"])
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(question="Q?", answer="boolean")
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.decorator.timeline == ["model", "tool"]
+
+    def test_metrics_is_advanced(self) -> None:
+        """Decorator with metrics marks scanner as advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all", metrics=[my_metric])
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(question="Q?", answer="boolean")
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "metrics" in result.advanced_reason.lower()
+
+    def test_unknown_decorator_param_is_advanced(self) -> None:
+        """Decorator with unrecognized parameter marks scanner as advanced."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all", some_future_param=True)
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(question="Q?", answer="boolean")
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is False
+        assert result.advanced_reason is not None
+        assert "unsupported decorator parameter" in result.advanced_reason.lower()
+
+
 class TestNestedPydanticModels:
     """Tests for parsing nested Pydantic models in structured answers."""
 

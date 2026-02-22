@@ -44,6 +44,10 @@ class LLMScannerSpec(BaseModel):
     model_role: str | None = Field(default=None)
     retry_refusals: int | None = Field(default=None)
     template: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+    context_window: int | None = Field(default=None)
+    compaction: str | int | None = Field(default=None)
+    depth: int | None = Field(default=None)
 
 
 # ============ Grep Scanner Types ============
@@ -71,6 +75,7 @@ class ScannerDecoratorSpec(BaseModel):
     events: list[str] | None = Field(default=None)
     name: str | None = Field(default=None)
     version: int = Field(default=0)
+    timeline: Literal["all"] | list[str] | None = Field(default=None)
 
 
 class ScannerFile(BaseModel):

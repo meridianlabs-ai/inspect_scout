@@ -207,6 +207,192 @@ def quality() -> Scanner[Transcript]:
         assert "Poor" in new_source
 
 
+class TestApplyNewParams:
+    """Tests for applying changes with new parameters."""
+
+    def test_update_timeline_on_decorator(self) -> None:
+        """Update timeline parameter on decorator."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        updated_scanner.decorator.timeline = "all"
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        assert "timeline" in new_source
+        # Round-trip to verify semantic correctness
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.editable is True
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.decorator.timeline == "all"
+
+    def test_update_timeline_list_on_decorator(self) -> None:
+        """Update timeline parameter to list on decorator."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        updated_scanner.decorator.timeline = ["model", "tool"]
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        # Round-trip to verify semantic correctness
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.editable is True
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.decorator.timeline == ["model", "tool"]
+
+    def test_update_name_on_llm_scanner(self) -> None:
+        """Add name parameter to llm_scanner."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        assert updated_scanner.llm_scanner is not None
+        updated_scanner.llm_scanner.name = "custom_name"
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        assert "custom_name" in new_source
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.llm_scanner is not None
+        assert re_parsed.scanner.llm_scanner.name == "custom_name"
+
+    def test_update_context_window_on_llm_scanner(self) -> None:
+        """Add context_window parameter to llm_scanner."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        assert updated_scanner.llm_scanner is not None
+        updated_scanner.llm_scanner.context_window = 4096
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        assert "4096" in new_source
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.llm_scanner is not None
+        assert re_parsed.scanner.llm_scanner.context_window == 4096
+
+    def test_update_compaction_on_llm_scanner(self) -> None:
+        """Add compaction parameter to llm_scanner."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        assert updated_scanner.llm_scanner is not None
+        updated_scanner.llm_scanner.compaction = "summarize"
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        assert "summarize" in new_source
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.llm_scanner is not None
+        assert re_parsed.scanner.llm_scanner.compaction == "summarize"
+
+    def test_update_depth_on_llm_scanner(self) -> None:
+        """Add depth parameter to llm_scanner."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def my_scanner() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+
+        updated_scanner = result.scanner.model_copy(deep=True)
+        assert updated_scanner.llm_scanner is not None
+        updated_scanner.llm_scanner.depth = 3
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.llm_scanner is not None
+        assert re_parsed.scanner.llm_scanner.depth == 3
+
+
 class TestPreserveFormatting:
     """Tests for formatting preservation."""
 

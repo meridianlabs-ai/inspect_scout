@@ -229,24 +229,6 @@ def _parse_llm_scanner_call(
     compaction: str | int | None = None
     depth: int | None = None
 
-    _known_params = {
-        "question",
-        "answer",
-        "model",
-        "model_role",
-        "retry_refusals",
-        "template",
-        "template_variables",
-        "preprocessor",
-        "name",
-        "context_window",
-        "compaction",
-        "depth",
-        "value_to_float",
-        "content",
-        "reducer",
-    }
-
     for arg in call.args:
         if arg.keyword is None:
             continue

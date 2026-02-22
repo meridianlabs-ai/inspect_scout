@@ -86,36 +86,51 @@ def extract_user_message(event: BaseEvent) -> ChatMessageUser | None:
 
 def _extract_content_blocks(
     items: list[dict[str, Any]],
-) -> str | list[ContentText | ContentImage]:
+) -> str | list[Content]:
     """Extract text and image content blocks from a tool result content list.
 
     Returns a plain string when there are no images (preserving existing
     behaviour), or a mixed list of ContentText/ContentImage when images
     are present.
     """
-    text_parts: list[str] = []
-    images: list[ContentImage] = []
+    blocks: list[Content] = []
+    has_images = False
 
     for item in items:
         if not isinstance(item, dict):
             continue
         if item.get("type") == "text":
-            text_parts.append(str(item.get("text", "")))
+            text = str(item.get("text", ""))
+            # Merge adjacent text blocks
+            if blocks and isinstance(blocks[-1], ContentText):
+                blocks[-1] = ContentText(text=blocks[-1].text + "\n" + text)
+            else:
+                blocks.append(ContentText(text=text))
         elif item.get("type") == "image":
             source = item.get("source", {})
             if isinstance(source, dict) and source.get("type") == "base64":
                 media_type = source.get("media_type", "image/png")
                 data = source.get("data", "")
-                images.append(ContentImage(image=f"data:{media_type};base64,{data}"))
+                blocks.append(ContentImage(image=f"data:{media_type};base64,{data}"))
+                has_images = True
+            else:
+                source_type = (
+                    source.get("type", "unknown")
+                    if isinstance(source, dict)
+                    else "unknown"
+                )
+                logger.warning(
+                    "Unhandled image source type '%s'; image dropped",
+                    source_type,
+                )
 
-    if not images:
-        return "\n".join(text_parts)
+    if not has_images:
+        # Return plain string when there are no images (preserving existing
+        # behaviour for callers that expect str).
+        return "\n".join(
+            block.text for block in blocks if isinstance(block, ContentText)
+        )
 
-    blocks: list[ContentText | ContentImage] = []
-    combined_text = "\n".join(text_parts)
-    if combined_text:
-        blocks.append(ContentText(text=combined_text))
-    blocks.extend(images)
     return blocks
 
 
@@ -154,7 +169,7 @@ def extract_tool_result_messages(event: BaseEvent) -> list[ChatMessageTool]:
 
             tool_messages.append(
                 ChatMessageTool(
-                    content=tool_content,  # type: ignore[arg-type]
+                    content=tool_content,
                     tool_call_id=tool_use_id,
                 )
             )

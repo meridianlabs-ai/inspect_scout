@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal, TypeVar, cast
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -24,10 +24,11 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import ContentImage, ContentText, ModelOutput
+from inspect_ai.model import ContentText, ModelOutput
 from inspect_ai.model._chat_message import ChatMessageAssistant
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage
+from inspect_ai.tool._tool import ToolResult
 from inspect_ai.tool._tool_call import ToolCallError
 
 from .detection import (
@@ -164,7 +165,7 @@ def to_tool_event(
     arguments = tool_use_block.input
 
     # Extract result if available
-    result: str | list[ContentText | ContentImage] = ""
+    result: ToolResult = ""
     error = None
 
     if tool_result:
@@ -173,7 +174,7 @@ def to_tool_event(
 
         # Handle content that might be a list
         if isinstance(result_content, list):
-            result = _extract_content_blocks(result_content)
+            result = cast(ToolResult, _extract_content_blocks(result_content))
         elif isinstance(result_content, str):
             result = result_content
         else:
@@ -188,7 +189,7 @@ def to_tool_event(
         type="function",
         function=function_name,
         arguments=arguments if isinstance(arguments, dict) else {},
-        result=result,  # type: ignore[arg-type]
+        result=result,
         timestamp=timestamp,
         completed=completed,
         error=error,

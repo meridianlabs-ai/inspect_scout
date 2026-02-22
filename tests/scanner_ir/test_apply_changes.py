@@ -110,6 +110,43 @@ def simple() -> Scanner[Transcript]:
         # Check model was added (spacing may vary without ruff formatting)
         assert "openai/gpt-4o" in new_source
 
+    def test_add_model_role(self) -> None:
+        """Add model_role to scanner."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def simple() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Question?",
+        answer="boolean",
+        model="openai/gpt-4o",
+    )
+"""
+        result = parse_scanner_file(source)
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+
+        # Add model_role
+        updated_scanner = result.scanner.model_copy(deep=True)
+        assert updated_scanner.llm_scanner is not None
+        updated_scanner.llm_scanner.model_role = "scanner"
+
+        new_source = apply_scanner_changes(source, updated_scanner)
+
+        assert "model_role" in new_source
+        assert "scanner" in new_source
+
+        # Round-trip: parse back and verify
+        re_parsed = parse_scanner_file(new_source)
+        assert re_parsed.editable is True
+        assert re_parsed.scanner is not None
+        assert re_parsed.scanner.llm_scanner is not None
+        assert re_parsed.scanner.llm_scanner.model_role == "scanner"
+
     def test_update_decorator_messages(self) -> None:
         """Update decorator messages filter."""
         source = """

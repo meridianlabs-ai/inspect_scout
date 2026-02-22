@@ -41,6 +41,7 @@ class LLMScannerSpec(BaseModel):
     labels: list[str] | None = Field(default=None)
     structured_spec: StructuredAnswerSpec | None = Field(default=None)
     model: str | None = Field(default=None)
+    model_role: str | None = Field(default=None)
     retry_refusals: int | None = Field(default=None)
     template: str | None = Field(default=None)
 

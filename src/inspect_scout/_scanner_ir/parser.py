@@ -198,6 +198,7 @@ def _parse_llm_scanner_call(
     labels: list[str] | None = None
     structured_spec: StructuredAnswerSpec | None = None
     model: str | None = None
+    model_role: str | None = None
     retry_refusals: int | None = None
     template: str | None = None
 
@@ -222,6 +223,9 @@ def _parse_llm_scanner_call(
 
         elif key == "model":
             model = _eval_literal(value)
+
+        elif key == "model_role":
+            model_role = _eval_literal(value)
 
         elif key == "retry_refusals":
             retry_refusals = _eval_literal(value)
@@ -249,6 +253,7 @@ def _parse_llm_scanner_call(
             labels=labels,
             structured_spec=structured_spec,
             model=model,
+            model_role=model_role,
             retry_refusals=retry_refusals,
             template=template,
         ),

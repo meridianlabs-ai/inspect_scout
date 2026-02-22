@@ -287,6 +287,9 @@ def _generate_llm_scanner_call(spec: LLMScannerSpec) -> str:
     if spec.model:
         args.append(f'model="{spec.model}"')
 
+    if spec.model_role:
+        args.append(f'model_role="{spec.model_role}"')
+
     if spec.retry_refusals is not None and spec.retry_refusals != 3:
         args.append(f"retry_refusals={spec.retry_refusals}")
 
@@ -515,6 +518,14 @@ class _ScannerTransformer(cst.CSTTransformer):
                 cst.Arg(
                     keyword=cst.Name("model"),
                     value=cst.SimpleString(f'"{spec.model}"'),
+                )
+            )
+
+        if spec.model_role:
+            new_args.append(
+                cst.Arg(
+                    keyword=cst.Name("model_role"),
+                    value=cst.SimpleString(f'"{spec.model_role}"'),
                 )
             )
 

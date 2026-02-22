@@ -1375,7 +1375,7 @@ async def timeline_messages(
     timeline: Timeline | TimelineSpan,
     *,
     messages_as_str: MessagesAsStr,
-    model: Model,
+    model: Model | str | None = None,
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,

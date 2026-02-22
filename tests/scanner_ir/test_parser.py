@@ -103,6 +103,51 @@ def categories() -> Scanner[Transcript]:
         assert result.scanner.llm_scanner.answer_type == "multi_labels"
         assert result.scanner.llm_scanner.labels == ["A", "B", "C"]
 
+    def test_parse_scanner_with_model_role(self) -> None:
+        """Parse a scanner with model_role specified."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def efficiency() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Rate efficiency 1-10",
+        answer="numeric",
+        model="openai/gpt-4o",
+        model_role="scanner",
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.model == "openai/gpt-4o"
+        assert result.scanner.llm_scanner.model_role == "scanner"
+
+    def test_parse_scanner_without_model_role(self) -> None:
+        """model_role defaults to None when not specified."""
+        source = """
+from inspect_scout import Scanner, llm_scanner, scanner
+from inspect_scout._transcript.types import Transcript
+
+
+@scanner(messages="all")
+def simple() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="Q?",
+        answer="boolean",
+    )
+"""
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.model_role is None
+
     def test_parse_scanner_with_template(self) -> None:
         """Parse a scanner with custom template."""
         source = """

@@ -3,10 +3,8 @@ from typing import Any, Awaitable, Callable, Literal, cast, overload
 from inspect_ai.model import (
     ChatMessage,
     Model,
-    ModelConfig,
     get_model,
 )
-from inspect_ai.model._model_config import model_config_to_model, model_to_model_config
 from inspect_ai.scorer import ValueToFloat
 from jinja2 import Environment
 
@@ -41,6 +39,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -63,6 +62,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -85,6 +85,7 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -129,6 +130,10 @@ def llm_scanner(
             as the transform receives ``list[ChatMessage]`` per segment.
         model: Optional model specification.
             Can be a model name string or ``Model`` instance. If None, uses the default model.
+        model_role: Optional model role for role-based model resolution.
+            When set, the model is resolved via ``get_model(model, role=model_role)``
+            at scan time, allowing deferred role resolution when roles are not yet
+            available at scanner construction time.
         retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
         name: Scanner name.
             Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
@@ -169,22 +174,9 @@ def llm_scanner(
         else 0
     )
 
-    # Convert Model instances to serializable ModelConfig so the closure
-    # can survive cloudpickle roundtrips in multiprocess scanning.
-    serializable_model: str | ModelConfig | None
-    if isinstance(model, Model):
-        serializable_model = model_to_model_config(model)
-    else:
-        serializable_model = model
-
     async def scan(transcript: Transcript) -> Result:
-        resolved_model: str | Model | None = (
-            model_config_to_model(serializable_model)
-            if isinstance(serializable_model, ModelConfig)
-            else serializable_model
-        )
-
-        model_instance = get_model(resolved_model)
+        # Resolve the model once — defers role resolution to scan time
+        resolved_model = get_model(model, role=model_role)
 
         # Shared numbering scope across all segments
         messages_as_str_fn, extract_references = message_numbering(
@@ -197,7 +189,7 @@ def llm_scanner(
         async for segment in transcript_messages(
             transcript,
             messages_as_str=messages_as_str_fn,
-            model=model_instance,
+            model=resolved_model,
             context_window=context_window,
             compaction=compaction,
             depth=depth,

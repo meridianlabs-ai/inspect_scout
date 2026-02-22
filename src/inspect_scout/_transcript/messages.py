@@ -15,7 +15,7 @@ from inspect_ai.event import (
     event_sequence,
     event_tree,
 )
-from inspect_ai.model import ChatMessage, Model
+from inspect_ai.model import ChatMessage, Model, get_model
 from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
 
@@ -48,7 +48,7 @@ async def segment_messages(
     source: list[ChatMessage] | list[Event] | TimelineSpan,
     *,
     messages_as_str: MessagesAsStr,
-    model: Model,
+    model: Model | str | None = None,
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
 ) -> AsyncIterator[MessagesSegment]:
@@ -78,6 +78,9 @@ async def segment_messages(
         MessagesSegment instances, each fitting within the token budget.
         Segment counter increments across all yields.
     """
+    # Resolve model
+    model = get_model(model)
+
     # Resolve source to a flat message list
     if isinstance(source, TimelineSpan):
         messages = span_messages(source, compaction=compaction)
@@ -153,7 +156,7 @@ async def transcript_messages(
     transcript: "Transcript",
     *,
     messages_as_str: MessagesAsStr,
-    model: Model,
+    model: Model | str | None = None,
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,

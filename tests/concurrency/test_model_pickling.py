@@ -8,10 +8,17 @@ the cloudpickle roundtrip intact.
 
 from __future__ import annotations
 
+import base64
+import copyreg
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import cloudpickle  # type: ignore[import-untyped]
+import inspect_scout._concurrency._mp_common  # noqa: F401 — registers copyreg reducer
 from inspect_ai.model import ModelOutput, get_model
+from inspect_ai.model._model import Model
 from inspect_ai.model._model_config import model_roles_to_model_roles_config
 from inspect_scout import llm_scanner
 
@@ -23,12 +30,62 @@ _SCANNER_WITH_MODEL_EVENT = (
 
 
 # ---------------------------------------------------------------------------
+# copyreg reducer for Model
+# ---------------------------------------------------------------------------
+
+
+def test_copyreg_reducer_is_registered() -> None:
+    """Importing _mp_common registers a copyreg reducer for Model."""
+    assert Model in copyreg.dispatch_table
+
+
+def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
+    """Model must survive cloudpickle serialization in a real subprocess.
+
+    Same-process cloudpickle.loads() can return the original object via identity
+    shortcuts, so we must verify in a subprocess to be a valid test.
+    """
+    model = get_model("mockllm/model")
+    pickled = cloudpickle.dumps(model)
+
+    # Verify in subprocess
+    model_b64 = base64.b64encode(pickled).decode()
+    syspath_json = json.dumps(sys.path)
+    script = (
+        "import sys, base64, json, cloudpickle\n"
+        f"sys.path = json.loads({syspath_json!r})\n"
+        f"pickled = base64.b64decode({model_b64!r})\n"
+        "model = cloudpickle.loads(pickled)\n"
+        "result = json.dumps({'name': str(model.name), 'api_name': model.api.__class__.__name__})\n"
+        "print(result)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Subprocess failed (rc={result.returncode}):\n{result.stderr}"
+        )
+    info = json.loads(result.stdout.strip())
+    # model.name returns the short name (without provider prefix)
+    assert info["name"] == "model"
+
+
+# ---------------------------------------------------------------------------
 # PR #260: Model objects in scanner closures
 # ---------------------------------------------------------------------------
 
 
 def test_llm_scanner_with_model_instance_is_picklable() -> None:
-    """llm_scanner closures must survive cloudpickle roundtrip for multiprocess."""
+    """llm_scanner closures must survive cloudpickle roundtrip in a subprocess.
+
+    cloudpickle.loads() in the same process returns the original class object
+    (identity-preserving), so the test must deserialize in a fresh subprocess
+    to validate that the closure truly survives the roundtrip.
+    """
     model = get_model(
         "mockllm/model",
         custom_outputs=[
@@ -41,10 +98,10 @@ def test_llm_scanner_with_model_instance_is_picklable() -> None:
         model=model,
         name="test_scanner",
     )
-    # This is what DillCallable.__init__ does — must not raise
+    # This is what DillCallable.__init__ does
     pickled = cloudpickle.dumps(scan_fn)
-    restored = cloudpickle.loads(pickled)
-    assert callable(restored)
+    # Verify in a subprocess where cloudpickle can't use identity shortcuts
+    assert _unpickle_callable_in_subprocess(pickled)
 
 
 def test_model_roles_config_is_picklable() -> None:
@@ -60,6 +117,44 @@ def test_model_roles_config_is_picklable() -> None:
     restored = cloudpickle.loads(pickled)
     assert restored is not None
     assert "scanner" in restored
+
+
+# ---------------------------------------------------------------------------
+# Subprocess helper
+# ---------------------------------------------------------------------------
+
+
+def _unpickle_callable_in_subprocess(pickled: bytes) -> bool:
+    """Deserialize a cloudpickled callable in a subprocess and verify it works.
+
+    cloudpickle.loads() in the same process returns the original object
+    (identity-preserving), so this must run in a fresh process to be a
+    valid test.
+    """
+    fn_b64 = base64.b64encode(pickled).decode()
+
+    # Pass parent sys.path so the subprocess can resolve imports
+    # (mirrors how Scout's multiprocess workers inherit sys.path).
+    syspath_json = json.dumps(sys.path)
+    script = (
+        "import sys, base64, json, cloudpickle\n"
+        f"sys.path = json.loads({syspath_json!r})\n"
+        f"pickled = base64.b64decode({fn_b64!r})\n"
+        "fn = cloudpickle.loads(pickled)\n"
+        "assert callable(fn), 'deserialized object is not callable'\n"
+        "print('ok')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Subprocess failed (rc={result.returncode}):\n{result.stderr}"
+        )
+    return result.stdout.strip() == "ok"
 
 
 # ---------------------------------------------------------------------------

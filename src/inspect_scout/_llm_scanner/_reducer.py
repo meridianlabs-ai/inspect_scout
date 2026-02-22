@@ -150,6 +150,37 @@ class ResultReducer:
         return _build_result(results, value=list(combined), answer=answer)
 
     @staticmethod
+    async def majority(results: list[Result]) -> Result:
+        """Most common value, with last-result tiebreaker.
+
+        Counts occurrences of each ``value`` across results. If there is
+        a unique winner it is used; otherwise the last result's value
+        breaks the tie. The ``answer`` is taken from the matching result.
+        """
+        counts: dict[str, int] = {}
+        for r in results:
+            key = str(r.value)
+            counts[key] = counts.get(key, 0) + 1
+
+        max_count = builtins.max(counts.values())
+        winners = [v for v, c in counts.items() if c == max_count]
+
+        last_result = results[-1]
+        if len(winners) == 1:
+            winning_key = winners[0]
+        else:
+            winning_key = str(last_result.value)
+
+        # Find the result whose value matches the winner (prefer last match)
+        matched = last_result
+        for r in reversed(results):
+            if str(r.value) == winning_key:
+                matched = r
+                break
+
+        return _build_result(results, value=matched.value, answer=matched.answer)
+
+    @staticmethod
     async def last(results: list[Result]) -> Result:
         """Return the last result with merged auxiliary fields."""
         last_result = results[-1]
@@ -258,9 +289,9 @@ def default_reducer(
         case "numeric":
             return ResultReducer.mean
         case "string":
-            return ResultReducer.last
+            return ResultReducer.llm()
         case list():
-            return ResultReducer.last
+            return ResultReducer.majority
         case AnswerMultiLabel():
             return ResultReducer.union
         case AnswerStructured():

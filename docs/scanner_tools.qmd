@@ -324,6 +324,7 @@ When a transcript is split into multiple segments, each segment produces its own
 | `ResultReducer.max` | Maximum of numeric values. |
 | `ResultReducer.min` | Minimum of numeric values. |
 | `ResultReducer.union` | Union of list values, deduplicated, preserving order. |
+| `ResultReducer.majority` | Most common value, with last-result tiebreaker. |
 | `ResultReducer.last` | Returns the last result with merged auxiliary fields. |
 
 All reducers are async functions with signature `(list[Result]) -> Result`.
@@ -336,8 +337,8 @@ The default reducer is selected based on the answer type:
 |-------------|----------------|
 | `"boolean"` | `ResultReducer.any` |
 | `"numeric"` | `ResultReducer.mean` |
-| `"string"` | `ResultReducer.last` |
-| labels | `ResultReducer.last` |
+| `"string"` | `ResultReducer.llm()` |
+| labels | `ResultReducer.majority` |
 | `AnswerMultiLabel` | `ResultReducer.union` |
 | `AnswerStructured` | `ResultReducer.last` |
 

@@ -388,24 +388,13 @@ The default reducer is selected based on the answer type:
 |-------------|----------------|
 | `"boolean"` | `ResultReducer.any` |
 | `"numeric"` | `ResultReducer.mean` |
-| `"string"` | `ResultReducer.last` |
-| labels | `ResultReducer.last` |
+| `"string"` | `ResultReducer.llm()` |
+| labels | `ResultReducer.majority` |
 | `AnswerMultiLabel` | `ResultReducer.union` |
 | `AnswerStructured` | `ResultReducer.last` |
 
-You can override the reducer with a custom function or use `ResultReducer.llm()` for LLM-based synthesis of multi-segment results:
+You can override the reducer with a custom function or use `ResultReducer.llm()` for LLM-based synthesis of multi-segment results.
 
-``` python
-from inspect_scout import ResultReducer, llm_scanner, scanner
-
-@scanner(messages="all")
-def my_scanner():
-    return llm_scanner(
-        question="...",
-        answer="boolean",
-        reducer=ResultReducer.llm(),
-    )
-```
 
 Two additional parameters control segmentation behavior:
 

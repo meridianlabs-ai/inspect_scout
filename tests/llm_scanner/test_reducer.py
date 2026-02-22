@@ -165,6 +165,45 @@ class TestUnion:
 # ---------------------------------------------------------------------------
 
 
+class TestMajority:
+    @pytest.mark.anyio
+    async def test_clear_winner(self) -> None:
+        results = [
+            Result(value="A", answer="A"),
+            Result(value="A", answer="A"),
+            Result(value="B", answer="B"),
+        ]
+        r = await ResultReducer.majority(results)
+        assert r.value == "A"
+        assert r.answer == "A"
+
+    @pytest.mark.anyio
+    async def test_tie_broken_by_last(self) -> None:
+        results = [
+            Result(value="A", answer="A"),
+            Result(value="B", answer="B"),
+        ]
+        r = await ResultReducer.majority(results)
+        assert r.value == "B"
+        assert r.answer == "B"
+
+    @pytest.mark.anyio
+    async def test_all_different(self) -> None:
+        results = [
+            Result(value="A", answer="A"),
+            Result(value="B", answer="B"),
+            Result(value="C", answer="C"),
+        ]
+        r = await ResultReducer.majority(results)
+        assert r.value == "C"
+        assert r.answer == "C"
+
+
+# ---------------------------------------------------------------------------
+# Last reducer
+# ---------------------------------------------------------------------------
+
+
 class TestLast:
     @pytest.mark.anyio
     async def test_last(self) -> None:
@@ -255,10 +294,12 @@ class TestDefaultReducer:
         assert default_reducer("numeric") is ResultReducer.mean
 
     def test_string(self) -> None:
-        assert default_reducer("string") is ResultReducer.last
+        reducer = default_reducer("string")
+        assert callable(reducer)
+        assert reducer is not ResultReducer.last
 
     def test_labels(self) -> None:
-        assert default_reducer(["A", "B", "C"]) is ResultReducer.last
+        assert default_reducer(["A", "B", "C"]) is ResultReducer.majority
 
     def test_multi_label(self) -> None:
         assert (

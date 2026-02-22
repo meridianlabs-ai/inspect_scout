@@ -93,8 +93,8 @@ Default reducers by answer type:
 |--------------------|-----------------------|
 | `"boolean"`        | `ResultReducer.any`   |
 | `"numeric"`        | `ResultReducer.mean`  |
-| `"string"`         | `ResultReducer.last`  |
-| labels             | `ResultReducer.last`  |
+| `"string"`         | `ResultReducer.llm()` |
+| labels             | `ResultReducer.majority` |
 | `AnswerMultiLabel` | `ResultReducer.union` |
 | `AnswerStructured` | `ResultReducer.last`  |
 
@@ -112,7 +112,7 @@ def synthesized_analysis():
     )
 ```
 
-Built-in reducers include `ResultReducer.any`, `.mean`, `.median`, `.mode`, `.max`, `.min`, `.union`, `.last`.
+Built-in reducers include `ResultReducer.any`, `.mean`, `.median`, `.mode`, `.max`, `.min`, `.union`, `.majority`, `.last`.
 
 ::: callout-tip
 Structured list answers (`list[MyModel]`) are particularly well-suited for timeline scanning. Per-span findings naturally roll up into a combined result set without needing reduction — each span produces its own list, and the lists are concatenated. See [LLM Scanner: Structured Lists](llm_scanner.qmd#structured-lists) for details.

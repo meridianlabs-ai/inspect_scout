@@ -91,7 +91,7 @@ website:
             - href: llm_scanner.qmd
             - href: grep_scanner.qmd
             - href: custom_scanner.qmd
-        - text: Transcripts Database
+        - text: Transcripts
           href: db_overview.qmd
           contents:
             - text: Overview

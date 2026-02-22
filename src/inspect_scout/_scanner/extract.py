@@ -298,14 +298,14 @@ def _extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
     """Extract message and event references from text.
 
     Args:
-        text: Text containing [M{n}] or [E{n}] style references
+        text: Text containing [M{n}], [E{n}], M{n}, or E{n} style references
         id_map: Dict mapping ordinal IDs (e.g., "M1", "M2", "E1", "E2") to actual IDs
 
     Returns:
         List of Reference objects with type="message" or type="event"
     """
-    # Find all [M{number}] or [E{number}] patterns in the text
-    pattern = r"\[(M|E)\d+\]"
+    # Match bracketed [M1]/[E1] or bare M1/E1 with word boundaries
+    pattern = r"\[(M|E)\d+\]|\b(M|E)\d+\b"
     matches = re.finditer(pattern, text)
 
     references = []
@@ -313,8 +313,8 @@ def _extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
 
     for match in matches:
         cite = match.group(0)
-        # Extract ordinal key (e.g., "M1" from "[M1]" or "E1" from "[E1]")
-        ordinal_key = cite[1:-1]
+        # Extract ordinal key: "M1" from "[M1]" or "M1" from bare "M1"
+        ordinal_key = cite[1:-1] if cite.startswith("[") else cite
 
         # Look up actual ID
         if ordinal_key in id_map:

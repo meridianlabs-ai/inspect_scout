@@ -892,6 +892,54 @@ async def test_type_checking_with_generic_preprocessor() -> None:
                 Reference(type="event", cite="[E1]", id="evt-1"),
             ],
         ),
+        # Bare references
+        (
+            "See M1 and M2",
+            {"M1": "msg-1", "M2": "msg-2"},
+            [
+                Reference(type="message", cite="M1", id="msg-1"),
+                Reference(type="message", cite="M2", id="msg-2"),
+            ],
+        ),
+        # Bare reference should not match mid-word
+        (
+            "AM1 should not match",
+            {"M1": "msg-1"},
+            [],
+        ),
+        # Bare references in range context (no range expansion)
+        (
+            "M3-M7",
+            {"M3": "msg-3", "M7": "msg-7"},
+            [
+                Reference(type="message", cite="M3", id="msg-3"),
+                Reference(type="message", cite="M7", id="msg-7"),
+            ],
+        ),
+        # Bare reference with parentheses
+        (
+            "(M3)",
+            {"M3": "msg-3"},
+            [Reference(type="message", cite="M3", id="msg-3")],
+        ),
+        # Mixed bracketed and bare references
+        (
+            "[M1] and M2",
+            {"M1": "msg-1", "M2": "msg-2"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="message", cite="M2", id="msg-2"),
+            ],
+        ),
+        # Bare event references
+        (
+            "E1 and E2",
+            {"E1": "evt-1", "E2": "evt-2"},
+            [
+                Reference(type="event", cite="E1", id="evt-1"),
+                Reference(type="event", cite="E2", id="evt-2"),
+            ],
+        ),
     ],
 )
 def test_extract_references(

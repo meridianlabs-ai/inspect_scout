@@ -1310,19 +1310,19 @@ class TimelineMessages:
     """A segment of messages from a specific timeline span.
 
     Structurally compatible with ``MessagesSegment`` (shares
-    ``messages``, ``text``, ``segment`` fields) with additional
+    ``messages``, ``messages_str``, ``segment`` fields) with additional
     span context. Can be used anywhere a ``MessagesSegment``
     is expected via duck typing.
 
     Attributes:
         messages: The original ChatMessage objects in this segment.
-        text: Pre-rendered string from messages_as_str.
+        messages_str: Pre-rendered string from messages_as_str.
         segment: 0-based segment index, globally unique across yields.
         span: The TimelineSpan this segment was extracted from.
     """
 
     messages: list[ChatMessage]
-    text: str
+    messages_str: str
     segment: int
     span: TimelineSpan
 
@@ -1425,7 +1425,7 @@ async def timeline_messages(
         ):
             yield TimelineMessages(
                 messages=seg.messages,
-                text=seg.messages_str,
+                messages_str=seg.messages_str,
                 segment=counter,
                 span=span,
             )

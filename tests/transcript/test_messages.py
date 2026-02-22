@@ -658,7 +658,7 @@ async def test_timeline_messages_single_span() -> None:
     assert len(results) == 1
     assert isinstance(results[0], TimelineMessages)
     assert results[0].span is span
-    assert "[M1]" in results[0].text
+    assert "[M1]" in results[0].messages_str
 
 
 @pytest.mark.anyio

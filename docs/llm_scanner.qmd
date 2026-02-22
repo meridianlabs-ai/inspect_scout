@@ -406,42 +406,40 @@ Utility spans (single-turn helper agents with different system prompts) are excl
 
 ### Opting In
 
-To scan timelines instead of raw messages, pass `content=TranscriptContent(timeline=True)` to `llm_scanner()`:
+To scan timelines instead of raw messages, decorate your scanner with `@scanner(timeline=True)`:
 
 ``` python
-from inspect_scout import TranscriptContent, llm_scanner, scanner
+from inspect_scout import llm_scanner, scanner
 
-@scanner
+@scanner(timeline=True)
 def my_scanner():
     return llm_scanner(
         question="...",
         answer="boolean",
-        content=TranscriptContent(timeline=True),
     )
 ```
 
 When timeline scanning is enabled, each span in the timeline tree is scanned independently—the LLM sees only that span's conversation. This is particularly powerful with structured list answers, where each span produces its own list of findings that naturally roll up into a combined result set across all spans.
 
-### Structured List Answers
+### Structured Lists
 
 Structured list answers (`list[MyModel]`) are ideal for timeline scanning because they preserve per-span detail without needing a reducer to collapse results:
 
 ``` python
 from pydantic import BaseModel, Field
 from inspect_scout import (
-    AnswerStructured, TranscriptContent, llm_scanner, scanner,
+    AnswerStructured, llm_scanner, scanner,
 )
 
 class Finding(BaseModel):
     category: str = Field(alias="label", description="Category of the finding.")
     detail: str = Field(alias="explanation", description="Explain the finding, citing message numbers.")
 
-@scanner
+@scanner(timeline=True)
 def timeline_findings():
     return llm_scanner(
         question="Report any notable behaviors in the conversation.",
-        answer=AnswerStructured(type=list[Finding]),
-        content=TranscriptContent(timeline=True),
+        answer=AnswerStructured(type=list[Finding])
     )
 ```
 
@@ -454,9 +452,3 @@ Use the `depth` parameter to limit how deep into the span tree to scan:
 - `depth=1` — scan only the root span
 - `depth=2` — scan the root and its immediate children
 - `depth=None` (default) — scan all levels
-
-::: {.callout-note}
-## Scanning Toolkit
-
-The composable functions behind `llm_scanner()`—message numbering, message extraction, answer generation, parallel scanning, and result reduction—are available as standalone APIs for building custom scanners. See the [Scanning Toolkit](scanners.qmd#scanning-toolkit) documentation for details.
-:::

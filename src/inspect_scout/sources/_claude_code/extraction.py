@@ -10,6 +10,7 @@ from typing import Any
 from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model import (
     Content,
+    ContentImage,
     ContentReasoning,
     ContentText,
 )
@@ -83,6 +84,41 @@ def extract_user_message(event: BaseEvent) -> ChatMessageUser | None:
     return None
 
 
+def _extract_content_blocks(
+    items: list[dict[str, Any]],
+) -> str | list[ContentText | ContentImage]:
+    """Extract text and image content blocks from a tool result content list.
+
+    Returns a plain string when there are no images (preserving existing
+    behaviour), or a mixed list of ContentText/ContentImage when images
+    are present.
+    """
+    text_parts: list[str] = []
+    images: list[ContentImage] = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "text":
+            text_parts.append(str(item.get("text", "")))
+        elif item.get("type") == "image":
+            source = item.get("source", {})
+            if isinstance(source, dict) and source.get("type") == "base64":
+                media_type = source.get("media_type", "image/png")
+                data = source.get("data", "")
+                images.append(ContentImage(image=f"data:{media_type};base64,{data}"))
+
+    if not images:
+        return "\n".join(text_parts)
+
+    blocks: list[ContentText | ContentImage] = []
+    combined_text = "\n".join(text_parts)
+    if combined_text:
+        blocks.append(ContentText(text=combined_text))
+    blocks.extend(images)
+    return blocks
+
+
 def extract_tool_result_messages(event: BaseEvent) -> list[ChatMessageTool]:
     """Extract ChatMessageTool objects from a user event with tool results.
 
@@ -108,19 +144,17 @@ def extract_tool_result_messages(event: BaseEvent) -> list[ChatMessageTool]:
             # Note: is_error could be used to set error state in future
 
             # Handle content that might be a list or string
+            # Handle content that might be a list or string
             if isinstance(result_content, list):
-                # Extract text from content blocks
-                text_parts = []
-                for item in result_content:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text_parts.append(str(item.get("text", "")))
-                result_content = "\n".join(text_parts)
-            elif not isinstance(result_content, str):
-                result_content = str(result_content)
+                tool_content = _extract_content_blocks(result_content)
+            elif isinstance(result_content, str):
+                tool_content = result_content
+            else:
+                tool_content = str(result_content)
 
             tool_messages.append(
                 ChatMessageTool(
-                    content=result_content,
+                    content=tool_content,  # type: ignore[arg-type]
                     tool_call_id=tool_use_id,
                 )
             )

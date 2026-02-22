@@ -24,7 +24,7 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import ContentText, ModelOutput
+from inspect_ai.model import ContentImage, ContentText, ModelOutput
 from inspect_ai.model._chat_message import ChatMessageAssistant
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage
@@ -38,6 +38,7 @@ from .detection import (
     is_task_tool_call,
 )
 from .extraction import (
+    _extract_content_blocks,
     extract_assistant_content,
     extract_compaction_info,
     extract_tool_result_messages,
@@ -163,7 +164,7 @@ def to_tool_event(
     arguments = tool_use_block.input
 
     # Extract result if available
-    result = ""
+    result: str | list[ContentText | ContentImage] = ""
     error = None
 
     if tool_result:
@@ -172,25 +173,22 @@ def to_tool_event(
 
         # Handle content that might be a list
         if isinstance(result_content, list):
-            text_parts = []
-            for item in result_content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    text_parts.append(str(item.get("text", "")))
-            result = "\n".join(text_parts)
+            result = _extract_content_blocks(result_content)
         elif isinstance(result_content, str):
             result = result_content
         else:
             result = str(result_content)
 
         if is_error:
-            error = ToolCallError(type="unknown", message=result)
+            error_msg = result if isinstance(result, str) else str(result)
+            error = ToolCallError(type="unknown", message=error_msg)
 
     return ToolEvent(
         id=tool_id,
         type="function",
         function=function_name,
         arguments=arguments if isinstance(arguments, dict) else {},
-        result=result,
+        result=result,  # type: ignore[arg-type]
         timestamp=timestamp,
         completed=completed,
         error=error,

@@ -126,7 +126,7 @@ class TestParseAnswerStructured:
 
 
 def _make_mock_output(completion: str = "Reasoning.\n\nANSWER: yes") -> ModelOutput:
-    return ModelOutput(model="test", completion=completion)
+    return ModelOutput.from_content(model="test", content=completion)
 
 
 class TestGenerateAnswerDispatch:
@@ -156,9 +156,9 @@ class TestGenerateAnswerDispatch:
             explanation: str = Field(description="Reasoning")
             score: int = Field(alias="value", description="Score")
 
-        mock_output = ModelOutput(
+        mock_output = ModelOutput.from_content(
             model="test",
-            completion='{"explanation": "Good work", "score": 5}',
+            content='{"explanation": "Good work", "score": 5}',
         )
 
         with patch(
@@ -256,7 +256,7 @@ class TestGenerateAnswerStructuredNull:
             explanation: str = Field(description="Reasoning")
             score: int = Field(alias="value", description="Score")
 
-        mock_output = ModelOutput(model="test", completion="Could not determine.")
+        mock_output = ModelOutput.from_content(model="test", content="Could not determine.")
 
         with patch(
             "inspect_scout._llm_scanner.generate.structured_generate",

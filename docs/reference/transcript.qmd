@@ -42,7 +42,6 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ### span_messages
 ### MessagesSegment
 
-::: {.content-visible when-profile="timelines"}
 ## Timeline
 
 ### build_timeline
@@ -53,8 +52,6 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ### TimelineEvent
 ### TimelineMessages
 ### TimelineSpan
-:::
-
 
 ## Observe
 

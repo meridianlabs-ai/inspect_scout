@@ -280,6 +280,7 @@ See [Structured Answers](llm_scanner.qmd#structured-answers) in the LLM Scanner 
 
 The `transcript_messages()` function is the primary API for extracting pre-rendered message segments from a transcript. It automatically selects the best extraction strategy based on what data is available:
 
+-   If timelines are present, it walks the span tree and yields per-span segments.
 -   If only events are present, it extracts messages from events with compaction handling.
 -   If only messages are present, it segments them by context window.
 
@@ -305,10 +306,20 @@ async for segment in transcript_messages(
 | `model` | Model used for token counting and context window lookup. |
 | `context_window` | Override the model's detected context window size (in tokens). |
 | `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final segment. |
+| `depth` | Maximum depth of the span tree to process (timelines only). `None` recurses without limit. |
 | `include_scorers` | Whether to include scorer events in extraction (default `False`). |
 
 : {tbl-colwidths=\[25,75\]}
 
+
+### Lower-Level Alternatives
+
+For cases where you have a source other than a full transcript, two lower-level functions are available:
+
+-   `segment_messages(source, messages_as_str=...)` --- Takes a `list[ChatMessage]`, `list[Event]`, or `TimelineSpan` and yields `MessagesSegment` objects segmented by context window.
+-   `timeline_messages(timeline, messages_as_str=...)` --- Takes a `Timeline` or `TimelineSpan` and yields `TimelineMessages` for each non-utility span with model events.
+
+These accept the same `model`, `context_window`, and `compaction` parameters as `transcript_messages()`.
 
 ## Result Reduction {#result-reduction}
 

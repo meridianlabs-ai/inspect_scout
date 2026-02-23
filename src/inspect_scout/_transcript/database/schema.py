@@ -360,9 +360,6 @@ def generate_schema_table_markdown() -> str:
     # Build table rows
     rows: list[list[str]] = []
     for field in TRANSCRIPT_SCHEMA_FIELDS:
-        if field.name == "timelines":
-            continue
-
         # Field name with backticks
         name = f"`{field.name}`"
 

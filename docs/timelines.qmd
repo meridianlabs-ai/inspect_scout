@@ -1,6 +1,5 @@
 ---
 title: "Timelines"
-search: false
 ---
 
 ## Overview

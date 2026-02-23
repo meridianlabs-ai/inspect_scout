@@ -3,6 +3,14 @@ title: "Scanner Tools"
 code-annotations: select
 ---
 
+::: {.callout-note}
+The scanner tools described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
 ## Overview
 
 The [LLM Scanner](llm_scanner.qmd) provides a high-level, batteries-included interface for building LLM-based scanners. Under the hood, it is composed of several lower-level tools: message numbering, prompt construction, answer generation, message extraction, and result reduction. You can use these tools directly when you need more control.
@@ -13,7 +21,9 @@ Here is roughly the implementation of `llm_scanner()`, but using the lower level
 
 ```python
 from inspect_scout import (
-    Result, ResultReducer, Scanner, Transcript, generate_answer, message_numbering, scanner, scanner_prompt, transcript_messages
+    Result, ResultReducer, Scanner, Transcript, 
+    generate_answer, message_numbering, scanner, 
+    scanner_prompt, transcript_messages
 )
 
 @scanner(messages="all")
@@ -25,8 +35,8 @@ def environment_scanner() -> Scanner[Transcript]:
         messages_as_str, extract_refs = message_numbering() # <1>
 
         # define question to ask llm
-        question = "Did the agent fail to complete the task due to " +
-            "a broken or misconfigured environment?"
+        question = "Did the agent fail to complete the task due to "
+            + "a broken or misconfigured environment?"
 
         # scan segments (breaks up transcript to fit in context window)
         results: list[Result] = []

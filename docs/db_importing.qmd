@@ -21,20 +21,6 @@ You can populate a transcript database in a variety of ways depending on where y
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
 
-::: {.callout-tip}
-## CLI Import
-
-The `scout import` command provides a CLI alternative to the Python API for importing transcripts from any registered source. For example:
-
-```bash
-scout import claude_code
-scout import phoenix -P project=my-project
-scout import langsmith -P project=my-project --limit 100
-```
-
-Use `scout import --sources` to list available sources and their parameters, or `--dry-run` to preview what would be imported without writing. See [scout import](reference/scout_import.qmd) for full details.
-:::
-
 
 ## Inspect Logs
 
@@ -168,6 +154,15 @@ Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with Logfire. 
 :::
 
 ## Claude Code
+
+::: {.callout-note}
+The Claude Code transcript source described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's agentic coding tool. Scout can import transcripts directly from Claude Code's session files, which are normally stored at `~/.claude/projects/`.
 
@@ -388,3 +383,26 @@ scout db index s3://my-transcripts-data-lake/cyber
 ```
 
 You should run this command whenever you add or remove transcripts from your data lake (transcripts will not be visible to clients until the index is updated). While building an index is not required, it is highly reccommend if you want optimal query performance.
+
+
+## CLI Import
+
+::: {.callout-note}
+The `scout import` command described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
+
+The `scout import` command provides a CLI alternative to the Python API for importing transcripts from any registered source. For example:
+
+```bash
+scout import claude_code
+scout import phoenix -P project=my-project
+scout import langsmith -P project=my-project --limit 100
+```
+
+Use `scout import --sources` to list available sources and their parameters, or `--dry-run` to preview what would be imported without writing. See [scout import](reference/scout_import.qmd) for full details.
+

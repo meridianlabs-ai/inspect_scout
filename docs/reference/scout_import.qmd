@@ -1,3 +1,11 @@
 ---
 title: scout import
 ---
+
+::: {.callout-note}
+The `scout import` command described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::

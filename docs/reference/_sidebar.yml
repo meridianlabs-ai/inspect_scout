@@ -231,11 +231,11 @@ website:
       contents:
       - text: scout scan
         href: reference/scout_scan.qmd
-      - text: scout import
-        href: reference/scout_import.qmd
       - text: scout view
         href: reference/scout_view.qmd
       - text: scout trace
         href: reference/scout_trace.qmd
       - text: scout db
         href: reference/scout_db.qmd
+      - text: scout import
+        href: reference/scout_import.qmd

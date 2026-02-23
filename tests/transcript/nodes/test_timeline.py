@@ -5,6 +5,7 @@ a minimal event representation and expected node structure.
 """
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
@@ -66,6 +67,13 @@ def parse_timestamp(ts_str: str | None) -> datetime:
         return datetime.now(timezone.utc)
     # Handle various ISO formats
     ts_str = ts_str.replace("Z", "+00:00")
+    # Python 3.10 fromisoformat doesn't handle fractional seconds with
+    # fewer than 3 or 6 digits (e.g. ".1"). Pad to 6 digits.
+    ts_str = re.sub(
+        r"\.(\d{1,5})([+-])",
+        lambda m: "." + m.group(1).ljust(6, "0") + m.group(2),
+        ts_str,
+    )
     return datetime.fromisoformat(ts_str)
 
 

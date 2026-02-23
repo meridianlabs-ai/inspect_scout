@@ -70,8 +70,8 @@ def parse_timestamp(ts_str: str | None) -> datetime:
     # Python 3.10 fromisoformat doesn't handle fractional seconds with
     # fewer than 3 or 6 digits (e.g. ".1"). Pad to 6 digits.
     ts_str = re.sub(
-        r"\.(\d{1,5})([+-])",
-        lambda m: "." + m.group(1).ljust(6, "0") + m.group(2),
+        r"\.(\d{1,5})(?=[+-]|$)",
+        lambda m: "." + m.group(1).ljust(6, "0"),
         ts_str,
     )
     return datetime.fromisoformat(ts_str)
@@ -628,6 +628,33 @@ def test_build_timeline(fixture_name: str) -> None:
 # =============================================================================
 # Specific Tests
 # =============================================================================
+
+
+@pytest.mark.parametrize(
+    "ts_str, expected_microsecond",
+    [
+        ("2024-01-01T00:00:00.1Z", 100000),
+        ("2024-01-01T00:00:00.1+05:30", 100000),
+        ("2024-01-01T00:00:00.1", 100000),
+        ("2024-01-01T00:00:00.12+00:00", 120000),
+        ("2024-01-01T00:00:00.123456Z", 123456),
+        ("2024-01-01T00:00:00.000001Z", 1),
+    ],
+    ids=[
+        "short-frac-utc",
+        "short-frac-offset",
+        "short-frac-naive",
+        "two-digit-frac",
+        "full-frac",
+        "microsecond-frac",
+    ],
+)
+def test_parse_timestamp_fractional_seconds(
+    ts_str: str, expected_microsecond: int
+) -> None:
+    """parse_timestamp normalizes short fractional seconds for Python 3.10."""
+    result = parse_timestamp(ts_str)
+    assert result.microsecond == expected_microsecond
 
 
 def test_empty_events_returns_empty_timeline() -> None:

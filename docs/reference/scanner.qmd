@@ -15,6 +15,19 @@ reference: "inspect_scout"
 ## Scanners
 
 ### llm_scanner
+### grep_scanner
+
+## Scanner Tools
+
+::: {.callout-note}
+The scanner tools functions described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
+### message_numbering
 ### scanner_prompt
 ### generate_answer
 ### parse_answer
@@ -24,12 +37,10 @@ reference: "inspect_scout"
 ### AnswerSpec
 ### AnswerMultiLabel
 ### AnswerStructured
-### grep_scanner
 
 ## Utils
 
 ### messages_as_str
-### message_numbering
 ### MessageFormatOptions
 ### MessagesPreprocessor
 ### tool_callers

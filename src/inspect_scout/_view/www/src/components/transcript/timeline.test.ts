@@ -473,12 +473,12 @@ function assertTimelineMatches(
     const expectedUuids = expected.init.event_uuids;
     if (expectedUuids.length > 0) {
       const firstItem = root.content[0];
-      expect(firstItem).toBeDefined();
-      expect(firstItem?.type).toBe("span");
-      const initSpan = firstItem as TimelineSpan;
-      expect(initSpan.spanType).toBe("init");
-      expect(initSpan.name).toBe("Init");
-      const actualUuids = getDirectEventUuids(initSpan);
+      if (firstItem?.type !== "span") {
+        throw new Error("Expected first item to be a span");
+      }
+      expect(firstItem.spanType).toBe("init");
+      expect(firstItem.name).toBe("Init");
+      const actualUuids = getDirectEventUuids(firstItem);
       expect(actualUuids).toEqual(expectedUuids);
     }
   }

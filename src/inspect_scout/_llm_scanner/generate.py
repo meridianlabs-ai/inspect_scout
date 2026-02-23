@@ -129,7 +129,11 @@ async def generate_answer(
             retry_refusals=retry_refusals,
         )
         if value is None and parse:
-            return Result(value=None, answer=model_output.completion)
+            return Result(
+                value=None,
+                answer=model_output.completion,
+                metadata={"stop_reason": model_output.stop_reason},
+            )
     else:
         model_output = await generate_retry_refusals(
             get_model(model),
@@ -144,7 +148,12 @@ async def generate_answer(
         return model_output
 
     refs_fn = extract_refs or _no_references
-    return resolved_answer.result_for_answer(model_output, refs_fn, value_to_float)
+    result = resolved_answer.result_for_answer(model_output, refs_fn, value_to_float)
+    result.metadata = {
+        **(result.metadata or {}),
+        "stop_reason": model_output.stop_reason,
+    }
+    return result
 
 
 def _no_references(_text: str) -> list[Reference]:

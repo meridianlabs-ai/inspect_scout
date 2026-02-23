@@ -105,7 +105,7 @@ export const ScannerResultPanel: FC = () => {
     useSelectedScanResultData(scanResultUuid);
 
   const { loading: inputLoading, data: inputData } =
-    useSelectedScanResultInputData();
+    useSelectedScanResultInputData(selectedResult?.uuid);
 
   // Set document title with task name and scan location
   const taskName =
@@ -262,12 +262,14 @@ export const ScannerResultPanel: FC = () => {
           }}
           className={styles.fullHeight}
         >
-          <ResultPanel
-            resultData={resultData}
-            inputData={inputData}
-            transcriptDir={resolvedTranscriptsDir}
-            hasTranscript={!!hasTranscript}
-          />
+          {resultData && inputData && (
+            <ResultPanel
+              resultData={resultData}
+              inputData={inputData}
+              transcriptDir={resolvedTranscriptsDir}
+              hasTranscript={!!hasTranscript}
+            />
+          )}
         </TabPanel>
       ) : undefined}
       {showEvents ? (

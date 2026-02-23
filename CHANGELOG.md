@@ -1,3 +1,12 @@
+## 0.4.19 (17 February 2026)
+
+- LLM Scanner: Store model stop_reason result metadata.
+- Scout View: Fix incorrect behavior when attempting to view scanner results with result sets.
+
+## 0.4.18 (14 February 2026)
+
+- Bugfix: Fix token counting when a single worker task processes multiple scans sequentially.
+
 ## 0.4.17 (13 February 2026)
 
 - Transcript DB: Improve Anthropic and Google tool call capture for `pheonix()` transcript source.

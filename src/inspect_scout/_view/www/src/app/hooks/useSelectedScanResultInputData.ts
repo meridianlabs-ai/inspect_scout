@@ -7,19 +7,21 @@ import { ScanResultInputData } from "../types";
 import { useScanRoute } from "./useScanRoute";
 import { useSelectedScanner } from "./useSelectedScanner";
 
-export const useSelectedScanResultInputData =
-  (): AsyncData<ScanResultInputData> => {
-    const { resolvedScansDir, scanPath, scanResultUuid } = useScanRoute();
-    const scanner = useSelectedScanner();
+export const useSelectedScanResultInputData = (
+  scanUuid?: string
+): AsyncData<ScanResultInputData> => {
+  const { resolvedScansDir, scanPath } = useScanRoute();
 
-    return useScanDataframeInput(
-      resolvedScansDir && scanPath && scanner.data && scanResultUuid
-        ? {
-            scansDir: resolvedScansDir,
-            scanPath,
-            scanner: scanner.data,
-            uuid: scanResultUuid,
-          }
-        : skipToken
-    );
-  };
+  const scanner = useSelectedScanner();
+
+  return useScanDataframeInput(
+    resolvedScansDir && scanPath && scanner.data && scanUuid
+      ? {
+          scansDir: resolvedScansDir,
+          scanPath,
+          scanner: scanner.data,
+          uuid: scanUuid,
+        }
+      : skipToken
+  );
+};

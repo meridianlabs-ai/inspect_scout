@@ -17,7 +17,7 @@
     "url": "https://github.com/meridianlabs-ai/inspect_scout",
     "directory": "src/inspect_scout/_view/www"
   },
-  "packageManager": "pnpm@10.20.0",
+  "packageManager": "pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc",
   "engines": {
     "node": "22.21.1",
     "pnpm": ">=9.0.0"
@@ -74,7 +74,7 @@
     "@types/prismjs": "^1.26.5",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
+    "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",

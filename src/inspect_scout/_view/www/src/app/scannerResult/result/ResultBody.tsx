@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../../components/chat/ChatViewVirtualList";
 import { ApplicationIcons } from "../../../components/icons";
+import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { TranscriptView } from "../../../components/transcript/TranscriptView";
 import { transcriptRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
@@ -136,7 +137,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         />
       );
     } else {
-      return <div>No Transcript Input Available</div>;
+      return <NoContentsPanel text="No transcript input available" />;
     }
   } else if (isMessagesInput(inputData)) {
     return (

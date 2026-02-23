@@ -21,7 +21,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({
   hasTranscript,
 }) => (
   <div className={clsx(styles.container, "text-size-base")}>
-    <ResultSidebar resultData={resultData} />
+    <ResultSidebar inputData={inputData} resultData={resultData} />
     {inputData ? (
       <ResultBody
         resultData={resultData}

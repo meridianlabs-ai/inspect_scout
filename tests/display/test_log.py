@@ -1,9 +1,14 @@
 import logging
 import time
+from typing import Callable
 
 import pytest
 from inspect_scout._concurrency.common import ScanMetrics
-from inspect_scout._display.log import ScanDisplayLog, TextProgressLog
+from inspect_scout._display.log import DisplayLog, ScanDisplayLog, TextProgressLog
+from inspect_scout._recorder.recorder import Status
+from inspect_scout._recorder.summary import Summary
+from inspect_scout._scanner.result import Error
+from inspect_scout._scanspec import ScanSpec
 
 
 def test_scan_display_log_metrics_logs_progress(
@@ -22,7 +27,7 @@ def test_scan_display_log_metrics_logs_progress(
 
     display._completed_scans = 60
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         display._log_metrics(metrics)
 
     assert len(caplog.records) == 1
@@ -46,7 +51,7 @@ def test_scan_display_log_metrics_with_batch_info(
         batch_oldest_created=current_time - 120,
     )
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         display._log_metrics(metrics)
 
     assert len(caplog.records) == 1
@@ -72,7 +77,7 @@ def test_scan_display_log_metrics_handles_zero_total(
     display = ScanDisplayLog(total=0, skipped=0)
     metrics = ScanMetrics(completed_scans=0)
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         display._log_metrics(metrics)
 
     assert len(caplog.records) == 1
@@ -108,7 +113,7 @@ def test_scan_display_log_progress_percentage_calculation(
     metrics = ScanMetrics(completed_scans=completed_scans)
     display._completed_scans = skipped + completed_scans
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         display._log_metrics(metrics)
 
     record = caplog.records[0]
@@ -120,7 +125,7 @@ def test_text_progress_log_first_update_logs_immediately(
 ) -> None:
     progress = TextProgressLog(caption="Loading", count=10)
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         progress._log_update("item 1")
 
     assert len(caplog.records) == 1
@@ -147,7 +152,7 @@ def test_text_progress_log_update_without_count(
 ) -> None:
     progress = TextProgressLog(caption="Processing", count=False)
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         progress._log_update("file.txt")
 
     assert len(caplog.records) == 1
@@ -162,7 +167,7 @@ def test_text_progress_log_update_with_bool_count(
     progress = TextProgressLog(caption="Loading", count=True)
     progress._total = 5
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         progress._log_update("item")
 
     record = caplog.records[0]
@@ -176,9 +181,71 @@ def test_text_progress_log_update_with_int_count(
     progress = TextProgressLog(caption="Loading", count=100)
     progress._total = 25
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.INFO, logger="inspect_scout._display.log"):
         progress._log_update("item")
 
     record = caplog.records[0]
     assert record.__dict__["progress"] == 25
     assert record.__dict__["total"] == 100
+
+
+def _make_error(traceback: str = "Traceback (most recent call last):\n  ...") -> Error:
+    return Error(
+        transcript_id="t1",
+        scanner="test_scanner",
+        error="something failed",
+        traceback=traceback,
+        refusal=False,
+    )
+
+
+def _make_status(*, complete: bool = True, errors: list[Error] | None = None) -> Status:
+    return Status(
+        complete=complete,
+        spec=ScanSpec(scan_name="test", scanners={}, transcripts=None),
+        location="/tmp/test",
+        summary=Summary(),
+        errors=errors or [],
+    )
+
+
+def _call_scan_complete(display: DisplayLog, status: Status) -> None:
+    display.scan_complete(status)
+
+
+def _call_scan_status(display: DisplayLog, status: Status) -> None:
+    display.scan_status(status)
+
+
+def _call_scan_interrupted(display: DisplayLog, status: Status) -> None:
+    display.scan_interrupted("interrupted!", status)
+
+
+@pytest.mark.parametrize("num_errors", [0, 1, 2])
+@pytest.mark.parametrize(
+    ("call_method", "log_level"),
+    [
+        (_call_scan_complete, logging.INFO),
+        (_call_scan_status, logging.INFO),
+        (_call_scan_interrupted, logging.WARNING),
+    ],
+    ids=["scan_complete", "scan_status", "scan_interrupted"],
+)
+def test_strip_tracebacks_from_logged_status(
+    call_method: Callable[[DisplayLog, Status], None],
+    log_level: int,
+    num_errors: int,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    errors = [_make_error("long traceback\nline 2\nline 3") for _ in range(num_errors)]
+    status = _make_status(complete=num_errors == 0, errors=errors)
+    display = DisplayLog()
+
+    with caplog.at_level(log_level, logger="inspect_scout._display.log"):
+        call_method(display, status)
+
+    assert len(caplog.records) == 1
+    logged_status: Status = caplog.records[0].__dict__["status"]
+    assert len(logged_status.errors) == num_errors
+    assert all(e.traceback == "" for e in logged_status.errors)
+    assert all(e.traceback != "" for e in status.errors)

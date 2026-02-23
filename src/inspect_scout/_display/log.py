@@ -17,6 +17,22 @@ from .._transcript.types import TranscriptInfo
 from .plain import DisplayPlain
 from .protocol import ScanDisplay, TextProgress
 
+logger = logging.getLogger(__name__)
+
+
+def _status_for_log(status: Status) -> Status:
+    """Return a copy of *status* with tracebacks stripped from errors.
+
+    Tracebacks are recorded in the scan database and shown in the UI.
+    They're noisy in structured logs, so we blank them out here.
+    """
+    if not status.errors:
+        return status
+    return dataclasses.replace(
+        status,
+        errors=[error.model_copy(update={"traceback": ""}) for error in status.errors],
+    )
+
 
 class DisplayLog(DisplayPlain):
     @override
@@ -28,7 +44,7 @@ class DisplayLog(DisplayPlain):
         markup: bool | None = None,
         highlight: bool | None = None,
     ) -> None:
-        logging.info(sep.join([str(obj) for obj in objects]))
+        logger.info(sep.join([str(obj) for obj in objects]))
 
     @override
     @contextlib.contextmanager
@@ -45,7 +61,7 @@ class DisplayLog(DisplayPlain):
         total: int,
         skipped: int,
     ) -> Iterator[ScanDisplay]:
-        logging.info(
+        logger.info(
             "Starting scan",
             extra={
                 "total_scans": total,
@@ -57,32 +73,45 @@ class DisplayLog(DisplayPlain):
 
     @override
     def scan_interrupted(self, message_or_exc: str | Exception, status: Status) -> None:
+        log_status = _status_for_log(status)
         if isinstance(message_or_exc, Exception):
-            logging.warning(
-                "Scan interrupted", extra={"status": status}, exc_info=message_or_exc
+            logger.warning(
+                "Scan interrupted",
+                extra={"status": log_status},
+                exc_info=message_or_exc,
             )
         else:
-            logging.warning(message_or_exc, extra={"status": status})
+            logger.warning(message_or_exc, extra={"status": log_status})
 
     @override
     def scan_complete(self, status: Status) -> None:
+        log_status = _status_for_log(status)
         if status.complete:
-            logging.info("Scan complete: %s", status.summary, extra={"status": status})
+            logger.info(
+                "Scan complete: %s", status.summary, extra={"status": log_status}
+            )
         else:
-            logging.info(
-                "%d scan errors occurred!", len(status.errors), extra={"status": status}
+            logger.info(
+                "%d scan errors occurred!",
+                len(status.errors),
+                extra={"status": log_status},
             )
 
     @override
     def scan_status(self, status: Status) -> None:
+        log_status = _status_for_log(status)
         if status.complete:
-            logging.info("Scan complete: %s", status.summary, extra={"status": status})
+            logger.info(
+                "Scan complete: %s", status.summary, extra={"status": log_status}
+            )
         elif len(status.errors) > 0:
-            logging.info(
-                "%d scan errors occurred!", len(status.errors), extra={"status": status}
+            logger.info(
+                "%d scan errors occurred!",
+                len(status.errors),
+                extra={"status": log_status},
             )
         else:
-            logging.info("Scan interrupted", extra={"status": status})
+            logger.info("Scan interrupted", extra={"status": log_status})
 
 
 class ScanDisplayLog(ScanDisplay):
@@ -125,7 +154,7 @@ class ScanDisplayLog(ScanDisplay):
         if batch_age is not None:
             msg += f" batch: {metrics.batch_pending}/{format_progress_time(batch_age, pad_hours=False)}"
 
-        logging.info(
+        logger.info(
             msg,
             extra={
                 "scan_progress": {
@@ -163,4 +192,4 @@ class TextProgressLog(TextProgress):
             if not isinstance(self._count, bool):
                 extra["total"] = self._count
 
-        logging.info("%s: %s", self._caption, text, extra=extra)
+        logger.info("%s: %s", self._caption, text, extra=extra)

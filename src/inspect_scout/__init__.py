@@ -1,7 +1,18 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._grep_scanner import grep_scanner
-from ._llm_scanner import AnswerMultiLabel, AnswerStructured, llm_scanner
+from ._llm_scanner import (
+    Answer,
+    AnswerMultiLabel,
+    AnswerSpec,
+    AnswerStructured,
+    ResultReducer,
+    answer_type,
+    generate_answer,
+    llm_scanner,
+    parse_answer,
+    scanner_prompt,
+)
 from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
 from ._query.condition import Condition
@@ -22,6 +33,7 @@ from ._scanlist import scan_list
 from ._scanner.extract import (
     MessageFormatOptions,
     MessagesPreprocessor,
+    message_numbering,
     messages_as_str,
     tool_callers,
 )
@@ -50,12 +62,29 @@ from ._transcript.database.factory import transcripts_db
 from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
 from ._transcript.log import LogColumns, log_columns
+from ._transcript.messages import (
+    MessagesSegment,
+    segment_messages,
+    span_messages,
+    transcript_messages,
+)
 from ._transcript.sample_metadata import SampleMetadata
+from ._transcript.timeline import (
+    Timeline,
+    TimelineBranch,
+    TimelineEvent,
+    TimelineMessages,
+    TimelineSpan,
+    build_timeline,
+    filter_timeline,
+    timeline_messages,
+)
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventType,
     MessageType,
     Transcript,
+    TranscriptContent,
     TranscriptInfo,
 )
 from ._util.refusal import RefusalError
@@ -120,6 +149,15 @@ __all__ = [
     "LogColumns",
     "log_columns",
     "SampleMetadata",
+    # timeline
+    "Timeline",
+    "TimelineBranch",
+    "TimelineEvent",
+    "TimelineMessages",
+    "TimelineSpan",
+    "build_timeline",
+    "filter_timeline",
+    "timeline_messages",
     # scanner
     "Error",
     "Scanner",
@@ -131,15 +169,28 @@ __all__ = [
     "loader",
     "EventType",
     "MessageType",
+    "TranscriptContent",
     "as_scorer",
+    "message_numbering",
     "messages_as_str",
+    "span_messages",
+    "segment_messages",
+    "MessagesSegment",
+    "transcript_messages",
     "MessageFormatOptions",
     "MessagesPreprocessor",
     "tool_callers",
     "RefusalError",
     "llm_scanner",
+    "ResultReducer",
+    "Answer",
     "AnswerMultiLabel",
+    "AnswerSpec",
     "AnswerStructured",
+    "answer_type",
+    "generate_answer",
+    "parse_answer",
+    "scanner_prompt",
     "grep_scanner",
     # validation
     "ValidationSet",

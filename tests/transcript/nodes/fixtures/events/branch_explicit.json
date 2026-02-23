@@ -1,0 +1,191 @@
+{
+  "description": "Two explicit type='branch' spans within an agent, with a continuation event after",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent",
+      "id": "main-agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "input": [
+        {"role": "system", "content": "You are an orchestrator."},
+        {"role": "user", "content": "Solve the task."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "span_id": "main-agent",
+      "id": "tool-call-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-branch-1",
+      "id": "branch-1",
+      "name": "branch_attempt_1",
+      "type": "branch",
+      "parent_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "branch-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z",
+      "input": [
+        {"role": "system", "content": "You are an orchestrator."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Searching..."},
+        {"role": "tool", "content": "Found result.", "tool_call_id": "tool-call-1"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-004",
+      "span_id": "branch-1",
+      "id": "tool-call-b1",
+      "function": "analyze",
+      "timestamp": "2024-01-01T00:00:09Z",
+      "completed": "2024-01-01T00:00:10Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-branch-1-end",
+      "span_id": "branch-1",
+      "timestamp": "2024-01-01T00:00:11Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-branch-2",
+      "id": "branch-2",
+      "name": "branch_attempt_2",
+      "type": "branch",
+      "parent_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "span_id": "branch-2",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "input": [
+        {"role": "system", "content": "You are an orchestrator."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Searching..."},
+        {"role": "tool", "content": "Found result.", "tool_call_id": "tool-call-1"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-006",
+      "span_id": "branch-2",
+      "id": "tool-call-b2",
+      "function": "analyze",
+      "timestamp": "2024-01-01T00:00:15Z",
+      "completed": "2024-01-01T00:00:16Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-branch-2-end",
+      "span_id": "branch-2",
+      "timestamp": "2024-01-01T00:00:17Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-007",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:18Z",
+      "completed": "2024-01-01T00:00:19Z",
+      "input": [
+        {"role": "system", "content": "You are an orchestrator."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Judged result."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent-end",
+      "span_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:20Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:21Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main-agent",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "main-agent"
+      },
+      "event_uuids": ["e-001", "e-002", "e-007"],
+      "branches": [
+        {
+          "forked_at": "e-002",
+          "event_uuids": ["e-003", "e-004"]
+        },
+        {
+          "forked_at": "e-002",
+          "event_uuids": ["e-005", "e-006"]
+        }
+      ]
+    },
+    "scoring": null
+  }
+}

@@ -613,8 +613,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Determine which columns we need to read
             need_messages = content.messages is not None
             need_events = content.events is not None
+            need_timelines = content.timeline is not None
 
-            if not need_messages and not need_events:
+            if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict
                 return transcript_no_content()
 
@@ -624,6 +625,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 columns.append("messages")
             if need_events:
                 columns.append("events")
+            if need_timelines:
+                columns.append("timelines")
 
             # First, get the filename from the index table (fast indexed lookup)
             filename_result = self._conn.execute(
@@ -679,6 +682,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Extract column values based on which columns were actually read
             messages_json: str | None = None
             events_json: str | None = None
+            timelines_json: str | None = None
 
             col_idx = 0
             if "messages" in columns_read:
@@ -686,6 +690,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 col_idx += 1
             if "events" in columns_read:
                 events_json = result[col_idx]
+                col_idx += 1
+            if "timelines" in columns_read:
+                timelines_json = result[col_idx]
 
             # Stream combined JSON construction
             async def stream_content_bytes() -> AsyncIterator[bytes]:
@@ -708,15 +715,36 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 else:
                     yield b"[]"
 
+                if timelines_json:
+                    yield b', "timelines": '
+                    timelines_bytes = timelines_json.encode("utf-8")
+                    for i in range(0, len(timelines_bytes), chunk_size):
+                        yield timelines_bytes[i : i + chunk_size]
+
                 yield b"}"
 
             # Use existing streaming JSON parser with filtering
-            return await load_filtered_transcript(
+            transcript = await load_filtered_transcript(
                 stream_content_bytes(),
                 t,
                 content.messages,
                 content.events,
             )
+
+            # Fallback: if timelines were requested but not stored, build from events
+            if (
+                content.timeline is not None
+                and not transcript.timelines
+                and transcript.events
+            ):
+                from ...timeline import build_timeline
+                from ...util import filter_timelines
+
+                raw_timeline = build_timeline(transcript.events)
+                timelines = filter_timelines([raw_timeline], content.timeline)
+                transcript = transcript.model_copy(update={"timelines": timelines})
+
+            return transcript
 
     @override
     async def read_messages_events(
@@ -905,6 +933,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "limit": transcript.limit,
             "messages": json.dumps(messages_array),
             "events": json.dumps(events_array),
+            "timelines": (
+                json.dumps([tl.model_dump() for tl in transcript.timelines])
+                if transcript.timelines
+                else None
+            ),
         }
 
         # Flatten metadata: add each key as a column

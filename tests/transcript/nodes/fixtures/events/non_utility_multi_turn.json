@@ -1,0 +1,165 @@
+{
+  "description": "Agent with 3+ ModelEvents and different system prompt is NOT utility",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-parent",
+      "id": "parent-agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "parent-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "input": [
+        {"role": "system", "content": "You are an orchestrator agent."},
+        {"role": "user", "content": "Solve the task."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 25
+        }
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-child",
+      "id": "child-agent",
+      "name": "researcher",
+      "type": "agent",
+      "parent_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "child-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "system", "content": "You are a research agent. Search for information."},
+        {"role": "user", "content": "Find info about X."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 30,
+          "output_tokens": 15
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-003",
+      "span_id": "child-agent",
+      "id": "tool-1",
+      "function": "web_search",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "span_id": "child-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:09Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "input": [
+        {"role": "system", "content": "You are a research agent. Search for information."},
+        {"role": "user", "content": "Process the search results."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 40,
+          "output_tokens": 20
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-005",
+      "span_id": "child-agent",
+      "id": "tool-2",
+      "function": "web_search",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-006",
+      "span_id": "child-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "input": [
+        {"role": "system", "content": "You are a research agent. Search for information."},
+        {"role": "user", "content": "Summarize findings."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 60,
+          "output_tokens": 30
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-child-end",
+      "span_id": "child-agent",
+      "timestamp": "2024-01-01T00:00:15Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-parent-end",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:16Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:17Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "parent-agent",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "parent-agent"
+      },
+      "event_uuids": ["e-001"],
+      "utility": false,
+      "children": [
+        {
+          "id": "child-agent",
+          "name": "researcher",
+          "source": {
+            "source": "span",
+            "span_id": "child-agent"
+          },
+          "event_uuids": ["e-002", "e-003", "e-004", "e-005", "e-006"],
+          "utility": false
+        }
+      ]
+    },
+    "scoring": null
+  }
+}

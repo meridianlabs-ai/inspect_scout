@@ -2,6 +2,7 @@ import { ReactElement } from "react";
 
 import { RunScanPanel } from "../app/runScan/RunScanPanel";
 import { ScansPanel } from "../app/scans/ScansPanel";
+import { TimelinePanel } from "../app/timeline/TimelinePanel";
 import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
 import { ValidationPanel } from "../app/validation/ValidationPanel";
 import { ApplicationIcons } from "../components/icons";
@@ -61,6 +62,14 @@ const allActivities: ActivityConfig[] = [
     routePatterns: ["/validation"],
     description: "Manage validation sets",
     element: <ValidationPanel />,
+  },
+  {
+    id: "timeline",
+    label: "Timeline",
+    icon: ApplicationIcons.timeline,
+    route: "/timeline",
+    description: "Timeline prototype",
+    element: <TimelinePanel />,
   },
 ];
 

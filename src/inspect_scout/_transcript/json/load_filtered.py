@@ -10,6 +10,7 @@ from pydantic import JsonValue
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 
+from ..timeline import Timeline
 from ..types import (
     EventFilter,
     MessageFilter,
@@ -24,12 +25,14 @@ from .reducer import (
     EVENTS_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
     METADATA_PREFIX,
+    TIMELINES_ITEM_PREFIX,
     ListProcessingConfig,
     ParseState,
     attachments_coroutine,
     event_item_coroutine,
     message_item_coroutine,
     metadata_coroutine,
+    timeline_item_coroutine,
 )
 
 # Pre-compiled regex patterns for performance
@@ -41,16 +44,19 @@ _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
 _SECTION_ATTACHMENTS = 3
 _SECTION_METADATA = 4
+_SECTION_TIMELINES = 5
 
 _MESSAGES_ITEM_PREFIX_LEN = len(MESSAGES_ITEM_PREFIX)
 _EVENTS_ITEM_PREFIX_LEN = len(EVENTS_ITEM_PREFIX)
 _ATTACHMENTS_PREFIX_LEN = len(ATTACHMENTS_PREFIX)
 _METADATA_PREFIX_LEN = len(METADATA_PREFIX)
+_TIMELINES_ITEM_PREFIX_LEN = len(TIMELINES_ITEM_PREFIX)
 _MIN_SECTION_PREFIX_LEN = min(
     _MESSAGES_ITEM_PREFIX_LEN,
     _EVENTS_ITEM_PREFIX_LEN,
     _ATTACHMENTS_PREFIX_LEN,
     _METADATA_PREFIX_LEN,
+    _TIMELINES_ITEM_PREFIX_LEN,
 )
 
 
@@ -80,6 +86,7 @@ class RawTranscript:
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
+    timelines: list[dict[str, Any]] | None = None
 
 
 async def load_filtered_transcript(
@@ -166,6 +173,7 @@ async def _load_with_json5_fallback(
                 ),
                 messages=data.get("messages", []),
                 events=data.get("events", []),
+                timelines=data.get("timelines"),
             ),
             data.get("attachments", {}),
         ),
@@ -213,6 +221,7 @@ async def _parse_and_filter(
         message_item_coroutine(state, messages_config) if messages_config else None
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
+    timelines_coro = timeline_item_coroutine(state)
     attachments_coro = attachments_coroutine(state)
     metadata_coro = metadata_coroutine(state)
 
@@ -233,7 +242,7 @@ async def _parse_and_filter(
         if prefix != last_prefix:
             last_prefix = prefix
             p_len = len(prefix)
-            if p_len == 0 or prefix[0] not in ("m", "e", "a"):
+            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
                 # Special case: "metadata" is 8 chars, less than min (9), but valid
@@ -268,6 +277,12 @@ async def _parse_and_filter(
                 and prefix[:_ATTACHMENTS_PREFIX_LEN] == ATTACHMENTS_PREFIX
             ):
                 current_section = _SECTION_ATTACHMENTS
+            elif (
+                prefix[0] == "t"
+                and p_len >= _TIMELINES_ITEM_PREFIX_LEN
+                and prefix[:_TIMELINES_ITEM_PREFIX_LEN] == TIMELINES_ITEM_PREFIX
+            ):
+                current_section = _SECTION_TIMELINES
             else:
                 current_section = _SECTION_OTHER
 
@@ -280,6 +295,8 @@ async def _parse_and_filter(
             attachments_coro.send((prefix, event, value))
         elif current_section == _SECTION_METADATA:
             metadata_coro.send((prefix, event, value))
+        elif current_section == _SECTION_TIMELINES:
+            timelines_coro.send((prefix, event, value))
 
     return (
         RawTranscript(
@@ -310,6 +327,7 @@ async def _parse_and_filter(
             ),
             messages=state.messages,
             events=state.events,
+            timelines=state.timelines if state.timelines else None,
         ),
         state.attachments,
     )
@@ -358,32 +376,42 @@ def _resolve_attachments(
     # Create new transcript with resolved data
     # Use model_validate to validate messages/events into proper types,
     # but pass metadata separately via __pydantic_private__ to preserve LazyJSONDict
-    validated = Transcript.model_validate(
-        {
-            "transcript_id": transcript.id,
-            "source_type": transcript.source_type,
-            "source_id": transcript.source_id,
-            "source_uri": transcript.source_uri,
-            "date": transcript.date,
-            "task_set": transcript.task_set,
-            "task_id": transcript.task_id,
-            "task_repeat": transcript.task_repeat,
-            "agent": transcript.agent,
-            "agent_args": transcript.agent_args,
-            "model": transcript.model,
-            "model_options": transcript.model_options,
-            "score": transcript.score,
-            "success": transcript.success,
-            "message_count": transcript.message_count,
-            "total_time": transcript.total_time,
-            "total_tokens": transcript.total_tokens,
-            "error": transcript.error,
-            "limit": transcript.limit,
-            "metadata": {},  # Placeholder to avoid validation
-            "messages": resolved_messages,
-            "events": resolved_events,
-        }
-    )
+    transcript_data: dict[str, Any] = {
+        "transcript_id": transcript.id,
+        "source_type": transcript.source_type,
+        "source_id": transcript.source_id,
+        "source_uri": transcript.source_uri,
+        "date": transcript.date,
+        "task_set": transcript.task_set,
+        "task_id": transcript.task_id,
+        "task_repeat": transcript.task_repeat,
+        "agent": transcript.agent,
+        "agent_args": transcript.agent_args,
+        "model": transcript.model,
+        "model_options": transcript.model_options,
+        "score": transcript.score,
+        "success": transcript.success,
+        "message_count": transcript.message_count,
+        "total_time": transcript.total_time,
+        "total_tokens": transcript.total_tokens,
+        "error": transcript.error,
+        "limit": transcript.limit,
+        "metadata": {},  # Placeholder to avoid validation
+        "messages": resolved_messages,
+        "events": resolved_events,
+    }
+
+    validated = Transcript.model_validate(transcript_data)
+
+    # Resolve timelines with event UUID context (events must be validated first)
+    if transcript.timelines:
+        events_by_uuid = {e.uuid: e for e in validated.events if e.uuid}
+        resolved_timelines = [
+            Timeline.model_validate(tl_dict, context={"events_by_uuid": events_by_uuid})
+            for tl_dict in transcript.timelines
+        ]
+        validated.timelines = resolved_timelines
+
     # Directly assign metadata to preserve LazyJSONDict
     validated.metadata = transcript.metadata
     return validated

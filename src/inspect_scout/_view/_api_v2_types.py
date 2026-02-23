@@ -5,6 +5,8 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
 
+from inspect_scout._transcript.timeline import Timeline
+
 from .._project.types import ProjectConfig
 from .._query.condition import Condition
 from .._query.order_by import OrderBy
@@ -267,6 +269,7 @@ class MessagesEventsResponse(BaseModel):
 
     messages: list[ChatMessage]
     events: list[Event]
+    timelines: list[Timeline]
     attachments: dict[str, str] | None = None
 
     model_config = ConfigDict(extra="allow")

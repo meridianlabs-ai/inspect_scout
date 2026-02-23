@@ -58,6 +58,14 @@ def parse_scanner_file(source: str) -> ParseResult:
     # Parse decorator
     decorator_spec = _parse_scanner_decorator(scanner_func)
 
+    # Check if decorator has advanced-only params
+    if isinstance(decorator_spec, str):
+        return ParseResult(
+            editable=False,
+            source=source,
+            advanced_reason=decorator_spec,
+        )
+
     # Find the return statement with llm_scanner or grep_scanner call
     scanner_call, scanner_type = _find_scanner_call(scanner_func)
     if scanner_call is None:
@@ -133,9 +141,18 @@ def _is_scanner_decorator(decorator: cst.Decorator) -> bool:
     return False
 
 
-def _parse_scanner_decorator(func: cst.FunctionDef) -> ScannerDecoratorSpec:
-    """Parse the @scanner decorator arguments."""
+def _parse_scanner_decorator(
+    func: cst.FunctionDef,
+) -> ScannerDecoratorSpec | str:
+    """Parse the @scanner decorator arguments.
+
+    Returns:
+        ScannerDecoratorSpec if parsed successfully, or an advanced_reason string
+        if the decorator has parameters that make it non-editable.
+    """
     spec = ScannerDecoratorSpec()
+
+    _known_decorator_params = {"messages", "events", "name", "version", "timeline"}
 
     for decorator in func.decorators:
         if not _is_scanner_decorator(decorator):
@@ -156,6 +173,12 @@ def _parse_scanner_decorator(func: cst.FunctionDef) -> ScannerDecoratorSpec:
                     spec.name = value
                 elif key == "version":
                     spec.version = value
+                elif key == "timeline":
+                    spec.timeline = value
+                elif key == "metrics":
+                    return "Uses custom metrics"
+                elif key not in _known_decorator_params:
+                    return f"Uses unsupported decorator parameter: {key}"
 
     return spec
 
@@ -198,8 +221,13 @@ def _parse_llm_scanner_call(
     labels: list[str] | None = None
     structured_spec: StructuredAnswerSpec | None = None
     model: str | None = None
+    model_role: str | None = None
     retry_refusals: int | None = None
     template: str | None = None
+    name: str | None = None
+    context_window: int | None = None
+    compaction: str | int | None = None
+    depth: int | None = None
 
     for arg in call.args:
         if arg.keyword is None:
@@ -223,6 +251,9 @@ def _parse_llm_scanner_call(
         elif key == "model":
             model = _eval_literal(value)
 
+        elif key == "model_role":
+            model_role = _eval_literal(value)
+
         elif key == "retry_refusals":
             retry_refusals = _eval_literal(value)
 
@@ -237,6 +268,30 @@ def _parse_llm_scanner_call(
         elif key == "preprocessor":
             return None, "Uses custom message preprocessor"
 
+        elif key == "name":
+            name = _eval_literal(value)
+
+        elif key == "context_window":
+            context_window = _eval_literal(value)
+
+        elif key == "compaction":
+            compaction = _eval_literal(value)
+
+        elif key == "depth":
+            depth = _eval_literal(value)
+
+        elif key == "value_to_float":
+            return None, "Uses custom value_to_float function"
+
+        elif key == "content":
+            return None, "Uses custom content configuration"
+
+        elif key == "reducer":
+            return None, "Uses custom reducer function"
+
+        else:
+            return None, f"Uses unsupported parameter: {key}"
+
     if question is None:
         return None, "Missing question argument"
     if answer_type is None:
@@ -249,8 +304,13 @@ def _parse_llm_scanner_call(
             labels=labels,
             structured_spec=structured_spec,
             model=model,
+            model_role=model_role,
             retry_refusals=retry_refusals,
             template=template,
+            name=name,
+            context_window=context_window,
+            compaction=compaction,
+            depth=depth,
         ),
         None,
     )

@@ -1,0 +1,155 @@
+{
+  "description": "Three re-rolls at same fork point. M2a and M2b become branches, M2c stays in content.",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Solve the task."}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "id": "tool-call-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Let me search."},
+        {"role": "tool", "content": "Result", "tool_call_id": "tool-call-1"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-004",
+      "id": "tool-call-2a",
+      "function": "analyze",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:09Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Let me search."},
+        {"role": "tool", "content": "Result", "tool_call_id": "tool-call-1"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-006",
+      "id": "tool-call-2b",
+      "function": "analyze",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-007",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Let me search."},
+        {"role": "tool", "content": "Result", "tool_call_id": "tool-call-1"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 200,
+          "output_tokens": 100
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-008",
+      "id": "tool-call-2c",
+      "function": "analyze",
+      "timestamp": "2024-01-01T00:00:15Z",
+      "completed": "2024-01-01T00:00:16Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-009",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:17Z",
+      "completed": "2024-01-01T00:00:18Z",
+      "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Let me search."},
+        {"role": "tool", "content": "Result", "tool_call_id": "tool-call-1"},
+        {"role": "assistant", "content": "Final answer."},
+        {"role": "tool", "content": "Done", "tool_call_id": "tool-call-2c"}
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 300,
+          "output_tokens": 150
+        }
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "event_uuids": ["e-001", "e-002", "e-007", "e-008", "e-009"],
+      "branches": [
+        {
+          "forked_at": "e-002",
+          "event_uuids": ["e-003", "e-004"]
+        },
+        {
+          "forked_at": "e-002",
+          "event_uuids": ["e-005", "e-006"]
+        }
+      ]
+    },
+    "scoring": null
+  }
+}

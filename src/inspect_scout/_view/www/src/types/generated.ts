@@ -1990,6 +1990,8 @@ export interface components {
             events: (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[];
             /** Messages */
             messages: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            /** Timelines */
+            timelines: components["schemas"]["Timeline"][];
         } & {
             [key: string]: unknown;
         };
@@ -2231,6 +2233,24 @@ export interface components {
              * @enum {string}
              */
             direction: "ASC" | "DESC";
+        };
+        /**
+         * Outline
+         * @description Hierarchical outline of events for an agent.
+         */
+        Outline: {
+            /** Nodes */
+            nodes: components["schemas"]["OutlineNode"][];
+        };
+        /**
+         * OutlineNode
+         * @description A node in an agent's outline, referencing an event by UUID.
+         */
+        OutlineNode: {
+            /** Children */
+            children: components["schemas"]["OutlineNode"][];
+            /** Event */
+            event: string;
         };
         /** Pagination */
         Pagination: {
@@ -3557,6 +3577,85 @@ export interface components {
                 [key: string]: components["schemas"]["ScannerSummary"];
             };
         };
+        /**
+         * Timeline
+         * @description A named timeline view over a transcript.
+         *
+         *     Multiple timelines allow different interpretations of the same event
+         *     stream — e.g. a default agent-centric view alongside an alternative
+         *     grouping or filtered view.
+         */
+        Timeline: {
+            /** Description */
+            description: string;
+            /** Name */
+            name: string;
+            root: components["schemas"]["TimelineSpan"];
+        };
+        /**
+         * TimelineBranch
+         * @description A discarded alternative path from a branch point.
+         */
+        TimelineBranch: {
+            /** Content */
+            content: (components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineSpan"])[];
+            /** Forked At */
+            forked_at: string;
+            /**
+             * Type
+             * @default branch
+             * @constant
+             */
+            type: "branch";
+        };
+        /**
+         * TimelineEvent
+         * @description Wraps a single Event.
+         */
+        TimelineEvent: {
+            /** Event */
+            event: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
+            /**
+             * Type
+             * @default event
+             * @constant
+             */
+            type: "event";
+        };
+        /**
+         * TimelineSpan
+         * @description A span of execution — agent, scorer, tool, or root.
+         */
+        TimelineSpan: {
+            /** Branches */
+            branches: components["schemas"]["TimelineBranch"][];
+            /** Content */
+            content: (components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineSpan"])[];
+            /**
+             * Description
+             * @default null
+             */
+            description: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** @default null */
+            outline: components["schemas"]["Outline"] | null;
+            /** Span Type */
+            span_type?: string | null;
+            /**
+             * Type
+             * @default span
+             * @constant
+             */
+            type: "span";
+            /**
+             * Utility
+             * @default false
+             */
+            utility: boolean;
+        };
         /** ToolCall */
         ToolCall: {
             /** Arguments */
@@ -3850,6 +3949,8 @@ export interface components {
             task_repeat?: number | null;
             /** Task Set */
             task_set?: string | null;
+            /** Timelines */
+            timelines: components["schemas"]["Timeline"][];
             /** Total Time */
             total_time?: number | null;
             /** Total Tokens */

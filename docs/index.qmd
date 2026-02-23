@@ -10,10 +10,11 @@ lightbox: true
 Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:
 
 1.  Detect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.
-2.  Analyze transcripts from Inspect Evals, Arize Phoenix, LangSmith, Logfire, or custom sources via the capture and import APIs.
+2.  Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire, Claude Code, or custom sources via the capture and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.
-5.  Scale to thousands of transcripts with parallel processing, batching, and fault tolerance.
+5.  Handle complex scanning requirements like multi-agent transcripts, compaction, and context-window chunking.
+6.  Scale to thousands of transcripts with parallel processing, batching, and fault tolerance.
 
 
 ### Installation
@@ -38,95 +39,17 @@ Below we'll provide some simple examples of creating and using Scout scanners. S
 
 ### LLM Scanner
 
-For many application you can use the high-level `llm_scanner()`, which uses a model for transcript analysis and can be customized with many options. For example:
+{{< include _llm_scanner.md >}}
 
-``` {.python filename="scanner.py"}
-from inspect_scout import Scanner, Transcript, llm_scanner, scanner
-
-@scanner(messages="all")
-def ctf_environment() -> Scanner[Transcript]:
-    return llm_scanner(
-        question="In the transcript above do you detect "
-        "instances of environment misconfiguration "
-        "preventing the agent from completing it's task?",
-        answer="boolean"
-    )
-```
-
-The `llm_scanner()` supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](llm_scanner.qmd) article.
 
 ### Grep Scanner
 
-Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the `grep_scanner()`. For example, here we search assistant messages for references to phrases that might indicate secrets:
+{{< include _grep_scanner.md >}}
 
-```python
-from inspect_scout import Transcript, grep_scanner, scanner
 
-@scanner(messages=["assistant"])
-def secrets() -> Scanner[Transcript]:
-    return grep_scanner(["password", "secret", "token"])
-```
+### Custom Scanners
 
-For additional details on using this scanner, see the [Grep Scanner](grep_scanner.qmd) article.
-
-### Custom Scanner
-
-If the higher level LLM and Grep scanners don't meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):
-
-``` {.python filename="scanner.py"}
-from inspect_scout import (
-    Result, Scanner, Transcript, scanner, messages_as_str
-)
-
-from inspect_ai.model import get_model
-import re
-
-@scanner(messages="all") # <1>
-def ctf_environment() -> Scanner[Transcript]:
-    
-    async def scan(transcript: Transcript) -> Result:
-
-        # call model
-        output = await get_model().generate( # <2>
-            "Here is a transcript of an LLM agent " +
-            "solving a cybersecurity challenge:\n\n" +
-            "===================================" + # <3>
-            await messages_as_str(transcript) +  # <3>
-            "===================================\n\n" + # <3>
-            "In the transcript above do you detect any " +
-            "instances of environment misconfiguration " +
-            "preventing the agent from completing its " +
-            "task? If no, simply respond with 'No'. " +
-            "If yes, respond with 'Yes' followed by an " +
-            "explanation."
-        )
-
-        # extract the first word
-        match = re.match(r"^\w+", output.completion.strip())
-
-        # return result
-        if match:
-            answer = match.group(0)
-            return Result( # <4> 
-                value=answer.lower() == "yes", # <4> 
-                answer=answer, # <4> 
-                explanation=output.completion, # <4> 
-            ) # <4> 
-        else:
-            return Result(value=False, explanation=output.completion)
-
-    return scan
-```
-
-1.  Scanners are decorated with `@scanner` so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.
-
-2.  Scanners frequently use models to perform scanning. Calling `get_model()` utilizes the default model for the scan job (which can be specified in the top level call to scan).
-
-3.  Convert the message history into a string for presentation to the model. The `messages_as_str()` function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See `MessagesPreprocessor` for other available options.
-
-4.  As with scorers, results also include additional context (here the extracted answer and full model completion).
-
-Above we used only the `messages` field from the `transcript`, but `Transcript` includes many other fields with additional context. See [Transcript Fields](transcripts.qmd#transcript-fields) for additional details.
+{{< include _custom_scanner.md >}}
 
 
 ### Running a Scan
@@ -193,48 +116,7 @@ See the [Projects](projects.qmd) article for more details on managing configurat
 
 ## Scan Jobs
 
-You may want to import scanners from other modules and compose them into a `ScanJob`. To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
-
-A `ScanJob` can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
-
-``` {.python filename="scanning.py"}
-from inspect_scout import ScanJob, scanjob
-
-@scanjob
-def job() -> ScanJob:
-    return ScanJob(
-        scanners=[ctf_environment(), java_tool_usages()],
-        transcripts="./logs",
-        model="openai/gpt-5"
-    )
-```
-
-You can then use the same command to run the job (`scout scan` will prefer a `@scanjob` defined in a file to individual scanners):
-
-``` bash
-scout scan scanning.py
-```
-
-You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:
-
-``` {.yaml filename="scan.yaml"}
-scanners:
-  - name: deception
-    file: scanner.py
-  - name: java_tool_usages
-    file: scanner.py
-
-transcripts: logs
-filter: task_set='cybench'
-
-model: openai/gpt-5
-```
-
-Which can be executed with:
-
-``` bash
-scout scan scan.yaml
-```
+{{< include _scan_jobs.md >}}
 
 Note that if you had a scout.yaml [project file](#projects) defining the `transcripts`, `filter`, and `model` for your project, you could exclude them from your scan job as they will be automatically merged from the project.
 
@@ -338,14 +220,14 @@ See the article on [Transcripts](transcripts.qmd) to learn more about the variou
 
 Above we provided a high-level tour of Scout features. See the following articles to learn more about using Scout:
 
+-   [Scanners](scanners.qmd): Basics of using scanners including the high-level [LLM Scanner](llm_scanner.qmd) and [Grep Scanner](grep_scanner.qmd).
+
 -   [Examples](examples.qmd): Example implementations of various types of scanners.
 
 -   [Projects](projects.qmd): Managing scanning configuration using project files.
 
 -   [Transcripts](transcripts.qmd): Reading and filtering transcripts for scanning.
 
--   [LLM Scanner](llm_scanner.qmd) and [Grep Scanner](grep_scanner.qmd): Higher-level scanners for model and pattern-based scanning of transcripts.
-
 -   [Workflow](workflow.qmd): Workflow for the stages of a transcript analysis project.
 
-There is also more in depth documentation available on [Scanners](scanners.qmd), [Results](results.qmd), [Validation](validation.qmd) and [Transcript Databases](db_overview.qmd).
+There is also more in depth documentation available on [Results](results.qmd), [Validation](validation.qmd) and [Transcript Databases](db_overview.qmd).

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 from functools import reduce
-from typing import Any, Iterable, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
@@ -8,9 +10,13 @@ from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 from .types import (
     EventFilter,
     MessageFilter,
+    TimelineFilter,
     Transcript,
     TranscriptContent,
 )
+
+if TYPE_CHECKING:
+    from .timeline import Timeline
 
 
 class LazyJSONDict(dict[str, Any]):
@@ -202,7 +208,7 @@ def union_transcript_contents(
     return reduce(
         _union_contents,
         contents,
-        TranscriptContent(None, None),
+        TranscriptContent(None, None, None),
     )
 
 
@@ -240,16 +246,19 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
         events=filter_list(transcript.events, content.events),
+        timelines=filter_timelines(transcript.timelines, content.timeline),
     )
 
 
 def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptContent:
     return TranscriptContent(
-        _union_filters(a.messages, b.messages), _union_filters(a.events, b.events)
+        _union_filters(a.messages, b.messages),
+        _union_filters(a.events, b.events),
+        _union_filters(a.timeline, b.timeline),
     )
 
 
-T = TypeVar("T", MessageFilter, EventFilter)
+T = TypeVar("T", MessageFilter, EventFilter, TimelineFilter)
 
 
 def _union_filters(a: T, b: T) -> T:
@@ -260,6 +269,9 @@ def _union_filters(a: T, b: T) -> T:
     if b is None:
         return a
     # At this point, both a and b are non-None and non-"all".
+    # True is normalized before reaching here, but narrow for mypy.
+    if a is True or b is True:
+        return True
     return list(set(a) | set(b))
 
 
@@ -279,6 +291,29 @@ def filter_list(
             else [item for item in items if _matches_filter(item, filter_value)]
         )
     )
+
+
+def filter_timelines(
+    timelines: list[Timeline],
+    filter_value: TimelineFilter,
+) -> list[Timeline]:
+    """Filter timelines by pruning event types.
+
+    Args:
+        timelines: List of Timeline objects.
+        filter_value: Timeline filter (None=empty, "all"=all, list=event types to keep).
+
+    Returns:
+        Filtered list of Timeline objects.
+    """
+    if filter_value is None:
+        return []
+    if filter_value is True or filter_value == "all":
+        return timelines
+    # filter_value is a list of event types — prune each timeline
+    from .timeline import filter_timeline_events
+
+    return [filter_timeline_events(t, list(filter_value)) for t in timelines]
 
 
 def _matches_filter(

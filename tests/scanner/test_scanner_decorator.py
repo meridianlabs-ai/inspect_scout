@@ -184,6 +184,86 @@ def test_scanner_added_to_registry() -> None:
     assert registry_info(scanner_instance).name == "registry_test_scanner"
 
 
+def test_scanner_with_timeline() -> None:
+    """Scanner decorator should handle timeline filter."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline="all")
+    def test_scanner() -> Scanner[Timeline]:
+        async def scan(timeline: Timeline) -> Result:
+            return Result(value={"name": timeline.name})
+
+        return scan
+
+    instance: Any = test_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == "all"
+    # timeline implies events="all"
+    assert config.content.events == "all"
+
+
+def test_scanner_with_timeline_true() -> None:
+    """Scanner with timeline=True should use default event set."""
+    from inspect_scout._scanner.filter import TIMELINE_DEFAULT_EVENTS
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline=True)
+    def test_scanner() -> Scanner[Timeline]:
+        async def scan(timeline: Timeline) -> Result:
+            return Result(value={"name": timeline.name})
+
+        return scan
+
+    instance: Any = test_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == TIMELINE_DEFAULT_EVENTS
+    # Events derived from timeline types + structural events
+    events = config.content.events
+    assert isinstance(events, list)
+    for event_type in TIMELINE_DEFAULT_EVENTS:
+        assert event_type in events
+
+
+def test_scanner_with_named_timeline() -> None:
+    """Scanner decorator should handle event-type timeline filter."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline=["model"])
+    def test_scanner() -> Scanner[list[Timeline]]:
+        async def scan(timelines: list[Timeline]) -> Result:
+            return Result(value={"count": len(timelines)})
+
+        return scan
+
+    instance: Any = test_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == ["model"]
+    # Events derived from timeline types + structural events
+    events = config.content.events
+    assert isinstance(events, list)
+    assert "model" in events
+    assert "span_begin" in events
+    assert "span_end" in events
+
+
+def test_scanner_timeline_with_explicit_events() -> None:
+    """Scanner with timeline and explicit events should preserve explicit events."""
+    from inspect_scout._transcript.types import Transcript
+
+    @scanner(timeline="all", events=["model"])
+    def test_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value={"id": transcript.transcript_id})
+
+        return scan
+
+    instance: Any = test_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == "all"
+    # Explicit events are preserved (implication only fires when events is None)
+    assert config.content.events == ["model"]
+
+
 def test_multiple_scanners_different_names() -> None:
     """Multiple scanners can be registered with different names."""
 

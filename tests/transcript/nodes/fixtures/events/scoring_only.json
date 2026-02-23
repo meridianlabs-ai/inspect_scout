@@ -1,0 +1,52 @@
+{
+  "description": "Edge case: only scoring events with explicit span",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-scorers",
+      "id": "scorers",
+      "name": "scorers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-001",
+      "span_id": "scorers",
+      "source": "score",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "scorers",
+      "model": "scorer-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 10
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-scorers-end",
+      "span_id": "scorers",
+      "timestamp": "2024-01-01T00:00:04Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": null,
+    "scoring": {
+      "section": "scoring",
+      "event_uuids": [
+        "e-001",
+        "e-002"
+      ],
+      "total_tokens": 60
+    }
+  }
+}

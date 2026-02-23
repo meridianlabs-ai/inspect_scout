@@ -24,7 +24,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.table import Table
+from rich.table import Column, Table
 from rich.text import Text
 from typing_extensions import override
 
@@ -213,16 +213,33 @@ class TextProgressRich(TextProgress):
     ):
         self._caption = caption
         self._count = count
-        text_column_fmt = "[blue]{task.description}:[/blue] [meta]{task.fields[text]}"
-        if self._count:
-            text_column_fmt = text_column_fmt + " - {task.completed:,}"
-            if not isinstance(self._count, bool):
-                text_column_fmt = text_column_fmt + "/{task.total:,}"
 
-        text_column_fmt = text_column_fmt + "[/meta]"
-        self._progress = Progress(SpinnerColumn(), TextColumn(text_column_fmt))
+        # Build count format string for a separate column
+        count_fmt = ""
+        if self._count:
+            count_fmt = "{task.completed:,}"
+            if not isinstance(self._count, bool):
+                count_fmt = count_fmt + "/{task.total:,}"
+
+        self._progress = Progress(
+            SpinnerColumn(),
+            TextColumn(
+                "[blue]{task.description}:[/blue]",
+                table_column=Column(no_wrap=True),
+            ),
+            TextColumn(
+                "[meta]{task.fields[text]}[/meta]",
+                table_column=Column(width=40, no_wrap=True),
+            ),
+            TextColumn(f"[meta]{count_fmt}[/meta]") if self._count else TextColumn(""),
+            TimeElapsedColumn(),
+        )
         self._task_id = self._progress.add_task(
-            caption, total=count if isinstance(count, int) else None, text="(preparing)"
+            caption,
+            total=count
+            if isinstance(count, int) and not isinstance(count, bool)
+            else None,
+            text="(preparing)",
         )
         self._started = False
 

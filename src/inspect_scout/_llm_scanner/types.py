@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Literal, NamedTuple, TypeAlias
 
 from pydantic import BaseModel
 
@@ -44,3 +44,18 @@ class AnswerStructured(NamedTuple):
 
     max_attempts: int = 3
     """Maximum number of times to re-prompt the model to generate the correct schema."""
+
+
+AnswerSpec: TypeAlias = (
+    Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured
+)
+"""Specification of the answer format for an LLM scanner.
+
+Pass ``"boolean"``, ``"numeric"``, or ``"string"`` for a simple answer;
+pass ``list[str]`` for a set of labels; pass :class:`AnswerMultiLabel`
+for multi-classification; or pass :class:`AnswerStructured` for
+tool-based structured output.
+"""

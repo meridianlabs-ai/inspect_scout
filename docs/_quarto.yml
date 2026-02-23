@@ -36,17 +36,21 @@ website:
     left:
       - text: "Getting Started"
         href: index.qmd
-      - href: examples.qmd
       - text: "Using"
         menu:
+          - href: scanners.qmd
+          - href: transcripts.qmd
           - href: workflow.qmd
           - href: projects.qmd
-          - href: transcripts.qmd
-          - href: scanners.qmd
-          - href: llm_scanner.qmd
-          - href: grep_scanner.qmd
           - href: results.qmd
           - href: validation.qmd
+      - text: "Scanners"
+        menu:
+          - href: llm_scanner.qmd
+          - href: grep_scanner.qmd
+          - href: custom_scanner.qmd
+          - href: scanner_tools.qmd
+          - href: timelines.qmd
       - text: "Transcripts"
         menu:
           - href: db_overview.qmd
@@ -78,15 +82,20 @@ website:
         - text: Using Scout
           href: workflow.qmd
           contents:
+            - href: scanners.qmd
+            - href: transcripts.qmd
             - href: workflow.qmd
             - href: projects.qmd
-            - href: transcripts.qmd
-            - href: scanners.qmd
-            - href: llm_scanner.qmd
-            - href: grep_scanner.qmd
             - href: results.qmd
             - href: validation.qmd
-        - text: Transcripts Database
+        - text: "Scanners"
+          contents:
+            - href: llm_scanner.qmd
+            - href: grep_scanner.qmd
+            - href: custom_scanner.qmd
+            - href: scanner_tools.qmd
+            - href: timelines.qmd
+        - text: Transcripts
           href: db_overview.qmd
           contents:
             - text: Overview

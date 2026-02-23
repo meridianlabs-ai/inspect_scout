@@ -1,0 +1,67 @@
+{
+  "description": "Auto-span detection: 3 ModelEvents forming a single conversation thread — no spans created (single thread)",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Hello"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Hi there"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"},
+        {"role": "user", "content": "How are you?"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "I am fine"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "system", "content": "You are an assistant"},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"},
+        {"role": "user", "content": "How are you?"},
+        {"role": "assistant", "content": "I am fine"},
+        {"role": "user", "content": "Great"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Thanks"}}]
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "event_uuids": ["e-001", "e-002", "e-003"],
+      "total_tokens": 450
+    },
+    "scoring": null
+  }
+}

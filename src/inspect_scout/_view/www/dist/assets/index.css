@@ -7342,7 +7342,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 /* Self-contained minimap — flex row: mode label + bar area */
 
-._container_1s11p_3 {
+._container_1tfzg_3 {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -7356,7 +7356,7 @@ span.ap-marker-container:hover span.ap-marker {
  * Stable-width label — renders both time/token values in a CSS grid stack.
  * The cell sizes to the wider value; only the active one is visible.
  */
-._stableLabel_1s11p_17 {
+._stableLabel_1tfzg_17 {
   display: grid;
   font-size: 0.6rem;
   line-height: 1.4;
@@ -7367,23 +7367,23 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._stableLabel_1s11p_17 > * {
+._stableLabel_1tfzg_17 > * {
   grid-area: 1 / 1;
 }
 
-._alignRight_1s11p_32 {
+._alignRight_1tfzg_32 {
   justify-items: end;
 }
 
-._alignLeft_1s11p_36 {
+._alignLeft_1tfzg_36 {
   justify-items: start;
 }
 
-._hidden_1s11p_40 {
+._hidden_1tfzg_40 {
   visibility: hidden;
 }
 
-._minimap_1s11p_44 {
+._minimap_1tfzg_44 {
   position: relative;
   height: 18px;
   flex: 1;
@@ -7391,7 +7391,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
-._track_1s11p_52 {
+._track_1tfzg_52 {
   position: absolute;
   left: 0;
   right: 0;
@@ -7404,7 +7404,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Selection region fill — highlight between markers on the track */
-._regionFill_1s11p_65 {
+._regionFill_1tfzg_65 {
   position: absolute;
   top: 50%;
   height: 2px;
@@ -7415,7 +7415,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Vertical bar markers at selection boundaries */
-._marker_1s11p_76 {
+._marker_1tfzg_76 {
   position: absolute;
   top: 50%;
   height: 9px;
@@ -7427,7 +7427,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Section duration pill centered between the two markers */
-._sectionTime_1s11p_88 {
+._sectionTime_1tfzg_88 {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -7438,11 +7438,11 @@ span.ap-marker-container:hover span.ap-marker {
   user-select: none;
 }
 
-._sectionTimePill_1s11p_99 {
+._sectionTimePill_1tfzg_99 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);
-  border: 1px solid var(--bs-primary);
+  border: none;
   border-radius: 3px;
   padding: 0 4px;
   line-height: 1.4;

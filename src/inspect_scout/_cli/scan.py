@@ -348,6 +348,12 @@ class ScanGroup(click.Group):
     envvar="SCOUT_SCAN_RESPONSE_SCHEMA",
 )
 @click.option(
+    "--log-buffer",
+    type=click.IntRange(min=1),
+    help="Flush intermediate results to the scan directory every N transcripts.",
+    envvar="SCOUT_SCAN_LOG_BUFFER",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     default=False,
@@ -389,6 +395,7 @@ def scan_command(
     reasoning_tokens: int | None,
     reasoning_summary: Literal["concise", "detailed", "auto"] | None,
     reasoning_history: Literal["none", "all", "last", "auto"] | None,
+    log_buffer: int | None,
     dry_run: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
@@ -627,6 +634,7 @@ def scan_command(
         fail_on_error=common["fail_on_error"],
         log_level=scan_log_level,
         dry_run=dry_run,
+        log_buffer=log_buffer,
     )
 
 

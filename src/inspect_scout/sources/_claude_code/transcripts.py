@@ -226,9 +226,11 @@ async def _merge_slug_group(
 
     # Yield standalone (post-/clear) segments in chronological order
     standalones.sort(
-        key=lambda t: t.events[0].timestamp
-        if t.events
-        else datetime.min.replace(tzinfo=timezone.utc)
+        key=lambda t: (
+            t.events[0].timestamp
+            if t.events
+            else datetime.min.replace(tzinfo=timezone.utc)
+        )
     )
     for standalone in standalones:
         yield standalone

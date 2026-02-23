@@ -198,13 +198,7 @@ export function computeRowLayouts(
     });
 
     // Collect markers for this row
-    const markers = collectRowMarkers(
-      row,
-      isParent,
-      markerDepth,
-      viewStart,
-      viewEnd
-    );
+    const markers = collectRowMarkers(row, markerDepth, viewStart, viewEnd);
 
     // Derive row-level parallel count from spans
     const rowParallelCount =
@@ -235,7 +229,6 @@ export function computeRowLayouts(
  */
 function collectRowMarkers(
   row: SwimlaneRow,
-  isParent: boolean,
   depth: MarkerDepth,
   viewStart: Date,
   viewEnd: Date
@@ -246,11 +239,7 @@ function collectRowMarkers(
     const agents = getAgents(rowSpan);
 
     for (const agent of agents) {
-      // For parent row, use the depth as-is.
-      // For child rows, use "direct" to avoid double-counting from grandchildren
-      // (the parent row already aggregates via depth).
-      const effectiveDepth = isParent ? depth : "direct";
-      const markers = collectMarkers(agent, effectiveDepth);
+      const markers = collectMarkers(agent, depth);
 
       for (const m of markers) {
         allMarkers.push({

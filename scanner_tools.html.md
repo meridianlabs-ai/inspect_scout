@@ -376,19 +376,6 @@ reducers to combine these into a single result.
 All reducers are async functions with signature
 `(list[Result]) -> Result`.
 
-### Default Reducers
-
-The default reducer is selected based on the answer type:
-
-| Answer Type        | Default Reducer          |
-|--------------------|--------------------------|
-| `"boolean"`        | `ResultReducer.any`      |
-| `"numeric"`        | `ResultReducer.mean`     |
-| `"string"`         | `ResultReducer.llm()`    |
-| labels             | `ResultReducer.majority` |
-| `AnswerMultiLabel` | `ResultReducer.union`    |
-| `AnswerStructured` | `ResultReducer.last`     |
-
 ### LLM-Based Reduction
 
 For cases where statistical reduction isn’t sufficient,

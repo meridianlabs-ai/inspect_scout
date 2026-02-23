@@ -443,7 +443,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#result-reduction" id="toc-result-reduction" class="nav-link" data-scroll-target="#result-reduction">Result Reduction</a>
   <ul class="collapse">
   <li><a href="#static-reducers" id="toc-static-reducers" class="nav-link" data-scroll-target="#static-reducers">Static Reducers</a></li>
-  <li><a href="#default-reducers" id="toc-default-reducers" class="nav-link" data-scroll-target="#default-reducers">Default Reducers</a></li>
   <li><a href="#llm-based-reduction" id="toc-llm-based-reduction" class="nav-link" data-scroll-target="#llm-based-reduction">LLM-Based Reduction</a></li>
   <li><a href="#usage-examples" id="toc-usage-examples" class="nav-link" data-scroll-target="#usage-examples">Usage Examples</a></li>
   </ul></li>
@@ -941,44 +940,6 @@ Note
 </tbody>
 </table>
 <p>All reducers are async functions with signature <code>(list[Result]) -&gt; Result</code>.</p>
-</section>
-<section id="default-reducers" class="level3">
-<h3 class="anchored" data-anchor-id="default-reducers">Default Reducers</h3>
-<p>The default reducer is selected based on the answer type:</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Answer Type</th>
-<th>Default Reducer</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>"boolean"</code></td>
-<td><code>ResultReducer.any</code></td>
-</tr>
-<tr class="even">
-<td><code>"numeric"</code></td>
-<td><code>ResultReducer.mean</code></td>
-</tr>
-<tr class="odd">
-<td><code>"string"</code></td>
-<td><code>ResultReducer.llm()</code></td>
-</tr>
-<tr class="even">
-<td>labels</td>
-<td><code>ResultReducer.majority</code></td>
-</tr>
-<tr class="odd">
-<td><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#answermultilabel">AnswerMultiLabel</a></span></td>
-<td><code>ResultReducer.union</code></td>
-</tr>
-<tr class="even">
-<td><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#answerstructured">AnswerStructured</a></span></td>
-<td><code>ResultReducer.last</code></td>
-</tr>
-</tbody>
-</table>
 </section>
 <section id="llm-based-reduction" class="level3">
 <h3 class="anchored" data-anchor-id="llm-based-reduction">LLM-Based Reduction</h3>

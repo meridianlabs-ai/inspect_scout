@@ -439,21 +439,26 @@ When a transcript’s message history exceeds the scanning model’s context
 window, `llm_scanner()` automatically segments the messages to fit
 within 80% of the model’s available context. Each segment is scanned
 independently with the same prompt, and results from multiple segments
-are combined using a **reducer**.
+are combined using a reducer.
 
 The default reducer is selected based on the answer type:
 
-| Answer Type        | Default Reducer          |
-|--------------------|--------------------------|
-| `"boolean"`        | `ResultReducer.any`      |
-| `"numeric"`        | `ResultReducer.mean`     |
-| `"string"`         | `ResultReducer.llm()`    |
-| labels             | `ResultReducer.majority` |
-| `AnswerMultiLabel` | `ResultReducer.union`    |
-| `AnswerStructured` | `ResultReducer.last`     |
+| Answer Type              | Default Reducer          |
+|--------------------------|--------------------------|
+| `"boolean"`              | `ResultReducer.any`      |
+| `"numeric"`              | `ResultReducer.mean`     |
+| `"string"`               | `ResultReducer.llm()`    |
+| labels                   | `ResultReducer.majority` |
+| `AnswerMultiLabel`       | `ResultReducer.union`    |
+| `AnswerStructured`       | `ResultReducer.last`     |
+| `list[AnswerStructured]` | `ResultReducer.union`    |
 
 You can override the reducer with a custom function or use
 `ResultReducer.llm()` for LLM-based synthesis of multi-segment results.
+
+Note that if you have a structured scanner that returns a
+`list[BaseModel]` then those results will be automatically combined so
+there is no need to define a reducer.
 
 Use the `context_window` option of `llm_scanner()` to set a custom
 threshold (again, the default is 80% of available context).

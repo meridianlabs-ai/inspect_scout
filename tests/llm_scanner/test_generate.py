@@ -256,7 +256,9 @@ class TestGenerateAnswerStructuredNull:
             explanation: str = Field(description="Reasoning")
             score: int = Field(alias="value", description="Score")
 
-        mock_output = ModelOutput.from_content(model="test", content="Could not determine.")
+        mock_output = ModelOutput.from_content(
+            model="test", content="Could not determine."
+        )
 
         with patch(
             "inspect_scout._llm_scanner.generate.structured_generate",

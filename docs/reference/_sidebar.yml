@@ -154,6 +154,10 @@ website:
           href: reference/scanner.qmd#loader
         - text: llm_scanner
           href: reference/scanner.qmd#llm_scanner
+        - text: grep_scanner
+          href: reference/scanner.qmd#grep_scanner
+        - text: message_numbering
+          href: reference/scanner.qmd#message_numbering
         - text: scanner_prompt
           href: reference/scanner.qmd#scanner_prompt
         - text: generate_answer
@@ -172,12 +176,8 @@ website:
           href: reference/scanner.qmd#answermultilabel
         - text: AnswerStructured
           href: reference/scanner.qmd#answerstructured
-        - text: grep_scanner
-          href: reference/scanner.qmd#grep_scanner
         - text: messages_as_str
           href: reference/scanner.qmd#messages_as_str
-        - text: message_numbering
-          href: reference/scanner.qmd#message_numbering
         - text: MessageFormatOptions
           href: reference/scanner.qmd#messageformatoptions
         - text: MessagesPreprocessor

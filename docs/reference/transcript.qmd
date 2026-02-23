@@ -34,7 +34,6 @@ reference: "inspect_scout"
 ### span_messages
 ### MessagesSegment
 
-::: {.content-visible when-profile="timelines"}
 ## Timeline
 
 ### build_timeline
@@ -45,8 +44,6 @@ reference: "inspect_scout"
 ### TimelineEvent
 ### TimelineMessages
 ### TimelineSpan
-:::
-
 
 ## Observe
 

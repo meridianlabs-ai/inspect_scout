@@ -159,10 +159,8 @@ def message_numbering(
 
     Returns:
         Tuple of:
-        - messages_as_str: takes list[ChatMessage], returns formatted string
-          with globally unique [M1], [M2], etc. prefixes.
-        - extract_references: takes text, returns list of Reference objects
-          for any [M1], [M2], etc. references found across all prior calls.
+            - messages_as_str: takes list[ChatMessage], returns formatted string with globally unique [M1], [M2], etc. prefixes.
+            - extract_refs: takes text, returns list of Reference objects for any [M1], [M2], etc. references found across all prior calls.
     """
     counter = [0]
     id_map: dict[str, str] = {}

@@ -186,11 +186,11 @@ explanation = output.completion
 references = extract_refs(explanation)
 ```
 
-The `message_numbering()` function returns a `(messages_as_str, extract_references)` pair:
+The `message_numbering()` function returns a `(messages_as_str, extract_refs)` pair:
 
 -   `messages_as_str()` converts a list of messages into a numbered string representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g. the second call starts at `[M6]` if the first call rendered five messages).
 
--   `extract_references()` resolves citations like `[M3]` in model output back to message IDs, producing `Reference` objects suitable for `Result.references`.
+-   `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing `Reference` objects suitable for `Result.references`.
 
 You can optionally pass a `MessagesPreprocessor` to `message_numbering()` to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
 

@@ -407,6 +407,8 @@ class TestGenerateSchemaTableMarkdown:
         """Should include all schema fields."""
         result = generate_schema_table_markdown()
         for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name == "timelines":
+                continue
             assert f"`{field.name}`" in result
 
     def test_transcript_id_marked_required(self) -> None:

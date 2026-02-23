@@ -19,7 +19,6 @@
 - [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html.md): Customizable scanner for text-pattern searching of transcripts.
 - [Custom Scanners](https://meridianlabs-ai.github.io/inspect_scout/custom_scanner.html.md): Comprehensive documentation on creating custom scanners.
 - [Scanner Tools](https://meridianlabs-ai.github.io/inspect_scout/scanner_tools.html.md): Create custom scanners with the same tools used under the hood by `llm_scanner()`.
-- [Timelines](https://meridianlabs-ai.github.io/inspect_scout/timelines.html.md): Scan multi-agent transcripts with compaction using timelines.
 
 ## Transcripts
 

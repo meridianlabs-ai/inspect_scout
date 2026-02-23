@@ -35,8 +35,10 @@ def environment_scanner() -> Scanner[Transcript]:
         messages_as_str, extract_refs = message_numbering() # <1>
 
         # define question to ask llm
-        question = "Did the agent fail to complete the task due to "
-            + "a broken or misconfigured environment?"
+        question = (
+            "Did the agent fail to complete the task due to "
+            "a broken or misconfigured environment?"
+        )
 
         # scan segments (breaks up transcript to fit in context window)
         results: list[Result] = []

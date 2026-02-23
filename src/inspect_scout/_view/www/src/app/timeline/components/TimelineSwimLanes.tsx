@@ -128,13 +128,17 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
 
-  // Collapse state — persisted across sessions
+  // Collapse state — persisted across sessions.
+  // Auto-collapse when the transcript is flat (single row, no children).
+  // Omit defaultValue so we can distinguish "never set" (undefined) from
+  // an explicit user choice.
   const [collapsed, setCollapsed] = useProperty<boolean>(
     "timeline",
     "swimlanesCollapsed",
-    { defaultValue: false, cleanup: false }
+    { cleanup: false }
   );
-  const isCollapsed = !!collapsed;
+  const isFlat = layouts.length <= 1;
+  const isCollapsed = collapsed ?? isFlat;
   const toggleCollapsed = useCallback(() => {
     setCollapsed(!isCollapsed);
   }, [isCollapsed, setCollapsed]);

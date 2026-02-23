@@ -167,7 +167,7 @@ export const parseScanResultData = async (
     scannerName,
     scannerParams: scannerParams as Record<string, JsonValue>,
     transcriptId,
-    transcriptMetadata: transcriptMetadata as Record<string, JsonValue>,
+    transcriptMetadata: (transcriptMetadata || {}) as Record<string, JsonValue>,
     transcriptSourceId,
     transcriptSourceUri,
     transcriptTaskSet,

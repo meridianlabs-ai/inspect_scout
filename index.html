@@ -147,15 +147,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="./workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -165,13 +169,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="./results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="./validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -181,12 +192,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="./custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="./scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -299,14 +310,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Workflow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./projects.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Projects</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -317,20 +322,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scanners</span></a>
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LLM Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Grep Scanner</span></a>
+  <a href="./projects.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Projects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -349,8 +348,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true">
+ <span class="menu-text">Scanners</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grep Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom Scanners</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./scanner_tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanner Tools</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="./db_overview.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcripts Database</span></a>
+ <span class="menu-text">Transcripts</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -406,7 +440,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#llm-scanner" id="toc-llm-scanner" class="nav-link" data-scroll-target="#llm-scanner">LLM Scanner</a></li>
   <li><a href="#grep-scanner" id="toc-grep-scanner" class="nav-link" data-scroll-target="#grep-scanner">Grep Scanner</a></li>
-  <li><a href="#custom-scanner" id="toc-custom-scanner" class="nav-link" data-scroll-target="#custom-scanner">Custom Scanner</a></li>
+  <li><a href="#custom-scanners" id="toc-custom-scanners" class="nav-link" data-scroll-target="#custom-scanners">Custom Scanners</a></li>
   <li><a href="#running-a-scan" id="toc-running-a-scan" class="nav-link" data-scroll-target="#running-a-scan">Running a Scan</a></li>
   <li><a href="#scout-view" id="toc-scout-view" class="nav-link" data-scroll-target="#scout-view">Scout View</a></li>
   <li><a href="#projects" id="toc-projects" class="nav-link" data-scroll-target="#projects">Projects</a></li>
@@ -453,9 +487,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:</p>
 <ol type="1">
 <li>Detect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.</li>
-<li>Analyze transcripts from Inspect Evals, Arize Phoenix, LangSmith, Logfire, or custom sources via the capture and import APIs.</li>
+<li>Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire, Claude Code, or custom sources via the capture and import APIs.</li>
 <li>Develop scanners interactively, exploring transcripts and scan results visually in Scout View.</li>
 <li>Validate scanner accuracy against human-labeled examples.</li>
+<li>Handle complex scanning requirements like multi-agent transcripts, compaction, and context-window chunking.</li>
 <li>Scale to thousands of transcripts with parallel processing, batching, and fault tolerance.</li>
 </ol>
 <section id="installation" class="level3">
@@ -475,7 +510,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <section id="llm-scanner" class="level3">
 <h3 class="anchored" data-anchor-id="llm-scanner">LLM Scanner</h3>
-<p>For many application you can use the high-level <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>, which uses a model for transcript analysis and can be customized with many options. For example:</p>
+<p>For many applications you can use the high-level <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>, which uses a model for transcript analysis and can be customized with many options. For example:</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>scanner.py</strong></pre>
@@ -503,15 +538,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner([<span class="st">"password"</span>, <span class="st">"secret"</span>, <span class="st">"token"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For additional details on using this scanner, see the <a href="./grep_scanner.html">Grep Scanner</a> article.</p>
 </section>
-<section id="custom-scanner" class="level3">
-<h3 class="anchored" data-anchor-id="custom-scanner">Custom Scanner</h3>
+<section id="custom-scanners" class="level3">
+<h3 class="anchored" data-anchor-id="custom-scanners">Custom Scanners</h3>
 <p>If the higher level LLM and Grep scanners don’t meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>scanner.py</strong></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="annotated-cell-4" data-filename="scanner.py"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-4-1"><a href="#annotated-cell-4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> (</span>
-<span id="annotated-cell-4-2"><a href="#annotated-cell-4-2" aria-hidden="true" tabindex="-1"></a>    Result, Scanner, Transcript, scanner, messages_as_str</span>
+<span id="annotated-cell-4-2"><a href="#annotated-cell-4-2" aria-hidden="true" tabindex="-1"></a>    Result, Scanner, Transcript, scanner, message_numbering</span>
 <span id="annotated-cell-4-3"><a href="#annotated-cell-4-3" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="annotated-cell-4-4"><a href="#annotated-cell-4-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="annotated-cell-4-5"><a href="#annotated-cell-4-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> get_model</span>
@@ -522,36 +557,41 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="annotated-cell-4-10"><a href="#annotated-cell-4-10" aria-hidden="true" tabindex="-1"></a>    </span>
 <span id="annotated-cell-4-11"><a href="#annotated-cell-4-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(transcript: Transcript) <span class="op">-&gt;</span> Result:</span>
 <span id="annotated-cell-4-12"><a href="#annotated-cell-4-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-13"><a href="#annotated-cell-4-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># call model</span></span>
-<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="2">2</button><span id="annotated-cell-4-14" class="code-annotation-target"><a href="#annotated-cell-4-14" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> <span class="cf">await</span> get_model().generate(</span>
-<span id="annotated-cell-4-15"><a href="#annotated-cell-4-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Here is a transcript of an LLM agent "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-16"><a href="#annotated-cell-4-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">"solving a cybersecurity challenge:</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="3">3</button><span id="annotated-cell-4-17" class="code-annotation-target"><a href="#annotated-cell-4-17" aria-hidden="true" tabindex="-1"></a>            <span class="st">"==================================="</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-18"><a href="#annotated-cell-4-18" aria-hidden="true" tabindex="-1"></a>            <span class="cf">await</span> messages_as_str(transcript) <span class="op">+</span></span>
-<span id="annotated-cell-4-19"><a href="#annotated-cell-4-19" aria-hidden="true" tabindex="-1"></a>            <span class="st">"===================================</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-20"><a href="#annotated-cell-4-20" aria-hidden="true" tabindex="-1"></a>            <span class="st">"In the transcript above do you detect any "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-21"><a href="#annotated-cell-4-21" aria-hidden="true" tabindex="-1"></a>            <span class="st">"instances of environment misconfiguration "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-22"><a href="#annotated-cell-4-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">"preventing the agent from completing its "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-23"><a href="#annotated-cell-4-23" aria-hidden="true" tabindex="-1"></a>            <span class="st">"task? If no, simply respond with 'No'. "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-24"><a href="#annotated-cell-4-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">"If yes, respond with 'Yes' followed by an "</span> <span class="op">+</span></span>
-<span id="annotated-cell-4-25"><a href="#annotated-cell-4-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">"explanation."</span></span>
-<span id="annotated-cell-4-26"><a href="#annotated-cell-4-26" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="annotated-cell-4-27"><a href="#annotated-cell-4-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-28"><a href="#annotated-cell-4-28" aria-hidden="true" tabindex="-1"></a>        <span class="co"># extract the first word</span></span>
-<span id="annotated-cell-4-29"><a href="#annotated-cell-4-29" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> re.match(<span class="vs">r"</span><span class="dv">^\w</span><span class="op">+</span><span class="vs">"</span>, output.completion.strip())</span>
+<span id="annotated-cell-4-13"><a href="#annotated-cell-4-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># setup message numbering</span></span>
+<span id="annotated-cell-4-14"><a href="#annotated-cell-4-14" aria-hidden="true" tabindex="-1"></a>        messages_as_str, extract_refs <span class="op">=</span> message_numbering()</span>
+<span id="annotated-cell-4-15"><a href="#annotated-cell-4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-4-16"><a href="#annotated-cell-4-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># call model</span></span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="2">2</button><span id="annotated-cell-4-17" class="code-annotation-target"><a href="#annotated-cell-4-17" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> <span class="cf">await</span> get_model().generate(</span>
+<span id="annotated-cell-4-18"><a href="#annotated-cell-4-18" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Here is a transcript of an LLM agent "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-19"><a href="#annotated-cell-4-19" aria-hidden="true" tabindex="-1"></a>            <span class="st">"solving a cybersecurity challenge:</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="3">3</button><span id="annotated-cell-4-20" class="code-annotation-target"><a href="#annotated-cell-4-20" aria-hidden="true" tabindex="-1"></a>            <span class="st">"==================================="</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-21"><a href="#annotated-cell-4-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">await</span> messages_as_str(transcript.messages) <span class="op">+</span></span>
+<span id="annotated-cell-4-22"><a href="#annotated-cell-4-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">"===================================</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-23"><a href="#annotated-cell-4-23" aria-hidden="true" tabindex="-1"></a>            <span class="st">"In the transcript above do you detect any "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-24"><a href="#annotated-cell-4-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">"instances of environment misconfiguration "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-25"><a href="#annotated-cell-4-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">"preventing the agent from completing its "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-26"><a href="#annotated-cell-4-26" aria-hidden="true" tabindex="-1"></a>            <span class="st">"task? If no, simply respond with 'No'. "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-27"><a href="#annotated-cell-4-27" aria-hidden="true" tabindex="-1"></a>            <span class="st">"If yes, respond with 'Yes' followed by an "</span> <span class="op">+</span></span>
+<span id="annotated-cell-4-28"><a href="#annotated-cell-4-28" aria-hidden="true" tabindex="-1"></a>            <span class="st">"explanation."</span></span>
+<span id="annotated-cell-4-29"><a href="#annotated-cell-4-29" aria-hidden="true" tabindex="-1"></a>        )</span>
 <span id="annotated-cell-4-30"><a href="#annotated-cell-4-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-31"><a href="#annotated-cell-4-31" aria-hidden="true" tabindex="-1"></a>        <span class="co"># return result</span></span>
-<span id="annotated-cell-4-32"><a href="#annotated-cell-4-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
-<span id="annotated-cell-4-33"><a href="#annotated-cell-4-33" aria-hidden="true" tabindex="-1"></a>            answer <span class="op">=</span> match.group(<span class="dv">0</span>)</span>
-<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="4">4</button><span id="annotated-cell-4-34" class="code-annotation-target"><a href="#annotated-cell-4-34" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
-<span id="annotated-cell-4-35"><a href="#annotated-cell-4-35" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span>answer.lower() <span class="op">==</span> <span class="st">"yes"</span>,</span>
-<span id="annotated-cell-4-36"><a href="#annotated-cell-4-36" aria-hidden="true" tabindex="-1"></a>                answer<span class="op">=</span>answer,</span>
-<span id="annotated-cell-4-37"><a href="#annotated-cell-4-37" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span>output.completion,</span>
-<span id="annotated-cell-4-38"><a href="#annotated-cell-4-38" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="annotated-cell-4-39"><a href="#annotated-cell-4-39" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="annotated-cell-4-40"><a href="#annotated-cell-4-40" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
-<span id="annotated-cell-4-41"><a href="#annotated-cell-4-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-42"><a href="#annotated-cell-4-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="annotated-cell-4-31"><a href="#annotated-cell-4-31" aria-hidden="true" tabindex="-1"></a>        <span class="co"># extract the first word</span></span>
+<span id="annotated-cell-4-32"><a href="#annotated-cell-4-32" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> re.match(<span class="vs">r"</span><span class="dv">^\w</span><span class="op">+</span><span class="vs">"</span>, output.completion.strip())</span>
+<span id="annotated-cell-4-33"><a href="#annotated-cell-4-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-4-34"><a href="#annotated-cell-4-34" aria-hidden="true" tabindex="-1"></a>        <span class="co"># return result</span></span>
+<span id="annotated-cell-4-35"><a href="#annotated-cell-4-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
+<span id="annotated-cell-4-36"><a href="#annotated-cell-4-36" aria-hidden="true" tabindex="-1"></a>            answer <span class="op">=</span> match.group(<span class="dv">0</span>)</span>
+<span id="annotated-cell-4-37"><a href="#annotated-cell-4-37" aria-hidden="true" tabindex="-1"></a>            explanation <span class="op">=</span> output.completion</span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="4">4</button><span id="annotated-cell-4-38" class="code-annotation-target"><a href="#annotated-cell-4-38" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
+<span id="annotated-cell-4-39"><a href="#annotated-cell-4-39" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span>answer.lower() <span class="op">==</span> <span class="st">"yes"</span>,</span>
+<span id="annotated-cell-4-40"><a href="#annotated-cell-4-40" aria-hidden="true" tabindex="-1"></a>                answer<span class="op">=</span>answer,</span>
+<span id="annotated-cell-4-41"><a href="#annotated-cell-4-41" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span>explanation,</span>
+<span id="annotated-cell-4-42"><a href="#annotated-cell-4-42" aria-hidden="true" tabindex="-1"></a>                references<span class="op">=</span>extract_refs(explanation)</span>
+<span id="annotated-cell-4-43"><a href="#annotated-cell-4-43" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="annotated-cell-4-44"><a href="#annotated-cell-4-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="annotated-cell-4-45"><a href="#annotated-cell-4-45" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
+<span id="annotated-cell-4-46"><a href="#annotated-cell-4-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-4-47"><a href="#annotated-cell-4-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <dl class="code-annotation-container-hidden code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-4" data-target-annotation="1">1</dt>
@@ -560,18 +600,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 <dt data-target-cell="annotated-cell-4" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-lines="14" data-code-annotation="2">Scanners frequently use models to perform scanning. Calling <code>get_model()</code> utilizes the default model for the scan job (which can be specified in the top level call to scan).</span>
+<span data-code-cell="annotated-cell-4" data-code-lines="17" data-code-annotation="2">Scanners frequently use models to perform scanning. Calling <code>get_model()</code> utilizes the default model for the scan job (which can be specified in the top level call to scan).</span>
 </dd>
 <dt data-target-cell="annotated-cell-4" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-lines="17,18,19" data-code-annotation="3">Convert the message history into a string for presentation to the model. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function takes a <code>Transcript | list[Messages]</code> and will by default remove system messages from the message list. See <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> for other available options.</span>
+<span data-code-cell="annotated-cell-4" data-code-lines="20,21,22" data-code-annotation="3">Convert the message history into a string for presentation to the model. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function takes a <code>Transcript | list[Messages]</code> and will by default remove system messages from the message list. See <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> for other available options.</span>
 </dd>
 <dt data-target-cell="annotated-cell-4" data-target-annotation="4">4</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-lines="34,35,36,37,38" data-code-annotation="4">As with scorers, results also include additional context (here the extracted answer and full model completion).</span>
+<span data-code-cell="annotated-cell-4" data-code-lines="38,39,40,41,42,43" data-code-annotation="4">As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).</span>
 </dd>
 </dl>
-<p>Above we used only the <code>messages</code> field from the <code>transcript</code>, but <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> includes many other fields with additional context. See <a href="./transcripts.html#transcript-fields">Transcript Fields</a> for additional details.</p>
+<p>For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on <a href="./custom_scanner.html">Custom Scanners</a>.</p>
 </section>
 <section id="running-a-scan" class="level3">
 <h3 class="anchored" data-anchor-id="running-a-scan">Running a Scan</h3>
@@ -766,13 +806,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="learning-more">Learning More</h2>
 <p>Above we provided a high-level tour of Scout features. See the following articles to learn more about using Scout:</p>
 <ul>
+<li><p><a href="./scanners.html">Scanners</a>: Basics of using scanners including the high-level <a href="./llm_scanner.html">LLM Scanner</a> and <a href="./grep_scanner.html">Grep Scanner</a>.</p></li>
 <li><p><a href="./examples.html">Examples</a>: Example implementations of various types of scanners.</p></li>
 <li><p><a href="./projects.html">Projects</a>: Managing scanning configuration using project files.</p></li>
 <li><p><a href="./transcripts.html">Transcripts</a>: Reading and filtering transcripts for scanning.</p></li>
-<li><p><a href="./llm_scanner.html">LLM Scanner</a> and <a href="./grep_scanner.html">Grep Scanner</a>: Higher-level scanners for model and pattern-based scanning of transcripts.</p></li>
 <li><p><a href="./workflow.html">Workflow</a>: Workflow for the stages of a transcript analysis project.</p></li>
 </ul>
-<p>There is also more in depth documentation available on <a href="./scanners.html">Scanners</a>, <a href="./results.html">Results</a>, <a href="./validation.html">Validation</a> and <a href="./db_overview.html">Transcript Databases</a>.</p>
+<p>There is also more in depth documentation available on <a href="./results.html">Results</a>, <a href="./validation.html">Validation</a> and <a href="./db_overview.html">Transcript Databases</a>.</p>
 
 
 </section>

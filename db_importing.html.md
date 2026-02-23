@@ -13,13 +13,16 @@ where your transcript data lives and how it is managed:
     [Logfire](#logfire): Read transcript data from LLM observability
     platforms.
 
-3.  [Transcript API](#transcript-api): Python API for creating and
+3.  [Claude Code](#claude-code): Read transcript data from local Claude
+    Code sessions.
+
+4.  [Transcript API](#transcript-api): Python API for creating and
     inserting transcripts.
 
-4.  [Arrow Import](#arrow-import): Efficient direct insertion using
+5.  [Arrow Import](#arrow-import): Efficient direct insertion using
     `RecordBatchReader`.
 
-5.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
+6.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
     not created using Inspect Scout.
 
 We’ll cover each of these in turn below. Before proceeding though you
@@ -181,6 +184,67 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 > Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
 > Logfire. You can create a read token from [Logfire Settings \> Read
 > Tokens](https://logfire.pydantic.dev/).
+
+## Claude Code
+
+> [!NOTE]
+>
+> The Claude Code transcript source described below is available only in
+> the development version of Inspect Scout. Install the development
+> version from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is
+Anthropic’s agentic coding tool. Scout can import transcripts directly
+from Claude Code’s session files, which are normally stored at
+`~/.claude/projects/`.
+
+Use the `claude_code()` transcript source to import sessions. Each
+session can contain multiple conversations separated by `/clear`
+commands — each conversation segment becomes a separate transcript.
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import claude_code
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(claude_code())
+```
+
+By default, all sessions across all projects are imported. You can
+narrow the import by specifying a project path, session ID, or time
+range:
+
+``` python
+# Import sessions from a specific project
+await db.insert(claude_code(
+    path="~/dev/my-project",
+))
+
+# Import a specific session by ID
+await db.insert(claude_code(
+    session_id="abc123-def456",
+))
+
+# Import sessions from a time range
+from datetime import datetime
+await db.insert(claude_code(
+    from_time=datetime(2025, 1, 1),
+    to_time=datetime(2025, 6, 30),
+))
+```
+
+Claude Code transcripts are mapped to the database schema as follows:
+
+| Field         | Value                               |
+|---------------|-------------------------------------|
+| `source_type` | `"claude_code"`                     |
+| `task_set`    | Project directory path              |
+| `task_id`     | Session slug (conversation summary) |
+| `agent`       | `"claude-code"`                     |
 
 ## Transcript API
 
@@ -394,3 +458,29 @@ You should run this command whenever you add or remove transcripts from
 your data lake (transcripts will not be visible to clients until the
 index is updated). While building an index is not required, it is highly
 reccommend if you want optimal query performance.
+
+## CLI Import
+
+> [!NOTE]
+>
+> The `scout import` command described below is available only in the
+> development version of Inspect Scout. Install the development version
+> from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+The `scout import` command provides a CLI alternative to the Python API
+for importing transcripts from any registered source. For example:
+
+``` bash
+scout import claude_code
+scout import phoenix -P project=my-project
+scout import langsmith -P project=my-project --limit 100
+```
+
+Use `scout import --sources` to list available sources and their
+parameters, or `--dry-run` to preview what would be imported without
+writing. See [scout import](reference/scout_import.qmd) for full
+details.

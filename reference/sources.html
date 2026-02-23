@@ -138,15 +138,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="../scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="../workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -156,13 +160,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="../results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="../validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="../llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -172,12 +183,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="../custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="../scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -336,8 +347,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
+  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanSpec</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -484,6 +495,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptInfo</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Transcripts</span></a>
   </div>
@@ -552,6 +569,78 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
  <span class="menu-text">log_columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcript_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">segment_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">span_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MessagesSegment</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#build_timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">build_timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#filter_timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">filter_timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">timeline_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinebranch" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineBranch</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelineevent" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineEvent</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineMessages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinespan" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineSpan</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -639,6 +728,54 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#message_numbering" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">message_numbering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#scanner_prompt" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scanner_prompt</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#generate_answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">generate_answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#parse_answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">parse_answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#resultreducer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ResultReducer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answer_type" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">answer_type</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answerspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">AnswerSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#answermultilabel" class="sidebar-item-text sidebar-link">
  <span class="menu-text">AnswerMultiLabel</span></a>
   </div>
@@ -683,6 +820,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#eventtype" class="sidebar-item-text sidebar-link">
  <span class="menu-text">EventType</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#transcriptcontent" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptContent</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -736,6 +879,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/sources.html#logfire" class="sidebar-item-text sidebar-link">
  <span class="menu-text">logfire</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/sources.html#claude_code" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">claude_code</span></a>
   </div>
 </li>
       </ul>
@@ -828,6 +977,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">scout db</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_import.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout import</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -843,6 +998,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#phoenix" id="toc-phoenix" class="nav-link active" data-scroll-target="#phoenix">phoenix</a></li>
   <li><a href="#langsmith" id="toc-langsmith" class="nav-link" data-scroll-target="#langsmith">langsmith</a></li>
   <li><a href="#logfire" id="toc-logfire" class="nav-link" data-scroll-target="#logfire">logfire</a></li>
+  <li><a href="#claude_code" id="toc-claude_code" class="nav-link" data-scroll-target="#claude_code">claude_code</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -873,7 +1029,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts from <a href="https://phoenix.arize.com/">Arize Phoenix</a> traces.</p>
 <p>Each Phoenix trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/sources/_phoenix/__init__.py#L43">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/sources/_phoenix/__init__.py#L43">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> phoenix(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -940,7 +1096,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>dataset</code> - Import examples from a dataset</li>
 </ul>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/sources/_langsmith/__init__.py#L49">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/sources/_langsmith/__init__.py#L49">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> langsmith(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -1007,7 +1163,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Read transcripts from <a href="https://logfire.pydantic.dev/">Logfire</a> traces.</p>
 <p>Each Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/sources/_logfire/__init__.py#L45">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/sources/_logfire/__init__.py#L45">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> logfire(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    project: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -1046,6 +1202,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dt><code class="ref-definition">read_token</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Logfire read token (or LOGFIRE_READ_TOKEN env var). Generate from Logfire dashboard Settings &gt; Read Tokens.</p>
+</dd>
+</dl>
+</section>
+<section id="claude_code" class="level3">
+<h3 class="anchored" data-anchor-id="claude_code">claude_code</h3>
+<p>Read transcripts from Claude Code sessions.</p>
+<p>Each Claude Code session can contain multiple conversations separated by /clear commands. Each conversation becomes one Scout transcript.</p>
+<p>When Claude Code enters plan mode and executes a plan, it creates separate session files that share the same slug. These related sessions are merged into a single transcript.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/sources/_claude_code/transcripts.py#L58">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> claude_code(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    path: <span class="bu">str</span> <span class="op">|</span> PathLike[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    session_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    from_time: datetime <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    to_time: datetime <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> AsyncIterator[<span class="st">"Transcript"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">path</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">PathLike</span>[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Path to Claude Code project directory or specific session file. If None, scans all projects in ~/.claude/projects/</p>
+</dd>
+<dt><code class="ref-definition">session_id</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Specific session UUID to import</p>
+</dd>
+<dt><code class="ref-definition">from_time</code> <span class="element-type">datetime | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Only fetch sessions modified on or after this time</p>
+</dd>
+<dt><code class="ref-definition">to_time</code> <span class="element-type">datetime | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Only fetch sessions modified before this time</p>
+</dd>
+<dt><code class="ref-definition">limit</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Maximum number of transcripts to yield</p>
 </dd>
 </dl>
 

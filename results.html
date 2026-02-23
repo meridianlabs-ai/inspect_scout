@@ -66,7 +66,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./validation.html" rel="next">
-<link href="./grep_scanner.html" rel="prev">
+<link href="./projects.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -144,15 +144,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="./workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -162,13 +166,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="./results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="./validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -178,12 +189,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="./custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="./scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -296,14 +307,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Workflow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./projects.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Projects</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -314,20 +319,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scanners</span></a>
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LLM Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Grep Scanner</span></a>
+  <a href="./projects.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Projects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -346,8 +345,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true">
+ <span class="menu-text">Scanners</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grep Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom Scanners</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./scanner_tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanner Tools</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="./db_overview.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcripts Database</span></a>
+ <span class="menu-text">Transcripts</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -1296,8 +1330,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./grep_scanner.html" class="pagination-link" aria-label="Grep Scanner">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Grep Scanner</span>
+      <a href="./projects.html" class="pagination-link" aria-label="Projects">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Projects</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>changelog – Inspect Scout</title>
+<title>Timelines – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -19,6 +19,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -189,7 +224,7 @@ ul.task-list li input[type="checkbox"] {
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./CHANGELOG.html" aria-current="page"> 
+    <a class="nav-link" href="./CHANGELOG.html"> 
 <span class="menu-text">Changelog</span></a>
   </li>  
   <li class="nav-item compact">
@@ -213,215 +248,391 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#unreleased" id="toc-unreleased" class="nav-link active" data-scroll-target="#unreleased">Unreleased</a></li>
-  <li><a href="#february-2026" id="toc-february-2026" class="nav-link" data-scroll-target="#february-2026">0.4.19 (17 February 2026)</a></li>
-  <li><a href="#february-2026-1" id="toc-february-2026-1" class="nav-link" data-scroll-target="#february-2026-1">0.4.18 (14 February 2026)</a></li>
-  <li><a href="#february-2026-2" id="toc-february-2026-2" class="nav-link" data-scroll-target="#february-2026-2">0.4.17 (13 February 2026)</a></li>
-  <li><a href="#february-2026-3" id="toc-february-2026-3" class="nav-link" data-scroll-target="#february-2026-3">0.4.16 (13 February 2026)</a></li>
-  <li><a href="#february-2026-4" id="toc-february-2026-4" class="nav-link" data-scroll-target="#february-2026-4">0.4.15 (12 February 2026)</a></li>
-  <li><a href="#february-2026-5" id="toc-february-2026-5" class="nav-link" data-scroll-target="#february-2026-5">0.4.14 (12 February 2026)</a></li>
-  <li><a href="#february-2026-6" id="toc-february-2026-6" class="nav-link" data-scroll-target="#february-2026-6">0.4.13 (11 February 2026)</a></li>
-  <li><a href="#february-2026-7" id="toc-february-2026-7" class="nav-link" data-scroll-target="#february-2026-7">0.4.12 (09 February 2026)</a></li>
-  <li><a href="#january-2026" id="toc-january-2026" class="nav-link" data-scroll-target="#january-2026">0.4.11 (29 January 2026)</a></li>
-  <li><a href="#january-2026-1" id="toc-january-2026-1" class="nav-link" data-scroll-target="#january-2026-1">0.4.10 (21 January 2026)</a></li>
-  <li><a href="#january-2026-2" id="toc-january-2026-2" class="nav-link" data-scroll-target="#january-2026-2">0.4.9 (20 January 2026)</a></li>
-  <li><a href="#january-2026-3" id="toc-january-2026-3" class="nav-link" data-scroll-target="#january-2026-3">0.4.8 (18 January 2026)</a></li>
-  <li><a href="#january-2026-4" id="toc-january-2026-4" class="nav-link" data-scroll-target="#january-2026-4">0.4.7 (16 January 2026)</a></li>
-  <li><a href="#january-2026-5" id="toc-january-2026-5" class="nav-link" data-scroll-target="#january-2026-5">0.4.6 (08 January 2026)</a></li>
-  <li><a href="#january-2026-6" id="toc-january-2026-6" class="nav-link" data-scroll-target="#january-2026-6">0.4.5 (03 January 2026)</a></li>
-  <li><a href="#december-2025" id="toc-december-2025" class="nav-link" data-scroll-target="#december-2025">0.4.4 (24 December 2025)</a></li>
-  <li><a href="#december-2025-1" id="toc-december-2025-1" class="nav-link" data-scroll-target="#december-2025-1">0.4.3 (22 December 2025)</a></li>
-  <li><a href="#december-2025-2" id="toc-december-2025-2" class="nav-link" data-scroll-target="#december-2025-2">0.4.2 (14 December 2025)</a></li>
-  <li><a href="#december-2025-3" id="toc-december-2025-3" class="nav-link" data-scroll-target="#december-2025-3">0.4.1 (12 December 2025)</a></li>
-  <li><a href="#december-2025-4" id="toc-december-2025-4" class="nav-link" data-scroll-target="#december-2025-4">0.4.0 (11 December 2025)</a></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#scanning-timelines" id="toc-scanning-timelines" class="nav-link" data-scroll-target="#scanning-timelines">Scanning Timelines</a>
+  <ul class="collapse">
+  <li><a href="#opting-in" id="toc-opting-in" class="nav-link" data-scroll-target="#opting-in">Opting In</a></li>
+  <li><a href="#depth" id="toc-depth" class="nav-link" data-scroll-target="#depth">Depth Control</a></li>
+  <li><a href="#compaction" id="toc-compaction" class="nav-link" data-scroll-target="#compaction">Compaction</a></li>
+  <li><a href="#reducers" id="toc-reducers" class="nav-link" data-scroll-target="#reducers">Result Reduction</a></li>
+  <li><a href="#utility-spans" id="toc-utility-spans" class="nav-link" data-scroll-target="#utility-spans">Utility Spans</a></li>
+  </ul></li>
+  <li><a href="#data-model" id="toc-data-model" class="nav-link" data-scroll-target="#data-model">Timeline Data Model</a>
+  <ul class="collapse">
+  <li><a href="#building-a-timeline" id="toc-building-a-timeline" class="nav-link" data-scroll-target="#building-a-timeline">Building a Timeline</a></li>
+  <li><a href="#timeline-data-types" id="toc-timeline-data-types" class="nav-link" data-scroll-target="#timeline-data-types">Timeline Data Types</a></li>
+  </ul></li>
+  <li><a href="#filtering" id="toc-filtering" class="nav-link" data-scroll-target="#filtering">Filtering Timelines</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Timelines</h1>
+</div>
 
 
 
+<div class="quarto-title-meta">
 
-<section id="unreleased" class="level2">
-<h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>As AI agents become more sophisticated — orchestrating sub-agents, branching across parallel tool calls, and running long conversations that require context compaction — flat message lists lose critical structure. A multi-agent transcript might contain thousands of messages spanning multiple nested agent invocations, but a flat list gives no indication of which agent produced which messages or where tool boundaries fall.</p>
+<p>A timeline is a hierarchical tree of spans built automatically from transcript events. Each span represents an agent, tool, or scorer invocation, containing events (model calls, tool calls, compaction) with optional child spans. Timelines automatically detect:</p>
 <ul>
-<li>LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.</li>
-<li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner_prompt">scanner_prompt()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#parse_answer">parse_answer()</a></span> functions for building custom scanners with fine-grained control.</li>
-<li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#resultreducer">ResultReducer</a></span> for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.</li>
-<li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> functions for extracting and segmenting transcript messages.</li>
-<li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#claude_code">claude_code()</a></span> transcript source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.</li>
-<li>CLI: <code>scout import</code> command for importing transcripts from registered sources into Scout projects.</li>
-<li>Multiprocessing: Improve handling of model instances with multiprocessing serialization.</li>
+<li>Agent hierarchies (nested agent invocations)</li>
+<li>Re-rolled attempts (branches where the agent discarded and retried)</li>
+<li>Utility agents (single-turn helpers like title generators)</li>
 </ul>
+<p>When you enable <code>timeline=True</code> on a scanner, the timeline is built from the transcript’s events and made available on <code>Transcript.timelines</code>.</p>
 </section>
-<section id="february-2026" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026">0.4.19 (17 February 2026)</h2>
-<ul>
-<li>LLM Scanner: Store model stop_reason result metadata.</li>
-<li>Scout View: Fix incorrect behavior when attempting to view scanner results with result sets.</li>
-</ul>
+<section id="scanning-timelines" class="level2">
+<h2 class="anchored" data-anchor-id="scanning-timelines">Scanning Timelines</h2>
+<p>The primary use case for timelines is scanning—analyzing each agent’s conversation independently rather than treating the entire transcript as a flat message list.</p>
+<section id="opting-in" class="level3">
+<h3 class="anchored" data-anchor-id="opting-in">Opting In</h3>
+<p>To scan timelines instead of raw messages, set <code>timeline=True</code> on the <code>@scanner</code> decorator:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> llm_scanner, scanner</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner():</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Did the agent exhibit any harmful behavior?"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When timeline scanning is enabled, each span in the timeline tree is scanned independently. The LLM sees only that span’s conversation. Results from multiple spans are combined using a reducer.</p>
+<p>See <a href="./llm_scanner.html#scanning-timelines">LLM Scanner: Scanning Timelines</a> for <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>-specific features like structured list answers, and <a href="./custom_scanner.html#timelines">Custom Scanners: Timeline Scanners</a> for writing custom timeline scanners.</p>
 </section>
-<section id="february-2026-1" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-1">0.4.18 (14 February 2026)</h2>
-<ul>
-<li>Bugfix: Fix token counting when a single worker task processes multiple scans sequentially.</li>
-</ul>
+<section id="depth" class="level3">
+<h3 class="anchored" data-anchor-id="depth">Depth Control</h3>
+<p>The <code>depth</code> parameter controls how deep into the span tree to scan:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 75%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>depth</code></th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>1</code></td>
+<td>Scan only the root span — the top-level agent’s full conversation thread. Treats the timeline like a flat transcript.</td>
+</tr>
+<tr class="even">
+<td><code>2</code></td>
+<td>Scan the root span and its immediate children. Covers the main agent plus its direct sub-agents.</td>
+</tr>
+<tr class="odd">
+<td><code>None</code> (default)</td>
+<td>Scan all levels recursively. Every non-utility span with model events is scanned independently.</td>
+</tr>
+</tbody>
+</table>
+<p>With <code>depth=1</code> you get a single scan of the entire main conversation thread. With deeper values, each sub-agent’s conversation is scanned separately and results are combined. For example, <code>depth=2</code> on an agent that delegates to three sub-agents produces up to four independent scans (the root plus each child).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> shallow_scan():</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Was the overall task completed successfully?"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        depth<span class="op">=</span><span class="dv">1</span>,  <span class="co"># scan only the root agent's conversation</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="february-2026-2" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-2">0.4.17 (13 February 2026)</h2>
-<ul>
-<li>Transcript DB: Improve Anthropic and Google tool call capture for <code>pheonix()</code> transcript source.</li>
-</ul>
+<section id="compaction" class="level3">
+<h3 class="anchored" data-anchor-id="compaction">Compaction</h3>
+<p>Long-running agents may have their context window compressed mid-conversation (via summarization or trimming), creating compaction boundaries that divide the conversation into regions. The <code>compaction</code> parameter controls how these boundaries are handled:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 75%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>compaction</code></th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>"all"</code> (default)</td>
+<td>Merge messages across compaction boundaries, reconstructing the full conversation. The scanner sees everything.</td>
+</tr>
+<tr class="even">
+<td><code>"last"</code></td>
+<td>Scan only the final region after the last compaction. Useful when you only care about recent behavior or when earlier context is too noisy.</td>
+</tr>
+<tr class="odd">
+<td><code>N</code> (int)</td>
+<td>Keep the last <em>N</em> compaction regions. <code>1</code> is equivalent to <code>"last"</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> recent_behavior():</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Did the agent make any errors in its recent actions?"</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        compaction<span class="op">=</span><span class="st">"last"</span>,  <span class="co"># scan only the most recent region</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="february-2026-3" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-3">0.4.16 (13 February 2026)</h2>
-<ul>
-<li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#phoenix">phoenix()</a></span> transcript source for importing transcripts from Arize Phoenix.</li>
-</ul>
+<section id="reducers" class="level3">
+<h3 class="anchored" data-anchor-id="reducers">Result Reduction</h3>
+<p>When scanning produces multiple results from multiple spans (depth &gt; 1) or from context-window segmentation within a single span, results are combined using a reducer.</p>
+<p>Default reducers by answer type:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Answer Type</th>
+<th>Default Reducer</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>"boolean"</code></td>
+<td><code>ResultReducer.any</code></td>
+</tr>
+<tr class="even">
+<td><code>"numeric"</code></td>
+<td><code>ResultReducer.mean</code></td>
+</tr>
+<tr class="odd">
+<td><code>"string"</code></td>
+<td><code>ResultReducer.llm()</code></td>
+</tr>
+<tr class="even">
+<td>labels</td>
+<td><code>ResultReducer.majority</code></td>
+</tr>
+<tr class="odd">
+<td><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#answermultilabel">AnswerMultiLabel</a></span></td>
+<td><code>ResultReducer.union</code></td>
+</tr>
+<tr class="even">
+<td><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#answerstructured">AnswerStructured</a></span></td>
+<td><code>ResultReducer.last</code></td>
+</tr>
+</tbody>
+</table>
+<p>Override with the <code>reducer</code> parameter:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ResultReducer, llm_scanner, scanner</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> synthesized_analysis():</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Summarize the agent's key decisions."</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(),  <span class="co"># LLM-based synthesis</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Built-in reducers include <code>ResultReducer.any</code>, <code>.mean</code>, <code>.median</code>, <code>.mode</code>, <code>.max</code>, <code>.min</code>, <code>.union</code>, <code>.majority</code>, <code>.last</code>.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Tip
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Structured list answers (<code>list[MyModel]</code>) are particularly well-suited for timeline scanning. Per-span findings naturally roll up into a combined result set without needing reduction — each span produces its own list, and the lists are concatenated. See <a href="./llm_scanner.html#structured-lists">LLM Scanner: Structured Lists</a> for details.</p>
+</div>
+</div>
 </section>
-<section id="february-2026-4" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-4">0.4.15 (12 February 2026)</h2>
-<ul>
-<li>Scout View: Support for displaying cost limits.</li>
-</ul>
+<section id="utility-spans" class="level3">
+<h3 class="anchored" data-anchor-id="utility-spans">Utility Spans</h3>
+<p>Single-turn helper agents with different system prompts (e.g., a title-generation helper) are automatically classified as utility spans and excluded from scanning. This ensures scanning focuses on substantive agent interactions rather than mechanical helpers.</p>
 </section>
-<section id="february-2026-5" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-5">0.4.14 (12 February 2026)</h2>
-<ul>
-<li>Scout View: Improve display of large dictionary scan values.</li>
-<li>Enable customization of the scan buffer directory via <code>SCOUT_SCANBUFFER_DIR</code> environment variable.</li>
-<li>Bugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker.</li>
-</ul>
 </section>
-<section id="february-2026-6" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-6">0.4.13 (11 February 2026)</h2>
-<ul>
-<li>Validation: Support for applying validation labels in Scout View.</li>
-<li>Compatibility with latest release of the Inspect VS Code Extension.</li>
-</ul>
+<section id="data-model" class="level2">
+<h2 class="anchored" data-anchor-id="data-model">Timeline Data Model</h2>
+<section id="building-a-timeline" class="level3">
+<h3 class="anchored" data-anchor-id="building-a-timeline">Building a Timeline</h3>
+<p>Call <code>build_timeline(events)</code> to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when <code>timeline=True</code> — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span> objects), and utility agents (single-turn helpers with different system prompts).</p>
 </section>
-<section id="february-2026-7" class="level2">
-<h2 class="anchored" data-anchor-id="february-2026-7">0.4.12 (09 February 2026)</h2>
-<ul>
-<li>Scoring: Apply content filter for scanners when using them as Inspect scorers.</li>
-<li>Add <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#samplemetadata">SampleMetadata</a></span> class for typed access to Inspect eval log metadata fields.</li>
-<li>Add support for Inspect <code>CompactionEvent</code> and display of native compaction data from OpenAI and Anthropic.</li>
-<li>Add “store” event to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#eventtype">EventType</a></span> enumeration.</li>
-<li>View Server: Add optimized <code>/transcripts/{dir}/{id}/info</code> and <code>/transcripts/{dir}/{id}/messages-events</code> endpoints for fetching transcript data. The <code>messages-events</code> endpoint streams raw (potentially compressed) JSON for improved performance.</li>
-<li>Bugfix: Eliminate problem with stale transcript status when deleting validation cases.</li>
-</ul>
+<section id="timeline-data-types" class="level3">
+<h3 class="anchored" data-anchor-id="timeline-data-types">Timeline Data Types</h3>
+<p>The timeline is composed of four types that form a recursive tree:</p>
+<section id="timeline" class="level4">
+<h4 class="anchored" data-anchor-id="timeline"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timeline">Timeline</a></span></h4>
+<p>The root container for a timeline view.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>Name of the timeline view</td>
+</tr>
+<tr class="even">
+<td><code>description</code></td>
+<td><code>str</code></td>
+<td>Description of the timeline</td>
+</tr>
+<tr class="odd">
+<td><code>root</code></td>
+<td><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span></td>
+<td>Root span containing all content</td>
+</tr>
+</tbody>
+</table>
 </section>
-<section id="january-2026" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026">0.4.11 (29 January 2026)</h2>
-<ul>
-<li>Projects: Always read <code>scout.local.yaml</code> even if there is no <code>scout.yaml</code> file.</li>
-<li>Projects: Always apply project level <code>filter</code> to scans (AND combine with scan filters).</li>
-<li>Validation: Label validation is now binary: validate <code>true</code> if the label is present with a truthy value; validate <code>false</code> if the label is not present or has only falsey values.</li>
-<li>Scan Results: Add <code>exclude_columns</code> parameter for reading parquet reuslts to optionally reduce memory usage.</li>
-<li>Scan Results: Pre-fetch optimization for S3/remote parquet files.</li>
-<li>Transcript DB: <a href="[transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html).">observe()</a> decorator/context manager for writing transcripts based on observed LLM generations.</li>
-<li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#langsmith">langsmith()</a></span> and <span class="element-type-name ref-interlink"><a href="./reference/sources.html#logfire">logfire()</a></span> transcript sources for importing transcripts from LLM observability systems.</li>
-</ul>
+<section id="timelinespan" class="level4">
+<h4 class="anchored" data-anchor-id="timelinespan"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span></h4>
+<p>An execution span representing an agent, tool, scorer, or other invocation.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 25%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>str</code></td>
+<td>Unique identifier</td>
+</tr>
+<tr class="even">
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>Display name of the span</td>
+</tr>
+<tr class="odd">
+<td><code>span_type</code></td>
+<td><code>str | None</code></td>
+<td><code>"agent"</code>, <code>"tool"</code>, <code>"scorers"</code>, or <code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>content</code></td>
+<td><code>list[TimelineEvent | TimelineSpan]</code></td>
+<td>Child events and spans</td>
+</tr>
+<tr class="odd">
+<td><code>branches</code></td>
+<td><code>list[TimelineBranch]</code></td>
+<td>Discarded alternative paths</td>
+</tr>
+<tr class="even">
+<td><code>utility</code></td>
+<td><code>bool</code></td>
+<td>Whether this is a utility span (excluded from scanning)</td>
+</tr>
+<tr class="odd">
+<td><code>description</code></td>
+<td><code>str | None</code></td>
+<td>Optional description</td>
+</tr>
+</tbody>
+</table>
+<p>Properties: <code>start_time</code>, <code>end_time</code>, <code>total_tokens</code>.</p>
 </section>
-<section id="january-2026-1" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-1">0.4.10 (21 January 2026)</h2>
-<ul>
-<li>Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.</li>
-<li>Scan config: Set ‘model’ to <code>None</code> if no model is specified.</li>
-<li>Scan config: Deprecate use of environment variables for config (in favor of project config).</li>
-<li>Scout View: Move ‘Project’ UI button to main activity bar.</li>
-</ul>
+<section id="timelineevent" class="level4">
+<h4 class="anchored" data-anchor-id="timelineevent"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span></h4>
+<p>Wraps a single <code>Event</code> from the transcript.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 74%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>event</code></td>
+<td><code>Event</code></td>
+<td>The wrapped event (e.g., <code>ModelEvent</code>, <code>ToolEvent</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Properties: <code>start_time</code>, <code>end_time</code>, <code>total_tokens</code>.</p>
 </section>
-<section id="january-2026-2" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-2">0.4.9 (20 January 2026)</h2>
-<ul>
-<li>Bugfix: Don’t check index coverage when running with an active limit or other query filter.</li>
-<li>Bugfix: Correctly normalize relative database file paths.</li>
-</ul>
+<section id="timelinebranch" class="level4">
+<h4 class="anchored" data-anchor-id="timelinebranch"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span></h4>
+<p>A discarded alternative path from a branch point (re-rolled attempt).</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 25%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>forked_at</code></td>
+<td><code>str</code></td>
+<td>ID of the event where the branch diverged</td>
+</tr>
+<tr class="even">
+<td><code>content</code></td>
+<td><code>list[TimelineEvent | TimelineSpan]</code></td>
+<td>Events and spans in the discarded path</td>
+</tr>
+</tbody>
+</table>
+<p>Properties: <code>start_time</code>, <code>end_time</code>, <code>total_tokens</code>.</p>
 </section>
-<section id="january-2026-3" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-3">0.4.8 (18 January 2026)</h2>
-<ul>
-<li>Validation: Add support for defining and using named splits (e.g.&nbsp;‘dev’, ‘test’) for validation data.</li>
-<li>Validation: Add support for specifying per-case predicates within validation data.</li>
-<li>Add <code>message_count</code> as standard transcript metadata field.</li>
-<li>Bugfix: Correct async generator cleanup in AsyncBytesReader.</li>
-</ul>
+<section id="nesting-structure" class="level4">
+<h4 class="anchored" data-anchor-id="nesting-structure">Nesting Structure</h4>
+<p>The tree nests as: <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timeline">Timeline</a></span> → root <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span> → <code>content</code> (a mix of <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span> and child <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span> nodes). Each span can also have <code>branches</code> containing <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span> objects that capture discarded retries.</p>
 </section>
-<section id="january-2026-4" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-4">0.4.7 (16 January 2026)</h2>
-<ul>
-<li>Scout View: Editing UI for project settings.</li>
-<li>Scanning: Apply model config when resuming scans.</li>
-<li>Transcript DB: Warn when there is no index or the index is out of date.</li>
-<li>Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.</li>
-<li>CLI: Add <code>scout --version</code> to print current scout version.</li>
-</ul>
 </section>
-<section id="january-2026-5" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-5">0.4.6 (08 January 2026)</h2>
-<ul>
-<li>LLM Scanner: Add <code>value_to_float</code> option to for converting model reported values to numeric.</li>
-<li>Projects: Support local project config in <code>scout.local.yaml</code>.</li>
-<li>Transcripts: Enable use of SQL for specifying filters.</li>
-<li>Transcripts: Add <code>filter</code> field to scan job and project config.</li>
-<li>Scanning: Add <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#tool_callers">tool_callers()</a></span> helper function for mapping tool_call_id to assistant message.</li>
-<li>Rename <code>--results</code> option to <code>--scans</code>.</li>
-<li>Bugfix: Avoid <code>UnboundLocalError</code> by importing Inspect AI batch reporting functions directly.</li>
-<li>Bugfix: Fix issue with reading large numbers of rows from transcript database.</li>
-</ul>
 </section>
-<section id="january-2026-6" class="level2">
-<h2 class="anchored" data-anchor-id="january-2026-6">0.4.5 (03 January 2026)</h2>
-<ul>
-<li><a href="https://meridianlabs-ai.github.io/inspect_scout/projects.html">Projects</a> for centrally managing scanning configuration.</li>
-<li><a href="https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html">Grep Scanner</a> for pattern-based scanning of transcripts.</li>
-<li>Scanning: Add <code>--dry-run</code> option for previewing scanner counts.</li>
-<li>Scanners: Fixup type annotations in <span class="citation" data-cites="scanner">@scanner</span> decorator.</li>
-<li>Display: Add text progress and metrics support to <code>display="log"</code> mode.</li>
-<li>Transcript DB: Don’t remove orphaned data files.</li>
-<li>Transcript DB: Handle duplicate transcript ids while indexing.</li>
-<li>Transcript DB: Remove redundant TranscriptSource class (covered by AsyncIterable already).</li>
-<li>Bugfix: Store relative paths in transcript database index.</li>
-</ul>
-</section>
-<section id="december-2025" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025">0.4.4 (24 December 2025)</h2>
-<ul>
-<li>Bugfix: Restore compatibility with v1 view server API.</li>
-</ul>
-</section>
-<section id="december-2025-1" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-1">0.4.3 (22 December 2025)</h2>
-<ul>
-<li>Add more standard fields to the <a href="https://meridianlabs-ai.github.io/inspect_scout/db_schema.html">transcript database schema</a>.</li>
-<li>Add an optional index to transcript database for higher performance queries on very large databases.</li>
-<li>Add <code>as_json</code> option to <code>messages_as_str</code> for JSON output format.</li>
-<li>Persist transcripts.where() clauses as part of scan specification.</li>
-<li>Bugfix: Fix LLM answer parsing for decimals, negatives, and markdown.</li>
-</ul>
-</section>
-<section id="december-2025-2" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-2">0.4.2 (14 December 2025)</h2>
-<ul>
-<li>Scanning: Switch from <code>dill</code> to <code>cloudpickle</code> and restore default <code>max_processes</code> to 4 after resolving multiprocessing serialization issues.</li>
-<li>Track scan job completion status explicitly in the filesystem (vs.&nbsp;merely looking at whether buffer dir exists).</li>
-<li>Transcript databases: Include all <code>.parquet</code> files in directory (don’t require <code>transcripts_</code> prefix).</li>
-</ul>
-</section>
-<section id="december-2025-3" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-3">0.4.1 (12 December 2025)</h2>
-<ul>
-<li>Scan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).</li>
-<li>Scanning: Restore default <code>max_processes</code> to 1 while we resolve some multiprocessing serialization issues.</li>
-</ul>
-</section>
-<section id="december-2025-4" class="level2">
-<h2 class="anchored" data-anchor-id="december-2025-4">0.4.0 (11 December 2025)</h2>
-<ul>
-<li>Initial release.</li>
-</ul>
+<section id="filtering" class="level2">
+<h2 class="anchored" data-anchor-id="filtering">Filtering Timelines</h2>
+<p>Use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#filter_timeline">filter_timeline()</a></span> to create a new timeline containing only spans that match a predicate:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> build_timeline, filter_timeline</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>timeline <span class="op">=</span> build_timeline(events)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Keep only agent spans</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>agents_only <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">==</span> <span class="st">"agent"</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude scorer spans</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>no_scorers <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">!=</span> <span class="st">"scorers"</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude utility agents (single-turn helpers)</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>no_utility <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: <span class="kw">not</span> s.utility)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The filter recursively walks the span tree, pruning non-matching spans and their subtrees. <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span> items are always kept (they belong to the parent span). This is useful for pre-filtering a timeline before programmatic analysis.</p>
 
 
 </section>

@@ -71,6 +71,26 @@ value. There are several distinct `answer` types supported:
 | labels (multiple) | ANSWER: C, D      | `list[str]`           |
 | structured        | JSON object       | `dict[str,JsonValue]` |
 
+Note that passing `list[str]` prompts the model to select a **single**
+label. To allow **multiple** label selections, wrap the labels in
+`AnswerMultiLabel`:
+
+``` python
+from inspect_scout import AnswerMultiLabel
+
+@scanner(messages="all")
+def issue_categories() -> Scanner[Transcript]:
+    return llm_scanner(
+        question="What issues are present in this conversation?",
+        answer=AnswerMultiLabel(labels=[
+            "Factual error",
+            "Refusal",
+            "Off-topic response",
+            "Hallucination",
+        ])
+    )
+```
+
 For details on JSON object answers, see the [Structured
 Answers](#structured-answers) section below.
 
@@ -400,3 +420,85 @@ Dynamic questions are useful when:
 - You need to reference specific aspects of the conversation in your
   question
 - The same scanner needs to adapt its question based on context
+
+## Segmentation
+
+> [!NOTE]
+>
+> The transcript segmentation features described below are available
+> only in the development version of Inspect Scout. Install the
+> development version from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+### Context Window
+
+When a transcript’s message history exceeds the scanning model’s context
+window, `llm_scanner()` automatically segments the messages to fit
+within 80% of the model’s available context. Each segment is scanned
+independently with the same prompt, and results from multiple segments
+are combined using a **reducer**.
+
+The default reducer is selected based on the answer type:
+
+| Answer Type        | Default Reducer          |
+|--------------------|--------------------------|
+| `"boolean"`        | `ResultReducer.any`      |
+| `"numeric"`        | `ResultReducer.mean`     |
+| `"string"`         | `ResultReducer.llm()`    |
+| labels             | `ResultReducer.majority` |
+| `AnswerMultiLabel` | `ResultReducer.union`    |
+| `AnswerStructured` | `ResultReducer.last`     |
+
+You can override the reducer with a custom function or use
+`ResultReducer.llm()` for LLM-based synthesis of multi-segment results.
+
+Use the `context_window` option of `llm_scanner()` to set a custom
+threshold (again, the default is 80% of available context).
+
+### Compaction
+
+During long-running agent tasks, the agent framework may *compact* the
+conversation history—summarizing, trimming, or editing it—to stay within
+the model’s context window. These compaction events create natural
+boundaries in the message history.
+
+The `compaction` parameter controls how `llm_scanner()` handles these
+boundaries when extracting messages to scan:
+
+``` python
+# Scan all compaction regions (default)
+scanner = llm_scanner(
+    question="Analyze the full conversation for reward hacking issues.",
+    answer="boolean",
+    compaction="all",
+)
+
+# Scan only the final generation's messages
+scanner = llm_scanner(
+    question="Did the model produce a correct answer?",
+    answer="boolean",
+    compaction="last",
+)
+
+# Keep the last 3 compaction regions
+scanner = llm_scanner(
+    question="Summarize the key decisions made during the conversation.",
+    answer="string",
+    compaction=3,
+)
+```
+
+| Value | Behavior |
+|----|----|
+| `"all"` (default) | Merges across all compaction boundaries, reconstructing the full conversation for comprehensive analysis. |
+| `"last"` | Scans only the messages that led to the model’s final generation. Use this when earlier context is irrelevant or when you want to focus on the final answer. |
+| integer `n` | Keeps the last *n* compaction regions, merged together. Provides a middle ground between full coverage and recency focus. |
+
+Compaction determines *which* messages to extract; [context
+window](#context-window) segmentation then splits those messages to fit
+the scanner model’s context. The two work together sequentially:
+compaction selects the region of interest, then context window
+segmentation ensures each piece fits within the scanning model’s limits.

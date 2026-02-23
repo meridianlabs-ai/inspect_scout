@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>scout view – Inspect Scout</title>
+<title>scout import – Inspect Scout</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -30,8 +65,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/scout_trace.html" rel="next">
-<link href="../reference/scout_scan.html" rel="prev">
+<link href="../reference/scout_db.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -210,7 +244,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_view.html">scout view</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_import.html">scout import</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -926,7 +960,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">scout view</span></a>
   </div>
 </li>
@@ -944,7 +978,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scout_import.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/scout_import.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">scout import</span></a>
   </div>
 </li>
@@ -961,9 +995,9 @@ ul.task-list li input[type="checkbox"] {
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_view.html">scout view</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scout_scan.html">Scout CLI</a></li><li class="breadcrumb-item"><a href="../reference/scout_import.html">scout import</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">scout view</h1>
+<h1 class="title">scout import</h1>
 </div>
 
 
@@ -980,12 +1014,26 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <code>scout import</code> command described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pip install git<span class="op">+</span>https:<span class="op">//</span>github.com<span class="op">/</span>meridianlabs<span class="op">-</span>ai<span class="op">/</span>inspect_scout</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
 
 
-<p>View scan results.</p>
+<p>Import transcripts from a source.</p>
 <section id="usage" class="level4">
 <h4 class="anchored" data-anchor-id="usage">Usage</h4>
-<pre class="text"><code>scout view [OPTIONS] [PROJECT_DIR]</code></pre>
+<pre class="text"><code>scout import [OPTIONS] [SOURCE]</code></pre>
 </section>
 <section id="options" class="level4">
 <h4 class="anchored" data-anchor-id="options">Options</h4>
@@ -1008,37 +1056,49 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><code>-T</code>, <code>--transcripts</code></td>
 <td>text</td>
-<td>Location of transcripts to view.</td>
-<td></td>
+<td>Transcripts database directory.</td>
+<td><code>./transcripts</code></td>
 </tr>
 <tr class="even">
-<td><code>--scans</code></td>
-<td>text</td>
-<td>Location of scan results to view.</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td><code>--mode</code></td>
-<td>choice (<code>default</code> | <code>scans</code>)</td>
-<td>View display mode.</td>
-<td><code>default</code></td>
-</tr>
-<tr class="even">
-<td><code>--host</code></td>
-<td>text</td>
-<td>Tcp/Ip host for view server.</td>
-<td><code>127.0.0.1</code></td>
-</tr>
-<tr class="odd">
-<td><code>--port</code></td>
+<td><code>--limit</code></td>
 <td>integer</td>
-<td>Port to use for the view server.</td>
-<td><code>7576</code></td>
+<td>Maximum number of transcripts to import.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--from</code></td>
+<td>text</td>
+<td>Only import transcripts on or after this time (ISO 8601).</td>
+<td></td>
 </tr>
 <tr class="even">
-<td><code>--browser</code> / <code>--no-browser</code></td>
+<td><code>--to</code></td>
+<td>text</td>
+<td>Only import transcripts before this time (ISO 8601).</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>-P</code></td>
+<td>text</td>
+<td>Source parameter as name=value (repeatable).</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--sources</code></td>
 <td>boolean</td>
-<td>Open in web browser.</td>
+<td>List available sources and their parameters.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>--dry-run</code></td>
+<td>boolean</td>
+<td>Fetch and display summary without writing.</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>--overwrite</code></td>
+<td>boolean</td>
+<td>Overwrite existing transcripts directory without prompting.</td>
 <td></td>
 </tr>
 <tr class="odd">
@@ -1535,14 +1595,11 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/scout_scan.html" class="pagination-link" aria-label="Scout CLI">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Scout CLI</span>
+      <a href="../reference/scout_db.html" class="pagination-link" aria-label="scout db">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">scout db</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/scout_trace.html" class="pagination-link" aria-label="scout trace">
-        <span class="nav-page-text">scout trace</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->

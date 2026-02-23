@@ -23,7 +23,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scan.py#L184)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scan.py#L184)
 
 ``` python
 async def scan_async(
@@ -135,7 +135,7 @@ Deprecated arguments.
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scan.py#L369)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scan.py#L369)
 
 ``` python
 async def scan_resume_async(
@@ -160,7 +160,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scan.py#L437)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scan.py#L437)
 
 ``` python
 async def scan_complete_async(
@@ -179,7 +179,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -192,7 +192,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scanresults.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scanresults.py#L31)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -205,7 +205,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scanresults.py#L100)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scanresults.py#L100)
 
 ``` python
 async def scan_results_df_async(
@@ -237,7 +237,7 @@ reducing memory usage by skipping large unused columns.
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c4c4b277aff6b425adccf372e9b85ada21ae73a1/src/inspect_scout/_scanresults.py#L58)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/daed6a935acb830df8500740576c067fb8529cbc/src/inspect_scout/_scanresults.py#L58)
 
 ``` python
 async def scan_results_arrow_async(scan_location: str) -> ScanResultsArrow

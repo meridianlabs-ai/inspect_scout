@@ -31,7 +31,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./db_schema.html" rel="next">
-<link href="./validation.html" rel="prev">
+<link href="./scanner_tools.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -103,15 +103,19 @@ ul.task-list li input[type="checkbox"] {
     <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="./workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -121,13 +125,20 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="./results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="./validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -137,12 +148,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="./custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="./scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -199,7 +210,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts Database</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./db_overview.html">Transcripts</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -255,14 +266,8 @@ ul.task-list li input[type="checkbox"] {
       <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Workflow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./projects.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Projects</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -273,20 +278,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./scanners.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scanners</span></a>
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LLM Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Grep Scanner</span></a>
+  <a href="./projects.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Projects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -305,8 +304,43 @@ ul.task-list li input[type="checkbox"] {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true">
+ <span class="menu-text">Scanners</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grep Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom Scanners</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./scanner_tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanner Tools</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="./db_overview.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Transcripts Database</span></a>
+ <span class="menu-text">Transcripts</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -401,7 +435,7 @@ ul.task-list li input[type="checkbox"] {
 <ol type="1">
 <li><p><a href="./db_schema.html">Database Schema</a> — Documents the required and optional fields as well as data formats for transcript messages and events.</p></li>
 <li><p><a href="./db_capturing.html">Capturing Transcripts</a> — Describes how to capture transcripts from running LLM code using the <code>@observe</code> decorator / context-manager.</p></li>
-<li><p><a href="./db_importing.html">Importing Transcripts</a> — Covers building a database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and custom sources using the import API.</p></li>
+<li><p><a href="./db_importing.html">Importing Transcripts</a> — Covers building a database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, Claude Code, and custom sources using the import API.</p></li>
 </ol>
 </section>
 <section id="publishing-transcripts" class="level2">
@@ -855,8 +889,8 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./validation.html" class="pagination-link" aria-label="Validation">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Validation</span>
+      <a href="./scanner_tools.html" class="pagination-link" aria-label="Scanner Tools">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Scanner Tools</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

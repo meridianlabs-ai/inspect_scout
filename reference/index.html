@@ -102,15 +102,19 @@ ul.task-list li input[type="checkbox"] {
     <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="../scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="../workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -120,13 +124,20 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="../results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="../validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="../llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -136,12 +147,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="../custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="../validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="../scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -300,8 +311,8 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#status" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Status</span></a>
+  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanSpec</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -448,6 +459,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptInfo</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Transcripts</span></a>
   </div>
@@ -516,6 +533,78 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
  <span class="menu-text">log_columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcript_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">segment_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">span_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MessagesSegment</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#build_timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">build_timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#filter_timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">filter_timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">timeline_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Timeline</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinebranch" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineBranch</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelineevent" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineEvent</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineMessages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinespan" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineSpan</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -603,6 +692,54 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#message_numbering" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">message_numbering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#scanner_prompt" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scanner_prompt</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#generate_answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">generate_answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#parse_answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">parse_answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#resultreducer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ResultReducer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answer" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Answer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answer_type" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">answer_type</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#answerspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">AnswerSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#answermultilabel" class="sidebar-item-text sidebar-link">
  <span class="menu-text">AnswerMultiLabel</span></a>
   </div>
@@ -647,6 +784,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#eventtype" class="sidebar-item-text sidebar-link">
  <span class="menu-text">EventType</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanner.html#transcriptcontent" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptContent</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -700,6 +843,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="../reference/sources.html#logfire" class="sidebar-item-text sidebar-link">
  <span class="menu-text">logfire</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/sources.html#claude_code" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">claude_code</span></a>
   </div>
 </li>
       </ul>
@@ -792,6 +941,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">scout db</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_import.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout import</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -805,7 +960,7 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#python-api" id="toc-python-api" class="nav-link active" data-scroll-target="#python-api">Python API</a></li>
-  <li><a href="#scount-cli" id="toc-scount-cli" class="nav-link" data-scroll-target="#scount-cli">Scount CLI</a></li>
+  <li><a href="#scout-cli" id="toc-scout-cli" class="nav-link" data-scroll-target="#scout-cli">Scout CLI</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -866,8 +1021,8 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="scount-cli" class="level4">
-<h4 class="anchored" data-anchor-id="scount-cli">Scount CLI</h4>
+<section id="scout-cli" class="level4">
+<h4 class="anchored" data-anchor-id="scout-cli">Scout CLI</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 25%">

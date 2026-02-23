@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./llm_scanner.html" rel="next">
-<link href="./transcripts.html" rel="prev">
+<link href="./transcripts.html" rel="next">
+<link href="./workflow.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -138,15 +138,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link active" href="./index.html" aria-current="page"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./examples.html"> 
-<span class="menu-text">Examples</span></a>
-  </li>  
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Using</span>
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="./scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="./workflow.html">
  <span class="dropdown-text">Workflow</span></a>
@@ -156,13 +160,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Projects</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./transcripts.html">
- <span class="dropdown-text">Transcripts</span></a>
+    <a class="dropdown-item" href="./results.html">
+ <span class="dropdown-text">Results</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./scanners.html">
- <span class="dropdown-text">Scanners</span></a>
+    <a class="dropdown-item" href="./validation.html">
+ <span class="dropdown-text">Validation</span></a>
   </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
         <li>
     <a class="dropdown-item" href="./llm_scanner.html">
  <span class="dropdown-text">LLM Scanner</span></a>
@@ -172,12 +183,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="dropdown-text">Grep Scanner</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./results.html">
- <span class="dropdown-text">Results</span></a>
+    <a class="dropdown-item" href="./custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./validation.html">
- <span class="dropdown-text">Validation</span></a>
+    <a class="dropdown-item" href="./scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
     </ul>
   </li>
@@ -290,14 +301,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Workflow</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./projects.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Projects</span></a>
+  <a href="./scanners.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Scanners</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -308,20 +313,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./scanners.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Scanners</span></a>
+  <a href="./workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Workflow</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LLM Scanner</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Grep Scanner</span></a>
+  <a href="./projects.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Projects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -340,8 +339,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true">
+ <span class="menu-text">Scanners</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./llm_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LLM Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./grep_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grep Scanner</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom Scanners</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./scanner_tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanner Tools</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="./db_overview.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcripts Database</span></a>
+ <span class="menu-text">Transcripts</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -390,29 +424,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#scanner-basics" id="toc-scanner-basics" class="nav-link" data-scroll-target="#scanner-basics">Scanner Basics</a>
-  <ul class="collapse">
-  <li><a href="#input-types" id="toc-input-types" class="nav-link" data-scroll-target="#input-types">Input Types</a></li>
-  <li><a href="#input-filtering" id="toc-input-filtering" class="nav-link" data-scroll-target="#input-filtering">Input Filtering</a></li>
-  </ul></li>
-  <li><a href="#transcripts" id="toc-transcripts" class="nav-link" data-scroll-target="#transcripts">Transcripts</a>
-  <ul class="collapse">
-  <li><a href="#transcript-fields" id="toc-transcript-fields" class="nav-link" data-scroll-target="#transcript-fields">Transcript Fields</a></li>
-  <li><a href="#content-filtering" id="toc-content-filtering" class="nav-link" data-scroll-target="#content-filtering">Content Filtering</a></li>
-  <li><a href="#presenting-messages" id="toc-presenting-messages" class="nav-link" data-scroll-target="#presenting-messages">Presenting Messages</a></li>
-  </ul></li>
-  <li><a href="#multiple-results" id="toc-multiple-results" class="nav-link" data-scroll-target="#multiple-results">Multiple Results</a></li>
-  <li><a href="#events" id="toc-events" class="nav-link" data-scroll-target="#events">Event Scanners</a></li>
-  <li><a href="#messages" id="toc-messages" class="nav-link" data-scroll-target="#messages">Message Scanners</a></li>
-  <li><a href="#scanner-metrics" id="toc-scanner-metrics" class="nav-link" data-scroll-target="#scanner-metrics">Scanner Metrics</a>
-  <ul class="collapse">
-  <li><a href="#result-sets" id="toc-result-sets" class="nav-link" data-scroll-target="#result-sets">Result Sets</a></li>
-  </ul></li>
-  <li><a href="#scanners-as-scorers" id="toc-scanners-as-scorers" class="nav-link" data-scroll-target="#scanners-as-scorers">Scanners as Scorers</a>
-  <ul class="collapse">
-  <li><a href="#metrics" id="toc-metrics" class="nav-link" data-scroll-target="#metrics">Metrics</a></li>
-  </ul></li>
-  <li><a href="#loaders" id="toc-loaders" class="nav-link" data-scroll-target="#loaders">Custom Loaders</a></li>
+  <li><a href="#using-scanners" id="toc-using-scanners" class="nav-link" data-scroll-target="#using-scanners">Using Scanners</a></li>
+  <li><a href="#llm-scanner" id="toc-llm-scanner" class="nav-link" data-scroll-target="#llm-scanner">LLM Scanner</a></li>
+  <li><a href="#grep-scanner" id="toc-grep-scanner" class="nav-link" data-scroll-target="#grep-scanner">Grep Scanner</a></li>
+  <li><a href="#custom-scanners" id="toc-custom-scanners" class="nav-link" data-scroll-target="#custom-scanners">Custom Scanners</a></li>
+  <li><a href="#scan-jobs" id="toc-scan-jobs" class="nav-link" data-scroll-target="#scan-jobs">Scan Jobs</a></li>
+  <li><a href="#learning-more" id="toc-learning-more" class="nav-link" data-scroll-target="#learning-more">Learning More</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -440,403 +457,178 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types (<span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>, <code>ChatMessage</code>, or <code>Event</code>) as well as creating custom loaders which enable scanning of lists of events or messages.</p>
-<p>This article goes in depth on custom scanner development. If you are looking for a straightforward high-level way to create an LLM-based scanner see the <a href="./llm_scanner.html">LLM Scanner</a> documentation.</p>
-<p>Notet that you can also use scanners directly as Inspect scorers (see <a href="#scanners-as-scorers">Scanners as Scorers</a> for details).</p>
+<p>Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover using the high-level scanners provided with Scout (<a href="#llm-scanner">LLM Scanner</a> and <a href="#grep-scanner">Grep Scanner</a>) as well as the basics of creating custom scanners.</p>
 </section>
-<section id="scanner-basics" class="level2">
-<h2 class="anchored" data-anchor-id="scanner-basics">Scanner Basics</h2>
-<p>A <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> is a function that takes a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> (typically a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>, but possibly an <code>Event</code>, <code>ChatMessage</code>, or list of events or messages) and returns a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span>.</p>
-<p>The result includes a <code>value</code> which can be of any type—this might be <code>True</code> to indicate that something was found but might equally be a number to indicate a count. More elaborate scanner values (<code>dict</code> or <code>list</code>) are also possible.</p>
-<p>Here is a simple scanner that uses a model to look for agent “confusion”—whether or not it finds confusion, it still returns the model completion as an <code>explanation</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> confusion() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(transcript: Transcript) <span class="op">-&gt;</span> Result:</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># call model</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> <span class="cf">await</span> get_model().generate(</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Here is a transcript of an LLM agent "</span> <span class="op">+</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            <span class="st">"solving a puzzle:</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">"==================================="</span> <span class="op">+</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">await</span> messages_as_str(transcript) <span class="op">+</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            <span class="st">"===================================</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            <span class="st">"In the transcript above do you see the "</span> <span class="op">+</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            <span class="st">"agent becoming confused? Respond "</span> <span class="op">+</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">"beginning with 'Yes' or 'No', followed "</span> <span class="op">+</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">"by an explanation."</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="co"># extract the first word</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> re.match(<span class="vs">r"</span><span class="dv">^\w</span><span class="op">+</span><span class="vs">"</span>, output.completion.strip())</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="co"># return result</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            answer <span class="op">=</span> match.group(<span class="dv">0</span>)</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span>answer.lower() <span class="op">==</span> <span class="st">"yes"</span>,</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>                answer<span class="op">=</span>answer,</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span>output.completion,</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This scanner illustrates some of the lower-level mechanics of building custom scanners. You can also use the higher level <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> to implement this in far fewer lines of code:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript, llm_scanner, scanner</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> confusion() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"In the transcript above do you see "</span> <span class="op">+</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">"the agent becoming confused?"</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="input-types" class="level3">
-<h3 class="anchored" data-anchor-id="input-types">Input Types</h3>
-<p><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> is the most common <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scannerinput">ScannerInput</a></span> however several other types are possible:</p>
+<section id="using-scanners" class="level2">
+<h2 class="anchored" data-anchor-id="using-scanners">Using Scanners</h2>
+<p>We’ll cover defining various types of scanners below—first though let’s describe how scanners are used in Scout.</p>
+<p>Scanners are defined either in Python source file or Python package, and are passed as the first argument to <code>scout scan</code>. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--model</span> openai/gpt-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or from Python:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scan</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scanner <span class="im">import</span> my_scanner</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> scan(</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    scanners<span class="op">=</span>[my_scanner()],</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    transcripts<span class="op">=</span><span class="st">"./logs"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    model<span class="op">=</span><span class="st">"openai/gpt-5"</span> </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Once a scan is complete you can view its results by running <code>scout view</code> or by computing on the data frame(s) returned in <code>results</code>.</p>
+<p>Note that if you want run multiple scanners at once you can either pass a list of scanners to the <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scan">scan()</a></span> function or define a scan job (see <a href="#scan-jobs">Scan Jobs</a> below for details).</p>
+</section>
+<section id="llm-scanner" class="level2">
+<h2 class="anchored" data-anchor-id="llm-scanner">LLM Scanner</h2>
+<p>For many applications you can use the high-level <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>, which uses a model for transcript analysis and can be customized with many options. For example:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scanner.py</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" data-filename="scanner.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Scanner, Transcript, llm_scanner, scanner</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ctf_environment() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"In the transcript above do you detect "</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"instances of environment misconfiguration "</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"preventing the agent from completing it's task?"</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the <a href="./llm_scanner.html">LLM Scanner</a> article.</p>
+</section>
+<section id="grep-scanner" class="level2">
+<h2 class="anchored" data-anchor-id="grep-scanner">Grep Scanner</h2>
+<p>Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#grep_scanner">grep_scanner()</a></span>. For example, here we search assistant messages for references to phrases that might indicate secrets:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Transcript, grep_scanner, scanner</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> secrets() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grep_scanner([<span class="st">"password"</span>, <span class="st">"secret"</span>, <span class="st">"token"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For additional details on using this scanner, see the <a href="./grep_scanner.html">Grep Scanner</a> article.</p>
+</section>
+<section id="custom-scanners" class="level2">
+<h2 class="anchored" data-anchor-id="custom-scanners">Custom Scanners</h2>
+<p>If the higher level LLM and Grep scanners don’t meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scanner.py</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="annotated-cell-5" data-filename="scanner.py"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-5-1"><a href="#annotated-cell-5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> (</span>
+<span id="annotated-cell-5-2"><a href="#annotated-cell-5-2" aria-hidden="true" tabindex="-1"></a>    Result, Scanner, Transcript, scanner, message_numbering</span>
+<span id="annotated-cell-5-3"><a href="#annotated-cell-5-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="annotated-cell-5-4"><a href="#annotated-cell-5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-5"><a href="#annotated-cell-5-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.model <span class="im">import</span> get_model</span>
+<span id="annotated-cell-5-6"><a href="#annotated-cell-5-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="annotated-cell-5-7"><a href="#annotated-cell-5-7" aria-hidden="true" tabindex="-1"></a></span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="1">1</button><span id="annotated-cell-5-8" class="code-annotation-target"><a href="#annotated-cell-5-8" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
+<span id="annotated-cell-5-9"><a href="#annotated-cell-5-9" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ctf_environment() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
+<span id="annotated-cell-5-10"><a href="#annotated-cell-5-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="annotated-cell-5-11"><a href="#annotated-cell-5-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(transcript: Transcript) <span class="op">-&gt;</span> Result:</span>
+<span id="annotated-cell-5-12"><a href="#annotated-cell-5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-13"><a href="#annotated-cell-5-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># setup message numbering</span></span>
+<span id="annotated-cell-5-14"><a href="#annotated-cell-5-14" aria-hidden="true" tabindex="-1"></a>        messages_as_str, extract_refs <span class="op">=</span> message_numbering()</span>
+<span id="annotated-cell-5-15"><a href="#annotated-cell-5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-16"><a href="#annotated-cell-5-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># call model</span></span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="2">2</button><span id="annotated-cell-5-17" class="code-annotation-target"><a href="#annotated-cell-5-17" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> <span class="cf">await</span> get_model().generate(</span>
+<span id="annotated-cell-5-18"><a href="#annotated-cell-5-18" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Here is a transcript of an LLM agent "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-19"><a href="#annotated-cell-5-19" aria-hidden="true" tabindex="-1"></a>            <span class="st">"solving a cybersecurity challenge:</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="3">3</button><span id="annotated-cell-5-20" class="code-annotation-target"><a href="#annotated-cell-5-20" aria-hidden="true" tabindex="-1"></a>            <span class="st">"==================================="</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-21"><a href="#annotated-cell-5-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">await</span> messages_as_str(transcript.messages) <span class="op">+</span></span>
+<span id="annotated-cell-5-22"><a href="#annotated-cell-5-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">"===================================</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-23"><a href="#annotated-cell-5-23" aria-hidden="true" tabindex="-1"></a>            <span class="st">"In the transcript above do you detect any "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-24"><a href="#annotated-cell-5-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">"instances of environment misconfiguration "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-25"><a href="#annotated-cell-5-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">"preventing the agent from completing its "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-26"><a href="#annotated-cell-5-26" aria-hidden="true" tabindex="-1"></a>            <span class="st">"task? If no, simply respond with 'No'. "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-27"><a href="#annotated-cell-5-27" aria-hidden="true" tabindex="-1"></a>            <span class="st">"If yes, respond with 'Yes' followed by an "</span> <span class="op">+</span></span>
+<span id="annotated-cell-5-28"><a href="#annotated-cell-5-28" aria-hidden="true" tabindex="-1"></a>            <span class="st">"explanation."</span></span>
+<span id="annotated-cell-5-29"><a href="#annotated-cell-5-29" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="annotated-cell-5-30"><a href="#annotated-cell-5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-31"><a href="#annotated-cell-5-31" aria-hidden="true" tabindex="-1"></a>        <span class="co"># extract the first word</span></span>
+<span id="annotated-cell-5-32"><a href="#annotated-cell-5-32" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> re.match(<span class="vs">r"</span><span class="dv">^\w</span><span class="op">+</span><span class="vs">"</span>, output.completion.strip())</span>
+<span id="annotated-cell-5-33"><a href="#annotated-cell-5-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-34"><a href="#annotated-cell-5-34" aria-hidden="true" tabindex="-1"></a>        <span class="co"># return result</span></span>
+<span id="annotated-cell-5-35"><a href="#annotated-cell-5-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
+<span id="annotated-cell-5-36"><a href="#annotated-cell-5-36" aria-hidden="true" tabindex="-1"></a>            answer <span class="op">=</span> match.group(<span class="dv">0</span>)</span>
+<span id="annotated-cell-5-37"><a href="#annotated-cell-5-37" aria-hidden="true" tabindex="-1"></a>            explanation <span class="op">=</span> output.completion</span>
+<button class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="4">4</button><span id="annotated-cell-5-38" class="code-annotation-target"><a href="#annotated-cell-5-38" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
+<span id="annotated-cell-5-39"><a href="#annotated-cell-5-39" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span>answer.lower() <span class="op">==</span> <span class="st">"yes"</span>,</span>
+<span id="annotated-cell-5-40"><a href="#annotated-cell-5-40" aria-hidden="true" tabindex="-1"></a>                answer<span class="op">=</span>answer,</span>
+<span id="annotated-cell-5-41"><a href="#annotated-cell-5-41" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span>explanation,</span>
+<span id="annotated-cell-5-42"><a href="#annotated-cell-5-42" aria-hidden="true" tabindex="-1"></a>                references<span class="op">=</span>extract_refs(explanation)</span>
+<span id="annotated-cell-5-43"><a href="#annotated-cell-5-43" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="annotated-cell-5-44"><a href="#annotated-cell-5-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="annotated-cell-5-45"><a href="#annotated-cell-5-45" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
+<span id="annotated-cell-5-46"><a href="#annotated-cell-5-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-47"><a href="#annotated-cell-5-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<dl class="code-annotation-container-hidden code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-5" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-cell="annotated-cell-5" data-code-lines="8" data-code-annotation="1">Scanners are decorated with <code>@scanner</code> so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.</span>
+</dd>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-cell="annotated-cell-5" data-code-lines="17" data-code-annotation="2">Scanners frequently use models to perform scanning. Calling <code>get_model()</code> utilizes the default model for the scan job (which can be specified in the top level call to scan).</span>
+</dd>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-cell="annotated-cell-5" data-code-lines="20,21,22" data-code-annotation="3">Convert the message history into a string for presentation to the model. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function takes a <code>Transcript | list[Messages]</code> and will by default remove system messages from the message list. See <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> for other available options.</span>
+</dd>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="4">4</dt>
+<dd>
+<span data-code-cell="annotated-cell-5" data-code-lines="38,39,40,41,42,43" data-code-annotation="4">As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).</span>
+</dd>
+</dl>
+<p>For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on <a href="./custom_scanner.html">Custom Scanners</a>.</p>
+</section>
+<section id="scan-jobs" class="level2">
+<h2 class="anchored" data-anchor-id="scan-jobs">Scan Jobs</h2>
+<p>You may want to import scanners from other modules and compose them into a <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scanjob">ScanJob</a></span>. To do this, add a <code>@scanjob</code> decorated function to your source file (it will be used in preference to <code>@scanner</code> decorated functions).</p>
+<p>A <span class="element-type-name ref-interlink"><a href="./reference/scanning.html#scanjob">ScanJob</a></span> can also include <code>transcripts</code> or any other option that you can pass to <code>scout scan</code> (e.g.&nbsp;<code>model</code>). For example:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scanning.py</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" data-filename="scanning.py"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ScanJob, scanjob</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanjob</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> job() <span class="op">-&gt;</span> ScanJob:</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ScanJob(</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        scanners<span class="op">=</span>[ctf_environment(), java_tool_usages()],</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        transcripts<span class="op">=</span><span class="st">"./logs"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span><span class="st">"openai/gpt-5"</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>You can then use the same command to run the job (<code>scout scan</code> will prefer a <code>@scanjob</code> defined in a file to individual scanners):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanning.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:</p>
+<div class="code-with-filename">
+<div class="code-with-filename-file">
+<pre><strong>scan.yaml</strong></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" data-filename="scan.yaml"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">scanners</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> deception</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> java_tool_usages</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">file</span><span class="kw">:</span><span class="at"> scanner.py</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">transcripts</span><span class="kw">:</span><span class="at"> logs</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="fu">filter</span><span class="kw">:</span><span class="at"> task_set='cybench'</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="fu">model</span><span class="kw">:</span><span class="at"> openai/gpt-5</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Which can be executed with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scan.yaml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="learning-more" class="level2">
+<h2 class="anchored" data-anchor-id="learning-more">Learning More</h2>
+<p>To learn more about using and developing scanners, see the following articles:</p>
 <ul>
-<li><p><code>Event</code> — Single event from the transcript (e.g.&nbsp;<code>ModelEvent</code>, <code>ToolEvent</code>, etc.).</p></li>
-<li><p><code>ChatMessage</code> — Single chat message from the transcript message history.</p></li>
-<li><p><code>list[Event]</code> or <code>list[ChatMessage]</code> — Arbitrary sets of events or messages extracted from the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> (see <a href="#loaders">Loaders</a> below for details).</p></li>
+<li><p><a href="./llm_scanner.html">LLM Scanner</a>: High level scanner for using models to read transcripts.</p></li>
+<li><p><a href="./grep_scanner.html">Grep Scanner</a>: High level scanner for pattern matching in transcripts.</p></li>
+<li><p><a href="./custom_scanner.html">Custom Scanners</a>: Comprehensive documentation on creating custom scanners.</p></li>
+<li><p><a href="./scanner_tools.html">Scanner Tools</a>: Create custom scanners with the same tools used under the hood by <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>.</p></li>
 </ul>
-<p>See the sections on <a href="#transcripts">Transcripts</a>, <a href="#events">Events</a>, <a href="#messages">Messages</a>, and <a href="#loaders">Loaders</a> below for additional details on handling various input types.</p>
-</section>
-<section id="input-filtering" class="level3">
-<h3 class="anchored" data-anchor-id="input-filtering">Input Filtering</h3>
-<p>One important principle of the Inspect Scout transcript pipeline is that only the precise data to be scanned should be read, and nothing more. This can dramatically improve performance as messages and events that won’t be seen by scanners are never deserialized. Scanner input filters are specified as arguments to the <code>@scanner</code> decorator (you may have noticed the <code>messages="all"</code> attached to the scanner decorator in the example above).</p>
-<p>For example, here we are looking for instances of assistants swearing—for this task we only need to look at assistant messages so we specify <code>messages=["assistant"]</code></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> assistant_swearing() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(transcript: Transcript) <span class="op">-&gt;</span> Result:</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        swear_words <span class="op">=</span> [</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>            word </span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> m <span class="kw">in</span> transcript.messages </span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> word <span class="kw">in</span> extract_swear_words(m.text)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        ]</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Result(</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>            value<span class="op">=</span><span class="bu">len</span>(swear_words),</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            explanation<span class="op">=</span><span class="st">","</span>.join(swear_words)</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>With this filter, only assistant messages (and no events at all) will be loaded from transcripts during scanning.</p>
-<p>Note that by default, no filters are active, so if you don’t specify values for <code>messages</code> and/or <code>events</code> your scanner will not be called!</p>
-</section>
-</section>
-<section id="transcripts" class="level2">
-<h2 class="anchored" data-anchor-id="transcripts">Transcripts</h2>
-<p>Transcripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have <code>samples * epochs</code> transcripts. If you are reading from another source, each agent trace will yield a single <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>.</p>
-<section id="transcript-fields" class="level3">
-<h3 class="anchored" data-anchor-id="transcript-fields">Transcript Fields</h3>
-<p>Here are the available <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> fields:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 20%">
-<col style="width: 30%">
-<col style="width: 50%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Field</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>transcript_id</code></td>
-<td>str</td>
-<td>Globally unique identifier for a transcript (maps to <code>EvalSample.uuid</code> in Inspect logs).</td>
-</tr>
-<tr class="even">
-<td><code>source_type</code></td>
-<td>str</td>
-<td>Type of transcript source (e.g.&nbsp;“eval_log”, “weave”, etc.).</td>
-</tr>
-<tr class="odd">
-<td><code>source_id</code></td>
-<td>str</td>
-<td>Globally unique identifier for a transcript source (maps to <code>eval_id</code> in Inspect logs)</td>
-</tr>
-<tr class="even">
-<td><code>source_uri</code></td>
-<td>str</td>
-<td>URI for source data (e.g.&nbsp;full path to the Inspect log file).</td>
-</tr>
-<tr class="odd">
-<td><code>date</code></td>
-<td>iso</td>
-<td>Date/time when the transcript was created.</td>
-</tr>
-<tr class="even">
-<td><code>task_set</code></td>
-<td>str</td>
-<td>Set from which transcript task was drawn (e.g.&nbsp;Inspect task name or benchmark name)</td>
-</tr>
-<tr class="odd">
-<td><code>task_id</code></td>
-<td>str</td>
-<td>Identifier for task (e.g.&nbsp;dataset sample id).</td>
-</tr>
-<tr class="even">
-<td><code>task_repeat</code></td>
-<td>int</td>
-<td>Repeat for a given task id within a task set (e.g.&nbsp;epoch).</td>
-</tr>
-<tr class="odd">
-<td><code>agent</code></td>
-<td>str</td>
-<td>Agent used to to execute task.</td>
-</tr>
-<tr class="even">
-<td><code>agent_args</code></td>
-<td>dict <br><small>JSON</small></td>
-<td>Arguments passed to create agent.</td>
-</tr>
-<tr class="odd">
-<td><code>model</code></td>
-<td>str</td>
-<td>Main model used by agent.</td>
-</tr>
-<tr class="even">
-<td><code>model_options</code></td>
-<td>dict <br><small>JSON</small></td>
-<td>Generation options for main model.</td>
-</tr>
-<tr class="odd">
-<td><code>score</code></td>
-<td>JsonValue<br><small>JSON</small></td>
-<td>Value indicating score on task.</td>
-</tr>
-<tr class="even">
-<td><code>success</code></td>
-<td>bool</td>
-<td>Boolean reduction of <code>score</code> to succeeded/failed.</td>
-</tr>
-<tr class="odd">
-<td><code>message_count</code></td>
-<td>int</td>
-<td>Total messages in conversation.</td>
-</tr>
-<tr class="even">
-<td><code>total_time</code></td>
-<td>number</td>
-<td>Time required to execute task (seconds)</td>
-</tr>
-<tr class="odd">
-<td><code>total_tokens</code></td>
-<td>number</td>
-<td>Tokens spent in execution of task.</td>
-</tr>
-<tr class="even">
-<td><code>error</code></td>
-<td>str</td>
-<td>Error message that terminated the task.</td>
-</tr>
-<tr class="odd">
-<td><code>limit</code></td>
-<td>str</td>
-<td>Limit that caused the task to exit (e.g.&nbsp;“tokens”, “messages, etc.)</td>
-</tr>
-<tr class="even">
-<td><code>metadata</code></td>
-<td>dict[str, JsonValue]</td>
-<td>Transcript source specific metadata (e.g.&nbsp;model, task name, errors, epoch, dataset sample id, limits, etc.).</td>
-</tr>
-<tr class="odd">
-<td><code>messages</code></td>
-<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages">list[ChatMessage]</a></td>
-<td>Message history.</td>
-</tr>
-<tr class="even">
-<td><code>events</code></td>
-<td><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html">list[Event]</a></td>
-<td>Event history (e.g.&nbsp;model events, tool events, etc.)</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="content-filtering" class="level3">
-<h3 class="anchored" data-anchor-id="content-filtering">Content Filtering</h3>
-<p>Note that the <code>messages</code> and <code>events</code> fields will not be populated unless you specify a <code>messages</code> or <code>events</code> filter on your scanner. For example, this scanner will see all messages and events:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, events<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This scanner will see only model and tool events:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(events<span class="op">=</span>[<span class="st">"model"</span>, <span class="st">"tool"</span>])</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This scanner will see only assistant messages:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span>[<span class="st">"assistant"</span>])</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="presenting-messages" class="level3">
-<h3 class="anchored" data-anchor-id="presenting-messages">Presenting Messages</h3>
-<p>When processing transcripts, you will often want to present an entire message history to model for analysis. Above, we used the <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function to do this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># call model</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> <span class="cf">await</span> get_model().generate(</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Here is a transcript of an LLM agent "</span> <span class="op">+</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"solving a puzzle:</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"==================================="</span> <span class="op">+</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> messages_as_str(transcript) <span class="op">+</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"===================================</span><span class="ch">\n\n</span><span class="st">"</span> <span class="op">+</span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"In the transcript above do you see the agent "</span> <span class="op">+</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"becoming confused? Respond beginning with 'Yes' "</span> <span class="op">+</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"or 'No', followed by an explanation."</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> function takes a <code>Transcript | list[ChatMessage]</code> and will by default remove system messages from the message list. See <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> for other available options.</p>
-</section>
-</section>
-<section id="multiple-results" class="level2">
-<h2 class="anchored" data-anchor-id="multiple-results">Multiple Results</h2>
-<p>Scanners can return multiple results as a list. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> [</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    Result(label<span class="op">=</span><span class="st">"deception"</span>, value<span class="op">=</span><span class="va">True</span>, explanation<span class="op">=</span><span class="st">"..."</span>),</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    Result(label<span class="op">=</span><span class="st">"misconfiguration"</span>, value<span class="op">=</span><span class="va">True</span>, explanation<span class="op">=</span><span class="st">"..."</span>)</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This is useful when a scanner is capable of making several types of observation. In this case it’s also important to indicate the origin of the result (i.e.&nbsp;which class of observation is is), which you can do using the <code>label</code> field (note that <code>label</code> can repeat multiple times in a set, so e.g.&nbsp;you could have multiple results with <code>label="deception"</code>).</p>
-<p>When a list is returned, each individual result will yield its own row in the <a href="./results.html#data-frames">results data frame</a>.</p>
-<p>When validating scanners that return lists of results, you can use <a href="./validation.html#result-set-validation">result set validation</a> to specify expected values for each label independently.</p>
-</section>
-<section id="events" class="level2">
-<h2 class="anchored" data-anchor-id="events">Event Scanners</h2>
-<p>To write a scanner that targets events, write a function that takes the event type(s) you want to process. For example, this scanner will see only model events:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[ModelEvent]:</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> scan(event: ModelEvent) <span class="op">-&gt;</span> Result: </span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that the <code>events="model"</code> filter was not required since we had already declared our scanner to take only model events. If we wanted to take both model and tool events we’d do this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[ModelEvent <span class="op">|</span> ToolEvent]:</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> scan(event: ModelEvent <span class="op">|</span> ToolEvent) <span class="op">-&gt;</span> Result: </span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="messages" class="level2">
-<h2 class="anchored" data-anchor-id="messages">Message Scanners</h2>
-<p>To write a scanner that targets messages, write a function that takes the message type(s) you want to process. For example, this scanner will only see tool messages:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[ChatMessageTool]:</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> scan(message: ChatMessageTool) <span class="op">-&gt;</span> Result: </span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This scanner will see only user and assistant messages:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[ChatMessageUser <span class="op">|</span> ChatMessageAssistant]:</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> scan(message: ChatMessageUser <span class="op">|</span> ChatMessageAssistant) <span class="op">-&gt;</span> Result: </span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        ...</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="scanner-metrics" class="level2">
-<h2 class="anchored" data-anchor-id="scanner-metrics">Scanner Metrics</h2>
-<p>You can add metrics to scanners to aggregate result values. Metrics are computed during scanning and available as part of the scan results. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.scorer <span class="im">import</span> mean</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, metrics<span class="op">=</span>[mean()])</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> efficiency() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"On a scale of 1 to 10, how efficiently did the assistant perform?"</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"numeric"</span>,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that we import the <code>mean</code> metric from <code>inspect_ai</code>. You can use any standard Inspect metric or create custom metrics, and can optionally include more than one metric (e.g.&nbsp;<code>stderr</code>).</p>
-<p>See the Inspect documentation on <a href="https://inspect.aisi.org.uk/scorers.html#built-in-metrics">Built in Metrics</a> and <a href="https://inspect.aisi.org.uk/scorers.html#custom-metrics">Custom Metrics</a> for additional details.</p>
-<section id="result-sets" class="level3">
-<h3 class="anchored" data-anchor-id="result-sets">Result Sets</h3>
-<p>If your scanner yields <a href="#multiple-results">multiple results</a> you can still use it as a scorer, but you will want to provide a dictionary of metrics corresponding to the labels used by your results. For example, if you have a scanner that can yield results with <code>label="deception"</code> or <code>label="misconfiguration"</code>, you might declare your metrics like this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, metrics<span class="op">=</span>[{ <span class="st">"deception"</span>: [mean(), stderr()], <span class="st">"misconfiguration"</span>: [mean(), stderr()] }])</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Or you can use a glob (*) to use the same metrics for all labels:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, metrics<span class="op">=</span>[{ <span class="st">"*"</span>: [mean(), stderr()] }])</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You should also be sure to return a result for each supported label (so that metrics can be computed correctly on each row).</p>
-</section>
-</section>
-<section id="scanners-as-scorers" class="level2">
-<h2 class="anchored" data-anchor-id="scanners-as-scorers">Scanners as Scorers</h2>
-<p>You may have noticed that scanners are very similar to Inspect <a href="https://inspect.aisi.org.uk/scorers.html">Scorers</a>. This is by design, and it is actually possible to use scanners directly as Inspect scorers.</p>
-<p>For example, for the <code>confusion()</code> scorer we implemented above:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> confusion() <span class="op">-&gt;</span> Scanner[Transcript]:</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(transcript: Transcript) <span class="op">-&gt;</span> Result:</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># model call eluded for brevity</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> get_model(...)</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        <span class="co"># extract the first word</span></span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> re.match(<span class="vs">r"</span><span class="dv">^\w</span><span class="op">+</span><span class="vs">"</span>, output.completion.strip())</span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>        <span class="co"># return result</span></span>
-<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
-<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>            answer <span class="op">=</span> match.group(<span class="dv">0</span>)</span>
-<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(</span>
-<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>                value<span class="op">=</span>answer.lower() <span class="op">==</span> <span class="st">"yes"</span>,</span>
-<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>                answer<span class="op">=</span>answer,</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>                explanation<span class="op">=</span>output.completion,</span>
-<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> Result(value<span class="op">=</span><span class="va">False</span>, explanation<span class="op">=</span>output.completion)</span>
-<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>We can use this directly in an Inspect <code>Task</code> as follows:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> confusion</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="at">@task</span></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mytask():</span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Task(</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        ...,</span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        scorer <span class="op">=</span> confusion()</span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>We can also use it with the <code>inspect score</code> command:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">inspect</span> score <span class="at">--scorer</span> scanners.py@confusion logfile.eval</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="metrics" class="level3">
-<h3 class="anchored" data-anchor-id="metrics">Metrics</h3>
-<p>The metrics used for the scorer will default to <code>mean()</code> and <code>stderr()</code>—however, you can also explicitly specify metrics on the <code>@scanner</code> decorator:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>, metrics<span class="op">=</span>[mean(), bootstrap_stderr()])</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> confusion() <span class="op">-&gt;</span> Scanner[Transcript]: ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you are interfacing with code that expects only <code>Scorer</code> instances, you can also use the <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#as_scorer">as_scorer()</a></span> function from Inspect Scout to explicitly convert your scanner to a scorer:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai <span class="im">import</span> <span class="bu">eval</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> as_scorer</span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .mytasks <span class="im">import</span> ctf_task</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> confusion</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="bu">eval</span>(ctf_task(scorer<span class="op">=</span>as_scorer(confusion())))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If your scanner yields <a href="#multiple-results">multiple results</a> see the discussion above on <a href="#result-sets">Result Sets</a> for details on how to specify metrics for this case.</p>
-</section>
-</section>
-<section id="loaders" class="level2">
-<h2 class="anchored" data-anchor-id="loaders">Custom Loaders</h2>
-<p>When you want to process multiple discrete items from a <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#loader">Loader</a></span> that yields the content as required.</p>
-<p>For example, here is a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#loader">Loader</a></span> that yields user/assistant message pairs:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">@loader</span>(messages<span class="op">=</span>[<span class="st">"user"</span>, <span class="st">"assistant"</span>])</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> conversation_turns():</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> load(</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>        transcript: Transcript</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="op">-&gt;</span> AsyncIterator[<span class="bu">list</span>[ChatMessage], <span class="va">None</span>]:</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>        </span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> user,assistant <span class="kw">in</span> message_pairs(transcript.messages):</span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">yield</span> [user, assistant]</span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> load</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Note that just like with scanners, the loader still needs to provide a <code>messages=["user", "assistant"]</code> in order to see those messages.</p>
-<p>We can now use this loader in a scanner that looks for refusals:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(loader<span class="op">=</span>conversation_turns())</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> assistant_refusals() <span class="op">-&gt;</span> Scanner[<span class="bu">list</span>[ChatMessage]]:</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">async</span> <span class="kw">def</span> scan(messages: <span class="bu">list</span>[ChatMessage]) <span class="op">-&gt;</span> Result:</span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>        user, assistant <span class="op">=</span> messages</span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Result(</span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>            value<span class="op">=</span>is_refusal(assistant.text), </span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>            explanation<span class="op">=</span>messages_as_str(messages)</span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -1285,13 +1077,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./transcripts.html" class="pagination-link" aria-label="Transcripts">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Transcripts</span>
+      <a href="./workflow.html" class="pagination-link" aria-label="Using Scout">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Using Scout</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./llm_scanner.html" class="pagination-link" aria-label="LLM Scanner">
-        <span class="nav-page-text">LLM Scanner</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./transcripts.html" class="pagination-link" aria-label="Transcripts">
+        <span class="nav-page-text">Transcripts</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

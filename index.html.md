@@ -8,12 +8,14 @@ transcripts. With Scout, you can easily:
 
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
-2.  Analyze transcripts from Inspect Evals, Arize Phoenix, LangSmith,
-    Logfire, or custom sources via the capture and import APIs.
+2.  Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire,
+    Claude Code, or custom sources via the capture and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.
-5.  Scale to thousands of transcripts with parallel processing,
+5.  Handle complex scanning requirements like multi-agent transcripts,
+    compaction, and context-window chunking.
+6.  Scale to thousands of transcripts with parallel processing,
     batching, and fault tolerance.
 
 ### Installation
@@ -44,7 +46,7 @@ scanners. Some core components we’ll make use of here include:
 
 ### LLM Scanner
 
-For many application you can use the high-level `llm_scanner()`, which
+For many applications you can use the high-level `llm_scanner()`, which
 uses a model for transcript analysis and can be customized with many
 options. For example:
 
@@ -86,7 +88,7 @@ def secrets() -> Scanner[Transcript]:
 For additional details on using this scanner, see the [Grep
 Scanner](grep_scanner.qmd) article.
 
-### Custom Scanner
+### Custom Scanners
 
 If the higher level LLM and Grep scanners don’t meet your requirements,
 you can write a custom scanners with whatever behavior you need. For
@@ -97,7 +99,7 @@ scanner (click on the numbers at right for further explanation):
 
 ``` python
 from inspect_scout import (
-    Result, Scanner, Transcript, scanner, messages_as_str
+    Result, Scanner, Transcript, scanner, message_numbering
 )
 
 from inspect_ai.model import get_model
@@ -108,12 +110,15 @@ def ctf_environment() -> Scanner[Transcript]:
     
     async def scan(transcript: Transcript) -> Result:
 
+        # setup message numbering
+        messages_as_str, extract_refs = message_numbering()
+
         # call model
         output = await get_model().generate(
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
             "===================================" +
-            await messages_as_str(transcript) +
+            await messages_as_str(transcript.messages) +
             "===================================\n\n" +
             "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
@@ -129,10 +134,12 @@ def ctf_environment() -> Scanner[Transcript]:
         # return result
         if match:
             answer = match.group(0)
+            explanation = output.completion
             return Result(
                 value=answer.lower() == "yes",
                 answer=answer,
-                explanation=output.completion,
+                explanation=explanation,
+                references=extract_refs(explanation)
             )
         else:
             return Result(value=False, explanation=output.completion)
@@ -145,25 +152,25 @@ Scanners are decorated with `@scanner` so they can specify the exact
 subset of content they need to read. In this case only messages (and not
 events) will be read from the log, decreasing load time.
 
-Line 14  
+Line 17  
 Scanners frequently use models to perform scanning. Calling
 `get_model()` utilizes the default model for the scan job (which can be
 specified in the top level call to scan).
 
-Lines 17-19  
+Lines 20-22  
 Convert the message history into a string for presentation to the model.
 The `messages_as_str()` function takes a `Transcript | list[Messages]`
 and will by default remove system messages from the message list. See
 `MessagesPreprocessor` for other available options.
 
-Lines 34-38  
+Lines 38-43  
 As with scorers, results also include additional context (here the
-extracted answer and full model completion).
+extracted answer, full model completion, and message references).
 
-Above we used only the `messages` field from the `transcript`, but
-`Transcript` includes many other fields with additional context. See
-[Transcript Fields](transcripts.qmd#transcript-fields) for additional
-details.
+For more details on creating custom scanners, including scanning
+individual messages or events, handling compaction and context overflow,
+and computing metrics, see the article on [Custom
+Scanners](custom_scanner.qmd).
 
 ### Running a Scan
 
@@ -472,6 +479,10 @@ you can use to tune parallelism:
 Above we provided a high-level tour of Scout features. See the following
 articles to learn more about using Scout:
 
+- [Scanners](scanners.qmd): Basics of using scanners including the
+  high-level [LLM Scanner](llm_scanner.qmd) and [Grep
+  Scanner](grep_scanner.qmd).
+
 - [Examples](examples.qmd): Example implementations of various types of
   scanners.
 
@@ -481,14 +492,9 @@ articles to learn more about using Scout:
 - [Transcripts](transcripts.qmd): Reading and filtering transcripts for
   scanning.
 
-- [LLM Scanner](llm_scanner.qmd) and [Grep Scanner](grep_scanner.qmd):
-  Higher-level scanners for model and pattern-based scanning of
-  transcripts.
-
 - [Workflow](workflow.qmd): Workflow for the stages of a transcript
   analysis project.
 
 There is also more in depth documentation available on
-[Scanners](scanners.qmd), [Results](results.qmd),
-[Validation](validation.qmd) and [Transcript
+[Results](results.qmd), [Validation](validation.qmd) and [Transcript
 Databases](db_overview.qmd).

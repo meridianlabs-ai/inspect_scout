@@ -40,8 +40,8 @@ These articles cover transcript databases in more depth:
     context-manager.
 
 3.  [Importing Transcripts](db_importing.qmd) — Covers building a
-    database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and
-    custom sources using the import API.
+    database from Inspect Logs, Arize Phoenix, LangSmith, Logfire,
+    Claude Code, and custom sources using the import API.
 
 ## Publishing Transcripts
 

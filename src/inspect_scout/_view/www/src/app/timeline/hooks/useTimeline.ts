@@ -448,6 +448,15 @@ export function useTimeline(timeline: Timeline): TimelineState {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
+
+        // Two-step back: if a child is explicitly selected, clear the
+        // selection first (returning to the default/parent selection).
+        // Only pop a path segment when there's no explicit selection.
+        if (next.has(kSelectedParam)) {
+          next.delete(kSelectedParam);
+          return next;
+        }
+
         if (pathString) {
           const segments = pathString.split("/");
           segments.pop();
@@ -458,7 +467,6 @@ export function useTimeline(timeline: Timeline): TimelineState {
             next.delete(kPathParam);
           }
         }
-        next.delete(kSelectedParam);
         return next;
       },
       { replace: true }

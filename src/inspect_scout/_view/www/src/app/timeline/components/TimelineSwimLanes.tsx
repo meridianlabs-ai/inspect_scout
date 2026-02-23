@@ -409,7 +409,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
       <button
         className={styles.breadcrumbBack}
         onClick={onGoUp}
-        disabled={atRoot}
+        disabled={atRoot && !showSelection}
         title="Go up one level (Escape)"
       >
         <i className={ApplicationIcons.navbar.back} />

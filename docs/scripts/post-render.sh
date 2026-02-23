@@ -1,6 +1,6 @@
 #!/bin/bash
 
-files=("index" "examples" "workflow" "projects" "transcripts" "scanners" "results" "validation"  "llm_scanner" "grep_scanner" "custom_scanner" "scanner_tools" "timelines" "db_overview" "db_schema" "db_capturing" "db_importing" "db_publishing" "reference/scanning" "reference/transcript" "reference/scanner" "reference/async") 
+files=("index" "examples" "workflow" "projects" "transcripts" "scanners" "results" "validation"  "llm_scanner" "grep_scanner" "custom_scanner" "scanner_tools" "db_overview" "db_schema" "db_capturing" "db_importing" "db_publishing" "reference/scanning" "reference/transcript" "reference/scanner" "reference/async") 
 
 
 if [ "$QUARTO_PROJECT_RENDER_ALL" = "1" ]; then

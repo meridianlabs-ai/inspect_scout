@@ -425,7 +425,7 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
             {i > 0 && (
               <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
             )}
-            {isLast ? (
+            {isLast && !showSelection ? (
               <button
                 className={styles.breadcrumbCurrent}
                 onClick={() => onNavigate(segment.path)}

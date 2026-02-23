@@ -332,6 +332,7 @@
   border: none;
   cursor: pointer;
   color: var(--vscode-foreground);
+  font-weight: 600;
   font-size: var(--inspect-font-size-base);
   padding: 0 2px;
 }
@@ -341,7 +342,8 @@
 }
 
 .breadcrumbSelection {
-  color: var(--vscode-descriptionForeground);
+  color: var(--vscode-foreground);
+  font-weight: 600;
   font-size: var(--inspect-font-size-base);
   padding: 0 2px;
 }
@@ -349,7 +351,7 @@
 .breadcrumbDivider {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
-  padding: 0 1px;
+  padding: 0 1px 0 3px;
 }
 
 /* Token cell */

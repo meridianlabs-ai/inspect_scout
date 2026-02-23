@@ -320,11 +320,20 @@ def build_timeline(events: list[Event]) -> Timeline:
         solvers_span = top_spans.get("solvers")
         scorers_span = top_spans.get("scorers")
 
-        # Build init events (flattened into root content)
-        init_events: list[TimelineEvent] = []
+        # Build init span
+        init_span_obj: TimelineSpan | None = None
         if init_span:
             flat_events = event_sequence(init_span.children)
-            init_events = [TimelineEvent(event=e) for e in flat_events]
+            init_content: list[TimelineEvent | TimelineSpan] = [
+                TimelineEvent(event=e) for e in flat_events
+            ]
+            if init_content:
+                init_span_obj = TimelineSpan(
+                    id=init_span.id,
+                    name="Init",
+                    span_type="init",
+                    content=init_content,
+                )
 
         # Build agent node from solvers
         agent_node = (
@@ -351,10 +360,10 @@ def build_timeline(events: list[Event]) -> Timeline:
         if agent_node is not None:
             _classify_spans(agent_node, has_explicit_branches)
 
-            # Fold init events into the beginning of agent content
-            if init_events:
-                init_content: list[TimelineEvent | TimelineSpan] = list(init_events)
-                agent_node.content = init_content + agent_node.content
+            # Prepend init span to agent content
+            if init_span_obj:
+                prepended: list[TimelineEvent | TimelineSpan] = [init_span_obj]
+                agent_node.content = prepended + agent_node.content
 
             # Append scoring as a child span
             if scoring_span:
@@ -363,7 +372,9 @@ def build_timeline(events: list[Event]) -> Timeline:
             root = agent_node
         else:
             # No solvers span — build root from init + scoring
-            root_content: list[TimelineEvent | TimelineSpan] = list(init_events)
+            root_content: list[TimelineEvent | TimelineSpan] = []
+            if init_span_obj:
+                root_content.append(init_span_obj)
             if scoring_span:
                 root_content.append(scoring_span)
             root = TimelineSpan(

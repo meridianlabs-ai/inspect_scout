@@ -468,26 +468,18 @@ function assertTimelineMatches(
 ): void {
   const root = actual.root;
 
-  // Check init: init events are now in the root content
+  // Check init: init events are in a TimelineSpan with spanType="init"
   if (expected.init !== null) {
     const expectedUuids = expected.init.event_uuids;
     if (expectedUuids.length > 0) {
-      const actualInitUuids: string[] = [];
-      for (const item of root.content) {
-        if (item.type === "event") {
-          if (item.event.uuid) {
-            actualInitUuids.push(item.event.uuid);
-          }
-          if (actualInitUuids.length >= expectedUuids.length) {
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-      expect(actualInitUuids.slice(0, expectedUuids.length)).toEqual(
-        expectedUuids
-      );
+      const firstItem = root.content[0];
+      expect(firstItem).toBeDefined();
+      expect(firstItem?.type).toBe("span");
+      const initSpan = firstItem as TimelineSpan;
+      expect(initSpan.spanType).toBe("init");
+      expect(initSpan.name).toBe("Init");
+      const actualUuids = getDirectEventUuids(initSpan);
+      expect(actualUuids).toEqual(expectedUuids);
     }
   }
 
@@ -496,14 +488,9 @@ function assertTimelineMatches(
     expect(root.id).toBe(expected.agent.id);
     expect(root.name).toBe(expected.agent.name);
 
-    // Check event UUIDs (excluding init events and scoring span)
+    // Check event UUIDs (excluding init and scoring spans)
     if (expected.agent.event_uuids !== undefined) {
-      let actualUuids = getDirectEventUuids(root);
-      // Filter out init UUIDs if init was present
-      if (expected.init !== null) {
-        const initUuidSet = new Set(expected.init.event_uuids);
-        actualUuids = actualUuids.filter((u) => !initUuidSet.has(u));
-      }
+      const actualUuids = getDirectEventUuids(root);
       expect(actualUuids).toEqual(expected.agent.event_uuids);
     }
 
@@ -536,10 +523,11 @@ function assertTimelineMatches(
       }
     }
 
-    // Check children if specified (filter out scorer spans)
+    // Check children if specified (filter out scorer and init spans)
     if (expected.agent.children !== undefined) {
       const childSpans = root.content.filter(
-        (c): c is TimelineSpan => c.type === "span" && c.spanType !== "scorers"
+        (c): c is TimelineSpan =>
+          c.type === "span" && c.spanType !== "scorers" && c.spanType !== "init"
       );
       expect(childSpans.length).toBe(expected.agent.children.length);
       for (let i = 0; i < expected.agent.children.length; i++) {
@@ -551,22 +539,13 @@ function assertTimelineMatches(
 
     // Check content_structure if specified
     if (expected.agent.content_structure !== undefined) {
-      // Filter out init events and scorer spans from content for structure check
-      let contentToCheck = root.content;
-      if (expected.init !== null && expected.init.event_uuids.length > 0) {
-        const initUuidSet = new Set(expected.init.event_uuids);
-        contentToCheck = contentToCheck.filter(
-          (item) =>
-            !(
-              item.type === "event" &&
-              item.event.uuid &&
-              initUuidSet.has(item.event.uuid)
-            )
-        );
-      }
-      // Filter out scorer spans
-      contentToCheck = contentToCheck.filter(
-        (item) => !(item.type === "span" && item.spanType === "scorers")
+      // Filter out init and scorer spans from content for structure check
+      const contentToCheck = root.content.filter(
+        (item) =>
+          !(
+            item.type === "span" &&
+            (item.spanType === "scorers" || item.spanType === "init")
+          )
       );
 
       expect(contentToCheck.length).toBe(

@@ -1246,10 +1246,21 @@ export function buildTimeline(events: Event[]): Timeline {
     const solversSpan = topSpans.get("solvers");
     const scorersSpan = topSpans.get("scorers");
 
-    // Build init events (flattened into root content)
-    const initEvents: TimelineEvent[] = initSpan
-      ? eventSequence(initSpan.children).map((e) => createTimelineEvent(e))
-      : [];
+    // Build init span
+    let initSpanObj: TimelineSpan | null = null;
+    if (initSpan) {
+      const initContent = eventSequence(initSpan.children).map((e) =>
+        createTimelineEvent(e)
+      );
+      if (initContent.length > 0) {
+        initSpanObj = createTimelineSpan(
+          initSpan.id,
+          "Init",
+          "init",
+          initContent
+        );
+      }
+    }
 
     // Build agent node from solvers
     const agentNode = solversSpan
@@ -1278,9 +1289,9 @@ export function buildTimeline(events: Event[]): Timeline {
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);
 
-      // Fold init events into the beginning of agent content
-      if (initEvents.length > 0) {
-        agentNode.content = [...initEvents, ...agentNode.content];
+      // Prepend init span to agent content
+      if (initSpanObj) {
+        agentNode.content = [initSpanObj, ...agentNode.content];
         // Recompute timing
         agentNode.startTime = minStartTime(agentNode.content);
         agentNode.endTime = maxEndTime(agentNode.content);
@@ -1297,7 +1308,10 @@ export function buildTimeline(events: Event[]): Timeline {
       root = agentNode;
     } else {
       // No solvers span — build root from init + scoring
-      const rootContent: (TimelineEvent | TimelineSpan)[] = [...initEvents];
+      const rootContent: (TimelineEvent | TimelineSpan)[] = [];
+      if (initSpanObj) {
+        rootContent.push(initSpanObj);
+      }
       if (scoringSpan) {
         rootContent.push(scoringSpan);
       }

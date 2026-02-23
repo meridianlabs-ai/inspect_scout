@@ -501,29 +501,21 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
     """
     root = actual.root
 
-    # Check init: init events are now in the root content, verified by
-    # checking they exist as the first events if expected
+    # Check init: init events are in a TimelineSpan with span_type="init"
     expected_init = expected.get("init")
     if expected_init is not None:
-        # Verify init events exist at the beginning of root content
         expected_uuids = expected_init.get("event_uuids", [])
         if expected_uuids:
-            # Init events should be TimelineEvents at the start of root content
-            actual_init_uuids: list[str] = []
-            for item in root.content:
-                if isinstance(item, TimelineEvent):
-                    uuid = getattr(item.event, "uuid", None)
-                    if uuid:
-                        actual_init_uuids.append(uuid)
-                    if len(actual_init_uuids) >= len(expected_uuids):
-                        break
-                else:
-                    break
-            # The init UUIDs should appear at the start
-            assert actual_init_uuids[: len(expected_uuids)] == expected_uuids, (
+            first_item = root.content[0]
+            assert isinstance(first_item, TimelineSpan), (
+                "Expected first content item to be init span"
+            )
+            assert first_item.span_type == "init"
+            assert first_item.name == "Init"
+            actual_uuids = get_event_uuids(first_item)
+            assert actual_uuids == expected_uuids, (
                 f"init event UUIDs mismatch: "
-                f"got {actual_init_uuids[: len(expected_uuids)]}, "
-                f"expected {expected_uuids}"
+                f"got {actual_uuids}, expected {expected_uuids}"
             )
 
     # Check agent (now root)
@@ -536,13 +528,9 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
             f"root name mismatch: got {root.name}, expected {expected_agent['name']}"
         )
 
-        # Check event UUIDs (excluding init events and scoring span)
+        # Check event UUIDs (excluding init and scoring spans)
         if "event_uuids" in expected_agent:
             actual_uuids = get_event_uuids(root)
-            # Filter out init UUIDs if init was present
-            if expected_init and "event_uuids" in expected_init:
-                init_uuid_set = set(expected_init["event_uuids"])
-                actual_uuids = [u for u in actual_uuids if u not in init_uuid_set]
             assert actual_uuids == expected_agent["event_uuids"], (
                 f"agent event UUIDs mismatch: "
                 f"got {actual_uuids}, expected {expected_agent['event_uuids']}"
@@ -586,7 +574,9 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
             actual_children = [
                 item
                 for item in root.content
-                if isinstance(item, TimelineSpan) and item.span_type != "scorers"
+                if isinstance(item, TimelineSpan)
+                and item.span_type != "scorers"
+                and item.span_type != "init"
             ]
             expected_children = expected_agent["children"]
             assert len(actual_children) == len(expected_children), (

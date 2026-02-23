@@ -80,11 +80,14 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
   // Helper function to update both store and URL
   const handleTabChange = (tabId: string) => {
     setSelectedResultsTab(tabId);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", tabId);
-      return next;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tabId);
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const selectedResultsView =

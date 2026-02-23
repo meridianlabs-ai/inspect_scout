@@ -65,6 +65,14 @@
   display: flex;
 }
 
+.eventsTabContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
 .eventsOutline {
   padding-left: 0.5rem;
   padding-top: 0.8rem;

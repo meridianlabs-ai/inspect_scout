@@ -31,10 +31,12 @@ import {
 import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
+import { TimelineSwimLanes } from "../timeline/components/TimelineSwimLanes";
 import { messagesToStr } from "../utils/messages";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
+import { useTranscriptTimeline } from "./hooks/useTranscriptTimeline";
 import styles from "./TranscriptBody.module.css";
 import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
 
@@ -132,14 +134,24 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const { excludedEventTypes, isDebugFilter, isDefaultFilter } =
     useTranscriptColumnFilter();
 
+  // Timeline swimlanes pipeline
+  const {
+    timeline: timelineData,
+    state: timelineState,
+    layouts: timelineLayouts,
+    selectedEvents,
+    minimapSelection,
+    hasTimeline,
+  } = useTranscriptTimeline(transcript.events);
+
   const filteredEvents = useMemo(() => {
     if (excludedEventTypes.length === 0) {
-      return transcript.events;
+      return selectedEvents;
     }
-    return transcript.events.filter((event) => {
+    return selectedEvents.filter((event) => {
       return !excludedEventTypes.includes(event.event);
     });
-  }, [transcript.events, excludedEventTypes]);
+  }, [selectedEvents, excludedEventTypes]);
 
   // Transcript event data
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
@@ -324,6 +336,8 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   ];
 
   if (transcript.events && transcript.events.length > 0) {
+    const atRoot = timelineState.breadcrumbs.length <= 1;
+
     tabPanels.push(
       <TabPanel
         key="transcript-events"
@@ -336,40 +350,64 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
         scrollable={false}
       >
-        <div
-          className={clsx(
-            styles.eventsContainer,
-            outlineCollapsed ? styles.outlineCollapsed : undefined
+        <div className={styles.eventsTabContent}>
+          {hasTimeline && timelineData && (
+            <TimelineSwimLanes
+              layouts={timelineLayouts}
+              selected={timelineState.selected}
+              node={timelineState.node}
+              onSelect={timelineState.select}
+              onDrillDown={timelineState.drillDown}
+              onBranchDrillDown={timelineState.drillDown}
+              onGoUp={timelineState.goUp}
+              minimap={{
+                root: timelineData.root,
+                selection: minimapSelection,
+              }}
+              breadcrumb={{
+                breadcrumbs: timelineState.breadcrumbs,
+                atRoot,
+                onGoUp: timelineState.goUp,
+                onNavigate: timelineState.navigateTo,
+                selected: timelineState.selected,
+              }}
+            />
           )}
-        >
-          <StickyScroll
-            scrollRef={scrollRef}
-            className={styles.eventsOutline}
-            offsetTop={40}
-          >
-            {!outlineCollapsed && (
-              <TranscriptOutline
-                eventNodes={eventNodes}
-                defaultCollapsedIds={defaultCollapsedIds}
-                scrollRef={scrollRef}
-              />
+          <div
+            className={clsx(
+              styles.eventsContainer,
+              outlineCollapsed ? styles.outlineCollapsed : undefined
             )}
-            <div
-              className={styles.outlineToggle}
-              onClick={() => toggleOutline(!outlineCollapsed)}
+          >
+            <StickyScroll
+              scrollRef={scrollRef}
+              className={styles.eventsOutline}
+              offsetTop={40}
             >
-              <i className={ApplicationIcons.sidebar} />
-            </div>
-          </StickyScroll>
-          <div className={styles.eventsSeparator} />
-          <TranscriptViewNodes
-            id={"transcript-events-list"}
-            eventNodes={eventNodes}
-            defaultCollapsedIds={defaultCollapsedIds}
-            initialEventId={eventParam}
-            className={styles.eventsList}
-            scrollRef={scrollRef}
-          />
+              {!outlineCollapsed && (
+                <TranscriptOutline
+                  eventNodes={eventNodes}
+                  defaultCollapsedIds={defaultCollapsedIds}
+                  scrollRef={scrollRef}
+                />
+              )}
+              <div
+                className={styles.outlineToggle}
+                onClick={() => toggleOutline(!outlineCollapsed)}
+              >
+                <i className={ApplicationIcons.sidebar} />
+              </div>
+            </StickyScroll>
+            <div className={styles.eventsSeparator} />
+            <TranscriptViewNodes
+              id={"transcript-events-list"}
+              eventNodes={eventNodes}
+              defaultCollapsedIds={defaultCollapsedIds}
+              initialEventId={eventParam}
+              className={styles.eventsList}
+              scrollRef={scrollRef}
+            />
+          </div>
         </div>
         <TranscriptFilterPopover
           showing={transcriptFilterShowing}

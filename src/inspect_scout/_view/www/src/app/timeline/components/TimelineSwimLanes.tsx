@@ -50,7 +50,7 @@ interface TimelineSwimLanesProps {
   breadcrumb?: BreadcrumbRowProps;
 }
 
-interface BreadcrumbRowProps {
+export interface BreadcrumbRowProps {
   breadcrumbs: BreadcrumbSegment[];
   atRoot: boolean;
   onGoUp: () => void;

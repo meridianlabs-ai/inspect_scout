@@ -149,10 +149,10 @@ function drillableChildCount(span: RowSpan): number {
  */
 export function formatTokenCount(tokens: number): string {
   if (tokens >= 1_000_000) {
-    return `${formatPrettyDecimal(tokens / 1_000_000)}M`;
+    return `${formatPrettyDecimal(tokens / 1_000_000, 1)}M`;
   }
   if (tokens >= 1_000) {
-    return `${formatPrettyDecimal(tokens / 1_000)}k`;
+    return `${formatPrettyDecimal(tokens / 1_000, 1)}k`;
   }
   return String(tokens);
 }

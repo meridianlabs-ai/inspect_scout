@@ -7342,7 +7342,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 /* Self-contained minimap — flex row: mode label + bar area */
 
-._container_1tfzg_3 {
+._container_x8kp4_3 {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -7356,7 +7356,7 @@ span.ap-marker-container:hover span.ap-marker {
  * Stable-width label — renders both time/token values in a CSS grid stack.
  * The cell sizes to the wider value; only the active one is visible.
  */
-._stableLabel_1tfzg_17 {
+._stableLabel_x8kp4_17 {
   display: grid;
   font-size: 0.6rem;
   line-height: 1.4;
@@ -7367,23 +7367,23 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._stableLabel_1tfzg_17 > * {
+._stableLabel_x8kp4_17 > * {
   grid-area: 1 / 1;
 }
 
-._alignRight_1tfzg_32 {
+._alignRight_x8kp4_32 {
   justify-items: end;
 }
 
-._alignLeft_1tfzg_36 {
+._alignLeft_x8kp4_36 {
   justify-items: start;
 }
 
-._hidden_1tfzg_40 {
+._hidden_x8kp4_40 {
   visibility: hidden;
 }
 
-._minimap_1tfzg_44 {
+._minimap_x8kp4_44 {
   position: relative;
   height: 18px;
   flex: 1;
@@ -7391,7 +7391,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
-._track_1tfzg_52 {
+._track_x8kp4_52 {
   position: absolute;
   left: 0;
   right: 0;
@@ -7404,7 +7404,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Selection region fill — highlight between markers on the track */
-._regionFill_1tfzg_65 {
+._regionFill_x8kp4_65 {
   position: absolute;
   top: 50%;
   height: 2px;
@@ -7415,7 +7415,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Vertical bar markers at selection boundaries */
-._marker_1tfzg_76 {
+._marker_x8kp4_76 {
   position: absolute;
   top: 50%;
   height: 9px;
@@ -7427,7 +7427,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Section duration pill centered between the two markers */
-._sectionTime_1tfzg_88 {
+._sectionTime_x8kp4_88 {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -7438,7 +7438,7 @@ span.ap-marker-container:hover span.ap-marker {
   user-select: none;
 }
 
-._sectionTimePill_1tfzg_99 {
+._sectionTimePill_x8kp4_99 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);
@@ -7449,6 +7449,19 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
+}
+
+/* Scroll playhead — vertical line tracking the user's position */
+._playhead_x8kp4_113 {
+  position: absolute;
+  top: 50%;
+  height: 100%;
+  width: 1px;
+  background-color: var(--vscode-foreground);
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 0.15s ease-out;
 }
 ._swimlane_57cb3_1 {
   --swimlane-row-height: 18px;

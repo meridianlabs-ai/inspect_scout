@@ -19,6 +19,8 @@ export interface TimelineMinimapProps {
   root: TimelineSpan;
   /** Currently selected swimlane row, if any. */
   selection?: MinimapSelection;
+  /** Scroll playhead position as a percentage (0-100). */
+  scrollPercent?: number;
 }
 
 /**
@@ -30,6 +32,7 @@ export interface TimelineMinimapProps {
 export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
   selection,
+  scrollPercent,
 }) => {
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
@@ -84,6 +87,14 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
       {/* Bar area */}
       <div className={styles.minimap}>
         <div className={styles.track} />
+
+        {/* Scroll playhead — rendered early so it paints behind labels */}
+        {scrollPercent != null && (
+          <div
+            className={styles.playhead}
+            style={{ left: `${scrollPercent}%` }}
+          />
+        )}
 
         {/* Selection region fill between markers */}
         {showRegion && (

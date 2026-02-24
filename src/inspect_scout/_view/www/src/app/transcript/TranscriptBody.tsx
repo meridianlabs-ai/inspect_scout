@@ -187,6 +187,111 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     false
   );
 
+  // Scroll playhead — track the topmost visible event and interpolate
+  // between it and the next event for smooth, sub-element positioning.
+  const eventNodeTimestamps = useMemo(() => {
+    const list: { id: string; time: number }[] = [];
+    const traverse = (nodes: EventNode[]) => {
+      for (const node of nodes) {
+        if (node.event.timestamp) {
+          list.push({
+            id: node.id,
+            time: new Date(node.event.timestamp).getTime(),
+          });
+        }
+        if (node.children.length > 0) traverse(node.children);
+      }
+    };
+    traverse(eventNodes);
+    return list;
+  }, [eventNodes]);
+
+  const [scrollPercent, setScrollPercent] = useState<number | undefined>();
+
+  useEffect(() => {
+    const container = scrollRef?.current;
+    if (!container || !timelineData || eventNodeTimestamps.length === 0) return;
+
+    const rootStart = timelineData.root.startTime.getTime();
+    const rootRange = timelineData.root.endTime.getTime() - rootStart;
+    if (rootRange <= 0) return;
+
+    // Build a lookup from id → index for O(1) access
+    const idToIndex = new Map<string, number>();
+    for (let i = 0; i < eventNodeTimestamps.length; i++) {
+      const entry = eventNodeTimestamps[i];
+      if (entry) idToIndex.set(entry.id, i);
+    }
+
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const topOffset = 40;
+        const containerRect = container.getBoundingClientRect();
+        const detectionY = containerRect.top + topOffset;
+
+        // Find the topmost visible tracked element and interpolate
+        // within it towards the next element's timestamp.
+        let bestIdx = -1;
+        let bestTop = -Infinity;
+        for (const { id } of eventNodeTimestamps) {
+          const el = container.querySelector(`#${CSS.escape(id)}`);
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          // Element must be at or above the detection line
+          if (rect.top <= detectionY && rect.top > bestTop) {
+            bestTop = rect.top;
+            const idx = idToIndex.get(id);
+            if (idx != null) bestIdx = idx;
+          }
+        }
+
+        const first = eventNodeTimestamps[0];
+        if (bestIdx === -1) {
+          // Nothing above detection line — use first element
+          if (!first) return;
+          const pct = ((first.time - rootStart) / rootRange) * 100;
+          setScrollPercent(Math.max(0, Math.min(100, pct)));
+          return;
+        }
+
+        const current = eventNodeTimestamps[bestIdx];
+        if (!current) return;
+        const next = eventNodeTimestamps[bestIdx + 1];
+
+        if (!next) {
+          // Last element — snap to its timestamp
+          const pct = ((current.time - rootStart) / rootRange) * 100;
+          setScrollPercent(Math.max(0, Math.min(100, pct)));
+          return;
+        }
+
+        // Interpolate between current and next based on how far the
+        // current element has scrolled past the detection line.
+        const el = container.querySelector(`#${CSS.escape(current.id)}`);
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const progress = Math.max(
+          0,
+          Math.min(1, (detectionY - rect.top) / Math.max(rect.height, 1))
+        );
+
+        const lerpedTime = current.time + progress * (next.time - current.time);
+        const pct = ((lerpedTime - rootStart) / rootRange) * 100;
+        setScrollPercent(Math.max(0, Math.min(100, pct)));
+      });
+    };
+
+    onScroll();
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [scrollRef, timelineData, eventNodeTimestamps]);
+
   // Transcript collapse
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
   const setTranscriptState = useStore((state) => state.setTranscriptState);
@@ -399,6 +504,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                   minimap={{
                     root: timelineData.root,
                     selection: minimapSelection,
+                    scrollPercent,
                   }}
                   breadcrumb={{
                     breadcrumbs: timelineState.breadcrumbs,

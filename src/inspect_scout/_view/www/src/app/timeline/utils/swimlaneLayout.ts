@@ -33,6 +33,8 @@ export interface PositionedSpan {
   bar: BarPosition;
   /** Whether this span can be drilled into. */
   drillable: boolean;
+  /** Number of child spans (for drill-down label). 0 if not drillable. */
+  childCount: number;
   /** For ParallelSpan, the number of agents. Null for SingleSpan. */
   parallelCount: number | null;
   /** Task description for tooltip, if available. */
@@ -124,6 +126,17 @@ export function isDrillable(span: RowSpan): boolean {
   return false;
 }
 
+/** Counts the drillable children for disclosure label text. */
+function drillableChildCount(span: RowSpan): number {
+  if (isParallelSpan(span)) return span.agents.length;
+  if (isSingleSpan(span)) {
+    return span.agent.content.filter(
+      (item): item is TimelineSpan => item.type === "span" && !item.utility
+    ).length;
+  }
+  return 0;
+}
+
 // =============================================================================
 // Token Formatting
 // =============================================================================
@@ -170,9 +183,11 @@ export function computeRowLayouts(
           viewStart,
           viewEnd
         );
+        const drillable = !isParent && isDrillable(rowSpan);
         return {
           bar,
-          drillable: !isParent && isDrillable(rowSpan),
+          drillable,
+          childCount: drillable ? drillableChildCount(rowSpan) : 0,
           parallelCount: null,
           description: rowSpan.agent.description ?? null,
         };
@@ -192,6 +207,7 @@ export function computeRowLayouts(
       return {
         bar,
         drillable: !isParent,
+        childCount: !isParent ? agents.length : 0,
         parallelCount: agents.length,
         description: null,
       };

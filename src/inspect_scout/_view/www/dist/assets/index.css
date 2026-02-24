@@ -7450,7 +7450,7 @@ span.ap-marker-container:hover span.ap-marker {
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_12a3f_1 {
+._swimlane_1goaa_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -7466,7 +7466,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_12a3f_17 {
+._pinnedSection_1goaa_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7474,7 +7474,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Scrollable section: child rows */
-._scrollSection_12a3f_25 {
+._scrollSection_1goaa_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7483,13 +7483,13 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: auto;
 }
 
-._swimlane_12a3f_1:focus-visible {
+._swimlane_1goaa_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_12a3f_40 {
+._collapsibleSection_1goaa_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7502,13 +7502,13 @@ span.ap-marker-container:hover span.ap-marker {
   opacity: 1;
 }
 
-._collapsibleCollapsed_12a3f_53 {
+._collapsibleCollapsed_1goaa_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
-._collapsibleInner_12a3f_59 {
+._collapsibleInner_1goaa_59 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -7518,7 +7518,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_12a3f_69 {
+._collapseToggle_1goaa_69 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -7539,20 +7539,20 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._collapseToggle_12a3f_69:hover {
+._collapseToggle_1goaa_69:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_12a3f_97 {
+._row_1goaa_97 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_12a3f_103 {
+._label_1goaa_103 {
   padding: 0 0.5rem 0 1.6rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -7564,29 +7564,29 @@ span.ap-marker-container:hover span.ap-marker {
   gap: 2px;
 }
 
-._labelChild_12a3f_115 {
+._labelChild_1goaa_115 {
   padding-left: 2.25rem;
 }
 
-._labelSelected_12a3f_119 {
+._labelSelected_1goaa_119 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_12a3f_125 {
+._barArea_1goaa_125 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_12a3f_131 {
+._barInner_1goaa_131 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_12a3f_137 {
+._fill_1goaa_137 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -7600,54 +7600,66 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._fill_12a3f_137:hover {
+._fill_1goaa_137:hover {
   opacity: 0.5;
 }
 
-._fillParent_12a3f_155 {
+._fillParent_1goaa_155 {
   opacity: 0.2;
 }
 
-._fillSelected_12a3f_159 {
+._fillSelected_1goaa_159 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_12a3f_164 {
+._parallelBadge_1goaa_164 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
-/* Chevron */
+/* Drill-down button */
 
-._chevron_12a3f_171 {
+._drillDown_1goaa_171 {
   position: absolute;
   top: 50%;
-  transform: translate(calc(-100% - 1px), -50%);
-  font-size: 0.55rem;
+  transform: translate(calc(-100% - 2px), -50%);
+  font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
-  z-index: 1;
-  background-color: color-mix(in srgb, var(--bs-body-bg) 80%, transparent);
-  border: 1px solid var(--bs-border-color);
-  border-radius: 50%;
-  width: 12px;
-  height: 12px;
+  z-index: 3;
+  background: none;
+  border: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
+  gap: 2px;
+  padding: 0 3px;
   line-height: 1;
+  white-space: nowrap;
+  border-radius: 2px;
 }
 
-._chevron_12a3f_171:hover {
+._drillDown_1goaa_171::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--bs-body-bg);
+  opacity: 0.65;
+  z-index: -1;
+}
+
+._drillDownSelected_1goaa_200::before {
+  opacity: 0.6;
+}
+
+._drillDown_1goaa_171:hover {
   color: var(--vscode-textLink-foreground);
-  border-color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_12a3f_198 {
+._marker_1goaa_210 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -7663,11 +7675,11 @@ span.ap-marker-container:hover span.ap-marker {
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_12a3f_198 > * {
+._marker_1goaa_210 > * {
   pointer-events: none;
 }
 
-._markerError_12a3f_218 {
+._markerError_1goaa_230 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -7678,7 +7690,7 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._markerError_12a3f_218::after {
+._markerError_1goaa_230::after {
   content: "";
   position: absolute;
   top: 0;
@@ -7688,7 +7700,7 @@ span.ap-marker-container:hover span.ap-marker {
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_12a3f_239 {
+._markerCompaction_1goaa_251 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -7699,20 +7711,20 @@ span.ap-marker-container:hover span.ap-marker {
   filter: none;
 }
 
-._markerBranch_12a3f_250 {
+._markerBranch_1goaa_262 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_12a3f_257 {
+._branchPopover_1goaa_269 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_12a3f_263 {
+._branchEntry_1goaa_275 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7727,28 +7739,28 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._branchEntry_12a3f_263:hover {
+._branchEntry_1goaa_275:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_12a3f_283 {
+._branchLabel_1goaa_295 {
   font-weight: 500;
 }
 
-._branchMeta_12a3f_287 {
+._branchMeta_1goaa_299 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_12a3f_263:hover ._branchMeta_12a3f_287 {
+._branchEntry_1goaa_275:hover ._branchMeta_1goaa_299 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_12a3f_299 {
+._breadcrumbRow_1goaa_311 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -7758,7 +7770,7 @@ span.ap-marker-container:hover span.ap-marker {
   overflow: hidden;
 }
 
-._breadcrumbBack_12a3f_309 {
+._breadcrumbBack_1goaa_321 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7771,24 +7783,24 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: -1px;
 }
 
-._breadcrumbBack_12a3f_309:hover:not(:disabled) {
+._breadcrumbBack_1goaa_321:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_12a3f_309:disabled {
+._breadcrumbBack_1goaa_321:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_12a3f_332 {
+._breadcrumbGroup_1goaa_344 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_12a3f_339 {
+._breadcrumbLink_1goaa_351 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7797,11 +7809,11 @@ span.ap-marker-container:hover span.ap-marker {
   font-size: var(--inspect-font-size-smallest);
 }
 
-._breadcrumbLink_12a3f_339:hover {
+._breadcrumbLink_1goaa_351:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_12a3f_352 {
+._breadcrumbCurrent_1goaa_364 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7811,18 +7823,18 @@ span.ap-marker-container:hover span.ap-marker {
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_12a3f_352:hover {
+._breadcrumbCurrent_1goaa_364:hover {
   text-decoration: underline;
 }
 
-._breadcrumbSelection_12a3f_366 {
+._breadcrumbSelection_1goaa_378 {
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-._breadcrumbDivider_12a3f_373 {
+._breadcrumbDivider_1goaa_385 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 1px 0 3px;
@@ -7830,7 +7842,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Token cell */
 
-._tokens_12a3f_381 {
+._tokens_1goaa_393 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

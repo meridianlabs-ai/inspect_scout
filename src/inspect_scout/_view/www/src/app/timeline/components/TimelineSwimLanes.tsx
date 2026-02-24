@@ -361,22 +361,28 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
 
       {/* Bar area cell */}
       <div className={styles.barArea}>
-        {/* Fills */}
-        {layout.spans.map((span, spanIndex) => (
-          <BarFill
-            key={spanIndex}
-            span={span}
-            isParent={layout.isParent}
-            isSelected={isSpanSelected(layout, spanIndex, parsedSelection)}
-            onSelect={() => onSelect(spanIndex)}
-            onDrillDown={() => onDrillDown(spanIndex)}
-          />
-        ))}
+        <div className={styles.barInner}>
+          {/* Fills */}
+          {layout.spans.map((span, spanIndex) => (
+            <BarFill
+              key={spanIndex}
+              span={span}
+              isParent={layout.isParent}
+              isSelected={isSpanSelected(layout, spanIndex, parsedSelection)}
+              onSelect={() => onSelect(spanIndex)}
+              onDrillDown={() => onDrillDown(spanIndex)}
+            />
+          ))}
 
-        {/* Markers */}
-        {layout.markers.map((marker, i) => (
-          <MarkerGlyph key={i} marker={marker} onBranchClick={onBranchClick} />
-        ))}
+          {/* Markers */}
+          {layout.markers.map((marker, i) => (
+            <MarkerGlyph
+              key={i}
+              marker={marker}
+              onBranchClick={onBranchClick}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Token cell */}

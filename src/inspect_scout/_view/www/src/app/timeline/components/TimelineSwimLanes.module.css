@@ -19,7 +19,6 @@
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
-  row-gap: 1px;
 }
 
 /* Scrollable section: child rows */
@@ -28,8 +27,7 @@
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
-  row-gap: 1px;
-  max-height: calc(4 * (var(--swimlane-row-height) + 1px));
+  max-height: calc(4 * var(--swimlane-row-height));
   overflow-y: auto;
 }
 
@@ -64,7 +62,6 @@
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
-  row-gap: 1px;
 }
 
 /* Collapse toggle — hangs below the bottom border, centered */
@@ -95,16 +92,10 @@
   background-color: var(--bs-secondary-bg);
 }
 
-/* Row — display:contents so all rows share the parent grid columns.
-   Row separators are applied via bottom border on each cell since
-   display:contents prevents borders on the row itself. */
+/* Row — display:contents so all rows share the parent grid columns */
 
 .row {
   display: contents;
-}
-
-.row > .barArea {
-  border-bottom: 1px solid var(--bs-border-color);
 }
 
 /* Label cell */
@@ -132,14 +123,21 @@
 /* Bar area */
 
 .barArea {
-  position: relative;
   height: var(--swimlane-row-height);
+  border-left: 1px solid var(--bs-border-color);
+  border-right: 1px solid var(--bs-border-color);
+}
+
+.barInner {
+  position: relative;
+  height: 100%;
+  margin: 0 4px;
 }
 
 .fill {
   position: absolute;
   top: 1px;
-  bottom: 2px;
+  bottom: 1px;
   border-radius: 2px;
   background-color: var(--bs-primary);
   opacity: 0.3;

@@ -16,7 +16,10 @@ import {
 } from "../../../components/transcript/timeline";
 import type { Event } from "../../../types/api-types";
 import type { MinimapSelection } from "../../timeline/components/TimelineMinimap";
-import { type TimelineState, useTimeline } from "../../timeline/hooks/useTimeline";
+import {
+  type TimelineState,
+  useTimeline,
+} from "../../timeline/hooks/useTimeline";
 import {
   collectRawEvents,
   computeMinimapSelection,

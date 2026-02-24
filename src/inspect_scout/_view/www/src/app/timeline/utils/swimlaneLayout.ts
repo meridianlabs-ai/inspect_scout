@@ -5,7 +5,10 @@
  * rendering. All functions are pure with no DOM or React dependencies.
  */
 
-import type { TimelineSpan } from "../../../components/transcript/timeline";
+import type {
+  TimelineEvent,
+  TimelineSpan,
+} from "../../../components/transcript/timeline";
 import { formatPrettyDecimal } from "../../../utils/format";
 
 import { type MarkerDepth, type MarkerKind, collectMarkers } from "./markers";
@@ -271,4 +274,52 @@ function collectRowMarkers(
   // Sort by position
   allMarkers.sort((a, b) => a.left - b.left);
   return allMarkers;
+}
+
+// =============================================================================
+// Debug
+// =============================================================================
+
+/** Pretty-print a RowSpan tree for debugging. Paste output to share context. */
+export function debugRowSpan(span: RowSpan): string {
+  const lines: string[] = [];
+  const agents = getAgents(span);
+  const kind = isSingleSpan(span) ? "Single" : `Parallel(${agents.length})`;
+  lines.push(`[${kind}]`);
+  for (const agent of agents) {
+    printSpan(agent, 1, lines);
+  }
+  return lines.join("\n");
+}
+
+function printSpan(span: TimelineSpan, depth: number, lines: string[]): void {
+  const indent = "  ".repeat(depth);
+  const flags = [
+    span.utility && "utility",
+    span.spanType && `type=${span.spanType}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const flagStr = flags ? ` (${flags})` : "";
+  const childSpans = span.content.filter(
+    (c): c is TimelineSpan => c.type === "span"
+  );
+  const childEvents = span.content.filter(
+    (c): c is TimelineEvent => c.type === "event"
+  );
+  const eventTypes = childEvents
+    .map((e) => e.event.event)
+    .reduce<Record<string, number>>((acc, t) => {
+      acc[t] = (acc[t] ?? 0) + 1;
+      return acc;
+    }, {});
+  const eventSummary = Object.entries(eventTypes)
+    .map(([t, n]) => (n > 1 ? `${t}×${n}` : t))
+    .join(", ");
+  lines.push(
+    `${indent}span "${span.name}" [${childEvents.length} events (${eventSummary}), ${childSpans.length} child spans, ${span.totalTokens} tokens]${flagStr}`
+  );
+  for (const child of childSpans) {
+    printSpan(child, depth + 1, lines);
+  }
 }

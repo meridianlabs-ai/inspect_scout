@@ -127,7 +127,7 @@ Single-turn helper agents with different system prompts (e.g., a title-generatio
 
 ### Building a Timeline
 
-Call `build_timeline(events)` to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when `timeline=True` — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become `TimelineBranch` objects), and utility agents (single-turn helpers with different system prompts).
+Call `timeline_build(events)` to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when `timeline=True` — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become `TimelineBranch` objects), and utility agents (single-turn helpers with different system prompts).
 
 ### Timeline Data Types
 
@@ -186,21 +186,21 @@ The tree nests as: `Timeline` → root `TimelineSpan` → `content` (a mix of `T
 
 ## Filtering Timelines {#filtering}
 
-Use `filter_timeline()` to create a new timeline containing only spans that match a predicate:
+Use `timeline_filter()` to create a new timeline containing only spans that match a predicate:
 
 ``` python
-from inspect_scout import build_timeline, filter_timeline
+from inspect_ai.event import timeline_build, timeline_filter
 
-timeline = build_timeline(events)
+timeline = timeline_build(events)
 
 # Keep only agent spans
-agents_only = filter_timeline(timeline, lambda s: s.span_type == "agent")
+agents_only = timeline_filter(timeline, lambda s: s.span_type == "agent")
 
 # Exclude scorer spans
-no_scorers = filter_timeline(timeline, lambda s: s.span_type != "scorers")
+no_scorers = timeline_filter(timeline, lambda s: s.span_type != "scorers")
 
 # Exclude utility agents (single-turn helpers)
-no_utility = filter_timeline(timeline, lambda s: not s.utility)
+no_utility = timeline_filter(timeline, lambda s: not s.utility)
 ```
 
 The filter recursively walks the span tree, pruning non-matching spans and their subtrees. `TimelineEvent` items are always kept (they belong to the parent span). This is useful for pre-filtering a timeline before programmatic analysis.

@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
-
-from inspect_scout._transcript.timeline import Timeline
 
 from .._project.types import ProjectConfig
 from .._query.condition import Condition

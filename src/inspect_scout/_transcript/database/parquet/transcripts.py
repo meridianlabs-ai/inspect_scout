@@ -737,10 +737,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 and not transcript.timelines
                 and transcript.events
             ):
-                from ...timeline import build_timeline
+                from inspect_ai.event import timeline_build
+
                 from ...util import filter_timelines
 
-                raw_timeline = build_timeline(transcript.events)
+                raw_timeline = timeline_build(transcript.events)
                 timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
 
@@ -895,6 +896,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Dict with Parquet column values.
         """
+        from inspect_ai.event import timeline_dump
+
         # Validate metadata keys don't conflict with reserved names
         _validate_metadata_keys(transcript.metadata)
 
@@ -934,7 +937,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "messages": json.dumps(messages_array),
             "events": json.dumps(events_array),
             "timelines": (
-                json.dumps([tl.model_dump() for tl in transcript.timelines])
+                json.dumps([timeline_dump(tl) for tl in transcript.timelines])
                 if transcript.timelines
                 else None
             ),

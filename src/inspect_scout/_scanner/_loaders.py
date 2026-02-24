@@ -9,11 +9,11 @@ from typing import (
     get_origin,
 )
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
-from .._transcript.timeline import Timeline
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .loader import Loader, loader

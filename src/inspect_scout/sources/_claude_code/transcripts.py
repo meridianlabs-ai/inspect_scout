@@ -252,7 +252,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     from inspect_ai.event import InfoEvent
 
     from inspect_scout import Transcript
-    from inspect_scout._transcript.timeline import build_timeline
+    from inspect_scout._transcript.timeline import timeline_build
 
     first = transcripts[0]
     merged_events: list[Event] = list(first.events)
@@ -290,7 +290,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
             seen_ids.add(transcript.source_id)
 
     # Rebuild unified timeline from merged events
-    build_timeline(merged_events)
+    timeline_build(merged_events)
 
     # Build merged metadata
     metadata = dict(first.metadata)
@@ -410,7 +410,7 @@ async def _create_transcript(
     """
     from inspect_scout import Transcript
     from inspect_scout._transcript.messages import span_messages
-    from inspect_scout._transcript.timeline import build_timeline
+    from inspect_scout._transcript.timeline import timeline_build
 
     session_path = session_file
     project_dir = session_path.parent
@@ -429,7 +429,7 @@ async def _create_transcript(
         scout_events.append(event)
 
     # Extract messages via timeline (excludes subagent messages, handles compaction)
-    timeline = build_timeline(scout_events)
+    timeline = timeline_build(scout_events)
     messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
 
     # Skip transcripts with no messages (e.g., system-only segments)

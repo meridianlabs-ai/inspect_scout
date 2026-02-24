@@ -356,7 +356,7 @@ async def timeline_messages(
     compaction splitting and context window chunking. Each yielded
     item includes the span context alongside the pre-rendered text.
 
-    To filter which spans are processed, use filter_timeline() before
+    To filter which spans are processed, use timeline_filter() before
     calling this function.
 
     Args:
@@ -398,12 +398,12 @@ Since `TimelineMessages` inherits from `RenderedMessages`, it can be used anywhe
 - **Utility spans** are skipped (single-turn agents with different system prompts).
 - **Empty container spans** (no direct `ModelEvent` in their content) are skipped — their children are still visited.
 
-#### Pre-filtering with `filter_timeline()`
+#### Pre-filtering with `timeline_filter()`
 
-To select specific spans, use `filter_timeline()` to prune the tree before passing it to `timeline_messages()`:
+To select specific spans, use `timeline_filter()` to prune the tree before passing it to `timeline_messages()`:
 
 ```python
-def filter_timeline(
+def timeline_filter(
     timeline: Timeline,
     predicate: Callable[[TimelineSpan], bool],
 ) -> Timeline:
@@ -419,7 +419,7 @@ messages_as_str, extract_references = message_numbering(
 )
 
 # Filter to only "Build" spans
-filtered = filter_timeline(timeline, lambda s: s.name == "Build")
+filtered = timeline_filter(timeline, lambda s: s.name == "Build")
 
 segments: list[TimelineMessages] = []
 
@@ -1143,7 +1143,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 - Walks span tree, extracts `[item.event for item in span.content if isinstance(item, TimelineEvent)]`
 - Delegates to `chunked_messages()` per span, wraps results as `TimelineMessages`
 - Built-in: skips utility spans and spans without direct ModelEvents
-- `filter_timeline(timeline, predicate)` — prunes non-matching spans and subtrees before scanning
+- `timeline_filter(timeline, predicate)` — prunes non-matching spans and subtrees before scanning
 - `transcript_messages(transcript, messages_as_str, model, context_window)` async generator
 - Adaptive dispatch: `transcript.timelines` → `timeline_messages()`, `transcript.events` → `chunked_messages()`, else `transcript.messages` → `chunked_messages()`
 
@@ -1152,7 +1152,7 @@ async def scan(transcript: Transcript) -> Result | list[Result]:
 - Multi-span timeline → yields segments in tree-walk order with continuous numbering
 - Nested spans → child spans visited recursively
 - Default skips utility spans and empty container spans
-- `filter_timeline` prunes by predicate, subtrees removed
+- `timeline_filter` prunes by predicate, subtrees removed
 - `transcript_messages` dispatches to correct layer based on available data
 
 **Dependencies:** Phase 3 (`chunked_messages`).

@@ -272,7 +272,7 @@ class Timeline(BaseModel):
 # =============================================================================
 
 
-def build_timeline(events: list[Event]) -> Timeline:
+def timeline_build(events: list[Event]) -> Timeline:
     """Build a Timeline from a flat event list.
 
     Uses inspect_ai's event_tree() to parse span structure, then:
@@ -1338,7 +1338,7 @@ class TimelineMessages:
     span: TimelineSpan
 
 
-def filter_timeline(
+def timeline_filter(
     timeline: Timeline,
     predicate: Callable[[TimelineSpan], bool],
 ) -> Timeline:

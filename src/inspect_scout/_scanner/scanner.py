@@ -272,7 +272,7 @@ def scanner(
     events = normalize_events_filter(events) if events is not None else None
     timeline = normalize_timeline_filter(timeline) if timeline is not None else None
 
-    # Timeline implies events (needed for UUID resolution and build_timeline fallback)
+    # Timeline implies events (needed for UUID resolution and timeline_build fallback)
     if timeline is not None and events is None:
         if timeline == "all":
             events = "all"

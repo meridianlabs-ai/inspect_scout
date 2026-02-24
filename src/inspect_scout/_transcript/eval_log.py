@@ -471,10 +471,10 @@ class EvalLogTranscriptsView(TranscriptsView):
                 and not transcript.timelines
                 and transcript.events
             ):
-                from .timeline import build_timeline
+                from .timeline import timeline_build
                 from .util import filter_timelines
 
-                raw_timeline = build_timeline(transcript.events)
+                raw_timeline = timeline_build(transcript.events)
                 timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
 

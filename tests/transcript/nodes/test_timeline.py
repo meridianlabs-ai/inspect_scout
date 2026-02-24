@@ -35,7 +35,7 @@ from inspect_scout._transcript.timeline import (
     TimelineBranch,
     TimelineEvent,
     TimelineSpan,
-    build_timeline,
+    timeline_build,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "events"
@@ -601,15 +601,15 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("fixture_name", get_fixture_names())
-def test_build_timeline(fixture_name: str) -> None:
-    """Test build_timeline with JSON fixtures.
+def test_timeline_build(fixture_name: str) -> None:
+    """Test timeline_build with JSON fixtures.
 
     Each fixture contains both events and expected results, allowing the same
     test data to be used by both Python and TypeScript implementations.
     """
     fixture = load_fixture(fixture_name)
     events = events_from_json(fixture)
-    result = build_timeline(events)
+    result = timeline_build(events)
 
     expected = fixture.get("expected", {})
     assert_timeline_matches(result, expected)
@@ -649,7 +649,7 @@ def test_parse_timestamp_fractional_seconds(
 
 def test_empty_events_returns_empty_timeline() -> None:
     """Empty event list should return Timeline with empty root."""
-    result = build_timeline([])
+    result = timeline_build([])
     assert result.root is not None
     assert len(result.root.content) == 0
     assert result.root.total_tokens == 0

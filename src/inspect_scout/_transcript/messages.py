@@ -198,13 +198,13 @@ async def transcript_messages(
     """
     if transcript.timelines:
         from inspect_scout._transcript.timeline import (
-            filter_timeline,
+            timeline_filter,
             timeline_messages,
         )
 
         timeline = transcript.timelines[0]
         if not include_scorers:
-            timeline = filter_timeline(timeline, lambda s: s.span_type != "scorers")
+            timeline = timeline_filter(timeline, lambda s: s.span_type != "scorers")
 
         async for timeline_seg in timeline_messages(
             timeline,

@@ -98,6 +98,7 @@ def to_model_event(
         output_content = content if content else ""
 
     output_message = ChatMessageAssistant(
+        id=event.message.id or None,
         content=output_content,
         tool_calls=tool_calls if tool_calls else None,
     )

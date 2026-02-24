@@ -449,7 +449,7 @@ async def test_token_counting_includes_subagents(
     """
     from inspect_ai.event import Event, ModelEvent
     from inspect_scout.sources._claude_code.events import claude_code_events
-    from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+    from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
     scout_events: list[Event] = []
     async for event in claude_code_events(streaming_events_with_subagent):

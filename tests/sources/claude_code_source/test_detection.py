@@ -1,11 +1,11 @@
 """Tests for local-command filtering in detection.py."""
 
-from inspect_scout.sources._claude_code.detection import (
+from inspect_swe._claude_code._events.detection import (
     is_local_command_caveat,
     is_local_command_stdout,
     should_skip_event,
 )
-from inspect_scout.sources._claude_code.models import (
+from inspect_swe._claude_code._events.models import (
     AssistantEvent,
     AssistantMessage,
     UserEvent,

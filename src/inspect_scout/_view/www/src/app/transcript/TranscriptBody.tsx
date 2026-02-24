@@ -134,6 +134,14 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const { excludedEventTypes, isDebugFilter, isDefaultFilter } =
     useTranscriptColumnFilter();
 
+  // Pre-filter events by excluded types before feeding into the timeline pipeline
+  const filteredEvents = useMemo(() => {
+    if (excludedEventTypes.length === 0) return transcript.events;
+    return transcript.events.filter(
+      (event) => !excludedEventTypes.includes(event.event)
+    );
+  }, [transcript.events, excludedEventTypes]);
+
   // Timeline swimlanes pipeline
   const {
     timeline: timelineData,
@@ -142,20 +150,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     selectedEvents,
     minimapSelection,
     hasTimeline,
-  } = useTranscriptTimeline(transcript.events);
-
-  const filteredEvents = useMemo(() => {
-    if (excludedEventTypes.length === 0) {
-      return selectedEvents;
-    }
-    return selectedEvents.filter((event) => {
-      return !excludedEventTypes.includes(event.event);
-    });
-  }, [selectedEvents, excludedEventTypes]);
+  } = useTranscriptTimeline(filteredEvents);
 
   // Transcript event data
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
-    filteredEvents,
+    selectedEvents,
     false
   );
 

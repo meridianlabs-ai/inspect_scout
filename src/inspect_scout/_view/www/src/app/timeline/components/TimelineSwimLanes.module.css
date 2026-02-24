@@ -27,7 +27,7 @@
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
-  max-height: calc(4 * var(--swimlane-row-height));
+  max-height: calc(10 * var(--swimlane-row-height));
   overflow-y: auto;
 }
 

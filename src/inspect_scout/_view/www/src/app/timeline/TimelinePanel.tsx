@@ -29,7 +29,7 @@ export const TimelinePanel: FC = () => {
   useDocumentTitle("Timeline");
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [markerDepth, setMarkerDepth] = useState<MarkerDepth>("children");
+  const [markerDepth, setMarkerDepth] = useState<MarkerDepth>("direct");
   const [outlineCollapsed, setOutlineCollapsed] = useProperty<boolean>(
     "timeline",
     "outlineCollapsed",

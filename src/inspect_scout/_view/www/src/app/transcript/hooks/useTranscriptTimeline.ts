@@ -81,7 +81,7 @@ export function useTranscriptTimeline(
         state.rows,
         state.node.startTime,
         state.node.endTime,
-        "children"
+        "direct"
       ),
     [state.rows, state.node.startTime, state.node.endTime]
   );

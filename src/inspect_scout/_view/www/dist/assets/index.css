@@ -7450,7 +7450,7 @@ span.ap-marker-container:hover span.ap-marker {
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_2u8bj_1 {
+._swimlane_12a3f_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -7466,7 +7466,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_2u8bj_17 {
+._pinnedSection_12a3f_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7474,7 +7474,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Scrollable section: child rows */
-._scrollSection_2u8bj_25 {
+._scrollSection_12a3f_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7483,13 +7483,13 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: auto;
 }
 
-._swimlane_2u8bj_1:focus-visible {
+._swimlane_12a3f_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_2u8bj_40 {
+._collapsibleSection_12a3f_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7502,13 +7502,13 @@ span.ap-marker-container:hover span.ap-marker {
   opacity: 1;
 }
 
-._collapsibleCollapsed_2u8bj_53 {
+._collapsibleCollapsed_12a3f_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
-._collapsibleInner_2u8bj_59 {
+._collapsibleInner_12a3f_59 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -7518,7 +7518,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_2u8bj_69 {
+._collapseToggle_12a3f_69 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -7539,20 +7539,20 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._collapseToggle_2u8bj_69:hover {
+._collapseToggle_12a3f_69:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_2u8bj_97 {
+._row_12a3f_97 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_2u8bj_103 {
+._label_12a3f_103 {
   padding: 0 0.5rem 0 1.6rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -7564,29 +7564,29 @@ span.ap-marker-container:hover span.ap-marker {
   gap: 2px;
 }
 
-._labelChild_2u8bj_115 {
+._labelChild_12a3f_115 {
   padding-left: 2.25rem;
 }
 
-._labelSelected_2u8bj_119 {
+._labelSelected_12a3f_119 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_2u8bj_125 {
+._barArea_12a3f_125 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_2u8bj_131 {
+._barInner_12a3f_131 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_2u8bj_137 {
+._fill_12a3f_137 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -7600,27 +7600,27 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._fill_2u8bj_137:hover {
+._fill_12a3f_137:hover {
   opacity: 0.5;
 }
 
-._fillParent_2u8bj_155 {
+._fillParent_12a3f_155 {
   opacity: 0.2;
 }
 
-._fillSelected_2u8bj_159 {
+._fillSelected_12a3f_159 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_2u8bj_164 {
+._parallelBadge_12a3f_164 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Chevron */
 
-._chevron_2u8bj_171 {
+._chevron_12a3f_171 {
   position: absolute;
   top: 50%;
   transform: translate(calc(-100% - 1px), -50%);
@@ -7640,14 +7640,14 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._chevron_2u8bj_171:hover {
+._chevron_12a3f_171:hover {
   color: var(--vscode-textLink-foreground);
   border-color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_2u8bj_198 {
+._marker_12a3f_198 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -7663,18 +7663,32 @@ span.ap-marker-container:hover span.ap-marker {
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_2u8bj_198 > * {
+._marker_12a3f_198 > * {
   pointer-events: none;
 }
 
-._markerError_2u8bj_218 {
-  color: var(--vscode-errorForeground, #f44747);
-  background-color: var(--bs-body-bg);
-  border-radius: 50%;
+._markerError_12a3f_218 {
+  top: 1px;
+  bottom: 1px;
+  height: auto;
+  width: 7px;
+  transform: translateX(-50%);
+  background-color: transparent;
   filter: none;
+  cursor: pointer;
 }
 
-._markerCompaction_2u8bj_225 {
+._markerError_12a3f_218::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background-color: var(--vscode-errorForeground, #f44747);
+}
+
+._markerCompaction_12a3f_239 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -7685,20 +7699,20 @@ span.ap-marker-container:hover span.ap-marker {
   filter: none;
 }
 
-._markerBranch_2u8bj_236 {
+._markerBranch_12a3f_250 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_2u8bj_243 {
+._branchPopover_12a3f_257 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_2u8bj_249 {
+._branchEntry_12a3f_263 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7713,28 +7727,28 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._branchEntry_2u8bj_249:hover {
+._branchEntry_12a3f_263:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_2u8bj_269 {
+._branchLabel_12a3f_283 {
   font-weight: 500;
 }
 
-._branchMeta_2u8bj_273 {
+._branchMeta_12a3f_287 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_2u8bj_249:hover ._branchMeta_2u8bj_273 {
+._branchEntry_12a3f_263:hover ._branchMeta_12a3f_287 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_2u8bj_285 {
+._breadcrumbRow_12a3f_299 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -7744,7 +7758,7 @@ span.ap-marker-container:hover span.ap-marker {
   overflow: hidden;
 }
 
-._breadcrumbBack_2u8bj_295 {
+._breadcrumbBack_12a3f_309 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7757,24 +7771,24 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: -1px;
 }
 
-._breadcrumbBack_2u8bj_295:hover:not(:disabled) {
+._breadcrumbBack_12a3f_309:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_2u8bj_295:disabled {
+._breadcrumbBack_12a3f_309:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_2u8bj_318 {
+._breadcrumbGroup_12a3f_332 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_2u8bj_325 {
+._breadcrumbLink_12a3f_339 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7783,11 +7797,11 @@ span.ap-marker-container:hover span.ap-marker {
   font-size: var(--inspect-font-size-smallest);
 }
 
-._breadcrumbLink_2u8bj_325:hover {
+._breadcrumbLink_12a3f_339:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_2u8bj_338 {
+._breadcrumbCurrent_12a3f_352 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7797,18 +7811,18 @@ span.ap-marker-container:hover span.ap-marker {
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_2u8bj_338:hover {
+._breadcrumbCurrent_12a3f_352:hover {
   text-decoration: underline;
 }
 
-._breadcrumbSelection_2u8bj_352 {
+._breadcrumbSelection_12a3f_366 {
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-._breadcrumbDivider_2u8bj_359 {
+._breadcrumbDivider_12a3f_373 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 1px 0 3px;
@@ -7816,7 +7830,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Token cell */
 
-._tokens_2u8bj_367 {
+._tokens_12a3f_381 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

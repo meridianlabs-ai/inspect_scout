@@ -572,7 +572,7 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
       title={marker.tooltip}
       onClick={handleClick}
     >
-      <i className={icon} />
+      {marker.kind !== "error" && <i className={icon} />}
     </span>
   );
 };

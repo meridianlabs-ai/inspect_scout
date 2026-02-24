@@ -216,10 +216,24 @@
 }
 
 .markerError {
-  color: var(--vscode-errorForeground, #f44747);
-  background-color: var(--bs-body-bg);
-  border-radius: 50%;
+  top: 1px;
+  bottom: 1px;
+  height: auto;
+  width: 7px;
+  transform: translateX(-50%);
+  background-color: transparent;
   filter: none;
+  cursor: pointer;
+}
+
+.markerError::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background-color: var(--vscode-errorForeground, #f44747);
 }
 
 .markerCompaction {

@@ -7,7 +7,7 @@ from inspect_scout.sources._claude_code.client import (
     decode_project_path,
     encode_project_path,
 )
-from inspect_scout.sources._claude_code.detection import (
+from inspect_swe._claude_code._events.detection import (
     _get_command_name,
     get_event_type,
     get_model_name,
@@ -21,7 +21,7 @@ from inspect_scout.sources._claude_code.detection import (
     is_user_event,
     should_skip_event,
 )
-from inspect_scout.sources._claude_code.extraction import (
+from inspect_swe._claude_code._events.extraction import (
     extract_assistant_content,
     extract_compaction_info,
     extract_tool_result_messages,
@@ -29,7 +29,7 @@ from inspect_scout.sources._claude_code.extraction import (
     extract_user_message,
     sum_tokens,
 )
-from inspect_scout.sources._claude_code.models import (
+from inspect_swe._claude_code._events.models import (
     AssistantEvent,
     AssistantMessage,
     BaseEvent,
@@ -42,7 +42,7 @@ from inspect_scout.sources._claude_code.models import (
     consolidate_assistant_events,
     parse_event,
 )
-from inspect_scout.sources._claude_code.tree import (
+from inspect_swe._claude_code._events.tree import (
     build_event_tree,
     find_clear_indices,
     flatten_tree_chronological,

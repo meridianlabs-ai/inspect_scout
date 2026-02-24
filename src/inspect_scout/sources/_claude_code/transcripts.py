@@ -25,6 +25,26 @@ from inspect_ai.model import ChatMessage, stable_message_ids
 if TYPE_CHECKING:
     from inspect_scout import Transcript
 
+from inspect_swe._claude_code._events.detection import get_session_id
+from inspect_swe._claude_code._events.extraction import (
+    extract_model_name,
+    extract_session_metadata,
+    get_first_timestamp,
+    sum_latency,
+    sum_scout_tokens,
+)
+from inspect_swe._claude_code._events.models import (
+    BaseEvent,
+    consolidate_assistant_events,
+    parse_events,
+)
+from inspect_swe._claude_code._events.tree import (
+    build_event_tree,
+    flatten_tree_chronological,
+    get_conversation_events,
+    split_on_clear,
+)
+
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
     _find_sessions_in_directory,
@@ -35,22 +55,7 @@ from .client import (
     peek_slug,
     read_jsonl_events,
 )
-from .detection import get_session_id
 from .events import process_parsed_events
-from .extraction import (
-    extract_model_name,
-    extract_session_metadata,
-    get_first_timestamp,
-    sum_latency,
-    sum_scout_tokens,
-)
-from .models import BaseEvent, consolidate_assistant_events, parse_events
-from .tree import (
-    build_event_tree,
-    flatten_tree_chronological,
-    get_conversation_events,
-    split_on_clear,
-)
 
 logger = getLogger(__name__)
 

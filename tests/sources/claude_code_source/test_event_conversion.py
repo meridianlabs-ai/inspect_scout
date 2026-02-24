@@ -21,7 +21,7 @@ from inspect_scout.sources._claude_code.events import (
     to_model_event,
     to_tool_event,
 )
-from inspect_scout.sources._claude_code.models import (
+from inspect_swe._claude_code._events.models import (
     AssistantEvent,
     AssistantMessage,
     CompactMetadata,
@@ -572,7 +572,7 @@ class TestSumScoutTokens:
 
     def test_sums_across_multiple_events(self) -> None:
         """Multiple ModelEvents → sums all total_tokens."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         events: list[Any] = [
             self._make_model_event(100, 50),
@@ -582,7 +582,7 @@ class TestSumScoutTokens:
 
     def test_skips_non_model_events(self) -> None:
         """Non-ModelEvent objects are ignored."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         events: list[Any] = [
             self._make_model_event(100, 50),
@@ -597,13 +597,13 @@ class TestSumScoutTokens:
 
     def test_empty_list(self) -> None:
         """Empty event list → returns 0."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         assert sum_scout_tokens([]) == 0
 
     def test_model_event_without_usage(self) -> None:
         """ModelEvent with no usage → contributes 0."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         msg = ChatMessageAssistant(content="response")
         event = ModelEvent(

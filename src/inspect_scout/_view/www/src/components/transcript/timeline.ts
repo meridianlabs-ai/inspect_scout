@@ -542,7 +542,7 @@ function buildAgentFromSolversSpan(
     );
     return createTimelineSpan(
       solversSpan.id,
-      "main",
+      solversSpan.name,
       "agent",
       content,
       false,

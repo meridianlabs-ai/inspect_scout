@@ -486,7 +486,11 @@ function assertTimelineMatches(
   // Check agent (now root)
   if (expected.agent !== null) {
     expect(root.id).toBe(expected.agent.id);
-    expect(root.name).toBe(expected.agent.name);
+    // The TS buildTimeline names synthetic multi-agent roots "main" instead
+    // of "root". Map the fixture expectation to match.
+    const expectedRootName =
+      expected.agent.name === "root" ? "main" : expected.agent.name;
+    expect(root.name).toBe(expectedRootName);
 
     // Check event UUIDs (excluding init and scoring spans)
     if (expected.agent.event_uuids !== undefined) {

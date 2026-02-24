@@ -70,13 +70,7 @@ from ._transcript.messages import (
 )
 from ._transcript.sample_metadata import SampleMetadata
 from ._transcript.timeline import (
-    Timeline,
-    TimelineBranch,
-    TimelineEvent,
     TimelineMessages,
-    TimelineSpan,
-    build_timeline,
-    filter_timeline,
     timeline_messages,
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
@@ -150,13 +144,7 @@ __all__ = [
     "log_columns",
     "SampleMetadata",
     # timeline
-    "Timeline",
-    "TimelineBranch",
-    "TimelineEvent",
     "TimelineMessages",
-    "TimelineSpan",
-    "build_timeline",
-    "filter_timeline",
     "timeline_messages",
     # scanner
     "Error",

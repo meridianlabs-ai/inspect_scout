@@ -11,6 +11,7 @@ from typing import (
     get_type_hints,
 )
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._approval import ApprovalEvent
 from inspect_ai.event._compaction import CompactionEvent
 from inspect_ai.event._error import ErrorEvent
@@ -37,7 +38,6 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 
-from .._transcript.timeline import Timeline
 from .._transcript.types import EventType, MessageType, Transcript
 
 # Reverse mappings for inferring filters from types

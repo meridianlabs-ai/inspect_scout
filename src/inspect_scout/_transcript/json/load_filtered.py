@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from typing import IO, Any, Callable
 
 import ijson  # type: ignore
+from inspect_ai.event import timeline_load
 from pydantic import JsonValue
 
 from inspect_scout._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 
-from ..timeline import Timeline
 from ..types import (
     EventFilter,
     MessageFilter,
@@ -405,10 +405,8 @@ def _resolve_attachments(
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:
-        events_by_uuid = {e.uuid: e for e in validated.events if e.uuid}
         resolved_timelines = [
-            Timeline.model_validate(tl_dict, context={"events_by_uuid": events_by_uuid})
-            for tl_dict in transcript.timelines
+            timeline_load(tl_dict, validated.events) for tl_dict in transcript.timelines
         ]
         validated.timelines = resolved_timelines
 

@@ -25,6 +25,26 @@ from inspect_ai.model import ChatMessage, stable_message_ids
 if TYPE_CHECKING:
     from inspect_scout import Transcript
 
+from inspect_swe._claude_code._events.detection import get_session_id
+from inspect_swe._claude_code._events.extraction import (
+    extract_model_name,
+    extract_session_metadata,
+    get_first_timestamp,
+    sum_latency,
+    sum_scout_tokens,
+)
+from inspect_swe._claude_code._events.models import (
+    BaseEvent,
+    consolidate_assistant_events,
+    parse_events,
+)
+from inspect_swe._claude_code._events.tree import (
+    build_event_tree,
+    flatten_tree_chronological,
+    get_conversation_events,
+    split_on_clear,
+)
+
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
     _find_sessions_in_directory,
@@ -35,22 +55,7 @@ from .client import (
     peek_slug,
     read_jsonl_events,
 )
-from .detection import get_session_id
 from .events import process_parsed_events
-from .extraction import (
-    extract_model_name,
-    extract_session_metadata,
-    get_first_timestamp,
-    sum_latency,
-    sum_scout_tokens,
-)
-from .models import BaseEvent, consolidate_assistant_events, parse_events
-from .tree import (
-    build_event_tree,
-    flatten_tree_chronological,
-    get_conversation_events,
-    split_on_clear,
-)
 
 logger = getLogger(__name__)
 
@@ -249,10 +254,9 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     Returns:
         Merged Transcript
     """
-    from inspect_ai.event import InfoEvent
+    from inspect_ai.event import InfoEvent, timeline_build
 
     from inspect_scout import Transcript
-    from inspect_scout._transcript.timeline import build_timeline
 
     first = transcripts[0]
     merged_events: list[Event] = list(first.events)
@@ -290,7 +294,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
             seen_ids.add(transcript.source_id)
 
     # Rebuild unified timeline from merged events
-    build_timeline(merged_events)
+    timeline_build(merged_events)
 
     # Build merged metadata
     metadata = dict(first.metadata)
@@ -408,9 +412,10 @@ async def _create_transcript(
     Returns:
         Transcript object, or None if creation fails
     """
+    from inspect_ai.event import timeline_build
+
     from inspect_scout import Transcript
     from inspect_scout._transcript.messages import span_messages
-    from inspect_scout._transcript.timeline import build_timeline
 
     session_path = session_file
     project_dir = session_path.parent
@@ -429,7 +434,7 @@ async def _create_transcript(
         scout_events.append(event)
 
     # Extract messages via timeline (excludes subagent messages, handles compaction)
-    timeline = build_timeline(scout_events)
+    timeline = timeline_build(scout_events)
     messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
 
     # Skip transcripts with no messages (e.g., system-only segments)

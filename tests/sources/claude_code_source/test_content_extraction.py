@@ -6,11 +6,11 @@ from typing import Any
 import pytest
 from inspect_ai.model import ContentImage, ContentText
 from inspect_scout.sources._claude_code.events import to_tool_event
-from inspect_scout.sources._claude_code.extraction import (
+from inspect_swe._claude_code._events.extraction import (
     _extract_content_blocks,
     extract_tool_result_messages,
 )
-from inspect_scout.sources._claude_code.models import (
+from inspect_swe._claude_code._events.models import (
     ContentToolUse,
     UserEvent,
     UserMessage,
@@ -109,7 +109,7 @@ class TestExtractContentBlocks:
         ]
         warnings: list[str] = []
         monkeypatch.setattr(
-            "inspect_scout.sources._claude_code.extraction.logger",
+            "inspect_swe._claude_code._events.extraction.logger",
             _capture_logger(warnings),
         )
         result = _extract_content_blocks(items)
@@ -123,7 +123,7 @@ class TestExtractContentBlocks:
         items = [{"type": "image", "source": "not-a-dict"}]
         warnings: list[str] = []
         monkeypatch.setattr(
-            "inspect_scout.sources._claude_code.extraction.logger",
+            "inspect_swe._claude_code._events.extraction.logger",
             _capture_logger(warnings),
         )
         result = _extract_content_blocks(items)

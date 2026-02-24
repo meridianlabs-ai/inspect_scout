@@ -28,7 +28,7 @@ from inspect_scout._transcript.timeline import (
     TimelineEvent,
     TimelineMessages,
     TimelineSpan,
-    filter_timeline,
+    timeline_filter,
     timeline_messages,
 )
 from inspect_scout._transcript.types import Transcript
@@ -730,7 +730,7 @@ async def test_filter_timeline_by_name() -> None:
     root = _make_timeline_span("Root", children=[build_span, test_span])
     tl = Timeline(name="t", description="", root=root)
 
-    filtered = filter_timeline(tl, lambda s: s.name.lower() == "build")
+    filtered = timeline_filter(tl, lambda s: s.name.lower() == "build")
     results = await _collect_timeline(filtered)
 
     assert len(results) == 1
@@ -752,7 +752,7 @@ async def test_filter_timeline_by_span_type() -> None:
     root = _make_timeline_span("Root", children=[agent_span, other_span])
     tl = Timeline(name="t", description="", root=root)
 
-    filtered = filter_timeline(tl, lambda s: s.span_type == "agent")
+    filtered = timeline_filter(tl, lambda s: s.span_type == "agent")
     results = await _collect_timeline(filtered)
 
     assert len(results) == 1
@@ -774,7 +774,7 @@ def test_filter_timeline_prunes_subtrees() -> None:
     tl = Timeline(name="t", description="", root=root)
 
     # Prune "Parent" — grandchild should also be gone
-    filtered = filter_timeline(tl, lambda s: s.name != "Parent")
+    filtered = timeline_filter(tl, lambda s: s.name != "Parent")
     child_spans = [
         item for item in filtered.root.content if isinstance(item, TimelineSpan)
     ]
@@ -796,7 +796,7 @@ def test_filter_timeline_preserves_events() -> None:
     tl = Timeline(name="t", description="", root=root)
 
     # Remove child span — root's own events should remain
-    filtered = filter_timeline(tl, lambda s: s.name != "Child")
+    filtered = timeline_filter(tl, lambda s: s.name != "Child")
     events = [item for item in filtered.root.content if isinstance(item, TimelineEvent)]
     assert len(events) >= 1
 

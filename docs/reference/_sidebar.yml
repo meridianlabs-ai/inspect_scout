@@ -113,10 +113,10 @@ website:
           href: reference/transcript.qmd#span_messages
         - text: MessagesSegment
           href: reference/transcript.qmd#messagessegment
-        - text: build_timeline
-          href: reference/transcript.qmd#build_timeline
-        - text: filter_timeline
-          href: reference/transcript.qmd#filter_timeline
+        - text: timeline_build
+          href: reference/transcript.qmd#timeline_build
+        - text: timeline_filter
+          href: reference/transcript.qmd#timeline_filter
         - text: timeline_messages
           href: reference/transcript.qmd#timeline_messages
         - text: Timeline

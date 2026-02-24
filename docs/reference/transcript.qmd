@@ -38,20 +38,11 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 :::
 
 ### transcript_messages
+### timeline_messages
 ### segment_messages
 ### span_messages
 ### MessagesSegment
-
-## Timeline
-
-### build_timeline
-### filter_timeline
-### timeline_messages
-### Timeline
-### TimelineBranch
-### TimelineEvent
 ### TimelineMessages
-### TimelineSpan
 
 ## Observe
 

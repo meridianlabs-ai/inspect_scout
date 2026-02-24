@@ -189,7 +189,7 @@ The tree nests as: `Timeline` → root `TimelineSpan` → `content` (a mix of `T
 Use `timeline_filter()` to create a new timeline containing only spans that match a predicate:
 
 ``` python
-from inspect_scout import timeline_build, timeline_filter
+from inspect_ai.event import timeline_build, timeline_filter
 
 timeline = timeline_build(events)
 

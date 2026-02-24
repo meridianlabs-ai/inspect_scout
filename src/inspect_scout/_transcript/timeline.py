@@ -15,8 +15,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Any, Callable, Literal
 
 if TYPE_CHECKING:
-    from inspect_ai.model import Model
-
     from inspect_scout._scanner.extract import MessagesAsStr
 
 from inspect_ai.event import (
@@ -33,6 +31,7 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageTool,
+    Model,
 )
 from pydantic import (
     BaseModel,
@@ -265,6 +264,22 @@ class Timeline(BaseModel):
         from inspect_scout._transcript.timeline_repr import render_timeline
 
         return render_timeline(self, width=width)
+
+
+# =============================================================================
+# Serialization
+# =============================================================================
+
+
+def timeline_dump(timeline: Timeline) -> dict[str, Any]:
+    """Serialize a Timeline to a dict with event UUIDs."""
+    return timeline.model_dump()
+
+
+def timeline_load(data: dict[str, Any], events: list[Event]) -> Timeline:
+    """Deserialize a Timeline dict, resolving event UUIDs to Event objects."""
+    events_by_uuid = {e.uuid: e for e in events if e.uuid}
+    return Timeline.model_validate(data, context={"events_by_uuid": events_by_uuid})
 
 
 # =============================================================================

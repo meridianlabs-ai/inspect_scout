@@ -76,7 +76,9 @@ from ._transcript.timeline import (
     TimelineMessages,
     TimelineSpan,
     timeline_build,
+    timeline_dump,
     timeline_filter,
+    timeline_load,
     timeline_messages,
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
@@ -156,7 +158,9 @@ __all__ = [
     "TimelineMessages",
     "TimelineSpan",
     "timeline_build",
+    "timeline_dump",
     "timeline_filter",
+    "timeline_load",
     "timeline_messages",
     # scanner
     "Error",

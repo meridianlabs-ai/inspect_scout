@@ -46,7 +46,9 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ## Timeline
 
 ### timeline_build
+### timeline_dump
 ### timeline_filter
+### timeline_load
 ### timeline_messages
 ### Timeline
 ### TimelineBranch

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from inspect_scout._transcript.timeline import (
+    from .timeline import (
         Timeline,
         TimelineBranch,
         TimelineSpan,

@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-from inspect_scout._transcript.timeline import (
+from inspect_ai.event import (
     Timeline,
     TimelineBranch,
     TimelineEvent,
     TimelineSpan,
 )
-from inspect_scout._transcript.timeline_repr import (
+from inspect_ai.event._timeline_repr import (
     _format_token_count,
     _render_bar,
 )

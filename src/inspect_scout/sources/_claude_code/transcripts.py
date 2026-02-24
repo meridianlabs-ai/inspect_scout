@@ -249,10 +249,9 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     Returns:
         Merged Transcript
     """
-    from inspect_ai.event import InfoEvent
+    from inspect_ai.event import InfoEvent, timeline_build
 
     from inspect_scout import Transcript
-    from inspect_scout._transcript.timeline import timeline_build
 
     first = transcripts[0]
     merged_events: list[Event] = list(first.events)
@@ -408,9 +407,10 @@ async def _create_transcript(
     Returns:
         Transcript object, or None if creation fails
     """
+    from inspect_ai.event import timeline_build
+
     from inspect_scout import Transcript
     from inspect_scout._transcript.messages import span_messages
-    from inspect_scout._transcript.timeline import timeline_build
 
     session_path = session_file
     project_dir = session_path.parent

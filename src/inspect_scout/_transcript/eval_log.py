@@ -471,7 +471,8 @@ class EvalLogTranscriptsView(TranscriptsView):
                 and not transcript.timelines
                 and transcript.events
             ):
-                from .timeline import timeline_build
+                from inspect_ai.event import timeline_build
+
                 from .util import filter_timelines
 
                 raw_timeline = timeline_build(transcript.events)

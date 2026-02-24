@@ -16,7 +16,7 @@ from .types import (
 )
 
 if TYPE_CHECKING:
-    from .timeline import Timeline
+    from inspect_ai.event import Timeline
 
 
 class LazyJSONDict(dict[str, Any]):
@@ -311,7 +311,7 @@ def filter_timelines(
     if filter_value is True or filter_value == "all":
         return timelines
     # filter_value is a list of event types — prune each timeline
-    from .timeline import filter_timeline_events
+    from inspect_scout._transcript.timeline import filter_timeline_events
 
     return [filter_timeline_events(t, list(filter_value)) for t in timelines]
 

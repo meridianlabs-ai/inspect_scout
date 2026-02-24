@@ -12,6 +12,9 @@ from inspect_ai.event import (
     Event,
     EventTreeSpan,
     ModelEvent,
+    Timeline,
+    TimelineEvent,
+    TimelineSpan,
     event_sequence,
     event_tree,
 )
@@ -20,7 +23,6 @@ from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
 
 from inspect_scout._scanner.extract import MessagesAsStr
-from inspect_scout._transcript.timeline import Timeline, TimelineEvent, TimelineSpan
 
 if TYPE_CHECKING:
     from inspect_scout._transcript.types import Transcript
@@ -197,10 +199,9 @@ async def transcript_messages(
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
     """
     if transcript.timelines:
-        from inspect_scout._transcript.timeline import (
-            timeline_filter,
-            timeline_messages,
-        )
+        from inspect_ai.event import timeline_filter
+
+        from inspect_scout._transcript.timeline import timeline_messages
 
         timeline = transcript.timelines[0]
         if not include_scorers:

@@ -1,12 +1,11 @@
 from typing import Sequence, cast
 
 from inspect_ai.analysis._dataframe.extract import auto_id
-from inspect_ai.event import Event
+from inspect_ai.event import Event, Timeline
 from inspect_ai.event._base import BaseEvent
 from inspect_ai.model import ChatMessage, ChatMessageBase
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
-from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript
 
 

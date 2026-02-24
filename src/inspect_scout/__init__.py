@@ -1,4 +1,14 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
+from inspect_ai.event import (
+    Timeline,
+    TimelineBranch,
+    TimelineEvent,
+    TimelineSpan,
+    timeline_build,
+    timeline_dump,
+    timeline_filter,
+    timeline_load,
+)
 
 from ._grep_scanner import grep_scanner
 from ._llm_scanner import (
@@ -70,13 +80,7 @@ from ._transcript.messages import (
 )
 from ._transcript.sample_metadata import SampleMetadata
 from ._transcript.timeline import (
-    Timeline,
-    TimelineBranch,
-    TimelineEvent,
     TimelineMessages,
-    TimelineSpan,
-    timeline_build,
-    timeline_filter,
     timeline_messages,
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
@@ -156,7 +160,9 @@ __all__ = [
     "TimelineMessages",
     "TimelineSpan",
     "timeline_build",
+    "timeline_dump",
     "timeline_filter",
+    "timeline_load",
     "timeline_messages",
     # scanner
     "Error",

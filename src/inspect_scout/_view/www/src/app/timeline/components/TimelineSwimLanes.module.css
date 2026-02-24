@@ -56,6 +56,19 @@
   opacity: 0;
 }
 
+/* Disable animation during sticky transitions */
+.noAnimation {
+  transition: none;
+}
+
+/* Sticky state — opaque background so it covers scrolled content */
+.swimlaneSticky {
+  background-color: var(--bs-body-bg);
+  /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
+  margin-top: -1px;
+  padding-top: 1px;
+}
+
 .collapsibleInner {
   grid-column: 1 / -1;
   overflow: hidden;

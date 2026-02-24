@@ -152,6 +152,35 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     hasTimeline,
   } = useTranscriptTimeline(filteredEvents);
 
+  // Sticky swimlane state — when the swimlane scrolls past the tab bar,
+  // it collapses and sticks below it.
+  const [isSwimLaneSticky, setIsSwimLaneSticky] = useState(false);
+  const [stickySwimLaneHeight, setStickySwimLaneHeight] = useState(0);
+  const swimLaneStickyContentRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSwimLaneStickyChange = useCallback((sticky: boolean) => {
+    setIsSwimLaneSticky(sticky);
+    if (!sticky) {
+      setStickySwimLaneHeight(0);
+    }
+  }, []);
+
+  // Measure the sticky swimlane height via ResizeObserver so the outline
+  // offset updates reliably after the swimlane collapses/expands.
+  useEffect(() => {
+    const el = swimLaneStickyContentRef.current;
+    if (!isSwimLaneSticky || !el) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      setStickySwimLaneHeight(el.getBoundingClientRect().height);
+    });
+    observer.observe(el);
+    // Initial measurement
+    setStickySwimLaneHeight(el.getBoundingClientRect().height);
+    return () => observer.disconnect();
+  }, [isSwimLaneSticky]);
+
   // Transcript event data
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     selectedEvents,
@@ -351,26 +380,38 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       >
         <div className={styles.eventsTabContent}>
           {hasTimeline && timelineData && (
-            <TimelineSwimLanes
-              layouts={timelineLayouts}
-              selected={timelineState.selected}
-              node={timelineState.node}
-              onSelect={timelineState.select}
-              onDrillDown={timelineState.drillDown}
-              onBranchDrillDown={timelineState.drillDown}
-              onGoUp={timelineState.goUp}
-              minimap={{
-                root: timelineData.root,
-                selection: minimapSelection,
-              }}
-              breadcrumb={{
-                breadcrumbs: timelineState.breadcrumbs,
-                atRoot,
-                onGoUp: timelineState.goUp,
-                onNavigate: timelineState.navigateTo,
-                selected: timelineState.selected,
-              }}
-            />
+            <StickyScroll
+              scrollRef={scrollRef}
+              offsetTop={40}
+              zIndex={500}
+              preserveHeight={true}
+              onStickyChange={handleSwimLaneStickyChange}
+            >
+              <div ref={swimLaneStickyContentRef}>
+                <TimelineSwimLanes
+                  layouts={timelineLayouts}
+                  selected={timelineState.selected}
+                  node={timelineState.node}
+                  onSelect={timelineState.select}
+                  onDrillDown={timelineState.drillDown}
+                  onBranchDrillDown={timelineState.drillDown}
+                  onGoUp={timelineState.goUp}
+                  minimap={{
+                    root: timelineData.root,
+                    selection: minimapSelection,
+                  }}
+                  breadcrumb={{
+                    breadcrumbs: timelineState.breadcrumbs,
+                    atRoot,
+                    onGoUp: timelineState.goUp,
+                    onNavigate: timelineState.navigateTo,
+                    selected: timelineState.selected,
+                  }}
+                  forceCollapsed={isSwimLaneSticky}
+                  noAnimation={isSwimLaneSticky}
+                />
+              </div>
+            </StickyScroll>
           )}
           <div
             className={clsx(
@@ -381,7 +422,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
             <StickyScroll
               scrollRef={scrollRef}
               className={styles.eventsOutline}
-              offsetTop={40}
+              offsetTop={40 + stickySwimLaneHeight}
             >
               {!outlineCollapsed && (
                 <TranscriptOutline

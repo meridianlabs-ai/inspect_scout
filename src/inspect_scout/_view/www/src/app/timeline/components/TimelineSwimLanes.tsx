@@ -48,6 +48,10 @@ interface TimelineSwimLanesProps {
   minimap?: TimelineMinimapProps;
   /** Breadcrumb props for the navigation row. */
   breadcrumb?: BreadcrumbRowProps;
+  /** Force collapsed visual state (e.g. when sticky). */
+  forceCollapsed?: boolean;
+  /** Disable collapse/expand animation (e.g. during sticky transitions). */
+  noAnimation?: boolean;
 }
 
 export interface BreadcrumbRowProps {
@@ -125,6 +129,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   onGoUp,
   minimap,
   breadcrumb,
+  forceCollapsed,
+  noAnimation,
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
 
@@ -138,7 +144,11 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     { cleanup: false }
   );
   const isFlat = layouts.length <= 1;
-  const isCollapsed = collapsed ?? isFlat;
+  // When forceCollapsed (sticky mode), default to collapsed unless
+  // the user has explicitly expanded via the toggle (collapsed === false).
+  const isCollapsed = forceCollapsed
+    ? collapsed !== false
+    : (collapsed ?? isFlat);
   const toggleCollapsed = useCallback(() => {
     setCollapsed(!isCollapsed);
   }, [isCollapsed, setCollapsed]);
@@ -264,7 +274,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 
   return (
     <div
-      className={styles.swimlane}
+      className={clsx(styles.swimlane, forceCollapsed && styles.swimlaneSticky)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       role="grid"
@@ -279,7 +289,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       <div
         className={clsx(
           styles.collapsibleSection,
-          isCollapsed && styles.collapsibleCollapsed
+          isCollapsed && styles.collapsibleCollapsed,
+          noAnimation && styles.noAnimation
         )}
       >
         <div className={styles.collapsibleInner}>

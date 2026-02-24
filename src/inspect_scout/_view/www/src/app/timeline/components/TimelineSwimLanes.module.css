@@ -300,7 +300,7 @@
   cursor: pointer;
   color: var(--vscode-foreground);
   padding: 2px 4px 2px 4px;
-  font-size: var(--inspect-font-size-smallest);
+  font-size: var(--inspect-font-size-smallestest);
   line-height: 1;
   border-radius: var(--bs-border-radius);
   flex-shrink: 0;
@@ -330,7 +330,7 @@
   cursor: pointer;
   color: var(--vscode-textLink-foreground);
   padding: 0 2px;
-  font-size: var(--inspect-font-size-base);
+  font-size: var(--inspect-font-size-smallest);
 }
 
 .breadcrumbLink:hover {
@@ -343,7 +343,7 @@
   cursor: pointer;
   color: var(--vscode-foreground);
   font-weight: 600;
-  font-size: var(--inspect-font-size-base);
+  font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
@@ -354,7 +354,7 @@
 .breadcrumbSelection {
   color: var(--vscode-foreground);
   font-weight: 600;
-  font-size: var(--inspect-font-size-base);
+  font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 

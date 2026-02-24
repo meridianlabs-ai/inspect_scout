@@ -108,16 +108,3 @@
   pointer-events: auto;
   cursor: pointer;
 }
-
-/* Scroll playhead — vertical line tracking the user's position */
-.playhead {
-  position: absolute;
-  top: 50%;
-  height: 100%;
-  width: 1px;
-  background-color: var(--vscode-foreground);
-  opacity: 0.5;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  transition: left 0.15s ease-out;
-}

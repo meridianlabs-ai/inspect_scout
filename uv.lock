@@ -1534,6 +1534,7 @@ dependencies = [
     { name = "ijson" },
     { name = "importlib-metadata" },
     { name = "inspect-ai" },
+    { name = "inspect-swe" },
     { name = "jinja2" },
     { name = "jsonlines" },
     { name = "jsonschema" },
@@ -1644,6 +1645,7 @@ requires-dist = [
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
     { name = "inspect-ai", specifier = ">=0.3.183" },
+    { name = "inspect-swe", specifier = ">=0.2.37" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },
     { name = "jsonschema", specifier = ">3.1.1" },
@@ -1722,6 +1724,26 @@ doc = [
     { name = "markdown" },
     { name = "panflute" },
     { name = "pyyaml" },
+]
+
+[[package]]
+name = "inspect-swe"
+version = "0.2.37"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx" },
+    { name = "inspect-ai" },
+    { name = "nest-asyncio" },
+    { name = "platformdirs" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e7/a8/7b8b7010eec69bd0a84e412f7a12954d0d51462081a86528773ad4ff857d/inspect_swe-0.2.37.tar.gz", hash = "sha256:860f9325f8fbad06183ba36ff6617ec7eba2fd4b8d31f6897f6c6de601f447cd", size = 44924, upload-time = "2026-02-24T21:35:12.485Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/0e/66944ad07c82d19cb82e72ba4d68fc5068be23e63ba334f565eb34683a31/inspect_swe-0.2.37-py3-none-any.whl", hash = "sha256:93eba3cbdd3fd8969fe00e26762cfb4a5404dff7842b5db62558ca51ed3fac5a", size = 58076, upload-time = "2026-02-24T21:35:11.097Z" },
 ]
 
 [[package]]

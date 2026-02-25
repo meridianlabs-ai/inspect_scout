@@ -37,6 +37,8 @@ interface TranscriptOutlineProps {
   className?: string | string[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   style?: CSSProperties;
+  /** Reports whether the outline has displayable nodes after filtering. */
+  onHasNodesChange?: (hasNodes: boolean) => void;
 }
 
 // hack: add a padding node to the end of the list so
@@ -66,6 +68,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   className,
   scrollRef,
   style,
+  onHasNodesChange,
 }) => {
   const id = "transcript-tree";
   // The virtual list handle and state
@@ -160,6 +163,11 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
 
     return collapseScoring(collapseTurns(makeTurns(nodeList)));
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
+
+  const hasOutlineNodes = outlineNodeList.length > 0;
+  useEffect(() => {
+    onHasNodesChange?.(hasOutlineNodes);
+  }, [hasOutlineNodes, onHasNodesChange]);
 
   // Event node, for scroll tracking
   const allNodesList = useMemo(() => {

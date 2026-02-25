@@ -16,6 +16,7 @@ import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
 import { DisplayModeContext } from "../../components/content/DisplayModeContext";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { ApplicationIcons } from "../../components/icons";
+import { NoContentsPanel } from "../../components/NoContentsPanel";
 import { StickyScroll } from "../../components/StickyScroll";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolButton } from "../../components/ToolButton";
@@ -206,6 +207,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     selectedEvents,
     false
   );
+  const hasMatchingEvents = eventNodes.length > 0;
 
   // Transcript collapse
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
@@ -237,6 +239,27 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     },
     [setTranscriptState]
   );
+
+  // Track whether the outline has displayable nodes (reported by TranscriptOutline)
+  const [outlineHasNodes, setOutlineHasNodes] = useState(true);
+  const handleOutlineHasNodesChange = useCallback(
+    (hasNodes: boolean) => {
+      setOutlineHasNodes(hasNodes);
+      if (!hasNodes && !outlineCollapsed) {
+        toggleOutline(true);
+      }
+    },
+    [outlineCollapsed, toggleOutline]
+  );
+
+  // When the outline is collapsed (unmounted), it can't report node changes.
+  // Optimistically re-enable the toggle when eventNodes change so the user
+  // can reopen the outline, which will then re-validate via onHasNodesChange.
+  useEffect(() => {
+    if (outlineCollapsed && hasMatchingEvents) {
+      setOutlineHasNodes(true);
+    }
+  }, [outlineCollapsed, hasMatchingEvents, eventNodes]);
 
   // Validation sidebar - URL is the source of truth
   const validationSidebarCollapsed = !getValidationParam(searchParams);
@@ -436,7 +459,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         <div
           className={clsx(
             styles.eventsContainer,
-            outlineCollapsed ? styles.outlineCollapsed : undefined
+            outlineCollapsed && styles.outlineCollapsed
           )}
         >
           <StickyScroll
@@ -449,24 +472,39 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                 eventNodes={eventNodes}
                 defaultCollapsedIds={defaultCollapsedIds}
                 scrollRef={scrollRef}
+                onHasNodesChange={handleOutlineHasNodesChange}
               />
             )}
             <div
               className={styles.outlineToggle}
-              onClick={() => toggleOutline(!outlineCollapsed)}
+              onClick={
+                outlineHasNodes
+                  ? () => toggleOutline(!outlineCollapsed)
+                  : undefined
+              }
+              title={
+                outlineHasNodes
+                  ? undefined
+                  : "No outline available for the current filter"
+              }
+              style={outlineHasNodes ? undefined : { opacity: 0.4 }}
             >
               <i className={ApplicationIcons.sidebar} />
             </div>
           </StickyScroll>
           <div className={styles.eventsSeparator} />
-          <TranscriptViewNodes
-            id={"transcript-events-list"}
-            eventNodes={eventNodes}
-            defaultCollapsedIds={defaultCollapsedIds}
-            initialEventId={eventParam}
-            className={styles.eventsList}
-            scrollRef={scrollRef}
-          />
+          {hasMatchingEvents ? (
+            <TranscriptViewNodes
+              id={"transcript-events-list"}
+              eventNodes={eventNodes}
+              defaultCollapsedIds={defaultCollapsedIds}
+              initialEventId={eventParam}
+              className={styles.eventsList}
+              scrollRef={scrollRef}
+            />
+          ) : (
+            <NoContentsPanel text="No events match the current filter" />
+          )}
         </div>
       </div>
       <TranscriptFilterPopover

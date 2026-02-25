@@ -29122,7 +29122,11 @@ const root = clientExports.createRoot(container);
 const selectApi = () => {
   const vscodeApi2 = getVscodeApi();
   if (!vscodeApi2) {
-    return apiScoutServer();
+    const basePath = window.__SCOUT_BASE_PATH__ ?? "";
+    return apiScoutServer({
+      apiBaseUrl: `${basePath}/api/v2`,
+      disableSSE: window.__SCOUT_DISABLE_SSE__
+    });
   }
   const protocolVersion = getEmbeddedAppMessage()?.extensionProtocolVersion ?? 1;
   if (protocolVersion < 2) {

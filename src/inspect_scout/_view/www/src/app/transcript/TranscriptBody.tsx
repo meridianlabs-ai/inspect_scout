@@ -106,6 +106,10 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       setSearchParams((prevParams) => {
         const newParams = new URLSearchParams(prevParams);
         newParams.set("tab", tabId);
+        // Clear deep link params so the auto-switch effect doesn't
+        // fight the user's explicit tab choice
+        newParams.delete("event");
+        newParams.delete("message");
         return newParams;
       });
     },

@@ -146,9 +146,10 @@ function drillableChildCount(span: RowSpan): number {
 
 /**
  * Formats a token count for compact display: "48.5k", "1.2M", etc.
+ * Uses rounding thresholds so values like 999,950 display as "1.0M" not "1000.0k".
  */
 export function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) {
+  if (tokens >= 999_950) {
     return `${formatPrettyDecimal(tokens / 1_000_000, 1)}M`;
   }
   if (tokens >= 1_000) {

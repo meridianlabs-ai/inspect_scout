@@ -610,12 +610,26 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLSpanElement>) => {
-      e.stopPropagation();
-      if (marker.reference && onMarkerNavigate) {
+      if (marker.kind === "branch") {
+        e.stopPropagation();
+        onBranchHover(marker.reference, e.currentTarget);
+      } else if (marker.reference && onMarkerNavigate) {
+        e.stopPropagation();
         onMarkerNavigate(marker.reference);
       }
     },
-    [marker.reference, onMarkerNavigate]
+    [marker.kind, marker.reference, onMarkerNavigate, onBranchHover]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (marker.kind === "branch" && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onBranchHover(marker.reference, e.currentTarget);
+      }
+    },
+    [marker.kind, marker.reference, onBranchHover]
   );
 
   const handleMouseEnter = useCallback(
@@ -641,9 +655,14 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({
       className={clsx(styles.marker, kindClass)}
       style={{ left: `${marker.left}%` }}
       title={isBranch ? undefined : marker.tooltip}
-      onClick={isBranch ? undefined : handleClick}
+      onClick={handleClick}
+      onKeyDown={isBranch ? handleKeyDown : undefined}
       onMouseEnter={isBranch ? handleMouseEnter : undefined}
       onMouseLeave={isBranch ? handleMouseLeave : undefined}
+      tabIndex={isBranch ? 0 : undefined}
+      role={isBranch ? "button" : undefined}
+      aria-haspopup={isBranch ? "true" : undefined}
+      aria-label={isBranch ? "Show branches" : undefined}
     >
       {marker.kind !== "error" && <i className={icon} />}
     </span>

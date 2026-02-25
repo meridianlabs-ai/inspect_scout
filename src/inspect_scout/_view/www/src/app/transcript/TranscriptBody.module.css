@@ -87,7 +87,7 @@
   right: 0.5em;
 }
 
-.outlineToggle:disabled {
+.outlineToggle[aria-disabled="true"] {
   cursor: default;
   opacity: 0.4;
 }

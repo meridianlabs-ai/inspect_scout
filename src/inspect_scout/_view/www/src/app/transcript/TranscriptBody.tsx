@@ -477,9 +477,14 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
               />
             )}
             <button
+              type="button"
               className={styles.outlineToggle}
-              onClick={() => toggleOutline(!outlineCollapsed)}
-              disabled={!outlineHasNodes}
+              onClick={
+                outlineHasNodes
+                  ? () => toggleOutline(!outlineCollapsed)
+                  : undefined
+              }
+              aria-disabled={!outlineHasNodes}
               title={
                 outlineHasNodes
                   ? undefined

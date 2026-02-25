@@ -7450,7 +7450,7 @@ span.ap-marker-container:hover span.ap-marker {
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_57cb3_1 {
+._swimlane_7icss_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -7466,7 +7466,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_57cb3_17 {
+._pinnedSection_7icss_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7474,7 +7474,7 @@ span.ap-marker-container:hover span.ap-marker {
 }
 
 /* Scrollable section: child rows */
-._scrollSection_57cb3_25 {
+._scrollSection_7icss_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7483,13 +7483,13 @@ span.ap-marker-container:hover span.ap-marker {
   overflow-y: auto;
 }
 
-._swimlane_57cb3_1:focus-visible {
+._swimlane_7icss_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_57cb3_40 {
+._collapsibleSection_7icss_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -7502,26 +7502,26 @@ span.ap-marker-container:hover span.ap-marker {
   opacity: 1;
 }
 
-._collapsibleCollapsed_57cb3_53 {
+._collapsibleCollapsed_7icss_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_57cb3_60 {
+._noAnimation_7icss_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_57cb3_65 {
+._swimlaneSticky_7icss_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_57cb3_72 {
+._collapsibleInner_7icss_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -7531,7 +7531,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_57cb3_82 {
+._collapseToggle_7icss_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -7552,20 +7552,20 @@ span.ap-marker-container:hover span.ap-marker {
   line-height: 1;
 }
 
-._collapseToggle_57cb3_82:hover {
+._collapseToggle_7icss_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_57cb3_110 {
+._row_7icss_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_57cb3_116 {
+._label_7icss_116 {
   padding: 0 0.5rem 0 1.6rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -7577,29 +7577,29 @@ span.ap-marker-container:hover span.ap-marker {
   gap: 2px;
 }
 
-._labelChild_57cb3_128 {
+._labelChild_7icss_128 {
   padding-left: 2.25rem;
 }
 
-._labelSelected_57cb3_132 {
+._labelSelected_7icss_132 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_57cb3_138 {
+._barArea_7icss_138 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_57cb3_144 {
+._barInner_7icss_144 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_57cb3_150 {
+._fill_7icss_150 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -7613,27 +7613,27 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._fill_57cb3_150:hover {
+._fill_7icss_150:hover {
   opacity: 0.5;
 }
 
-._fillParent_57cb3_168 {
+._fillParent_7icss_168 {
   opacity: 0.2;
 }
 
-._fillSelected_57cb3_172 {
+._fillSelected_7icss_172 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_57cb3_177 {
+._parallelBadge_7icss_177 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Drill-down button */
 
-._drillDown_57cb3_184 {
+._drillDown_7icss_184 {
   position: absolute;
   top: 50%;
   transform: translate(calc(-100% - 2px), -50%);
@@ -7652,7 +7652,7 @@ span.ap-marker-container:hover span.ap-marker {
   border-radius: 2px;
 }
 
-._drillDown_57cb3_184::before {
+._drillDown_7icss_184::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -7662,17 +7662,17 @@ span.ap-marker-container:hover span.ap-marker {
   z-index: -1;
 }
 
-._drillDownSelected_57cb3_213::before {
+._drillDownSelected_7icss_213::before {
   opacity: 0.6;
 }
 
-._drillDown_57cb3_184:hover {
+._drillDown_7icss_184:hover {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_57cb3_223 {
+._marker_7icss_223 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -7688,11 +7688,11 @@ span.ap-marker-container:hover span.ap-marker {
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_57cb3_223 > * {
+._marker_7icss_223 > * {
   pointer-events: none;
 }
 
-._markerError_57cb3_243 {
+._markerError_7icss_243 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -7703,7 +7703,7 @@ span.ap-marker-container:hover span.ap-marker {
   cursor: pointer;
 }
 
-._markerError_57cb3_243::after {
+._markerError_7icss_243::after {
   content: "";
   position: absolute;
   top: 0;
@@ -7713,7 +7713,7 @@ span.ap-marker-container:hover span.ap-marker {
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_57cb3_264 {
+._markerCompaction_7icss_264 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -7722,22 +7722,23 @@ span.ap-marker-container:hover span.ap-marker {
   height: auto;
   transform: translateX(-50%);
   filter: none;
+  cursor: pointer;
 }
 
-._markerBranch_57cb3_275 {
+._markerBranch_7icss_276 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_57cb3_282 {
+._branchPopover_7icss_283 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_57cb3_288 {
+._branchEntry_7icss_289 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7752,28 +7753,28 @@ span.ap-marker-container:hover span.ap-marker {
   white-space: nowrap;
 }
 
-._branchEntry_57cb3_288:hover {
+._branchEntry_7icss_289:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_57cb3_308 {
+._branchLabel_7icss_309 {
   font-weight: 500;
 }
 
-._branchMeta_57cb3_312 {
+._branchMeta_7icss_313 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_57cb3_288:hover ._branchMeta_57cb3_312 {
+._branchEntry_7icss_289:hover ._branchMeta_7icss_313 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_57cb3_324 {
+._breadcrumbRow_7icss_325 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -7783,7 +7784,7 @@ span.ap-marker-container:hover span.ap-marker {
   overflow: hidden;
 }
 
-._breadcrumbBack_57cb3_334 {
+._breadcrumbBack_7icss_335 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7796,24 +7797,24 @@ span.ap-marker-container:hover span.ap-marker {
   margin-top: -1px;
 }
 
-._breadcrumbBack_57cb3_334:hover:not(:disabled) {
+._breadcrumbBack_7icss_335:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_57cb3_334:disabled {
+._breadcrumbBack_7icss_335:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_57cb3_357 {
+._breadcrumbGroup_7icss_358 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_57cb3_364 {
+._breadcrumbLink_7icss_365 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7822,11 +7823,11 @@ span.ap-marker-container:hover span.ap-marker {
   font-size: var(--inspect-font-size-smallest);
 }
 
-._breadcrumbLink_57cb3_364:hover {
+._breadcrumbLink_7icss_365:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_57cb3_377 {
+._breadcrumbCurrent_7icss_378 {
   background: none;
   border: none;
   cursor: pointer;
@@ -7836,18 +7837,18 @@ span.ap-marker-container:hover span.ap-marker {
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_57cb3_377:hover {
+._breadcrumbCurrent_7icss_378:hover {
   text-decoration: underline;
 }
 
-._breadcrumbSelection_57cb3_391 {
+._breadcrumbSelection_7icss_392 {
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-._breadcrumbDivider_57cb3_398 {
+._breadcrumbDivider_7icss_399 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 1px 0 3px;
@@ -7855,7 +7856,7 @@ span.ap-marker-container:hover span.ap-marker {
 
 /* Token cell */
 
-._tokens_57cb3_406 {
+._tokens_7icss_407 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

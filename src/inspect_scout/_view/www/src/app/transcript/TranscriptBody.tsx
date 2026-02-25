@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
 import { DisplayModeContext } from "../../components/content/DisplayModeContext";
@@ -36,6 +36,7 @@ import { messagesToStr } from "../utils/messages";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
+import { useTranscriptNavigation } from "./hooks/useTranscriptNavigation";
 import { useTranscriptTimeline } from "./hooks/useTranscriptTimeline";
 import styles from "./TranscriptBody.module.css";
 import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
@@ -75,7 +76,9 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   transcript,
   scrollRef,
 }) => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getEventUrl } = useTranscriptNavigation();
   const tabParam = searchParams.get("tab");
 
   // Get event or message ID from query params for deep linking
@@ -103,6 +106,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       });
     },
     [setSelectedTranscriptTab, setSearchParams]
+  );
+
+  // Navigate to a specific event when a marker is clicked on the timeline
+  const handleMarkerNavigate = useCallback(
+    (eventId: string) => {
+      const url = getEventUrl(eventId);
+      if (url) void navigate(url);
+    },
+    [getEventUrl, navigate]
   );
 
   // Auto-switch tab based on deep link params
@@ -407,6 +419,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                     onNavigate: timelineState.navigateTo,
                     selected: timelineState.selected,
                   }}
+                  onMarkerNavigate={handleMarkerNavigate}
                   forceCollapsed={isSwimLaneSticky}
                   noAnimation={isSwimLaneSticky}
                 />

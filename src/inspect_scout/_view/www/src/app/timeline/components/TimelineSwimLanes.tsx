@@ -52,6 +52,8 @@ interface TimelineSwimLanesProps {
   forceCollapsed?: boolean;
   /** Disable collapse/expand animation (e.g. during sticky transitions). */
   noAnimation?: boolean;
+  /** Called when an error or compaction marker is clicked. */
+  onMarkerNavigate?: (eventId: string) => void;
 }
 
 export interface BreadcrumbRowProps {
@@ -131,6 +133,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   breadcrumb,
   forceCollapsed,
   noAnimation,
+  onMarkerNavigate,
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
 
@@ -269,6 +272,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         )
       }
       onBranchClick={handleBranchClick}
+      onMarkerNavigate={onMarkerNavigate}
     />
   );
 
@@ -341,6 +345,7 @@ interface SwimlaneRowProps {
   onSelect: (spanIndex: number) => void;
   onDrillDown: (spanIndex: number) => void;
   onBranchClick: (forkedAt: string, element: HTMLElement) => void;
+  onMarkerNavigate?: (eventId: string) => void;
 }
 
 const SwimlaneRow: FC<SwimlaneRowProps> = ({
@@ -349,6 +354,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   onSelect,
   onDrillDown,
   onBranchClick,
+  onMarkerNavigate,
 }) => {
   const hasSelectedSpan = layout.spans.some((_, i) =>
     isSpanSelected(layout, i, parsedSelection)
@@ -391,6 +397,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
               key={i}
               marker={marker}
               onBranchClick={onBranchClick}
+              onMarkerNavigate={onMarkerNavigate}
             />
           ))}
         </div>
@@ -559,9 +566,14 @@ const BarFill: FC<BarFillProps> = ({
 interface MarkerGlyphProps {
   marker: PositionedMarker;
   onBranchClick: (forkedAt: string, element: HTMLElement) => void;
+  onMarkerNavigate?: (eventId: string) => void;
 }
 
-const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
+const MarkerGlyph: FC<MarkerGlyphProps> = ({
+  marker,
+  onBranchClick,
+  onMarkerNavigate,
+}) => {
   const icon = MARKER_ICONS[marker.kind]?.icon ?? "bi bi-question-circle";
   const kindClass =
     marker.kind === "error"
@@ -572,12 +584,14 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({ marker, onBranchClick }) => {
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLSpanElement>) => {
+      e.stopPropagation();
       if (marker.kind === "branch") {
-        e.stopPropagation();
         onBranchClick(marker.reference, e.currentTarget);
+      } else if (marker.reference && onMarkerNavigate) {
+        onMarkerNavigate(marker.reference);
       }
     },
-    [marker.kind, marker.reference, onBranchClick]
+    [marker.kind, marker.reference, onBranchClick, onMarkerNavigate]
   );
 
   return (

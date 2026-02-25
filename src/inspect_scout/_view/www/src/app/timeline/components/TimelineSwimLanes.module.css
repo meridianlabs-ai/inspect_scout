@@ -270,6 +270,7 @@
   height: auto;
   transform: translateX(-50%);
   filter: none;
+  cursor: pointer;
 }
 
 .markerBranch {

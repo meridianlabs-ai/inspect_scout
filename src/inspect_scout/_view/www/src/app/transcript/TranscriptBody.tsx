@@ -255,9 +255,10 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   // When the outline is collapsed (unmounted), it can't report node changes.
   // Optimistically re-enable the toggle when eventNodes change so the user
   // can reopen the outline, which will then re-validate via onHasNodesChange.
+  // When there are no matching events, definitively disable the toggle.
   useEffect(() => {
-    if (outlineCollapsed && hasMatchingEvents) {
-      setOutlineHasNodes(true);
+    if (outlineCollapsed) {
+      setOutlineHasNodes(hasMatchingEvents);
     }
   }, [outlineCollapsed, hasMatchingEvents, eventNodes]);
 
@@ -475,22 +476,19 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                 onHasNodesChange={handleOutlineHasNodesChange}
               />
             )}
-            <div
+            <button
               className={styles.outlineToggle}
-              onClick={
-                outlineHasNodes
-                  ? () => toggleOutline(!outlineCollapsed)
-                  : undefined
-              }
+              onClick={() => toggleOutline(!outlineCollapsed)}
+              disabled={!outlineHasNodes}
               title={
                 outlineHasNodes
                   ? undefined
                   : "No outline available for the current filter"
               }
-              style={outlineHasNodes ? undefined : { opacity: 0.4 }}
+              aria-label={outlineCollapsed ? "Show outline" : "Hide outline"}
             >
               <i className={ApplicationIcons.sidebar} />
-            </div>
+            </button>
           </StickyScroll>
           <div className={styles.eventsSeparator} />
           {hasMatchingEvents ? (

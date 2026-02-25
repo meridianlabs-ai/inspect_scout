@@ -255,10 +255,15 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   const parentRow = layouts[0];
   const childRows = layouts.slice(1);
 
-  const renderRow = (layout: RowLayout, rowIndex: number) => (
+  const renderRow = (
+    layout: RowLayout,
+    rowIndex: number,
+    displayName?: string
+  ) => (
     <SwimlaneRow
       key={`${layout.name}-${rowIndex}`}
       layout={layout}
+      displayName={displayName}
       parsedSelection={parsedSelection}
       onSelect={(spanIndex) => {
         if (layout.spans.length > 1) {
@@ -302,7 +307,14 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       >
         <div className={styles.collapsibleInner}>
           <div className={styles.pinnedSection}>
-            {parentRow && renderRow(parentRow, 0)}
+            {parentRow &&
+              renderRow(
+                parentRow,
+                0,
+                breadcrumb?.atRoot && parentRow.name === "solvers"
+                  ? "main"
+                  : undefined
+              )}
           </div>
           {childRows.length > 0 && (
             <div className={styles.scrollSection}>
@@ -344,6 +356,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 
 interface SwimlaneRowProps {
   layout: RowLayout;
+  /** Override the displayed label (defaults to layout.name). */
+  displayName?: string;
   parsedSelection: ParsedSelection | null;
   onSelect: (spanIndex: number) => void;
   onDrillDown: (spanIndex: number) => void;
@@ -354,6 +368,7 @@ interface SwimlaneRowProps {
 
 const SwimlaneRow: FC<SwimlaneRowProps> = ({
   layout,
+  displayName,
   parsedSelection,
   onSelect,
   onDrillDown,
@@ -375,7 +390,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
           hasSelectedSpan && styles.labelSelected
         )}
       >
-        {layout.name}
+        {displayName ?? layout.name}
         {layout.parallelCount !== null && (
           <span className={styles.parallelBadge}>({layout.parallelCount})</span>
         )}
@@ -450,6 +465,9 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
       </button>
       {breadcrumbs.map((segment, i) => {
         const isLast = i === breadcrumbs.length - 1;
+        // Show "main" for the root breadcrumb when it's the generic "solvers" name
+        const label =
+          i === 0 && segment.label === "solvers" ? "main" : segment.label;
         return (
           <span key={segment.path + i} className={styles.breadcrumbGroup}>
             {i > 0 && (
@@ -460,14 +478,14 @@ const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
                 className={styles.breadcrumbCurrent}
                 onClick={() => onNavigate(segment.path)}
               >
-                {segment.label}
+                {label}
               </button>
             ) : (
               <button
                 className={styles.breadcrumbLink}
                 onClick={() => onNavigate(segment.path)}
               >
-                {segment.label}
+                {label}
               </button>
             )}
           </span>

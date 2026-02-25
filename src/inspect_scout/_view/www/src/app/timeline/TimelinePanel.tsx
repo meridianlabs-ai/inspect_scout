@@ -37,9 +37,10 @@ export const TimelinePanel: FC = () => {
   );
   const isOutlineCollapsed = !!outlineCollapsed;
   const scenario = timelineScenarios[selectedIndex];
-
-  const timeline = scenario?.timeline;
-  const state = useTimeline(timeline!);
+  // Guaranteed to be defined: selectedIndex is initialized to 0 and the
+  // select only offers valid indices, but we fall back to [0] defensively.
+  const timeline = scenario?.timeline ?? timelineScenarios[0]!.timeline;
+  const state = useTimeline(timeline);
 
   // Clear drill-down path on mount so reloads start at root
   useEffect(() => {
@@ -84,6 +85,7 @@ export const TimelinePanel: FC = () => {
         <VscodeSingleSelect
           value={String(selectedIndex)}
           onChange={(e) => {
+            // Cast required: @vscode-elements/react-elements types onChange as Event
             const target = e.target as HTMLSelectElement;
             setSelectedIndex(Number(target.value));
             state.navigateTo("");
@@ -99,6 +101,7 @@ export const TimelinePanel: FC = () => {
         <VscodeSingleSelect
           value={markerDepth}
           onChange={(e) => {
+            // Cast required: @vscode-elements/react-elements types onChange as Event
             const target = e.target as HTMLSelectElement;
             setMarkerDepth(target.value as MarkerDepth);
           }}
@@ -120,10 +123,9 @@ export const TimelinePanel: FC = () => {
           node={state.node}
           onSelect={state.select}
           onDrillDown={state.drillDown}
-          onBranchDrillDown={state.drillDown}
           onGoUp={state.goUp}
           minimap={{
-            root: timeline!.root,
+            root: timeline.root,
             selection: minimapSelection,
           }}
           breadcrumb={{

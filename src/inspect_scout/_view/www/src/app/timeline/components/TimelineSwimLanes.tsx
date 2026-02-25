@@ -38,10 +38,8 @@ interface TimelineSwimLanesProps {
   node: TimelineSpan;
   /** Called when a span is clicked (selection). */
   onSelect: (name: string, spanIndex?: number) => void;
-  /** Called when a span's drill-down chevron is clicked. */
+  /** Called when a span's drill-down chevron or a branch popover entry is clicked. */
   onDrillDown: (name: string, spanIndex?: number) => void;
-  /** Called when a branch popover entry is clicked. Segment is e.g. "@branch-1". */
-  onBranchDrillDown: (branchSegment: string) => void;
   /** Called on Escape key (go up). */
   onGoUp: () => void;
   /** Minimap props for the zoom indicator row. */
@@ -61,7 +59,6 @@ export interface BreadcrumbRowProps {
   atRoot: boolean;
   onGoUp: () => void;
   onNavigate: (path: string) => void;
-  minimap?: TimelineMinimapProps;
   /** Currently selected row name, shown as a read-only tail segment. */
   selected?: string | null;
 }
@@ -127,7 +124,6 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   node,
   onSelect,
   onDrillDown,
-  onBranchDrillDown,
   onGoUp,
   minimap,
   breadcrumb,
@@ -184,12 +180,12 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       // Build the full drill-down path: owner path segments + branch segment
       if (lookup && lookup.ownerPath.length > 0) {
         const fullSegment = [...lookup.ownerPath, branchSegment].join("/");
-        onBranchDrillDown(fullSegment);
+        onDrillDown(fullSegment);
       } else {
-        onBranchDrillDown(branchSegment);
+        onDrillDown(branchSegment);
       }
     },
-    [onBranchDrillDown, node, branchPopover?.forkedAt]
+    [onDrillDown, node, branchPopover?.forkedAt]
   );
 
   const handleKeyDown = useCallback(
@@ -436,7 +432,11 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
 // BreadcrumbRow (internal)
 // =============================================================================
 
-const BreadcrumbRow: FC<BreadcrumbRowProps> = ({
+interface InternalBreadcrumbRowProps extends BreadcrumbRowProps {
+  minimap?: TimelineMinimapProps;
+}
+
+const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
   breadcrumbs,
   atRoot,
   onGoUp,

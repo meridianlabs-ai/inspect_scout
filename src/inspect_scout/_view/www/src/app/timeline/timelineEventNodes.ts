@@ -19,6 +19,7 @@ import type {
 
 import type { MinimapSelection } from "./components/TimelineMinimap";
 import { parsePathSegment } from "./hooks/useTimeline";
+import { computeTimeEnvelope } from "./utils/swimlaneLayout";
 import {
   type SwimlaneRow,
   getAgents,
@@ -121,17 +122,9 @@ export function computeMinimapSelection(
       }
       // No index → envelope of all parallel agents
       const agents = getAgents(rowSpan);
-      const first = agents[0]!;
-      let start = first.startTime;
-      let end = first.endTime;
-      let tokens = first.totalTokens;
-      for (let i = 1; i < agents.length; i++) {
-        const a = agents[i]!;
-        if (a.startTime < start) start = a.startTime;
-        if (a.endTime > end) end = a.endTime;
-        tokens += a.totalTokens;
-      }
-      return { startTime: start, endTime: end, totalTokens: tokens };
+      const envelope = computeTimeEnvelope(agents);
+      const tokens = agents.reduce((sum, a) => sum + a.totalTokens, 0);
+      return { ...envelope, totalTokens: tokens };
     }
   }
   return undefined;

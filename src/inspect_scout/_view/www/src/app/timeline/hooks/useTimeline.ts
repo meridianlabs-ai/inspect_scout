@@ -14,6 +14,7 @@ import type {
   TimelineBranch,
   TimelineSpan,
 } from "../../../components/transcript/timeline";
+import { computeTimeEnvelope } from "../utils/swimlaneLayout";
 import {
   type SwimlaneRow,
   compareByTime,
@@ -223,14 +224,7 @@ function findChildSpan(
  */
 function createParallelContainer(agents: TimelineSpan[]): TimelineSpan {
   const displayName = agents[0]!.name;
-  const startTime = agents.reduce(
-    (min, a) => (a.startTime.getTime() < min.getTime() ? a.startTime : min),
-    agents[0]!.startTime
-  );
-  const endTime = agents.reduce(
-    (max, a) => (a.endTime.getTime() > max.getTime() ? a.endTime : max),
-    agents[0]!.endTime
-  );
+  const { startTime, endTime } = computeTimeEnvelope(agents);
   const totalTokens = agents.reduce((sum, a) => sum + a.totalTokens, 0);
 
   // Sort by start time (end time as tiebreaker), then number sequentially

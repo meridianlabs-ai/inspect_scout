@@ -8,17 +8,23 @@ import type {
 import type { ModelEvent } from "../../types/api-types";
 
 import { buildContentItems } from "./contentItems";
-import { timelineScenarios } from "./syntheticNodes";
+import {
+  S1_SEQUENTIAL,
+  S2_ITERATIVE,
+  S3_DEEP,
+  S4_PARALLEL,
+  S7_FLAT,
+  S10_UTILITY,
+  S11A_BRANCHES,
+  S11B_BRANCHES_MULTI,
+  getScenarioRoot,
+  makeSpan,
+  ts,
+} from "./testHelpers";
 
 // =============================================================================
-// Test helpers
+// Test helpers (contentItems-specific)
 // =============================================================================
-
-const BASE = new Date("2025-01-15T10:00:00Z").getTime();
-
-function ts(offsetSeconds: number): Date {
-  return new Date(BASE + offsetSeconds * 1000);
-}
 
 /** Minimal TimelineEvent with a specific UUID. */
 function makeEventNode(uuid: string | null, startSec: number): TimelineEvent {
@@ -71,28 +77,6 @@ function makeEventNode(uuid: string | null, startSec: number): TimelineEvent {
   };
 }
 
-/** Minimal TimelineSpan builder. */
-function makeSpan(
-  name: string,
-  startSec: number,
-  endSec: number,
-  content: TimelineSpan["content"] = [],
-  options?: { branches?: TimelineBranch[]; utility?: boolean }
-): TimelineSpan {
-  return {
-    type: "span",
-    id: name.toLowerCase(),
-    name,
-    spanType: null,
-    content,
-    branches: options?.branches ?? [],
-    utility: options?.utility ?? false,
-    startTime: ts(startSec),
-    endTime: ts(endSec),
-    totalTokens: 1000,
-  };
-}
-
 /** Minimal TimelineBranch builder. */
 function makeBranch(forkedAt: string, startSec: number): TimelineBranch {
   return {
@@ -103,22 +87,6 @@ function makeBranch(forkedAt: string, startSec: number): TimelineBranch {
     endTime: ts(startSec + 5),
     totalTokens: 500,
   };
-}
-
-/** Scenario lookup by index. */
-const S1_SEQUENTIAL = 0;
-const S2_ITERATIVE = 1;
-const S3_DEEP = 2;
-const S4_PARALLEL = 3;
-const S7_FLAT = 5;
-const S10_UTILITY = 7;
-const S11A_BRANCHES = 8;
-const S11B_BRANCHES_MULTI = 9;
-
-function getScenarioRoot(index: number): TimelineSpan {
-  const scenario = timelineScenarios[index];
-  if (!scenario) throw new Error(`No scenario at index ${index}`);
-  return scenario.timeline.root;
 }
 
 // =============================================================================
@@ -338,7 +306,7 @@ describe("buildContentItems", () => {
       const event3 = makeEventNode("evt-3", 10);
       const branch = makeBranch("evt-2", 5);
 
-      const parent = makeSpan("Root", 0, 20, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 20, 1000, [event1, event2, event3], {
         branches: [branch],
       });
 
@@ -357,7 +325,7 @@ describe("buildContentItems", () => {
       const branch1 = makeBranch("evt-1", 2);
       const branch2 = makeBranch("evt-1", 3);
 
-      const parent = makeSpan("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, 1000, [event1, event2], {
         branches: [branch1, branch2],
       });
 
@@ -377,7 +345,7 @@ describe("buildContentItems", () => {
       const branchA = makeBranch("evt-1", 2);
       const branchB = makeBranch("evt-3", 12);
 
-      const parent = makeSpan("Root", 0, 20, [event1, event2, event3], {
+      const parent = makeSpan("Root", 0, 20, 1000, [event1, event2, event3], {
         branches: [branchA, branchB],
       });
 
@@ -397,7 +365,7 @@ describe("buildContentItems", () => {
       const matchedBranch = makeBranch("evt-1", 2);
       const unmatchedBranch = makeBranch("nonexistent", 8);
 
-      const parent = makeSpan("Root", 0, 20, [event1, event2], {
+      const parent = makeSpan("Root", 0, 20, 1000, [event1, event2], {
         branches: [matchedBranch, unmatchedBranch],
       });
 
@@ -416,7 +384,7 @@ describe("buildContentItems", () => {
   // ---------------------------------------------------------------------------
   describe("edge cases", () => {
     it("returns empty array for span with no content", () => {
-      const parent = makeSpan("Empty", 0, 10);
+      const parent = makeSpan("Empty", 0, 10, 1000);
       const items = buildContentItems(parent);
 
       expect(items).toHaveLength(0);
@@ -424,7 +392,9 @@ describe("buildContentItems", () => {
 
     it("returns empty array for span with no content but has branches", () => {
       const branch = makeBranch("nonexistent", 5);
-      const parent = makeSpan("Empty", 0, 10, [], { branches: [branch] });
+      const parent = makeSpan("Empty", 0, 10, 1000, [], {
+        branches: [branch],
+      });
       const items = buildContentItems(parent);
 
       // Branch appended since no content to match UUID against
@@ -434,13 +404,20 @@ describe("buildContentItems", () => {
 
     it("handles agent_card items mixed with events for branch matching", () => {
       const event1 = makeEventNode("evt-1", 0);
-      const childSpan = makeSpan("Child", 5, 10);
+      const childSpan = makeSpan("Child", 5, 10, 1000);
       const event2 = makeEventNode("evt-2", 10);
       const branch = makeBranch("evt-2", 12);
 
-      const parent = makeSpan("Root", 0, 20, [event1, childSpan, event2], {
-        branches: [branch],
-      });
+      const parent = makeSpan(
+        "Root",
+        0,
+        20,
+        1000,
+        [event1, childSpan, event2],
+        {
+          branches: [branch],
+        }
+      );
 
       const items = buildContentItems(parent);
 

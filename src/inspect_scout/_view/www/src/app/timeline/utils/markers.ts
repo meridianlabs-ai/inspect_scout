@@ -11,7 +11,9 @@ import type {
   TimelineSpan,
 } from "../../../components/transcript/timeline";
 import type { CompactionEvent, Event } from "../../../types/api-types";
-import { formatDuration, formatPrettyDecimal } from "../../../utils/format";
+import { formatDuration } from "../../../utils/format";
+
+import { computeTimeEnvelope, formatTokenCount } from "./swimlaneLayout";
 
 // =============================================================================
 // Types
@@ -220,31 +222,18 @@ function branchTooltip(branches: TimelineBranch[]): string {
   const tokenStr = formatCompactTokens(totalTokens);
 
   // Compute combined duration: earliest start to latest end
-  const earliest = branches.reduce(
-    (min, b) => (b.startTime < min ? b.startTime : min),
-    branches[0]!.startTime
-  );
-  const latest = branches.reduce(
-    (max, b) => (b.endTime > max ? b.endTime : max),
-    branches[0]!.endTime
-  );
-  const duration = formatDuration(earliest, latest);
+  const envelope = computeTimeEnvelope(branches);
+  const duration = formatDuration(envelope.startTime, envelope.endTime);
 
   const label = count === 1 ? "1 branch" : `${count} branches`;
   return `${label} (${tokenStr}, ${duration})`;
 }
 
 /**
- * Formats a token count compactly: "48.5k", "1.2M", etc.
+ * Formats a token count compactly with " tokens" suffix: "48.5k tokens", "1.2M tokens", etc.
  */
 function formatCompactTokens(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${formatPrettyDecimal(tokens / 1_000_000)}M tokens`;
-  }
-  if (tokens >= 1_000) {
-    return `${formatPrettyDecimal(tokens / 1_000)}k tokens`;
-  }
-  return `${tokens} tokens`;
+  return `${formatTokenCount(tokens)} tokens`;
 }
 
 /**

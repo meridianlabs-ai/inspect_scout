@@ -437,7 +437,6 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                 node={timelineState.node}
                 onSelect={timelineState.select}
                 onDrillDown={timelineState.drillDown}
-                onBranchDrillDown={timelineState.drillDown}
                 onGoUp={timelineState.goUp}
                 minimap={{
                   root: timelineData.root,

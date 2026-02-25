@@ -72,6 +72,7 @@ export const S7_FLAT = 5;
 export const S8_MANY = 6;
 export const S10_UTILITY = 7;
 export const S11A_BRANCHES = 8;
+export const S11B_BRANCHES_MULTI = 9;
 
 // =============================================================================
 // Scenario lookup helpers

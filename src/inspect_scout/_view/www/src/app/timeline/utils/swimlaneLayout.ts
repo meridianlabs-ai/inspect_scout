@@ -141,6 +141,33 @@ function drillableChildCount(span: RowSpan): number {
 }
 
 // =============================================================================
+// Time Envelope
+// =============================================================================
+
+interface HasTimeRange {
+  startTime: Date;
+  endTime: Date;
+}
+
+/**
+ * Computes the time envelope (earliest start, latest end) of a non-empty array.
+ * Useful for computing the bounding range of parallel agents or branches.
+ */
+export function computeTimeEnvelope<T extends HasTimeRange>(
+  items: T[]
+): { startTime: Date; endTime: Date } {
+  const first = items[0]!;
+  let startTime = first.startTime;
+  let endTime = first.endTime;
+  for (let i = 1; i < items.length; i++) {
+    const item = items[i]!;
+    if (item.startTime < startTime) startTime = item.startTime;
+    if (item.endTime > endTime) endTime = item.endTime;
+  }
+  return { startTime, endTime };
+}
+
+// =============================================================================
 // Token Formatting
 // =============================================================================
 
@@ -199,15 +226,13 @@ export function computeRowLayouts(
 
       // ParallelSpan: envelope from earliest start to latest end
       const agents = rowSpan.agents;
-      const earliest = agents.reduce(
-        (min, a) => (a.startTime.getTime() < min.getTime() ? a.startTime : min),
-        agents[0]!.startTime
+      const envelope = computeTimeEnvelope(agents);
+      const bar = computeBarPosition(
+        envelope.startTime,
+        envelope.endTime,
+        viewStart,
+        viewEnd
       );
-      const latest = agents.reduce(
-        (max, a) => (a.endTime.getTime() > max.getTime() ? a.endTime : max),
-        agents[0]!.endTime
-      );
-      const bar = computeBarPosition(earliest, latest, viewStart, viewEnd);
       return {
         bar,
         drillable: !isParent,

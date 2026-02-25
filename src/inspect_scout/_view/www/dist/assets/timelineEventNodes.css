@@ -1,0 +1,579 @@
+._eventRow_1j0jk_1 {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  column-gap: 3px;
+  cursor: pointer;
+}
+
+._eventRow_1j0jk_1._selected_1j0jk_8 {
+  font-weight: 800;
+}
+
+._eventRow_1j0jk_1 ._toggle_1j0jk_12 {
+  font-size: 0.7em;
+  margin-top: 4px;
+}
+
+._eventLink_1j0jk_17 {
+  color: var(--bs-body-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+._eventLink_1j0jk_17:hover {
+  text-decoration: underline;
+  color: var(--bs-link-hover-color);
+}
+
+._label_1j0jk_28 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._icon_1j0jk_34 {
+  margin-right: 3px;
+}
+
+._progress_1j0jk_38 {
+  margin-left: 0.3em !important;
+}
+
+._popover_1j0jk_42 {
+  min-width: 300px;
+  max-width: 80%;
+}
+._node_1d5c2_1 {
+  display: grid;
+  column-gap: 0.3em;
+  grid-template-columns: max-content 1fr;
+}
+
+._panel_1d5c2_7 {
+  margin-top: 0.65rem;
+  overflow: visible;
+}
+/* Self-contained minimap — flex row: mode label + bar area */
+
+._container_1tfzg_3 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 120px;
+  max-width: 50%;
+}
+
+/*
+ * Stable-width label — renders both time/token values in a CSS grid stack.
+ * The cell sizes to the wider value; only the active one is visible.
+ */
+._stableLabel_1tfzg_17 {
+  display: grid;
+  font-size: 0.6rem;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+._stableLabel_1tfzg_17 > * {
+  grid-area: 1 / 1;
+}
+
+._alignRight_1tfzg_32 {
+  justify-items: end;
+}
+
+._alignLeft_1tfzg_36 {
+  justify-items: start;
+}
+
+._hidden_1tfzg_40 {
+  visibility: hidden;
+}
+
+._minimap_1tfzg_44 {
+  position: relative;
+  height: 18px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Full-width track — thin rounded rail, vertically centered */
+._track_1tfzg_52 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.25;
+}
+
+/* Selection region fill — highlight between markers on the track */
+._regionFill_1tfzg_65 {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.45;
+}
+
+/* Vertical bar markers at selection boundaries */
+._marker_1tfzg_76 {
+  position: absolute;
+  top: 50%;
+  height: 9px;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.55;
+  transform: translate(-50%, -50%);
+}
+
+/* Section duration pill centered between the two markers */
+._sectionTime_1tfzg_88 {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+._sectionTimePill_1tfzg_99 {
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: none;
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+._swimlane_7icss_1 {
+  --swimlane-row-height: 18px;
+  --swimlane-minimap-height: 24px;
+  --swimlane-grid-columns: auto 1fr auto;
+
+  display: grid;
+  grid-template-columns: var(--swimlane-grid-columns);
+  padding: 0rem 0 0rem;
+  outline: none;
+  flex-shrink: 0;
+  position: relative;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 0px;
+}
+
+/* Pinned section: minimap + parent row — always visible */
+._pinnedSection_7icss_17 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+
+/* Scrollable section: child rows */
+._scrollSection_7icss_25 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  max-height: calc(10 * var(--swimlane-row-height));
+  overflow-y: auto;
+}
+
+._swimlane_7icss_1:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
+}
+
+/* Collapsible rows — fade + slide animation */
+
+._collapsibleSection_7icss_40 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.2s ease,
+    opacity 0.3s ease;
+  padding-top: 0.2rem;
+  padding-bottom: 0.5rem;
+  opacity: 1;
+}
+
+._collapsibleCollapsed_7icss_53 {
+  grid-template-rows: 0fr;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+/* Disable animation during sticky transitions */
+._noAnimation_7icss_60 {
+  transition: none;
+}
+
+/* Sticky state — opaque background so it covers scrolled content */
+._swimlaneSticky_7icss_65 {
+  background-color: var(--bs-body-bg);
+  /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
+  margin-top: -1px;
+  padding-top: 1px;
+}
+
+._collapsibleInner_7icss_72 {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+
+/* Collapse toggle — hangs below the bottom border, centered */
+
+._collapseToggle_7icss_82 {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 100%);
+  z-index: 2;
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-top: none;
+  border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
+  cursor: pointer;
+  padding: 1px 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.55rem;
+  line-height: 1;
+}
+
+._collapseToggle_7icss_82:hover {
+  color: var(--vscode-foreground);
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Row — display:contents so all rows share the parent grid columns */
+
+._row_7icss_110 {
+  display: contents;
+}
+
+/* Label cell */
+
+._label_7icss_116 {
+  padding: 0 0.5rem 0 1.6rem;
+  white-space: nowrap;
+  font-size: var(--inspect-font-size-smallest);
+  line-height: var(--swimlane-row-height);
+  color: var(--vscode-foreground);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+._labelChild_7icss_128 {
+  padding-left: 2.25rem;
+}
+
+._labelSelected_7icss_132 {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Bar area */
+
+._barArea_7icss_138 {
+  height: var(--swimlane-row-height);
+  border-left: 1px solid var(--bs-border-color);
+  border-right: 1px solid var(--bs-border-color);
+}
+
+._barInner_7icss_144 {
+  position: relative;
+  height: 100%;
+  margin: 0 4px;
+}
+
+._fill_7icss_150 {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  background-color: var(--bs-primary);
+  opacity: 0.3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  cursor: pointer;
+}
+
+._fill_7icss_150:hover {
+  opacity: 0.5;
+}
+
+._fillParent_7icss_168 {
+  opacity: 0.2;
+}
+
+._fillSelected_7icss_172 {
+  opacity: 0.7;
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+._parallelBadge_7icss_177 {
+  font-size: var(--inspect-font-size-smallest);
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Drill-down button */
+
+._drillDown_7icss_184 {
+  position: absolute;
+  top: 50%;
+  transform: translate(calc(-100% - 2px), -50%);
+  font-size: var(--inspect-font-size-smallest);
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  z-index: 3;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 3px;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+
+._drillDown_7icss_184::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--bs-body-bg);
+  opacity: 0.65;
+  z-index: -1;
+}
+
+._drillDownSelected_7icss_213::before {
+  opacity: 0.6;
+}
+
+._drillDown_7icss_184:hover {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Markers */
+
+._marker_7icss_223 {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  z-index: 1;
+  pointer-events: auto;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* White halo behind icons so transparent cutouts (e.g. the ! in ▲) don't bleed bar color */
+  filter: drop-shadow(0 0 1px var(--bs-body-bg))
+    drop-shadow(0 0 1px var(--bs-body-bg));
+}
+
+._marker_7icss_223 > * {
+  pointer-events: none;
+}
+
+._markerError_7icss_243 {
+  top: 1px;
+  bottom: 1px;
+  height: auto;
+  width: 7px;
+  transform: translateX(-50%);
+  background-color: transparent;
+  filter: none;
+  cursor: pointer;
+}
+
+._markerError_7icss_243::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background-color: var(--vscode-errorForeground, #f44747);
+}
+
+._markerCompaction_7icss_264 {
+  color: var(--bs-body-bg);
+  rotate: none;
+  font-size: 16px;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  transform: translateX(-50%);
+  filter: none;
+  cursor: pointer;
+}
+
+._markerBranch_7icss_276 {
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+}
+
+/* Branch popover */
+
+._branchPopover_7icss_283 {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+._branchEntry_7icss_289 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 4px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-foreground);
+  text-align: left;
+  white-space: nowrap;
+}
+
+._branchEntry_7icss_289:hover {
+  background-color: var(--bs-primary);
+  color: var(--bs-white, #fff);
+}
+
+._branchLabel_7icss_309 {
+  font-weight: 500;
+}
+
+._branchMeta_7icss_313 {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smaller, 0.75rem);
+}
+
+._branchEntry_7icss_289:hover ._branchMeta_7icss_313 {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* Breadcrumb row */
+
+._breadcrumbRow_7icss_325 {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px 0.5rem 2px 0.2rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+._breadcrumbBack_7icss_335 {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  padding: 2px 4px 2px 4px;
+  font-size: var(--inspect-font-size-smallestest);
+  line-height: 1;
+  border-radius: var(--bs-border-radius);
+  flex-shrink: 0;
+  margin-top: -1px;
+}
+
+._breadcrumbBack_7icss_335:hover:not(:disabled) {
+  color: var(--vscode-textLink-foreground);
+  background-color: var(--bs-secondary-bg);
+}
+
+._breadcrumbBack_7icss_335:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+._breadcrumbGroup_7icss_358 {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+._breadcrumbLink_7icss_365 {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  padding: 0 2px;
+  font-size: var(--inspect-font-size-smallest);
+}
+
+._breadcrumbLink_7icss_365:hover {
+  text-decoration: underline;
+}
+
+._breadcrumbCurrent_7icss_378 {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+}
+
+._breadcrumbCurrent_7icss_378:hover {
+  text-decoration: underline;
+}
+
+._breadcrumbSelection_7icss_392 {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+}
+
+._breadcrumbDivider_7icss_399 {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.75rem;
+  padding: 0 1px 0 3px;
+}
+
+/* Token cell */
+
+._tokens_7icss_407 {
+  padding: 0 0.75rem 0 0.5rem;
+  font-size: var(--inspect-font-size-smallest);
+  line-height: var(--swimlane-row-height);
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  text-align: right;
+}

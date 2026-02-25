@@ -1,16 +1,16 @@
-import { j as jsxRuntimeExports, c as clsx, i as useSearchParams, r as reactExports, A as ApplicationIcons } from "./index.js";
+import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
-import { j as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
-import { T as TranscriptOutline } from "./TranscriptOutline.js";
+import { l as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
+import { u as useTimeline, c as computeRowLayouts, g as getSelectedSpans, b as computeMinimapSelection, a as collectRawEvents, T as TimelineSwimLanes, d as TranscriptOutline } from "./timelineEventNodes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
-import { g as formatDuration, a as formatPrettyDecimal, h as formatDurationShort, P as PopOver, e as formatTime } from "./ToolButton.js";
 import "./_commonjsHelpers.js";
+import "./ToolButton.js";
 import "./chunk-DfAF0w94.js";
 import "./NoContentsPanel.js";
 const pillRow = "_pillRow_1kmry_1";
 const pill = "_pill_1kmry_1";
 const pillActive = "_pillActive_1kmry_24";
-const styles$3 = {
+const styles$1 = {
   pillRow,
   pill,
   pillActive
@@ -21,1197 +21,16 @@ const TimelinePills = ({
   onSelect
 }) => {
   if (timelines.length <= 1) return null;
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$3.pillRow, children: timelines.map((tl, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.pillRow, children: timelines.map((tl, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     "button",
     {
-      className: clsx(styles$3.pill, i === activeIndex && styles$3.pillActive),
+      className: clsx(styles$1.pill, i === activeIndex && styles$1.pillActive),
       onClick: () => onSelect(i),
       title: tl.description,
       children: tl.name
     },
     i
   )) });
-};
-function compareByTime(a, b) {
-  return a.startTime.getTime() - b.startTime.getTime() || a.endTime.getTime() - b.endTime.getTime();
-}
-function isSingleSpan(span) {
-  return "agent" in span;
-}
-function isParallelSpan(span) {
-  return "agents" in span;
-}
-function getAgents(span) {
-  return isSingleSpan(span) ? [span.agent] : span.agents;
-}
-const OVERLAP_TOLERANCE_MS = 100;
-function spansOverlap(a, b) {
-  return a.startTime.getTime() < b.endTime.getTime() + OVERLAP_TOLERANCE_MS && b.startTime.getTime() < a.endTime.getTime() + OVERLAP_TOLERANCE_MS;
-}
-function groupHasOverlap(spans) {
-  for (let i = 0; i < spans.length; i++) {
-    for (let j = i + 1; j < spans.length; j++) {
-      const a = spans[i];
-      const b = spans[j];
-      if (a && b && spansOverlap(a, b)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-function computeSwimlaneRows(node) {
-  const parentRow = buildParentRow(node);
-  const children = node.content.filter(
-    (item) => item.type === "span" && !item.utility
-  );
-  if (children.length === 0) {
-    return [parentRow];
-  }
-  const groups = groupByName(children);
-  const childRows = [];
-  for (const [displayName, spans] of groups) {
-    const row2 = buildRowFromGroup(displayName, spans);
-    if (row2) {
-      childRows.push(row2);
-    }
-  }
-  childRows.sort(compareByTime);
-  return [parentRow, ...childRows];
-}
-function buildParentRow(node) {
-  return {
-    name: node.name,
-    spans: [{ agent: node }],
-    totalTokens: node.totalTokens,
-    startTime: node.startTime,
-    endTime: node.endTime
-  };
-}
-function groupByName(spans) {
-  const map = /* @__PURE__ */ new Map();
-  for (const span of spans) {
-    const key = span.name.toLowerCase();
-    const existing = map.get(key);
-    if (existing) {
-      existing.spans.push(span);
-    } else {
-      map.set(key, { displayName: span.name, spans: [span] });
-    }
-  }
-  return Array.from(map.values()).map((g) => [g.displayName, g.spans]);
-}
-function buildRowFromGroup(displayName, spans) {
-  const sorted = [...spans].sort(compareByTime);
-  const first = sorted[0];
-  if (!first) {
-    return null;
-  }
-  let rowSpans;
-  if (sorted.length === 1) {
-    rowSpans = [{ agent: first }];
-  } else if (groupHasOverlap(sorted)) {
-    rowSpans = [{ agents: sorted }];
-  } else {
-    rowSpans = sorted.map((span) => ({ agent: span }));
-  }
-  const startTime = first.startTime;
-  const endTime = sorted.reduce(
-    (latest, span) => span.endTime.getTime() > latest.getTime() ? span.endTime : latest,
-    first.endTime
-  );
-  const totalTokens = sorted.reduce((sum, span) => sum + span.totalTokens, 0);
-  return {
-    name: displayName,
-    spans: rowSpans,
-    totalTokens,
-    startTime,
-    endTime
-  };
-}
-const kPathParam = "path";
-const kSelectedParam = "selected";
-function parsePathSegment(segment) {
-  const match = /^(.+)-(\d+)$/.exec(segment);
-  if (match) {
-    const name = match[1];
-    const index = parseInt(match[2], 10);
-    if (index >= 1) {
-      return { name, spanIndex: index };
-    }
-  }
-  return { name: segment, spanIndex: null };
-}
-function resolvePath(timeline, pathString) {
-  if (!pathString) return timeline.root;
-  const segments = pathString.split("/").filter((s) => s.length > 0);
-  if (segments.length === 0) return timeline.root;
-  let current = timeline.root;
-  for (const segment of segments) {
-    const branchSpan = resolveBranchSegment(current, segment);
-    if (branchSpan) {
-      current = branchSpan;
-      continue;
-    }
-    const { name, spanIndex } = parsePathSegment(segment);
-    const child = findChildSpan(current, name, spanIndex);
-    if (!child) return null;
-    current = child;
-  }
-  return current;
-}
-function buildBreadcrumbs(pathString, timeline) {
-  const crumbs = [{ label: timeline.root.name, path: "" }];
-  if (!pathString) return crumbs;
-  const segments = pathString.split("/").filter((s) => s.length > 0);
-  let current = timeline.root;
-  for (let i = 0; i < segments.length; i++) {
-    const segment = segments[i];
-    const path = segments.slice(0, i + 1).join("/");
-    if (current) {
-      const branchSpan = resolveBranchSegment(current, segment);
-      if (branchSpan) {
-        crumbs.push({ label: branchSpan.name, path });
-        current = branchSpan;
-      } else {
-        const { name, spanIndex } = parsePathSegment(segment);
-        const child = findChildSpan(current, name, spanIndex);
-        if (child) {
-          crumbs.push({ label: child.name, path });
-          current = child;
-        } else {
-          crumbs.push({ label: segment, path });
-          current = null;
-        }
-      }
-    } else {
-      crumbs.push({ label: segment, path });
-    }
-  }
-  return crumbs;
-}
-function findChildSpan(parent, name, spanIndex) {
-  const lowerName = name.toLowerCase();
-  const matches = [];
-  for (const item of parent.content) {
-    if (item.type === "span" && item.name.toLowerCase() === lowerName) {
-      matches.push(item);
-    }
-  }
-  if (matches.length === 0) return null;
-  if (spanIndex !== null) {
-    return matches[spanIndex - 1] ?? null;
-  }
-  if (matches.length === 1) {
-    return matches[0];
-  }
-  return createParallelContainer(matches);
-}
-function createParallelContainer(agents) {
-  const displayName = agents[0].name;
-  const startTime = agents.reduce(
-    (min, a) => a.startTime.getTime() < min.getTime() ? a.startTime : min,
-    agents[0].startTime
-  );
-  const endTime = agents.reduce(
-    (max, a) => a.endTime.getTime() > max.getTime() ? a.endTime : max,
-    agents[0].endTime
-  );
-  const totalTokens = agents.reduce((sum, a) => sum + a.totalTokens, 0);
-  const sorted = [...agents].sort(compareByTime);
-  const numberedAgents = sorted.map((agent, i) => ({
-    ...agent,
-    name: `${displayName} ${i + 1}`
-  }));
-  return {
-    type: "span",
-    id: `parallel-${displayName.toLowerCase()}`,
-    name: displayName,
-    spanType: "agent",
-    content: numberedAgents,
-    branches: [],
-    utility: false,
-    startTime,
-    endTime,
-    totalTokens
-  };
-}
-const BRANCH_PREFIX = "@branch-";
-function resolveBranchSegment(parent, segment) {
-  if (!segment.startsWith(BRANCH_PREFIX)) return null;
-  const indexStr = segment.slice(BRANCH_PREFIX.length);
-  const index = parseInt(indexStr, 10);
-  if (isNaN(index) || index < 1) return null;
-  const branch = parent.branches[index - 1];
-  if (!branch) return null;
-  return createBranchSpan(branch, index);
-}
-function createBranchSpan(branch, index) {
-  const label2 = deriveBranchLabel(branch, index);
-  const childSpans = branch.content.filter(
-    (item) => item.type === "span"
-  );
-  if (childSpans.length === 1) {
-    return {
-      ...childSpans[0],
-      name: `↳ ${childSpans[0].name}`
-    };
-  }
-  return {
-    type: "span",
-    id: `branch-${branch.forkedAt}-${index}`,
-    name: `↳ ${label2}`,
-    spanType: "branch",
-    content: branch.content,
-    branches: [],
-    utility: false,
-    startTime: branch.startTime,
-    endTime: branch.endTime,
-    totalTokens: branch.totalTokens
-  };
-}
-function deriveBranchLabel(branch, index) {
-  for (const item of branch.content) {
-    if (item.type === "span") return item.name;
-  }
-  return `Branch ${index}`;
-}
-function findBranchesByForkedAt(node, forkedAt, pathSoFar = []) {
-  const matches = [];
-  for (let i = 0; i < node.branches.length; i++) {
-    const branch = node.branches[i];
-    if (branch.forkedAt === forkedAt) {
-      matches.push({ branch, index: i + 1 });
-    }
-  }
-  if (matches.length > 0) {
-    return { owner: node, ownerPath: pathSoFar, branches: matches };
-  }
-  for (const item of node.content) {
-    if (item.type === "span") {
-      const found = findBranchesByForkedAt(item, forkedAt, [
-        ...pathSoFar,
-        item.name.toLowerCase()
-      ]);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-function useTimeline(timeline) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const pathString = searchParams.get(kPathParam) ?? "";
-  const selectedParam = searchParams.get(kSelectedParam) ?? null;
-  const resolved = reactExports.useMemo(
-    () => resolvePath(timeline, pathString),
-    [timeline, pathString]
-  );
-  const node = reactExports.useMemo(() => resolved ?? timeline.root, [timeline, resolved]);
-  const rows = reactExports.useMemo(() => computeSwimlaneRows(node), [node]);
-  const selected = reactExports.useMemo(() => {
-    if (selectedParam !== null) return selectedParam;
-    if (node.id.startsWith("parallel-") && rows.length > 1) {
-      return rows[1].name;
-    }
-    return rows[0]?.name ?? null;
-  }, [selectedParam, node.id, rows]);
-  const breadcrumbs = reactExports.useMemo(
-    () => buildBreadcrumbs(pathString, timeline),
-    [pathString, timeline]
-  );
-  const drillDown = reactExports.useCallback(
-    (name, spanIndex) => {
-      const segment = spanIndex ? `${name}-${spanIndex}` : name;
-      const newPath = pathString ? `${pathString}/${segment}` : segment;
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set(kPathParam, newPath);
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [pathString, setSearchParams]
-  );
-  const goUp = reactExports.useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (pathString) {
-          const segments = pathString.split("/");
-          segments.pop();
-          const newPath = segments.join("/");
-          if (newPath) {
-            next.set(kPathParam, newPath);
-          } else {
-            next.delete(kPathParam);
-          }
-        }
-        next.delete(kSelectedParam);
-        return next;
-      },
-      { replace: true }
-    );
-  }, [pathString, setSearchParams]);
-  const navigateTo = reactExports.useCallback(
-    (path) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (path) {
-            next.set(kPathParam, path);
-          } else {
-            next.delete(kPathParam);
-          }
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
-  );
-  const select = reactExports.useCallback(
-    (name, spanIndex) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (name) {
-            const value = spanIndex ? `${name}-${spanIndex}` : name;
-            next.set(kSelectedParam, value);
-          } else {
-            next.delete(kSelectedParam);
-          }
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
-  );
-  return {
-    node,
-    rows,
-    breadcrumbs,
-    selected,
-    drillDown,
-    goUp,
-    navigateTo,
-    select
-  };
-}
-function isErrorEvent(event) {
-  if (event.event === "tool") {
-    return event.error !== null;
-  }
-  if (event.event === "model") {
-    return event.error !== null || event.output.error !== null;
-  }
-  return false;
-}
-function isCompactionEvent(event) {
-  return event.event === "compaction";
-}
-function errorTooltip(event) {
-  if (event.event === "tool") {
-    const msg = event.error?.message ?? "Unknown error";
-    return `Error (${event.function}): ${msg}`;
-  }
-  if (event.event === "model") {
-    const msg = (typeof event.error === "string" ? event.error : null) ?? (typeof event.output.error === "string" ? event.output.error : null) ?? "Unknown error";
-    return `Error (${event.model}): ${msg}`;
-  }
-  return "Error";
-}
-function collectMarkers(node, depth) {
-  const markers = [];
-  collectEventMarkers(node, depth, 0, markers);
-  collectBranchMarkers(node, markers);
-  markers.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-  return markers;
-}
-function collectEventMarkers(node, depth, currentLevel, markers) {
-  for (const item of node.content) {
-    if (item.type === "event") {
-      addEventMarker(item, markers);
-    } else if (item.type === "span" && shouldDescend(depth, currentLevel)) {
-      collectEventMarkers(item, depth, currentLevel + 1, markers);
-    }
-  }
-}
-function shouldDescend(depth, currentLevel) {
-  if (depth === "direct") return false;
-  if (depth === "children") return currentLevel === 0;
-  return true;
-}
-function addEventMarker(eventNode, markers) {
-  const event = eventNode.event;
-  const uuid = event.uuid;
-  if (isErrorEvent(event)) {
-    markers.push({
-      kind: "error",
-      timestamp: eventNode.startTime,
-      reference: uuid ?? "",
-      tooltip: errorTooltip(event)
-    });
-  } else if (isCompactionEvent(event)) {
-    const ce = event;
-    const before = ce.tokens_before?.toLocaleString() ?? "?";
-    const after = ce.tokens_after?.toLocaleString() ?? "?";
-    markers.push({
-      kind: "compaction",
-      timestamp: eventNode.startTime,
-      reference: uuid ?? "",
-      tooltip: `Context compaction: ${before} → ${after} tokens`
-    });
-  }
-}
-function collectBranchMarkers(node, markers) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const branch of node.branches) {
-    const existing = groups.get(branch.forkedAt);
-    if (existing) {
-      existing.push(branch);
-    } else {
-      groups.set(branch.forkedAt, [branch]);
-    }
-  }
-  for (const [forkedAt, branches] of groups) {
-    const timestamp = resolveForkedAtTimestamp(node, forkedAt);
-    if (timestamp) {
-      markers.push({
-        kind: "branch",
-        timestamp,
-        reference: forkedAt,
-        tooltip: branchTooltip(branches)
-      });
-    }
-  }
-}
-function branchTooltip(branches) {
-  const count = branches.length;
-  const totalTokens = branches.reduce((sum, b) => sum + b.totalTokens, 0);
-  const tokenStr = formatCompactTokens(totalTokens);
-  const earliest = branches.reduce(
-    (min, b) => b.startTime < min ? b.startTime : min,
-    branches[0].startTime
-  );
-  const latest = branches.reduce(
-    (max, b) => b.endTime > max ? b.endTime : max,
-    branches[0].endTime
-  );
-  const duration = formatDuration(earliest, latest);
-  const label2 = count === 1 ? "1 branch" : `${count} branches`;
-  return `${label2} (${tokenStr}, ${duration})`;
-}
-function formatCompactTokens(tokens2) {
-  if (tokens2 >= 1e6) {
-    return `${formatPrettyDecimal(tokens2 / 1e6)}M tokens`;
-  }
-  if (tokens2 >= 1e3) {
-    return `${formatPrettyDecimal(tokens2 / 1e3)}k tokens`;
-  }
-  return `${tokens2} tokens`;
-}
-function resolveForkedAtTimestamp(node, forkedAt) {
-  if (!forkedAt) return null;
-  for (const item of node.content) {
-    if (item.type === "event" && item.event.uuid === forkedAt) {
-      return item.startTime;
-    }
-  }
-  return null;
-}
-function timestampToPercent(timestamp, viewStart, viewEnd) {
-  const range = viewEnd.getTime() - viewStart.getTime();
-  if (range <= 0) return 0;
-  const offset = timestamp.getTime() - viewStart.getTime();
-  return Math.max(0, Math.min(100, offset / range * 100));
-}
-function computeBarPosition(spanStart, spanEnd, viewStart, viewEnd) {
-  const left = timestampToPercent(spanStart, viewStart, viewEnd);
-  const right = timestampToPercent(spanEnd, viewStart, viewEnd);
-  return { left, width: Math.max(0, right - left) };
-}
-function isDrillable(span) {
-  if (isParallelSpan(span)) return true;
-  if (isSingleSpan(span)) {
-    return span.agent.content.some(
-      (item) => item.type === "span" && !item.utility
-    );
-  }
-  return false;
-}
-function formatTokenCount(tokens2) {
-  if (tokens2 >= 1e6) {
-    return `${formatPrettyDecimal(tokens2 / 1e6)}M`;
-  }
-  if (tokens2 >= 1e3) {
-    return `${formatPrettyDecimal(tokens2 / 1e3)}k`;
-  }
-  return String(tokens2);
-}
-function computeRowLayouts(rows, viewStart, viewEnd, markerDepth) {
-  return rows.map((row2, index) => {
-    const isParent = index === 0;
-    const spans = row2.spans.map((rowSpan) => {
-      if (isSingleSpan(rowSpan)) {
-        const bar2 = computeBarPosition(
-          rowSpan.agent.startTime,
-          rowSpan.agent.endTime,
-          viewStart,
-          viewEnd
-        );
-        return {
-          bar: bar2,
-          drillable: !isParent && isDrillable(rowSpan),
-          parallelCount: null,
-          description: rowSpan.agent.description ?? null
-        };
-      }
-      const agents = rowSpan.agents;
-      const earliest = agents.reduce(
-        (min, a) => a.startTime.getTime() < min.getTime() ? a.startTime : min,
-        agents[0].startTime
-      );
-      const latest = agents.reduce(
-        (max, a) => a.endTime.getTime() > max.getTime() ? a.endTime : max,
-        agents[0].endTime
-      );
-      const bar = computeBarPosition(earliest, latest, viewStart, viewEnd);
-      return {
-        bar,
-        drillable: !isParent,
-        parallelCount: agents.length,
-        description: null
-      };
-    });
-    const markers = collectRowMarkers(
-      row2,
-      isParent,
-      markerDepth,
-      viewStart,
-      viewEnd
-    );
-    const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
-    return {
-      name: row2.name,
-      isParent,
-      spans,
-      markers,
-      totalTokens: row2.totalTokens,
-      parallelCount: rowParallelCount
-    };
-  });
-}
-function collectRowMarkers(row2, isParent, depth, viewStart, viewEnd) {
-  const allMarkers = [];
-  for (const rowSpan of row2.spans) {
-    const agents = getAgents(rowSpan);
-    for (const agent of agents) {
-      const effectiveDepth = isParent ? depth : "direct";
-      const markers = collectMarkers(agent, effectiveDepth);
-      for (const m of markers) {
-        allMarkers.push({
-          left: timestampToPercent(m.timestamp, viewStart, viewEnd),
-          kind: m.kind,
-          reference: m.reference,
-          tooltip: m.tooltip
-        });
-      }
-    }
-  }
-  allMarkers.sort((a, b) => a.left - b.left);
-  return allMarkers;
-}
-const container$1 = "_container_1s11p_3";
-const stableLabel = "_stableLabel_1s11p_17";
-const alignRight = "_alignRight_1s11p_32";
-const alignLeft = "_alignLeft_1s11p_36";
-const hidden = "_hidden_1s11p_40";
-const minimap = "_minimap_1s11p_44";
-const track = "_track_1s11p_52";
-const regionFill = "_regionFill_1s11p_65";
-const marker$1 = "_marker_1s11p_76";
-const sectionTime = "_sectionTime_1s11p_88";
-const sectionTimePill = "_sectionTimePill_1s11p_99";
-const styles$2 = {
-  container: container$1,
-  stableLabel,
-  alignRight,
-  alignLeft,
-  hidden,
-  minimap,
-  track,
-  regionFill,
-  marker: marker$1,
-  sectionTime,
-  sectionTimePill
-};
-const TimelineMinimap = ({
-  root,
-  selection
-}) => {
-  const [showTokens, setShowTokens] = useProperty(
-    "timeline",
-    "minimapShowTokens",
-    { defaultValue: false, cleanup: false }
-  );
-  const isTokenMode = !!showTokens;
-  const toggle = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      setShowTokens(!isTokenMode);
-    },
-    [isTokenMode, setShowTokens]
-  );
-  const bar = selection ? computeBarPosition(
-    selection.startTime,
-    selection.endTime,
-    root.startTime,
-    root.endTime
-  ) : null;
-  const showRegion = bar !== null;
-  const useShortFormat = bar !== null && bar.width <= 15;
-  const timeRightLabel = formatDuration(root.startTime, root.endTime);
-  const tokenRightLabel = formatTokenCount(root.totalTokens);
-  const sectionLabel = selection && isTokenMode ? formatTokenCount(selection.totalTokens) : selection ? useShortFormat ? formatDurationShort(selection.startTime, selection.endTime) : formatDuration(selection.startTime, selection.endTime) : "";
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.container, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: clsx(styles$2.stableLabel, styles$2.alignRight),
-        onClick: toggle,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isTokenMode ? styles$2.hidden : void 0, children: "time" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isTokenMode ? void 0 : styles$2.hidden, children: "tokens" })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.minimap, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.track }),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: styles$2.regionFill,
-          style: { left: `${bar.left}%`, width: `${bar.width}%` }
-        }
-      ),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.marker, style: { left: `${bar.left}%` } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: styles$2.marker,
-            style: { left: `${bar.left + bar.width}%` }
-          }
-        )
-      ] }),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: styles$2.sectionTime,
-          style: { left: `${bar.left}%`, width: `${bar.width}%` },
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$2.sectionTimePill, onClick: toggle, children: sectionLabel })
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: clsx(styles$2.stableLabel, styles$2.alignLeft),
-        onClick: toggle,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isTokenMode ? styles$2.hidden : void 0, children: timeRightLabel }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isTokenMode ? void 0 : styles$2.hidden, children: tokenRightLabel })
-        ]
-      }
-    )
-  ] });
-};
-const swimlane = "_swimlane_srxcq_1";
-const pinnedSection = "_pinnedSection_srxcq_17";
-const scrollSection = "_scrollSection_srxcq_26";
-const collapsibleSection = "_collapsibleSection_srxcq_42";
-const collapsibleCollapsed = "_collapsibleCollapsed_srxcq_52";
-const collapsibleInner = "_collapsibleInner_srxcq_57";
-const collapseToggle = "_collapseToggle_srxcq_68";
-const row = "_row_srxcq_96";
-const label = "_label_srxcq_102";
-const labelChild = "_labelChild_srxcq_114";
-const labelSelected = "_labelSelected_srxcq_118";
-const barArea = "_barArea_srxcq_124";
-const fill = "_fill_srxcq_129";
-const fillParent = "_fillParent_srxcq_147";
-const fillSelected = "_fillSelected_srxcq_151";
-const parallelBadge = "_parallelBadge_srxcq_156";
-const chevron = "_chevron_srxcq_163";
-const marker = "_marker_srxcq_190";
-const markerError = "_markerError_srxcq_210";
-const markerCompaction = "_markerCompaction_srxcq_217";
-const markerBranch = "_markerBranch_srxcq_228";
-const branchPopover = "_branchPopover_srxcq_235";
-const branchEntry = "_branchEntry_srxcq_241";
-const branchLabel = "_branchLabel_srxcq_261";
-const branchMeta = "_branchMeta_srxcq_265";
-const breadcrumbRow = "_breadcrumbRow_srxcq_277";
-const breadcrumbBack = "_breadcrumbBack_srxcq_287";
-const breadcrumbGroup = "_breadcrumbGroup_srxcq_310";
-const breadcrumbLink = "_breadcrumbLink_srxcq_317";
-const breadcrumbCurrent = "_breadcrumbCurrent_srxcq_330";
-const breadcrumbSelection = "_breadcrumbSelection_srxcq_343";
-const breadcrumbDivider = "_breadcrumbDivider_srxcq_349";
-const tokens = "_tokens_srxcq_357";
-const styles$1 = {
-  swimlane,
-  pinnedSection,
-  scrollSection,
-  collapsibleSection,
-  collapsibleCollapsed,
-  collapsibleInner,
-  collapseToggle,
-  row,
-  label,
-  labelChild,
-  labelSelected,
-  barArea,
-  fill,
-  fillParent,
-  fillSelected,
-  parallelBadge,
-  chevron,
-  marker,
-  markerError,
-  markerCompaction,
-  markerBranch,
-  branchPopover,
-  branchEntry,
-  branchLabel,
-  branchMeta,
-  breadcrumbRow,
-  breadcrumbBack,
-  breadcrumbGroup,
-  breadcrumbLink,
-  breadcrumbCurrent,
-  breadcrumbSelection,
-  breadcrumbDivider,
-  tokens
-};
-function parseSelected(selected) {
-  if (!selected) return null;
-  return parsePathSegment(selected);
-}
-function isSpanSelected(layout, spanIndex, parsed) {
-  if (!parsed) return false;
-  if (layout.name.toLowerCase() !== parsed.name.toLowerCase()) return false;
-  if (layout.spans.length === 1) {
-    return true;
-  }
-  const selectedIdx = parsed.spanIndex ?? 1;
-  return selectedIdx === spanIndex + 1;
-}
-const MARKER_ICONS = {
-  error: { icon: ApplicationIcons.error, tooltip: "Error event" },
-  compaction: {
-    icon: ApplicationIcons.compactionMarker,
-    tooltip: "Context compaction"
-  },
-  branch: { icon: ApplicationIcons.fork, tooltip: "View branches" }
-};
-const TimelineSwimLanes = ({
-  layouts,
-  selected,
-  node,
-  onSelect,
-  onDrillDown,
-  onBranchDrillDown,
-  onGoUp,
-  minimap: minimap2,
-  breadcrumb
-}) => {
-  const parsedSelection = reactExports.useMemo(() => parseSelected(selected), [selected]);
-  const [collapsed, setCollapsed] = useProperty(
-    "timeline",
-    "swimlanesCollapsed",
-    { defaultValue: false, cleanup: false }
-  );
-  const isCollapsed = !!collapsed;
-  const toggleCollapsed = reactExports.useCallback(() => {
-    setCollapsed(!isCollapsed);
-  }, [isCollapsed, setCollapsed]);
-  const [branchPopover2, setBranchPopover] = reactExports.useState(null);
-  const handleBranchClick = reactExports.useCallback(
-    (forkedAt, element) => {
-      setBranchPopover(
-        (prev) => prev?.forkedAt === forkedAt ? null : { forkedAt, element }
-      );
-    },
-    []
-  );
-  const handleBranchSelect = reactExports.useCallback(
-    (branchSegment) => {
-      const lookup = findBranchesByForkedAt(
-        node,
-        branchPopover2?.forkedAt ?? ""
-      );
-      setBranchPopover(null);
-      if (lookup && lookup.ownerPath.length > 0) {
-        const fullSegment = [...lookup.ownerPath, branchSegment].join("/");
-        onBranchDrillDown(fullSegment);
-      } else {
-        onBranchDrillDown(branchSegment);
-      }
-    },
-    [onBranchDrillDown, node, branchPopover2?.forkedAt]
-  );
-  const handleKeyDown = reactExports.useCallback(
-    (e) => {
-      const rowNames = layouts.map((l) => l.name);
-      const currentRowName = parsedSelection?.name.toLowerCase() ?? null;
-      const currentIndex = currentRowName ? rowNames.findIndex((n) => n.toLowerCase() === currentRowName) : -1;
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          const next = currentIndex < rowNames.length - 1 ? currentIndex + 1 : currentIndex;
-          const name = rowNames[next];
-          if (name !== void 0) onSelect(name);
-          break;
-        }
-        case "ArrowUp": {
-          e.preventDefault();
-          const prev = currentIndex > 0 ? currentIndex - 1 : 0;
-          const name = rowNames[prev];
-          if (name !== void 0) onSelect(name);
-          break;
-        }
-        case "Enter": {
-          e.preventDefault();
-          if (parsedSelection) {
-            const layout = layouts.find(
-              (l) => l.name.toLowerCase() === parsedSelection.name.toLowerCase()
-            );
-            if (layout && layout.spans.some((s) => s.drillable)) {
-              onDrillDown(layout.name, parsedSelection.spanIndex ?? void 0);
-            }
-          }
-          break;
-        }
-        case "Escape": {
-          e.preventDefault();
-          if (branchPopover2) {
-            setBranchPopover(null);
-          } else {
-            onGoUp();
-          }
-          break;
-        }
-      }
-    },
-    [layouts, parsedSelection, onSelect, onDrillDown, onGoUp, branchPopover2]
-  );
-  const branchLookup = reactExports.useMemo(() => {
-    if (!branchPopover2) return null;
-    return findBranchesByForkedAt(node, branchPopover2.forkedAt);
-  }, [branchPopover2, node]);
-  const parentRow = layouts[0];
-  const childRows = layouts.slice(1);
-  const renderRow = (layout, rowIndex) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    SwimlaneRow,
-    {
-      layout,
-      parsedSelection,
-      onSelect: (spanIndex) => {
-        if (layout.spans.length > 1) {
-          onSelect(layout.name, spanIndex + 1);
-        } else {
-          onSelect(layout.name);
-        }
-      },
-      onDrillDown: (spanIndex) => onDrillDown(
-        layout.name,
-        layout.spans.length > 1 ? spanIndex + 1 : void 0
-      ),
-      onBranchClick: handleBranchClick
-    },
-    `${layout.name}-${rowIndex}`
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      className: styles$1.swimlane,
-      tabIndex: 0,
-      onKeyDown: handleKeyDown,
-      role: "grid",
-      "aria-label": "Timeline swimlane",
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.pinnedSection, children: breadcrumb && /* @__PURE__ */ jsxRuntimeExports.jsx(BreadcrumbRow, { ...breadcrumb, minimap: minimap2 }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: clsx(
-              styles$1.collapsibleSection,
-              isCollapsed && styles$1.collapsibleCollapsed
-            ),
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.collapsibleInner, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.pinnedSection, children: parentRow && renderRow(parentRow, 0) }),
-              childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.scrollSection, children: childRows.map((layout, i) => renderRow(layout, i + 1)) })
-            ] })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: styles$1.collapseToggle,
-            onClick: toggleCollapsed,
-            title: isCollapsed ? "Expand swimlanes" : "Collapse swimlanes",
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "i",
-              {
-                className: isCollapsed ? ApplicationIcons.expand.down : ApplicationIcons.collapse.up
-              }
-            )
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          BranchPopover,
-          {
-            isOpen: branchPopover2 !== null && branchLookup !== null,
-            anchor: branchPopover2?.element ?? null,
-            branches: branchLookup?.branches ?? [],
-            onSelect: handleBranchSelect,
-            onClose: () => setBranchPopover(null)
-          }
-        )
-      ]
-    }
-  );
-};
-const SwimlaneRow = ({
-  layout,
-  parsedSelection,
-  onSelect,
-  onDrillDown,
-  onBranchClick
-}) => {
-  const hasSelectedSpan = layout.spans.some(
-    (_, i) => isSpanSelected(layout, i, parsedSelection)
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.row, role: "row", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: clsx(
-          styles$1.label,
-          !layout.isParent && styles$1.labelChild,
-          hasSelectedSpan && styles$1.labelSelected
-        ),
-        children: [
-          layout.name,
-          layout.parallelCount !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$1.parallelBadge, children: [
-            "(",
-            layout.parallelCount,
-            ")"
-          ] })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.barArea, children: [
-      layout.spans.map((span, spanIndex) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        BarFill,
-        {
-          span,
-          isParent: layout.isParent,
-          isSelected: isSpanSelected(layout, spanIndex, parsedSelection),
-          onSelect: () => onSelect(spanIndex),
-          onDrillDown: () => onDrillDown(spanIndex)
-        },
-        spanIndex
-      )),
-      layout.markers.map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(MarkerGlyph, { marker: marker2, onBranchClick }, i))
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.tokens, children: formatTokenCount(layout.totalTokens) })
-  ] });
-};
-const BreadcrumbRow = ({
-  breadcrumbs,
-  atRoot,
-  onGoUp,
-  onNavigate,
-  minimap: minimap2,
-  selected
-}) => {
-  const selectedLabel = selected ? parsePathSegment(selected).name : null;
-  const lastBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
-  const showSelection = selectedLabel !== null && selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.breadcrumbRow, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        className: styles$1.breadcrumbBack,
-        onClick: onGoUp,
-        disabled: atRoot,
-        title: "Go up one level (Escape)",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.navbar.back })
-      }
-    ),
-    breadcrumbs.map((segment, i) => {
-      const isLast = i === breadcrumbs.length - 1;
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$1.breadcrumbGroup, children: [
-        i > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.breadcrumbDivider, children: "›" }),
-        isLast ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: styles$1.breadcrumbCurrent,
-            onClick: () => onNavigate(segment.path),
-            children: segment.label
-          }
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: styles$1.breadcrumbLink,
-            onClick: () => onNavigate(segment.path),
-            children: segment.label
-          }
-        )
-      ] }, segment.path + i);
-    }),
-    showSelection && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$1.breadcrumbGroup, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.breadcrumbDivider, children: "›" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.breadcrumbSelection, children: selectedLabel })
-    ] }),
-    minimap2 && /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineMinimap, { ...minimap2 })
-  ] });
-};
-const BarFill = ({
-  span,
-  isParent,
-  isSelected,
-  onSelect,
-  onDrillDown
-}) => {
-  const handleClick = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      onSelect();
-    },
-    [onSelect]
-  );
-  const handleDoubleClick = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      if (span.drillable) {
-        onDrillDown();
-      }
-    },
-    [span.drillable, onDrillDown]
-  );
-  const handleChevronClick = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      onDrillDown();
-    },
-    [onDrillDown]
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: clsx(
-          styles$1.fill,
-          isParent && styles$1.fillParent,
-          isSelected && styles$1.fillSelected
-        ),
-        style: {
-          left: `${span.bar.left}%`,
-          width: `${span.bar.width}%`
-        },
-        title: span.description ?? void 0,
-        onClick: handleClick,
-        onDoubleClick: handleDoubleClick
-      }
-    ),
-    span.drillable && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        className: styles$1.chevron,
-        style: {
-          left: `${span.bar.left + span.bar.width}%`
-        },
-        onClick: handleChevronClick,
-        title: "Drill down",
-        children: "›"
-      }
-    )
-  ] });
-};
-const MarkerGlyph = ({ marker: marker2, onBranchClick }) => {
-  const icon = MARKER_ICONS[marker2.kind]?.icon ?? "bi bi-question-circle";
-  const kindClass = marker2.kind === "error" ? styles$1.markerError : marker2.kind === "compaction" ? styles$1.markerCompaction : styles$1.markerBranch;
-  const handleClick = reactExports.useCallback(
-    (e) => {
-      if (marker2.kind === "branch") {
-        e.stopPropagation();
-        onBranchClick(marker2.reference, e.currentTarget);
-      }
-    },
-    [marker2.kind, marker2.reference, onBranchClick]
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "span",
-    {
-      className: clsx(styles$1.marker, kindClass),
-      style: { left: `${marker2.left}%` },
-      title: marker2.tooltip,
-      onClick: handleClick,
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: icon })
-    }
-  );
-};
-const BranchPopover = ({
-  isOpen,
-  anchor,
-  branches,
-  onSelect,
-  onClose
-}) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    PopOver,
-    {
-      id: "branch-popover",
-      isOpen,
-      setIsOpen: (open) => {
-        if (!open) onClose();
-      },
-      positionEl: anchor,
-      placement: "bottom",
-      showArrow: true,
-      hoverDelay: -1,
-      closeOnMouseLeave: false,
-      styles: { padding: "4px 0" },
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.branchPopover, children: branches.map(({ branch, index }) => {
-        const span = createBranchSpan(branch, index);
-        const durationSec = (branch.endTime.getTime() - branch.startTime.getTime()) / 1e3;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            className: styles$1.branchEntry,
-            onClick: () => onSelect(`@branch-${index}`),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.branchLabel, children: span.name }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$1.branchMeta, children: [
-                formatTokenCount(branch.totalTokens),
-                " · ",
-                formatTime(durationSec)
-              ] })
-            ]
-          },
-          `branch-${index}`
-        );
-      }) })
-    }
-  );
 };
 function ts(baseMs, offsetSeconds) {
   return new Date(baseMs + offsetSeconds * 1e3);
@@ -1252,7 +71,7 @@ const NULL_CONFIG = {
   top_p: null,
   verbosity: null
 };
-function makeModelEventNode(content2, startSec, endSec, tokens2, uuid) {
+function makeModelEventNode(content2, startSec, endSec, tokens, uuid) {
   const event = {
     event: "model",
     model: "claude-sonnet-4-5-20250929",
@@ -1282,9 +101,9 @@ function makeModelEventNode(content2, startSec, endSec, tokens2, uuid) {
       model: "claude-sonnet-4-5-20250929",
       time: endSec - startSec,
       usage: {
-        input_tokens: Math.floor(tokens2 * 0.6),
-        output_tokens: Math.floor(tokens2 * 0.4),
-        total_tokens: tokens2,
+        input_tokens: Math.floor(tokens * 0.6),
+        output_tokens: Math.floor(tokens * 0.4),
+        total_tokens: tokens,
         input_tokens_cache_read: null,
         input_tokens_cache_write: null,
         reasoning_tokens: null,
@@ -1312,10 +131,10 @@ function makeModelEventNode(content2, startSec, endSec, tokens2, uuid) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens2
+    totalTokens: tokens
   };
 }
-function makeToolEventNode(fn, args, result, startSec, endSec, tokens2) {
+function makeToolEventNode(fn, args, result, startSec, endSec, tokens) {
   const event = {
     event: "tool",
     type: "function",
@@ -1344,10 +163,10 @@ function makeToolEventNode(fn, args, result, startSec, endSec, tokens2) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens2
+    totalTokens: tokens
   };
 }
-function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, tokens2) {
+function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, tokens) {
   const event = {
     event: "tool",
     type: "function",
@@ -1376,10 +195,10 @@ function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, token
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens2
+    totalTokens: tokens
   };
 }
-function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens2) {
+function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens) {
   const event = {
     event: "model",
     model: "claude-sonnet-4-5-20250929",
@@ -1395,9 +214,9 @@ function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens2) 
       model: "claude-sonnet-4-5-20250929",
       time: endSec - startSec,
       usage: {
-        input_tokens: Math.floor(tokens2 * 0.8),
-        output_tokens: Math.floor(tokens2 * 0.2),
-        total_tokens: tokens2,
+        input_tokens: Math.floor(tokens * 0.8),
+        output_tokens: Math.floor(tokens * 0.2),
+        total_tokens: tokens,
         input_tokens_cache_read: null,
         input_tokens_cache_write: null,
         reasoning_tokens: null,
@@ -1425,7 +244,7 @@ function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens2) 
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens2
+    totalTokens: tokens
   };
 }
 function makeCompactionEventNode(tokensBefore, tokensAfter, startSec, endSec) {
@@ -1450,7 +269,7 @@ function makeCompactionEventNode(tokensBefore, tokensAfter, startSec, endSec) {
     totalTokens: 0
   };
 }
-function makeSpan(id, name, spanType, startSec, endSec, tokens2, content2 = [], options) {
+function makeSpan(id, name, spanType, startSec, endSec, tokens, content2 = [], options) {
   return {
     type: "span",
     id,
@@ -1462,7 +281,7 @@ function makeSpan(id, name, spanType, startSec, endSec, tokens2, content2 = [], 
     utility: options?.utility ?? false,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens2
+    totalTokens: tokens
   };
 }
 function makeTimeline(root, options) {
@@ -2254,7 +1073,7 @@ function manyRows() {
   let totalTokens = 0;
   for (let i = 0; i < names.length; i++) {
     const duration = 4 + Math.floor(i * 0.5);
-    const tokens2 = 2e3 + i * 1100;
+    const tokens = 2e3 + i * 1100;
     const name = names[i] ?? `Agent ${i}`;
     const evts = agentEvents[i] ?? [];
     const mid = offset + Math.floor(duration / 2);
@@ -2263,7 +1082,7 @@ function manyRows() {
         `Starting ${name.toLowerCase()} phase.`,
         offset,
         mid,
-        Math.floor(tokens2 * 0.4)
+        Math.floor(tokens * 0.4)
       )
     ];
     for (const [fn, args, result] of evts) {
@@ -2274,7 +1093,7 @@ function manyRows() {
           result,
           mid,
           mid + 1,
-          Math.floor(tokens2 * 0.2)
+          Math.floor(tokens * 0.2)
         )
       );
     }
@@ -2285,7 +1104,7 @@ function manyRows() {
           "Context length exceeded",
           mid + 1,
           mid + 2,
-          Math.floor(tokens2 * 0.1)
+          Math.floor(tokens * 0.1)
         )
       );
     }
@@ -2297,7 +1116,7 @@ function manyRows() {
         `${name} phase complete.`,
         offset + duration - 1,
         offset + duration,
-        Math.floor(tokens2 * 0.3)
+        Math.floor(tokens * 0.3)
       )
     );
     agents.push(
@@ -2307,11 +1126,11 @@ function manyRows() {
         "agent",
         offset,
         offset + duration,
-        tokens2,
+        tokens,
         content2
       )
     );
-    totalTokens += tokens2;
+    totalTokens += tokens;
     offset += duration + 1;
   }
   const transcript = makeSpan(
@@ -2823,114 +1642,6 @@ const timelineScenarios = [
   branchesSingleFork(),
   branchesMultipleForks()
 ];
-function findRowByName(rows, name) {
-  return rows.find((r) => r.name.toLowerCase() === name.toLowerCase());
-}
-function getSelectedSpans(rows, selected) {
-  if (!selected) return [];
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row2 = findRowByName(rows, name);
-  if (!row2) return [];
-  const result = [];
-  for (const rowSpan of row2.spans) {
-    if (isSingleSpan(rowSpan)) {
-      result.push(rowSpan.agent);
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) result.push(agent);
-      } else {
-        result.push(...rowSpan.agents);
-      }
-    }
-  }
-  return result;
-}
-function computeMinimapSelection(rows, selected) {
-  if (!selected) return void 0;
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row2 = findRowByName(rows, name);
-  if (!row2) return void 0;
-  const targetIndex = (spanIndex ?? 1) - 1;
-  for (const rowSpan of row2.spans) {
-    if (isSingleSpan(rowSpan)) {
-      const singleIndex = row2.spans.indexOf(rowSpan);
-      if (singleIndex === targetIndex || row2.spans.length === 1) {
-        const agent = rowSpan.agent;
-        return {
-          startTime: agent.startTime,
-          endTime: agent.endTime,
-          totalTokens: agent.totalTokens
-        };
-      }
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) {
-          return {
-            startTime: agent.startTime,
-            endTime: agent.endTime,
-            totalTokens: agent.totalTokens
-          };
-        }
-      }
-      const agents = getAgents(rowSpan);
-      const first = agents[0];
-      let start = first.startTime;
-      let end = first.endTime;
-      let tokens2 = first.totalTokens;
-      for (let i = 1; i < agents.length; i++) {
-        const a = agents[i];
-        if (a.startTime < start) start = a.startTime;
-        if (a.endTime > end) end = a.endTime;
-        tokens2 += a.totalTokens;
-      }
-      return { startTime: start, endTime: end, totalTokens: tokens2 };
-    }
-  }
-  return void 0;
-}
-function collectRawEvents(spans) {
-  const events = [];
-  for (const span of spans) {
-    collectFromContent(span.content, events);
-  }
-  return events;
-}
-function collectFromContent(content2, out) {
-  for (const item of content2) {
-    if (item.type === "event") {
-      out.push(item.event);
-    } else {
-      const beginEvent = {
-        event: "span_begin",
-        name: item.name,
-        id: item.id,
-        span_id: item.id,
-        type: item.spanType,
-        timestamp: item.startTime.toISOString(),
-        parent_id: null,
-        pending: false,
-        working_start: 0,
-        uuid: null,
-        metadata: null
-      };
-      out.push(beginEvent);
-      collectFromContent(item.content, out);
-      const endEvent = {
-        event: "span_end",
-        id: `${item.id}-end`,
-        span_id: item.id,
-        timestamp: item.endTime.toISOString(),
-        pending: false,
-        working_start: 0,
-        uuid: null,
-        metadata: null
-      };
-      out.push(endEvent);
-    }
-  }
-}
 const container = "_container_1w6el_1";
 const headerRow = "_headerRow_1w6el_8";
 const title = "_title_1w6el_17";
@@ -2966,7 +1677,7 @@ const styles = {
 const TimelinePanel = () => {
   useDocumentTitle("Timeline");
   const [selectedIndex, setSelectedIndex] = reactExports.useState(0);
-  const [markerDepth, setMarkerDepth] = reactExports.useState("children");
+  const [markerDepth, setMarkerDepth] = reactExports.useState("direct");
   const [outlineCollapsed2, setOutlineCollapsed] = useProperty(
     "timeline",
     "outlineCollapsed",
@@ -2974,7 +1685,7 @@ const TimelinePanel = () => {
   );
   const isOutlineCollapsed = !!outlineCollapsed2;
   const scenario = timelineScenarios[selectedIndex];
-  const timeline = scenario?.timeline;
+  const timeline = scenario?.timeline ?? timelineScenarios[0].timeline;
   const state = useTimeline(timeline);
   reactExports.useEffect(() => {
     state.navigateTo("");
@@ -3047,7 +1758,6 @@ const TimelinePanel = () => {
           node: state.node,
           onSelect: state.select,
           onDrillDown: state.drillDown,
-          onBranchDrillDown: state.drillDown,
           onGoUp: state.goUp,
           minimap: {
             root: timeline.root,

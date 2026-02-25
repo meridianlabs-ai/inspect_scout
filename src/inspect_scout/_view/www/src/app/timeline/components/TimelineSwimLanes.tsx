@@ -162,14 +162,16 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     element: HTMLElement;
   } | null>(null);
 
-  const handleBranchClick = useCallback(
+  const handleBranchHover = useCallback(
     (forkedAt: string, element: HTMLElement) => {
-      setBranchPopover((prev) =>
-        prev?.forkedAt === forkedAt ? null : { forkedAt, element }
-      );
+      setBranchPopover({ forkedAt, element });
     },
     []
   );
+
+  const handleBranchLeave = useCallback(() => {
+    setBranchPopover(null);
+  }, []);
 
   const handleBranchSelect = useCallback(
     (branchSegment: string) => {
@@ -271,7 +273,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
           layout.spans.length > 1 ? spanIndex + 1 : undefined
         )
       }
-      onBranchClick={handleBranchClick}
+      onBranchHover={handleBranchHover}
+      onBranchLeave={handleBranchLeave}
       onMarkerNavigate={onMarkerNavigate}
     />
   );
@@ -344,7 +347,8 @@ interface SwimlaneRowProps {
   parsedSelection: ParsedSelection | null;
   onSelect: (spanIndex: number) => void;
   onDrillDown: (spanIndex: number) => void;
-  onBranchClick: (forkedAt: string, element: HTMLElement) => void;
+  onBranchHover: (forkedAt: string, element: HTMLElement) => void;
+  onBranchLeave: () => void;
   onMarkerNavigate?: (eventId: string) => void;
 }
 
@@ -353,7 +357,8 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   parsedSelection,
   onSelect,
   onDrillDown,
-  onBranchClick,
+  onBranchHover,
+  onBranchLeave,
   onMarkerNavigate,
 }) => {
   const hasSelectedSpan = layout.spans.some((_, i) =>
@@ -396,7 +401,8 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
             <MarkerGlyph
               key={i}
               marker={marker}
-              onBranchClick={onBranchClick}
+              onBranchHover={onBranchHover}
+              onBranchLeave={onBranchLeave}
               onMarkerNavigate={onMarkerNavigate}
             />
           ))}
@@ -565,13 +571,15 @@ const BarFill: FC<BarFillProps> = ({
 
 interface MarkerGlyphProps {
   marker: PositionedMarker;
-  onBranchClick: (forkedAt: string, element: HTMLElement) => void;
+  onBranchHover: (forkedAt: string, element: HTMLElement) => void;
+  onBranchLeave: () => void;
   onMarkerNavigate?: (eventId: string) => void;
 }
 
 const MarkerGlyph: FC<MarkerGlyphProps> = ({
   marker,
-  onBranchClick,
+  onBranchHover,
+  onBranchLeave,
   onMarkerNavigate,
 }) => {
   const icon = MARKER_ICONS[marker.kind]?.icon ?? "bi bi-question-circle";
@@ -585,21 +593,39 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLSpanElement>) => {
       e.stopPropagation();
-      if (marker.kind === "branch") {
-        onBranchClick(marker.reference, e.currentTarget);
-      } else if (marker.reference && onMarkerNavigate) {
+      if (marker.reference && onMarkerNavigate) {
         onMarkerNavigate(marker.reference);
       }
     },
-    [marker.kind, marker.reference, onBranchClick, onMarkerNavigate]
+    [marker.reference, onMarkerNavigate]
   );
+
+  const handleMouseEnter = useCallback(
+    (e: React.MouseEvent<HTMLSpanElement>) => {
+      if (marker.kind === "branch") {
+        onBranchHover(marker.reference, e.currentTarget);
+      }
+    },
+    [marker.kind, marker.reference, onBranchHover]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (marker.kind === "branch") {
+      onBranchLeave();
+    }
+  }, [marker.kind, onBranchLeave]);
+
+  // Branch markers show a popover on hover — no tooltip needed
+  const isBranch = marker.kind === "branch";
 
   return (
     <span
       className={clsx(styles.marker, kindClass)}
       style={{ left: `${marker.left}%` }}
-      title={marker.tooltip}
-      onClick={handleClick}
+      title={isBranch ? undefined : marker.tooltip}
+      onClick={isBranch ? undefined : handleClick}
+      onMouseEnter={isBranch ? handleMouseEnter : undefined}
+      onMouseLeave={isBranch ? handleMouseLeave : undefined}
     >
       {marker.kind !== "error" && <i className={icon} />}
     </span>
@@ -635,8 +661,8 @@ const BranchPopover: FC<BranchPopoverProps> = ({
       positionEl={anchor}
       placement="bottom"
       showArrow={true}
-      hoverDelay={-1}
-      closeOnMouseLeave={false}
+      hoverDelay={0}
+      closeOnMouseLeave={true}
       styles={{ padding: "4px 0" }}
     >
       <div className={styles.branchPopover}>

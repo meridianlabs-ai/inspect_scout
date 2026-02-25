@@ -85,7 +85,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const eventParam = searchParams.get("event");
   const messageParam = searchParams.get("message");
 
-  // Selected tab
+  // Selected tab — default to Events when the transcript has events
+  const hasEvents = transcript.events && transcript.events.length > 0;
+  const defaultTab = hasEvents
+    ? kTranscriptEventsTabId
+    : kTranscriptMessagesTabId;
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab
   );
@@ -93,7 +97,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     (state) => state.setSelectedTranscriptTab
   );
   const resolvedSelectedTranscriptTab =
-    tabParam || selectedTranscriptTab || kTranscriptMessagesTabId;
+    tabParam || selectedTranscriptTab || defaultTab;
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -350,7 +354,9 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     />
   );
 
-  const tabPanels = [
+  const atRoot = timelineState.breadcrumbs.length <= 1;
+
+  const messagesPanel = (
     <TabPanel
       key={kTranscriptMessagesTabId}
       id={kTranscriptMessagesTabId}
@@ -372,105 +378,104 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         scrollRef={scrollRef}
         showLabels={true}
       />
-    </TabPanel>,
-  ];
+    </TabPanel>
+  );
 
-  if (transcript.events && transcript.events.length > 0) {
-    const atRoot = timelineState.breadcrumbs.length <= 1;
-
-    tabPanels.push(
-      <TabPanel
-        key="transcript-events"
-        id={kTranscriptEventsTabId}
-        className={clsx(styles.eventsTab)}
-        title="Events"
-        onSelected={() => {
-          handleTabChange(kTranscriptEventsTabId);
-        }}
-        selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
-        scrollable={false}
-      >
-        <div className={styles.eventsTabContent}>
-          {hasTimeline && timelineData && (
-            <StickyScroll
-              scrollRef={scrollRef}
-              offsetTop={40}
-              zIndex={500}
-              preserveHeight={true}
-              onStickyChange={handleSwimLaneStickyChange}
-            >
-              <div ref={swimLaneStickyContentRef}>
-                <TimelineSwimLanes
-                  layouts={timelineLayouts}
-                  selected={timelineState.selected}
-                  node={timelineState.node}
-                  onSelect={timelineState.select}
-                  onDrillDown={timelineState.drillDown}
-                  onBranchDrillDown={timelineState.drillDown}
-                  onGoUp={timelineState.goUp}
-                  minimap={{
-                    root: timelineData.root,
-                    selection: minimapSelection,
-                  }}
-                  breadcrumb={{
-                    breadcrumbs: timelineState.breadcrumbs,
-                    atRoot,
-                    onGoUp: timelineState.goUp,
-                    onNavigate: timelineState.navigateTo,
-                    selected: timelineState.selected,
-                  }}
-                  onMarkerNavigate={handleMarkerNavigate}
-                  forceCollapsed={isSwimLaneSticky}
-                  noAnimation={isSwimLaneSticky}
-                />
-              </div>
-            </StickyScroll>
-          )}
-          <div
-            className={clsx(
-              styles.eventsContainer,
-              outlineCollapsed ? styles.outlineCollapsed : undefined
-            )}
+  const eventsPanel = hasEvents ? (
+    <TabPanel
+      key="transcript-events"
+      id={kTranscriptEventsTabId}
+      className={clsx(styles.eventsTab)}
+      title="Events"
+      onSelected={() => {
+        handleTabChange(kTranscriptEventsTabId);
+      }}
+      selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
+      scrollable={false}
+    >
+      <div className={styles.eventsTabContent}>
+        {hasTimeline && timelineData && (
+          <StickyScroll
+            scrollRef={scrollRef}
+            offsetTop={40}
+            zIndex={500}
+            preserveHeight={true}
+            onStickyChange={handleSwimLaneStickyChange}
           >
-            <StickyScroll
-              scrollRef={scrollRef}
-              className={styles.eventsOutline}
-              offsetTop={40 + stickySwimLaneHeight}
+            <div ref={swimLaneStickyContentRef}>
+              <TimelineSwimLanes
+                layouts={timelineLayouts}
+                selected={timelineState.selected}
+                node={timelineState.node}
+                onSelect={timelineState.select}
+                onDrillDown={timelineState.drillDown}
+                onBranchDrillDown={timelineState.drillDown}
+                onGoUp={timelineState.goUp}
+                minimap={{
+                  root: timelineData.root,
+                  selection: minimapSelection,
+                }}
+                breadcrumb={{
+                  breadcrumbs: timelineState.breadcrumbs,
+                  atRoot,
+                  onGoUp: timelineState.goUp,
+                  onNavigate: timelineState.navigateTo,
+                  selected: timelineState.selected,
+                }}
+                onMarkerNavigate={handleMarkerNavigate}
+                forceCollapsed={isSwimLaneSticky}
+                noAnimation={isSwimLaneSticky}
+              />
+            </div>
+          </StickyScroll>
+        )}
+        <div
+          className={clsx(
+            styles.eventsContainer,
+            outlineCollapsed ? styles.outlineCollapsed : undefined
+          )}
+        >
+          <StickyScroll
+            scrollRef={scrollRef}
+            className={styles.eventsOutline}
+            offsetTop={40 + stickySwimLaneHeight}
+          >
+            {!outlineCollapsed && (
+              <TranscriptOutline
+                eventNodes={eventNodes}
+                defaultCollapsedIds={defaultCollapsedIds}
+                scrollRef={scrollRef}
+              />
+            )}
+            <div
+              className={styles.outlineToggle}
+              onClick={() => toggleOutline(!outlineCollapsed)}
             >
-              {!outlineCollapsed && (
-                <TranscriptOutline
-                  eventNodes={eventNodes}
-                  defaultCollapsedIds={defaultCollapsedIds}
-                  scrollRef={scrollRef}
-                />
-              )}
-              <div
-                className={styles.outlineToggle}
-                onClick={() => toggleOutline(!outlineCollapsed)}
-              >
-                <i className={ApplicationIcons.sidebar} />
-              </div>
-            </StickyScroll>
-            <div className={styles.eventsSeparator} />
-            <TranscriptViewNodes
-              id={"transcript-events-list"}
-              eventNodes={eventNodes}
-              defaultCollapsedIds={defaultCollapsedIds}
-              initialEventId={eventParam}
-              className={styles.eventsList}
-              scrollRef={scrollRef}
-            />
-          </div>
+              <i className={ApplicationIcons.sidebar} />
+            </div>
+          </StickyScroll>
+          <div className={styles.eventsSeparator} />
+          <TranscriptViewNodes
+            id={"transcript-events-list"}
+            eventNodes={eventNodes}
+            defaultCollapsedIds={defaultCollapsedIds}
+            initialEventId={eventParam}
+            className={styles.eventsList}
+            scrollRef={scrollRef}
+          />
         </div>
-        <TranscriptFilterPopover
-          showing={transcriptFilterShowing}
-          setShowing={setTranscriptFilterShowing}
-          // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
-          positionEl={transcriptFilterButtonRef.current}
-        />
-      </TabPanel>
-    );
-  }
+      </div>
+      <TranscriptFilterPopover
+        showing={transcriptFilterShowing}
+        setShowing={setTranscriptFilterShowing}
+        // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
+        positionEl={transcriptFilterButtonRef.current}
+      />
+    </TabPanel>
+  ) : null;
+
+  // Events tab first when available, then Messages
+  const tabPanels = [...(eventsPanel ? [eventsPanel] : []), messagesPanel];
 
   if (transcript.metadata && Object.keys(transcript.metadata).length > 0) {
     tabPanels.push(

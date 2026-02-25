@@ -233,8 +233,8 @@ def test_basic_repr() -> None:
 
     output = repr(tl)
 
-    assert "Transcript" in output
-    assert "Explore" in output
+    assert "transcript" in output
+    assert "explore" in output
     assert "│" in output
 
 
@@ -277,10 +277,10 @@ def test_parallel_agents_badge() -> None:
 
     output = repr(tl)
     # All on one row labelled "Worker", with ③ count glyph in the bar
-    assert "Worker" in output
+    assert "worker" in output
     assert "③" in output
     # Should NOT have separate Worker rows
-    worker_lines = [line for line in output.split("\n") if "Worker" in line]
+    worker_lines = [line for line in output.split("\n") if "worker" in line]
     assert len(worker_lines) == 1
 
 
@@ -311,7 +311,7 @@ def test_iterative_agents_single_row() -> None:
     output = repr(tl)
     # Should appear once (not twice), without (N) badge
     lines = output.strip().split("\n")
-    attempt_lines = [line for line in lines if "Attempt" in line and "(2)" not in line]
+    attempt_lines = [line for line in lines if "attempt" in line and "(2)" not in line]
     assert len(attempt_lines) == 1
 
 
@@ -339,7 +339,7 @@ def test_branches_prefix() -> None:
 
     output = repr(tl)
     assert "↳" in output
-    assert "Refactor" in output
+    assert "refactor" in output
 
 
 # =============================================================================
@@ -380,7 +380,7 @@ def test_utility_agents_excluded() -> None:
     tl = _make_timeline(root)
 
     output = repr(tl)
-    assert "Helper" not in output
+    assert "helper" not in output
 
 
 # =============================================================================
@@ -397,7 +397,7 @@ def test_single_event_timeline() -> None:
     tl = _make_timeline(root)
 
     output = repr(tl)
-    assert "Transcript" in output
+    assert "transcript" in output
     assert "█" in output
 
 
@@ -418,5 +418,5 @@ def test_deeply_nested() -> None:
     output = repr(tl)
     lines = output.strip().split("\n")
     assert len(lines) >= 4
-    assert "Root" in lines[0]
-    assert "Inner" in output
+    assert "root" in lines[0]
+    assert "inner" in output

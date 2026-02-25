@@ -1,5 +1,5 @@
 {
-  "description": "Auto-span detection: 2 parallel conversations with the same system prompt, interleaved — produces 2 spans with same name",
+  "description": "Parallel conversations with same system prompt, interleaved — without auto-detection, all events remain flat in root agent",
   "events": [
     {
       "event": "model",
@@ -72,22 +72,7 @@
       "id": "main",
       "name": "main",
       "source": {"source": "span", "span_id": "main"},
-      "children": [
-        {
-          "id": "auto-span-0",
-          "name": "Agent",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-001", "e-003"],
-          "total_tokens": 300
-        },
-        {
-          "id": "auto-span-1",
-          "name": "Agent",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-002", "e-004"],
-          "total_tokens": 300
-        }
-      ],
+      "event_uuids": ["e-001", "e-002", "e-003", "e-004"],
       "total_tokens": 600
     },
     "scoring": null

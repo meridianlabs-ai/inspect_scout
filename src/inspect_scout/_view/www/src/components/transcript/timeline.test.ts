@@ -627,6 +627,165 @@ describe("buildTimeline", () => {
     expect(result.root.totalTokens).toBe(0);
   });
 
+  it("filters out agent spans whose children are all empty spans", () => {
+    // An agent span containing only empty nested spans should be filtered out.
+    // This tests the producer-level guard in buildSpanFromAgentSpan.
+    const events: Event[] = [
+      // solvers span containing an agent span with an empty child span
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T00:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "empty-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T00:00:01Z",
+      })!,
+      // Empty child span (no events inside)
+      createEvent({
+        event: "span_begin",
+        id: "child-1",
+        name: "empty-child",
+        type: "agent",
+        parent_id: "agent-1",
+        timestamp: "2024-01-01T00:00:02Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "child-1",
+        timestamp: "2024-01-01T00:00:03Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T00:00:04Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T00:00:05Z",
+      })!,
+    ];
+
+    const result = buildTimeline(events);
+    // The root should have empty content since all nested agents were empty
+    expect(result.root.content.length).toBe(0);
+  });
+
+  it("filters empty branches in explicit branch mode", () => {
+    // A branch span with no events inside should be filtered out.
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T00:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "my-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T00:00:01Z",
+      })!,
+      // A model event so the agent isn't empty
+      createEvent({
+        event: "model",
+        uuid: "model-1",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T00:00:02Z",
+        completed: "2024-01-01T00:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: {
+          choices: [{ message: { role: "assistant", content: "hi" } }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      })!,
+      // An empty branch span
+      createEvent({
+        event: "span_begin",
+        id: "branch-1",
+        name: "empty-branch",
+        type: "branch",
+        parent_id: "agent-1",
+        timestamp: "2024-01-01T00:00:04Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "branch-1",
+        timestamp: "2024-01-01T00:00:05Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T00:00:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T00:00:07Z",
+      })!,
+    ];
+
+    const result = buildTimeline(events);
+    // Empty branch should be filtered out
+    expect(result.root.branches.length).toBe(0);
+    // Agent should still have its model event
+    expect(result.root.content.length).toBeGreaterThan(0);
+  });
+
+  it("handles generic span returning null when all children empty", () => {
+    // A non-agent span (type="tool") whose children are all empty agent spans
+    // should be filtered out at the producer level.
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "tool-span-1",
+        name: "tool-wrapper",
+        type: "tool",
+        timestamp: "2024-01-01T00:00:00Z",
+      })!,
+      // Empty agent child inside the tool span
+      createEvent({
+        event: "span_begin",
+        id: "nested-agent",
+        name: "nested",
+        type: "agent",
+        parent_id: "tool-span-1",
+        timestamp: "2024-01-01T00:00:01Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "nested-agent",
+        timestamp: "2024-01-01T00:00:02Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "tool-span-1",
+        timestamp: "2024-01-01T00:00:03Z",
+      })!,
+    ];
+
+    const result = buildTimeline(events);
+    // The tool span's begin/end events get unrolled, but the nested empty agent
+    // is filtered. The root should contain only the span begin/end events.
+    // (The unrolled span emits begin + end as events)
+    for (const item of result.root.content) {
+      if (item.type === "span") {
+        // No child spans should survive if their content was empty
+        expect(item.content.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("computes startTime and endTime correctly", () => {
     const fixture = loadFixture("simple_agent");
     const events = eventsFromJson(fixture);

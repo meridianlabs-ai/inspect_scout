@@ -209,9 +209,6 @@ function sumTokens(nodes: TimelineNode[]): number {
 // Node Creation
 // =============================================================================
 
-/** Sentinel date for nodes with no content (e.g. empty spans). */
-const EPOCH = new Date(0);
-
 /**
  * Create a TimelineEvent from an Event.
  */
@@ -237,6 +234,12 @@ function createTimelineSpan(
   branches: TimelineBranch[] = [],
   description?: string
 ): TimelineSpan {
+  if (content.length === 0) {
+    throw new Error(
+      `createTimelineSpan called with empty content for span "${name}" (id=${id}). ` +
+        "Callers must guard against empty content before calling the factory."
+    );
+  }
   return {
     type: "span",
     id,
@@ -246,8 +249,8 @@ function createTimelineSpan(
     branches,
     description,
     utility,
-    startTime: content.length > 0 ? minStartTime(content) : EPOCH,
-    endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
+    startTime: minStartTime(content),
+    endTime: maxEndTime(content),
     totalTokens: sumTokens(content),
   };
 }
@@ -259,12 +262,18 @@ function createBranch(
   forkedAt: string,
   content: (TimelineEvent | TimelineSpan)[]
 ): TimelineBranch {
+  if (content.length === 0) {
+    throw new Error(
+      "createBranch called with empty content. " +
+        "Callers must guard against empty content before calling the factory."
+    );
+  }
   return {
     type: "branch",
     forkedAt,
     content,
-    startTime: content.length > 0 ? minStartTime(content) : EPOCH,
-    endTime: content.length > 0 ? maxEndTime(content) : EPOCH,
+    startTime: minStartTime(content),
+    endTime: maxEndTime(content),
     totalTokens: sumTokens(content),
   };
 }
@@ -395,12 +404,14 @@ function eventToNode(event: Event): TimelineEvent | TimelineSpan {
         (e) => eventToNode(e)
       );
 
-      return createTimelineSpan(
-        `tool-agent-${event.id}`,
-        agentName,
-        "agent",
-        nestedContent
-      );
+      if (nestedContent.length > 0) {
+        return createTimelineSpan(
+          `tool-agent-${event.id}`,
+          agentName,
+          "agent",
+          nestedContent
+        );
+      }
     }
   }
   return createTimelineEvent(event);
@@ -425,12 +436,13 @@ function isAgentSpan(span: SpanNode): boolean {
 }
 
 /**
- * Convert a tree item (SpanNode or Event) to a TimelineEvent or TimelineSpan.
+ * Convert a tree item (SpanNode or Event) to a TimelineEvent, TimelineSpan,
+ * or null if the resulting span would be empty.
  */
 function treeItemToNode(
   item: TreeItem,
   hasExplicitBranches: boolean
-): TimelineEvent | TimelineSpan {
+): TimelineEvent | TimelineSpan | null {
   if (isSpanNode(item)) {
     if (item.type === "agent" || item.type === "solver") {
       return buildSpanFromAgentSpan(item, hasExplicitBranches);
@@ -450,7 +462,7 @@ function buildSpanFromAgentSpan(
   span: SpanNode,
   hasExplicitBranches: boolean,
   extraItems?: TreeItem[]
-): TimelineSpan {
+): TimelineSpan | null {
   const content: (TimelineEvent | TimelineSpan)[] = [];
 
   // Add any extra items first (orphan events)
@@ -459,7 +471,10 @@ function buildSpanFromAgentSpan(
       if (isSpanNode(item) && !isAgentSpan(item)) {
         unrollSpan(item, content, hasExplicitBranches);
       } else {
-        content.push(treeItemToNode(item, hasExplicitBranches));
+        const node = treeItemToNode(item, hasExplicitBranches);
+        if (node !== null) {
+          content.push(node);
+        }
       }
     }
   }
@@ -470,6 +485,10 @@ function buildSpanFromAgentSpan(
     hasExplicitBranches
   );
   content.push(...childContent);
+
+  if (content.length === 0) {
+    return null;
+  }
 
   const description =
     typeof span.metadata?.description === "string"
@@ -496,11 +515,15 @@ function buildSpanFromAgentSpan(
 function buildSpanFromGenericSpan(
   span: SpanNode,
   hasExplicitBranches: boolean
-): TimelineSpan {
+): TimelineSpan | null {
   const [content, branches] = processChildren(
     span.children,
     hasExplicitBranches
   );
+
+  if (content.length === 0) {
+    return null;
+  }
 
   // Determine the spanType based on span type and content
   const spanType: string | null =
@@ -549,16 +572,36 @@ function buildAgentFromSolversSpan(
     // Build from explicit agent spans
     const firstAgentSpan = agentSpans[0];
     if (agentSpans.length === 1 && firstAgentSpan) {
-      return buildSpanFromAgentSpan(
+      const result = buildSpanFromAgentSpan(
         firstAgentSpan,
         hasExplicitBranches,
         otherItems
       );
+      if (result !== null) {
+        return result;
+      }
+      // Agent span had no content — return an empty span preserving identity
+      return {
+        type: "span",
+        id: firstAgentSpan.id,
+        name: firstAgentSpan.name.toLowerCase(),
+        spanType: "agent",
+        content: [],
+        branches: [],
+        utility: false,
+        startTime: new Date(0),
+        endTime: new Date(0),
+        totalTokens: 0,
+      };
     } else {
       // Multiple agent spans - create root containing all
-      const children: (TimelineEvent | TimelineSpan)[] = agentSpans.map(
-        (span) => buildSpanFromAgentSpan(span, hasExplicitBranches)
-      );
+      const children: (TimelineEvent | TimelineSpan)[] = [];
+      for (const span of agentSpans) {
+        const node = buildSpanFromAgentSpan(span, hasExplicitBranches);
+        if (node !== null) {
+          children.push(node);
+        }
+      }
       // Add any orphan events at the start
       for (const item of otherItems) {
         if (isSpanNode(item) && !isAgentSpan(item)) {
@@ -568,8 +611,14 @@ function buildAgentFromSolversSpan(
             children.unshift(orphanContent[i]!);
           }
         } else {
-          children.unshift(treeItemToNode(item, hasExplicitBranches));
+          const node = treeItemToNode(item, hasExplicitBranches);
+          if (node !== null) {
+            children.unshift(node);
+          }
         }
+      }
+      if (children.length === 0) {
+        return null;
       }
       return createTimelineSpan("root", "main", "agent", children);
     }
@@ -579,6 +628,9 @@ function buildAgentFromSolversSpan(
       solversSpan.children,
       hasExplicitBranches
     );
+    if (content.length === 0) {
+      return null;
+    }
     return createTimelineSpan(
       solversSpan.id,
       solversSpan.name,
@@ -598,8 +650,12 @@ function buildAgentFromSolversSpan(
 function buildAgentFromTree(
   tree: TreeItem[],
   hasExplicitBranches: boolean
-): TimelineSpan {
+): TimelineSpan | null {
   const [content, branches] = processChildren(tree, hasExplicitBranches);
+
+  if (content.length === 0) {
+    return null;
+  }
 
   return createTimelineSpan("main", "main", "agent", content, false, branches);
 }
@@ -623,9 +679,7 @@ function unrollSpan(
     if (isSpanNode(child)) {
       if (isAgentSpan(child)) {
         const node = treeItemToNode(child, hasExplicitBranches);
-        if (node.type === "span" && node.content.length === 0) {
-          // skip empty agent spans
-        } else {
+        if (node !== null) {
           into.push(node);
         }
       } else {
@@ -666,8 +720,7 @@ function processChildren(
         unrollSpan(item, content, hasExplicitBranches);
       } else {
         const node = treeItemToNode(item, hasExplicitBranches);
-        // Skip empty spans (e.g. agent spans with no nested events)
-        if (node.type === "span" && node.content.length === 0) continue;
+        if (node === null) continue;
         content.push(node);
       }
     }
@@ -691,10 +744,11 @@ function processChildren(
           unrollSpan(child, branchContent, hasExplicitBranches);
         } else {
           const node = treeItemToNode(child, hasExplicitBranches);
-          if (node.type === "span" && node.content.length === 0) continue;
+          if (node === null) continue;
           branchContent.push(node);
         }
       }
+      if (branchContent.length === 0) continue;
       const branchInput = getBranchInput(branchContent);
       const forkedAt =
         branchInput !== null ? findForkedAt(parentContent, branchInput) : "";
@@ -717,7 +771,7 @@ function processChildren(
         unrollSpan(item, content, hasExplicitBranches);
       } else {
         const node = treeItemToNode(item, hasExplicitBranches);
-        if (node.type === "span" && node.content.length === 0) continue;
+        if (node === null) continue;
         content.push(node);
       }
     }
@@ -930,8 +984,10 @@ function detectAutoBranches(span: TimelineSpan): void {
 
   for (const [start, end, sharedInput] of branchRanges) {
     const branchContent = span.content.slice(start, end);
-    const forkedAt = findForkedAt(span.content, sharedInput);
-    span.branches.push(createBranch(forkedAt, branchContent));
+    if (branchContent.length > 0) {
+      const forkedAt = findForkedAt(span.content, sharedInput);
+      span.branches.push(createBranch(forkedAt, branchContent));
+    }
     span.content.splice(start, end - start);
   }
 
@@ -1116,11 +1172,19 @@ function classifyUtilityAgents(
  */
 export function buildTimeline(events: Event[]): Timeline {
   if (events.length === 0) {
-    return {
-      name: "Default",
-      description: "",
-      root: createTimelineSpan("root", "main", null, []),
+    const emptyRoot: TimelineSpan = {
+      type: "span",
+      id: "root",
+      name: "main",
+      spanType: null,
+      content: [],
+      branches: [],
+      utility: false,
+      startTime: new Date(0),
+      endTime: new Date(0),
+      totalTokens: 0,
     };
+    return { name: "Default", description: "", root: emptyRoot };
   }
 
   // Detect explicit branches globally
@@ -1224,14 +1288,46 @@ export function buildTimeline(events: Event[]): Timeline {
       if (scoringSpan) {
         rootContent.push(scoringSpan);
       }
-      root = createTimelineSpan("root", "main", null, rootContent);
+      if (rootContent.length > 0) {
+        root = createTimelineSpan("root", "main", null, rootContent);
+      } else {
+        root = {
+          type: "span",
+          id: "root",
+          name: "main",
+          spanType: null,
+          content: [],
+          branches: [],
+          utility: false,
+          startTime: new Date(0),
+          endTime: new Date(0),
+          totalTokens: 0,
+        };
+      }
     }
   } else {
     // No phase spans - treat entire tree as agent
-    root = buildAgentFromTree(tree, hasExplicitBranches);
-    if (!hasExplicitBranches) detectAutoBranches(root);
-    classifyUtilityAgents(root);
-    classifyBranches(root, hasExplicitBranches);
+    const agentRoot = buildAgentFromTree(tree, hasExplicitBranches);
+    if (agentRoot) {
+      if (!hasExplicitBranches) detectAutoBranches(agentRoot);
+      classifyUtilityAgents(agentRoot);
+      classifyBranches(agentRoot, hasExplicitBranches);
+      root = agentRoot;
+    } else {
+      // All content was empty — construct an empty root inline
+      root = {
+        type: "span",
+        id: "root",
+        name: "main",
+        spanType: null,
+        content: [],
+        branches: [],
+        utility: false,
+        startTime: new Date(0),
+        endTime: new Date(0),
+        totalTokens: 0,
+      };
+    }
   }
 
   return { name: "Default", description: "", root };

@@ -27,6 +27,7 @@ import {
 } from "../../timeline/timelineEventNodes";
 import {
   computeRowLayouts,
+  rowHasEvents,
   type RowLayout,
 } from "../../timeline/utils/swimlaneLayout";
 
@@ -75,15 +76,22 @@ export function useTranscriptTimeline(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeline]);
 
+  // Filter out child rows whose spans contain no events.
+  // The parent row (index 0) is always kept.
+  const visibleRows = useMemo(
+    () => state.rows.filter((row, i) => i === 0 || rowHasEvents(row)),
+    [state.rows]
+  );
+
   const layouts = useMemo(
     () =>
       computeRowLayouts(
-        state.rows,
+        visibleRows,
         state.node.startTime,
         state.node.endTime,
         "direct"
       ),
-    [state.rows, state.node.startTime, state.node.endTime]
+    [visibleRows, state.node.startTime, state.node.endTime]
   );
 
   const parentRowName = state.rows[0]?.name;

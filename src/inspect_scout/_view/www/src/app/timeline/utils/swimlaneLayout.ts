@@ -241,6 +241,20 @@ export function computeRowLayouts(
 // Internal Helpers
 // =============================================================================
 
+/** Returns true if a TimelineSpan has any TimelineEvent items in its content tree. */
+export function spanHasEvents(span: TimelineSpan): boolean {
+  for (const item of span.content) {
+    if (item.type === "event") return true;
+    if (item.type === "span" && spanHasEvents(item)) return true;
+  }
+  return false;
+}
+
+/** Returns true if any agent across all spans in a row has events. */
+export function rowHasEvents(row: SwimlaneRow): boolean {
+  return row.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
+}
+
 /**
  * Collects and positions markers for a single row.
  *

@@ -1,0 +1,105 @@
+{
+  "description": "Agent span nested inside a non-agent span — the wrapper is unrolled (begin/end emitted) but the agent is preserved",
+  "events": [
+    {
+      "event": "span_begin",
+      "id": "solvers",
+      "name": "solvers",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "id": "main-agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": { "input_tokens": 100, "output_tokens": 50 }
+      }
+    },
+    {
+      "event": "span_begin",
+      "id": "custom-wrapper",
+      "name": "my_workflow",
+      "type": "myspan",
+      "parent_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-002",
+      "span_id": "custom-wrapper",
+      "source": "workflow",
+      "timestamp": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "span_begin",
+      "id": "inner-agent",
+      "name": "sub_agent",
+      "type": "agent",
+      "parent_id": "custom-wrapper",
+      "timestamp": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "inner-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z",
+      "output": {
+        "usage": { "input_tokens": 200, "output_tokens": 100 }
+      }
+    },
+    {
+      "event": "span_end",
+      "id": "inner-agent",
+      "span_id": "inner-agent",
+      "timestamp": "2024-01-01T00:00:09Z"
+    },
+    {
+      "event": "span_end",
+      "id": "custom-wrapper",
+      "span_id": "custom-wrapper",
+      "timestamp": "2024-01-01T00:00:10Z"
+    },
+    {
+      "event": "span_end",
+      "id": "main-agent",
+      "span_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:11Z"
+    },
+    {
+      "event": "span_end",
+      "id": "solvers",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:12Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main-agent",
+      "name": "orchestrator",
+      "source": { "source": "span", "span_id": "main-agent" },
+      "content_structure": [
+        { "type": "event", "uuid": "e-001" },
+        { "type": "event" },
+        { "type": "event", "uuid": "e-002" },
+        { "type": "agent", "id": "inner-agent", "name": "sub_agent", "source": { "source": "span" }, "nested_uuids": ["e-003"], "total_tokens": 300 },
+        { "type": "event" }
+      ],
+      "total_tokens": 450
+    },
+    "scoring": null
+  }
+}

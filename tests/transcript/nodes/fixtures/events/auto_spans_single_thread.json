@@ -1,5 +1,5 @@
 {
-  "description": "Auto-span detection: 3 ModelEvents forming a single conversation thread — no spans created (single thread)",
+  "description": "Single conversation thread — without auto-detection, all events remain flat in root agent",
   "events": [
     {
       "event": "model",

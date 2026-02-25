@@ -734,7 +734,7 @@ async def test_filter_timeline_by_name() -> None:
     results = await _collect_timeline(filtered)
 
     assert len(results) == 1
-    assert results[0].span.name == "Build"
+    assert results[0].span.name == "build"
 
 
 @pytest.mark.anyio
@@ -756,7 +756,7 @@ async def test_filter_timeline_by_span_type() -> None:
     results = await _collect_timeline(filtered)
 
     assert len(results) == 1
-    assert results[0].span.name == "Agent"
+    assert results[0].span.name == "agent"
 
 
 def test_filter_timeline_prunes_subtrees() -> None:
@@ -774,12 +774,12 @@ def test_filter_timeline_prunes_subtrees() -> None:
     tl = Timeline(name="t", description="", root=root)
 
     # Prune "Parent" — grandchild should also be gone
-    filtered = timeline_filter(tl, lambda s: s.name != "Parent")
+    filtered = timeline_filter(tl, lambda s: s.name != "parent")
     child_spans = [
         item for item in filtered.root.content if isinstance(item, TimelineSpan)
     ]
     assert len(child_spans) == 1
-    assert child_spans[0].name == "Sibling"
+    assert child_spans[0].name == "sibling"
 
 
 def test_filter_timeline_preserves_events() -> None:

@@ -359,11 +359,9 @@ function assertSpanMatches(
   expect(actual!.id).toBe(expected.id);
   expect(actual!.name).toBe(expected.name);
 
-  // Check source → spanType mapping
-  if (expected.source.source === "span") {
+  // Check source → spanType mapping — all agent sources map to spanType="agent"
+  if (expected.source.source === "span" || expected.source.source === "tool") {
     expect(actual!.spanType).toBe("agent");
-  } else if (expected.source.source === "tool") {
-    expect(actual!.spanType).toBeNull();
   }
 
   // Check event UUIDs if specified
@@ -436,10 +434,11 @@ function assertSpanMatches(
           expect(spanItem.name).toBe(expectedItem.name);
         }
         if (expectedItem.source) {
-          if (expectedItem.source.source === "span") {
+          if (
+            expectedItem.source.source === "span" ||
+            expectedItem.source.source === "tool"
+          ) {
             expect(spanItem.spanType).toBe("agent");
-          } else if (expectedItem.source.source === "tool") {
-            expect(spanItem.spanType).toBeNull();
           }
         }
         if (expectedItem.nested_uuids) {
@@ -477,7 +476,7 @@ function assertTimelineMatches(
         throw new Error("Expected first item to be a span");
       }
       expect(firstItem.spanType).toBe("init");
-      expect(firstItem.name).toBe("Init");
+      expect(firstItem.name).toBe("init");
       const actualUuids = getDirectEventUuids(firstItem);
       expect(actualUuids).toEqual(expectedUuids);
     }
@@ -583,10 +582,11 @@ function assertTimelineMatches(
             expect(spanItem.name).toBe(expectedItem.name);
           }
           if (expectedItem.source) {
-            if (expectedItem.source.source === "span") {
+            if (
+              expectedItem.source.source === "span" ||
+              expectedItem.source.source === "tool"
+            ) {
               expect(spanItem.spanType).toBe("agent");
-            } else if (expectedItem.source.source === "tool") {
-              expect(spanItem.spanType).toBeNull();
             }
           }
           if (expectedItem.nested_uuids) {

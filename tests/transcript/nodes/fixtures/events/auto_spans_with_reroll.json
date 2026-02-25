@@ -1,5 +1,5 @@
 {
-  "description": "Auto-span detection with re-rolled ModelEvent: branch detection runs before threading so re-rolls are stripped before conversation threading separates them into different threads",
+  "description": "Model events with a re-roll — without auto-detection, all events remain flat in root agent (re-roll branch preserved)",
   "events": [
     {
       "event": "model",
@@ -59,22 +59,7 @@
           "event_uuids": ["e-001"]
         }
       ],
-      "children": [
-        {
-          "id": "auto-span-0",
-          "name": "Agent 1",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-002"],
-          "total_tokens": 150
-        },
-        {
-          "id": "auto-span-1",
-          "name": "Agent 2",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-003"],
-          "total_tokens": 150
-        }
-      ],
+      "event_uuids": ["e-002", "e-003"],
       "total_tokens": 300
     },
     "scoring": null

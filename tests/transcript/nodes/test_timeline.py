@@ -423,17 +423,11 @@ def assert_span_matches(
         f"{span_name} name mismatch: got {actual.name}, expected {expected['name']}"
     )
 
-    # Check source/span_type
+    # Check source/span_type — all agent sources map to span_type="agent"
     expected_source = expected.get("source", {})
-    if expected_source.get("source") == "span":
-        # Agent from explicit span
+    if expected_source.get("source") in ("span", "tool"):
         assert actual.span_type == "agent", (
             f"{span_name} span_type mismatch: got {actual.span_type}, expected 'agent'"
-        )
-    elif expected_source.get("source") == "tool":
-        # Tool-spawned agent
-        assert actual.span_type is None, (
-            f"{span_name} span_type mismatch: got {actual.span_type}, expected None"
         )
 
     # Check event UUIDs if specified
@@ -511,7 +505,7 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
                 "Expected first content item to be init span"
             )
             assert first_item.span_type == "init"
-            assert first_item.name == "Init"
+            assert first_item.name == "init"
             actual_uuids = get_event_uuids(first_item)
             assert actual_uuids == expected_uuids, (
                 f"init event UUIDs mismatch: "

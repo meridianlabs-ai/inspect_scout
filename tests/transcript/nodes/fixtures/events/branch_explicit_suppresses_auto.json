@@ -156,7 +156,7 @@
     "init": null,
     "agent": {
       "id": "root",
-      "name": "root",
+      "name": "main",
       "source": {
         "source": "span",
         "span_id": "root"

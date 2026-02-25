@@ -69,32 +69,7 @@ export function getAgents(span: RowSpan): TimelineSpan[] {
 /** Tolerance in milliseconds for considering two spans as overlapping. */
 const OVERLAP_TOLERANCE_MS = 100;
 
-/**
- * Returns true if two spans overlap in time, within the tolerance.
- * Two spans overlap if A starts before B ends and B starts before A ends.
- */
-function spansOverlap(a: TimelineSpan, b: TimelineSpan): boolean {
-  return (
-    a.startTime.getTime() < b.endTime.getTime() + OVERLAP_TOLERANCE_MS &&
-    b.startTime.getTime() < a.endTime.getTime() + OVERLAP_TOLERANCE_MS
-  );
-}
 
-/**
- * Returns true if any pair of spans in the group overlap.
- */
-function groupHasOverlap(spans: TimelineSpan[]): boolean {
-  for (let i = 0; i < spans.length; i++) {
-    for (let j = i + 1; j < spans.length; j++) {
-      const a = spans[i];
-      const b = spans[j];
-      if (a && b && spansOverlap(a, b)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 
 // =============================================================================
 // Main Computation
@@ -141,6 +116,38 @@ export function computeSwimlaneRows(node: TimelineSpan): SwimlaneRow[] {
 // Internal Helpers
 // =============================================================================
 
+/**
+ * Partitions time-sorted spans into clusters of overlapping spans.
+ *
+ * Uses a sweep-line: extends the current cluster while spans overlap its
+ * time range, then starts a new cluster when a gap is found.
+ * Input must be sorted by start time.
+ */
+function partitionIntoClusters(sorted: TimelineSpan[]): TimelineSpan[][] {
+  if (sorted.length === 0) return [];
+
+  const clusters: TimelineSpan[][] = [];
+  let current: TimelineSpan[] = [sorted[0]!];
+  let clusterEnd = sorted[0]!.endTime.getTime();
+
+  for (let i = 1; i < sorted.length; i++) {
+    const span = sorted[i]!;
+    if (span.startTime.getTime() < clusterEnd + OVERLAP_TOLERANCE_MS) {
+      // Overlaps with current cluster
+      current.push(span);
+      clusterEnd = Math.max(clusterEnd, span.endTime.getTime());
+    } else {
+      // Gap found — finalize current cluster and start a new one
+      clusters.push(current);
+      current = [span];
+      clusterEnd = span.endTime.getTime();
+    }
+  }
+  clusters.push(current);
+
+  return clusters;
+}
+
 function buildParentRow(node: TimelineSpan): SwimlaneRow {
   return {
     name: node.name,
@@ -185,17 +192,11 @@ function buildRowFromGroup(
     return null;
   }
 
-  // Determine row spans based on overlap
-  let rowSpans: RowSpan[];
-  if (sorted.length === 1) {
-    rowSpans = [{ agent: first }];
-  } else if (groupHasOverlap(sorted)) {
-    // Any overlap → entire group is one ParallelSpan
-    rowSpans = [{ agents: sorted }];
-  } else {
-    // No overlap → each span is a separate SingleSpan (iterative)
-    rowSpans = sorted.map((span) => ({ agent: span }));
-  }
+  // Partition into overlapping clusters, then build RowSpans
+  const rowSpans = partitionIntoClusters(sorted).map(
+    (cluster): RowSpan =>
+      cluster.length === 1 ? { agent: cluster[0]! } : { agents: cluster }
+  );
 
   // Compute aggregated time range and tokens
   const startTime = first.startTime;

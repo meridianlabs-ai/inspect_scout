@@ -591,21 +591,6 @@ function getAgents(span) {
   return isSingleSpan(span) ? [span.agent] : span.agents;
 }
 const OVERLAP_TOLERANCE_MS = 100;
-function spansOverlap(a, b) {
-  return a.startTime.getTime() < b.endTime.getTime() + OVERLAP_TOLERANCE_MS && b.startTime.getTime() < a.endTime.getTime() + OVERLAP_TOLERANCE_MS;
-}
-function groupHasOverlap(spans) {
-  for (let i = 0; i < spans.length; i++) {
-    for (let j = i + 1; j < spans.length; j++) {
-      const a = spans[i];
-      const b = spans[j];
-      if (a && b && spansOverlap(a, b)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 function computeSwimlaneRows(node) {
   const parentRow = buildParentRow(node);
   const children = node.content.filter(
@@ -624,6 +609,25 @@ function computeSwimlaneRows(node) {
   }
   childRows.sort(compareByTime);
   return [parentRow, ...childRows];
+}
+function partitionIntoClusters(sorted) {
+  if (sorted.length === 0) return [];
+  const clusters = [];
+  let current = [sorted[0]];
+  let clusterEnd = sorted[0].endTime.getTime();
+  for (let i = 1; i < sorted.length; i++) {
+    const span = sorted[i];
+    if (span.startTime.getTime() < clusterEnd + OVERLAP_TOLERANCE_MS) {
+      current.push(span);
+      clusterEnd = Math.max(clusterEnd, span.endTime.getTime());
+    } else {
+      clusters.push(current);
+      current = [span];
+      clusterEnd = span.endTime.getTime();
+    }
+  }
+  clusters.push(current);
+  return clusters;
 }
 function buildParentRow(node) {
   return {
@@ -653,14 +657,9 @@ function buildRowFromGroup(displayName, spans) {
   if (!first) {
     return null;
   }
-  let rowSpans;
-  if (sorted.length === 1) {
-    rowSpans = [{ agent: first }];
-  } else if (groupHasOverlap(sorted)) {
-    rowSpans = [{ agents: sorted }];
-  } else {
-    rowSpans = sorted.map((span) => ({ agent: span }));
-  }
+  const rowSpans = partitionIntoClusters(sorted).map(
+    (cluster) => cluster.length === 1 ? { agent: cluster[0] } : { agents: cluster }
+  );
   const startTime = first.startTime;
   const endTime = sorted.reduce(
     (latest, span) => span.endTime.getTime() > latest.getTime() ? span.endTime : latest,

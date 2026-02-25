@@ -61,9 +61,15 @@ export function getSelectedSpans(
   if (!row) return [];
 
   const result: TimelineSpan[] = [];
-  for (const rowSpan of row.spans) {
+  const targetIndex = spanIndex !== null ? spanIndex - 1 : null; // 0-based
+
+  for (let i = 0; i < row.spans.length; i++) {
+    const rowSpan = row.spans[i]!;
     if (isSingleSpan(rowSpan)) {
-      result.push(rowSpan.agent);
+      // For iterative rows, only include the targeted SingleSpan
+      if (targetIndex === null || i === targetIndex) {
+        result.push(rowSpan.agent);
+      }
     } else if (isParallelSpan(rowSpan)) {
       if (spanIndex !== null) {
         const agent = rowSpan.agents[spanIndex - 1];

@@ -1746,9 +1746,13 @@ function getSelectedSpans(rows, selected2) {
   const row2 = findRowByName(rows, name);
   if (!row2) return [];
   const result = [];
-  for (const rowSpan of row2.spans) {
+  const targetIndex = spanIndex !== null ? spanIndex - 1 : null;
+  for (let i = 0; i < row2.spans.length; i++) {
+    const rowSpan = row2.spans[i];
     if (isSingleSpan(rowSpan)) {
-      result.push(rowSpan.agent);
+      if (targetIndex === null || i === targetIndex) {
+        result.push(rowSpan.agent);
+      }
     } else if (isParallelSpan(rowSpan)) {
       if (spanIndex !== null) {
         const agent = rowSpan.agents[spanIndex - 1];

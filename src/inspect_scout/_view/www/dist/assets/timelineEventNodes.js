@@ -1069,17 +1069,20 @@ function useTimeline(timeline) {
     select
   };
 }
-const container = "_container_1tfzg_3";
-const stableLabel = "_stableLabel_1tfzg_17";
-const alignRight = "_alignRight_1tfzg_32";
-const alignLeft = "_alignLeft_1tfzg_36";
-const hidden = "_hidden_1tfzg_40";
-const minimap = "_minimap_1tfzg_44";
-const track = "_track_1tfzg_52";
-const regionFill = "_regionFill_1tfzg_65";
-const marker$1 = "_marker_1tfzg_76";
-const sectionTime = "_sectionTime_1tfzg_88";
-const sectionTimePill = "_sectionTimePill_1tfzg_99";
+const container = "_container_t8wdo_3";
+const stableLabel = "_stableLabel_t8wdo_17";
+const alignRight = "_alignRight_t8wdo_32";
+const alignLeft = "_alignLeft_t8wdo_36";
+const hidden = "_hidden_t8wdo_40";
+const minimap = "_minimap_t8wdo_44";
+const track = "_track_t8wdo_52";
+const selectionRegion = "_selectionRegion_t8wdo_69";
+const regionFill = "_regionFill_t8wdo_78";
+const marker$1 = "_marker_t8wdo_91";
+const markerLeft = "_markerLeft_t8wdo_102";
+const markerRight = "_markerRight_t8wdo_106";
+const sectionTime = "_sectionTime_t8wdo_111";
+const sectionTimePill = "_sectionTimePill_t8wdo_123";
 const styles$1 = {
   container,
   stableLabel,
@@ -1088,8 +1091,11 @@ const styles$1 = {
   hidden,
   minimap,
   track,
+  selectionRegion,
   regionFill,
   marker: marker$1,
+  markerLeft,
+  markerRight,
   sectionTime,
   sectionTimePill
 };
@@ -1135,29 +1141,20 @@ const TimelineMinimap = ({
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.minimap, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.track }),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
-          className: styles$1.regionFill,
-          style: { left: `${bar.left}%`, width: `${bar.width}%` }
-        }
-      ),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.marker, style: { left: `${bar.left}%` } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: styles$1.marker,
-            style: { left: `${bar.left + bar.width}%` }
-          }
-        )
-      ] }),
-      showRegion && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: styles$1.sectionTime,
-          style: { left: `${bar.left}%`, width: `${bar.width}%` },
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.sectionTimePill, onClick: toggle2, children: sectionLabel })
+          className: styles$1.selectionRegion,
+          style: {
+            left: `${bar.left + bar.width / 2}%`,
+            width: `${bar.width}%`
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.regionFill }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.marker, styles$1.markerLeft) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.marker, styles$1.markerRight) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.sectionTime, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.sectionTimePill, onClick: toggle2, children: sectionLabel }) })
+          ]
         }
       )
     ] }),

@@ -55,7 +55,7 @@
 }
 /* Self-contained minimap — flex row: mode label + bar area */
 
-._container_1tfzg_3 {
+._container_t8wdo_3 {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -69,7 +69,7 @@
  * Stable-width label — renders both time/token values in a CSS grid stack.
  * The cell sizes to the wider value; only the active one is visible.
  */
-._stableLabel_1tfzg_17 {
+._stableLabel_t8wdo_17 {
   display: grid;
   font-size: 0.6rem;
   line-height: 1.4;
@@ -80,23 +80,23 @@
   white-space: nowrap;
 }
 
-._stableLabel_1tfzg_17 > * {
+._stableLabel_t8wdo_17 > * {
   grid-area: 1 / 1;
 }
 
-._alignRight_1tfzg_32 {
+._alignRight_t8wdo_32 {
   justify-items: end;
 }
 
-._alignLeft_1tfzg_36 {
+._alignLeft_t8wdo_36 {
   justify-items: start;
 }
 
-._hidden_1tfzg_40 {
+._hidden_t8wdo_40 {
   visibility: hidden;
 }
 
-._minimap_1tfzg_44 {
+._minimap_t8wdo_44 {
   position: relative;
   height: 18px;
   flex: 1;
@@ -104,7 +104,7 @@
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
-._track_1tfzg_52 {
+._track_t8wdo_52 {
   position: absolute;
   left: 0;
   right: 0;
@@ -116,9 +116,24 @@
   opacity: 0.25;
 }
 
-/* Selection region fill — highlight between markers on the track */
-._regionFill_1tfzg_65 {
+/*
+ * Selection region wrapper — anchored at the midpoint of the selection
+ * with transform: translateX(-50%) so it stays centered. min-width
+ * ensures the markers and pill remain visible even for sub-pixel widths.
+ */
+._selectionRegion_t8wdo_69 {
   position: absolute;
+  top: 0;
+  height: 100%;
+  min-width: 24px;
+  transform: translateX(-50%);
+}
+
+/* Selection region fill — highlight between markers on the track */
+._regionFill_t8wdo_78 {
+  position: absolute;
+  left: 0;
+  right: 0;
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
@@ -127,23 +142,32 @@
   opacity: 0.45;
 }
 
-/* Vertical bar markers at selection boundaries */
-._marker_1tfzg_76 {
+/* Vertical bar markers at selection region boundaries */
+._marker_t8wdo_91 {
   position: absolute;
   top: 50%;
   height: 9px;
-  width: 2px;
-  border-radius: 1px;
+  width: 1px;
   background-color: var(--bs-primary);
-  opacity: 0.55;
-  transform: translate(-50%, -50%);
+  opacity: 0.7;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
-/* Section duration pill centered between the two markers */
-._sectionTime_1tfzg_88 {
+._markerLeft_t8wdo_102 {
+  left: 0;
+}
+
+._markerRight_t8wdo_106 {
+  right: 0;
+}
+
+/* Section duration pill centered on the selection region */
+._sectionTime_t8wdo_111 {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -151,13 +175,13 @@
   user-select: none;
 }
 
-._sectionTimePill_1tfzg_99 {
+._sectionTimePill_t8wdo_123 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);
   border: none;
   border-radius: 3px;
-  padding: 0 4px;
+  padding: 0 1px;
   line-height: 1.4;
   white-space: nowrap;
   pointer-events: auto;

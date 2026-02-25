@@ -85,34 +85,25 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
       <div className={styles.minimap}>
         <div className={styles.track} />
 
-        {/* Selection region fill between markers */}
+        {/* Selection region: markers + fill + label.
+            A wrapper with min-width ensures visibility even when the
+            percentage width is sub-pixel (e.g. 1 min in a 10 hr timeline). */}
         {showRegion && (
           <div
-            className={styles.regionFill}
-            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
-          />
-        )}
-
-        {/* Vertical tick markers at selection boundaries */}
-        {showRegion && (
-          <>
-            <div className={styles.marker} style={{ left: `${bar.left}%` }} />
-            <div
-              className={styles.marker}
-              style={{ left: `${bar.left + bar.width}%` }}
-            />
-          </>
-        )}
-
-        {/* Section label pill between markers */}
-        {showRegion && (
-          <div
-            className={styles.sectionTime}
-            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
+            className={styles.selectionRegion}
+            style={{
+              left: `${bar.left + bar.width / 2}%`,
+              width: `${bar.width}%`,
+            }}
           >
-            <span className={styles.sectionTimePill} onClick={toggle}>
-              {sectionLabel}
-            </span>
+            <div className={styles.regionFill} />
+            <div className={clsx(styles.marker, styles.markerLeft)} />
+            <div className={clsx(styles.marker, styles.markerRight)} />
+            <div className={styles.sectionTime}>
+              <span className={styles.sectionTimePill} onClick={toggle}>
+                {sectionLabel}
+              </span>
+            </div>
           </div>
         )}
       </div>

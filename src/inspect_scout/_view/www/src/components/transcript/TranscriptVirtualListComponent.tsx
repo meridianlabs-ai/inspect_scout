@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, RefObject, useCallback, useMemo } from "react";
+import { FC, RefObject, useCallback, useEffect, useMemo, useState } from "react";
 import { VirtuosoHandle } from "react-virtuoso";
 
 import { LiveVirtualList } from "../LiveVirtualList";
@@ -35,15 +35,28 @@ export const TranscriptVirtualListComponent: FC<
   offsetTop,
   className,
 }) => {
-  const initialEventIndex = useMemo(() => {
-    if (initialEventId === null || initialEventId === undefined) {
+  // Resolve the deep-link event ID to an index only when the ID itself
+  // changes, not when eventNodes changes due to filtering. This prevents
+  // filter changes from re-triggering scroll-to-index in LiveVirtualList.
+  const [initialEventIndex, setInitialEventIndex] = useState<
+    number | undefined
+  >(() => {
+    if (initialEventId === null || initialEventId === undefined)
       return undefined;
+    const idx = eventNodes.findIndex((e) => e.id === initialEventId);
+    return idx === -1 ? undefined : idx;
+  });
+
+  useEffect(() => {
+    if (initialEventId === null || initialEventId === undefined) {
+      setInitialEventIndex(undefined);
+      return;
     }
-    const result = eventNodes.findIndex((event) => {
-      return event.id === initialEventId;
-    });
-    return result === -1 ? undefined : result;
-  }, [initialEventId, eventNodes]);
+    const idx = eventNodes.findIndex((e) => e.id === initialEventId);
+    setInitialEventIndex(idx === -1 ? undefined : idx);
+    // Only re-resolve when the deep-link ID changes, not on data changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEventId]);
 
   const hasToolEventsAtCurrentDepth = useCallback(
     (startIndex: number) => {

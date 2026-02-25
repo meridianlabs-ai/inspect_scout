@@ -24775,15 +24775,20 @@ const TranscriptVirtualListComponent = ({
   offsetTop,
   className: className2
 }) => {
-  const initialEventIndex = reactExports.useMemo(() => {
-    if (initialEventId === null || initialEventId === void 0) {
+  const [initialEventIndex, setInitialEventIndex] = reactExports.useState(() => {
+    if (initialEventId === null || initialEventId === void 0)
       return void 0;
+    const idx = eventNodes.findIndex((e) => e.id === initialEventId);
+    return idx === -1 ? void 0 : idx;
+  });
+  reactExports.useEffect(() => {
+    if (initialEventId === null || initialEventId === void 0) {
+      setInitialEventIndex(void 0);
+      return;
     }
-    const result2 = eventNodes.findIndex((event) => {
-      return event.id === initialEventId;
-    });
-    return result2 === -1 ? void 0 : result2;
-  }, [initialEventId, eventNodes]);
+    const idx = eventNodes.findIndex((e) => e.id === initialEventId);
+    setInitialEventIndex(idx === -1 ? void 0 : idx);
+  }, [initialEventId]);
   const hasToolEventsAtCurrentDepth = reactExports.useCallback(
     (startIndex) => {
       for (let i2 = startIndex; i2 >= 0; i2--) {

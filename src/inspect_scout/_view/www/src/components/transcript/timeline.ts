@@ -571,7 +571,7 @@ function buildAgentFromSolversSpan(
           children.unshift(treeItemToNode(item, hasExplicitBranches));
         }
       }
-      return createTimelineSpan("root", "root", "agent", children);
+      return createTimelineSpan("root", "main", "agent", children);
     }
   } else {
     // No explicit agent spans - use solvers span itself as the agent container
@@ -1224,7 +1224,7 @@ export function buildTimeline(events: Event[]): Timeline {
       if (scoringSpan) {
         rootContent.push(scoringSpan);
       }
-      root = createTimelineSpan("root", "root", null, rootContent);
+      root = createTimelineSpan("root", "main", null, rootContent);
     }
   } else {
     // No phase spans - treat entire tree as agent

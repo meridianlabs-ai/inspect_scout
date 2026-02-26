@@ -528,6 +528,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
               eventNodes={eventNodes}
               defaultCollapsedIds={defaultCollapsedIds}
               initialEventId={eventParam}
+              offsetTop={40 + stickySwimLaneHeight}
               className={styles.eventsList}
               scrollRef={scrollRef}
             />

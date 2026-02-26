@@ -1740,6 +1740,7 @@ const TranscriptBody = ({
                     eventNodes,
                     defaultCollapsedIds,
                     initialEventId: eventParam,
+                    offsetTop: 40 + stickySwimLaneHeight,
                     className: styles$4.eventsList,
                     scrollRef
                   }

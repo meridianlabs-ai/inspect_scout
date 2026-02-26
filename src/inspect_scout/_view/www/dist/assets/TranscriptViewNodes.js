@@ -25099,6 +25099,7 @@ const TranscriptViewNodes = ({
   nodeFilter,
   scrollRef,
   initialEventId,
+  offsetTop = 10,
   className: className2
 }) => {
   const listHandle = reactExports.useRef(null);
@@ -25116,7 +25117,7 @@ const TranscriptViewNodes = ({
       listHandle,
       eventNodes: flattenedNodes,
       scrollRef,
-      offsetTop: 10,
+      offsetTop,
       className: clsx(styles$l.listContainer, className2),
       initialEventId
     }

@@ -3,8 +3,13 @@ import { FC, useCallback } from "react";
 
 import type { TimelineSpan } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
-import { formatDuration, formatDurationShort } from "../../../utils/format";
+import {
+  formatDuration,
+  formatDurationShort,
+  formatTime,
+} from "../../../utils/format";
 import { computeBarPosition, formatTokenCount } from "../utils/swimlaneLayout";
+import { computeActiveTime, type TimeMapping } from "../utils/timeMapping";
 
 import styles from "./TimelineMinimap.module.css";
 
@@ -19,6 +24,8 @@ export interface TimelineMinimapProps {
   root: TimelineSpan;
   /** Currently selected swimlane row, if any. */
   selection?: MinimapSelection;
+  /** Time mapping for the root node (compresses gaps if present). */
+  mapping?: TimeMapping;
 }
 
 /**
@@ -30,6 +37,7 @@ export interface TimelineMinimapProps {
 export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
   selection,
+  mapping,
 }) => {
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
@@ -57,17 +65,40 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   const showRegion = bar !== null;
   const useShortFormat = bar !== null && bar.width <= 15;
 
+  // When compression is active, show active time (wall-clock minus idle)
+  // instead of raw wall-clock duration.
+  const hasCompression = mapping?.hasCompression ?? false;
+
   // Compute both labels so the container can size to the wider one
-  const timeRightLabel = formatDuration(root.startTime, root.endTime);
+  const timeRightLabel =
+    hasCompression && mapping
+      ? formatTime(
+          computeActiveTime(
+            mapping,
+            root.startTime.getTime(),
+            root.endTime.getTime()
+          )
+        )
+      : formatDuration(root.startTime, root.endTime);
   const tokenRightLabel = formatTokenCount(root.totalTokens);
-  const sectionLabel =
-    selection && isTokenMode
-      ? formatTokenCount(selection.totalTokens)
-      : selection
-        ? useShortFormat
-          ? formatDurationShort(selection.startTime, selection.endTime)
-          : formatDuration(selection.startTime, selection.endTime)
-        : "";
+
+  const computeSectionLabel = (): string => {
+    if (!selection) return "";
+    if (isTokenMode) return formatTokenCount(selection.totalTokens);
+    if (hasCompression && mapping) {
+      return formatTime(
+        computeActiveTime(
+          mapping,
+          selection.startTime.getTime(),
+          selection.endTime.getTime()
+        )
+      );
+    }
+    return useShortFormat
+      ? formatDurationShort(selection.startTime, selection.endTime)
+      : formatDuration(selection.startTime, selection.endTime);
+  };
+  const sectionLabel = computeSectionLabel();
 
   return (
     <div className={styles.container}>

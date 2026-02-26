@@ -24,6 +24,7 @@ import {
 import styles from "./TimelinePanel.module.css";
 import type { MarkerDepth } from "./utils/markers";
 import { computeRowLayouts } from "./utils/swimlaneLayout";
+import { computeTimeMapping } from "./utils/timeMapping";
 
 export const TimelinePanel: FC = () => {
   useDocumentTitle("Timeline");
@@ -48,15 +49,19 @@ export const TimelinePanel: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const timeMapping = useMemo(
+    () => computeTimeMapping(state.node),
+    [state.node]
+  );
+
+  const rootTimeMapping = useMemo(
+    () => computeTimeMapping(timeline.root),
+    [timeline.root]
+  );
+
   const layouts = useMemo(
-    () =>
-      computeRowLayouts(
-        state.rows,
-        state.node.startTime,
-        state.node.endTime,
-        markerDepth
-      ),
-    [state.rows, state.node.startTime, state.node.endTime, markerDepth]
+    () => computeRowLayouts(state.rows, timeMapping, markerDepth),
+    [state.rows, timeMapping, markerDepth]
   );
 
   const atRoot = state.breadcrumbs.length <= 1;
@@ -127,6 +132,7 @@ export const TimelinePanel: FC = () => {
           minimap={{
             root: timeline.root,
             selection: minimapSelection,
+            mapping: rootTimeMapping,
           }}
           breadcrumb={{
             breadcrumbs: state.breadcrumbs,

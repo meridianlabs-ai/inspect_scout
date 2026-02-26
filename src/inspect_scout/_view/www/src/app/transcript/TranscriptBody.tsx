@@ -182,6 +182,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     timeline: timelineData,
     state: timelineState,
     layouts: timelineLayouts,
+    rootTimeMapping,
     selectedEvents,
     minimapSelection,
     hasTimeline,
@@ -475,6 +476,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                 minimap={{
                   root: timelineData.root,
                   selection: minimapSelection,
+                  mapping: rootTimeMapping,
                 }}
                 breadcrumb={{
                   breadcrumbs: timelineState.breadcrumbs,

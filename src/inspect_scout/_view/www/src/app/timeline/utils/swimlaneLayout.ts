@@ -19,6 +19,7 @@ import {
   isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
+import type { TimeMapping } from "./timeMapping";
 
 // =============================================================================
 // Types
@@ -192,14 +193,13 @@ export function formatTokenCount(tokens: number): string {
 /**
  * Computes the full layout for all swimlane rows.
  *
- * viewStart and viewEnd define the visible time range (from the current
- * drill-down node's startTime/endTime). Markers are collected at the
- * specified depth for each row's spans.
+ * The TimeMapping defines how timestamps map to percentage positions. When
+ * gap compression is active, idle gaps are compressed into narrow regions.
+ * Markers are collected at the specified depth for each row's spans.
  */
 export function computeRowLayouts(
   rows: SwimlaneRow[],
-  viewStart: Date,
-  viewEnd: Date,
+  mapping: TimeMapping,
   markerDepth: MarkerDepth
 ): RowLayout[] {
   return rows.map((row, index) => {
@@ -208,11 +208,10 @@ export function computeRowLayouts(
     // Position each RowSpan
     const spans = row.spans.map((rowSpan): PositionedSpan => {
       if (isSingleSpan(rowSpan)) {
-        const bar = computeBarPosition(
+        const bar = computeBarFromMapping(
           rowSpan.agent.startTime,
           rowSpan.agent.endTime,
-          viewStart,
-          viewEnd
+          mapping
         );
         const drillable = !isParent && isDrillable(rowSpan);
         return {
@@ -227,11 +226,10 @@ export function computeRowLayouts(
       // ParallelSpan: envelope from earliest start to latest end
       const agents = rowSpan.agents;
       const envelope = computeTimeEnvelope(agents);
-      const bar = computeBarPosition(
+      const bar = computeBarFromMapping(
         envelope.startTime,
         envelope.endTime,
-        viewStart,
-        viewEnd
+        mapping
       );
       return {
         bar,
@@ -243,7 +241,7 @@ export function computeRowLayouts(
     });
 
     // Collect markers for this row
-    const markers = collectRowMarkers(row, markerDepth, viewStart, viewEnd);
+    const markers = collectRowMarkers(row, markerDepth, mapping);
 
     // Derive row-level parallel count from spans
     const rowParallelCount =
@@ -260,6 +258,21 @@ export function computeRowLayouts(
       parallelCount: rowParallelCount,
     };
   });
+}
+
+// =============================================================================
+// Mapping-based bar position
+// =============================================================================
+
+/** Computes bar position using a TimeMapping (which may compress gaps). */
+function computeBarFromMapping(
+  spanStart: Date,
+  spanEnd: Date,
+  mapping: TimeMapping
+): BarPosition {
+  const left = mapping.toPercent(spanStart);
+  const right = mapping.toPercent(spanEnd);
+  return { left, width: Math.max(0, right - left) };
 }
 
 // =============================================================================
@@ -289,8 +302,7 @@ export function rowHasEvents(row: SwimlaneRow): boolean {
 function collectRowMarkers(
   row: SwimlaneRow,
   depth: MarkerDepth,
-  viewStart: Date,
-  viewEnd: Date
+  mapping: TimeMapping
 ): PositionedMarker[] {
   const allMarkers: PositionedMarker[] = [];
 
@@ -302,7 +314,7 @@ function collectRowMarkers(
 
       for (const m of markers) {
         allMarkers.push({
-          left: timestampToPercent(m.timestamp, viewStart, viewEnd),
+          left: mapping.toPercent(m.timestamp),
           kind: m.kind,
           reference: m.reference,
           tooltip: m.tooltip,

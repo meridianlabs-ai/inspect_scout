@@ -431,6 +431,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
                 onMarkerNavigate={onMarkerNavigate}
               />
             ))}
+
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore, i as useSearchParams } from "./index.js";
 import { m as useCollapseTranscriptEvent, P as PulsingDots, n as kSandboxSignalName, E as EventNode, o as TYPE_SCORERS, p as TYPE_SCORER, q as useVirtuosoState, f as useTranscriptNavigation, s as flatTree, t as kTranscriptOutlineCollapseScope, v as useScrollTrack, Y as Yr, l as useProperty } from "./TranscriptViewNodes.js";
-import { g as formatDuration, a as formatPrettyDecimal, h as formatDurationShort, P as PopOver, e as formatTime } from "./ToolButton.js";
+import { g as formatDuration, a as formatPrettyDecimal, e as formatTime, h as formatDurationShort, P as PopOver } from "./ToolButton.js";
 const parsePackageName = (name) => {
   if (name.includes("/")) {
     const [packageName, moduleName] = name.split("/", 2);
@@ -529,15 +529,25 @@ function maxEndTime(nodes) {
 function sumTokens(nodes) {
   return nodes.reduce((sum, n) => sum + n.totalTokens, 0);
 }
+const IDLE_THRESHOLD_MS = 3e5;
 function computeIdleTime(content, startTime, endTime) {
-  const wallClockMs = endTime.getTime() - startTime.getTime();
-  let totalActiveMs = 0;
-  for (const child of content) {
-    const childDurationMs = child.endTime.getTime() - child.startTime.getTime();
-    const childActiveMs = childDurationMs - child.idleTime * 1e3;
-    totalActiveMs += childActiveMs;
+  if (content.length === 0) return 0;
+  const sorted = [...content].sort(
+    (a, b) => a.startTime.getTime() - b.startTime.getTime()
+  );
+  let idleMs = 0;
+  for (const child of sorted) {
+    idleMs += child.idleTime * 1e3;
   }
-  return Math.max(0, (wallClockMs - totalActiveMs) / 1e3);
+  const firstGap = sorted[0].startTime.getTime() - startTime.getTime();
+  if (firstGap > IDLE_THRESHOLD_MS) idleMs += firstGap;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].startTime.getTime() - sorted[i - 1].endTime.getTime();
+    if (gap > IDLE_THRESHOLD_MS) idleMs += gap;
+  }
+  const lastGap = endTime.getTime() - sorted[sorted.length - 1].endTime.getTime();
+  if (lastGap > IDLE_THRESHOLD_MS) idleMs += lastGap;
+  return Math.max(0, idleMs / 1e3);
 }
 function createTimelineEvent(event) {
   return {
@@ -1533,16 +1543,15 @@ function formatTokenCount(tokens2) {
   }
   return String(tokens2);
 }
-function computeRowLayouts(rows, viewStart, viewEnd, markerDepth) {
+function computeRowLayouts(rows, mapping, markerDepth) {
   return rows.map((row2, index) => {
     const isParent = index === 0;
     const spans = row2.spans.map((rowSpan) => {
       if (isSingleSpan(rowSpan)) {
-        const bar2 = computeBarPosition(
+        const bar2 = computeBarFromMapping(
           rowSpan.agent.startTime,
           rowSpan.agent.endTime,
-          viewStart,
-          viewEnd
+          mapping
         );
         const drillable = !isParent && isDrillable(rowSpan);
         return {
@@ -1555,11 +1564,10 @@ function computeRowLayouts(rows, viewStart, viewEnd, markerDepth) {
       }
       const agents = rowSpan.agents;
       const envelope = computeTimeEnvelope(agents);
-      const bar = computeBarPosition(
+      const bar = computeBarFromMapping(
         envelope.startTime,
         envelope.endTime,
-        viewStart,
-        viewEnd
+        mapping
       );
       return {
         bar,
@@ -1569,7 +1577,7 @@ function computeRowLayouts(rows, viewStart, viewEnd, markerDepth) {
         description: null
       };
     });
-    const markers = collectRowMarkers(row2, markerDepth, viewStart, viewEnd);
+    const markers = collectRowMarkers(row2, markerDepth, mapping);
     const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
     return {
       name: row2.name,
@@ -1581,6 +1589,11 @@ function computeRowLayouts(rows, viewStart, viewEnd, markerDepth) {
     };
   });
 }
+function computeBarFromMapping(spanStart, spanEnd, mapping) {
+  const left = mapping.toPercent(spanStart);
+  const right = mapping.toPercent(spanEnd);
+  return { left, width: Math.max(0, right - left) };
+}
 function spanHasEvents(span) {
   for (const item of span.content) {
     if (item.type === "event") return true;
@@ -1591,7 +1604,7 @@ function spanHasEvents(span) {
 function rowHasEvents(row2) {
   return row2.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
 }
-function collectRowMarkers(row2, depth, viewStart, viewEnd) {
+function collectRowMarkers(row2, depth, mapping) {
   const allMarkers = [];
   for (const rowSpan of row2.spans) {
     const agents = getAgents(rowSpan);
@@ -1599,7 +1612,7 @@ function collectRowMarkers(row2, depth, viewStart, viewEnd) {
       const markers = collectMarkers(agent, depth);
       for (const m of markers) {
         allMarkers.push({
-          left: timestampToPercent(m.timestamp, viewStart, viewEnd),
+          left: mapping.toPercent(m.timestamp),
           kind: m.kind,
           reference: m.reference,
           tooltip: m.tooltip
@@ -1877,6 +1890,217 @@ function useTimeline(timeline) {
     select
   };
 }
+const GAP_THRESHOLD_MS = 3e5;
+const GAP_PERCENT = 0;
+const MAX_TOTAL_GAP_PERCENT = 0;
+function createIdentityMapping(viewStart, viewEnd) {
+  const startMs = viewStart.getTime();
+  const endMs = viewEnd.getTime();
+  const range = endMs - startMs;
+  return {
+    toPercent(timestamp) {
+      if (range <= 0) return 0;
+      const offset = timestamp.getTime() - startMs;
+      return Math.max(0, Math.min(100, offset / range * 100));
+    },
+    hasCompression: false,
+    gaps: []
+  };
+}
+function computeTimeMapping(node) {
+  if (node.idleTime === 0) {
+    return createIdentityMapping(node.startTime, node.endTime);
+  }
+  const nodeStartMs = node.startTime.getTime();
+  const nodeEndMs = node.endTime.getTime();
+  const nodeRange = nodeEndMs - nodeStartMs;
+  if (nodeRange <= 0) {
+    return createIdentityMapping(node.startTime, node.endTime);
+  }
+  const intervals = extractIntervals(node.content);
+  if (intervals.length === 0) {
+    return createIdentityMapping(node.startTime, node.endTime);
+  }
+  const activeRegions = mergeIntervals(intervals);
+  const rawGaps = findGaps(nodeStartMs, nodeEndMs, activeRegions);
+  if (rawGaps.length === 0) {
+    return createIdentityMapping(node.startTime, node.endTime);
+  }
+  const totalActiveMs = activeRegions.reduce(
+    (sum, r) => sum + (r.endMs - r.startMs),
+    0
+  );
+  let gapPercentEach = GAP_PERCENT;
+  const totalGapPercent = rawGaps.length * gapPercentEach;
+  if (totalGapPercent > MAX_TOTAL_GAP_PERCENT) {
+    gapPercentEach = MAX_TOTAL_GAP_PERCENT / rawGaps.length;
+  }
+  const actualTotalGapPercent = rawGaps.length * gapPercentEach;
+  const activePercent = 100 - actualTotalGapPercent;
+  const segments = [];
+  const gapRegions = [];
+  let currentPercent = 0;
+  let gapIdx = 0;
+  if (rawGaps.length > 0 && rawGaps[0].startMs === nodeStartMs) {
+    const gap = rawGaps[0];
+    const percentEnd = currentPercent + gapPercentEach;
+    segments.push({
+      startMs: gap.startMs,
+      endMs: gap.endMs,
+      percentStart: currentPercent,
+      percentEnd
+    });
+    gapRegions.push({
+      startMs: gap.startMs,
+      endMs: gap.endMs,
+      durationMs: gap.endMs - gap.startMs,
+      percentStart: currentPercent,
+      percentEnd
+    });
+    currentPercent = percentEnd;
+    gapIdx = 1;
+  }
+  for (let i = 0; i < activeRegions.length; i++) {
+    const region = activeRegions[i];
+    const regionDurationMs = region.endMs - region.startMs;
+    const regionPercent = totalActiveMs > 0 ? regionDurationMs / totalActiveMs * activePercent : activePercent / activeRegions.length;
+    const percentEnd = currentPercent + regionPercent;
+    segments.push({
+      startMs: region.startMs,
+      endMs: region.endMs,
+      percentStart: currentPercent,
+      percentEnd
+    });
+    currentPercent = percentEnd;
+    if (gapIdx < rawGaps.length) {
+      const gap = rawGaps[gapIdx];
+      if (gap.startMs >= region.endMs - 1) {
+        const gapPercentEnd = currentPercent + gapPercentEach;
+        segments.push({
+          startMs: gap.startMs,
+          endMs: gap.endMs,
+          percentStart: currentPercent,
+          percentEnd: gapPercentEnd
+        });
+        gapRegions.push({
+          startMs: gap.startMs,
+          endMs: gap.endMs,
+          durationMs: gap.endMs - gap.startMs,
+          percentStart: currentPercent,
+          percentEnd: gapPercentEnd
+        });
+        currentPercent = gapPercentEnd;
+        gapIdx++;
+      }
+    }
+  }
+  const frozenSegments = segments;
+  return {
+    toPercent(timestamp) {
+      const ms = timestamp.getTime();
+      if (ms <= nodeStartMs) return 0;
+      if (ms >= nodeEndMs) return 100;
+      const seg = findSegment(frozenSegments, ms);
+      if (!seg) return 0;
+      const segRange = seg.endMs - seg.startMs;
+      if (segRange <= 0) return seg.percentStart;
+      const t = (ms - seg.startMs) / segRange;
+      return seg.percentStart + t * (seg.percentEnd - seg.percentStart);
+    },
+    hasCompression: true,
+    gaps: gapRegions
+  };
+}
+function computeActiveTime(mapping, startMs, endMs) {
+  const wallClockMs = endMs - startMs;
+  let gapMs = 0;
+  for (const gap of mapping.gaps) {
+    const overlapStart = Math.max(gap.startMs, startMs);
+    const overlapEnd = Math.min(gap.endMs, endMs);
+    if (overlapEnd > overlapStart) {
+      gapMs += overlapEnd - overlapStart;
+    }
+  }
+  return Math.max(0, (wallClockMs - gapMs) / 1e3);
+}
+function extractIntervals(content) {
+  const intervals = [];
+  for (const item of content) {
+    if (item.type === "event") {
+      intervals.push({
+        startMs: item.startTime.getTime(),
+        endMs: item.endTime.getTime()
+      });
+    } else {
+      const childIntervals = extractIntervals(item.content);
+      if (childIntervals.length > 0) {
+        intervals.push(...childIntervals);
+      } else {
+        intervals.push({
+          startMs: item.startTime.getTime(),
+          endMs: item.endTime.getTime()
+        });
+      }
+    }
+  }
+  return intervals;
+}
+function mergeIntervals(intervals) {
+  if (intervals.length === 0) return [];
+  const sorted = [...intervals].sort((a, b) => a.startMs - b.startMs);
+  const merged = [{ ...sorted[0] }];
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i];
+    const last = merged[merged.length - 1];
+    if (current.startMs <= last.endMs) {
+      last.endMs = Math.max(last.endMs, current.endMs);
+    } else {
+      merged.push({ ...current });
+    }
+  }
+  return merged;
+}
+function findGaps(nodeStartMs, nodeEndMs, activeRegions) {
+  const gaps = [];
+  if (activeRegions.length > 0) {
+    const firstStart = activeRegions[0].startMs;
+    if (firstStart - nodeStartMs > GAP_THRESHOLD_MS) {
+      gaps.push({ startMs: nodeStartMs, endMs: firstStart });
+    }
+  }
+  for (let i = 1; i < activeRegions.length; i++) {
+    const prevEnd = activeRegions[i - 1].endMs;
+    const nextStart = activeRegions[i].startMs;
+    if (nextStart - prevEnd > GAP_THRESHOLD_MS) {
+      gaps.push({ startMs: prevEnd, endMs: nextStart });
+    }
+  }
+  if (activeRegions.length > 0) {
+    const lastEnd = activeRegions[activeRegions.length - 1].endMs;
+    if (nodeEndMs - lastEnd > GAP_THRESHOLD_MS) {
+      gaps.push({ startMs: lastEnd, endMs: nodeEndMs });
+    }
+  }
+  return gaps;
+}
+function findSegment(segments, ms) {
+  let lo = 0;
+  let hi = segments.length - 1;
+  while (lo <= hi) {
+    const mid = lo + hi >>> 1;
+    const seg = segments[mid];
+    if (ms < seg.startMs) {
+      hi = mid - 1;
+    } else if (ms > seg.endMs) {
+      lo = mid + 1;
+    } else {
+      return seg;
+    }
+  }
+  if (lo < segments.length) return segments[lo];
+  if (hi >= 0) return segments[hi];
+  return null;
+}
 const container = "_container_t8wdo_3";
 const stableLabel = "_stableLabel_t8wdo_17";
 const alignRight = "_alignRight_t8wdo_32";
@@ -1909,7 +2133,8 @@ const styles$1 = {
 };
 const TimelineMinimap = ({
   root,
-  selection
+  selection,
+  mapping
 }) => {
   const [showTokens, setShowTokens] = useProperty(
     "timeline",
@@ -1932,9 +2157,30 @@ const TimelineMinimap = ({
   ) : null;
   const showRegion = bar !== null;
   const useShortFormat = bar !== null && bar.width <= 15;
-  const timeRightLabel = formatDuration(root.startTime, root.endTime);
+  const hasCompression = mapping?.hasCompression ?? false;
+  const timeRightLabel = hasCompression && mapping ? formatTime(
+    computeActiveTime(
+      mapping,
+      root.startTime.getTime(),
+      root.endTime.getTime()
+    )
+  ) : formatDuration(root.startTime, root.endTime);
   const tokenRightLabel = formatTokenCount(root.totalTokens);
-  const sectionLabel = selection && isTokenMode ? formatTokenCount(selection.totalTokens) : selection ? useShortFormat ? formatDurationShort(selection.startTime, selection.endTime) : formatDuration(selection.startTime, selection.endTime) : "";
+  const computeSectionLabel = () => {
+    if (!selection) return "";
+    if (isTokenMode) return formatTokenCount(selection.totalTokens);
+    if (hasCompression && mapping) {
+      return formatTime(
+        computeActiveTime(
+          mapping,
+          selection.startTime.getTime(),
+          selection.endTime.getTime()
+        )
+      );
+    }
+    return useShortFormat ? formatDurationShort(selection.startTime, selection.endTime) : formatDuration(selection.startTime, selection.endTime);
+  };
+  const sectionLabel = computeSectionLabel();
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.container, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
@@ -2664,11 +2910,12 @@ function collectFromContent(content, out) {
 }
 export {
   TimelineSwimLanes as T,
-  collectRawEvents as a,
+  computeRowLayouts as a,
   buildTimeline as b,
-  computeRowLayouts as c,
-  computeMinimapSelection as d,
-  TranscriptOutline as e,
+  computeTimeMapping as c,
+  collectRawEvents as d,
+  computeMinimapSelection as e,
+  TranscriptOutline as f,
   getSelectedSpans as g,
   rowHasEvents as r,
   useTimeline as u

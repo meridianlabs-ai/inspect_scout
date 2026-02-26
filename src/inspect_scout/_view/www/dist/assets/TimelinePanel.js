@@ -1,7 +1,7 @@
 import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
 import { l as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
-import { u as useTimeline, c as computeRowLayouts, g as getSelectedSpans, d as computeMinimapSelection, a as collectRawEvents, T as TimelineSwimLanes, e as TranscriptOutline } from "./timelineEventNodes.js";
+import { u as useTimeline, c as computeTimeMapping, a as computeRowLayouts, g as getSelectedSpans, e as computeMinimapSelection, d as collectRawEvents, T as TimelineSwimLanes, f as TranscriptOutline } from "./timelineEventNodes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import "./_commonjsHelpers.js";
 import "./ToolButton.js";
@@ -1702,14 +1702,17 @@ const TimelinePanel = () => {
   reactExports.useEffect(() => {
     state.navigateTo("");
   }, []);
+  const timeMapping = reactExports.useMemo(
+    () => computeTimeMapping(state.node),
+    [state.node]
+  );
+  const rootTimeMapping = reactExports.useMemo(
+    () => computeTimeMapping(timeline.root),
+    [timeline.root]
+  );
   const layouts = reactExports.useMemo(
-    () => computeRowLayouts(
-      state.rows,
-      state.node.startTime,
-      state.node.endTime,
-      markerDepth
-    ),
-    [state.rows, state.node.startTime, state.node.endTime, markerDepth]
+    () => computeRowLayouts(state.rows, timeMapping, markerDepth),
+    [state.rows, timeMapping, markerDepth]
   );
   const atRoot = state.breadcrumbs.length <= 1;
   const selectedSpans = reactExports.useMemo(
@@ -1773,7 +1776,8 @@ const TimelinePanel = () => {
           onGoUp: state.goUp,
           minimap: {
             root: timeline.root,
-            selection: minimapSelection
+            selection: minimapSelection,
+            mapping: rootTimeMapping
           },
           breadcrumb: {
             breadcrumbs: state.breadcrumbs,

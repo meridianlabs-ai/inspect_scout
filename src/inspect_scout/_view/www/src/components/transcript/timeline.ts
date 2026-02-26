@@ -206,26 +206,48 @@ function sumTokens(nodes: TimelineNode[]): number {
   return nodes.reduce((sum, n) => sum + n.totalTokens, 0);
 }
 
+const IDLE_THRESHOLD_MS = 300_000; // 5 minutes
+
 /**
- * Compute idle time for a span from its children's active time.
+ * Compute idle time using gap-based detection between children.
  *
- * For each child, its active time is its wall-clock duration minus its own
- * idleTime. The span's idle time is its wall-clock duration minus the sum
- * of all children's active time, clamped to >= 0.
+ * Any gap > 5 min between consecutive children (sorted by startTime)
+ * is counted as idle. Children's own idleTime is summed recursively.
  */
 export function computeIdleTime(
   content: TimelineNode[],
   startTime: Date,
   endTime: Date
 ): number {
-  const wallClockMs = endTime.getTime() - startTime.getTime();
-  let totalActiveMs = 0;
-  for (const child of content) {
-    const childDurationMs = child.endTime.getTime() - child.startTime.getTime();
-    const childActiveMs = childDurationMs - child.idleTime * 1000;
-    totalActiveMs += childActiveMs;
+  if (content.length === 0) return 0;
+
+  const sorted = [...content].sort(
+    (a, b) => a.startTime.getTime() - b.startTime.getTime()
+  );
+  let idleMs = 0;
+
+  // Sum children's own idle time
+  for (const child of sorted) {
+    idleMs += child.idleTime * 1000;
   }
-  return Math.max(0, (wallClockMs - totalActiveMs) / 1000);
+
+  // Gap: span start → first child
+  const firstGap = sorted[0]!.startTime.getTime() - startTime.getTime();
+  if (firstGap > IDLE_THRESHOLD_MS) idleMs += firstGap;
+
+  // Gaps between consecutive children
+  for (let i = 1; i < sorted.length; i++) {
+    const gap =
+      sorted[i]!.startTime.getTime() - sorted[i - 1]!.endTime.getTime();
+    if (gap > IDLE_THRESHOLD_MS) idleMs += gap;
+  }
+
+  // Gap: last child → span end
+  const lastGap =
+    endTime.getTime() - sorted[sorted.length - 1]!.endTime.getTime();
+  if (lastGap > IDLE_THRESHOLD_MS) idleMs += lastGap;
+
+  return Math.max(0, idleMs / 1000);
 }
 
 // =============================================================================

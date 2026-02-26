@@ -30,6 +30,7 @@ import {
   rowHasEvents,
   type RowLayout,
 } from "../../timeline/utils/swimlaneLayout";
+import { computeTimeMapping, type TimeMapping } from "../../timeline/utils/timeMapping";
 
 interface TranscriptTimelineResult {
   /** The built Timeline, or null if events are empty. */
@@ -38,6 +39,10 @@ interface TranscriptTimelineResult {
   state: TimelineState;
   /** Computed row layouts for the swimlane UI. */
   layouts: RowLayout[];
+  /** Time mapping for the current node (may compress gaps). */
+  timeMapping: TimeMapping;
+  /** Time mapping for the root node (for minimap). */
+  rootTimeMapping: TimeMapping;
   /** Events scoped to the selected swimlane row (or all events if no child selected). */
   selectedEvents: Event[];
   /** Minimap selection for the breadcrumb row. */
@@ -83,15 +88,19 @@ export function useTranscriptTimeline(
     [state.rows]
   );
 
+  const timeMapping = useMemo(
+    () => computeTimeMapping(state.node),
+    [state.node]
+  );
+
+  const rootTimeMapping = useMemo(
+    () => computeTimeMapping(timeline.root),
+    [timeline.root]
+  );
+
   const layouts = useMemo(
-    () =>
-      computeRowLayouts(
-        visibleRows,
-        state.node.startTime,
-        state.node.endTime,
-        "direct"
-      ),
-    [visibleRows, state.node.startTime, state.node.endTime]
+    () => computeRowLayouts(visibleRows, timeMapping, "direct"),
+    [visibleRows, timeMapping]
   );
 
   const parentRowName = state.rows[0]?.name;
@@ -122,6 +131,8 @@ export function useTranscriptTimeline(
     timeline: hasTimeline ? timeline : null,
     state,
     layouts,
+    timeMapping,
+    rootTimeMapping,
     selectedEvents,
     minimapSelection,
     hasTimeline,

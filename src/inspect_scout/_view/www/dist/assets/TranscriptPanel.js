@@ -10,7 +10,7 @@ import { N as NoContentsPanel } from "./NoContentsPanel.js";
 import { b as TabPanel, a as TabSet, T as TaskName } from "./TaskName.js";
 import { P as PopOver, T as ToolButton, d as formatDateTime, f as formatNumber, e as formatTime } from "./ToolButton.js";
 import { T as ToolDropdownButton } from "./ToolDropdownButton.js";
-import { b as buildTimeline, u as useTimeline, r as rowHasEvents, c as computeRowLayouts, g as getSelectedSpans, a as collectRawEvents, d as computeMinimapSelection, T as TimelineSwimLanes, e as TranscriptOutline } from "./timelineEventNodes.js";
+import { b as buildTimeline, u as useTimeline, r as rowHasEvents, c as computeTimeMapping, a as computeRowLayouts, g as getSelectedSpans, d as collectRawEvents, e as computeMinimapSelection, T as TimelineSwimLanes, f as TranscriptOutline } from "./timelineEventNodes.js";
 import "./_commonjsHelpers.js";
 import "./Navbar.js";
 import "./index2.js";
@@ -416,14 +416,17 @@ function useTranscriptTimeline(events) {
     () => state.rows.filter((row2, i) => i === 0 || rowHasEvents(row2)),
     [state.rows]
   );
+  const timeMapping = reactExports.useMemo(
+    () => computeTimeMapping(state.node),
+    [state.node]
+  );
+  const rootTimeMapping = reactExports.useMemo(
+    () => computeTimeMapping(timeline.root),
+    [timeline.root]
+  );
   const layouts = reactExports.useMemo(
-    () => computeRowLayouts(
-      visibleRows,
-      state.node.startTime,
-      state.node.endTime,
-      "direct"
-    ),
-    [visibleRows, state.node.startTime, state.node.endTime]
+    () => computeRowLayouts(visibleRows, timeMapping, "direct"),
+    [visibleRows, timeMapping]
   );
   const parentRowName = state.rows[0]?.name;
   const parentSelected = isParentSelected(state.selected, parentRowName);
@@ -442,6 +445,8 @@ function useTranscriptTimeline(events) {
     timeline: hasTimeline ? timeline : null,
     state,
     layouts,
+    timeMapping,
+    rootTimeMapping,
     selectedEvents,
     minimapSelection,
     hasTimeline
@@ -661,6 +666,7 @@ const TranscriptBody = ({
     timeline: timelineData,
     state: timelineState,
     layouts: timelineLayouts,
+    rootTimeMapping,
     selectedEvents,
     minimapSelection,
     hasTimeline
@@ -904,7 +910,8 @@ const TranscriptBody = ({
                   onGoUp: timelineState.goUp,
                   minimap: {
                     root: timelineData.root,
-                    selection: minimapSelection
+                    selection: minimapSelection,
+                    mapping: rootTimeMapping
                   },
                   breadcrumb: {
                     breadcrumbs: timelineState.breadcrumbs,

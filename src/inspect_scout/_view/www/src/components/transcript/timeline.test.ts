@@ -806,7 +806,7 @@ describe("buildTimeline", () => {
     expect(modelItem!.idleTime).toBe(0);
   });
 
-  it("idleTime equals gap between events", () => {
+  it("idleTime is 0 for small gap between events (below threshold)", () => {
     const events: Event[] = [
       createEvent({
         event: "span_begin",
@@ -853,8 +853,59 @@ describe("buildTimeline", () => {
       })!,
     ];
     const result = buildTimeline(events);
-    // Span: 0..10s = 10s, events: 3s + 3s = 6s active, idle = 4s
-    expect(result.root.idleTime).toBeCloseTo(4.0, 1);
+    // Gap of 4s is below 5-min threshold → idle = 0
+    expect(result.root.idleTime).toBeCloseTo(0.0, 1);
+  });
+
+  it("idleTime detects large gap between events", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "my-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:06:03Z",
+        completed: "2024-01-01T12:06:06Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // Gap of 360s (6 min) exceeds 5-min threshold → idle = 360
+    expect(result.root.idleTime).toBeCloseTo(360.0, 1);
   });
 
   it("idleTime is 0 when events fully cover span", () => {
@@ -907,7 +958,7 @@ describe("buildTimeline", () => {
     expect(result.root.idleTime).toBeCloseTo(0.0, 1);
   });
 
-  it("idleTime propagates through nested spans", () => {
+  it("idleTime propagates through nested spans with small gaps", () => {
     const events: Event[] = [
       createEvent({
         event: "span_begin",
@@ -924,7 +975,7 @@ describe("buildTimeline", () => {
         parent_id: "solvers-1",
         timestamp: "2024-01-01T12:00:00Z",
       })!,
-      // Child agent with a gap
+      // Child agent with a small gap (below threshold)
       createEvent({
         event: "span_begin",
         id: "child-agent",
@@ -968,18 +1019,84 @@ describe("buildTimeline", () => {
       })!,
     ];
     const result = buildTimeline(events);
-    // Child: 0..8s = 8s, events: 3+3 = 6s active, child idle = 2s
-    // Parent: 0..10s = 10s, child active = 6s, parent idle = 4s
-    // Root = parent agent, has child + span events
-    // The child span should have idleTime ~2
+    // All gaps are small (2s) → below threshold → idle = 0
     const childSpan = result.root.content.find(
       (c) => c.type === "span" && c.name === "child"
     );
     expect(childSpan).toBeDefined();
-    expect(childSpan!.idleTime).toBeCloseTo(2.0, 1);
-    // Root includes the child span + span begin/end events
-    // Root idle should account for child's idle + gap after child
-    expect(result.root.idleTime).toBeGreaterThanOrEqual(2.0);
+    expect(childSpan!.idleTime).toBeCloseTo(0.0, 1);
+    expect(result.root.idleTime).toBeCloseTo(0.0, 1);
+  });
+
+  it("idleTime propagates through nested spans with large gaps", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "parent-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "child-agent",
+        name: "child",
+        type: "agent",
+        parent_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:06:03Z",
+        completed: "2024-01-01T12:06:06Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "child-agent",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:13:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:13:06Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // Child: 6-min gap → child idle = 360
+    const childSpan = result.root.content.find(
+      (c) => c.type === "span" && c.name === "child"
+    );
+    expect(childSpan).toBeDefined();
+    expect(childSpan!.idleTime).toBeCloseTo(360.0, 1);
+    // Parent: child idle (360) + gap from child end to parent end (7 min = 420s > threshold)
+    // Total parent idle = 360 + 420 = 780
+    expect(result.root.idleTime).toBeGreaterThanOrEqual(360.0);
   });
 
   it("computes startTime and endTime correctly", () => {

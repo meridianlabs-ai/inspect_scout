@@ -9,8 +9,8 @@
  *   console.log(eventNodeTree(eventNodes));
  */
 
-import type { Event } from "../../types/api-types";
 import type { EventNode } from "../../components/transcript/types";
+import type { Event } from "../../types/api-types";
 
 function label(ev: Event): string {
   switch (ev.event) {

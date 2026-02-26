@@ -30,7 +30,6 @@ from inspect_swe._claude_code._events.extraction import (
     extract_model_name,
     extract_session_metadata,
     get_first_timestamp,
-    sum_latency,
     sum_scout_tokens,
 )
 from inspect_swe._claude_code._events.models import (
@@ -262,7 +261,6 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     merged_events: list[Event] = list(first.events)
     merged_messages: list[ChatMessage] = list(first.messages)
     total_tokens = first.total_tokens or 0
-    total_time = first.total_time or 0.0
 
     # Deduplicate session IDs while preserving order
     seen_ids: set[str] = set()
@@ -287,14 +285,15 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
 
         if transcript.total_tokens:
             total_tokens += transcript.total_tokens
-        if transcript.total_time:
-            total_time += transcript.total_time
         if transcript.source_id and transcript.source_id not in seen_ids:
             session_ids.append(transcript.source_id)
             seen_ids.add(transcript.source_id)
 
-    # Rebuild unified timeline from merged events
-    timeline_build(merged_events)
+    # Rebuild unified timeline and compute total active time
+    timeline = timeline_build(merged_events)
+    root = timeline.root
+    wall_clock = (root.end_time - root.start_time).total_seconds()
+    total_time = wall_clock - root.idle_time
 
     # Build merged metadata
     metadata = dict(first.metadata)
@@ -452,7 +451,9 @@ async def _create_transcript(
     metadata = extract_session_metadata(events)
     model_name = extract_model_name(events)
     total_tokens = sum_scout_tokens(scout_events)
-    total_time = sum_latency(events)
+    root = timeline.root
+    wall_clock = (root.end_time - root.start_time).total_seconds()
+    total_time = wall_clock - root.idle_time
     first_timestamp = get_first_timestamp(events)
 
     # Get project path for task_set

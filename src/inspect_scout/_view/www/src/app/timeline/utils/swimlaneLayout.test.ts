@@ -20,6 +20,7 @@ import {
   timestampToPercent,
 } from "./swimlaneLayout";
 import { computeSwimlaneRows } from "./swimlaneRows";
+import { createIdentityMapping } from "./timeMapping";
 
 // =============================================================================
 // timestampToPercent
@@ -167,8 +168,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -183,8 +183,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -198,8 +197,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -216,8 +214,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -229,8 +226,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -247,8 +243,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -266,8 +261,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -287,8 +281,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -306,8 +299,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -332,8 +324,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -349,8 +340,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -369,14 +359,12 @@ describe("computeRowLayouts", () => {
 
       const directLayouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "direct"
       );
       const childrenLayouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 

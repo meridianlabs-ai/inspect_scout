@@ -115,6 +115,25 @@ def skip_if_no_docker(func: F) -> F:
     )
 
 
+class CallTracker:
+    """Callable that records whether it was invoked.
+
+    Use with care — asserting on call/no-call often tests implementation
+    details rather than observable behavior.
+    """
+
+    def __init__(self) -> None:
+        self.called = False
+
+    def __call__(self) -> None:
+        self.called = True
+
+
+@pytest.fixture
+def call_tracker() -> CallTracker:
+    return CallTracker()
+
+
 @pytest.fixture(autouse=True)
 def reset_observe_providers() -> Any:
     """Reset observe provider state between tests for isolation.

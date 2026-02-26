@@ -26907,6 +26907,39 @@ const parseJsonValue = (val) => {
 function getOptionalColumn(table2, columnName, rowIndex = 0) {
   return table2.columnNames().includes(columnName) ? table2.get(columnName, rowIndex) : void 0;
 }
+function isStringValue(result2) {
+  return result2.valueType === "string";
+}
+function isNumberValue(result2) {
+  return result2.valueType === "number";
+}
+function isBooleanValue(result2) {
+  return result2.valueType === "boolean";
+}
+function isNullValue(result2) {
+  return result2.valueType === "null";
+}
+function isArrayValue(result2) {
+  return result2.valueType === "array";
+}
+function isObjectValue(result2) {
+  return result2.valueType === "object";
+}
+function isTranscriptInput(input) {
+  return input.inputType === "transcript";
+}
+function isMessageInput(input) {
+  return input.inputType === "message";
+}
+function isMessagesInput(input) {
+  return input.inputType === "messages";
+}
+function isEventInput(input) {
+  return input.inputType === "event";
+}
+function isEventsInput(input) {
+  return input.inputType === "events";
+}
 const Explanation = ({
   summary,
   references,
@@ -27000,39 +27033,6 @@ const valueStr = (target) => {
     return "undefined";
   }
 };
-function isStringValue(result2) {
-  return result2.valueType === "string";
-}
-function isNumberValue(result2) {
-  return result2.valueType === "number";
-}
-function isBooleanValue(result2) {
-  return result2.valueType === "boolean";
-}
-function isNullValue(result2) {
-  return result2.valueType === "null";
-}
-function isArrayValue(result2) {
-  return result2.valueType === "array";
-}
-function isObjectValue(result2) {
-  return result2.valueType === "object";
-}
-function isTranscriptInput(input) {
-  return input.inputType === "transcript";
-}
-function isMessageInput(input) {
-  return input.inputType === "message";
-}
-function isMessagesInput(input) {
-  return input.inputType === "messages";
-}
-function isEventInput(input) {
-  return input.inputType === "event";
-}
-function isEventsInput(input) {
-  return input.inputType === "events";
-}
 const boolean = "_boolean_8citi_1";
 const valueTable = "_valueTable_8citi_25";
 const valueKey = "_valueKey_8citi_32";
@@ -27448,18 +27448,23 @@ export {
   ValidationResult as c,
   resultLog as d,
   resultIdentifier as e,
-  useSelectedScanner as f,
-  useSelectedScanDataframe as g,
-  useSelectedScan as h,
-  getScanDisplayName as i,
-  parseScanResultData as j,
-  isTranscriptInput as k,
-  isMessagesInput as l,
-  isMessageInput as m,
-  isEventsInput as n,
-  isEventInput as o,
+  isBooleanValue as f,
+  isStringValue as g,
+  isArrayValue as h,
+  isNumberValue as i,
+  isObjectValue as j,
+  useSelectedScanner as k,
+  useSelectedScanDataframe as l,
+  useSelectedScan as m,
+  getScanDisplayName as n,
+  parseScanResultData as o,
   parseScanResultSummaries as p,
+  isTranscriptInput as q,
   resultIdentifierStr as r,
-  useMarkdownRefs as u
+  isMessagesInput as s,
+  isMessageInput as t,
+  useMarkdownRefs as u,
+  isEventsInput as v,
+  isEventInput as w
 };
 //# sourceMappingURL=refs.js.map

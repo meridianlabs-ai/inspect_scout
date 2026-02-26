@@ -1,7 +1,7 @@
 import { a as useApi, b as useAsyncDataFromQuery, r as reactExports, R as React, g as fo, h as reactDomExports, j as jsxRuntimeExports, u as useStore, c as clsx, A as ApplicationIcons, i as useSearchParams, l as scanResultRoute, m as useLoggingNavigate, n as basename, L as LoadingBar, f as ErrorPanel, o as updateScannerParam, t as toRelativePath, e as useAppConfig, p as getScannerParam, E as ExtendedFindProvider } from "./index.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { a as useScanRoute, u as useScansDir, S as ScansNavbar } from "./useScansDir.js";
-import { C as Card, a as CardHeader, b as CardBody, p as parseScanResultSummaries, u as useMarkdownRefs, E as Explanation, V as Value, c as ValidationResult, r as resultIdentifierStr, d as resultLog, e as resultIdentifier, f as useSelectedScanner, g as useSelectedScanDataframe, h as useSelectedScan, i as getScanDisplayName } from "./refs.js";
+import { C as Card, a as CardHeader, b as CardBody, p as parseScanResultSummaries, u as useMarkdownRefs, E as Explanation, V as Value, c as ValidationResult, r as resultIdentifierStr, d as resultLog, e as resultIdentifier, i as isNumberValue, f as isBooleanValue, g as isStringValue, h as isArrayValue, j as isObjectValue, k as useSelectedScanner, l as useSelectedScanDataframe, m as useSelectedScan, n as getScanDisplayName } from "./refs.js";
 import { c as centerTruncate, T as ToolButton, P as PopOver, a as formatPrettyDecimal, b as formatPercent, d as formatDateTime } from "./ToolButton.js";
 import { M as MetaDataGrid, R as RecordTree, L as LiveVirtualList, a as LabeledValue, J as JSONPanel, C as CopyButton } from "./TranscriptViewNodes.js";
 import { T as TaskName, a as TabSet, b as TabPanel } from "./TaskName.js";
@@ -58388,6 +58388,35 @@ const ScannerResultsList = ({
     )
   ] });
 };
+const sortValue = (a, b) => {
+  if (a.value === null || a.value === void 0 || a.valueType === "null") {
+    if (b.value === null || b.value === void 0 || b.valueType === "null") {
+      return 0;
+    }
+    return 1;
+  }
+  if (b.value === null || b.value === void 0 || b.valueType === "null") {
+    return -1;
+  }
+  if (a.valueType === b.valueType) {
+    if (isNumberValue(a) && isNumberValue(b)) {
+      return a.value - b.value;
+    }
+    if (isBooleanValue(a) && isBooleanValue(b)) {
+      return (a.value ? 1 : 0) - (b.value ? 1 : 0);
+    }
+    if (isStringValue(a) && isStringValue(b)) {
+      return a.value.localeCompare(b.value);
+    }
+    if (isArrayValue(a) && isArrayValue(b)) {
+      return a.value.length - b.value.length || String(a.value).localeCompare(String(b.value));
+    }
+    if (isObjectValue(a) && isObjectValue(b)) {
+      return JSON.stringify(a.value).localeCompare(JSON.stringify(b.value));
+    }
+  }
+  return String(a.value).localeCompare(String(b.value));
+};
 const sortByColumns = (a, b, sortColumns2) => {
   for (const sortCol of sortColumns2) {
     let comparison = 0;
@@ -58420,9 +58449,7 @@ const sortByColumns = (a, b, sortColumns2) => {
         break;
       }
       case "value": {
-        const valueA = a.value !== null && a.value !== void 0 ? String(a.value) : "";
-        const valueB = b.value !== null && b.value !== void 0 ? String(b.value) : "";
-        comparison = valueA.localeCompare(valueB);
+        comparison = sortValue(a, b);
         break;
       }
       case "error": {

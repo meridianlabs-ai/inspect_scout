@@ -7,6 +7,7 @@
 - Transcript DB: `claude_code()` source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
+- Scout View: Properly sort scanner results using the value type.
 
 ## 0.4.19 (17 February 2026)
 

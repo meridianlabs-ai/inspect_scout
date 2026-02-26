@@ -405,14 +405,11 @@ export function useTimeline(timeline: Timeline): TimelineState {
   // Compute swimlane rows
   const rows = useMemo(() => computeSwimlaneRows(node), [node]);
 
-  // Default selection: explicit param > first child for parallel containers > root
+  // Default selection: explicit param > parent (root) row
   const selected = useMemo(() => {
     if (selectedParam !== null) return selectedParam;
-    if (node.id.startsWith("parallel-") && rows.length > 1) {
-      return rows[1]!.name;
-    }
     return rows[0]?.name ?? null;
-  }, [selectedParam, node.id, rows]);
+  }, [selectedParam, rows]);
 
   // Build breadcrumbs
   const breadcrumbs = useMemo(
@@ -425,63 +422,54 @@ export function useTimeline(timeline: Timeline): TimelineState {
     (name: string, spanIndex?: number) => {
       const segment = spanIndex ? `${name}-${spanIndex}` : name;
       const newPath = pathString ? `${pathString}/${segment}` : segment;
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set(kPathParam, newPath);
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(kPathParam, newPath);
+        next.delete(kSelectedParam);
+        return next;
+      });
     },
     [pathString, setSearchParams]
   );
 
   const goUp = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
 
-        // Two-step back: if a child is explicitly selected, clear the
-        // selection first (returning to the default/parent selection).
-        // Only pop a path segment when there's no explicit selection.
-        if (next.has(kSelectedParam)) {
-          next.delete(kSelectedParam);
-          return next;
-        }
-
-        if (pathString) {
-          const segments = pathString.split("/");
-          segments.pop();
-          const newPath = segments.join("/");
-          if (newPath) {
-            next.set(kPathParam, newPath);
-          } else {
-            next.delete(kPathParam);
-          }
-        }
+      // Two-step back: if a child is explicitly selected, clear the
+      // selection first (returning to the default/parent selection).
+      // Only pop a path segment when there's no explicit selection.
+      if (next.has(kSelectedParam)) {
+        next.delete(kSelectedParam);
         return next;
-      },
-      { replace: true }
-    );
+      }
+
+      if (pathString) {
+        const segments = pathString.split("/");
+        segments.pop();
+        const newPath = segments.join("/");
+        if (newPath) {
+          next.set(kPathParam, newPath);
+        } else {
+          next.delete(kPathParam);
+        }
+      }
+      return next;
+    });
   }, [pathString, setSearchParams]);
 
   const navigateTo = useCallback(
     (path: string) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (path) {
-            next.set(kPathParam, path);
-          } else {
-            next.delete(kPathParam);
-          }
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (path) {
+          next.set(kPathParam, path);
+        } else {
+          next.delete(kPathParam);
+        }
+        next.delete(kSelectedParam);
+        return next;
+      });
     },
     [setSearchParams]
   );

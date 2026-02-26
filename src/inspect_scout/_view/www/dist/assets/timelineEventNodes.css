@@ -187,7 +187,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_i6co8_1 {
+._swimlane_60aeq_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -203,7 +203,7 @@
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_i6co8_17 {
+._pinnedSection_60aeq_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -211,7 +211,7 @@
 }
 
 /* Scrollable section: child rows */
-._scrollSection_i6co8_25 {
+._scrollSection_60aeq_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -220,13 +220,13 @@
   overflow-y: auto;
 }
 
-._swimlane_i6co8_1:focus-visible {
+._swimlane_60aeq_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_i6co8_40 {
+._collapsibleSection_60aeq_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -239,26 +239,26 @@
   opacity: 1;
 }
 
-._collapsibleCollapsed_i6co8_53 {
+._collapsibleCollapsed_60aeq_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_i6co8_60 {
+._noAnimation_60aeq_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_i6co8_65 {
+._swimlaneSticky_60aeq_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_i6co8_72 {
+._collapsibleInner_60aeq_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -268,7 +268,7 @@
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_i6co8_82 {
+._collapseToggle_60aeq_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -289,20 +289,20 @@
   line-height: 1;
 }
 
-._collapseToggle_i6co8_82:hover {
+._collapseToggle_60aeq_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_i6co8_110 {
+._row_60aeq_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_i6co8_116 {
+._label_60aeq_116 {
   padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -314,29 +314,29 @@
   gap: 2px;
 }
 
-._labelChild_i6co8_128 {
+._labelChild_60aeq_128 {
   padding-left: 2.25rem;
 }
 
-._labelSelected_i6co8_132 {
+._labelSelected_60aeq_132 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_i6co8_138 {
+._barArea_60aeq_138 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_i6co8_144 {
+._barInner_60aeq_144 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_i6co8_150 {
+._fill_60aeq_150 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -350,31 +350,33 @@
   cursor: pointer;
 }
 
-._fill_i6co8_150:hover {
+._fill_60aeq_150:hover {
   opacity: 0.5;
 }
 
-._fillParent_i6co8_168 {
+._fillParent_60aeq_168 {
   opacity: 0.2;
 }
 
-._fillSelected_i6co8_172 {
+._fillSelected_60aeq_172 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_i6co8_177 {
+._parallelBadge_60aeq_177 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
-/* Drill-down button */
+/* Drill-down chevron — icon-only button inside the bar's right edge */
 
-._drillDown_i6co8_184 {
+._drillDown_60aeq_184 {
   position: absolute;
-  top: 50%;
-  transform: translate(calc(-100% - 2px), -50%);
-  font-size: var(--inspect-font-size-smallest);
+  top: 0;
+  bottom: 0;
+  transform: translateX(calc(-100% + 4px));
+  font-size: 10px;
+  font-weight: bold;
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   z-index: 3;
@@ -382,34 +384,18 @@
   border: none;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 0 3px;
+  justify-content: center;
+  padding: 0 4px;
   line-height: 1;
-  white-space: nowrap;
-  border-radius: 2px;
 }
 
-._drillDown_i6co8_184::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-color: var(--bs-body-bg);
-  opacity: 0.65;
-  z-index: -1;
-}
-
-._drillDownSelected_i6co8_213::before {
-  opacity: 0.6;
-}
-
-._drillDown_i6co8_184:hover {
+._drillDown_60aeq_184:hover {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Markers */
 
-._marker_i6co8_223 {
+._marker_60aeq_209 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -425,11 +411,11 @@
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_i6co8_223 > * {
+._marker_60aeq_209 > * {
   pointer-events: none;
 }
 
-._markerError_i6co8_243 {
+._markerError_60aeq_229 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -440,7 +426,7 @@
   cursor: pointer;
 }
 
-._markerError_i6co8_243::after {
+._markerError_60aeq_229::after {
   content: "";
   position: absolute;
   top: 0;
@@ -450,7 +436,7 @@
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_i6co8_264 {
+._markerCompaction_60aeq_250 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -462,20 +448,20 @@
   cursor: pointer;
 }
 
-._markerBranch_i6co8_276 {
+._markerBranch_60aeq_262 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_i6co8_283 {
+._branchPopover_60aeq_269 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_i6co8_289 {
+._branchEntry_60aeq_275 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -490,28 +476,28 @@
   white-space: nowrap;
 }
 
-._branchEntry_i6co8_289:hover {
+._branchEntry_60aeq_275:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_i6co8_309 {
+._branchLabel_60aeq_295 {
   font-weight: 500;
 }
 
-._branchMeta_i6co8_313 {
+._branchMeta_60aeq_299 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_i6co8_289:hover ._branchMeta_i6co8_313 {
+._branchEntry_60aeq_275:hover ._branchMeta_60aeq_299 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_i6co8_325 {
+._breadcrumbRow_60aeq_311 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -521,7 +507,7 @@
   overflow: hidden;
 }
 
-._breadcrumbBack_i6co8_335 {
+._breadcrumbBack_60aeq_321 {
   background: none;
   border: none;
   cursor: pointer;
@@ -534,24 +520,24 @@
   margin-top: -1px;
 }
 
-._breadcrumbBack_i6co8_335:hover:not(:disabled) {
+._breadcrumbBack_60aeq_321:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_i6co8_335:disabled {
+._breadcrumbBack_60aeq_321:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_i6co8_358 {
+._breadcrumbGroup_60aeq_344 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_i6co8_365 {
+._breadcrumbLink_60aeq_351 {
   background: none;
   border: none;
   cursor: pointer;
@@ -560,11 +546,11 @@
   font-size: var(--inspect-font-size-smallest);
 }
 
-._breadcrumbLink_i6co8_365:hover {
+._breadcrumbLink_60aeq_351:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_i6co8_378 {
+._breadcrumbCurrent_60aeq_364 {
   background: none;
   border: none;
   cursor: pointer;
@@ -574,18 +560,18 @@
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_i6co8_378:hover {
+._breadcrumbCurrent_60aeq_364:hover {
   text-decoration: underline;
 }
 
-._breadcrumbSelection_i6co8_392 {
+._breadcrumbSelection_60aeq_378 {
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-._breadcrumbDivider_i6co8_399 {
+._breadcrumbDivider_60aeq_385 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 1px 0 3px;
@@ -593,7 +579,7 @@
 
 /* Token cell */
 
-._tokens_i6co8_407 {
+._tokens_60aeq_393 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

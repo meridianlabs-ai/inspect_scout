@@ -179,13 +179,15 @@
   color: var(--vscode-descriptionForeground);
 }
 
-/* Drill-down button */
+/* Drill-down chevron — icon-only button inside the bar's right edge */
 
 .drillDown {
   position: absolute;
-  top: 50%;
-  transform: translate(calc(-100% - 2px), -50%);
-  font-size: var(--inspect-font-size-smallest);
+  top: 0;
+  bottom: 0;
+  transform: translateX(calc(-100% + 4px));
+  font-size: 10px;
+  font-weight: bold;
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   z-index: 3;
@@ -193,25 +195,9 @@
   border: none;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 0 3px;
+  justify-content: center;
+  padding: 0 4px;
   line-height: 1;
-  white-space: nowrap;
-  border-radius: 2px;
-}
-
-.drillDown::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-color: var(--bs-body-bg);
-  opacity: 0.65;
-  z-index: -1;
-}
-
-.drillDownSelected::before {
-  opacity: 0.6;
 }
 
 .drillDown:hover {

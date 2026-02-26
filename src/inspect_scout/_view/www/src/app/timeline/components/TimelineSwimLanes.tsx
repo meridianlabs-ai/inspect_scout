@@ -572,18 +572,14 @@ const BarFill: FC<BarFillProps> = ({
       />
       {span.drillable && (
         <button
-          className={clsx(
-            styles.drillDown,
-            isSelected && styles.drillDownSelected
-          )}
+          className={styles.drillDown}
           style={{
             left: `${span.bar.left + span.bar.width}%`,
           }}
           onClick={handleChevronClick}
-          title="Drill down"
+          title={`Drill down (${span.childCount} sub-agent${span.childCount !== 1 ? "s" : ""})`}
         >
-          {span.childCount} sub-agent{span.childCount !== 1 ? "s" : ""}
-          {" \u203A"}
+          <i className={ApplicationIcons.chevron.right} />
         </button>
       )}
     </>

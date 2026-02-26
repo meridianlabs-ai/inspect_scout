@@ -974,11 +974,8 @@ function useTimeline(timeline) {
   const rows = reactExports.useMemo(() => computeSwimlaneRows(node), [node]);
   const selected2 = reactExports.useMemo(() => {
     if (selectedParam !== null) return selectedParam;
-    if (node.id.startsWith("parallel-") && rows.length > 1) {
-      return rows[1].name;
-    }
     return rows[0]?.name ?? null;
-  }, [selectedParam, node.id, rows]);
+  }, [selectedParam, rows]);
   const breadcrumbs = reactExports.useMemo(
     () => buildBreadcrumbs(pathString, timeline),
     [pathString, timeline]
@@ -987,56 +984,47 @@ function useTimeline(timeline) {
     (name, spanIndex) => {
       const segment = spanIndex ? `${name}-${spanIndex}` : name;
       const newPath = pathString ? `${pathString}/${segment}` : segment;
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set(kPathParam, newPath);
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(kPathParam, newPath);
+        next.delete(kSelectedParam);
+        return next;
+      });
     },
     [pathString, setSearchParams]
   );
   const goUp = reactExports.useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (next.has(kSelectedParam)) {
-          next.delete(kSelectedParam);
-          return next;
-        }
-        if (pathString) {
-          const segments = pathString.split("/");
-          segments.pop();
-          const newPath = segments.join("/");
-          if (newPath) {
-            next.set(kPathParam, newPath);
-          } else {
-            next.delete(kPathParam);
-          }
-        }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (next.has(kSelectedParam)) {
+        next.delete(kSelectedParam);
         return next;
-      },
-      { replace: true }
-    );
+      }
+      if (pathString) {
+        const segments = pathString.split("/");
+        segments.pop();
+        const newPath = segments.join("/");
+        if (newPath) {
+          next.set(kPathParam, newPath);
+        } else {
+          next.delete(kPathParam);
+        }
+      }
+      return next;
+    });
   }, [pathString, setSearchParams]);
   const navigateTo = reactExports.useCallback(
     (path) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (path) {
-            next.set(kPathParam, path);
-          } else {
-            next.delete(kPathParam);
-          }
-          next.delete(kSelectedParam);
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (path) {
+          next.set(kPathParam, path);
+        } else {
+          next.delete(kPathParam);
+        }
+        next.delete(kSelectedParam);
+        return next;
+      });
     },
     [setSearchParams]
   );
@@ -1171,43 +1159,42 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_i6co8_1";
-const pinnedSection = "_pinnedSection_i6co8_17";
-const scrollSection = "_scrollSection_i6co8_25";
-const collapsibleSection = "_collapsibleSection_i6co8_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_i6co8_53";
-const noAnimation = "_noAnimation_i6co8_60";
-const swimlaneSticky = "_swimlaneSticky_i6co8_65";
-const collapsibleInner = "_collapsibleInner_i6co8_72";
-const collapseToggle = "_collapseToggle_i6co8_82";
-const row = "_row_i6co8_110";
-const label = "_label_i6co8_116";
-const labelChild = "_labelChild_i6co8_128";
-const labelSelected = "_labelSelected_i6co8_132";
-const barArea = "_barArea_i6co8_138";
-const barInner = "_barInner_i6co8_144";
-const fill = "_fill_i6co8_150";
-const fillParent = "_fillParent_i6co8_168";
-const fillSelected = "_fillSelected_i6co8_172";
-const parallelBadge = "_parallelBadge_i6co8_177";
-const drillDown = "_drillDown_i6co8_184";
-const drillDownSelected = "_drillDownSelected_i6co8_213";
-const marker = "_marker_i6co8_223";
-const markerError = "_markerError_i6co8_243";
-const markerCompaction = "_markerCompaction_i6co8_264";
-const markerBranch = "_markerBranch_i6co8_276";
-const branchPopover = "_branchPopover_i6co8_283";
-const branchEntry = "_branchEntry_i6co8_289";
-const branchLabel = "_branchLabel_i6co8_309";
-const branchMeta = "_branchMeta_i6co8_313";
-const breadcrumbRow = "_breadcrumbRow_i6co8_325";
-const breadcrumbBack = "_breadcrumbBack_i6co8_335";
-const breadcrumbGroup = "_breadcrumbGroup_i6co8_358";
-const breadcrumbLink = "_breadcrumbLink_i6co8_365";
-const breadcrumbCurrent = "_breadcrumbCurrent_i6co8_378";
-const breadcrumbSelection = "_breadcrumbSelection_i6co8_392";
-const breadcrumbDivider = "_breadcrumbDivider_i6co8_399";
-const tokens = "_tokens_i6co8_407";
+const swimlane = "_swimlane_60aeq_1";
+const pinnedSection = "_pinnedSection_60aeq_17";
+const scrollSection = "_scrollSection_60aeq_25";
+const collapsibleSection = "_collapsibleSection_60aeq_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_60aeq_53";
+const noAnimation = "_noAnimation_60aeq_60";
+const swimlaneSticky = "_swimlaneSticky_60aeq_65";
+const collapsibleInner = "_collapsibleInner_60aeq_72";
+const collapseToggle = "_collapseToggle_60aeq_82";
+const row = "_row_60aeq_110";
+const label = "_label_60aeq_116";
+const labelChild = "_labelChild_60aeq_128";
+const labelSelected = "_labelSelected_60aeq_132";
+const barArea = "_barArea_60aeq_138";
+const barInner = "_barInner_60aeq_144";
+const fill = "_fill_60aeq_150";
+const fillParent = "_fillParent_60aeq_168";
+const fillSelected = "_fillSelected_60aeq_172";
+const parallelBadge = "_parallelBadge_60aeq_177";
+const drillDown = "_drillDown_60aeq_184";
+const marker = "_marker_60aeq_209";
+const markerError = "_markerError_60aeq_229";
+const markerCompaction = "_markerCompaction_60aeq_250";
+const markerBranch = "_markerBranch_60aeq_262";
+const branchPopover = "_branchPopover_60aeq_269";
+const branchEntry = "_branchEntry_60aeq_275";
+const branchLabel = "_branchLabel_60aeq_295";
+const branchMeta = "_branchMeta_60aeq_299";
+const breadcrumbRow = "_breadcrumbRow_60aeq_311";
+const breadcrumbBack = "_breadcrumbBack_60aeq_321";
+const breadcrumbGroup = "_breadcrumbGroup_60aeq_344";
+const breadcrumbLink = "_breadcrumbLink_60aeq_351";
+const breadcrumbCurrent = "_breadcrumbCurrent_60aeq_364";
+const breadcrumbSelection = "_breadcrumbSelection_60aeq_378";
+const breadcrumbDivider = "_breadcrumbDivider_60aeq_385";
+const tokens = "_tokens_60aeq_393";
 const styles = {
   swimlane,
   pinnedSection,
@@ -1229,7 +1216,6 @@ const styles = {
   fillSelected,
   parallelBadge,
   drillDown,
-  drillDownSelected,
   marker,
   markerError,
   markerCompaction,
@@ -1608,24 +1594,16 @@ const BarFill = ({
         onDoubleClick: handleDoubleClick
       }
     ),
-    span.drillable && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    span.drillable && /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
       {
-        className: clsx(
-          styles.drillDown,
-          isSelected && styles.drillDownSelected
-        ),
+        className: styles.drillDown,
         style: {
           left: `${span.bar.left + span.bar.width}%`
         },
         onClick: handleChevronClick,
-        title: "Drill down",
-        children: [
-          span.childCount,
-          " sub-agent",
-          span.childCount !== 1 ? "s" : "",
-          " ›"
-        ]
+        title: `Drill down (${span.childCount} sub-agent${span.childCount !== 1 ? "s" : ""})`,
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.chevron.right })
       }
     )
   ] });

@@ -1171,43 +1171,43 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_7icss_1";
-const pinnedSection = "_pinnedSection_7icss_17";
-const scrollSection = "_scrollSection_7icss_25";
-const collapsibleSection = "_collapsibleSection_7icss_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_7icss_53";
-const noAnimation = "_noAnimation_7icss_60";
-const swimlaneSticky = "_swimlaneSticky_7icss_65";
-const collapsibleInner = "_collapsibleInner_7icss_72";
-const collapseToggle = "_collapseToggle_7icss_82";
-const row = "_row_7icss_110";
-const label = "_label_7icss_116";
-const labelChild = "_labelChild_7icss_128";
-const labelSelected = "_labelSelected_7icss_132";
-const barArea = "_barArea_7icss_138";
-const barInner = "_barInner_7icss_144";
-const fill = "_fill_7icss_150";
-const fillParent = "_fillParent_7icss_168";
-const fillSelected = "_fillSelected_7icss_172";
-const parallelBadge = "_parallelBadge_7icss_177";
-const drillDown = "_drillDown_7icss_184";
-const drillDownSelected = "_drillDownSelected_7icss_213";
-const marker = "_marker_7icss_223";
-const markerError = "_markerError_7icss_243";
-const markerCompaction = "_markerCompaction_7icss_264";
-const markerBranch = "_markerBranch_7icss_276";
-const branchPopover = "_branchPopover_7icss_283";
-const branchEntry = "_branchEntry_7icss_289";
-const branchLabel = "_branchLabel_7icss_309";
-const branchMeta = "_branchMeta_7icss_313";
-const breadcrumbRow = "_breadcrumbRow_7icss_325";
-const breadcrumbBack = "_breadcrumbBack_7icss_335";
-const breadcrumbGroup = "_breadcrumbGroup_7icss_358";
-const breadcrumbLink = "_breadcrumbLink_7icss_365";
-const breadcrumbCurrent = "_breadcrumbCurrent_7icss_378";
-const breadcrumbSelection = "_breadcrumbSelection_7icss_392";
-const breadcrumbDivider = "_breadcrumbDivider_7icss_399";
-const tokens = "_tokens_7icss_407";
+const swimlane = "_swimlane_i6co8_1";
+const pinnedSection = "_pinnedSection_i6co8_17";
+const scrollSection = "_scrollSection_i6co8_25";
+const collapsibleSection = "_collapsibleSection_i6co8_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_i6co8_53";
+const noAnimation = "_noAnimation_i6co8_60";
+const swimlaneSticky = "_swimlaneSticky_i6co8_65";
+const collapsibleInner = "_collapsibleInner_i6co8_72";
+const collapseToggle = "_collapseToggle_i6co8_82";
+const row = "_row_i6co8_110";
+const label = "_label_i6co8_116";
+const labelChild = "_labelChild_i6co8_128";
+const labelSelected = "_labelSelected_i6co8_132";
+const barArea = "_barArea_i6co8_138";
+const barInner = "_barInner_i6co8_144";
+const fill = "_fill_i6co8_150";
+const fillParent = "_fillParent_i6co8_168";
+const fillSelected = "_fillSelected_i6co8_172";
+const parallelBadge = "_parallelBadge_i6co8_177";
+const drillDown = "_drillDown_i6co8_184";
+const drillDownSelected = "_drillDownSelected_i6co8_213";
+const marker = "_marker_i6co8_223";
+const markerError = "_markerError_i6co8_243";
+const markerCompaction = "_markerCompaction_i6co8_264";
+const markerBranch = "_markerBranch_i6co8_276";
+const branchPopover = "_branchPopover_i6co8_283";
+const branchEntry = "_branchEntry_i6co8_289";
+const branchLabel = "_branchLabel_i6co8_309";
+const branchMeta = "_branchMeta_i6co8_313";
+const breadcrumbRow = "_breadcrumbRow_i6co8_325";
+const breadcrumbBack = "_breadcrumbBack_i6co8_335";
+const breadcrumbGroup = "_breadcrumbGroup_i6co8_358";
+const breadcrumbLink = "_breadcrumbLink_i6co8_365";
+const breadcrumbCurrent = "_breadcrumbCurrent_i6co8_378";
+const breadcrumbSelection = "_breadcrumbSelection_i6co8_392";
+const breadcrumbDivider = "_breadcrumbDivider_i6co8_399";
+const tokens = "_tokens_i6co8_407";
 const styles = {
   swimlane,
   pinnedSection,
@@ -1279,6 +1279,7 @@ const TimelineSwimLanes = ({
   breadcrumb,
   forceCollapsed,
   noAnimation: noAnimation2,
+  showErrorMarkers,
   onMarkerNavigate
 }) => {
   const parsedSelection = reactExports.useMemo(() => parseSelected(selected2), [selected2]);
@@ -1388,6 +1389,7 @@ const TimelineSwimLanes = ({
       ),
       onBranchHover: handleBranchHover,
       onBranchLeave: handleBranchLeave,
+      showErrorMarkers,
       onMarkerNavigate
     },
     `${layout.name}-${rowIndex}`
@@ -1456,6 +1458,7 @@ const SwimlaneRow = ({
   onDrillDown,
   onBranchHover,
   onBranchLeave,
+  showErrorMarkers,
   onMarkerNavigate
 }) => {
   const hasSelectedSpan = layout.spans.some(
@@ -1492,7 +1495,7 @@ const SwimlaneRow = ({
         },
         spanIndex
       )),
-      layout.markers.map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      layout.markers.filter((m) => showErrorMarkers || m.kind !== "error").map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         MarkerGlyph,
         {
           marker: marker2,

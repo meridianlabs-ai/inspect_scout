@@ -50,6 +50,8 @@ interface TimelineSwimLanesProps {
   forceCollapsed?: boolean;
   /** Disable collapse/expand animation (e.g. during sticky transitions). */
   noAnimation?: boolean;
+  /** Show error markers on swimlane bars. Defaults to false. */
+  showErrorMarkers?: boolean;
   /** Called when an error or compaction marker is clicked. */
   onMarkerNavigate?: (eventId: string) => void;
 }
@@ -129,6 +131,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   breadcrumb,
   forceCollapsed,
   noAnimation,
+  showErrorMarkers,
   onMarkerNavigate,
 }) => {
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
@@ -276,6 +279,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       }
       onBranchHover={handleBranchHover}
       onBranchLeave={handleBranchLeave}
+      showErrorMarkers={showErrorMarkers}
       onMarkerNavigate={onMarkerNavigate}
     />
   );
@@ -359,6 +363,8 @@ interface SwimlaneRowProps {
   onDrillDown: (spanIndex: number) => void;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
+  /** Show error markers on swimlane bars. Defaults to false. */
+  showErrorMarkers?: boolean;
   onMarkerNavigate?: (eventId: string) => void;
 }
 
@@ -370,6 +376,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   onDrillDown,
   onBranchHover,
   onBranchLeave,
+  showErrorMarkers,
   onMarkerNavigate,
 }) => {
   const hasSelectedSpan = layout.spans.some((_, i) =>
@@ -408,7 +415,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
           ))}
 
           {/* Markers */}
-          {layout.markers.map((marker, i) => (
+          {layout.markers.filter((m) => showErrorMarkers || m.kind !== "error").map((marker, i) => (
             <MarkerGlyph
               key={i}
               marker={marker}

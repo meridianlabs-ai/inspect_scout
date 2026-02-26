@@ -114,7 +114,7 @@
 /* Label cell */
 
 .label {
-  padding: 0 0.5rem 0 1.6rem;
+  padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

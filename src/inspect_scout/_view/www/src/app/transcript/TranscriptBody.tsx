@@ -117,11 +117,25 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setSelectedTranscriptTab, setSearchParams]
   );
 
-  // Navigate to a specific event when a marker is clicked on the timeline
+  // Suppress swimlane collapse during programmatic scrolls (marker clicks).
+  // The swimlane still goes sticky (opaque bg, fixed position) but stays expanded.
+  //
+  // We use a ref to signal "next sticky transition should not collapse" because
+  // the scroll that triggers sticky happens synchronously during navigate(),
+  // before React can process any state update from the click handler.
+  // The ref is checked inside handleSwimLaneStickyChange (same tick as the
+  // scroll event) and converted to state there, ensuring both isSwimLaneSticky
+  // and markerNavSticky are set in the same callback → same React batch.
+  const suppressCollapseRef = useRef(false);
+  const [markerNavSticky, setMarkerNavSticky] = useState(false);
+
+  // Navigate to a specific event when a marker is clicked on the timeline.
   const handleMarkerNavigate = useCallback(
     (eventId: string) => {
       const url = getEventUrl(eventId);
-      if (url) void navigate(url);
+      if (!url) return;
+      suppressCollapseRef.current = true;
+      void navigate(url);
     },
     [getEventUrl, navigate]
   );
@@ -181,8 +195,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   const handleSwimLaneStickyChange = useCallback((sticky: boolean) => {
     setIsSwimLaneSticky(sticky);
-    if (!sticky) {
+    if (sticky && suppressCollapseRef.current) {
+      // Consume the ref flag and promote to state in the same callback,
+      // so React batches both setIsSwimLaneSticky(true) and
+      // setMarkerNavSticky(true) into a single render.
+      suppressCollapseRef.current = false;
+      setMarkerNavSticky(true);
+    } else if (!sticky) {
       setStickySwimLaneHeight(0);
+      setMarkerNavSticky(false);
     }
   }, []);
 
@@ -450,8 +471,9 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                   selected: timelineState.selected,
                 }}
                 onMarkerNavigate={handleMarkerNavigate}
-                forceCollapsed={isSwimLaneSticky}
-                noAnimation={isSwimLaneSticky}
+                isSticky={isSwimLaneSticky}
+                forceCollapsed={isSwimLaneSticky && !markerNavSticky}
+                noAnimation={isSwimLaneSticky && !markerNavSticky}
               />
             </div>
           </StickyScroll>

@@ -1397,10 +1397,14 @@ const TranscriptBody = ({
     },
     [setSelectedTranscriptTab, setSearchParams]
   );
+  const suppressCollapseRef = reactExports.useRef(false);
+  const [markerNavSticky, setMarkerNavSticky] = reactExports.useState(false);
   const handleMarkerNavigate = reactExports.useCallback(
     (eventId) => {
       const url = getEventUrl(eventId);
-      if (url) void navigate(url);
+      if (!url) return;
+      suppressCollapseRef.current = true;
+      void navigate(url);
     },
     [getEventUrl, navigate]
   );
@@ -1441,8 +1445,12 @@ const TranscriptBody = ({
   const swimLaneStickyContentRef = reactExports.useRef(null);
   const handleSwimLaneStickyChange = reactExports.useCallback((sticky) => {
     setIsSwimLaneSticky(sticky);
-    if (!sticky) {
+    if (sticky && suppressCollapseRef.current) {
+      suppressCollapseRef.current = false;
+      setMarkerNavSticky(true);
+    } else if (!sticky) {
       setStickySwimLaneHeight(0);
+      setMarkerNavSticky(false);
     }
   }, []);
   reactExports.useEffect(() => {
@@ -1673,8 +1681,9 @@ const TranscriptBody = ({
                     selected: timelineState.selected
                   },
                   onMarkerNavigate: handleMarkerNavigate,
-                  forceCollapsed: isSwimLaneSticky,
-                  noAnimation: isSwimLaneSticky
+                  isSticky: isSwimLaneSticky,
+                  forceCollapsed: isSwimLaneSticky && !markerNavSticky,
+                  noAnimation: isSwimLaneSticky && !markerNavSticky
                 }
               ) })
             }

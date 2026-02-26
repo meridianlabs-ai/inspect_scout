@@ -1263,6 +1263,7 @@ const TimelineSwimLanes = ({
   onGoUp,
   minimap: minimap2,
   breadcrumb,
+  isSticky,
   forceCollapsed,
   noAnimation: noAnimation2,
   showErrorMarkers,
@@ -1383,7 +1384,7 @@ const TimelineSwimLanes = ({
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: clsx(styles.swimlane, forceCollapsed && styles.swimlaneSticky),
+      className: clsx(styles.swimlane, isSticky && styles.swimlaneSticky),
       tabIndex: 0,
       onKeyDown: handleKeyDown,
       role: "grid",

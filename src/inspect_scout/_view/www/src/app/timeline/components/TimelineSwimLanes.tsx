@@ -46,6 +46,8 @@ interface TimelineSwimLanesProps {
   minimap?: TimelineMinimapProps;
   /** Breadcrumb props for the navigation row. */
   breadcrumb?: BreadcrumbRowProps;
+  /** Whether the swimlane is currently in sticky mode (opaque background). */
+  isSticky?: boolean;
   /** Force collapsed visual state (e.g. when sticky). */
   forceCollapsed?: boolean;
   /** Disable collapse/expand animation (e.g. during sticky transitions). */
@@ -129,6 +131,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   onGoUp,
   minimap,
   breadcrumb,
+  isSticky,
   forceCollapsed,
   noAnimation,
   showErrorMarkers,
@@ -286,7 +289,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 
   return (
     <div
-      className={clsx(styles.swimlane, forceCollapsed && styles.swimlaneSticky)}
+      className={clsx(styles.swimlane, isSticky && styles.swimlaneSticky)}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       role="grid"

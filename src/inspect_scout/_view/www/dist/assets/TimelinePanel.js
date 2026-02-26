@@ -1,7 +1,7 @@
 import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
 import { l as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
-import { u as useTimeline, c as computeRowLayouts, g as getSelectedSpans, b as computeMinimapSelection, a as collectRawEvents, T as TimelineSwimLanes, d as TranscriptOutline } from "./timelineEventNodes.js";
+import { u as useTimeline, c as computeRowLayouts, g as getSelectedSpans, d as computeMinimapSelection, a as collectRawEvents, T as TimelineSwimLanes, e as TranscriptOutline } from "./timelineEventNodes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import "./_commonjsHelpers.js";
 import "./ToolButton.js";
@@ -131,7 +131,8 @@ function makeModelEventNode(content2, startSec, endSec, tokens, uuid) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens
+    totalTokens: tokens,
+    idleTime: 0
   };
 }
 function makeToolEventNode(fn, args, result, startSec, endSec, tokens) {
@@ -163,7 +164,8 @@ function makeToolEventNode(fn, args, result, startSec, endSec, tokens) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens
+    totalTokens: tokens,
+    idleTime: 0
   };
 }
 function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, tokens) {
@@ -195,7 +197,8 @@ function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, token
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens
+    totalTokens: tokens,
+    idleTime: 0
   };
 }
 function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens) {
@@ -244,7 +247,8 @@ function makeModelErrorEventNode(_content, errorMsg, startSec, endSec, tokens) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens
+    totalTokens: tokens,
+    idleTime: 0
   };
 }
 function makeCompactionEventNode(tokensBefore, tokensAfter, startSec, endSec) {
@@ -266,7 +270,8 @@ function makeCompactionEventNode(tokensBefore, tokensAfter, startSec, endSec) {
     event,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: 0
+    totalTokens: 0,
+    idleTime: 0
   };
 }
 function makeSpan(id, name, spanType, startSec, endSec, tokens, content2 = [], options) {
@@ -281,7 +286,8 @@ function makeSpan(id, name, spanType, startSec, endSec, tokens, content2 = [], o
     utility: options?.utility ?? false,
     startTime: ts(BASE, startSec),
     endTime: ts(BASE, endSec),
-    totalTokens: tokens
+    totalTokens: tokens,
+    idleTime: 0
   };
 }
 function makeTimeline(root, options) {
@@ -296,7 +302,8 @@ function makeTimeline(root, options) {
         ...root,
         content: newContent,
         endTime,
-        totalTokens: root.totalTokens + scoring.totalTokens
+        totalTokens: root.totalTokens + scoring.totalTokens,
+        idleTime: 0
       }
     };
   }
@@ -1337,7 +1344,8 @@ function branchesSingleFork() {
     content: [branch1Refactor, branch1Validate],
     startTime: ts(BASE, 15),
     endTime: ts(BASE, 28),
-    totalTokens: 8700
+    totalTokens: 8700,
+    idleTime: 0
   };
   const branch2Rewrite = makeSpan(
     "branch2-rewrite",
@@ -1370,7 +1378,8 @@ function branchesSingleFork() {
     content: [branch2Rewrite],
     startTime: ts(BASE, 15),
     endTime: ts(BASE, 25),
-    totalTokens: 5100
+    totalTokens: 5100,
+    idleTime: 0
   };
   const code = makeSpan("code", "Code", "agent", 2, 24, 15200, [
     makeModelEventNode("Writing initial implementation.", 2, 6, 4200),
@@ -1483,7 +1492,8 @@ function branchesMultipleForks() {
     content: [earlyAttempt],
     startTime: ts(BASE, 8),
     endTime: ts(BASE, 14),
-    totalTokens: 4200
+    totalTokens: 4200,
+    idleTime: 0
   };
   const lateRetry = makeSpan("late-retry", "Retry", "agent", 30, 38, 3800, [
     makeModelEventNode("Retrying with modified parameters.", 30, 33, 1600),
@@ -1503,7 +1513,8 @@ function branchesMultipleForks() {
     content: [lateRetry],
     startTime: ts(BASE, 30),
     endTime: ts(BASE, 38),
-    totalTokens: 3800
+    totalTokens: 3800,
+    idleTime: 0
   };
   const lateAlt = makeSpan("late-alt", "Alternative", "agent", 30, 42, 6100, [
     makeModelEventNode(
@@ -1536,7 +1547,8 @@ function branchesMultipleForks() {
     content: [lateAlt],
     startTime: ts(BASE, 30),
     endTime: ts(BASE, 42),
-    totalTokens: 6100
+    totalTokens: 6100,
+    idleTime: 0
   };
   const code = makeSpan("code", "Code", "agent", 2, 28, 15200, [
     makeModelEventNode("Beginning code implementation.", 2, 6, 3600),

@@ -14904,11 +14904,7 @@ const EventPanel = ({
     "div",
     {
       id: `event-panel-${eventNodeId}`,
-      className: clsx(
-        className2,
-        styles$g.card,
-        muted ? styles$g.root : void 0
-      ),
+      className: clsx(className2, styles$g.card, muted ? styles$g.root : void 0),
       children: [
         titleEl,
         /* @__PURE__ */ jsxRuntimeExports.jsx(

@@ -688,6 +688,147 @@ def test_timeline_event_returns_zero_tokens_for_non_model_event() -> None:
     assert node.total_tokens == 0
 
 
+def test_timeline_event_idle_time_is_zero() -> None:
+    """TimelineEvent idle_time is always 0."""
+    ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    completed = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    event = create_model_event(timestamp=ts, completed=completed)
+    node = TimelineEvent(event=event)
+    assert node.idle_time == 0.0
+
+
+def test_idle_time_single_event_in_span() -> None:
+    """Span with one event: idle = span_duration - event_duration."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 2, tzinfo=timezone.utc)
+    completed2 = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    # Span starts at ts1 (from a span_begin event), event runs ts2..completed2
+    span_begin_event = InfoEvent(
+        uuid="sb",
+        span_id=None,
+        timestamp=ts1,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    model_event = create_model_event(uuid="m1", timestamp=ts2, completed=completed2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[
+            TimelineEvent(event=span_begin_event),
+            TimelineEvent(event=model_event),
+        ],
+    )
+    # Span: ts1..completed2 = 5s, events: 0s (info) + 3s (model) = 3s active
+    assert span.idle_time == pytest.approx(2.0)
+
+
+def test_idle_time_no_gaps() -> None:
+    """Events fully cover span duration → idle_time ≈ 0."""
+    ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    mid = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts, completed=mid)
+    e2 = create_model_event(uuid="e2", timestamp=mid, completed=end)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    assert span.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_gap_between_events() -> None:
+    """Two events with a gap → idle_time equals the gap."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+    e2 = create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    # Span: 0..10 = 10s, active: 3s + 3s = 6s, idle = 4s
+    assert span.idle_time == pytest.approx(4.0)
+
+
+def test_idle_time_nested_spans() -> None:
+    """Parent idle_time derived from children's active time."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 8, tzinfo=timezone.utc)
+
+    # Child span: 0..8 = 8s, events cover 3s + 3s = 6s, idle = 2s
+    child = TimelineSpan(
+        id="child",
+        name="child",
+        span_type="agent",
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+            ),
+        ],
+    )
+    assert child.idle_time == pytest.approx(2.0)
+
+    # Parent span: 0..10 = 10s, child active = 8 - 2 = 6s, parent idle = 4s
+    end_parent = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    info_event = InfoEvent(
+        uuid="info",
+        span_id=None,
+        timestamp=end_parent,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    parent = TimelineSpan(
+        id="parent",
+        name="parent",
+        span_type="agent",
+        content=[child, TimelineEvent(event=info_event)],
+    )
+    # Parent: 0..10 = 10s, child active = 6s, info active = 0s → idle = 4s
+    assert parent.idle_time == pytest.approx(4.0)
+
+
+def test_idle_time_branch() -> None:
+    """Branch idle_time computed correctly."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    branch = TimelineBranch(
+        forked_at="",
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="b1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="b2", timestamp=ts2, completed=end2)
+            ),
+        ],
+    )
+    # Branch: 0..10 = 10s, active: 3s + 3s = 6s, idle = 4s
+    assert branch.idle_time == pytest.approx(4.0)
+
+
 def test_timeline_span_aggregates_tokens_from_content() -> None:
     """TimelineSpan should sum tokens from all content."""
     usage1 = ModelUsage(input_tokens=100, output_tokens=50)

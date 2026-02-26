@@ -74,6 +74,7 @@ function makeEventNode(uuid: string | null, startSec: number): TimelineEvent {
     startTime: ts(startSec),
     endTime: ts(startSec + 1),
     totalTokens: 100,
+    idleTime: 0,
   };
 }
 
@@ -86,6 +87,7 @@ function makeBranch(forkedAt: string, startSec: number): TimelineBranch {
     startTime: ts(startSec),
     endTime: ts(startSec + 5),
     totalTokens: 500,
+    idleTime: 0,
   };
 }
 

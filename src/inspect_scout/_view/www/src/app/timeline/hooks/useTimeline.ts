@@ -9,10 +9,11 @@
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import type {
-  Timeline,
-  TimelineBranch,
-  TimelineSpan,
+import {
+  type Timeline,
+  type TimelineBranch,
+  type TimelineSpan,
+  computeIdleTime,
 } from "../../../components/transcript/timeline";
 import { computeTimeEnvelope } from "../utils/swimlaneLayout";
 import {
@@ -245,6 +246,7 @@ function createParallelContainer(agents: TimelineSpan[]): TimelineSpan {
     startTime,
     endTime,
     totalTokens,
+    idleTime: computeIdleTime(numberedAgents, startTime, endTime),
   };
 }
 
@@ -311,6 +313,7 @@ export function createBranchSpan(
     startTime: branch.startTime,
     endTime: branch.endTime,
     totalTokens: branch.totalTokens,
+    idleTime: branch.idleTime,
   };
 }
 

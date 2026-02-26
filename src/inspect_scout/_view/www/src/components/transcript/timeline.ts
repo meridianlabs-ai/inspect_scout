@@ -51,6 +51,7 @@ interface TimelineNode {
   startTime: Date;
   endTime: Date;
   totalTokens: number;
+  idleTime: number;
 }
 
 /**
@@ -205,6 +206,28 @@ function sumTokens(nodes: TimelineNode[]): number {
   return nodes.reduce((sum, n) => sum + n.totalTokens, 0);
 }
 
+/**
+ * Compute idle time for a span from its children's active time.
+ *
+ * For each child, its active time is its wall-clock duration minus its own
+ * idleTime. The span's idle time is its wall-clock duration minus the sum
+ * of all children's active time, clamped to >= 0.
+ */
+export function computeIdleTime(
+  content: TimelineNode[],
+  startTime: Date,
+  endTime: Date
+): number {
+  const wallClockMs = endTime.getTime() - startTime.getTime();
+  let totalActiveMs = 0;
+  for (const child of content) {
+    const childDurationMs = child.endTime.getTime() - child.startTime.getTime();
+    const childActiveMs = childDurationMs - child.idleTime * 1000;
+    totalActiveMs += childActiveMs;
+  }
+  return Math.max(0, (wallClockMs - totalActiveMs) / 1000);
+}
+
 // =============================================================================
 // Node Creation
 // =============================================================================
@@ -219,6 +242,7 @@ function createTimelineEvent(event: Event): TimelineEvent {
     startTime: getEventStartTime(event),
     endTime: getEventEndTime(event),
     totalTokens: getEventTokens(event),
+    idleTime: 0,
   };
 }
 
@@ -240,6 +264,8 @@ function createTimelineSpan(
         "Callers must guard against empty content before calling the factory."
     );
   }
+  const startTime = minStartTime(content);
+  const endTime = maxEndTime(content);
   return {
     type: "span",
     id,
@@ -249,9 +275,10 @@ function createTimelineSpan(
     branches,
     description,
     utility,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime,
+    endTime,
     totalTokens: sumTokens(content),
+    idleTime: computeIdleTime(content, startTime, endTime),
   };
 }
 
@@ -268,13 +295,16 @@ function createBranch(
         "Callers must guard against empty content before calling the factory."
     );
   }
+  const startTime = minStartTime(content);
+  const endTime = maxEndTime(content);
   return {
     type: "branch",
     forkedAt,
     content,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime,
+    endTime,
     totalTokens: sumTokens(content),
+    idleTime: computeIdleTime(content, startTime, endTime),
   };
 }
 
@@ -592,6 +622,7 @@ function buildAgentFromSolversSpan(
         startTime: new Date(0),
         endTime: new Date(0),
         totalTokens: 0,
+        idleTime: 0,
       };
     } else {
       // Multiple agent spans - create root containing all
@@ -994,8 +1025,9 @@ function detectAutoBranches(span: TimelineSpan): void {
   // Reverse branches so they're in original order
   span.branches.reverse();
 
-  // Recompute totalTokens since content was modified
+  // Recompute totalTokens and idleTime since content was modified
   span.totalTokens = sumTokens(span.content);
+  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
 }
 
 /**
@@ -1029,8 +1061,9 @@ function classifyBranches(
     }
   }
 
-  // Recompute totalTokens since child spans may have changed
+  // Recompute totalTokens and idleTime since child spans may have changed
   span.totalTokens = sumTokens(span.content);
+  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
 }
 
 // =============================================================================
@@ -1183,6 +1216,7 @@ export function buildTimeline(events: Event[]): Timeline {
       startTime: new Date(0),
       endTime: new Date(0),
       totalTokens: 0,
+      idleTime: 0,
     };
     return { name: "Default", description: "", root: emptyRoot };
   }
@@ -1269,13 +1303,24 @@ export function buildTimeline(events: Event[]): Timeline {
         agentNode.startTime = minStartTime(agentNode.content);
         agentNode.endTime = maxEndTime(agentNode.content);
         agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.idleTime = computeIdleTime(
+          agentNode.content,
+          agentNode.startTime,
+          agentNode.endTime
+        );
       }
 
       // Append scoring as a child span
       if (scoringSpan) {
         agentNode.content.push(scoringSpan);
+        agentNode.startTime = minStartTime(agentNode.content);
         agentNode.endTime = maxEndTime(agentNode.content);
         agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.idleTime = computeIdleTime(
+          agentNode.content,
+          agentNode.startTime,
+          agentNode.endTime
+        );
       }
 
       root = agentNode;
@@ -1302,6 +1347,7 @@ export function buildTimeline(events: Event[]): Timeline {
           startTime: new Date(0),
           endTime: new Date(0),
           totalTokens: 0,
+          idleTime: 0,
         };
       }
     }
@@ -1326,6 +1372,7 @@ export function buildTimeline(events: Event[]): Timeline {
         startTime: new Date(0),
         endTime: new Date(0),
         totalTokens: 0,
+        idleTime: 0,
       };
     }
   }

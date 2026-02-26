@@ -56,6 +56,7 @@ export function makeSpan(
     startTime: ts(startSec),
     endTime: ts(endSec),
     totalTokens: tokens,
+    idleTime: 0,
   };
 }
 

@@ -207,11 +207,7 @@ export const EventPanel: FC<EventPanelProps> = ({
   const card = (
     <div
       id={`event-panel-${eventNodeId}`}
-      className={clsx(
-        className,
-        styles.card,
-        muted ? styles.root : undefined
-      )}
+      className={clsx(className, styles.card, muted ? styles.root : undefined)}
     >
       {titleEl}
       <div

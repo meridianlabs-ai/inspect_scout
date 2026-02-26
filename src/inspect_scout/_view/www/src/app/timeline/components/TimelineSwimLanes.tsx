@@ -420,15 +420,17 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
           ))}
 
           {/* Markers */}
-          {layout.markers.filter((m) => showErrorMarkers || m.kind !== "error").map((marker, i) => (
-            <MarkerGlyph
-              key={i}
-              marker={marker}
-              onBranchHover={onBranchHover}
-              onBranchLeave={onBranchLeave}
-              onMarkerNavigate={onMarkerNavigate}
-            />
-          ))}
+          {layout.markers
+            .filter((m) => showErrorMarkers || m.kind !== "error")
+            .map((marker, i) => (
+              <MarkerGlyph
+                key={i}
+                marker={marker}
+                onBranchHover={onBranchHover}
+                onBranchLeave={onBranchLeave}
+                onMarkerNavigate={onMarkerNavigate}
+              />
+            ))}
         </div>
       </div>
 

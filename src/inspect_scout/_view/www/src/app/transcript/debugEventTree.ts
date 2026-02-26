@@ -49,11 +49,7 @@ function label(ev: Event): string {
         .join(" ");
 
     case "subtask":
-      return [
-        "subtask",
-        ev.name,
-        ev.type ? `type=${ev.type}` : null,
-      ]
+      return ["subtask", ev.name, ev.type ? `type=${ev.type}` : null]
         .filter(Boolean)
         .join(" ");
 

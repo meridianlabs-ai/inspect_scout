@@ -69,8 +69,6 @@ export function getAgents(span: RowSpan): TimelineSpan[] {
 /** Tolerance in milliseconds for considering two spans as overlapping. */
 const OVERLAP_TOLERANCE_MS = 100;
 
-
-
 // =============================================================================
 // Main Computation
 // =============================================================================

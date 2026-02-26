@@ -14408,10 +14408,7 @@ const treeifyWithSpans = (events, depth) => {
     const parentNode = resolvedParent ?? null;
     const node2 = createNode(event, parentNode);
     if (event.event === SPAN_BEGIN) {
-      const spanId = getEventSpanId(event);
-      if (spanId !== null) {
-        spanNodes.set(spanId, node2);
-      }
+      spanNodes.set(event.id, node2);
     }
   };
   events.forEach((event) => processEvent(event));

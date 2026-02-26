@@ -5,7 +5,6 @@ from __future__ import annotations
 import io
 import json
 import math
-import time
 from collections import Counter
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -13,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import pytest
 
 if TYPE_CHECKING:
-    from conftest import CallTracker
+    from tests.conftest import CallTracker
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent

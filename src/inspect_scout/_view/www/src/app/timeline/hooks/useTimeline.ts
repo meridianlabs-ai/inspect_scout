@@ -426,6 +426,8 @@ export function useTimeline(timeline: Timeline): TimelineState {
         const next = new URLSearchParams(prev);
         next.set(kPathParam, newPath);
         next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
         return next;
       });
     },
@@ -435,6 +437,8 @@ export function useTimeline(timeline: Timeline): TimelineState {
   const goUp = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      next.delete("event");
+      next.delete("message");
 
       // Two-step back: if a child is explicitly selected, clear the
       // selection first (returning to the default/parent selection).
@@ -468,6 +472,8 @@ export function useTimeline(timeline: Timeline): TimelineState {
           next.delete(kPathParam);
         }
         next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
         return next;
       });
     },
@@ -485,6 +491,8 @@ export function useTimeline(timeline: Timeline): TimelineState {
           } else {
             next.delete(kSelectedParam);
           }
+          next.delete("event");
+          next.delete("message");
           return next;
         },
         { replace: true }

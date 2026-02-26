@@ -1471,6 +1471,11 @@ const TranscriptBody = ({
     false
   );
   const hasMatchingEvents = eventNodes.length > 0;
+  reactExports.useEffect(() => {
+    if (!eventParam) {
+      scrollRef.current?.scrollTo({ top: 0 });
+    }
+  }, [selectedEvents, eventParam, scrollRef]);
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
   const setTranscriptState = useStore((state) => state.setTranscriptState);
   const collapseEvents = reactExports.useCallback(

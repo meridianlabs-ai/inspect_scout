@@ -988,6 +988,8 @@ function useTimeline(timeline) {
         const next = new URLSearchParams(prev);
         next.set(kPathParam, newPath);
         next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
         return next;
       });
     },
@@ -996,6 +998,8 @@ function useTimeline(timeline) {
   const goUp = reactExports.useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      next.delete("event");
+      next.delete("message");
       if (next.has(kSelectedParam)) {
         next.delete(kSelectedParam);
         return next;
@@ -1023,6 +1027,8 @@ function useTimeline(timeline) {
           next.delete(kPathParam);
         }
         next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
         return next;
       });
     },
@@ -1039,6 +1045,8 @@ function useTimeline(timeline) {
           } else {
             next.delete(kSelectedParam);
           }
+          next.delete("event");
+          next.delete("message");
           return next;
         },
         { replace: true }

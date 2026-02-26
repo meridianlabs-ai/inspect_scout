@@ -230,6 +230,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   );
   const hasMatchingEvents = eventNodes.length > 0;
 
+  // Reset scroll position when the selected events change (e.g. clicking a
+  // different swimlane bar). Skip when an event deep-link is active since the
+  // virtual list handles scroll-to-event in that case.
+  useEffect(() => {
+    if (!eventParam) {
+      scrollRef.current?.scrollTo({ top: 0 });
+    }
+  }, [selectedEvents, eventParam, scrollRef]);
+
   // Transcript collapse
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
   const setTranscriptState = useStore((state) => state.setTranscriptState);

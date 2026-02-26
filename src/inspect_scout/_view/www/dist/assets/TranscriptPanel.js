@@ -1612,6 +1612,9 @@ const TranscriptBody = ({
     )
   );
   const atRoot = timelineState.breadcrumbs.length <= 1;
+  const scrollToTop = reactExports.useCallback(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [scrollRef]);
   const messagesPanel = /* @__PURE__ */ jsxRuntimeExports.jsx(
     TabPanel,
     {
@@ -1678,7 +1681,8 @@ const TranscriptBody = ({
                     atRoot,
                     onGoUp: timelineState.goUp,
                     onNavigate: timelineState.navigateTo,
-                    selected: timelineState.selected
+                    selected: timelineState.selected,
+                    onScrollToTop: scrollToTop
                   },
                   onMarkerNavigate: handleMarkerNavigate,
                   isSticky: isSwimLaneSticky,

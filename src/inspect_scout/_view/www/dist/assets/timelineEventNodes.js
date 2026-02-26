@@ -1159,42 +1159,42 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_1x2ib_1";
-const pinnedSection = "_pinnedSection_1x2ib_17";
-const scrollSection = "_scrollSection_1x2ib_25";
-const collapsibleSection = "_collapsibleSection_1x2ib_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_1x2ib_53";
-const noAnimation = "_noAnimation_1x2ib_60";
-const swimlaneSticky = "_swimlaneSticky_1x2ib_65";
-const collapsibleInner = "_collapsibleInner_1x2ib_72";
-const collapseToggle = "_collapseToggle_1x2ib_82";
-const row = "_row_1x2ib_110";
-const label = "_label_1x2ib_116";
-const labelChild = "_labelChild_1x2ib_128";
-const labelSelected = "_labelSelected_1x2ib_132";
-const barArea = "_barArea_1x2ib_138";
-const barInner = "_barInner_1x2ib_144";
-const fill = "_fill_1x2ib_150";
-const fillParent = "_fillParent_1x2ib_168";
-const fillSelected = "_fillSelected_1x2ib_172";
-const parallelBadge = "_parallelBadge_1x2ib_177";
-const drillDown = "_drillDown_1x2ib_184";
-const marker = "_marker_1x2ib_209";
-const markerError = "_markerError_1x2ib_229";
-const markerCompaction = "_markerCompaction_1x2ib_250";
-const markerBranch = "_markerBranch_1x2ib_262";
-const branchPopover = "_branchPopover_1x2ib_269";
-const branchEntry = "_branchEntry_1x2ib_275";
-const branchLabel = "_branchLabel_1x2ib_295";
-const branchMeta = "_branchMeta_1x2ib_299";
-const breadcrumbRow = "_breadcrumbRow_1x2ib_311";
-const breadcrumbBack = "_breadcrumbBack_1x2ib_321";
-const breadcrumbGroup = "_breadcrumbGroup_1x2ib_344";
-const breadcrumbLink = "_breadcrumbLink_1x2ib_351";
-const breadcrumbCurrent = "_breadcrumbCurrent_1x2ib_364";
-const breadcrumbSelection = "_breadcrumbSelection_1x2ib_378";
-const breadcrumbDivider = "_breadcrumbDivider_1x2ib_385";
-const tokens = "_tokens_1x2ib_393";
+const swimlane = "_swimlane_8a9rm_1";
+const pinnedSection = "_pinnedSection_8a9rm_17";
+const scrollSection = "_scrollSection_8a9rm_25";
+const collapsibleSection = "_collapsibleSection_8a9rm_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_8a9rm_53";
+const noAnimation = "_noAnimation_8a9rm_60";
+const swimlaneSticky = "_swimlaneSticky_8a9rm_65";
+const collapsibleInner = "_collapsibleInner_8a9rm_72";
+const collapseToggle = "_collapseToggle_8a9rm_82";
+const row = "_row_8a9rm_110";
+const label = "_label_8a9rm_116";
+const labelChild = "_labelChild_8a9rm_128";
+const labelSelected = "_labelSelected_8a9rm_132";
+const barArea = "_barArea_8a9rm_138";
+const barInner = "_barInner_8a9rm_144";
+const fill = "_fill_8a9rm_150";
+const fillParent = "_fillParent_8a9rm_168";
+const fillSelected = "_fillSelected_8a9rm_172";
+const parallelBadge = "_parallelBadge_8a9rm_177";
+const drillDown = "_drillDown_8a9rm_184";
+const marker = "_marker_8a9rm_209";
+const markerError = "_markerError_8a9rm_229";
+const markerCompaction = "_markerCompaction_8a9rm_250";
+const markerBranch = "_markerBranch_8a9rm_262";
+const branchPopover = "_branchPopover_8a9rm_269";
+const branchEntry = "_branchEntry_8a9rm_275";
+const branchLabel = "_branchLabel_8a9rm_295";
+const branchMeta = "_branchMeta_8a9rm_299";
+const breadcrumbRow = "_breadcrumbRow_8a9rm_311";
+const breadcrumbBack = "_breadcrumbBack_8a9rm_321";
+const breadcrumbGroup = "_breadcrumbGroup_8a9rm_344";
+const breadcrumbLink = "_breadcrumbLink_8a9rm_351";
+const breadcrumbCurrent = "_breadcrumbCurrent_8a9rm_364";
+const breadcrumbSelection = "_breadcrumbSelection_8a9rm_378";
+const breadcrumbDivider = "_breadcrumbDivider_8a9rm_392";
+const tokens = "_tokens_8a9rm_400";
 const styles = {
   swimlane,
   pinnedSection,
@@ -1502,17 +1502,29 @@ const BreadcrumbRow = ({
   onGoUp,
   onNavigate,
   minimap: minimap2,
-  selected: selected2
+  selected: selected2,
+  onScrollToTop
 }) => {
   const selectedLabel = selected2 ? parsePathSegment(selected2).name : null;
   const lastBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
   const showSelection = selectedLabel !== null && selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
+  const handleNavigate = reactExports.useCallback(
+    (path) => {
+      onNavigate(path);
+      onScrollToTop?.();
+    },
+    [onNavigate, onScrollToTop]
+  );
+  const handleGoUp = reactExports.useCallback(() => {
+    onGoUp();
+    onScrollToTop?.();
+  }, [onGoUp, onScrollToTop]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.breadcrumbRow, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
       {
         className: styles.breadcrumbBack,
-        onClick: onGoUp,
+        onClick: handleGoUp,
         disabled: atRoot && !showSelection,
         title: "Go up one level (Escape)",
         children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.navbar.back })
@@ -1527,14 +1539,16 @@ const BreadcrumbRow = ({
           "button",
           {
             className: styles.breadcrumbCurrent,
-            onClick: () => onNavigate(segment.path),
+            onClick: () => {
+              handleNavigate(segment.path);
+            },
             children: label2
           }
         ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             className: styles.breadcrumbLink,
-            onClick: () => onNavigate(segment.path),
+            onClick: () => handleNavigate(segment.path),
             children: label2
           }
         )
@@ -1542,7 +1556,14 @@ const BreadcrumbRow = ({
     }),
     showSelection && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.breadcrumbGroup, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbDivider, children: "›" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbSelection, children: selectedLabel })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: styles.breadcrumbSelection,
+          onClick: onScrollToTop,
+          children: selectedLabel
+        }
+      )
     ] }),
     minimap2 && /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineMinimap, { ...minimap2 })
   ] });

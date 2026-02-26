@@ -376,10 +376,17 @@
 }
 
 .breadcrumbSelection {
+  background: none;
+  border: none;
+  cursor: pointer;
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
+}
+
+.breadcrumbSelection:hover {
+  text-decoration: underline;
 }
 
 .breadcrumbDivider {

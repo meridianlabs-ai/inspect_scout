@@ -65,6 +65,8 @@ export interface BreadcrumbRowProps {
   onNavigate: (path: string) => void;
   /** Currently selected row name, shown as a read-only tail segment. */
   selected?: string | null;
+  /** Called on any breadcrumb click to scroll the view to the top. */
+  onScrollToTop?: () => void;
 }
 
 // =============================================================================
@@ -453,6 +455,7 @@ const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
   onNavigate,
   minimap,
   selected,
+  onScrollToTop,
 }) => {
   // Extract display name from selected (strip span index suffix)
   const selectedLabel = selected ? parsePathSegment(selected).name : null;
@@ -463,11 +466,24 @@ const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
     selectedLabel !== null &&
     selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
 
+  const handleNavigate = useCallback(
+    (path: string) => {
+      onNavigate(path);
+      onScrollToTop?.();
+    },
+    [onNavigate, onScrollToTop]
+  );
+
+  const handleGoUp = useCallback(() => {
+    onGoUp();
+    onScrollToTop?.();
+  }, [onGoUp, onScrollToTop]);
+
   return (
     <div className={styles.breadcrumbRow}>
       <button
         className={styles.breadcrumbBack}
-        onClick={onGoUp}
+        onClick={handleGoUp}
         disabled={atRoot && !showSelection}
         title="Go up one level (Escape)"
       >
@@ -486,14 +502,16 @@ const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
             {isLast && !showSelection ? (
               <button
                 className={styles.breadcrumbCurrent}
-                onClick={() => onNavigate(segment.path)}
+                onClick={() => {
+                  handleNavigate(segment.path);
+                }}
               >
                 {label}
               </button>
             ) : (
               <button
                 className={styles.breadcrumbLink}
-                onClick={() => onNavigate(segment.path)}
+                onClick={() => handleNavigate(segment.path)}
               >
                 {label}
               </button>
@@ -504,7 +522,12 @@ const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
       {showSelection && (
         <span className={styles.breadcrumbGroup}>
           <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
-          <span className={styles.breadcrumbSelection}>{selectedLabel}</span>
+          <button
+            className={styles.breadcrumbSelection}
+            onClick={onScrollToTop}
+          >
+            {selectedLabel}
+          </button>
         </span>
       )}
       {minimap && <TimelineMinimap {...minimap} />}

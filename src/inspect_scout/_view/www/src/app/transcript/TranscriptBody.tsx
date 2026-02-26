@@ -405,6 +405,10 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   const atRoot = timelineState.breadcrumbs.length <= 1;
 
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [scrollRef]);
+
   const messagesPanel = (
     <TabPanel
       key={kTranscriptMessagesTabId}
@@ -469,6 +473,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
                   onGoUp: timelineState.goUp,
                   onNavigate: timelineState.navigateTo,
                   selected: timelineState.selected,
+                  onScrollToTop: scrollToTop,
                 }}
                 onMarkerNavigate={handleMarkerNavigate}
                 isSticky={isSwimLaneSticky}

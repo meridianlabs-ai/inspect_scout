@@ -139,15 +139,19 @@ export function computeMinimapSelection(
 /**
  * Collects raw Event[] from TimelineSpan content trees.
  *
- * Walks the content recursively. For TimelineEvent items, emits the wrapped
- * raw Event. For child TimelineSpan items, emits synthetic span_begin/span_end
- * events bracketing the recursed content, so treeifyEvents can rebuild the
- * parent-child hierarchy via span_id matching.
+ * When a single span is provided, walks its content directly (the span itself
+ * is the implicit context). When multiple spans are provided, each is wrapped
+ * in synthetic span_begin/span_end events so treeifyEvents can reconstruct
+ * the grouping (e.g. parallel agents shown as collapsible sections).
  */
 export function collectRawEvents(spans: TimelineSpan[]): Event[] {
   const events: Event[] = [];
-  for (const span of spans) {
-    collectFromContent(span.content, events);
+  if (spans.length === 1) {
+    collectFromContent(spans[0]!.content, events);
+  } else {
+    // Multiple spans: wrap each in span_begin/span_end so the event tree
+    // groups them, matching the drilled-in container behavior.
+    collectFromContent(spans, events);
   }
   return events;
 }

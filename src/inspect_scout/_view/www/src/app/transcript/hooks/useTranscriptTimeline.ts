@@ -96,14 +96,18 @@ export function useTranscriptTimeline(
 
   const parentRowName = state.rows[0]?.name;
   const parentSelected = isParentSelected(state.selected, parentRowName);
+  const atRoot = state.breadcrumbs.length <= 1;
 
   const selectedEvents = useMemo(() => {
-    // Optimization: when parent/root is selected, use original events directly
-    if (parentSelected) return events;
+    // Optimization: when the parent row is selected *at the root level*,
+    // use original events directly to avoid the collectRawEvents round-trip.
+    // When drilled down, the parent row represents a sub-span, so we must
+    // still filter through getSelectedSpans → collectRawEvents.
+    if (atRoot && parentSelected) return events;
 
     const spans = getSelectedSpans(state.rows, state.selected);
     return collectRawEvents(spans);
-  }, [events, parentSelected, state.rows, state.selected]);
+  }, [events, atRoot, parentSelected, state.rows, state.selected]);
 
   const minimapSelection = useMemo(
     () => computeMinimapSelection(state.rows, state.selected),

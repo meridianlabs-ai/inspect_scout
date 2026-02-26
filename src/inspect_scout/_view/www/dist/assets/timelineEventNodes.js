@@ -1801,8 +1801,10 @@ function computeMinimapSelection(rows, selected2) {
 }
 function collectRawEvents(spans) {
   const events = [];
-  for (const span of spans) {
-    collectFromContent(span.content, events);
+  if (spans.length === 1) {
+    collectFromContent(spans[0].content, events);
+  } else {
+    collectFromContent(spans, events);
   }
   return events;
 }

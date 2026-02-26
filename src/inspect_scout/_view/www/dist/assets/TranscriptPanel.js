@@ -1203,11 +1203,12 @@ function useTranscriptTimeline(events) {
   );
   const parentRowName = state.rows[0]?.name;
   const parentSelected = isParentSelected(state.selected, parentRowName);
+  const atRoot = state.breadcrumbs.length <= 1;
   const selectedEvents = reactExports.useMemo(() => {
-    if (parentSelected) return events;
+    if (atRoot && parentSelected) return events;
     const spans = getSelectedSpans(state.rows, state.selected);
     return collectRawEvents(spans);
-  }, [events, parentSelected, state.rows, state.selected]);
+  }, [events, atRoot, parentSelected, state.rows, state.selected]);
   const minimapSelection = reactExports.useMemo(
     () => computeMinimapSelection(state.rows, state.selected),
     [state.rows, state.selected]

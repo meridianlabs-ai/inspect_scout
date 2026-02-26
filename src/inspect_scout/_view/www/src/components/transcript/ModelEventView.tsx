@@ -88,7 +88,6 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       className={className}
       title={formatTitle(panelTitle, totalUsage, callTime)}
       subTitle={

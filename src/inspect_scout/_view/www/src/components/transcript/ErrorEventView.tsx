@@ -24,7 +24,6 @@ export const ErrorEventView: FC<ErrorEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title="Error"
       className={className}
       subTitle={

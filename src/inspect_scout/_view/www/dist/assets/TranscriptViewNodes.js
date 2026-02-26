@@ -14773,7 +14773,6 @@ const styles$g = {
 };
 const EventPanel = ({
   eventNodeId,
-  depth,
   className: className2,
   title: title2,
   subTitle,
@@ -14782,7 +14781,8 @@ const EventPanel = ({
   children: children2,
   childIds,
   collapsibleContent,
-  collapseControl = "top"
+  collapseControl = "top",
+  muted
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     kTranscriptCollapseScope,
@@ -14907,7 +14907,7 @@ const EventPanel = ({
       className: clsx(
         className2,
         styles$g.card,
-        depth === 0 ? styles$g.root : void 0
+        muted ? styles$g.root : void 0
       ),
       children: [
         titleEl,
@@ -15002,7 +15002,6 @@ const CompactionEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: formatTitle("Compaction" + source, void 0, event.working_start),
       className: className2,
       subTitle: formatDateTime(new Date(event.timestamp)),
@@ -15020,7 +15019,6 @@ const ErrorEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: "Error",
       className: className2,
       subTitle: event.timestamp ? formatDateTime(new Date(event.timestamp)) : void 0,
@@ -15065,7 +15063,6 @@ const InfoEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: "Info" + (event.source ? ": " + event.source : ""),
       className: className2,
       subTitle: event.timestamp ? formatDateTime(new Date(event.timestamp)) : void 0,
@@ -15083,7 +15080,6 @@ const InputEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: "Input",
       className: className2,
       subTitle: event.timestamp ? formatDateTime(new Date(event.timestamp)) : void 0,
@@ -15401,7 +15397,6 @@ const ModelEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       className: className2,
       title: formatTitle(panelTitle, totalUsage, callTime),
       subTitle: event.timestamp ? formatTiming(event.timestamp, event.working_start) : void 0,
@@ -15566,7 +15561,6 @@ const SampleInitEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       className: className2,
       title: "Sample",
       icon: ApplicationIcons.sample,
@@ -15652,7 +15646,6 @@ const SampleLimitEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: title2,
       icon,
       className: className2,
@@ -15681,7 +15674,6 @@ const SandboxEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       className: className2,
       title: `Sandbox: ${event.action}`,
       icon: ApplicationIcons.sandbox,
@@ -15786,7 +15778,6 @@ const ScoreEditEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: "Edit Score",
       className: clsx(className2, "text-size-small"),
       subTitle: subtitle,
@@ -15876,7 +15867,6 @@ const ScoreEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: (event.intermediate ? "Intermediate " : "") + "Score",
       className: clsx(className2, "text-size-small"),
       subTitle: event.timestamp ? formatDateTime(new Date(event.timestamp)) : void 0,
@@ -15927,7 +15917,7 @@ const SpanEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
+      muted: true,
       childIds,
       className: clsx("transcript-span", className2),
       title: title2,
@@ -24085,7 +24075,6 @@ const StateEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: title2,
       className: className2,
       subTitle: event.timestamp ? formatDateTime(new Date(event.timestamp)) : void 0,
@@ -24321,7 +24310,7 @@ const StepEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
+      muted: true,
       childIds: children2.map((child) => child.id),
       className: clsx("transcript-step", className2),
       title: title2,
@@ -24469,7 +24458,6 @@ const SubtaskEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       className: className2,
       title: formatTitle(
         `${type}: ${event.name}`,
@@ -24547,7 +24535,6 @@ const ToolEventView = ({
     EventPanel,
     {
       eventNodeId: eventNode.id,
-      depth: eventNode.depth,
       title: formatTitle(title2, void 0, event.working_time),
       className: className2,
       subTitle: event.timestamp ? formatTiming(event.timestamp, event.working_start) : void 0,

@@ -59,7 +59,6 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={formatTitle(title, undefined, event.working_time)}
       className={className}
       subTitle={

@@ -21,7 +21,6 @@ import styles from "./EventPanel.module.css";
 
 interface EventPanelProps {
   eventNodeId: string;
-  depth: number;
   className?: string | string[];
   title?: string;
   subTitle?: string;
@@ -31,6 +30,8 @@ interface EventPanelProps {
   childIds?: string[];
   collapsibleContent?: boolean;
   collapseControl?: "top" | "bottom";
+  /** Use the muted background style (for span/step collapsible regions). */
+  muted?: boolean;
 }
 
 interface ChildProps {
@@ -42,7 +43,6 @@ interface ChildProps {
  */
 export const EventPanel: FC<EventPanelProps> = ({
   eventNodeId,
-  depth,
   className,
   title,
   subTitle,
@@ -52,6 +52,7 @@ export const EventPanel: FC<EventPanelProps> = ({
   childIds,
   collapsibleContent,
   collapseControl = "top",
+  muted,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     kTranscriptCollapseScope,
@@ -209,7 +210,7 @@ export const EventPanel: FC<EventPanelProps> = ({
       className={clsx(
         className,
         styles.card,
-        depth === 0 ? styles.root : undefined
+        muted ? styles.root : undefined
       )}
     >
       {titleEl}

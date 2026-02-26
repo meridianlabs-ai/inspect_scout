@@ -34,7 +34,7 @@ export const SpanEventView: FC<SpanEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
+      muted
       childIds={childIds}
       className={clsx("transcript-span", className)}
       title={title}

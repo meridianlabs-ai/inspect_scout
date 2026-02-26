@@ -74,7 +74,6 @@ export const StateEventView: FC<StateEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={title}
       className={className}
       subTitle={

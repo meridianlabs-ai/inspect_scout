@@ -37,7 +37,6 @@ export const CompactionEventView: FC<CompactionEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={formatTitle("Compaction" + source, undefined, event.working_start)}
       className={className}
       subTitle={formatDateTime(new Date(event.timestamp))}

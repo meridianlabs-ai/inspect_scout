@@ -16,7 +16,6 @@ import { ScanInfo } from "./info/ScanInfo";
 import { DataframeGridApiProvider } from "./scanners/dataframe/DataframeGridApiContext";
 import { ScannerDataframeClearFiltersButton } from "./scanners/dataframe/ScannerDataframeClearFiltersButton";
 import { ScannerDataframeColumnsPopover } from "./scanners/dataframe/ScannerDataframeColumnsPopover";
-import { ScannerDataframeCopyLinkButton } from "./scanners/dataframe/ScannerDataframeCopyLinkButton";
 import {
   ScannerDataframeCopyCSVButton,
   ScannerDataframeDownloadCSVButton,
@@ -169,9 +168,6 @@ export const ScanPanelBody: React.FC<{ selectedScan: Status }> = ({
       );
       tools.push(
         <ScannerDataframeDownloadCSVButton key="scan-dataframe-download-csv" />
-      );
-      tools.push(
-        <ScannerDataframeCopyLinkButton key="scan-dataframe-copy-link" />
       );
       tools.push(
         <ScannerDataframeWrapTextButton key="scan-dataframe-wrap-text" />

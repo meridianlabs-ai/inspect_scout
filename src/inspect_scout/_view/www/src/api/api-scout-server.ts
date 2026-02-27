@@ -24,7 +24,7 @@ import {
 import { encodeBase64Url } from "../utils/base64url";
 import { asyncJsonParse } from "../utils/json-worker";
 
-import { ScoutApiV2, ScalarValue, TopicVersions } from "./api";
+import { NoPersistence, ScoutApiV2, ScalarValue, TopicVersions } from "./api";
 import { resolveAttachments } from "./attachmentsHelpers";
 import { serverRequestApi } from "./request";
 
@@ -397,7 +397,7 @@ export const apiScoutServer = (
       disableSSE
         ? connectTopicUpdatesViaPolling(apiBaseUrl, onUpdate, customFetch)
         : connectTopicUpdatesViaSSE(apiBaseUrl, onUpdate),
-    storage: localStorage,
+    storage: NoPersistence,
   };
 };
 

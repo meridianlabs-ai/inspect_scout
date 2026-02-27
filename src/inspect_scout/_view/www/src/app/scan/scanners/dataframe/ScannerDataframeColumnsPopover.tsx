@@ -4,7 +4,11 @@ import { useSearchParams } from "react-router-dom";
 
 import { PopOver } from "../../../../components/PopOver";
 import { getColumnsParam, updateColumnsParam } from "../../../../router/url";
-import { ColumnPreset, useStore } from "../../../../state/store";
+import { useStore } from "../../../../state/store";
+import {
+  ColumnPreset,
+  useUserSettings,
+} from "../../../../state/userSettings";
 
 import { defaultColumns } from "./../types";
 import styles from "./ScannerDataframeColumnsPopover.module.css";
@@ -217,9 +221,9 @@ const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
   }, [filtered, isDefault, setSearchParams]);
 };
 
-const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
-  const presets = useStore((state) => state.dataframeColumnPresets) ?? [];
-  const setPresets = useStore((state) => state.setDataframeColumnPresets);
+const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
+  const presets = useUserSettings((s) => s.dataframeColumnPresets);
+  const setPresets = useUserSettings((s) => s.setDataframeColumnPresets);
   const setFilteredColumns = useStore(
     (state) => state.setDataframeFilterColumns
   );
@@ -242,7 +246,8 @@ const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
     setIsSaving(false);
   };
 
-  const handleDelete = (index: number) => {
+  const handleDelete = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     setPresets(presets.filter((_, i) => i !== index));
   };
 
@@ -250,28 +255,43 @@ const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
     setFilteredColumns(preset.columns);
   };
 
+  if (presets.length === 0 && !isSaving) {
+    return (
+      <>
+        |
+        <a className={styles.link} onClick={() => setIsSaving(true)}>
+          Save current...
+        </a>
+      </>
+    );
+  }
+
   return (
-    <div className={styles.presets}>
+    <>
       {presets.map((preset, index) => (
-        <div key={index} className={styles.presetItem}>
-          <a
-            className={styles.presetLink}
-            onClick={() => handleLoad(preset)}
-            title={`Load "${preset.name}" (${preset.columns.length} columns)`}
-          >
-            {preset.name}
-          </a>
-          <button
-            className={styles.presetDelete}
-            onClick={() => handleDelete(index)}
-            title={`Delete "${preset.name}"`}
-          >
-            &times;
-          </button>
-        </div>
+        <span key={index}>
+          |
+          <span className={styles.presetItem}>
+            <a
+              className={styles.link}
+              onClick={() => handleLoad(preset)}
+              title={`Load "${preset.name}" (${preset.columns.length} columns)`}
+            >
+              {preset.name}
+            </a>
+            <button
+              className={styles.presetDelete}
+              onClick={(e) => handleDelete(index, e)}
+              title={`Delete "${preset.name}"`}
+            >
+              <i className="bi bi-x-circle" />
+            </button>
+          </span>
+        </span>
       ))}
+      |
       {isSaving ? (
-        <div className={styles.presetSaveRow}>
+        <span className={styles.presetSaveRow}>
           <input
             ref={inputRef}
             className={styles.presetInput}
@@ -287,11 +307,11 @@ const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
               }
             }}
           />
-          <a className={styles.presetLink} onClick={handleSave}>
+          <a className={styles.link} onClick={handleSave}>
             Save
           </a>
           <a
-            className={styles.presetLink}
+            className={styles.link}
             onClick={() => {
               setIsSaving(false);
               setPresetName("");
@@ -299,13 +319,13 @@ const PresetSection: FC<{ filtered: string[] }> = ({ filtered }) => {
           >
             Cancel
           </a>
-        </div>
+        </span>
       ) : (
-        <a className={styles.presetLink} onClick={() => setIsSaving(true)}>
+        <a className={styles.link} onClick={() => setIsSaving(true)}>
           Save current...
         </a>
       )}
-    </div>
+    </>
   );
 };
 
@@ -358,9 +378,8 @@ export const ScannerDataframeColumnsPopover: FC<
         >
           All
         </a>
+        <InlinePresets filtered={filtered} />
       </div>
-
-      <PresetSection filtered={filtered} />
 
       <div className={clsx(styles.grid, "text-size-smaller")}>
         {arrangedColumns(3).map((columnGroup, colIndex) => {

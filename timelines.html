@@ -463,13 +463,13 @@ Tip
 <h2 class="anchored" data-anchor-id="data-model">Timeline Data Model</h2>
 <section id="building-a-timeline" class="level3">
 <h3 class="anchored" data-anchor-id="building-a-timeline">Building a Timeline</h3>
-<p>Call <code>build_timeline(events)</code> to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when <code>timeline=True</code> — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span> objects), and utility agents (single-turn helpers with different system prompts).</p>
+<p>Call <code>timeline_build(events)</code> to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when <code>timeline=True</code> — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become <code>TimelineBranch</code> objects), and utility agents (single-turn helpers with different system prompts).</p>
 </section>
 <section id="timeline-data-types" class="level3">
 <h3 class="anchored" data-anchor-id="timeline-data-types">Timeline Data Types</h3>
 <p>The timeline is composed of four types that form a recursive tree:</p>
 <section id="timeline" class="level4">
-<h4 class="anchored" data-anchor-id="timeline"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timeline">Timeline</a></span></h4>
+<h4 class="anchored" data-anchor-id="timeline"><code>Timeline</code></h4>
 <p>The root container for a timeline view.</p>
 <table class="caption-top table">
 <thead>
@@ -492,14 +492,14 @@ Tip
 </tr>
 <tr class="odd">
 <td><code>root</code></td>
-<td><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span></td>
+<td><code>TimelineSpan</code></td>
 <td>Root span containing all content</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="timelinespan" class="level4">
-<h4 class="anchored" data-anchor-id="timelinespan"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span></h4>
+<h4 class="anchored" data-anchor-id="timelinespan"><code>TimelineSpan</code></h4>
 <p>An execution span representing an agent, tool, scorer, or other invocation.</p>
 <table class="caption-top table">
 <colgroup>
@@ -555,7 +555,7 @@ Tip
 <p>Properties: <code>start_time</code>, <code>end_time</code>, <code>total_tokens</code>.</p>
 </section>
 <section id="timelineevent" class="level4">
-<h4 class="anchored" data-anchor-id="timelineevent"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span></h4>
+<h4 class="anchored" data-anchor-id="timelineevent"><code>TimelineEvent</code></h4>
 <p>Wraps a single <code>Event</code> from the transcript.</p>
 <table class="caption-top table">
 <colgroup>
@@ -581,7 +581,7 @@ Tip
 <p>Properties: <code>start_time</code>, <code>end_time</code>, <code>total_tokens</code>.</p>
 </section>
 <section id="timelinebranch" class="level4">
-<h4 class="anchored" data-anchor-id="timelinebranch"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span></h4>
+<h4 class="anchored" data-anchor-id="timelinebranch"><code>TimelineBranch</code></h4>
 <p>A discarded alternative path from a branch point (re-rolled attempt).</p>
 <table class="caption-top table">
 <colgroup>
@@ -613,26 +613,26 @@ Tip
 </section>
 <section id="nesting-structure" class="level4">
 <h4 class="anchored" data-anchor-id="nesting-structure">Nesting Structure</h4>
-<p>The tree nests as: <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timeline">Timeline</a></span> → root <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span> → <code>content</code> (a mix of <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span> and child <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinespan">TimelineSpan</a></span> nodes). Each span can also have <code>branches</code> containing <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinebranch">TimelineBranch</a></span> objects that capture discarded retries.</p>
+<p>The tree nests as: <code>Timeline</code> → root <code>TimelineSpan</code> → <code>content</code> (a mix of <code>TimelineEvent</code> and child <code>TimelineSpan</code> nodes). Each span can also have <code>branches</code> containing <code>TimelineBranch</code> objects that capture discarded retries.</p>
 </section>
 </section>
 </section>
 <section id="filtering" class="level2">
 <h2 class="anchored" data-anchor-id="filtering">Filtering Timelines</h2>
-<p>Use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#filter_timeline">filter_timeline()</a></span> to create a new timeline containing only spans that match a predicate:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> build_timeline, filter_timeline</span>
+<p>Use <code>timeline_filter()</code> to create a new timeline containing only spans that match a predicate:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_ai.event <span class="im">import</span> timeline_build, timeline_filter</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>timeline <span class="op">=</span> build_timeline(events)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>timeline <span class="op">=</span> timeline_build(events)</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Keep only agent spans</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>agents_only <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">==</span> <span class="st">"agent"</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>agents_only <span class="op">=</span> timeline_filter(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">==</span> <span class="st">"agent"</span>)</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude scorer spans</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>no_scorers <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">!=</span> <span class="st">"scorers"</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>no_scorers <span class="op">=</span> timeline_filter(timeline, <span class="kw">lambda</span> s: s.span_type <span class="op">!=</span> <span class="st">"scorers"</span>)</span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude utility agents (single-turn helpers)</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>no_utility <span class="op">=</span> filter_timeline(timeline, <span class="kw">lambda</span> s: <span class="kw">not</span> s.utility)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The filter recursively walks the span tree, pruning non-matching spans and their subtrees. <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelineevent">TimelineEvent</a></span> items are always kept (they belong to the parent span). This is useful for pre-filtering a timeline before programmatic analysis.</p>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>no_utility <span class="op">=</span> timeline_filter(timeline, <span class="kw">lambda</span> s: <span class="kw">not</span> s.utility)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The filter recursively walks the span tree, pruning non-matching spans and their subtrees. <code>TimelineEvent</code> items are always kept (they belong to the parent span). This is useful for pre-filtering a timeline before programmatic analysis.</p>
 
 
 </section>

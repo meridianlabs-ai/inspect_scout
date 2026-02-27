@@ -9,9 +9,9 @@ where your transcript data lives and how it is managed:
 1.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
     eval log files.
 
-2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith), and
-    [Logfire](#logfire): Read transcript data from LLM observability
-    platforms.
+2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith),
+    [Logfire](#logfire), and [W&B Weave](#wb-weave): Read transcript
+    data from LLM observability platforms.
 
 3.  [Claude Code](#claude-code): Read transcript data from local Claude
     Code sessions.
@@ -184,6 +184,74 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 > Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
 > Logfire. You can create a read token from [Logfire Settings \> Read
 > Tokens](https://logfire.pydantic.dev/).
+
+## W&B Weave
+
+> [!NOTE]
+>
+> The W&B Weave import source described below is available only in the
+> development version of Inspect Scout. Install the development version
+> from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+[W&B Weave](https://wandb.ai/site/weave) is Weights & Biases’ tracing
+and evaluation framework for LLM applications. Scout can import
+transcripts from Weave traces, supporting:
+
+- OpenAI API calls
+- Anthropic API calls
+- Google/Gemini API calls
+- Custom instrumented code (via Weave ops)
+
+Use the `weave()` transcript source to import traces from a Weave
+project. The `project` parameter should be in `"entity/project"` format:
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import weave
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(weave(
+        project="my-team/my-project",
+    ))
+```
+
+You can filter traces by time range, apply call filters, or limit the
+number of transcripts:
+
+``` python
+from datetime import datetime
+
+# Filter by time range
+await db.insert(weave(
+    project="my-team/my-project",
+    from_time=datetime(2025, 1, 1),
+    to_time=datetime(2025, 6, 30),
+))
+
+# Apply call filters
+await db.insert(weave(
+    project="my-team/my-project",
+    filter={"op_name": "my_agent"},
+))
+
+# Limit number of transcripts
+await db.insert(weave(
+    project="my-team/my-project",
+    limit=100,
+))
+```
+
+> [!NOTE]
+>
+> ### Authentication
+>
+> Set the `WANDB_API_KEY` environment variable to authenticate with W&B.
+> You can create an API key from [W&B
+> Settings](https://wandb.ai/settings).
 
 ## Claude Code
 
@@ -478,6 +546,7 @@ for importing transcripts from any registered source. For example:
 scout import claude_code
 scout import phoenix -P project=my-project
 scout import langsmith -P project=my-project --limit 100
+scout import weave -P project=my-team/my-project
 ```
 
 Use `scout import --sources` to list available sources and their

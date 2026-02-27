@@ -579,6 +579,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">timeline_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
  <span class="menu-text">segment_messages</span></a>
   </div>
@@ -597,50 +603,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#build_timeline" class="sidebar-item-text sidebar-link">
- <span class="menu-text">build_timeline</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#filter_timeline" class="sidebar-item-text sidebar-link">
- <span class="menu-text">filter_timeline</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">timeline_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timeline" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Timeline</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timelinebranch" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TimelineBranch</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timelineevent" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TimelineEvent</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
  <span class="menu-text">TimelineMessages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timelinespan" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TimelineSpan</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -883,6 +847,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/sources.html#weave" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">weave</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/sources.html#claude_code" class="sidebar-item-text sidebar-link">
  <span class="menu-text">claude_code</span></a>
   </div>
@@ -1073,7 +1043,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanner-1">Scanner</h3>
 <p>Scan transcript content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/scanner.py#L81">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/scanner.py#L81">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Scanner(Protocol[T]):</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__call__</span>(<span class="va">self</span>, <span class="bu">input</span>: T, <span class="op">/</span>) <span class="op">-&gt;</span> Awaitable[Result <span class="op">|</span> <span class="bu">list</span>[Result]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1088,7 +1058,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scannerinput">ScannerInput</h3>
 <p>Union of all valid scanner input types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/types.py#L12">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/types.py#L12">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ScannerInput <span class="op">=</span> Union[</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Transcript,</span>
@@ -1104,7 +1074,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="result">Result</h3>
 <p>Scan result.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/result.py#L31">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/result.py#L31">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Result(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1149,7 +1119,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="reference">Reference</h3>
 <p>Reference to scanned content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/result.py#L15">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/result.py#L15">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Reference(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1175,7 +1145,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="error">Error</h3>
 <p>Scan error (runtime error which occurred during scan).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/result.py#L63">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/result.py#L63">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Error(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1208,7 +1178,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="loader">Loader</h3>
 <p>Load transcript data.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/loader.py#L48">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/loader.py#L48">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Loader(Protocol[TLoaderResult]):</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__call__</span>(</span>
@@ -1231,7 +1201,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.</p>
 <p>Messages are extracted via <span class="element-type-name ref-interlink"><a href="../reference/transcript.html#transcript_messages">transcript_messages()</a></span>, which automatically selects the best strategy (timelines → events → raw messages) and respects context window limits. Each segment is scanned independently with globally unique message numbering (<code>[M1]</code>, <code>[M2]</code>, …) across all segments.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> llm_scanner(</span>
@@ -1323,7 +1293,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scans transcript messages and events for text patterns using grep-style matching. By default, patterns are treated as literal strings (like grep without -E). Set <code>regex=True</code> to treat patterns as regular expressions.</p>
 <p>What gets searched depends on what’s populated in the transcript: - Messages are searched if <code>transcript.messages</code> is populated - Events are searched if <code>transcript.events</code> is populated - Control population via <code>@scanner(messages=..., events=...)</code></p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> grep_scanner(</span>
@@ -1388,7 +1358,7 @@ Note
 <p>Returns two functions that share a closure-captured counter and id_map. Each call to the returned messages_as_str auto-increments message IDs globally, so multiple calls produce M1..M5, then M6..M10, etc.</p>
 <p>The returned extract_references resolves citations from ANY prior messages_as_str call within this numbering scope.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/extract.py#L143">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/extract.py#L143">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> message_numbering(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    preprocessor: MessagesPreprocessor[<span class="bu">list</span>[ChatMessage]] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -1406,7 +1376,7 @@ Note
 <p>Combines the transcript messages, question, and answer type into a complete prompt using the standard scanner template. Use this when you want the default prompt structure but need control over generation (via <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#generate_answer">generate_answer()</a></span>) or other scanning steps.</p>
 <p>For fully custom prompt templates, use <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answer_type">answer_type()</a></span> to access the <code>.prompt</code> and <code>.format</code> strings directly.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/generate.py#L163">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/generate.py#L163">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scanner_prompt(</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    messages: <span class="bu">str</span>,</span>
@@ -1433,7 +1403,7 @@ Note
 <p>Generate a model response, optionally parsing it into a Result.</p>
 <p>Dispatches to the appropriate generation strategy based on the answer type: tool-based structured generation for :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answerstructured">AnswerStructured</a></span>, standard text generation with refusal retry for all other types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/generate.py#L81">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/generate.py#L81">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> generate_answer(</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    prompt: <span class="bu">str</span> <span class="op">|</span> <span class="bu">list</span>[ChatMessage],</span>
@@ -1481,7 +1451,7 @@ Note
 <p>Parse a model output into a Result using the answer specification.</p>
 <p>Delegates to the answer type’s parsing logic. This is a pure function — no LLM call is made.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/generate.py#L30">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/generate.py#L30">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> parse_answer(</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    output: ModelOutput,</span>
@@ -1513,7 +1483,7 @@ Note
 <p>Standard reducers for aggregating multi-segment scan results.</p>
 <p>Each static method is an async reducer with signature <code>(list[Result]) -&gt; Result</code>. The :meth:<code>llm</code> factory returns a reducer that uses an LLM to synthesize results.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L77">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L77">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ResultReducer</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
@@ -1523,7 +1493,7 @@ Note
 <dd>
 <p>Arithmetic mean of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L85">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L85">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> mean(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1538,7 +1508,7 @@ Note
 <dd>
 <p>Median of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L94">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L94">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> median(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1553,7 +1523,7 @@ Note
 <dd>
 <p>Mode (most common) of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L103">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L103">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> mode(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1568,7 +1538,7 @@ Note
 <dd>
 <p>Maximum of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L112">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L112">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">max</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1583,7 +1553,7 @@ Note
 <dd>
 <p>Minimum of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L121">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L121">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">min</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1598,7 +1568,7 @@ Note
 <dd>
 <p>Boolean OR — True if any result is True.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L130">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L130">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">any</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1613,7 +1583,7 @@ Note
 <dd>
 <p>Union of list values, deduplicated, preserving order.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L137">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L137">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> union(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1629,7 +1599,7 @@ Note
 <p>Most common value, with last-result tiebreaker.</p>
 <p>Counts occurrences of each <code>value</code> across results. If there is a unique winner it is used; otherwise the last result’s value breaks the tie. The <code>answer</code> is taken from the matching result.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L152">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L152">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> majority(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1644,7 +1614,7 @@ Note
 <dd>
 <p>Return the last result with merged auxiliary fields.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L187">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L187">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> last(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1660,7 +1630,7 @@ Note
 <p>Factory that returns an LLM-based reducer.</p>
 <p>The returned reducer formats all segment results into a prompt and asks the model to synthesize the best answer.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/_reducer.py#L197">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/_reducer.py#L197">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> llm(</span>
@@ -1685,7 +1655,7 @@ Note
 <h3 class="anchored" data-anchor-id="answer">Answer</h3>
 <p>Protocol for LLM scanner answer types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/answer.py#L65">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/answer.py#L65">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="at">@runtime_checkable</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Answer(Protocol)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1709,7 +1679,7 @@ Note
 <dd>
 <p>Extract and return the result from model output.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/answer.py#L79">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/answer.py#L79">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> result_for_answer(</span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
@@ -1740,7 +1710,7 @@ Note
 <p>Resolve an answer specification into an Answer object.</p>
 <p>The returned object exposes <code>.prompt</code> and <code>.format</code> properties containing the prompt text and format instructions for the answer type.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/answer.py#L112">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/answer.py#L112">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> answer_type(</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    answer: Literal[<span class="st">"boolean"</span>, <span class="st">"numeric"</span>, <span class="st">"string"</span>]</span>
@@ -1760,7 +1730,7 @@ Note
 <p>Specification of the answer format for an LLM scanner.</p>
 <p>Pass <code>"boolean"</code>, <code>"numeric"</code>, or <code>"string"</code> for a simple answer; pass <code>list[str]</code> for a set of labels; pass :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answermultilabel">AnswerMultiLabel</a></span> for multi-classification; or pass :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answerstructured">AnswerStructured</a></span> for tool-based structured output.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/types.py#L49">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/types.py#L49">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>AnswerSpec: TypeAlias <span class="op">=</span> (</span>
 <span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    Literal[<span class="st">"boolean"</span>, <span class="st">"numeric"</span>, <span class="st">"string"</span>]</span>
@@ -1773,7 +1743,7 @@ Note
 <h3 class="anchored" data-anchor-id="answermultilabel">AnswerMultiLabel</h3>
 <p>Label descriptions for LLM scanner multi-classification.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/types.py#L6">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/types.py#L6">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AnswerMultiLabel(NamedTuple)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1792,7 +1762,7 @@ Note
 <p>Answer with structured output.</p>
 <p>Structured answers are objects that conform to a JSON Schema.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_llm_scanner/types.py#L16">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_llm_scanner/types.py#L16">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AnswerStructured(NamedTuple)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1831,7 +1801,7 @@ Note
 <h3 class="anchored" data-anchor-id="messages_as_str">messages_as_str</h3>
 <p>Concatenate list of chat messages into a string.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/extract.py#L75">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/extract.py#L75">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> messages_as_str(</span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">input</span>: T,</span>
@@ -1864,7 +1834,7 @@ Note
 <p>Message formatting options for controlling message content display.</p>
 <p>These options control which parts of messages are included when formatting messages to strings.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/extract.py#L22">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/extract.py#L22">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MessageFormatOptions</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1892,7 +1862,7 @@ Note
 <p>Provide a <code>transform</code> function for fully custom transformations. Use the higher-level options (e.g.&nbsp;<code>exclude_system</code>) to perform various common content removal transformations.</p>
 <p>The default <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> will exclude system messages and do no other transformations.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/extract.py#L40">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/extract.py#L40">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MessagesPreprocessor(MessageFormatOptions, Generic[T])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1923,7 +1893,7 @@ Note
 <p>Build a mapping from tool_call_id to the assistant message that made the call.</p>
 <p>This is useful for scanners that need to reference the assistant message that initiated a tool call, rather than the tool message itself.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/extract.py#L331">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/extract.py#L331">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> tool_callers(</span>
 <span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>    transcript: Transcript,</span>
@@ -1942,7 +1912,7 @@ Note
 <h3 class="anchored" data-anchor-id="messagetype">MessageType</h3>
 <p>Message types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_transcript/types.py#L16">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_transcript/types.py#L16">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>MessageType <span class="op">=</span> Literal[<span class="st">"system"</span>, <span class="st">"user"</span>, <span class="st">"assistant"</span>, <span class="st">"tool"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -1950,7 +1920,7 @@ Note
 <h3 class="anchored" data-anchor-id="eventtype">EventType</h3>
 <p>Event types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_transcript/types.py#L47">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_transcript/types.py#L47">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>EventType <span class="op">=</span> Literal[</span>
 <span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"model"</span>,</span>
@@ -1971,7 +1941,7 @@ Note
 <p>Content filters for transcript loading.</p>
 <p>Specifies which messages, events, and timeline data to include when loading transcript content for scanning.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_transcript/types.py#L71">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_transcript/types.py#L71">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptContent</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1997,7 +1967,7 @@ Note
 <h3 class="anchored" data-anchor-id="refusalerror">RefusalError</h3>
 <p>Error indicating that the model refused a scan request.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_util/refusal.py#L7">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_util/refusal.py#L7">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> RefusalError(<span class="pp">RuntimeError</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -2008,7 +1978,7 @@ Note
 <h3 class="anchored" data-anchor-id="scanner-2">scanner</h3>
 <p>Decorator for registering scanners.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/scanner.py#L230">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/scanner.py#L230">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scanner(</span>
 <span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>    factory: ScannerFactory[P, T] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -2068,7 +2038,7 @@ Note
 <h3 class="anchored" data-anchor-id="loader-1">loader</h3>
 <p>Decorator for registering loaders.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/loader.py#L151">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/loader.py#L151">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> loader(</span>
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
@@ -2105,7 +2075,7 @@ Note
 <h3 class="anchored" data-anchor-id="as_scorer">as_scorer</h3>
 <p>Convert a <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#scanner">Scanner</a></span> to an Inspect <code>Scorer</code>.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/99d24734ac9738ea7ae077f0af0140edb19265a8/src/inspect_scout/_scanner/scorer.py#L27">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/cd331a8f1d1dcf57d42d14df5c7627b7453bd306/src/inspect_scout/_scanner/scorer.py#L27">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> as_scorer(</span>
 <span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>    scanner: Scanner[Transcript],</span>

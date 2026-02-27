@@ -250,9 +250,12 @@ ul.task-list li input[type="checkbox"] {
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner_prompt">scanner_prompt()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#parse_answer">parse_answer()</a></span> functions for building custom scanners with fine-grained control.</li>
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#resultreducer">ResultReducer</a></span> for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.</li>
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> functions for extracting and segmenting transcript messages.</li>
-<li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#claude_code">claude_code()</a></span> transcript source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.</li>
+<li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#claude_code">claude_code()</a></span> source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.</li>
 <li>CLI: <code>scout import</code> command for importing transcripts from registered sources into Scout projects.</li>
 <li>Multiprocessing: Improve handling of model instances with multiprocessing serialization.</li>
+<li>Transcripts: unthin <code>target</code> and and add <code>scores</code> from sample JSON.</li>
+<li>Scout View: Properly sort scanner results using the value type.</li>
+<li>Bugfix: Fix early-exit bug the failed to unthin <code>sample_metadata</code></li>
 </ul>
 </section>
 <section id="february-2026" class="level2">

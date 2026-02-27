@@ -1031,7 +1031,7 @@ Note
 </tbody>
 </table>
 <p>You can override the reducer with a custom function or use <code>ResultReducer.llm()</code> for LLM-based synthesis of multi-segment results.</p>
-<p>Note that if you have a structured scanner that returns a <code>list[BaseModel]</code> then those results will be automatically combined so there is no need to define a reducer.</p>
+<p>Note that if you have a structured scanner that returns a <code>list[BaseModel]</code> then those results will be auto‑combined via union so there is no need to specify a reducer.</p>
 <p>Use the <code>context_window</code> option of <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> to set a custom threshold (again, the default is 80% of available context).</p>
 </section>
 <section id="compaction" class="level3">

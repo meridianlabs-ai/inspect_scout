@@ -5,10 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { PopOver } from "../../../../components/PopOver";
 import { getColumnsParam, updateColumnsParam } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
-import {
-  ColumnPreset,
-  useUserSettings,
-} from "../../../../state/userSettings";
+import { ColumnPreset, useUserSettings } from "../../../../state/userSettings";
 
 import { defaultColumns } from "./../types";
 import styles from "./ScannerDataframeColumnsPopover.module.css";

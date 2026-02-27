@@ -1,6 +1,5 @@
 ## Unreleased
 
-- Internal: Remove duplicated async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) and import from `inspect_ai` instead.
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
 - Scanner Tools: `message_numbering()`, `scanner_prompt()`, `generate_answer()`, and `parse_answer()` functions for building custom scanners with fine-grained control.
 - Scanner Tools: `ResultReducer` for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
@@ -10,6 +9,7 @@
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
 - Transcripts: unthin `target` and and add `scores` from sample JSON.
 - Scout View: Properly sort scanner results using the value type.
+- Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
 - Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 - Bugfix: (cherry-pick inspect_ai#3260) Fix async ZIP parser crash on valid `.eval` files whose compressed data contained a false ZIP64 EOCD Locator signature.
 

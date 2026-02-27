@@ -2000,6 +2000,11 @@ export interface components {
          * @description Model call (raw request/response data).
          */
         ModelCall: {
+            /**
+             * Error
+             * @default null
+             */
+            error: boolean | null;
             /** Request */
             request: {
                 [key: string]: components["schemas"]["JsonValue"];

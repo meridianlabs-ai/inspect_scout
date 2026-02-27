@@ -42,7 +42,7 @@ export const eventSearchText = (node: EventNode): string[] => {
           (match, key: string) =>
             Object.hasOwn(toolEvent.arguments, key)
               ? String(toolEvent.arguments[key])
-              : match,
+              : match
         );
         texts.push(resolvedTitle);
       }

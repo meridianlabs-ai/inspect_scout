@@ -13169,7 +13169,10 @@ const ChatMessageRow = ({
               description: description2,
               contentType,
               output: resolvedToolOutput,
-              view: tool_call.view ? substituteToolCallContent(tool_call.view, tool_call.arguments) : void 0
+              view: tool_call.view ? substituteToolCallContent(
+                tool_call.view,
+                tool_call.arguments
+              ) : void 0
             },
             `tool-call-${idx}`
           )

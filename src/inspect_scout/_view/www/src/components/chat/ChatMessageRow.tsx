@@ -120,9 +120,14 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
             description={description}
             contentType={contentType}
             output={resolvedToolOutput}
-            view={tool_call.view
-              ? substituteToolCallContent(tool_call.view, tool_call.arguments as Record<string, unknown>)
-              : undefined}
+            view={
+              tool_call.view
+                ? substituteToolCallContent(
+                    tool_call.view,
+                    tool_call.arguments as Record<string, unknown>
+                  )
+                : undefined
+            }
           />
         );
       }

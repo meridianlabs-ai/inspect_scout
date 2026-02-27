@@ -42,6 +42,8 @@ interface TranscriptOutlineProps {
   onHasNodesChange?: (hasNodes: boolean) => void;
   /** Reports the ideal width (in px) for the outline column. */
   onWidthChange?: (width: number) => void;
+  /** Called when user clicks an outline item but URL-based navigation is unavailable. */
+  onNavigateToEvent?: (eventId: string) => void;
 }
 
 // hack: add a padding node to the end of the list so
@@ -73,6 +75,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   style,
   onHasNodesChange,
   onWidthChange,
+  onNavigateToEvent,
 }) => {
   const id = "transcript-tree";
   // The virtual list handle and state
@@ -254,6 +257,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
             }
             getEventUrl={getEventUrl}
             onSelect={setSelectedOutlineId}
+            onNavigateToEvent={onNavigateToEvent}
           />
         );
       }
@@ -264,6 +268,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       selectedOutlineId,
       getEventUrl,
       setSelectedOutlineId,
+      onNavigateToEvent,
     ]
   );
 

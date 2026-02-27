@@ -79,18 +79,22 @@
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
-._container_1tjfz_1 {
+._container_193x9_1 {
   height: 100%;
   overflow-y: hidden;
   display: flex;
   flex-direction: column;
 }
 
-._scrollable_1tjfz_8 {
+._scrollable_193x9_8 {
   padding: 0;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+._chatInputContainer_193x9_15 {
+  padding: 0.5rem;
 }
 ._container_19by0_1 {
   display: grid;

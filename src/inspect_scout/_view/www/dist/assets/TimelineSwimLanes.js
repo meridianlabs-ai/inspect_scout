@@ -30,7 +30,8 @@ const OutlineRow = ({
   running,
   selected: selected2,
   getEventUrl,
-  onSelect
+  onSelect,
+  onNavigateToEvent
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -50,7 +51,12 @@ const OutlineRow = ({
       ),
       style: { paddingLeft: `${node.depth * 0.4}em` },
       "data-unsearchable": true,
-      onClick: () => onSelect?.(node.id),
+      onClick: () => {
+        onSelect?.(node.id);
+        if (!eventUrl) {
+          onNavigateToEvent?.(node.id);
+        }
+      },
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
@@ -394,7 +400,8 @@ const TranscriptOutline = ({
   scrollRef,
   style,
   onHasNodesChange,
-  onWidthChange
+  onWidthChange,
+  onNavigateToEvent
 }) => {
   const id = "transcript-tree";
   const listHandle = reactExports.useRef(null);
@@ -503,7 +510,8 @@ const TranscriptOutline = ({
             running: running && index === outlineNodeList.length - 1,
             selected: selectedOutlineId ? selectedOutlineId === node.id : index === 0,
             getEventUrl,
-            onSelect: setSelectedOutlineId
+            onSelect: setSelectedOutlineId,
+            onNavigateToEvent
           },
           node.id
         );
@@ -514,7 +522,8 @@ const TranscriptOutline = ({
       running,
       selectedOutlineId,
       getEventUrl,
-      setSelectedOutlineId
+      setSelectedOutlineId,
+      onNavigateToEvent
     ]
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsx(

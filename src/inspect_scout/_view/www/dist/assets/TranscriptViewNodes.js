@@ -26766,7 +26766,7 @@ const flatTree = (eventNodes, collapsed, visitors, parentNode) => {
   }
   return result2;
 };
-const TranscriptViewNodes = ({
+const TranscriptViewNodes = reactExports.forwardRef(function TranscriptViewNodes2({
   id,
   eventNodes,
   defaultCollapsedIds,
@@ -26775,7 +26775,7 @@ const TranscriptViewNodes = ({
   initialEventId,
   offsetTop = 10,
   className: className2
-}) => {
+}, ref) {
   const listHandle = reactExports.useRef(null);
   const collapsedEvents = useStore((state) => state.transcriptCollapsedEvents);
   const flattenedNodes = reactExports.useMemo(() => {
@@ -26784,6 +26784,21 @@ const TranscriptViewNodes = ({
       (collapsedEvents ? collapsedEvents[kTranscriptCollapseScope] : void 0) || defaultCollapsedIds
     );
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
+  const scrollToEvent = reactExports.useCallback(
+    (eventId) => {
+      const idx = flattenedNodes.findIndex((e) => e.id === eventId);
+      if (idx !== -1 && listHandle.current) {
+        listHandle.current.scrollToIndex({
+          index: idx,
+          align: "start",
+          behavior: "smooth",
+          offset: offsetTop ? -offsetTop : void 0
+        });
+      }
+    },
+    [flattenedNodes, offsetTop]
+  );
+  reactExports.useImperativeHandle(ref, () => ({ scrollToEvent }), [scrollToEvent]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     TranscriptVirtualList,
     {
@@ -26796,7 +26811,7 @@ const TranscriptViewNodes = ({
       initialEventId
     }
   );
-};
+});
 export {
   ANSIDisplay as A,
   TYPE_SCORERS as B,

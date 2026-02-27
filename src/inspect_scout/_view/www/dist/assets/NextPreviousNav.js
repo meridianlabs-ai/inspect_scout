@@ -1674,6 +1674,10 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     sourceSpans
   );
   const hasMatchingEvents = eventNodes.length > 0;
+  const eventsListRef = reactExports.useRef(null);
+  const handleOutlineNavigate = reactExports.useCallback((eventId) => {
+    eventsListRef.current?.scrollToEvent(eventId);
+  }, []);
   reactExports.useEffect(() => {
     if (!initialEventId) {
       scrollRef.current?.scrollTo({ top: 0 });
@@ -1777,7 +1781,8 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
                     defaultCollapsedIds,
                     scrollRef,
                     onHasNodesChange: handleOutlineHasNodesChange,
-                    onWidthChange: setOutlineWidth
+                    onWidthChange: setOutlineWidth,
+                    onNavigateToEvent: handleOutlineNavigate
                   }
                 ),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1799,6 +1804,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
           hasMatchingEvents ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             TranscriptViewNodes,
             {
+              ref: eventsListRef,
               id,
               eventNodes,
               defaultCollapsedIds,

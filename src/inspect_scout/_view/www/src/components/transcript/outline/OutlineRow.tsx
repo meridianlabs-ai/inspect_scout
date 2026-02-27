@@ -20,6 +20,8 @@ export interface OutlineRowProps {
   selected?: boolean;
   getEventUrl?: (eventId: string) => string | undefined;
   onSelect?: (nodeId: string) => void;
+  /** Called when a URL isn't available but the user clicks to navigate to an event. */
+  onNavigateToEvent?: (eventId: string) => void;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -29,6 +31,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   selected,
   getEventUrl,
   onSelect,
+  onNavigateToEvent,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -52,7 +55,12 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         )}
         style={{ paddingLeft: `${node.depth * 0.4}em` }}
         data-unsearchable={true}
-        onClick={() => onSelect?.(node.id)}
+        onClick={() => {
+          onSelect?.(node.id);
+          if (!eventUrl) {
+            onNavigateToEvent?.(node.id);
+          }
+        }}
       >
         <div
           className={clsx(styles.toggle)}

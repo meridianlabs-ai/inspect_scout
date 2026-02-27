@@ -359,11 +359,13 @@ const ColumnHeaderButton = reactExports.forwardRef(({ icon, className, ...rest }
   );
 });
 ColumnHeaderButton.displayName = "ColumnHeaderButton";
-const container$3 = "_container_1tjfz_1";
-const scrollable = "_scrollable_1tjfz_8";
+const container$3 = "_container_193x9_1";
+const scrollable = "_scrollable_193x9_8";
+const chatInputContainer = "_chatInputContainer_193x9_15";
 const styles$5 = {
   container: container$3,
-  scrollable
+  scrollable,
+  chatInputContainer
 };
 const ResultBody = ({
   resultData,
@@ -391,7 +393,7 @@ const ResultBody = ({
       title: "View complete transcript"
     }
   ) : void 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$5.container, children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$5.container, containerClass(inputData)), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(ColumnHeader, { label: "Input", actions: transcriptAction }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: scrollRef, className: clsx(styles$5.scrollable), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       InputRenderer,
@@ -405,6 +407,15 @@ const ResultBody = ({
       }
     ) })
   ] });
+};
+const containerClass = (inputData) => {
+  if (isTranscriptInput(inputData)) {
+    return styles$5.transcriptInputContainer;
+  } else if (isEventsInput(inputData)) {
+    return styles$5.eventsInputContainer;
+  } else {
+    return styles$5.chatInputContainer;
+  }
 };
 const InputRenderer = ({
   resultData,
@@ -443,10 +454,14 @@ const InputRenderer = ({
         }
       );
     } else if (inputData.input.events && inputData.input.events.length > 0) {
-      return renderEventsView(
-        inputData.input.events,
-        scrollRef,
-        initialEventId
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(
+        TimelineEventsView,
+        {
+          events: inputData.input.events,
+          scrollRef,
+          id: "scan-input-events",
+          initialEventId
+        }
       );
     } else {
       return /* @__PURE__ */ jsxRuntimeExports.jsx(NoContentsPanel, { text: "No transcript input available" });
@@ -480,22 +495,29 @@ const InputRenderer = ({
       }
     );
   } else if (isEventsInput(inputData)) {
-    return renderEventsView(inputData.input, scrollRef, initialEventId);
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TimelineEventsView,
+      {
+        events: inputData.input,
+        scrollRef,
+        id: "scan-input-events",
+        initialEventId
+      }
+    );
   } else if (isEventInput(inputData)) {
-    return renderEventsView([inputData.input], scrollRef, initialEventId);
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TimelineEventsView,
+      {
+        events: [inputData.input],
+        scrollRef,
+        id: "scan-input-events",
+        initialEventId
+      }
+    );
   } else {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Unsupported Input Type" });
   }
 };
-const renderEventsView = (events, scrollRef, initialEventId) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-  TimelineEventsView,
-  {
-    events,
-    scrollRef,
-    id: "scan-input-events",
-    initialEventId
-  }
-);
 const container$2 = "_container_19by0_1";
 const styles$4 = {
   container: container$2

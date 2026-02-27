@@ -17,7 +17,10 @@ import { StickyScroll } from "../../../components/StickyScroll";
 import { useEventNodes } from "../../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../../components/transcript/outline/TranscriptOutline";
 import { TimelineSelectContext } from "../../../components/transcript/TimelineSelectContext";
-import { TranscriptViewNodes } from "../../../components/transcript/TranscriptViewNodes";
+import {
+  TranscriptViewNodes,
+  type TranscriptViewNodesHandle,
+} from "../../../components/transcript/TranscriptViewNodes";
 import {
   EventNode,
   kCollapsibleEventTypes,
@@ -204,6 +207,12 @@ export const TimelineEventsView = forwardRef<
   );
   const hasMatchingEvents = eventNodes.length > 0;
 
+  // Ref to the event list for imperative scroll-to-event from outline clicks.
+  const eventsListRef = useRef<TranscriptViewNodesHandle>(null);
+  const handleOutlineNavigate = useCallback((eventId: string) => {
+    eventsListRef.current?.scrollToEvent(eventId);
+  }, []);
+
   // Reset scroll position when the selected events change.
   // Skip when a deep-link is active.
   useEffect(() => {
@@ -334,6 +343,7 @@ export const TimelineEventsView = forwardRef<
                 scrollRef={scrollRef}
                 onHasNodesChange={handleOutlineHasNodesChange}
                 onWidthChange={setOutlineWidth}
+                onNavigateToEvent={handleOutlineNavigate}
               />
             )}
             <button
@@ -358,6 +368,7 @@ export const TimelineEventsView = forwardRef<
           <div className={styles.eventsSeparator} />
           {hasMatchingEvents ? (
             <TranscriptViewNodes
+              ref={eventsListRef}
               id={id}
               eventNodes={eventNodes}
               defaultCollapsedIds={defaultCollapsedIds}

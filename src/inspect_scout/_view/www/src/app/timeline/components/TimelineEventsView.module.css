@@ -1,0 +1,46 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.eventsContainer {
+  display: grid;
+  width: 100%;
+  grid-template-columns: var(--outline-width, 180px) 1px 1fr;
+  min-height: 100vh;
+  padding-bottom: 44px;
+}
+
+.eventsContainer.outlineCollapsed {
+  grid-template-columns: 28px 1px 1fr;
+}
+
+.eventsOutline {
+  padding-left: 0.5rem;
+  padding-top: 0.4rem;
+}
+
+.outlineToggle {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.8em;
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+}
+
+.outlineToggle[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.eventsSeparator {
+  background-color: var(--bs-border-color);
+}
+
+.eventsList {
+  padding-bottom: 1rem;
+}

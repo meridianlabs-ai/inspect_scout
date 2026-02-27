@@ -875,41 +875,40 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_8a9rm_1";
-const pinnedSection = "_pinnedSection_8a9rm_17";
-const scrollSection = "_scrollSection_8a9rm_25";
-const collapsibleSection = "_collapsibleSection_8a9rm_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_8a9rm_53";
-const noAnimation = "_noAnimation_8a9rm_60";
-const swimlaneSticky = "_swimlaneSticky_8a9rm_65";
-const collapsibleInner = "_collapsibleInner_8a9rm_72";
-const collapseToggle = "_collapseToggle_8a9rm_82";
-const row = "_row_8a9rm_110";
-const label = "_label_8a9rm_116";
-const labelChild = "_labelChild_8a9rm_128";
-const labelSelected = "_labelSelected_8a9rm_132";
-const barArea = "_barArea_8a9rm_138";
-const barInner = "_barInner_8a9rm_144";
-const fill = "_fill_8a9rm_150";
-const fillParent = "_fillParent_8a9rm_168";
-const fillSelected = "_fillSelected_8a9rm_172";
-const drillDown = "_drillDown_8a9rm_184";
-const marker = "_marker_8a9rm_209";
-const markerError = "_markerError_8a9rm_229";
-const markerCompaction = "_markerCompaction_8a9rm_250";
-const markerBranch = "_markerBranch_8a9rm_262";
-const branchPopover = "_branchPopover_8a9rm_269";
-const branchEntry = "_branchEntry_8a9rm_275";
-const branchLabel = "_branchLabel_8a9rm_295";
-const branchMeta = "_branchMeta_8a9rm_299";
-const breadcrumbRow = "_breadcrumbRow_8a9rm_311";
-const breadcrumbBack = "_breadcrumbBack_8a9rm_321";
-const breadcrumbGroup = "_breadcrumbGroup_8a9rm_344";
-const breadcrumbLink = "_breadcrumbLink_8a9rm_351";
-const breadcrumbCurrent = "_breadcrumbCurrent_8a9rm_364";
-const breadcrumbSelection = "_breadcrumbSelection_8a9rm_378";
-const breadcrumbDivider = "_breadcrumbDivider_8a9rm_392";
-const tokens = "_tokens_8a9rm_400";
+const swimlane = "_swimlane_12tiy_1";
+const pinnedSection = "_pinnedSection_12tiy_17";
+const scrollSection = "_scrollSection_12tiy_25";
+const collapsibleSection = "_collapsibleSection_12tiy_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_12tiy_53";
+const noAnimation = "_noAnimation_12tiy_60";
+const swimlaneSticky = "_swimlaneSticky_12tiy_65";
+const collapsibleInner = "_collapsibleInner_12tiy_72";
+const collapseToggle = "_collapseToggle_12tiy_82";
+const row = "_row_12tiy_110";
+const label = "_label_12tiy_116";
+const labelChild = "_labelChild_12tiy_128";
+const labelSelected = "_labelSelected_12tiy_132";
+const barArea = "_barArea_12tiy_138";
+const barInner = "_barInner_12tiy_144";
+const fill = "_fill_12tiy_150";
+const fillParent = "_fillParent_12tiy_168";
+const fillSelected = "_fillSelected_12tiy_172";
+const marker = "_marker_12tiy_184";
+const markerError = "_markerError_12tiy_204";
+const markerCompaction = "_markerCompaction_12tiy_225";
+const markerBranch = "_markerBranch_12tiy_237";
+const branchPopover = "_branchPopover_12tiy_244";
+const branchEntry = "_branchEntry_12tiy_250";
+const branchLabel = "_branchLabel_12tiy_270";
+const branchMeta = "_branchMeta_12tiy_274";
+const breadcrumbRow = "_breadcrumbRow_12tiy_286";
+const breadcrumbBack = "_breadcrumbBack_12tiy_296";
+const breadcrumbGroup = "_breadcrumbGroup_12tiy_319";
+const breadcrumbLink = "_breadcrumbLink_12tiy_326";
+const breadcrumbCurrent = "_breadcrumbCurrent_12tiy_339";
+const breadcrumbSelection = "_breadcrumbSelection_12tiy_353";
+const breadcrumbDivider = "_breadcrumbDivider_12tiy_367";
+const tokens = "_tokens_12tiy_375";
 const styles = {
   swimlane,
   pinnedSection,
@@ -929,7 +928,6 @@ const styles = {
   fill,
   fillParent,
   fillSelected,
-  drillDown,
   marker,
   markerError,
   markerCompaction,
@@ -1298,44 +1296,23 @@ const BarFill = ({
     },
     [span.drillable, onDrillDown]
   );
-  const handleChevronClick = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      onDrillDown();
-    },
-    [onDrillDown]
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: clsx(
+        styles.fill,
+        isParent && styles.fillParent,
+        isSelected && styles.fillSelected
+      ),
+      style: {
+        left: `${span.bar.left}%`,
+        width: `${span.bar.width}%`
+      },
+      title: span.description ?? void 0,
+      onClick: handleClick,
+      onDoubleClick: handleDoubleClick
+    }
   );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: clsx(
-          styles.fill,
-          isParent && styles.fillParent,
-          isSelected && styles.fillSelected
-        ),
-        style: {
-          left: `${span.bar.left}%`,
-          width: `${span.bar.width}%`
-        },
-        title: span.description ?? void 0,
-        onClick: handleClick,
-        onDoubleClick: handleDoubleClick
-      }
-    ),
-    span.drillable && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        className: styles.drillDown,
-        style: {
-          left: `${span.bar.left + span.bar.width}%`
-        },
-        onClick: handleChevronClick,
-        title: `Drill down (${span.childCount} sub-agent${span.childCount !== 1 ? "s" : ""})`,
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.chevron.right })
-      }
-    )
-  ] });
 };
 const MarkerGlyph = ({
   marker: marker2,

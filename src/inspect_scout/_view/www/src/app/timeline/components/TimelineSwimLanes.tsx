@@ -38,7 +38,7 @@ interface TimelineSwimLanesProps {
   node: TimelineSpan;
   /** Called when a span is clicked (selection). */
   onSelect: (name: string, spanIndex?: number) => void;
-  /** Called when a span's drill-down chevron or a branch popover entry is clicked. */
+  /** Called when a span is double-clicked or a branch popover entry is clicked. */
   onDrillDown: (name: string, spanIndex?: number) => void;
   /** Called on Escape key (go up). */
   onGoUp: () => void;
@@ -571,43 +571,21 @@ const BarFill: FC<BarFillProps> = ({
     [span.drillable, onDrillDown]
   );
 
-  const handleChevronClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onDrillDown();
-    },
-    [onDrillDown]
-  );
-
   return (
-    <>
-      <div
-        className={clsx(
-          styles.fill,
-          isParent && styles.fillParent,
-          isSelected && styles.fillSelected
-        )}
-        style={{
-          left: `${span.bar.left}%`,
-          width: `${span.bar.width}%`,
-        }}
-        title={span.description ?? undefined}
-        onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
-      />
-      {span.drillable && (
-        <button
-          className={styles.drillDown}
-          style={{
-            left: `${span.bar.left + span.bar.width}%`,
-          }}
-          onClick={handleChevronClick}
-          title={`Drill down (${span.childCount} sub-agent${span.childCount !== 1 ? "s" : ""})`}
-        >
-          <i className={ApplicationIcons.chevron.right} />
-        </button>
+    <div
+      className={clsx(
+        styles.fill,
+        isParent && styles.fillParent,
+        isSelected && styles.fillSelected
       )}
-    </>
+      style={{
+        left: `${span.bar.left}%`,
+        width: `${span.bar.width}%`,
+      }}
+      title={span.description ?? undefined}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+    />
   );
 };
 

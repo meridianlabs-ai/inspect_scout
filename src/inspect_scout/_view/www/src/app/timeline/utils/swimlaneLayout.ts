@@ -63,7 +63,7 @@ export interface RowLayout {
   name: string;
   /** Whether this is the parent row (index 0). */
   isParent: boolean;
-  /** Positioned spans (fills + chevrons). */
+  /** Positioned spans (fills). */
   spans: PositionedSpan[];
   /** Positioned markers. */
   markers: PositionedMarker[];

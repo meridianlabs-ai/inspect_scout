@@ -187,7 +187,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_8a9rm_1 {
+._swimlane_12tiy_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -203,7 +203,7 @@
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_8a9rm_17 {
+._pinnedSection_12tiy_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -211,7 +211,7 @@
 }
 
 /* Scrollable section: child rows */
-._scrollSection_8a9rm_25 {
+._scrollSection_12tiy_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -220,13 +220,13 @@
   overflow-y: auto;
 }
 
-._swimlane_8a9rm_1:focus-visible {
+._swimlane_12tiy_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_8a9rm_40 {
+._collapsibleSection_12tiy_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -239,26 +239,26 @@
   opacity: 1;
 }
 
-._collapsibleCollapsed_8a9rm_53 {
+._collapsibleCollapsed_12tiy_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_8a9rm_60 {
+._noAnimation_12tiy_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_8a9rm_65 {
+._swimlaneSticky_12tiy_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_8a9rm_72 {
+._collapsibleInner_12tiy_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -268,7 +268,7 @@
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_8a9rm_82 {
+._collapseToggle_12tiy_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -289,20 +289,20 @@
   line-height: 1;
 }
 
-._collapseToggle_8a9rm_82:hover {
+._collapseToggle_12tiy_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_8a9rm_110 {
+._row_12tiy_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_8a9rm_116 {
+._label_12tiy_116 {
   padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -314,29 +314,29 @@
   gap: 2px;
 }
 
-._labelChild_8a9rm_128 {
+._labelChild_12tiy_128 {
   padding-left: 1.95rem;
 }
 
-._labelSelected_8a9rm_132 {
+._labelSelected_12tiy_132 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_8a9rm_138 {
+._barArea_12tiy_138 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_8a9rm_144 {
+._barInner_12tiy_144 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_8a9rm_150 {
+._fill_12tiy_150 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -350,52 +350,27 @@
   cursor: pointer;
 }
 
-._fill_8a9rm_150:hover {
+._fill_12tiy_150:hover {
   opacity: 0.5;
 }
 
-._fillParent_8a9rm_168 {
+._fillParent_12tiy_168 {
   opacity: 0.2;
 }
 
-._fillSelected_8a9rm_172 {
+._fillSelected_12tiy_172 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_8a9rm_177 {
+._parallelBadge_12tiy_177 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
-/* Drill-down chevron — icon-only button inside the bar's right edge */
-
-._drillDown_8a9rm_184 {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  transform: translateX(calc(-100% + 4px));
-  font-size: 10px;
-  font-weight: bold;
-  color: var(--vscode-descriptionForeground);
-  cursor: pointer;
-  z-index: 3;
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  line-height: 1;
-}
-
-._drillDown_8a9rm_184:hover {
-  color: var(--vscode-textLink-foreground);
-}
-
 /* Markers */
 
-._marker_8a9rm_209 {
+._marker_12tiy_184 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -411,11 +386,11 @@
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_8a9rm_209 > * {
+._marker_12tiy_184 > * {
   pointer-events: none;
 }
 
-._markerError_8a9rm_229 {
+._markerError_12tiy_204 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -426,7 +401,7 @@
   cursor: pointer;
 }
 
-._markerError_8a9rm_229::after {
+._markerError_12tiy_204::after {
   content: "";
   position: absolute;
   top: 0;
@@ -436,7 +411,7 @@
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_8a9rm_250 {
+._markerCompaction_12tiy_225 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -448,20 +423,20 @@
   cursor: pointer;
 }
 
-._markerBranch_8a9rm_262 {
+._markerBranch_12tiy_237 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_8a9rm_269 {
+._branchPopover_12tiy_244 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_8a9rm_275 {
+._branchEntry_12tiy_250 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -476,28 +451,28 @@
   white-space: nowrap;
 }
 
-._branchEntry_8a9rm_275:hover {
+._branchEntry_12tiy_250:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_8a9rm_295 {
+._branchLabel_12tiy_270 {
   font-weight: 500;
 }
 
-._branchMeta_8a9rm_299 {
+._branchMeta_12tiy_274 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_8a9rm_275:hover ._branchMeta_8a9rm_299 {
+._branchEntry_12tiy_250:hover ._branchMeta_12tiy_274 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_8a9rm_311 {
+._breadcrumbRow_12tiy_286 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -507,7 +482,7 @@
   overflow: hidden;
 }
 
-._breadcrumbBack_8a9rm_321 {
+._breadcrumbBack_12tiy_296 {
   background: none;
   border: none;
   cursor: pointer;
@@ -520,24 +495,24 @@
   margin-top: -1px;
 }
 
-._breadcrumbBack_8a9rm_321:hover:not(:disabled) {
+._breadcrumbBack_12tiy_296:hover:not(:disabled) {
   color: var(--vscode-textLink-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
-._breadcrumbBack_8a9rm_321:disabled {
+._breadcrumbBack_12tiy_296:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-._breadcrumbGroup_8a9rm_344 {
+._breadcrumbGroup_12tiy_319 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-._breadcrumbLink_8a9rm_351 {
+._breadcrumbLink_12tiy_326 {
   background: none;
   border: none;
   cursor: pointer;
@@ -546,11 +521,11 @@
   font-size: var(--inspect-font-size-smallest);
 }
 
-._breadcrumbLink_8a9rm_351:hover {
+._breadcrumbLink_12tiy_326:hover {
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_8a9rm_364 {
+._breadcrumbCurrent_12tiy_339 {
   background: none;
   border: none;
   cursor: pointer;
@@ -560,11 +535,11 @@
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_8a9rm_364:hover {
+._breadcrumbCurrent_12tiy_339:hover {
   text-decoration: underline;
 }
 
-._breadcrumbSelection_8a9rm_378 {
+._breadcrumbSelection_12tiy_353 {
   background: none;
   border: none;
   cursor: pointer;
@@ -574,11 +549,11 @@
   padding: 0 2px;
 }
 
-._breadcrumbSelection_8a9rm_378:hover {
+._breadcrumbSelection_12tiy_353:hover {
   text-decoration: underline;
 }
 
-._breadcrumbDivider_8a9rm_392 {
+._breadcrumbDivider_12tiy_367 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.75rem;
   padding: 0 1px 0 3px;
@@ -586,7 +561,7 @@
 
 /* Token cell */
 
-._tokens_8a9rm_400 {
+._tokens_12tiy_375 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

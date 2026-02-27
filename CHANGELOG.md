@@ -8,6 +8,7 @@
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
 - Transcripts: unthin `target` and and add `scores` from sample JSON.
+- Scout View: Properly sort scanner results using the value type.
 - Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 
 ## 0.4.19 (17 February 2026)

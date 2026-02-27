@@ -23,6 +23,44 @@ logger = getLogger(__name__)
 CONTENT_TRUNCATION_LIMIT = 1000  # Max characters for fallback content truncation
 
 
+def _weave_to_dict(obj: Any) -> Any:
+    """Recursively convert Weave wrapper types to plain Python dicts/lists.
+
+    Weave returns ``WeaveObject``/``ObjectRecord``/``WeaveList``/``WeaveDict``
+    wrappers that are not always dict-compatible.  This converts them to
+    plain Python structures so that inspect_ai converters (which expect
+    dicts) can process them.
+    """
+    # Already a plain type
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    # dict-like (includes WeaveDict)
+    if isinstance(obj, dict):
+        return {k: _weave_to_dict(v) for k, v in obj.items()}
+
+    # list-like (includes WeaveList)
+    if isinstance(obj, list):
+        return [_weave_to_dict(item) for item in obj]
+
+    # WeaveObject / ObjectRecord – has _val with __dict__
+    val = getattr(obj, "_val", None)
+    if val is not None and hasattr(val, "__dict__"):
+        record = vars(val)
+        # Drop internal Weave bookkeeping keys
+        return {
+            k: _weave_to_dict(v) for k, v in record.items() if not k.startswith("_")
+        }
+
+    # Fallback: try __dict__
+    if hasattr(obj, "__dict__"):
+        return {
+            k: _weave_to_dict(v) for k, v in vars(obj).items() if not k.startswith("_")
+        }
+
+    return obj
+
+
 async def extract_input_messages(inputs: Any, format_type: str) -> list[ChatMessage]:
     """Extract input messages using format-appropriate converter.
 
@@ -44,17 +82,25 @@ async def extract_input_messages(inputs: Any, format_type: str) -> list[ChatMess
         case "openai":
             from inspect_ai.model import messages_from_openai
 
-            messages = inputs.get("messages", [])
+            messages = _weave_to_dict(inputs.get("messages", []))
             if not messages:
                 return []
+
+            # Sanitise: inspect_ai iterates tool_calls without a None
+            # check, so strip None values before handing off.
+            for msg in messages:
+                if isinstance(msg, dict) and msg.get("tool_calls") is None:
+                    msg.pop("tool_calls", None)
 
             return await messages_from_openai(messages)
 
         case "anthropic":
             from inspect_ai.model import messages_from_anthropic
 
-            messages = inputs.get("messages", [])
-            system = inputs.get("system")
+            # Weave may wrap values in WeaveList/WeaveObject; normalise
+            # to plain Python types so inspect_ai converters work.
+            messages = _weave_to_dict(inputs.get("messages", []))
+            system = _weave_to_dict(inputs.get("system"))
 
             # Handle system message in first position (common pattern)
             if isinstance(messages, list) and messages:
@@ -135,7 +181,9 @@ async def extract_output(output: Any, call: Any, format_type: str) -> ModelOutpu
             case "anthropic":
                 from inspect_ai.model import model_output_from_anthropic
 
-                return await model_output_from_anthropic(output)
+                # Weave may return WeaveObject wrappers that aren't
+                # dict-compatible; convert to plain dicts first.
+                return await model_output_from_anthropic(_weave_to_dict(output))
 
             case "google":
                 from inspect_ai.model import model_output_from_google
@@ -215,8 +263,8 @@ def extract_usage(call: Any) -> ModelUsage | None:
     """Extract model usage from call object.
 
     Token counts can be in:
-    - call.summary["usage"]
-    - call.output["usage"]
+    - call.output["usage"] (preferred — flat structure)
+    - call.summary["usage"] (may be keyed by model name)
     - call.attributes["usage"]
 
     Args:
@@ -225,19 +273,34 @@ def extract_usage(call: Any) -> ModelUsage | None:
     Returns:
         ModelUsage object or None
     """
-    # Try summary first
-    summary = getattr(call, "summary", None)
-    if isinstance(summary, dict):
-        usage = summary.get("usage", {})
-        if isinstance(usage, dict) and usage:
-            return _parse_usage_dict(usage)
-
-    # Try output
+    # Try output first — has reliable flat structure
     output = getattr(call, "output", None)
     if isinstance(output, dict):
         usage = output.get("usage", {})
         if isinstance(usage, dict) and usage:
             return _parse_usage_dict(usage)
+
+    # Try output as WeaveObject (e.g. Anthropic responses)
+    if output is not None and not isinstance(output, dict):
+        output_dict = _weave_to_dict(output)
+        if isinstance(output_dict, dict):
+            usage = output_dict.get("usage", {})
+            if isinstance(usage, dict) and usage:
+                return _parse_usage_dict(usage)
+
+    # Try summary (may be keyed by model name)
+    summary = getattr(call, "summary", None)
+    if isinstance(summary, dict):
+        usage = summary.get("usage", {})
+        if isinstance(usage, dict) and usage:
+            parsed = _parse_usage_dict(usage)
+            # If we got non-zero tokens, use it directly
+            if parsed.input_tokens > 0 or parsed.output_tokens > 0:
+                return parsed
+            # Otherwise, usage may be keyed by model name — sum across models
+            model_usage = _parse_model_keyed_usage(usage)
+            if model_usage:
+                return model_usage
 
     # Try attributes
     attrs = getattr(call, "attributes", None)
@@ -258,11 +321,65 @@ def _parse_usage_dict(usage: dict[str, Any]) -> ModelUsage:
     Returns:
         ModelUsage object
     """
+    input_tokens = usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0)
+    output_tokens = usage.get("completion_tokens", 0) or usage.get("output_tokens", 0)
+    total_tokens = usage.get("total_tokens", 0)
+    # Anthropic doesn't include total_tokens — compute it
+    if not total_tokens and (input_tokens or output_tokens):
+        total_tokens = input_tokens + output_tokens
     return ModelUsage(
-        input_tokens=usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0),
-        output_tokens=usage.get("completion_tokens", 0)
-        or usage.get("output_tokens", 0),
-        total_tokens=usage.get("total_tokens", 0),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+    )
+
+
+def _parse_model_keyed_usage(usage: dict[str, Any]) -> ModelUsage | None:
+    """Parse a usage dict that is keyed by model name.
+
+    Weave summary usage can look like:
+    ``{"gpt-4o-mini": {"prompt_tokens": 24, "completion_tokens": 7, ...}}``
+
+    This sums token counts across all models.
+
+    Args:
+        usage: Dictionary potentially keyed by model name
+
+    Returns:
+        ModelUsage if model-keyed structure detected, else None
+    """
+    input_tokens = 0
+    output_tokens = 0
+    total_tokens = 0
+    found = False
+
+    for value in usage.values():
+        if isinstance(value, dict) and (
+            "prompt_tokens" in value
+            or "input_tokens" in value
+            or "completion_tokens" in value
+            or "output_tokens" in value
+        ):
+            found = True
+            input_tokens += value.get("prompt_tokens", 0) or value.get(
+                "input_tokens", 0
+            )
+            output_tokens += value.get("completion_tokens", 0) or value.get(
+                "output_tokens", 0
+            )
+            total_tokens += value.get("total_tokens", 0)
+
+    if not found:
+        return None
+
+    # If total_tokens wasn't provided, compute it
+    if total_tokens == 0 and (input_tokens > 0 or output_tokens > 0):
+        total_tokens = input_tokens + output_tokens
+
+    return ModelUsage(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
     )
 
 

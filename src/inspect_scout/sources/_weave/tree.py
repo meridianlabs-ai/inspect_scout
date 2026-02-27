@@ -126,6 +126,37 @@ def flatten_tree_chronological(roots: list[CallNode]) -> list[Any]:
     return result
 
 
+def _is_llm_call(call: Any) -> bool:
+    """Check if a call is an LLM call.
+
+    Uses Weave's ``kind`` attribute when available, falling back to
+    op_name pattern matching for API-level call signatures.
+
+    Args:
+        call: Weave call object
+
+    Returns:
+        True if this is an LLM call
+    """
+    # Prefer the structured kind attribute set by Weave's integrations
+    attrs = getattr(call, "attributes", None)
+    if isinstance(attrs, dict):
+        weave_meta = attrs.get("weave")
+        if isinstance(weave_meta, dict) and weave_meta.get("kind") == "llm":
+            return True
+
+    # Fall back to op_name, but only match API-level call patterns
+    # (not broad provider names which may appear in user function names)
+    op_name = str(getattr(call, "op_name", "")).lower()
+    llm_patterns = [
+        "chat.completions",
+        "messages.create",
+        "generate_content",
+        "completion",
+    ]
+    return any(pattern in op_name for pattern in llm_patterns)
+
+
 def get_llm_calls(calls: list[Any]) -> list[Any]:
     """Filter calls to only LLM-type calls.
 
@@ -135,22 +166,7 @@ def get_llm_calls(calls: list[Any]) -> list[Any]:
     Returns:
         List of calls that are LLM calls
     """
-    result = []
-    for call in calls:
-        op_name = str(getattr(call, "op_name", "")).lower()
-        # Check for common LLM call patterns
-        llm_patterns = [
-            "openai",
-            "anthropic",
-            "google",
-            "gemini",
-            "chat.completions",
-            "messages.create",
-            "generate_content",
-        ]
-        if any(pattern in op_name for pattern in llm_patterns):
-            result.append(call)
-    return result
+    return [call for call in calls if _is_llm_call(call)]
 
 
 def get_tool_calls(calls: list[Any]) -> list[Any]:

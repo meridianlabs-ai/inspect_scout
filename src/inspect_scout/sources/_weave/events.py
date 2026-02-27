@@ -22,6 +22,26 @@ from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_call import ToolCallError
 
 from .detection import detect_provider_format, get_model_name
+
+
+def _to_float(value: Any) -> float | None:
+    """Coerce a value to float, returning None for non-numeric types."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int(value: Any) -> int | None:
+    """Coerce a value to int, returning None for non-numeric types."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 from .extraction import extract_input_messages, extract_output, extract_tools
 
 
@@ -34,19 +54,26 @@ def _get_timestamp(call: Any, attr: str = "started_at") -> datetime:
 def _is_llm_call(call: Any) -> bool:
     """Check if a call is an LLM call.
 
+    Uses Weave's ``kind`` attribute when available, falling back to
+    op_name pattern matching for API-level call signatures.
+
     Args:
         call: Weave call object
 
     Returns:
         True if this is an LLM call
     """
+    # Prefer the structured kind attribute set by Weave's integrations
+    attrs = getattr(call, "attributes", None)
+    if isinstance(attrs, dict):
+        weave_meta = attrs.get("weave")
+        if isinstance(weave_meta, dict) and weave_meta.get("kind") == "llm":
+            return True
+
+    # Fall back to op_name, but only match API-level call patterns
+    # (not broad provider names which may appear in user function names)
     op_name = str(getattr(call, "op_name", "")).lower()
-    # Check for common LLM call patterns
     llm_patterns = [
-        "openai",
-        "anthropic",
-        "google",
-        "gemini",
         "chat.completions",
         "messages.create",
         "generate_content",
@@ -91,11 +118,13 @@ async def to_model_event(call: Any) -> ModelEvent:
     # Extract model name
     model_name = get_model_name(call)
 
-    # Build GenerateConfig from inputs
+    # Build GenerateConfig from inputs, coercing values to expected types.
+    # Provider SDKs may use sentinel objects (e.g. anthropic.Omit) for unset
+    # fields which are not valid floats/ints.
     config = GenerateConfig(
-        temperature=inputs.get("temperature") if isinstance(inputs, dict) else None,
-        max_tokens=inputs.get("max_tokens") if isinstance(inputs, dict) else None,
-        top_p=inputs.get("top_p") if isinstance(inputs, dict) else None,
+        temperature=_to_float(inputs.get("temperature")) if isinstance(inputs, dict) else None,
+        max_tokens=_to_int(inputs.get("max_tokens")) if isinstance(inputs, dict) else None,
+        top_p=_to_float(inputs.get("top_p")) if isinstance(inputs, dict) else None,
         stop_seqs=inputs.get("stop") if isinstance(inputs, dict) else None,
     )
 

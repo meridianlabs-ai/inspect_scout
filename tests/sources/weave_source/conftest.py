@@ -8,8 +8,13 @@ from typing import Any, Callable, TypeVar, cast
 
 import pytest
 
-# Test project name for Weave tests
-WEAVE_TEST_PROJECT = os.environ.get("WEAVE_PROJECT", "inspect-scout/scout-tests")
+# Default test project name for Weave tests
+_DEFAULT_WEAVE_PROJECT = "inspect-scout/scout-tests"
+
+
+def get_weave_test_project() -> str:
+    """Return the Weave test project, reading env at call time."""
+    return os.environ.get("WEAVE_PROJECT", _DEFAULT_WEAVE_PROJECT)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -21,24 +26,27 @@ def skip_if_no_weave(func: F) -> F:
     - WEAVE_RUN_TESTS=1 (explicit opt-in)
     - WANDB_API_KEY (for API access)
 
+    Uses runtime ``pytest.skip()`` so that environment variables loaded by
+    pytest-dotenv (which runs after module import) are visible.
+
     Args:
         func: Test function to decorate
 
     Returns:
-        Decorated function with skip marker
+        Decorated function with skip marker and runtime check
     """
-    run_tests = os.environ.get("WEAVE_RUN_TESTS", "").lower() in ("1", "true")
-    api_key = os.environ.get("WANDB_API_KEY")
+    import functools
 
-    return cast(
-        F,
-        pytest.mark.api(
-            pytest.mark.skipif(
-                not (run_tests and api_key),
-                reason="Weave tests require WEAVE_RUN_TESTS=1 and WANDB_API_KEY",
-            )(func)
-        ),
-    )
+    @pytest.mark.api
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        run_tests = os.environ.get("WEAVE_RUN_TESTS", "").lower() in ("1", "true")
+        api_key = os.environ.get("WANDB_API_KEY")
+        if not (run_tests and api_key):
+            pytest.skip("Weave tests require WEAVE_RUN_TESTS=1 and WANDB_API_KEY")
+        return await func(*args, **kwargs)
+
+    return cast(F, wrapper)
 
 
 @pytest.fixture
@@ -48,7 +56,7 @@ def weave_project() -> str:
     Returns:
         The test project name
     """
-    return WEAVE_TEST_PROJECT
+    return get_weave_test_project()
 
 
 @pytest.fixture
@@ -70,5 +78,5 @@ def weave_client() -> Any:
     if not api_key:
         pytest.skip("WANDB_API_KEY not set")
 
-    project = os.environ.get("WEAVE_PROJECT", WEAVE_TEST_PROJECT)
+    project = get_weave_test_project()
     return weave.init(project)

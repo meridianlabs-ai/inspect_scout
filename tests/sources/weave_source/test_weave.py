@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from tests.sources.weave_source.conftest import (
-    WEAVE_TEST_PROJECT,
+    get_weave_test_project,
     skip_if_no_weave,
 )
 from tests.sources.weave_source.mocks import (
@@ -84,6 +84,45 @@ def _assert_weave_transcript(
     assert len(transcript.messages) >= min_messages, (
         f"Expected at least {min_messages} messages, got {len(transcript.messages)}"
     )
+
+    # Verify token and timing totals
+    assert transcript.total_tokens > 0, (
+        f"Expected total_tokens > 0, got {transcript.total_tokens}"
+    )
+    assert transcript.total_time > 0, (
+        f"Expected total_time > 0, got {transcript.total_time}"
+    )
+
+    # Verify each ModelEvent has usage and content
+    for me in model_events:
+        assert me.output is not None, "Expected ModelEvent to have output"
+        assert me.output.usage is not None, "Expected ModelEvent output to have usage"
+        assert me.output.usage.total_tokens > 0, (
+            f"Expected ModelEvent total_tokens > 0, got {me.output.usage.total_tokens}"
+        )
+
+        # Verify model name if pattern specified
+        if model_pattern and me.model:
+            assert model_pattern in me.model.lower(), (
+                f"Expected {model_pattern} in event model, got {me.model}"
+            )
+
+        # Verify assistant message content is non-empty, unless it's a
+        # tool-call-only response (where content is empty/None).
+        if me.output.choices:
+            msg = me.output.choices[0].message
+            has_tool_calls = hasattr(msg, "tool_calls") and msg.tool_calls
+            if msg.content is not None and not has_tool_calls:
+                if isinstance(msg.content, str):
+                    assert len(msg.content) > 0, (
+                        "Expected non-empty assistant content string"
+                    )
+                elif isinstance(msg.content, list):
+                    for block in msg.content:
+                        if hasattr(block, "text"):
+                            assert len(block.text) > 0, (
+                                "Expected non-empty ContentText.text"
+                            )
 
     # Count messages by role
     role_counts: dict[str, int] = {}
@@ -385,14 +424,14 @@ async def test_weave_openai_simple() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
         # Look for our test trace
-        if transcript.task_id and "scout-test-openai-simple" in transcript.task_id:
+        if transcript.task_id and "scout_test_openai_simple" in transcript.task_id:
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-openai-simple",
+                expected_name="scout_test_openai_simple",
                 model_pattern="gpt",
                 min_model_events=1,
                 min_messages=2,
@@ -403,7 +442,7 @@ async def test_weave_openai_simple() -> None:
             assert "assistant" in role_counts
             return
 
-    pytest.skip("No transcript found for scout-test-openai-simple - run bootstrap")
+    pytest.skip("No transcript found for scout_test_openai_simple - run bootstrap")
 
 
 @skip_if_no_weave
@@ -413,13 +452,13 @@ async def test_weave_openai_tools() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
-        if transcript.task_id and "scout-test-openai-tools" in transcript.task_id:
+        if transcript.task_id and "scout_test_openai_tools" in transcript.task_id:
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-openai-tools",
+                expected_name="scout_test_openai_tools",
                 model_pattern="gpt",
                 min_model_events=2,
                 min_messages=4,
@@ -441,7 +480,7 @@ async def test_weave_openai_tools() -> None:
             )
             return
 
-    pytest.skip("No transcript found for scout-test-openai-tools - run bootstrap")
+    pytest.skip("No transcript found for scout_test_openai_tools - run bootstrap")
 
 
 @skip_if_no_weave
@@ -451,16 +490,16 @@ async def test_weave_openai_multiturn() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
-        if transcript.task_id and "scout-test-openai-multiturn" in transcript.task_id:
+        if transcript.task_id and "scout_test_openai_multiturn" in transcript.task_id:
             if "tools" in transcript.task_id:
                 continue  # Skip the tools variant
 
             _model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-openai-multiturn",
+                expected_name="scout_test_openai_multiturn",
                 model_pattern="gpt",
                 min_model_events=3,
                 min_messages=3,
@@ -472,7 +511,7 @@ async def test_weave_openai_multiturn() -> None:
             )
             return
 
-    pytest.skip("No transcript found for scout-test-openai-multiturn - run bootstrap")
+    pytest.skip("No transcript found for scout_test_openai_multiturn - run bootstrap")
 
 
 @skip_if_no_weave
@@ -482,16 +521,16 @@ async def test_weave_openai_multiturn_tools() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
         if (
             transcript.task_id
-            and "scout-test-openai-multiturn-tools" in transcript.task_id
+            and "scout_test_openai_multiturn_tools" in transcript.task_id
         ):
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-openai-multiturn-tools",
+                expected_name="scout_test_openai_multiturn_tools",
                 model_pattern="gpt",
                 min_model_events=4,
                 min_messages=8,
@@ -509,7 +548,7 @@ async def test_weave_openai_multiturn_tools() -> None:
             return
 
     pytest.skip(
-        "No transcript found for scout-test-openai-multiturn-tools - run bootstrap"
+        "No transcript found for scout_test_openai_multiturn_tools - run bootstrap"
     )
 
 
@@ -520,13 +559,13 @@ async def test_weave_anthropic_simple() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
-        if transcript.task_id and "scout-test-anthropic-simple" in transcript.task_id:
+        if transcript.task_id and "scout_test_anthropic_simple" in transcript.task_id:
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-anthropic-simple",
+                expected_name="scout_test_anthropic_simple",
                 model_pattern="claude",
                 min_model_events=1,
                 min_messages=2,
@@ -536,7 +575,7 @@ async def test_weave_anthropic_simple() -> None:
             assert "assistant" in role_counts
             return
 
-    pytest.skip("No transcript found for scout-test-anthropic-simple - run bootstrap")
+    pytest.skip("No transcript found for scout_test_anthropic_simple - run bootstrap")
 
 
 @skip_if_no_weave
@@ -546,13 +585,13 @@ async def test_weave_anthropic_tools() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
-        if transcript.task_id and "scout-test-anthropic-tools" in transcript.task_id:
+        if transcript.task_id and "scout_test_anthropic_tools" in transcript.task_id:
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-anthropic-tools",
+                expected_name="scout_test_anthropic_tools",
                 model_pattern="claude",
                 min_model_events=2,
                 min_messages=4,
@@ -564,7 +603,7 @@ async def test_weave_anthropic_tools() -> None:
             assert "tool" in role_counts, "Expected tool result message"
             return
 
-    pytest.skip("No transcript found for scout-test-anthropic-tools - run bootstrap")
+    pytest.skip("No transcript found for scout_test_anthropic_tools - run bootstrap")
 
 
 @skip_if_no_weave
@@ -574,19 +613,19 @@ async def test_weave_anthropic_multiturn() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
         if (
             transcript.task_id
-            and "scout-test-anthropic-multiturn" in transcript.task_id
+            and "scout_test_anthropic_multiturn" in transcript.task_id
         ):
             if "tools" in transcript.task_id:
                 continue  # Skip the tools variant
 
             _model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-anthropic-multiturn",
+                expected_name="scout_test_anthropic_multiturn",
                 model_pattern="claude",
                 min_model_events=3,
                 min_messages=6,
@@ -601,7 +640,7 @@ async def test_weave_anthropic_multiturn() -> None:
             return
 
     pytest.skip(
-        "No transcript found for scout-test-anthropic-multiturn - run bootstrap"
+        "No transcript found for scout_test_anthropic_multiturn - run bootstrap"
     )
 
 
@@ -612,16 +651,16 @@ async def test_weave_anthropic_multiturn_tools() -> None:
     from inspect_scout.sources._weave import weave
 
     async for transcript in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=10,
     ):
         if (
             transcript.task_id
-            and "scout-test-anthropic-multiturn-tools" in transcript.task_id
+            and "scout_test_anthropic_multiturn_tools" in transcript.task_id
         ):
             model_events, role_counts = _assert_weave_transcript(
                 transcript,
-                expected_name="scout-test-anthropic-multiturn-tools",
+                expected_name="scout_test_anthropic_multiturn_tools",
                 model_pattern="claude",
                 min_model_events=4,
                 min_messages=8,
@@ -639,7 +678,7 @@ async def test_weave_anthropic_multiturn_tools() -> None:
             return
 
     pytest.skip(
-        "No transcript found for scout-test-anthropic-multiturn-tools - run bootstrap"
+        "No transcript found for scout_test_anthropic_multiturn_tools - run bootstrap"
     )
 
 
@@ -656,7 +695,7 @@ async def test_weave_limit_parameter() -> None:
 
     transcripts = []
     async for t in weave(
-        project=WEAVE_TEST_PROJECT,
+        project=get_weave_test_project(),
         limit=1,
     ):
         transcripts.append(t)

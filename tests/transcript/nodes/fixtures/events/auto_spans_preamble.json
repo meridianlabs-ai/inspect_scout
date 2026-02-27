@@ -1,5 +1,5 @@
 {
-  "description": "Auto-span detection: non-model events before the first ModelEvent stay in root as preamble",
+  "description": "Non-model event before model events — without auto-detection, all events remain flat in root agent",
   "events": [
     {
       "event": "info",
@@ -44,25 +44,7 @@
       "id": "main",
       "name": "main",
       "source": {"source": "span", "span_id": "main"},
-      "content_structure": [
-        {"type": "event", "uuid": "e-info"},
-        {
-          "type": "agent",
-          "id": "auto-span-0",
-          "name": "Agent 1",
-          "source": {"source": "tool"},
-          "nested_uuids": ["e-001"],
-          "total_tokens": 150
-        },
-        {
-          "type": "agent",
-          "id": "auto-span-1",
-          "name": "Agent 2",
-          "source": {"source": "tool"},
-          "nested_uuids": ["e-002"],
-          "total_tokens": 150
-        }
-      ],
+      "event_uuids": ["e-info", "e-001", "e-002"],
       "total_tokens": 300
     },
     "scoring": null

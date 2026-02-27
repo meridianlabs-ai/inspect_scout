@@ -3221,6 +3221,13 @@ export interface components {
              * @default null
              */
             pending: boolean | null;
+            /**
+             * Role Usage
+             * @default null
+             */
+            role_usage: {
+                [key: string]: components["schemas"]["ModelUsage"];
+            } | null;
             score: components["schemas"]["Score"];
             /**
              * Span Id

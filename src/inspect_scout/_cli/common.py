@@ -96,6 +96,13 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
         default=None,
         help="Open in web browser.",
     )
+    @click.option(
+        "--root-path",
+        type=str,
+        default="",
+        envvar="UVICORN_ROOT_PATH",
+        help="ASGI root_path for serving behind a reverse proxy.",
+    )
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> click.Context:
         return cast(click.Context, func(*args, **kwargs))

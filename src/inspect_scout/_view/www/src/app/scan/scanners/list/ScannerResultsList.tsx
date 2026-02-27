@@ -14,7 +14,15 @@ import { Status } from "../../../../types/api-types";
 import { basename } from "../../../../utils/path";
 import { useScanResultSummaries } from "../../../hooks/useScanResultSummaries";
 import { useScanRoute } from "../../../hooks/useScanRoute";
-import { ScanResultSummary, SortColumn } from "../../../types";
+import {
+  isArrayValue,
+  isBooleanValue,
+  isNumberValue,
+  isObjectValue,
+  isStringValue,
+  ScanResultSummary,
+  SortColumn,
+} from "../../../types";
 import {
   resultIdentifier,
   resultIdentifierStr,
@@ -419,6 +427,47 @@ export const ScannerResultsList: FC<ScannerResultsListProps> = ({
   );
 };
 
+// Type-aware comparison for ScanResultSummary values.
+// Uses valueType to compare numerics, booleans, strings, arrays, and objects correctly.
+// Nulls always sort last.
+const sortValue = (a: ScanResultSummary, b: ScanResultSummary): number => {
+  // Nulls sort last (after all other types)
+  if (a.value === null || a.value === undefined || a.valueType === "null") {
+    if (b.value === null || b.value === undefined || b.valueType === "null") {
+      return 0;
+    }
+    return 1;
+  }
+  if (b.value === null || b.value === undefined || b.valueType === "null") {
+    return -1;
+  }
+
+  // Same type: compare natively
+  if (a.valueType === b.valueType) {
+    if (isNumberValue(a) && isNumberValue(b)) {
+      return a.value - b.value;
+    }
+    if (isBooleanValue(a) && isBooleanValue(b)) {
+      return (a.value ? 1 : 0) - (b.value ? 1 : 0);
+    }
+    if (isStringValue(a) && isStringValue(b)) {
+      return a.value.localeCompare(b.value);
+    }
+    if (isArrayValue(a) && isArrayValue(b)) {
+      return (
+        a.value.length - b.value.length ||
+        String(a.value).localeCompare(String(b.value))
+      );
+    }
+    if (isObjectValue(a) && isObjectValue(b)) {
+      return JSON.stringify(a.value).localeCompare(JSON.stringify(b.value));
+    }
+  }
+
+  // Different types: fall back to string comparison
+  return String(a.value).localeCompare(String(b.value));
+};
+
 // Sorts scan results by multiple columns and directions.
 // Applies sorting rules in order, falling back to the next rule if values are equal.
 const sortByColumns = (
@@ -463,11 +512,7 @@ const sortByColumns = (
         break;
       }
       case "value": {
-        const valueA =
-          a.value !== null && a.value !== undefined ? String(a.value) : "";
-        const valueB =
-          b.value !== null && b.value !== undefined ? String(b.value) : "";
-        comparison = valueA.localeCompare(valueB);
+        comparison = sortValue(a, b);
         break;
       }
       case "error": {

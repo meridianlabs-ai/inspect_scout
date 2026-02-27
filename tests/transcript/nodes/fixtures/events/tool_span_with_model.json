@@ -1,5 +1,5 @@
 {
-  "description": "Tool span containing model events - should be detected as agent",
+  "description": "Tool span containing model events - detected as agent, becomes root with orphan events folded in",
   "events": [
     {
       "event": "span_begin",
@@ -99,31 +99,17 @@
   "expected": {
     "init": null,
     "agent": {
-      "id": "solvers",
-      "name": "solvers",
+      "id": "tool-span",
+      "name": "execute_code",
       "source": {
-        "source": "span",
-        "span_id": "solvers"
+        "source": "tool"
       },
-      "content_types": [
-        "event",
-        "agent",
-        "event"
-      ],
-      "children": [
-        {
-          "id": "tool-span",
-          "name": "execute_code",
-          "source": {
-            "source": "tool"
-          },
-          "event_uuids": [
-            "e-002",
-            "e-003",
-            "e-004"
-          ],
-          "total_tokens": 265
-        }
+      "event_uuids": [
+        "e-001",
+        "e-005",
+        "e-002",
+        "e-003",
+        "e-004"
       ],
       "total_tokens": 430
     },

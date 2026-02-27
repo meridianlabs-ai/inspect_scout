@@ -4,9 +4,12 @@
 - Scanner Tools: `message_numbering()`, `scanner_prompt()`, `generate_answer()`, and `parse_answer()` functions for building custom scanners with fine-grained control.
 - Scanner Tools: `ResultReducer` for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
 - Scanner Tools: `transcript_messages()`, `segment_messages()`, and `span_messages()` functions for extracting and segmenting transcript messages.
-- Transcript DB: `claude_code()` transcript source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
+- Transcript DB: `claude_code()` source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
+- Transcripts: unthin `target` and and add `scores` from sample JSON.
+- Scout View: Properly sort scanner results using the value type.
+- Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 
 ## 0.4.19 (17 February 2026)
 

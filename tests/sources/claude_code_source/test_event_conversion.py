@@ -21,7 +21,7 @@ from inspect_scout.sources._claude_code.events import (
     to_model_event,
     to_tool_event,
 )
-from inspect_scout.sources._claude_code.models import (
+from inspect_swe._claude_code._events.models import (
     AssistantEvent,
     AssistantMessage,
     CompactMetadata,
@@ -127,6 +127,42 @@ class TestModelEventConversion:
         assert msg.content[0].reasoning == "Let me reason about this..."
         assert isinstance(msg.content[1], ContentText)
         assert msg.content[1].text == "Here's my answer."
+
+    def test_message_id_preserved(self) -> None:
+        """AssistantEvent with message ID → preserved in output ChatMessageAssistant."""
+        event = AssistantEvent(
+            uuid="4",
+            timestamp=TS,
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(
+                model="claude-sonnet-4-20250514",
+                id="msg-abc123",
+                content=[{"type": "text", "text": "Hello"}],
+            ),
+        )
+        result = to_model_event(event, input_messages=[], timestamp=DT)
+
+        assert result.output.choices[0].message.id == "msg-abc123"
+
+    def test_message_id_empty_string_generates_uuid(self) -> None:
+        """AssistantEvent with empty string ID → treated as absent, auto-generates uuid."""
+        event = AssistantEvent(
+            uuid="6",
+            timestamp=TS,
+            sessionId="test",
+            type="assistant",
+            message=AssistantMessage(
+                model="claude-sonnet-4-20250514",
+                id="",
+                content=[{"type": "text", "text": "Hello"}],
+            ),
+        )
+        result = to_model_event(event, input_messages=[], timestamp=DT)
+
+        msg_id = result.output.choices[0].message.id
+        assert msg_id is not None
+        assert len(msg_id) > 0  # auto-generated, not empty
 
 
 class TestToolEventConversion:
@@ -536,7 +572,7 @@ class TestSumScoutTokens:
 
     def test_sums_across_multiple_events(self) -> None:
         """Multiple ModelEvents → sums all total_tokens."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         events: list[Any] = [
             self._make_model_event(100, 50),
@@ -546,7 +582,7 @@ class TestSumScoutTokens:
 
     def test_skips_non_model_events(self) -> None:
         """Non-ModelEvent objects are ignored."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         events: list[Any] = [
             self._make_model_event(100, 50),
@@ -561,13 +597,13 @@ class TestSumScoutTokens:
 
     def test_empty_list(self) -> None:
         """Empty event list → returns 0."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         assert sum_scout_tokens([]) == 0
 
     def test_model_event_without_usage(self) -> None:
         """ModelEvent with no usage → contributes 0."""
-        from inspect_scout.sources._claude_code.extraction import sum_scout_tokens
+        from inspect_swe._claude_code._events.extraction import sum_scout_tokens
 
         msg = ChatMessageAssistant(content="response")
         event = ModelEvent(

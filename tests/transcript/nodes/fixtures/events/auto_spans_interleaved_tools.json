@@ -1,5 +1,5 @@
 {
-  "description": "Auto-span detection: ToolEvents between ModelEvents are assigned to the preceding thread",
+  "description": "Model and tool events interleaved — without auto-detection, all events remain flat in root agent",
   "events": [
     {
       "event": "model",
@@ -54,22 +54,7 @@
       "id": "main",
       "name": "main",
       "source": {"source": "span", "span_id": "main"},
-      "children": [
-        {
-          "id": "auto-span-0",
-          "name": "Agent 1",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-001", "e-tool-1"],
-          "total_tokens": 150
-        },
-        {
-          "id": "auto-span-1",
-          "name": "Agent 2",
-          "source": {"source": "tool"},
-          "event_uuids": ["e-002", "e-tool-2"],
-          "total_tokens": 150
-        }
-      ],
+      "event_uuids": ["e-001", "e-tool-1", "e-002", "e-tool-2"],
       "total_tokens": 300
     },
     "scoring": null

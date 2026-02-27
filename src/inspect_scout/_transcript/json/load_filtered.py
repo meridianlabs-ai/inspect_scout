@@ -25,6 +25,8 @@ from .reducer import (
     EVENTS_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
     METADATA_PREFIX,
+    SCORES_PREFIX,
+    TARGET_PREFIX,
     TIMELINES_ITEM_PREFIX,
     ListProcessingConfig,
     ParseState,
@@ -32,6 +34,8 @@ from .reducer import (
     event_item_coroutine,
     message_item_coroutine,
     metadata_coroutine,
+    scores_coroutine,
+    target_coroutine,
     timeline_item_coroutine,
 )
 
@@ -45,18 +49,26 @@ _SECTION_EVENTS = 2
 _SECTION_ATTACHMENTS = 3
 _SECTION_METADATA = 4
 _SECTION_TIMELINES = 5
+_SECTION_TARGET = 6
+_SECTION_SCORES = 7
 
 _MESSAGES_ITEM_PREFIX_LEN = len(MESSAGES_ITEM_PREFIX)
 _EVENTS_ITEM_PREFIX_LEN = len(EVENTS_ITEM_PREFIX)
 _ATTACHMENTS_PREFIX_LEN = len(ATTACHMENTS_PREFIX)
 _METADATA_PREFIX_LEN = len(METADATA_PREFIX)
 _TIMELINES_ITEM_PREFIX_LEN = len(TIMELINES_ITEM_PREFIX)
+_SCORES_PREFIX_LEN = len(SCORES_PREFIX)
+_TARGET_PREFIX_LEN = len(TARGET_PREFIX)
+# "target" vs "timelines" — discriminate on 2nd char (derived from constant)
+_TARGET_CHAR1 = TARGET_PREFIX[1]
 _MIN_SECTION_PREFIX_LEN = min(
     _MESSAGES_ITEM_PREFIX_LEN,
     _EVENTS_ITEM_PREFIX_LEN,
     _ATTACHMENTS_PREFIX_LEN,
     _METADATA_PREFIX_LEN,
     _TIMELINES_ITEM_PREFIX_LEN,
+    _SCORES_PREFIX_LEN,
+    _TARGET_PREFIX_LEN,
 )
 
 
@@ -94,6 +106,8 @@ async def load_filtered_transcript(
     t: TranscriptInfo,
     messages: MessageFilter,
     events: EventFilter,
+    *,
+    on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
     """
     Transform and filter JSON sample data into a Transcript.
@@ -111,15 +125,21 @@ async def load_filtered_transcript(
             list=include matching)
         events: Filter for event types (None=exclude all, "all"=include all,
             list=include matching)
+        on_early_exit: Test-only callback invoked immediately before the
+            early-exit break
 
     Returns:
-        Transcript object with filtered messages and events, resolved attachments
+        Transcript object with filtered messages and events, resolved attachments.
+        Metadata includes sample_metadata, target, and scores from the sample JSON.
+        ``input`` is not unthinned: the sample JSON's input can contain attachment
+        refs whose resolution requires parsing the attachments section — which follows
+        events, defeating the early-exit optimization.
     """
     try:
         # Phase 1: Parse, filter, and collect attachment references
         async with adapt_to_reader(sample_bytes) as reader:
             transcript, attachment_refs = await _parse_and_filter(
-                reader, t, messages, events
+                reader, t, messages, events, on_early_exit=on_early_exit
             )
         # Phase 2: Resolve attachment references
         return _resolve_attachments(transcript, attachment_refs)
@@ -166,11 +186,7 @@ async def _load_with_json5_fallback(
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
-                metadata=(
-                    t.metadata.copy() | {"sample_metadata": data.get("metadata", {})}
-                    if data.get("metadata")
-                    else t.metadata
-                ),
+                metadata=_merge_unthinned_from_dict(t.metadata, data),
                 messages=data.get("messages", []),
                 events=data.get("events", []),
                 timelines=data.get("timelines"),
@@ -181,11 +197,39 @@ async def _load_with_json5_fallback(
     )
 
 
+def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
+    """Merge unthinned fields from stream parse into transcript metadata."""
+    overrides: dict[str, Any] = {}
+    if state.metadata:
+        overrides["sample_metadata"] = state.metadata
+    if state.target is not None:
+        overrides["target"] = state.target
+    if state.scores:
+        overrides["scores"] = state.scores
+    return base.copy() | overrides if overrides else base
+
+
+def _merge_unthinned_from_dict(
+    base: dict[str, Any], data: dict[str, Any]
+) -> dict[str, Any]:
+    """Merge unthinned fields from fully-parsed dict into transcript metadata."""
+    overrides: dict[str, Any] = {}
+    if data.get("metadata"):
+        overrides["sample_metadata"] = data["metadata"]
+    if "target" in data:
+        overrides["target"] = data["target"]
+    if data.get("scores"):
+        overrides["scores"] = data["scores"]
+    return base.copy() | overrides if overrides else base
+
+
 async def _parse_and_filter(
     sample_json: AsyncBytesReader,
     t: TranscriptInfo,
     messages_filter: MessageFilter,
     events_filter: EventFilter,
+    *,
+    on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
     """
     Phase 1: Single-pass stream parse, filter, and collect attachment references.
@@ -224,30 +268,42 @@ async def _parse_and_filter(
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = attachments_coroutine(state)
     metadata_coro = metadata_coroutine(state)
+    target_coro = target_coroutine(state)
+    scores_coro = scores_coroutine(state)
 
     last_prefix = ""
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
-        # Early exit: messages-only with no attachment refs
+        # Early exit: skip events/attachments when they aren't needed.
+        # JSON field order is: ...target, messages, output, scores, metadata,
+        # store, events, attachments — so by the time we see "events" start_array,
+        # metadata and scores have already been parsed.
         if (
             events_coro is None
-            and prefix == "messages"
-            and event == "end_array"
+            and prefix == "events"
+            and event == "start_array"
             and not state.attachment_refs
         ):
+            if on_early_exit is not None:
+                on_early_exit()
             break
 
-        # Inline prefix classification for performance (56M+ calls in hot path)
+        # Inline prefix classification for performance (56M+ calls in hot path).
+        # WARNING: every operation here can run millions of times per parse.
+        # Avoid string slicing, startswith, or any allocation in common paths.
+        # Profile before changing.
         if prefix != last_prefix:
             last_prefix = prefix
             p_len = len(prefix)
-            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t"):
+            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
-                # Special case: "metadata" is 8 chars, less than min (9), but valid
-                if prefix == "metadata":
-                    current_section = _SECTION_METADATA
+                # Short prefixes: "scores" (6), "target" (6)
+                if prefix == "scores":
+                    current_section = _SECTION_SCORES
+                elif prefix == "target":
+                    current_section = _SECTION_TARGET
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
@@ -277,12 +333,18 @@ async def _parse_and_filter(
                 and prefix[:_ATTACHMENTS_PREFIX_LEN] == ATTACHMENTS_PREFIX
             ):
                 current_section = _SECTION_ATTACHMENTS
-            elif (
-                prefix[0] == "t"
-                and p_len >= _TIMELINES_ITEM_PREFIX_LEN
-                and prefix[:_TIMELINES_ITEM_PREFIX_LEN] == TIMELINES_ITEM_PREFIX
-            ):
-                current_section = _SECTION_TIMELINES
+            elif prefix[0] == "t":
+                if prefix[1] == _TARGET_CHAR1:
+                    current_section = _SECTION_TARGET
+                elif (
+                    p_len >= _TIMELINES_ITEM_PREFIX_LEN
+                    and prefix[:_TIMELINES_ITEM_PREFIX_LEN] == TIMELINES_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_TIMELINES
+                else:
+                    current_section = _SECTION_OTHER
+            elif prefix[0] == "s" and prefix[:_SCORES_PREFIX_LEN] == SCORES_PREFIX:
+                current_section = _SECTION_SCORES
             else:
                 current_section = _SECTION_OTHER
 
@@ -295,8 +357,15 @@ async def _parse_and_filter(
             attachments_coro.send((prefix, event, value))
         elif current_section == _SECTION_METADATA:
             metadata_coro.send((prefix, event, value))
+        elif current_section == _SECTION_TARGET and target_coro is not None:
+            try:
+                target_coro.send((prefix, event, value))
+            except StopIteration:
+                target_coro = None
         elif current_section == _SECTION_TIMELINES:
             timelines_coro.send((prefix, event, value))
+        elif current_section == _SECTION_SCORES:
+            scores_coro.send((prefix, event, value))
 
     return (
         RawTranscript(
@@ -319,12 +388,7 @@ async def _parse_and_filter(
             total_tokens=t.total_tokens,
             error=t.error,
             limit=t.limit,
-            # t.metadata's sample_metadata is potentially thinned, so swap in the full one
-            metadata=(
-                t.metadata.copy() | {"sample_metadata": state.metadata}
-                if state.metadata
-                else t.metadata
-            ),
+            metadata=_merge_unthinned(t.metadata, state),
             messages=state.messages,
             events=state.events,
             timelines=state.timelines if state.timelines else None,

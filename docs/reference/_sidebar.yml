@@ -107,28 +107,16 @@ website:
           href: reference/transcript.qmd#log_columns
         - text: transcript_messages
           href: reference/transcript.qmd#transcript_messages
+        - text: timeline_messages
+          href: reference/transcript.qmd#timeline_messages
         - text: segment_messages
           href: reference/transcript.qmd#segment_messages
         - text: span_messages
           href: reference/transcript.qmd#span_messages
         - text: MessagesSegment
           href: reference/transcript.qmd#messagessegment
-        - text: timeline_build
-          href: reference/transcript.qmd#timeline_build
-        - text: timeline_filter
-          href: reference/transcript.qmd#timeline_filter
-        - text: timeline_messages
-          href: reference/transcript.qmd#timeline_messages
-        - text: Timeline
-          href: reference/transcript.qmd#timeline
-        - text: TimelineBranch
-          href: reference/transcript.qmd#timelinebranch
-        - text: TimelineEvent
-          href: reference/transcript.qmd#timelineevent
         - text: TimelineMessages
           href: reference/transcript.qmd#timelinemessages
-        - text: TimelineSpan
-          href: reference/transcript.qmd#timelinespan
         - text: observe
           href: reference/transcript.qmd#observe
         - text: observe_update
@@ -207,6 +195,8 @@ website:
           href: reference/sources.qmd#langsmith
         - text: logfire
           href: reference/sources.qmd#logfire
+        - text: weave
+          href: reference/sources.qmd#weave
         - text: claude_code
           href: reference/sources.qmd#claude_code
       - section: async

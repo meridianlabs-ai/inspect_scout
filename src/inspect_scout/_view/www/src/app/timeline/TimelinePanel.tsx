@@ -3,11 +3,19 @@ import {
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import { FC, useEffect, useMemo, useState } from "react";
+import {
+  CSSProperties,
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
+import { TimelineSelectContext } from "../../components/transcript/TimelineSelectContext";
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useProperty } from "../../state/hooks/useProperty";
@@ -17,6 +25,7 @@ import { TimelineSwimLanes } from "./components/TimelineSwimLanes";
 import { useTimeline } from "./hooks/useTimeline";
 import { timelineScenarios } from "./syntheticNodes";
 import {
+  buildSpanSelectKeys,
   collectRawEvents,
   computeMinimapSelection,
   getSelectedSpans,
@@ -37,6 +46,7 @@ export const TimelinePanel: FC = () => {
     { defaultValue: true, cleanup: false }
   );
   const isOutlineCollapsed = !!outlineCollapsed;
+  const [outlineWidth, setOutlineWidth] = useState<number | undefined>();
   const scenario = timelineScenarios[selectedIndex];
   // Guaranteed to be defined: selectedIndex is initialized to 0 and the
   // select only offers valid indices, but we fall back to [0] defensively.
@@ -77,11 +87,34 @@ export const TimelinePanel: FC = () => {
     [state.rows, state.selected]
   );
 
-  const rawEvents = useMemo(
+  const { events: rawEvents, sourceSpans } = useMemo(
     () => collectRawEvents(selectedSpans),
     [selectedSpans]
   );
-  const { eventNodes, defaultCollapsedIds } = useEventNodes(rawEvents, false);
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(
+    rawEvents,
+    false,
+    sourceSpans
+  );
+
+  const spanSelectKeys = useMemo(
+    () => buildSpanSelectKeys(state.rows),
+    [state.rows]
+  );
+
+  const { select, drillDownAndSelect } = state;
+  const selectBySpanId = useCallback(
+    (spanId: string) => {
+      const key = spanSelectKeys.get(spanId);
+      if (!key) return;
+      if (key.parallel && key.spanIndex) {
+        drillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
+      } else {
+        select(key.name, key.spanIndex);
+      }
+    },
+    [spanSelectKeys, select, drillDownAndSelect]
+  );
 
   return (
     <div className={styles.container}>
@@ -142,42 +175,52 @@ export const TimelinePanel: FC = () => {
             selected: state.selected,
           }}
         />
-        {eventNodes.length > 0 ? (
-          <div
-            className={clsx(
-              styles.eventsContainer,
-              isOutlineCollapsed && styles.outlineCollapsed
-            )}
-          >
-            <div className={styles.outlinePane}>
-              {!isOutlineCollapsed && (
-                <TranscriptOutline
+        <TimelineSelectContext.Provider value={selectBySpanId}>
+          {eventNodes.length > 0 ? (
+            <div
+              className={clsx(
+                styles.eventsContainer,
+                isOutlineCollapsed && styles.outlineCollapsed
+              )}
+              style={
+                !isOutlineCollapsed && outlineWidth
+                  ? ({
+                      "--outline-width": `${outlineWidth}px`,
+                    } as CSSProperties)
+                  : undefined
+              }
+            >
+              <div className={styles.outlinePane}>
+                {!isOutlineCollapsed && (
+                  <TranscriptOutline
+                    eventNodes={eventNodes}
+                    defaultCollapsedIds={defaultCollapsedIds}
+                    className={styles.outline}
+                    onWidthChange={setOutlineWidth}
+                  />
+                )}
+                <div
+                  className={styles.outlineToggle}
+                  onClick={() => setOutlineCollapsed(!isOutlineCollapsed)}
+                >
+                  <i className={ApplicationIcons.sidebar} />
+                </div>
+              </div>
+              <div className={styles.eventsSeparator} />
+              <div className={styles.eventList}>
+                <TranscriptViewNodes
+                  id="timeline-events"
                   eventNodes={eventNodes}
                   defaultCollapsedIds={defaultCollapsedIds}
-                  className={styles.outline}
                 />
-              )}
-              <div
-                className={styles.outlineToggle}
-                onClick={() => setOutlineCollapsed(!isOutlineCollapsed)}
-              >
-                <i className={ApplicationIcons.sidebar} />
               </div>
             </div>
-            <div className={styles.eventsSeparator} />
-            <div className={styles.eventList}>
-              <TranscriptViewNodes
-                id="timeline-events"
-                eventNodes={eventNodes}
-                defaultCollapsedIds={defaultCollapsedIds}
-              />
+          ) : (
+            <div className={styles.emptyEvents}>
+              Select a swimlane row to view events
             </div>
-          </div>
-        ) : (
-          <div className={styles.emptyEvents}>
-            Select a swimlane row to view events
-          </div>
-        )}
+          )}
+        </TimelineSelectContext.Provider>
       </div>
     </div>
   );

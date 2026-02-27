@@ -21,6 +21,7 @@ import {
   ToolEvent,
 } from "../../types/api-types";
 
+import type { TimelineSpan } from "./timeline";
 import { STEP, SPAN_BEGIN, TYPE_TOOL, TYPE_SUBTASK } from "./transform/utils";
 
 export interface StateManager {
@@ -91,6 +92,8 @@ export class EventNode<T extends EventType = EventType> {
   event: T;
   children: EventNode<EventType>[] = [];
   depth: number;
+  /** The TimelineSpan this node was synthesized from, if any. */
+  sourceSpan?: TimelineSpan;
 
   constructor(id: string, event: T, depth: number) {
     this.id = id;

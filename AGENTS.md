@@ -110,6 +110,7 @@ pnpm install
 ### Common Pitfalls
 - Use pnpm, not npm—this project uses pnpm exclusively
 - Hook tests don't need JSX—use `.test.ts` not `.test.tsx`; see `useMapAsyncData.test.ts`
+- Run `pnpm check` to type check, lint, and otherwise check your code quality
 - Run `pnpm build` before committing (not just `pnpm check`)—we ship the built .js code
 
 

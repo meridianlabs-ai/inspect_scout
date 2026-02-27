@@ -25,14 +25,14 @@
   background-color: var(--bs-secondary-bg);
   font-weight: 600;
 }
-._container_1w6el_1 {
+._container_e2stj_1 {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-._headerRow_1w6el_8 {
+._headerRow_e2stj_8 {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -41,7 +41,7 @@
   border-bottom: 1px solid var(--bs-border-color);
 }
 
-._title_1w6el_17 {
+._title_e2stj_17 {
   font-size: 16px;
   font-weight: 600;
   color: var(--vscode-foreground);
@@ -49,44 +49,43 @@
   flex-shrink: 0;
 }
 
-._scenarioSelect_1w6el_25 {
+._scenarioSelect_e2stj_25 {
   width: 240px;
 }
 
-._markerDepthSelect_1w6el_29 {
+._markerDepthSelect_e2stj_29 {
   width: 180px;
 }
 
-._scenarioDescription_1w6el_33 {
+._scenarioDescription_e2stj_33 {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }
 
-._content_1w6el_38 {
+._content_e2stj_38 {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-._eventsContainer_1w6el_45 {
+._eventsContainer_e2stj_45 {
   flex: 1;
   display: grid;
-  grid-template-columns: 180px 1px 1fr;
+  grid-template-columns: var(--outline-width, 180px) 1px 1fr;
   overflow: hidden;
-  transition: grid-template-columns 0.3s ease;
 }
 
-._eventsContainer_1w6el_45._outlineCollapsed_1w6el_53 {
+._eventsContainer_e2stj_45._outlineCollapsed_e2stj_52 {
   grid-template-columns: 28px 1px 1fr;
 }
 
-._outlinePane_1w6el_57 {
+._outlinePane_e2stj_56 {
   position: relative;
   overflow: hidden;
 }
 
-._outline_1w6el_53 {
+._outline_e2stj_52 {
   padding-left: 0.5rem;
   padding-top: 0.5rem;
   margin-top: 0.5rem;
@@ -94,7 +93,7 @@
   height: 100%;
 }
 
-._outlineToggle_1w6el_70 {
+._outlineToggle_e2stj_69 {
   cursor: pointer;
   font-size: 0.8em;
   position: absolute;
@@ -102,15 +101,15 @@
   right: 0.5em;
 }
 
-._eventsSeparator_1w6el_78 {
+._eventsSeparator_e2stj_77 {
   background-color: var(--bs-border-color);
 }
 
-._eventList_1w6el_82 {
+._eventList_e2stj_81 {
   overflow-y: auto;
 }
 
-._emptyEvents_1w6el_86 {
+._emptyEvents_e2stj_85 {
   flex: 1;
   display: flex;
   align-items: center;

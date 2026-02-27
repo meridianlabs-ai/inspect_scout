@@ -55,6 +55,12 @@ export interface TimelineState {
   navigateTo: (path: string) => void;
   /** Set or clear the selected span. Use spanIndex for multi-span rows. */
   select: (name: string | null, spanIndex?: number) => void;
+  /** Drill down into a span and simultaneously select a child row. */
+  drillDownAndSelect: (
+    drillName: string,
+    selectName: string,
+    selectSpanIndex?: number
+  ) => void;
 }
 
 // =============================================================================
@@ -504,6 +510,25 @@ export function useTimeline(timeline: Timeline): TimelineState {
     [setSearchParams]
   );
 
+  const drillDownAndSelect = useCallback(
+    (drillName: string, selectName: string, selectSpanIndex?: number) => {
+      const segment = drillName;
+      const newPath = pathString ? `${pathString}/${segment}` : segment;
+      const selectedValue = selectSpanIndex
+        ? `${selectName}-${selectSpanIndex}`
+        : selectName;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(kPathParam, newPath);
+        next.set(kSelectedParam, selectedValue);
+        next.delete("event");
+        next.delete("message");
+        return next;
+      });
+    },
+    [pathString, setSearchParams]
+  );
+
   return {
     node,
     rows,
@@ -513,5 +538,6 @@ export function useTimeline(timeline: Timeline): TimelineState {
     goUp,
     navigateTo,
     select,
+    drillDownAndSelect,
   };
 }

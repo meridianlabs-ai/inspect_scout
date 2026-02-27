@@ -27,6 +27,7 @@ import {
   removeNodeVisitor,
   removeStepSpanNameVisitor,
 } from "./tree-visitors";
+import { useOutlineWidth } from "./useOutlineWidth";
 
 const kFramesToStabilize = 10;
 
@@ -39,6 +40,8 @@ interface TranscriptOutlineProps {
   style?: CSSProperties;
   /** Reports whether the outline has displayable nodes after filtering. */
   onHasNodesChange?: (hasNodes: boolean) => void;
+  /** Reports the ideal width (in px) for the outline column. */
+  onWidthChange?: (width: number) => void;
 }
 
 // hack: add a padding node to the end of the list so
@@ -69,6 +72,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   scrollRef,
   style,
   onHasNodesChange,
+  onWidthChange,
 }) => {
   const id = "transcript-tree";
   // The virtual list handle and state
@@ -168,6 +172,12 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   useEffect(() => {
     onHasNodesChange?.(hasOutlineNodes);
   }, [hasOutlineNodes, onHasNodesChange]);
+
+  // Measure the ideal width for the outline column from label text
+  const outlineWidth = useOutlineWidth(outlineNodeList);
+  useEffect(() => {
+    onWidthChange?.(outlineWidth);
+  }, [outlineWidth, onWidthChange]);
 
   // Event node, for scroll tracking
   const allNodesList = useMemo(() => {

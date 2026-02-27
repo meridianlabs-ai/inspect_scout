@@ -1,10 +1,10 @@
-._tabContainer_vgk45_1 {
+._tabContainer_48snv_1 {
   display: grid;
   grid-template-rows: max-content minmax(0, 1fr);
   height: 100%;
 }
 
-.nav._tabs_vgk45_7 {
+.nav._tabs_48snv_7 {
   border-bottom: solid 1px var(--bs-border-color);
   padding-bottom: 0.25rem;
   padding-top: 0.5rem;
@@ -16,56 +16,55 @@
   background-color: var(--bs-body-bg);
 }
 
-.nav._tabs_vgk45_7 .nav-link {
+.nav._tabs_48snv_7 .nav-link {
   padding: 0.3rem 0.5rem;
   font-size: var(--inspect-font-size-smallest) !important;
 }
 
-._chatTab_vgk45_24 > * > * {
+._chatTab_48snv_24 > * > * {
   padding: 0.5rem;
 }
 
-._chatTab_vgk45_24 {
+._chatTab_48snv_24 {
   padding-bottom: 50px;
 }
 
-._metadata_vgk45_32 {
+._metadata_48snv_32 {
   padding: 0.5rem;
   padding-bottom: 50px;
 }
 
-._scrollable_vgk45_37 {
+._scrollable_48snv_37 {
   overflow-y: auto;
   min-height: 0;
   height: 100%;
 }
 
-._eventsSeparator_vgk45_43 {
+._eventsSeparator_48snv_43 {
   background-color: var(--bs-border-color);
 }
 
-._eventsList_vgk45_47 {
+._eventsList_48snv_47 {
   padding-bottom: 1rem;
 }
 
-._eventsContainer_vgk45_51 {
+._eventsContainer_48snv_51 {
   display: grid;
   width: 100%;
-  grid-template-columns: 180px 1px 1fr;
+  grid-template-columns: var(--outline-width, 180px) 1px 1fr;
   min-height: 100vh;
-  transition: grid-template-columns 0.3s ease;
   padding-bottom: 44px;
 }
 
-._eventsContainer_vgk45_51._outlineCollapsed_vgk45_60 {
+._eventsContainer_48snv_51._outlineCollapsed_48snv_59 {
   grid-template-columns: 28px 1px 1fr;
 }
 
-._eventsTab_vgk45_64 {
+._eventsTab_48snv_63 {
   display: flex;
 }
 
-._eventsTabContent_vgk45_68 {
+._eventsTabContent_48snv_67 {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -73,12 +72,12 @@
   min-height: 0;
 }
 
-._eventsOutline_vgk45_76 {
+._eventsOutline_48snv_75 {
   padding-left: 0.5rem;
   padding-top: 0.4rem;
 }
 
-._outlineToggle_vgk45_81 {
+._outlineToggle_48snv_80 {
   all: unset;
   cursor: pointer;
   font-size: 0.8em;
@@ -87,27 +86,27 @@
   right: 0.5em;
 }
 
-._outlineToggle_vgk45_81[aria-disabled="true"] {
+._outlineToggle_48snv_80[aria-disabled="true"] {
   cursor: default;
   opacity: 0.4;
 }
 
-._tabTool_vgk45_95 {
+._tabTool_48snv_94 {
   font-size: var(--inspect-font-size-smallestest) !important;
   padding: 0.1rem 0.4rem !important;
 }
 
-._splitLayout_vgk45_100 {
+._splitLayout_48snv_99 {
   height: 100%;
   width: 100%;
 }
 
-._splitStart_vgk45_105 {
+._splitStart_48snv_104 {
   height: 100%;
   overflow-y: auto;
 }
 
-._validationSidebar_vgk45_110 {
+._validationSidebar_48snv_109 {
   display: flex;
   flex-direction: column;
   height: 100%;

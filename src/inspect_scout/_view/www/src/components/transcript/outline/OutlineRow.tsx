@@ -62,7 +62,11 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         >
           {toggle ? <i className={clsx(toggle)} /> : undefined}
         </div>
-        <div className={clsx(styles.label)} data-depth={node.depth}>
+        <div
+          className={clsx(styles.label)}
+          data-depth={node.depth}
+          title={tooltipForNode(node)}
+        >
           {icon ? <i className={clsx(icon, styles.icon)} /> : undefined}
           {eventUrl ? (
             <Link to={eventUrl} className={clsx(styles.eventLink)} ref={ref}>
@@ -108,7 +112,19 @@ const iconForNode = (node: EventNode): string | undefined => {
   }
 };
 
+/** Tooltip for the outline row (description for agent nodes, undefined otherwise). */
+const tooltipForNode = (node: EventNode): string | undefined => {
+  if (node.sourceSpan?.spanType === "agent" && node.sourceSpan.description) {
+    return node.sourceSpan.description;
+  }
+};
+
 const labelForNode = (node: EventNode): string => {
+  // Agent card nodes: use the lowercase span name
+  if (node.sourceSpan?.spanType === "agent") {
+    return node.sourceSpan.name.toLowerCase();
+  }
+
   if (node.event.event === "span_begin") {
     switch (node.event.type) {
       case "solver":

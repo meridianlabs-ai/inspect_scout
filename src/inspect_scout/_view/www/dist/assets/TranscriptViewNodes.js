@@ -1,6 +1,6 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./lib-CBtriEt5.js","./chunk-DfAF0w94.js","./wgxpath.install-node-Csk64Aj9.js","./liteDOM-Cp0aN3bP.js","./_commonjsHelpers.js","./xypic-DrMJn58R.js","./tex-svg-full-BI3fonbT.js"])))=>i.map(i=>d[i]);
 import { r as reactExports, a7 as prismExports, j as jsxRuntimeExports, c as clsx, u as useStore, a8 as debounce$1, G as useParams, a9 as parseTranscriptParams, i as useSearchParams, x as transcriptRoute, R as React, g as fo, A as ApplicationIcons, aa as __vitePreload, m as useLoggingNavigate, ab as iconForMimeType, ac as isHostedEnvironment, C as lib$1, ad as useExtendedFind } from "./index.js";
-import { T as ToolButton, P as PopOver, f as formatNumber, d as formatDateTime, e as formatTime$1 } from "./ToolButton.js";
+import { T as ToolButton, P as PopOver, f as formatNumber, g as formatDuration, a as formatPrettyDecimal, h as formatDurationShort, d as formatDateTime, e as formatTime$1 } from "./ToolButton.js";
 import { l } from "./chunk-DfAF0w94.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";
 const maybeBase64 = (str, minLen = 256) => {
@@ -385,7 +385,7 @@ function useScrollTrack(elementIds, onElementVisible, scrollRef, options) {
 const grid$3 = "_grid_1vh2w_1";
 const cell = "_cell_1vh2w_8";
 const value = "_value_1vh2w_13";
-const styles$O = {
+const styles$P = {
   grid: grid$3,
   cell,
   value
@@ -1682,7 +1682,7 @@ const ansiDisplayContainer = "_ansiDisplayContainer_sawhg_1";
 const ansiDisplay = "_ansiDisplay_sawhg_1";
 const ansiDisplayRaw = "_ansiDisplayRaw_sawhg_28";
 const ansiDisplayToggle = "_ansiDisplayToggle_sawhg_33";
-const styles$N = {
+const styles$O = {
   ansiDisplayContainer,
   ansiDisplay,
   ansiDisplayRaw,
@@ -1738,13 +1738,13 @@ const ANSIDisplay = ({
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: clsx(styles$N.ansiDisplayContainer, className2),
+      className: clsx(styles$O.ansiDisplayContainer, className2),
       style: { ...style2 },
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           ToolButton,
           {
-            className: clsx(styles$N.ansiDisplayToggle, "text-size-smallest"),
+            className: clsx(styles$O.ansiDisplayToggle, "text-size-smallest"),
             icon: "bi bi-code-slash",
             label: "",
             latched: showRaw,
@@ -1752,9 +1752,9 @@ const ANSIDisplay = ({
             title: showRaw ? "Show rendered output" : "Show raw output"
           }
         ),
-        showRaw ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$N.ansiDisplay, styles$N.ansiDisplayRaw), children: output2 }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$N.ansiDisplay), style: backgroundStyle, children: ansiOutput2.outputLines.map((line, index) => {
+        showRaw ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$O.ansiDisplay, styles$O.ansiDisplayRaw), children: output2 }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$O.ansiDisplay), style: backgroundStyle, children: ansiOutput2.outputLines.map((line, index) => {
           firstOutput = firstOutput || !!line.outputRuns.length;
-          return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$N.ansiDisplayLine), children: !line.outputRuns.length ? firstOutput ? /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}) : null : line.outputRuns.map((outputRun) => /* @__PURE__ */ jsxRuntimeExports.jsx(OutputRun, { run: outputRun }, outputRun.id)) }, index);
+          return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$O.ansiDisplayLine), children: !line.outputRuns.length ? firstOutput ? /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}) : null : line.outputRuns.map((outputRun) => /* @__PURE__ */ jsxRuntimeExports.jsx(OutputRun, { run: outputRun }, outputRun.id)) }, index);
         }) })
       ]
     }
@@ -1962,7 +1962,7 @@ const visible = "_visible_tm52u_1";
 const hidden$1 = "_hidden_tm52u_5";
 const pills = "_pills_tm52u_9";
 const pill = "_pill_tm52u_9";
-const styles$M = {
+const styles$N = {
   visible,
   hidden: hidden$1,
   pills,
@@ -1992,7 +1992,7 @@ const NavPills = ({ id, children: children2 }) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: child["props"]?.title === activeItem ? styles$M.visible : styles$M.hidden,
+        className: child["props"]?.title === activeItem ? styles$N.visible : styles$N.hidden,
         children: child
       },
       `nav-pill-container-${idx}`
@@ -2002,7 +2002,7 @@ const NavPills = ({ id, children: children2 }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "ul",
       {
-        className: clsx("nav", "nav-pills", styles$M.pills),
+        className: clsx("nav", "nav-pills", styles$N.pills),
         role: "tablist",
         "aria-orientation": "horizontal",
         children: navPills
@@ -2038,7 +2038,7 @@ const NavPill = ({
           "nav-link",
           "text-style-label",
           active ? "active " : "",
-          styles$M.pill
+          styles$N.pill
         ),
         "data-target": title2,
         onClick: handleClick,
@@ -5381,7 +5381,7 @@ const moreToggleButton = "_moreToggleButton_1ka1g_36";
 const separator$4 = "_separator_1ka1g_44";
 const inlineRight = "_inlineRight_1ka1g_50";
 const blockLeft = "_blockLeft_1ka1g_56";
-const styles$L = {
+const styles$M = {
   expandablePanel,
   expandableBordered,
   expandableCollapsed,
@@ -5433,10 +5433,10 @@ const ExpandablePanel = reactExports.memo(
           style: baseStyles,
           ref: contentRef,
           className: clsx(
-            styles$L.expandablePanel,
-            collapsed ? styles$L.expandableCollapsed : void 0,
-            border ? styles$L.expandableBordered : void 0,
-            showToggle ? styles$L.padBottom : void 0,
+            styles$M.expandablePanel,
+            collapsed ? styles$M.expandableCollapsed : void 0,
+            border ? styles$M.expandableBordered : void 0,
+            showToggle ? styles$M.padBottom : void 0,
             className2
           ),
           children: [
@@ -5462,7 +5462,7 @@ const ExpandablePanel = reactExports.memo(
           position: "block-left"
         }
       ) }),
-      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$L.separator) })
+      showToggle && layout === "inline-right" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$M.separator) })
     ] });
   }
 );
@@ -5481,15 +5481,15 @@ const MoreToggle = ({
     "div",
     {
       className: clsx(
-        styles$L.moreToggle,
-        border ? styles$L.bordered : void 0,
-        position === "inline-right" ? styles$L.inlineRight : styles$L.blockLeft
+        styles$M.moreToggle,
+        border ? styles$M.bordered : void 0,
+        position === "inline-right" ? styles$M.inlineRight : styles$M.blockLeft
       ),
       style: style2,
       children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
-          className: clsx(styles$L.moreToggleButton, "text-size-smallest"),
+          className: clsx(styles$M.moreToggleButton, "text-size-smallest"),
           onClick: handleClick,
           children: [
             text2,
@@ -5586,7 +5586,7 @@ const keyPairBordered = "_keyPairBordered_qjlxf_9";
 const key = "_key_qjlxf_1";
 const pre = "_pre_qjlxf_19";
 const treeIcon = "_treeIcon_qjlxf_23";
-const styles$K = {
+const styles$L = {
   keyPairContainer,
   keyPairBordered,
   key,
@@ -5708,8 +5708,8 @@ const RecordTree = ({
       "div",
       {
         className: clsx(
-          styles$K.keyPairContainer,
-          index < items.length - 1 && useBorders ? styles$K.keyPairBordered : void 0,
+          styles$L.keyPairContainer,
+          index < items.length - 1 && useBorders ? styles$L.keyPairBordered : void 0,
           "text-size-small"
         ),
         style: {
@@ -5722,7 +5722,7 @@ const RecordTree = ({
               "data-index": index,
               className: clsx(
                 kRecordTreeKey,
-                styles$K.key,
+                styles$L.key,
                 "font-monospace",
                 "text-style-secondary"
               ),
@@ -5732,16 +5732,16 @@ const RecordTree = ({
                 setCollapsed(item.id, !collapsedIds?.[item.id]);
               },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$K.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: item.hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$L.pre), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "i",
                   {
                     className: clsx(
                       collapsedIds && collapsedIds[item.id] ? ApplicationIcons.tree.closed : ApplicationIcons.tree.open,
-                      styles$K.treeIcon
+                      styles$L.treeIcon
                     )
                   }
                 ) }) : void 0 }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$K.pre), children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("pre", { className: clsx(styles$L.pre), children: [
                   item.key,
                   ":"
                 ] })
@@ -5851,19 +5851,19 @@ const processNodeRecursive = (key2, value2, depth, parentPath, thisPath, collaps
     return items;
   }
   let displayValue = null;
-  let processChildren = false;
+  let processChildren2 = false;
   if (Array.isArray(value2)) {
-    processChildren = true;
+    processChildren2 = true;
     displayValue = `Array(${value2.length})`;
   } else if (typeof value2 === "object" && value2 !== null) {
-    processChildren = true;
+    processChildren2 = true;
     displayValue = `Object(${Object.keys(value2).length})`;
   } else {
     displayValue = String(value2);
-    processChildren = false;
+    processChildren2 = false;
   }
   items.push({ id, key: key2, value: displayValue, depth, hasChildren: true });
-  if (processChildren && !collapsedIds[id]) {
+  if (processChildren2 && !collapsedIds[id]) {
     const childDepth = depth + 1;
     if (Array.isArray(value2)) {
       if (value2.length > 0) {
@@ -5906,11 +5906,11 @@ const isPrimitiveOrNull = (value2) => {
   return value2 === null || value2 === void 0 || typeof value2 === "string" || typeof value2 === "number" || typeof value2 === "boolean";
 };
 const copyButton = "_copyButton_1goi8_1";
-const styles$J = {
+const styles$K = {
   copyButton
 };
 const CopyButton = ({
-  icon = ApplicationIcons.copy,
+  icon: icon2 = ApplicationIcons.copy,
   title: title2,
   value: value2,
   onCopySuccess,
@@ -5937,7 +5937,7 @@ const CopyButton = ({
     "button",
     {
       type: "button",
-      className: clsx("copy-button", styles$J.copyButton, className2),
+      className: clsx("copy-button", styles$K.copyButton, className2),
       onClick: () => {
         void handleClick();
       },
@@ -5947,7 +5947,7 @@ const CopyButton = ({
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         "i",
         {
-          className: isCopied ? `${ApplicationIcons.confirm} primary` : icon,
+          className: isCopied ? `${ApplicationIcons.confirm} primary` : icon2,
           "aria-hidden": "true"
         }
       )
@@ -5958,7 +5958,7 @@ const labeledValue = "_labeledValue_6obbb_1";
 const row = "_row_6obbb_6";
 const column = "_column_6obbb_10";
 const labeledValueLabel = "_labeledValueLabel_6obbb_14";
-const styles$I = {
+const styles$J = {
   labeledValue,
   row,
   column,
@@ -5976,8 +5976,8 @@ const LabeledValue = ({
     "div",
     {
       className: clsx(
-        styles$I.labeledValue,
-        layout === "column" ? styles$I.column : styles$I.row,
+        styles$J.labeledValue,
+        layout === "column" ? styles$J.column : styles$J.row,
         className2
       ),
       style: {
@@ -5988,14 +5988,14 @@ const LabeledValue = ({
           "div",
           {
             className: clsx(
-              styles$I.labeledValueLabel,
+              styles$J.labeledValueLabel,
               "text-style-label",
               "text-style-secondary"
             ),
             children: label2
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$I.labeledValueValue), style: { ...valueStyle }, children: children2 })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$J.labeledValueValue), style: { ...valueStyle }, children: children2 })
       ]
     }
   );
@@ -6009,7 +6009,7 @@ const indented = "_indented_b8oe1_29";
 const copyLink$1 = "_copyLink_b8oe1_33";
 const metadataLabel = "_metadataLabel_b8oe1_43";
 const hover$1 = "_hover_b8oe1_47";
-const styles$H = {
+const styles$I = {
   message,
   systemRole,
   messageGrid,
@@ -11604,7 +11604,7 @@ function unescapeCodeHtmlEntities(str) {
   );
 }
 const cite = "_cite_1t1bm_1";
-const styles$G = {
+const styles$H = {
   cite
 };
 const MarkdownDivWithReferences = reactExports.forwardRef(({ markdown, references, options, className: className2, style: style2, omitMedia }, ref) => {
@@ -11641,12 +11641,12 @@ const MarkdownDivWithReferences = reactExports.forwardRef(({ markdown, reference
         const escapedCite = ref2.cite.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex2 = new RegExp(`${escapedCite}(?![a-zA-Z0-9])`, "g");
         const href = ref2.citeUrl || "javascript:void(0)";
-        const replacement = `<a href="${href}" class="${styles$G.cite}" data-ref-id="${ref2.id}">${ref2.cite}</a>`;
+        const replacement = `<a href="${href}" class="${styles$H.cite}" data-ref-id="${ref2.id}">${ref2.cite}</a>`;
         processedHtml = processedHtml.replace(regex2, replacement);
       });
       return processedHtml;
     },
-    [references, styles$G.cite]
+    [references, styles$H.cite]
   );
   const memoizedMarkdown = reactExports.useMemo(
     () => /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -11671,7 +11671,7 @@ const MarkdownDivWithReferences = reactExports.forwardRef(({ markdown, reference
       return;
     }
     const citeLinks = container2.querySelectorAll(
-      `.${styles$G.cite}`
+      `.${styles$H.cite}`
     );
     const handleMouseEnter = (e) => {
       const el = e.currentTarget;
@@ -11711,7 +11711,7 @@ const MarkdownDivWithReferences = reactExports.forwardRef(({ markdown, reference
   }, [
     markdown,
     refMap,
-    styles$G.cite,
+    styles$H.cite,
     setPositionEl,
     setCurrentRef,
     setShowingRefPopover,
@@ -11744,7 +11744,7 @@ const MarkdownDivWithReferences = reactExports.forwardRef(({ markdown, reference
 MarkdownDivWithReferences.displayName = "MarkdownDivWithReferences";
 const popoverKey = (ref) => `markdown-ref-popover-${ref.id}`;
 const content$1 = "_content_13ihw_1";
-const styles$F = {
+const styles$G = {
   content: content$1
 };
 const Preformatted = reactExports.forwardRef(
@@ -11753,7 +11753,7 @@ const Preformatted = reactExports.forwardRef(
       "pre",
       {
         ref,
-        className: clsx(styles$F.content, "text-size-smaller", className2),
+        className: clsx(styles$G.content, "text-size-smaller", className2),
         style: style2,
         children: text2
       }
@@ -11798,11 +11798,11 @@ const RenderedText = reactExports.forwardRef(
   }
 );
 RenderedText.displayName = "RenderedText";
-const title$3 = "_title_1pwo3_1";
+const title$4 = "_title_1pwo3_1";
 const content = "_content_1pwo3_11";
 const grid$2 = "_grid_1pwo3_16";
-const styles$E = {
-  title: title$3,
+const styles$F = {
+  title: title$4,
   content,
   grid: grid$2
 };
@@ -11817,19 +11817,19 @@ const CompactionData = ({ id, data }) => {
       MetaDataGrid,
       {
         id: `${id}-compacted-content-metadata`,
-        className: styles$E.grid,
+        className: styles$F.grid,
         entries: compactionMetadata
       }
     );
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$E.content, "text-size-small"), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$F.content, "text-size-small"), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
         className: clsx(
           "text-style-label",
           "text-style-secondary",
-          styles$E.title
+          styles$F.title
         ),
         children: "Compacted Content"
       }
@@ -11838,23 +11838,23 @@ const CompactionData = ({ id, data }) => {
   ] });
 };
 const contentData = "_contentData_1lrx1_1";
-const styles$D = {
+const styles$E = {
   contentData
 };
 const webSearch = "_webSearch_1376z_1";
 const query$1 = "_query_1376z_8";
-const styles$C = {
+const styles$D = {
   webSearch,
   query: query$1
 };
 const WebSearch = ({ query: query2 }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$C.webSearch, "text-size-smaller"), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$D.webSearch, "text-size-smaller"), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx("text-style-label", "text-style-secondary"), children: "Web Search:" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$C.query, "text-size-smallest"), children: query2 })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$D.query, "text-size-smallest"), children: query2 })
   ] });
 };
 const result$1 = "_result_1mixg_12";
-const styles$B = {
+const styles$C = {
   result: result$1
 };
 const WebSearchResults = ({
@@ -11865,7 +11865,7 @@ const WebSearchResults = ({
       "div",
       {
         className: clsx(
-          styles$B.label,
+          styles$C.label,
           "text-style-label",
           "text-style-secondary",
           "text-size-smaller"
@@ -11873,10 +11873,10 @@ const WebSearchResults = ({
         children: "Results"
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$B.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ol", { className: clsx(styles$C.results, "text-size-smaller"), children: results.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
       "li",
       {
-        className: clsx(styles$B.result, "text-style-secondary"),
+        className: clsx(styles$C.result, "text-style-secondary"),
         children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
@@ -11900,17 +11900,17 @@ const ContentDataView = ({ id, contentData: contentData2 }) => {
   );
   if (!renderer) {
     const { encrypted_content, ...record } = renderableData;
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$D.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.contentData), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       RecordTree,
       {
         id: `${id}-tree`,
         record,
-        className: clsx(styles$D.data),
+        className: clsx(styles$E.data),
         defaultExpandLevel: 0
       }
     ) });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$D.contentData), children: renderer.render(id, renderableData) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$E.contentData), children: renderer.render(id, renderableData) });
 };
 const compactionDataRenderer = {
   name: "Compaction",
@@ -11961,7 +11961,7 @@ const serverToolRenderer = {
         {
           id: `${id}-server-tool`,
           record: data,
-          className: clsx(styles$D.data)
+          className: clsx(styles$E.data)
         }
       )
     ] });
@@ -11980,7 +11980,7 @@ const documentFrame = "_documentFrame_1576h_1";
 const documentFrameTitle = "_documentFrameTitle_1576h_9";
 const downloadLink = "_downloadLink_1576h_16";
 const imageDocument = "_imageDocument_1576h_21";
-const styles$A = {
+const styles$B = {
   documentFrame,
   documentFrameTitle,
   downloadLink,
@@ -11995,7 +11995,7 @@ const ContentDocumentView = ({
     return /* @__PURE__ */ jsxRuntimeExports.jsx(ContentDocumentFrame, { document: document2, downloadable: canDownloadFiles, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       "img",
       {
-        className: clsx(styles$A.imageDocument),
+        className: clsx(styles$B.imageDocument),
         src: document2.document,
         alt: document2.filename,
         id
@@ -12020,17 +12020,17 @@ const ContentDocumentFrame = ({
     "div",
     {
       className: clsx(
-        styles$A.documentFrame,
+        styles$B.documentFrame,
         "text-size-small",
         "text-style-secondary"
       ),
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$A.documentFrameTitle), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$B.documentFrameTitle), children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(iconForMimeType(document2.mime_type || "")) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: downloadable ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             "a",
             {
-              className: clsx(styles$A.downloadLink),
+              className: clsx(styles$B.downloadLink),
               onClick: () => {
               },
               children: document2.filename
@@ -12043,7 +12043,7 @@ const ContentDocumentFrame = ({
   );
 };
 const jsonMessage = "_jsonMessage_oxf8d_1";
-const styles$z = {
+const styles$A = {
   jsonMessage
 };
 const JsonMessageContent = ({
@@ -12056,7 +12056,7 @@ const JsonMessageContent = ({
     {
       id,
       record: json,
-      className: clsx(styles$z.jsonMessage, className2),
+      className: clsx(styles$A.jsonMessage, className2),
       useBorders: false
     }
   );
@@ -12068,7 +12068,7 @@ const decodeHtmlEntities = (text2) => {
 };
 const citations = "_citations_1ggvf_1";
 const citationLink = "_citationLink_1ggvf_9";
-const styles$y = {
+const styles$z = {
   citations,
   citationLink
 };
@@ -12076,7 +12076,7 @@ const MessageCitations = ({ citations: citations2 }) => {
   if (citations2.length === 0) {
     return void 0;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$y.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$z.citations, "text-size-smallest"), children: citations2.map((citation, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: index + 1 }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(MessageCitation, { citation })
   ] }, index)) });
@@ -12096,7 +12096,7 @@ const UrlCitation = ({
     href: citation.url,
     target: "_blank",
     rel: "noopener noreferrer",
-    className: clsx(styles$y.citationLink),
+    className: clsx(styles$z.citationLink),
     title: citation.cited_text && typeof citation.cited_text === "string" ? `${citation.cited_text}
 ${citation.url}` : citation.url,
     children: children2
@@ -12105,20 +12105,20 @@ ${citation.url}` : citation.url,
 const OtherCitation = ({ children: children2 }) => /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: children2 });
 const contentImage = "_contentImage_8rgix_1";
 const reasoning = "_reasoning_8rgix_6";
-const styles$x = {
+const styles$y = {
   contentImage,
   reasoning
 };
 const mcpToolUse = "_mcpToolUse_1792k_1";
-const title$2 = "_title_1792k_9";
+const title$3 = "_title_1792k_9";
 const titleText = "_titleText_1792k_18";
 const args = "_args_1792k_22";
 const argLabel = "_argLabel_1792k_31";
 const error = "_error_1792k_35";
 const toolPanel = "_toolPanel_1792k_40";
-const styles$w = {
+const styles$x = {
   mcpToolUse,
-  title: title$2,
+  title: title$3,
   titleText,
   args,
   argLabel,
@@ -12137,23 +12137,23 @@ const McpToolUse = ({ id, content: content2, className: className2 }) => {
   const titleStr = content2.context ? `${content2.context} — ${content2.name}()` : `${content2.name}()`;
   const listToolsResult = maybeListTools(content2);
   const webSearchResult = maybeWebSearchResult(content2);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$w.mcpToolUse, className2), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id, className: clsx(styles$x.mcpToolUse, className2), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: clsx(
-          styles$w.title,
+          styles$x.title,
           "text-size-small",
           "text-style-secondary"
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.role.tool }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$w.titleText, children: titleStr }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$w.type, children: content2.type })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$x.titleText, children: titleStr }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$x.type, children: content2.type })
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$w.args, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$x.args, children: [
       Object.keys(args2).map((key2, index) => {
         const value2 = args2[key2];
         let valueRecord = void 0;
@@ -12172,7 +12172,7 @@ const McpToolUse = ({ id, content: content2, className: className2 }) => {
       }),
       webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: "results" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$w.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ValueDiv, { children: webSearchResult.result.map((result2, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$x.result, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           "a",
           {
             href: result2.url,
@@ -12187,7 +12187,7 @@ const McpToolUse = ({ id, content: content2, className: className2 }) => {
         {
           id: `${id}-output`,
           collapse: true,
-          className: clsx(styles$w.toolPanel),
+          className: clsx(styles$x.toolPanel),
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(LabelDiv, { label: tool2.name }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(ValueDiv, { children: [
@@ -12205,7 +12205,7 @@ const McpToolUse = ({ id, content: content2, className: className2 }) => {
         }
       ) })) : void 0
     ] }),
-    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$w.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+    content2.error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$x.error, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
       "Error: ",
       content2.error
     ] }) }) : !listToolsResult && !webSearchResult ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-small"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExpandablePanel, { id: `${id}-output`, collapse: true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12262,7 +12262,7 @@ const LabelDiv = ({ label: label2 }) => {
     "div",
     {
       className: clsx(
-        styles$w.argLabel,
+        styles$x.argLabel,
         "text-style-secondary",
         "text-size-smaller"
       ),
@@ -12284,7 +12284,7 @@ const toolImage = "_toolImage_qu6a9_1";
 const output = "_output_qu6a9_6";
 const textOutput = "_textOutput_qu6a9_10";
 const textCode = "_textCode_qu6a9_18";
-const styles$v = {
+const styles$w = {
   toolImage,
   output,
   textOutput,
@@ -12303,7 +12303,7 @@ const ToolOutput = ({ output: output2, className: className2 }) => {
       } else {
         if (out.image.startsWith("data:")) {
           outputs.push(
-            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$v.toolImage), src: out.image }, key2)
+            /* @__PURE__ */ jsxRuntimeExports.jsx("img", { className: clsx(styles$w.toolImage), src: out.image }, key2)
           );
         } else {
           outputs.push(/* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(out.image) }, key2));
@@ -12315,7 +12315,7 @@ const ToolOutput = ({ output: output2, className: className2 }) => {
       /* @__PURE__ */ jsxRuntimeExports.jsx(ToolTextOutput, { text: String(output2) }, "tool-output-single")
     );
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$v.output, className2), children: outputs });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$w.output, className2), children: outputs });
 };
 const ToolTextOutput = ({ text: text2 }) => {
   if (isJson(text2)) {
@@ -12323,9 +12323,9 @@ const ToolTextOutput = ({ text: text2 }) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(JsonMessageContent, { id: `1-json`, json: obj });
   }
   if (isAnsiOutput(text2)) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(ANSIDisplay, { className: styles$v.ansiOutput, output: text2 });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(ANSIDisplay, { className: styles$w.ansiOutput, output: text2 });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$v.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$v.textCode), children: text2.trimEnd() }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$w.textOutput, "tool-output"), children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("sourceCode", styles$w.textCode), children: text2.trimEnd() }) });
 };
 const isMessageContent = (content2) => {
   return typeof content2 === "object" && content2 !== null && "type" in content2 && typeof content2.type === "string";
@@ -12424,7 +12424,7 @@ const messageRenderers = {
       } else if (!text2) {
         text2 = r2.summary || "Reasoning text not provided.";
       }
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$x.reasoning, "text-size-small"), children: [
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$y.reasoning, "text-size-small"), children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -12447,7 +12447,7 @@ const messageRenderers = {
     render: (key2, content2, _isLast, _context) => {
       const c = content2;
       if (c.image.startsWith("data:")) {
-        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c.image, className: styles$x.contentImage }, key2);
+        return /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: c.image, className: styles$y.contentImage }, key2);
       } else {
         return /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: c.image }, key2);
       }
@@ -12593,10 +12593,10 @@ const ChatMessage = reactExports.memo(
         className: clsx(
           message2.role,
           "text-size-base",
-          styles$H.message,
-          message2.role === "system" ? styles$H.systemRole : void 0,
-          message2.role === "user" ? styles$H.userRole : void 0,
-          mouseOver ? styles$H.hover : void 0
+          styles$I.message,
+          message2.role === "system" ? styles$I.systemRole : void 0,
+          message2.role === "user" ? styles$I.userRole : void 0,
+          mouseOver ? styles$I.hover : void 0
         ),
         onMouseEnter: () => setMouseOver(true),
         onMouseLeave: () => setMouseOver(false),
@@ -12605,8 +12605,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$H.messageGrid,
-                message2.role === "tool" ? styles$H.toolMessageGrid : void 0,
+                styles$I.messageGrid,
+                message2.role === "tool" ? styles$I.toolMessageGrid : void 0,
                 "text-style-label"
               ),
               children: [
@@ -12617,7 +12617,7 @@ const ChatMessage = reactExports.memo(
                   {
                     icon: ApplicationIcons.link,
                     value: messageUrl,
-                    className: clsx(styles$H.copyLink)
+                    className: clsx(styles$I.copyLink)
                   }
                 ) : ""
               ]
@@ -12627,8 +12627,8 @@ const ChatMessage = reactExports.memo(
             "div",
             {
               className: clsx(
-                styles$H.messageContents,
-                indented2 ? styles$H.indented : void 0
+                styles$I.messageContents,
+                indented2 ? styles$I.indented : void 0
               ),
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12644,7 +12644,7 @@ const ChatMessage = reactExports.memo(
                   LabeledValue,
                   {
                     label: "Metadata",
-                    className: clsx(styles$H.metadataLabel, "text-size-smaller"),
+                    className: clsx(styles$I.metadataLabel, "text-size-smaller"),
                     children: /* @__PURE__ */ jsxRuntimeExports.jsx(
                       RecordTree,
                       {
@@ -12672,7 +12672,7 @@ const last$1 = "_last_17ltx_33";
 const label$1 = "_label_17ltx_40";
 const highlight = "_highlight_17ltx_44";
 const bottomMargin = "_bottomMargin_17ltx_48";
-const styles$u = {
+const styles$v = {
   grid: grid$1,
   number,
   user,
@@ -12786,7 +12786,7 @@ const extractInput = (args2, inputDescriptor) => {
 const sourcePanel = "_sourcePanel_bat6y_1";
 const simple = "_simple_bat6y_6";
 const code$2 = "_code_bat6y_11";
-const styles$t = {
+const styles$u = {
   sourcePanel,
   simple,
   code: code$2
@@ -12805,8 +12805,8 @@ const SourceCodePanel = ({
     "pre",
     {
       className: clsx(
-        styles$t.sourcePanel,
-        simple2 ? styles$t.simple : "",
+        styles$u.sourcePanel,
+        simple2 ? styles$u.simple : "",
         className2
       ),
       style: style2,
@@ -12814,7 +12814,7 @@ const SourceCodePanel = ({
         "code",
         {
           id,
-          className: clsx("source-code", styles$t.code, `language-${language}`),
+          className: clsx("source-code", styles$u.code, `language-${language}`),
           children: code2
         }
       )
@@ -12838,12 +12838,12 @@ const AnswerToolCallView = (props) => {
   );
 };
 const toolCallView = "_toolCallView_x6cus_1";
-const styles$s = {
+const styles$t = {
   toolCallView
 };
 const todoList = "_todoList_1t8rx_1";
 const inProgress = "_inProgress_1t8rx_9";
-const styles$r = {
+const styles$s = {
   todoList,
   inProgress
 };
@@ -12863,7 +12863,7 @@ const toToolTodos = (obj) => {
 };
 const TodoWriteInput = ({ contents: contents2, parentRef }) => {
   const todoItems = toToolTodos(contents2);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$r.todoList), children: todoItems.map((todo) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: parentRef, className: clsx(styles$s.todoList), children: todoItems.map((todo) => {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "i",
@@ -12878,9 +12878,9 @@ const TodoWriteInput = ({ contents: contents2, parentRef }) => {
         "span",
         {
           className: clsx(
-            styles$r.todoItem,
+            styles$s.todoItem,
             "text-size-smallest",
-            todo.status === "in_progress" ? styles$r.inProgress : void 0
+            todo.status === "in_progress" ? styles$s.inProgress : void 0
           ),
           children: todo.content
         }
@@ -12891,7 +12891,7 @@ const TodoWriteInput = ({ contents: contents2, parentRef }) => {
 const outputPre = "_outputPre_fhwyo_1";
 const toolView = "_toolView_fhwyo_7";
 const outputCode = "_outputCode_fhwyo_16";
-const styles$q = {
+const styles$r = {
   outputPre,
   toolView,
   outputCode
@@ -12908,7 +12908,7 @@ const ToolInput = (props) => {
       {
         markdown: toolCallView2.content || "",
         ref: sourceCodeRef,
-        className: clsx("tool-output", styles$q.toolView, className2)
+        className: clsx("tool-output", styles$r.toolView, className2)
       }
     );
   } else {
@@ -12938,8 +12938,8 @@ const RenderTool = ({
     {
       className: clsx(
         "tool-output",
-        styles$q.outputPre,
-        styles$q.bottomMargin,
+        styles$r.outputPre,
+        styles$r.bottomMargin,
         className2
       ),
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -12949,7 +12949,7 @@ const RenderTool = ({
             "source-code",
             "sourceCode",
             contentType ? `language-${contentType}` : void 0,
-            styles$q.outputCode
+            styles$r.outputCode
           ),
           children: formattedContent
         }
@@ -12959,22 +12959,22 @@ const RenderTool = ({
 };
 const image = "_image_1vcac_1";
 const toolTitle = "_toolTitle_1vcac_6";
-const description = "_description_1vcac_10";
-const styles$p = {
+const description$1 = "_description_1vcac_10";
+const styles$q = {
   image,
   toolTitle,
-  description
+  description: description$1
 };
 const ToolTitle = ({ title: title2, description: description2 }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "i",
       {
-        className: clsx("bi", "bi-tools", styles$p.image, "text-size-smaller")
+        className: clsx("bi", "bi-tools", styles$q.image, "text-size-smaller")
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-smaller", styles$p.toolTitle), children: title2 }),
-    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$p.description, "text-size-smallest"), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: clsx("text-size-smaller", styles$q.toolTitle), children: title2 }),
+    description2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: clsx(styles$q.description, "text-size-smallest"), children: [
       "- ",
       description2
     ] }) : void 0
@@ -13036,7 +13036,7 @@ const ToolCallView = ({
   }
   const contents2 = mode !== "compact" ? input : input || functionCall;
   const context = defaultContext();
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$s.toolCallView), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$t.toolCallView), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       mode !== "compact" && (!view || view.title) ? /* @__PURE__ */ jsxRuntimeExports.jsx(
         ToolTitle,
@@ -13168,7 +13168,7 @@ const ChatMessageRow = ({
     }
   }
   if (useLabels) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$u.grid, className2), children: views.map((view, idx) => {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$v.grid, className2), children: views.map((view, idx) => {
       const label2 = viewLabels[idx];
       return /* @__PURE__ */ jsxRuntimeExports.jsxs(reactExports.Fragment, { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -13177,8 +13177,8 @@ const ChatMessageRow = ({
             className: clsx(
               "text-size-smaller",
               "text-style-secondary",
-              styles$u.number,
-              styles$u.label
+              styles$v.number,
+              styles$v.label
             ),
             children: label2
           }
@@ -13187,11 +13187,11 @@ const ChatMessageRow = ({
           "div",
           {
             className: clsx(
-              styles$u.container,
-              highlightUserMessage && resolvedMessage.message.role === "user" ? styles$u.user : void 0,
-              idx === 0 ? styles$u.first : void 0,
-              idx === views.length - 1 ? styles$u.last : void 0,
-              highlightLabeled && label2?.trim() ? styles$u.highlight : void 0
+              styles$v.container,
+              highlightUserMessage && resolvedMessage.message.role === "user" ? styles$v.user : void 0,
+              idx === 0 ? styles$v.first : void 0,
+              idx === views.length - 1 ? styles$v.last : void 0,
+              highlightLabeled && label2?.trim() ? styles$v.highlight : void 0
             ),
             children: view
           }
@@ -13204,13 +13204,13 @@ const ChatMessageRow = ({
         "div",
         {
           className: clsx(
-            styles$u.container,
-            idx === 0 ? styles$u.first : void 0,
-            idx === views.length - 1 ? styles$u.last : void 0,
-            idx === views.length - 1 ? styles$u.bottomMargin : void 0,
+            styles$v.container,
+            idx === 0 ? styles$v.first : void 0,
+            idx === views.length - 1 ? styles$v.last : void 0,
+            idx === views.length - 1 ? styles$v.bottomMargin : void 0,
             className2,
-            styles$u.simple,
-            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$u.user : void 0
+            styles$v.simple,
+            highlightUserMessage && resolvedMessage.message.role === "user" ? styles$v.user : void 0
           ),
           children: view
         },
@@ -13270,7 +13270,7 @@ const resolveToolMessage = (toolMessage) => {
   }
 };
 const ToolCallViewCompact = ({ idx, functionCall }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$u.codeCompact), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("code", { className: clsx(styles$v.codeCompact), children: [
     "tool: ",
     functionCall
   ] }) }, `tool-call-${idx}`);
@@ -13408,7 +13408,7 @@ const query = "_query_seqs2_1";
 const summary$3 = "_summary_seqs2_6";
 const preWrap = "_preWrap_seqs2_10";
 const preCompact = "_preCompact_seqs2_15";
-const styles$o = {
+const styles$p = {
   query,
   summary: summary$3,
   preWrap,
@@ -13541,7 +13541,7 @@ const contentRenderers = (renderObject) => {
           };
         } else {
           return {
-            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$o.preWrap, styles$o.preCompact), children: rendered })
+            rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: clsx(styles$p.preWrap, styles$p.preCompact), children: rendered })
           };
         }
       }
@@ -13590,7 +13590,7 @@ const contentRenderers = (renderObject) => {
       render: (_id, entry, _options) => {
         const results = [];
         results.push(
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$o.query, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$p.query, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.search }),
             " ",
             entry.value.query
@@ -13602,7 +13602,7 @@ const contentRenderers = (renderObject) => {
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: result2.url, children: result2.url }) })
             );
             results.push(
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$o.summary), children: result2.summary })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller", styles$p.summary), children: result2.summary })
             );
           }
         );
@@ -13618,7 +13618,7 @@ const contentRenderers = (renderObject) => {
       },
       render: (_id, entry, _options) => {
         return {
-          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$o.preWrap, children: entry.value })
+          rendered: /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: styles$p.preWrap, children: entry.value })
         };
       }
     },
@@ -13710,7 +13710,7 @@ const MetaDataGrid = ({
         {
           className: clsx(
             `${baseId}-key`,
-            styles$O.cell,
+            styles$P.cell,
             "text-style-label",
             "text-style-secondary",
             fontStyle
@@ -13718,7 +13718,7 @@ const MetaDataGrid = ({
           children: entry?.name
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$O.value, `${baseId}-value`, fontStyle), children: entry && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$P.value, `${baseId}-value`, fontStyle), children: entry && /* @__PURE__ */ jsxRuntimeExports.jsx(
         RenderedContent,
         {
           id: id2,
@@ -13733,7 +13733,7 @@ const MetaDataGrid = ({
               MetaDataGrid,
               {
                 id: id2,
-                className: clsx(styles$O.nested),
+                className: clsx(styles$P.nested),
                 entries: obj,
                 options,
                 references
@@ -13744,7 +13744,7 @@ const MetaDataGrid = ({
       ) })
     ] }, `${baseId}-record-${index}`);
   });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className2, styles$O.grid), style: style2, children: entryEls });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id, className: clsx(className2, styles$P.grid), style: style2, children: entryEls });
 };
 const entryRecords = (entries) => {
   if (!entries) {
@@ -13768,7 +13768,7 @@ const usePreviousValue = (value2) => {
   return previous;
 };
 const progressContainer = "_progressContainer_1cjjr_1";
-const styles$n = {
+const styles$o = {
   progressContainer
 };
 const container$3 = "_container_4p85e_2";
@@ -13780,7 +13780,7 @@ const dot = "_dot_4p85e_8";
 const subtle = "_subtle_4p85e_36";
 const primary = "_primary_4p85e_40";
 const visuallyHidden = "_visuallyHidden_4p85e_59";
-const styles$m = {
+const styles$n = {
   container: container$3,
   dotsContainer,
   small,
@@ -13802,24 +13802,24 @@ const PulsingDots = ({
     "div",
     {
       className: clsx(
-        styles$m.container,
-        size === "small" ? styles$m.small : size === "medium" ? styles$m.medium : styles$m.large,
+        styles$n.container,
+        size === "small" ? styles$n.small : size === "medium" ? styles$n.medium : styles$n.large,
         className2
       ),
       role: "status",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$m.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$n.dotsContainer, children: Array.from({ length: dotsCount }, (_, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
             className: clsx(
-              styles$m.dot,
-              subtle2 ? styles$m.subtle : styles$m.primary
+              styles$n.dot,
+              subtle2 ? styles$n.subtle : styles$n.primary
             ),
             style: { animationDelay: `${index * 0.2}s` }
           },
           `dot-${index}`
         )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$m.visuallyHidden, children: text2 })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$n.visuallyHidden, children: text2 })
       ]
     }
   );
@@ -13976,7 +13976,7 @@ const LiveVirtualList = ({
     return unregister;
   }, [id, registerVirtualList, searchInData]);
   const Footer = () => {
-    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$n.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
+    return showProgress ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$o.progressContainer), children: /* @__PURE__ */ jsxRuntimeExports.jsx(PulsingDots, { subtle: false, size: "medium" }) }) : void 0;
   };
   reactExports.useEffect(() => {
     const parent = scrollRef?.current;
@@ -14054,6 +14054,1593 @@ const prepareSearchTerm = (term) => {
     jsonEscaped: lower.replace(/"/g, '\\"')
   };
 };
+function isSpanNode(item) {
+  return typeof item === "object" && item !== null && "children" in item && Array.isArray(item.children);
+}
+function parseTimestamp$1(timestamp) {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  return isNaN(date.getTime()) ? null : date;
+}
+function getEventStartTime(event) {
+  const timestamp = event.timestamp;
+  const date = parseTimestamp$1(timestamp);
+  if (!date) {
+    throw new Error("Event missing required timestamp field");
+  }
+  return date;
+}
+function getEventEndTime(event) {
+  const completed = event.completed;
+  if (completed) {
+    const date = parseTimestamp$1(completed);
+    if (date) return date;
+  }
+  return getEventStartTime(event);
+}
+function getEventTokens(event) {
+  if (event.event === "model") {
+    const usage = event.output?.usage;
+    if (usage) {
+      const inputTokens = usage.input_tokens ?? 0;
+      const cacheRead = usage.input_tokens_cache_read ?? 0;
+      const cacheWrite = usage.input_tokens_cache_write ?? 0;
+      const outputTokens = usage.output_tokens ?? 0;
+      return inputTokens + cacheRead + cacheWrite + outputTokens;
+    }
+  }
+  return 0;
+}
+function minStartTime(nodes) {
+  const first2 = nodes[0];
+  if (!first2) {
+    throw new Error("minStartTime requires at least one node");
+  }
+  return nodes.reduce(
+    (min, n2) => n2.startTime < min ? n2.startTime : min,
+    first2.startTime
+  );
+}
+function maxEndTime(nodes) {
+  const first2 = nodes[0];
+  if (!first2) {
+    throw new Error("maxEndTime requires at least one node");
+  }
+  return nodes.reduce(
+    (max, n2) => n2.endTime > max ? n2.endTime : max,
+    first2.endTime
+  );
+}
+function sumTokens(nodes) {
+  return nodes.reduce((sum, n2) => sum + n2.totalTokens, 0);
+}
+const IDLE_THRESHOLD_MS = 3e5;
+function computeIdleTime(content2, startTime, endTime) {
+  if (content2.length === 0) return 0;
+  const sorted = [...content2].sort(
+    (a2, b) => a2.startTime.getTime() - b.startTime.getTime()
+  );
+  let idleMs = 0;
+  for (const child of sorted) {
+    idleMs += child.idleTime * 1e3;
+  }
+  const firstGap = sorted[0].startTime.getTime() - startTime.getTime();
+  if (firstGap > IDLE_THRESHOLD_MS) idleMs += firstGap;
+  for (let i2 = 1; i2 < sorted.length; i2++) {
+    const gap = sorted[i2].startTime.getTime() - sorted[i2 - 1].endTime.getTime();
+    if (gap > IDLE_THRESHOLD_MS) idleMs += gap;
+  }
+  const lastGap = endTime.getTime() - sorted[sorted.length - 1].endTime.getTime();
+  if (lastGap > IDLE_THRESHOLD_MS) idleMs += lastGap;
+  return Math.max(0, idleMs / 1e3);
+}
+function createTimelineEvent(event) {
+  return {
+    type: "event",
+    event,
+    startTime: getEventStartTime(event),
+    endTime: getEventEndTime(event),
+    totalTokens: getEventTokens(event),
+    idleTime: 0
+  };
+}
+function createTimelineSpan(id, name, spanType, content2, utility = false, branches = [], description2) {
+  if (content2.length === 0) {
+    throw new Error(
+      `createTimelineSpan called with empty content for span "${name}" (id=${id}). Callers must guard against empty content before calling the factory.`
+    );
+  }
+  const startTime = minStartTime(content2);
+  const endTime = maxEndTime(content2);
+  return {
+    type: "span",
+    id,
+    name: name.toLowerCase(),
+    spanType,
+    content: content2,
+    branches,
+    description: description2,
+    utility,
+    startTime,
+    endTime,
+    totalTokens: sumTokens(content2),
+    idleTime: computeIdleTime(content2, startTime, endTime)
+  };
+}
+function createBranch(forkedAt, content2) {
+  if (content2.length === 0) {
+    throw new Error(
+      "createBranch called with empty content. Callers must guard against empty content before calling the factory."
+    );
+  }
+  const startTime = minStartTime(content2);
+  const endTime = maxEndTime(content2);
+  return {
+    type: "branch",
+    forkedAt,
+    content: content2,
+    startTime,
+    endTime,
+    totalTokens: sumTokens(content2),
+    idleTime: computeIdleTime(content2, startTime, endTime)
+  };
+}
+function buildSpanTree(events) {
+  const root2 = [];
+  const spansById = /* @__PURE__ */ new Map();
+  const spanStack = [];
+  for (const event of events) {
+    if (event.event === "span_begin") {
+      const span = {
+        id: event.id,
+        name: event.name,
+        type: event.type ?? void 0,
+        parentId: event.parent_id,
+        metadata: event.metadata ?? void 0,
+        children: [],
+        beginEvent: event
+      };
+      spansById.set(span.id, span);
+      if (span.parentId && spansById.has(span.parentId)) {
+        spansById.get(span.parentId).children.push(span);
+      } else if (spanStack.length > 0) {
+        const currentSpan = spanStack[spanStack.length - 1];
+        if (currentSpan) {
+          currentSpan.children.push(span);
+        }
+      } else {
+        root2.push(span);
+      }
+      spanStack.push(span);
+    } else if (event.event === "span_end") {
+      const endSpan = spansById.get(event.id);
+      if (endSpan) {
+        endSpan.endEvent = event;
+      }
+      if (spanStack.length > 0) {
+        spanStack.pop();
+      }
+    } else {
+      const spanId = event.span_id;
+      if (spanId && spansById.has(spanId)) {
+        spansById.get(spanId).children.push(event);
+      } else if (spanStack.length > 0) {
+        const currentSpan = spanStack[spanStack.length - 1];
+        if (currentSpan) {
+          currentSpan.children.push(event);
+        }
+      } else {
+        root2.push(event);
+      }
+    }
+  }
+  return root2;
+}
+function eventSequence(items) {
+  const events = [];
+  for (const item of items) {
+    if (isSpanNode(item)) {
+      events.push(...eventSequence(item.children));
+    } else {
+      events.push(item);
+    }
+  }
+  return events;
+}
+function containsModelEvents(span) {
+  for (const child of span.children) {
+    if (isSpanNode(child)) {
+      if (containsModelEvents(child)) {
+        return true;
+      }
+    } else if (child.event === "model") {
+      return true;
+    }
+  }
+  return false;
+}
+function eventToNode(event) {
+  if (event.event === "tool") {
+    const agentName = event.agent;
+    const nestedEvents = event.events;
+    if (agentName && nestedEvents && nestedEvents.length > 0) {
+      const nestedContent = nestedEvents.map(
+        (e) => eventToNode(e)
+      );
+      if (nestedContent.length > 0) {
+        return createTimelineSpan(
+          `tool-agent-${event.id}`,
+          agentName,
+          "agent",
+          nestedContent
+        );
+      }
+    }
+  }
+  return createTimelineEvent(event);
+}
+function isAgentSpan(span) {
+  if (span.type === "agent" || span.type === "solver") {
+    return true;
+  }
+  if (span.type === "tool" && containsModelEvents(span)) {
+    return true;
+  }
+  return false;
+}
+function treeItemToNode(item, hasExplicitBranches) {
+  if (isSpanNode(item)) {
+    if (item.type === "agent" || item.type === "solver") {
+      return buildSpanFromAgentSpan(item, hasExplicitBranches);
+    } else {
+      return buildSpanFromGenericSpan(item, hasExplicitBranches);
+    }
+  } else {
+    return eventToNode(item);
+  }
+}
+function buildSpanFromAgentSpan(span, hasExplicitBranches, extraItems) {
+  const content2 = [];
+  if (extraItems) {
+    for (const item of extraItems) {
+      if (isSpanNode(item) && !isAgentSpan(item)) {
+        unrollSpan(item, content2, hasExplicitBranches);
+      } else {
+        const node2 = treeItemToNode(item, hasExplicitBranches);
+        if (node2 !== null) {
+          content2.push(node2);
+        }
+      }
+    }
+  }
+  const [childContent, branches] = processChildren(
+    span.children,
+    hasExplicitBranches
+  );
+  content2.push(...childContent);
+  if (content2.length === 0) {
+    return null;
+  }
+  const description2 = typeof span.metadata?.description === "string" ? span.metadata.description : void 0;
+  return createTimelineSpan(
+    span.id,
+    span.name,
+    "agent",
+    content2,
+    false,
+    branches,
+    description2
+  );
+}
+function buildSpanFromGenericSpan(span, hasExplicitBranches) {
+  const [content2, branches] = processChildren(
+    span.children,
+    hasExplicitBranches
+  );
+  if (content2.length === 0) {
+    return null;
+  }
+  const spanType = span.type === "tool" && containsModelEvents(span) ? "agent" : span.type ?? null;
+  return createTimelineSpan(
+    span.id,
+    span.name,
+    spanType,
+    content2,
+    false,
+    branches
+  );
+}
+function buildAgentFromSolversSpan(solversSpan, hasExplicitBranches) {
+  if (solversSpan.children.length === 0) {
+    return null;
+  }
+  const agentSpans = [];
+  const otherItems = [];
+  for (const child of solversSpan.children) {
+    if (isSpanNode(child) && isAgentSpan(child)) {
+      agentSpans.push(child);
+    } else {
+      otherItems.push(child);
+    }
+  }
+  if (agentSpans.length > 0) {
+    const firstAgentSpan = agentSpans[0];
+    if (agentSpans.length === 1 && firstAgentSpan) {
+      const result2 = buildSpanFromAgentSpan(
+        firstAgentSpan,
+        hasExplicitBranches,
+        otherItems
+      );
+      if (result2 !== null) {
+        return result2;
+      }
+      return {
+        type: "span",
+        id: firstAgentSpan.id,
+        name: firstAgentSpan.name.toLowerCase(),
+        spanType: "agent",
+        content: [],
+        branches: [],
+        utility: false,
+        startTime: /* @__PURE__ */ new Date(0),
+        endTime: /* @__PURE__ */ new Date(0),
+        totalTokens: 0,
+        idleTime: 0
+      };
+    } else {
+      const children2 = [];
+      for (const span of agentSpans) {
+        const node2 = buildSpanFromAgentSpan(span, hasExplicitBranches);
+        if (node2 !== null) {
+          children2.push(node2);
+        }
+      }
+      for (const item of otherItems) {
+        if (isSpanNode(item) && !isAgentSpan(item)) {
+          const orphanContent = [];
+          unrollSpan(item, orphanContent, hasExplicitBranches);
+          for (let i2 = orphanContent.length - 1; i2 >= 0; i2--) {
+            children2.unshift(orphanContent[i2]);
+          }
+        } else {
+          const node2 = treeItemToNode(item, hasExplicitBranches);
+          if (node2 !== null) {
+            children2.unshift(node2);
+          }
+        }
+      }
+      if (children2.length === 0) {
+        return null;
+      }
+      return createTimelineSpan("root", "main", "agent", children2);
+    }
+  } else {
+    const [content2, branches] = processChildren(
+      solversSpan.children,
+      hasExplicitBranches
+    );
+    if (content2.length === 0) {
+      return null;
+    }
+    return createTimelineSpan(
+      solversSpan.id,
+      solversSpan.name,
+      "agent",
+      content2,
+      false,
+      branches
+    );
+  }
+}
+function buildAgentFromTree(tree, hasExplicitBranches) {
+  const [content2, branches] = processChildren(tree, hasExplicitBranches);
+  if (content2.length === 0) {
+    return null;
+  }
+  return createTimelineSpan("main", "main", "agent", content2, false, branches);
+}
+function unrollSpan(span, into, hasExplicitBranches) {
+  into.push(createTimelineEvent(span.beginEvent));
+  for (const child of span.children) {
+    if (isSpanNode(child)) {
+      if (isAgentSpan(child)) {
+        const node2 = treeItemToNode(child, hasExplicitBranches);
+        if (node2 !== null) {
+          into.push(node2);
+        }
+      } else {
+        unrollSpan(child, into, hasExplicitBranches);
+      }
+    } else {
+      into.push(eventToNode(child));
+    }
+  }
+  if (span.endEvent) {
+    into.push(createTimelineEvent(span.endEvent));
+  }
+}
+function processChildren(children2, hasExplicitBranches) {
+  if (!hasExplicitBranches) {
+    const content22 = [];
+    for (const item of children2) {
+      if (isSpanNode(item) && !isAgentSpan(item)) {
+        unrollSpan(item, content22, hasExplicitBranches);
+      } else {
+        const node2 = treeItemToNode(item, hasExplicitBranches);
+        if (node2 === null) continue;
+        content22.push(node2);
+      }
+    }
+    return [content22, []];
+  }
+  const content2 = [];
+  const branches = [];
+  let branchRun = [];
+  function flushBranchRun(run, parentContent) {
+    const result2 = [];
+    for (const span of run) {
+      const branchContent = [];
+      for (const child of span.children) {
+        if (isSpanNode(child) && !isAgentSpan(child)) {
+          unrollSpan(child, branchContent, hasExplicitBranches);
+        } else {
+          const node2 = treeItemToNode(child, hasExplicitBranches);
+          if (node2 === null) continue;
+          branchContent.push(node2);
+        }
+      }
+      if (branchContent.length === 0) continue;
+      const branchInput = getBranchInput(branchContent);
+      const forkedAt = branchInput !== null ? findForkedAt(parentContent, branchInput) : "";
+      result2.push(createBranch(forkedAt, branchContent));
+    }
+    return result2;
+  }
+  for (const item of children2) {
+    if (isSpanNode(item) && item.type === "branch") {
+      branchRun.push(item);
+    } else {
+      if (branchRun.length > 0) {
+        branches.push(...flushBranchRun(branchRun, content2));
+        branchRun = [];
+      }
+      if (isSpanNode(item) && !isAgentSpan(item)) {
+        unrollSpan(item, content2, hasExplicitBranches);
+      } else {
+        const node2 = treeItemToNode(item, hasExplicitBranches);
+        if (node2 === null) continue;
+        content2.push(node2);
+      }
+    }
+  }
+  if (branchRun.length > 0) {
+    branches.push(...flushBranchRun(branchRun, content2));
+  }
+  return [content2, branches];
+}
+function findForkedAt(agentContent, branchInput) {
+  if (branchInput.length === 0) return "";
+  const lastMsg = branchInput[branchInput.length - 1];
+  if (!lastMsg) return "";
+  if (lastMsg.role === "tool") {
+    const toolCallId = lastMsg.tool_call_id;
+    if (toolCallId) {
+      for (const item of agentContent) {
+        if (item.type === "event" && item.event.event === "tool" && item.event.id === toolCallId) {
+          return item.event.uuid ?? "";
+        }
+      }
+    }
+    return "";
+  }
+  if (lastMsg.role === "assistant") {
+    const msgId = lastMsg.id;
+    if (msgId) {
+      for (const item of agentContent) {
+        if (item.type === "event" && item.event.event === "model") {
+          const outMsg = item.event.output?.choices?.[0]?.message;
+          if (outMsg && outMsg.id === msgId) {
+            return item.event.uuid ?? "";
+          }
+        }
+      }
+    }
+    const msgContent = lastMsg.content;
+    if (msgContent) {
+      for (const item of agentContent) {
+        if (item.type === "event" && item.event.event === "model") {
+          const outMsg = item.event.output?.choices?.[0]?.message;
+          if (outMsg && outMsg.content === msgContent) {
+            return item.event.uuid ?? "";
+          }
+        }
+      }
+    }
+    return "";
+  }
+  return "";
+}
+function getBranchInput(content2) {
+  for (const item of content2) {
+    if (item.type === "event" && item.event.event === "model") {
+      return item.event.input ?? null;
+    }
+  }
+  return null;
+}
+function messageFingerprint(msg, cache) {
+  if (cache) {
+    const cached = cache.get(msg);
+    if (cached !== void 0) return cached;
+  }
+  const role = msg.role;
+  let serialized;
+  if (typeof msg.content === "string") {
+    serialized = msg.content;
+  } else {
+    serialized = JSON.stringify(msg.content);
+  }
+  const result2 = `${role}:${serialized}`;
+  if (cache) {
+    cache.set(msg, result2);
+  }
+  return result2;
+}
+function inputFingerprint(messages2, cache) {
+  return messages2.map((m) => messageFingerprint(m, cache)).join("|");
+}
+function detectAutoBranches(span) {
+  const fpCache = /* @__PURE__ */ new WeakMap();
+  const regions = [];
+  let regionStart = 0;
+  for (let i2 = 0; i2 < span.content.length; i2++) {
+    const item = span.content[i2];
+    if (item && item.type === "event" && item.event.event === "compaction") {
+      regions.push([regionStart, i2]);
+      regionStart = i2 + 1;
+    }
+  }
+  regions.push([regionStart, span.content.length]);
+  const branchRanges = [];
+  for (const [rStart, rEnd] of regions) {
+    const modelIndices = [];
+    for (let i2 = rStart; i2 < rEnd; i2++) {
+      const item = span.content[i2];
+      if (item && item.type === "event" && item.event.event === "model") {
+        const inputMsgs = item.event.input;
+        if (!inputMsgs || inputMsgs.length === 0) continue;
+        const fp = inputFingerprint(inputMsgs, fpCache);
+        modelIndices.push([i2, fp]);
+      }
+    }
+    const fingerprintGroups = /* @__PURE__ */ new Map();
+    for (const [idx, fp] of modelIndices) {
+      const group = fingerprintGroups.get(fp);
+      if (group) {
+        group.push(idx);
+      } else {
+        fingerprintGroups.set(fp, [idx]);
+      }
+    }
+    for (const [, indices] of fingerprintGroups) {
+      if (indices.length <= 1) continue;
+      const firstItem = span.content[indices[0]];
+      if (!firstItem || firstItem.type !== "event" || firstItem.event.event !== "model") {
+        continue;
+      }
+      const sharedInput = firstItem.event.input ?? [];
+      for (let i2 = 0; i2 < indices.length - 1; i2++) {
+        const branchStart = indices[i2];
+        const nextReroll = indices[i2 + 1];
+        branchRanges.push([branchStart, nextReroll, sharedInput]);
+      }
+    }
+  }
+  if (branchRanges.length === 0) return;
+  branchRanges.sort((a2, b) => b[0] - a2[0]);
+  for (const [start, end, sharedInput] of branchRanges) {
+    const branchContent = span.content.slice(start, end);
+    if (branchContent.length > 0) {
+      const forkedAt = findForkedAt(span.content, sharedInput);
+      span.branches.push(createBranch(forkedAt, branchContent));
+    }
+    span.content.splice(start, end - start);
+  }
+  span.branches.reverse();
+  span.totalTokens = sumTokens(span.content);
+  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+}
+function classifyBranches(span, hasExplicitBranches, isRoot = true) {
+  if (!hasExplicitBranches && !isRoot) {
+    detectAutoBranches(span);
+  }
+  for (const item of span.content) {
+    if (item.type === "span") {
+      classifyBranches(item, hasExplicitBranches, false);
+    }
+  }
+  for (const branch of span.branches) {
+    for (const item of branch.content) {
+      if (item.type === "span") {
+        classifyBranches(item, hasExplicitBranches, false);
+      }
+    }
+  }
+  span.totalTokens = sumTokens(span.content);
+  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+}
+function getSystemPrompt(span) {
+  for (const item of span.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const input = item.event.input;
+      if (input) {
+        for (const msg of input) {
+          if (msg.role === "system") {
+            if (typeof msg.content === "string") {
+              return msg.content;
+            }
+            if (Array.isArray(msg.content)) {
+              const parts = [];
+              for (const c of msg.content) {
+                if ("text" in c && typeof c.text === "string") {
+                  parts.push(c.text);
+                }
+              }
+              return parts.length > 0 ? parts.join("\n") : null;
+            }
+          }
+        }
+      }
+      return null;
+    }
+  }
+  return null;
+}
+function isSingleTurn(span) {
+  const directEvents = [];
+  for (const item of span.content) {
+    if (item.type === "event") {
+      if (item.event.event === "model") {
+        directEvents.push("model");
+      } else if (item.event.event === "tool") {
+        directEvents.push("tool");
+      }
+    }
+  }
+  const modelCount = directEvents.filter((e) => e === "model").length;
+  const toolCount = directEvents.filter((e) => e === "tool").length;
+  if (modelCount === 1) {
+    return true;
+  }
+  if (modelCount === 2 && toolCount >= 1) {
+    const firstModel = directEvents.indexOf("model");
+    const secondModel = directEvents.lastIndexOf("model");
+    const between = directEvents.slice(firstModel + 1, secondModel);
+    return between.includes("tool");
+  }
+  return false;
+}
+function classifyUtilityAgents(node2, parentSystemPrompt = null) {
+  const agentSystemPrompt = getSystemPrompt(node2);
+  if (parentSystemPrompt !== null && agentSystemPrompt !== null) {
+    if (agentSystemPrompt !== parentSystemPrompt && isSingleTurn(node2)) {
+      node2.utility = true;
+    }
+  }
+  const effectivePrompt = agentSystemPrompt ?? parentSystemPrompt;
+  for (const item of node2.content) {
+    if (item.type === "span") {
+      classifyUtilityAgents(item, effectivePrompt);
+    }
+  }
+}
+function buildTimeline(events) {
+  if (events.length === 0) {
+    const emptyRoot = {
+      type: "span",
+      id: "root",
+      name: "main",
+      spanType: null,
+      content: [],
+      branches: [],
+      utility: false,
+      startTime: /* @__PURE__ */ new Date(0),
+      endTime: /* @__PURE__ */ new Date(0),
+      totalTokens: 0,
+      idleTime: 0
+    };
+    return { name: "Default", description: "", root: emptyRoot };
+  }
+  const hasExplicitBranches = events.some(
+    (e) => e.event === "span_begin" && e.type === "branch"
+  );
+  const tree = buildSpanTree(events);
+  const topSpans = /* @__PURE__ */ new Map();
+  for (const item of tree) {
+    if (isSpanNode(item) && (item.name === "init" || item.name === "solvers" || item.name === "scorers")) {
+      topSpans.set(item.name, item);
+    }
+  }
+  const hasPhaseSpans = topSpans.has("init") || topSpans.has("solvers") || topSpans.has("scorers");
+  let root2;
+  if (hasPhaseSpans) {
+    const initSpan = topSpans.get("init");
+    const solversSpan = topSpans.get("solvers");
+    const scorersSpan = topSpans.get("scorers");
+    let initSpanObj = null;
+    if (initSpan) {
+      const initContent = eventSequence(initSpan.children).map(
+        (e) => createTimelineEvent(e)
+      );
+      if (initContent.length > 0) {
+        initSpanObj = createTimelineSpan(
+          initSpan.id,
+          "init",
+          "init",
+          initContent
+        );
+      }
+    }
+    const agentNode = solversSpan ? buildAgentFromSolversSpan(solversSpan, hasExplicitBranches) : null;
+    let scoringSpan = null;
+    if (scorersSpan) {
+      const scoringContent = eventSequence(scorersSpan.children).map(
+        (e) => createTimelineEvent(e)
+      );
+      if (scoringContent.length > 0) {
+        scoringSpan = createTimelineSpan(
+          scorersSpan.id,
+          "scoring",
+          "scorers",
+          scoringContent
+        );
+      }
+    }
+    if (agentNode) {
+      if (!hasExplicitBranches) detectAutoBranches(agentNode);
+      classifyUtilityAgents(agentNode);
+      classifyBranches(agentNode, hasExplicitBranches);
+      if (initSpanObj) {
+        agentNode.content = [initSpanObj, ...agentNode.content];
+        agentNode.startTime = minStartTime(agentNode.content);
+        agentNode.endTime = maxEndTime(agentNode.content);
+        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.idleTime = computeIdleTime(
+          agentNode.content,
+          agentNode.startTime,
+          agentNode.endTime
+        );
+      }
+      if (scoringSpan) {
+        agentNode.content.push(scoringSpan);
+        agentNode.startTime = minStartTime(agentNode.content);
+        agentNode.endTime = maxEndTime(agentNode.content);
+        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.idleTime = computeIdleTime(
+          agentNode.content,
+          agentNode.startTime,
+          agentNode.endTime
+        );
+      }
+      root2 = agentNode;
+    } else {
+      const rootContent = [];
+      if (initSpanObj) {
+        rootContent.push(initSpanObj);
+      }
+      if (scoringSpan) {
+        rootContent.push(scoringSpan);
+      }
+      if (rootContent.length > 0) {
+        root2 = createTimelineSpan("root", "main", null, rootContent);
+      } else {
+        root2 = {
+          type: "span",
+          id: "root",
+          name: "main",
+          spanType: null,
+          content: [],
+          branches: [],
+          utility: false,
+          startTime: /* @__PURE__ */ new Date(0),
+          endTime: /* @__PURE__ */ new Date(0),
+          totalTokens: 0,
+          idleTime: 0
+        };
+      }
+    }
+  } else {
+    const agentRoot = buildAgentFromTree(tree, hasExplicitBranches);
+    if (agentRoot) {
+      if (!hasExplicitBranches) detectAutoBranches(agentRoot);
+      classifyUtilityAgents(agentRoot);
+      classifyBranches(agentRoot, hasExplicitBranches);
+      root2 = agentRoot;
+    } else {
+      root2 = {
+        type: "span",
+        id: "root",
+        name: "main",
+        spanType: null,
+        content: [],
+        branches: [],
+        utility: false,
+        startTime: /* @__PURE__ */ new Date(0),
+        endTime: /* @__PURE__ */ new Date(0),
+        totalTokens: 0,
+        idleTime: 0
+      };
+    }
+  }
+  return { name: "Default", description: "", root: root2 };
+}
+function isErrorEvent(event) {
+  if (event.event === "tool") {
+    return event.error !== null;
+  }
+  if (event.event === "model") {
+    return event.error !== null || event.output.error !== null;
+  }
+  return false;
+}
+function isCompactionEvent(event) {
+  return event.event === "compaction";
+}
+function errorTooltip(event) {
+  if (event.event === "tool") {
+    const msg = event.error?.message ?? "Unknown error";
+    return `Error (${event.function}): ${msg}`;
+  }
+  if (event.event === "model") {
+    const msg = (typeof event.error === "string" ? event.error : null) ?? (typeof event.output.error === "string" ? event.output.error : null) ?? "Unknown error";
+    return `Error (${event.model}): ${msg}`;
+  }
+  return "Error";
+}
+function collectMarkers(node2, depth) {
+  const markers = [];
+  collectEventMarkers(node2, depth, 0, markers);
+  collectBranchMarkers(node2, markers);
+  markers.sort((a2, b) => a2.timestamp.getTime() - b.timestamp.getTime());
+  return markers;
+}
+function collectEventMarkers(node2, depth, currentLevel, markers) {
+  for (const item of node2.content) {
+    if (item.type === "event") {
+      addEventMarker(item, markers);
+    } else if (item.type === "span" && shouldDescend(depth, currentLevel)) {
+      collectEventMarkers(item, depth, currentLevel + 1, markers);
+    }
+  }
+}
+function shouldDescend(depth, currentLevel) {
+  if (depth === "direct") return false;
+  if (depth === "children") return currentLevel === 0;
+  return true;
+}
+function addEventMarker(eventNode, markers) {
+  const event = eventNode.event;
+  const uuid = event.uuid;
+  if (isErrorEvent(event)) {
+    markers.push({
+      kind: "error",
+      timestamp: eventNode.startTime,
+      reference: uuid ?? "",
+      tooltip: errorTooltip(event)
+    });
+  } else if (isCompactionEvent(event)) {
+    const ce2 = event;
+    const before = ce2.tokens_before?.toLocaleString() ?? "?";
+    const after = ce2.tokens_after?.toLocaleString() ?? "?";
+    markers.push({
+      kind: "compaction",
+      timestamp: eventNode.startTime,
+      reference: uuid ?? "",
+      tooltip: `Context compaction: ${before} → ${after} tokens`
+    });
+  }
+}
+function collectBranchMarkers(node2, markers) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const branch of node2.branches) {
+    const existing = groups.get(branch.forkedAt);
+    if (existing) {
+      existing.push(branch);
+    } else {
+      groups.set(branch.forkedAt, [branch]);
+    }
+  }
+  for (const [forkedAt, branches] of groups) {
+    const timestamp = resolveForkedAtTimestamp(node2, forkedAt);
+    if (timestamp) {
+      markers.push({
+        kind: "branch",
+        timestamp,
+        reference: forkedAt,
+        tooltip: branchTooltip(branches)
+      });
+    }
+  }
+}
+function branchTooltip(branches) {
+  const count = branches.length;
+  const totalTokens = branches.reduce((sum, b) => sum + b.totalTokens, 0);
+  const tokenStr = formatCompactTokens(totalTokens);
+  const envelope = computeTimeEnvelope(branches);
+  const duration = formatDuration(envelope.startTime, envelope.endTime);
+  const label2 = count === 1 ? "1 branch" : `${count} branches`;
+  return `${label2} (${tokenStr}, ${duration})`;
+}
+function formatCompactTokens(tokens) {
+  return `${formatTokenCount(tokens)} tokens`;
+}
+function resolveForkedAtTimestamp(node2, forkedAt) {
+  if (!forkedAt) return null;
+  for (const item of node2.content) {
+    if (item.type === "event" && item.event.uuid === forkedAt) {
+      return item.startTime;
+    }
+  }
+  return null;
+}
+function compareByTime(a2, b) {
+  return a2.startTime.getTime() - b.startTime.getTime() || a2.endTime.getTime() - b.endTime.getTime();
+}
+function isSingleSpan(span) {
+  return "agent" in span;
+}
+function isParallelSpan(span) {
+  return "agents" in span;
+}
+function getAgents(span) {
+  return isSingleSpan(span) ? [span.agent] : span.agents;
+}
+const OVERLAP_TOLERANCE_MS = 100;
+function computeSwimlaneRows(node2) {
+  const parentRow = buildParentRow(node2);
+  const children2 = node2.content.filter(
+    (item) => item.type === "span" && !item.utility
+  );
+  if (children2.length === 0) {
+    return [parentRow];
+  }
+  const groups = groupByName(children2);
+  const childRows = [];
+  for (const [displayName, spans] of groups) {
+    const row2 = buildRowFromGroup(displayName, spans);
+    if (row2) {
+      childRows.push(row2);
+    }
+  }
+  childRows.sort(compareByTime);
+  return [parentRow, ...childRows];
+}
+function partitionIntoClusters(sorted) {
+  if (sorted.length === 0) return [];
+  const clusters = [];
+  let current = [sorted[0]];
+  let clusterEnd = sorted[0].endTime.getTime();
+  for (let i2 = 1; i2 < sorted.length; i2++) {
+    const span = sorted[i2];
+    if (span.startTime.getTime() < clusterEnd + OVERLAP_TOLERANCE_MS) {
+      current.push(span);
+      clusterEnd = Math.max(clusterEnd, span.endTime.getTime());
+    } else {
+      clusters.push(current);
+      current = [span];
+      clusterEnd = span.endTime.getTime();
+    }
+  }
+  clusters.push(current);
+  return clusters;
+}
+function buildParentRow(node2) {
+  return {
+    name: node2.name,
+    spans: [{ agent: node2 }],
+    totalTokens: node2.totalTokens,
+    startTime: node2.startTime,
+    endTime: node2.endTime
+  };
+}
+function groupByName(spans) {
+  const map2 = /* @__PURE__ */ new Map();
+  for (const span of spans) {
+    const key2 = span.name.toLowerCase();
+    const existing = map2.get(key2);
+    if (existing) {
+      existing.spans.push(span);
+    } else {
+      map2.set(key2, { displayName: span.name, spans: [span] });
+    }
+  }
+  return Array.from(map2.values()).map((g) => [g.displayName, g.spans]);
+}
+function buildRowFromGroup(displayName, spans) {
+  const sorted = [...spans].sort(compareByTime);
+  const first2 = sorted[0];
+  if (!first2) {
+    return null;
+  }
+  const rowSpans = partitionIntoClusters(sorted).map(
+    (cluster) => cluster.length === 1 ? { agent: cluster[0] } : { agents: cluster }
+  );
+  const startTime = first2.startTime;
+  const endTime = sorted.reduce(
+    (latest, span) => span.endTime.getTime() > latest.getTime() ? span.endTime : latest,
+    first2.endTime
+  );
+  const totalTokens = sorted.reduce((sum, span) => sum + span.totalTokens, 0);
+  return {
+    name: displayName,
+    spans: rowSpans,
+    totalTokens,
+    startTime,
+    endTime
+  };
+}
+function timestampToPercent(timestamp, viewStart, viewEnd) {
+  const range = viewEnd.getTime() - viewStart.getTime();
+  if (range <= 0) return 0;
+  const offset = timestamp.getTime() - viewStart.getTime();
+  return Math.max(0, Math.min(100, offset / range * 100));
+}
+function computeBarPosition(spanStart, spanEnd, viewStart, viewEnd) {
+  const left = timestampToPercent(spanStart, viewStart, viewEnd);
+  const right = timestampToPercent(spanEnd, viewStart, viewEnd);
+  return { left, width: Math.max(0, right - left) };
+}
+function isDrillable(span) {
+  if (isParallelSpan(span)) return true;
+  if (isSingleSpan(span)) {
+    return span.agent.content.some(
+      (item) => item.type === "span" && !item.utility
+    );
+  }
+  return false;
+}
+function drillableChildCount(span) {
+  if (isParallelSpan(span)) return span.agents.length;
+  if (isSingleSpan(span)) {
+    return span.agent.content.filter(
+      (item) => item.type === "span" && !item.utility
+    ).length;
+  }
+  return 0;
+}
+function computeTimeEnvelope(items) {
+  const first2 = items[0];
+  let startTime = first2.startTime;
+  let endTime = first2.endTime;
+  for (let i2 = 1; i2 < items.length; i2++) {
+    const item = items[i2];
+    if (item.startTime < startTime) startTime = item.startTime;
+    if (item.endTime > endTime) endTime = item.endTime;
+  }
+  return { startTime, endTime };
+}
+function formatTokenCount(tokens) {
+  if (tokens >= 999950) {
+    return `${formatPrettyDecimal(tokens / 1e6, 1)}M`;
+  }
+  if (tokens >= 1e3) {
+    return `${formatPrettyDecimal(tokens / 1e3, 1)}k`;
+  }
+  return String(tokens);
+}
+function computeRowLayouts(rows, mapping, markerDepth) {
+  return rows.map((row2, index) => {
+    const isParent = index === 0;
+    const spans = row2.spans.map((rowSpan) => {
+      if (isSingleSpan(rowSpan)) {
+        const bar2 = computeBarFromMapping(
+          rowSpan.agent.startTime,
+          rowSpan.agent.endTime,
+          mapping
+        );
+        const drillable = !isParent && isDrillable(rowSpan);
+        return {
+          bar: bar2,
+          drillable,
+          childCount: drillable ? drillableChildCount(rowSpan) : 0,
+          parallelCount: null,
+          description: rowSpan.agent.description ?? null
+        };
+      }
+      const agents = rowSpan.agents;
+      const envelope = computeTimeEnvelope(agents);
+      const bar = computeBarFromMapping(
+        envelope.startTime,
+        envelope.endTime,
+        mapping
+      );
+      return {
+        bar,
+        drillable: !isParent,
+        childCount: !isParent ? agents.length : 0,
+        parallelCount: agents.length,
+        description: null
+      };
+    });
+    const markers = collectRowMarkers(row2, markerDepth, mapping);
+    const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
+    return {
+      name: row2.name,
+      isParent,
+      spans,
+      markers,
+      totalTokens: row2.totalTokens,
+      parallelCount: rowParallelCount
+    };
+  });
+}
+function computeBarFromMapping(spanStart, spanEnd, mapping) {
+  const left = mapping.toPercent(spanStart);
+  const right = mapping.toPercent(spanEnd);
+  return { left, width: Math.max(0, right - left) };
+}
+function spanHasEvents(span) {
+  for (const item of span.content) {
+    if (item.type === "event") return true;
+    if (item.type === "span" && spanHasEvents(item)) return true;
+  }
+  return false;
+}
+function rowHasEvents(row2) {
+  return row2.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
+}
+function collectRowMarkers(row2, depth, mapping) {
+  const allMarkers = [];
+  for (const rowSpan of row2.spans) {
+    const agents = getAgents(rowSpan);
+    for (const agent of agents) {
+      const markers = collectMarkers(agent, depth);
+      for (const m of markers) {
+        allMarkers.push({
+          left: mapping.toPercent(m.timestamp),
+          kind: m.kind,
+          reference: m.reference,
+          tooltip: m.tooltip
+        });
+      }
+    }
+  }
+  allMarkers.sort((a2, b) => a2.left - b.left);
+  return allMarkers;
+}
+const kPathParam = "path";
+const kSelectedParam = "selected";
+function parsePathSegment(segment) {
+  const match2 = /^(.+)-(\d+)$/.exec(segment);
+  if (match2) {
+    const name = match2[1];
+    const index = parseInt(match2[2], 10);
+    if (index >= 1) {
+      return { name, spanIndex: index };
+    }
+  }
+  return { name: segment, spanIndex: null };
+}
+function resolvePath(timeline, pathString) {
+  if (!pathString) return timeline.root;
+  const segments = pathString.split("/").filter((s) => s.length > 0);
+  if (segments.length === 0) return timeline.root;
+  let current = timeline.root;
+  for (const segment of segments) {
+    const branchSpan = resolveBranchSegment(current, segment);
+    if (branchSpan) {
+      current = branchSpan;
+      continue;
+    }
+    const { name, spanIndex } = parsePathSegment(segment);
+    const child = findChildSpan(current, name, spanIndex);
+    if (!child) return null;
+    current = child;
+  }
+  return current;
+}
+function buildBreadcrumbs(pathString, timeline) {
+  const crumbs = [{ label: timeline.root.name, path: "" }];
+  if (!pathString) return crumbs;
+  const segments = pathString.split("/").filter((s) => s.length > 0);
+  let current = timeline.root;
+  for (let i2 = 0; i2 < segments.length; i2++) {
+    const segment = segments[i2];
+    const path = segments.slice(0, i2 + 1).join("/");
+    if (current) {
+      const branchSpan = resolveBranchSegment(current, segment);
+      if (branchSpan) {
+        crumbs.push({ label: branchSpan.name, path });
+        current = branchSpan;
+      } else {
+        const { name, spanIndex } = parsePathSegment(segment);
+        const child = findChildSpan(current, name, spanIndex);
+        if (child) {
+          crumbs.push({ label: child.name, path });
+          current = child;
+        } else {
+          crumbs.push({ label: segment, path });
+          current = null;
+        }
+      }
+    } else {
+      crumbs.push({ label: segment, path });
+    }
+  }
+  return crumbs;
+}
+function findChildSpan(parent, name, spanIndex) {
+  const lowerName = name.toLowerCase();
+  const matches = [];
+  for (const item of parent.content) {
+    if (item.type === "span" && item.name.toLowerCase() === lowerName) {
+      matches.push(item);
+    }
+  }
+  if (matches.length === 0) return null;
+  if (spanIndex !== null) {
+    return matches[spanIndex - 1] ?? null;
+  }
+  if (matches.length === 1) {
+    return matches[0];
+  }
+  return createParallelContainer(matches);
+}
+function createParallelContainer(agents) {
+  const displayName = agents[0].name;
+  const { startTime, endTime } = computeTimeEnvelope(agents);
+  const totalTokens = agents.reduce((sum, a2) => sum + a2.totalTokens, 0);
+  const sorted = [...agents].sort(compareByTime);
+  const numberedAgents = sorted.map((agent, i2) => ({
+    ...agent,
+    name: `${displayName} ${i2 + 1}`
+  }));
+  return {
+    type: "span",
+    id: `parallel-${displayName.toLowerCase()}`,
+    name: displayName,
+    spanType: "agent",
+    content: numberedAgents,
+    branches: [],
+    utility: false,
+    startTime,
+    endTime,
+    totalTokens,
+    idleTime: computeIdleTime(numberedAgents, startTime, endTime)
+  };
+}
+const BRANCH_PREFIX = "@branch-";
+function resolveBranchSegment(parent, segment) {
+  if (!segment.startsWith(BRANCH_PREFIX)) return null;
+  const indexStr = segment.slice(BRANCH_PREFIX.length);
+  const index = parseInt(indexStr, 10);
+  if (isNaN(index) || index < 1) return null;
+  const branch = parent.branches[index - 1];
+  if (!branch) return null;
+  return createBranchSpan(branch, index);
+}
+function createBranchSpan(branch, index) {
+  const label2 = deriveBranchLabel(branch, index);
+  const childSpans = branch.content.filter(
+    (item) => item.type === "span"
+  );
+  if (childSpans.length === 1) {
+    return {
+      ...childSpans[0],
+      name: `↳ ${childSpans[0].name}`
+    };
+  }
+  return {
+    type: "span",
+    id: `branch-${branch.forkedAt}-${index}`,
+    name: `↳ ${label2}`,
+    spanType: "branch",
+    content: branch.content,
+    branches: [],
+    utility: false,
+    startTime: branch.startTime,
+    endTime: branch.endTime,
+    totalTokens: branch.totalTokens,
+    idleTime: branch.idleTime
+  };
+}
+function deriveBranchLabel(branch, index) {
+  for (const item of branch.content) {
+    if (item.type === "span") return item.name;
+  }
+  return `Branch ${index}`;
+}
+function findBranchesByForkedAt(node2, forkedAt, pathSoFar = []) {
+  const matches = [];
+  for (let i2 = 0; i2 < node2.branches.length; i2++) {
+    const branch = node2.branches[i2];
+    if (branch.forkedAt === forkedAt) {
+      matches.push({ branch, index: i2 + 1 });
+    }
+  }
+  if (matches.length > 0) {
+    return { owner: node2, ownerPath: pathSoFar, branches: matches };
+  }
+  for (const item of node2.content) {
+    if (item.type === "span") {
+      const found = findBranchesByForkedAt(item, forkedAt, [
+        ...pathSoFar,
+        item.name.toLowerCase()
+      ]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+function useTimeline(timeline) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pathString = searchParams.get(kPathParam) ?? "";
+  const selectedParam = searchParams.get(kSelectedParam) ?? null;
+  const resolved = reactExports.useMemo(
+    () => resolvePath(timeline, pathString),
+    [timeline, pathString]
+  );
+  const node2 = reactExports.useMemo(() => resolved ?? timeline.root, [timeline, resolved]);
+  const rows = reactExports.useMemo(() => computeSwimlaneRows(node2), [node2]);
+  const selected = reactExports.useMemo(() => {
+    if (selectedParam !== null) return selectedParam;
+    return rows[0]?.name ?? null;
+  }, [selectedParam, rows]);
+  const breadcrumbs = reactExports.useMemo(
+    () => buildBreadcrumbs(pathString, timeline),
+    [pathString, timeline]
+  );
+  const drillDown = reactExports.useCallback(
+    (name, spanIndex) => {
+      const segment = spanIndex ? `${name}-${spanIndex}` : name;
+      const newPath = pathString ? `${pathString}/${segment}` : segment;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(kPathParam, newPath);
+        next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
+        return next;
+      });
+    },
+    [pathString, setSearchParams]
+  );
+  const goUp = reactExports.useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("event");
+      next.delete("message");
+      if (next.has(kSelectedParam)) {
+        next.delete(kSelectedParam);
+        return next;
+      }
+      if (pathString) {
+        const segments = pathString.split("/");
+        segments.pop();
+        const newPath = segments.join("/");
+        if (newPath) {
+          next.set(kPathParam, newPath);
+        } else {
+          next.delete(kPathParam);
+        }
+      }
+      return next;
+    });
+  }, [pathString, setSearchParams]);
+  const navigateTo = reactExports.useCallback(
+    (path) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (path) {
+          next.set(kPathParam, path);
+        } else {
+          next.delete(kPathParam);
+        }
+        next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+  const select = reactExports.useCallback(
+    (name, spanIndex) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (name) {
+            const value2 = spanIndex ? `${name}-${spanIndex}` : name;
+            next.set(kSelectedParam, value2);
+          } else {
+            next.delete(kSelectedParam);
+          }
+          next.delete("event");
+          next.delete("message");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+  const drillDownAndSelect = reactExports.useCallback(
+    (drillName, selectName, selectSpanIndex) => {
+      const segment = drillName;
+      const newPath = pathString ? `${pathString}/${segment}` : segment;
+      const selectedValue = selectSpanIndex ? `${selectName}-${selectSpanIndex}` : selectName;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(kPathParam, newPath);
+        next.set(kSelectedParam, selectedValue);
+        next.delete("event");
+        next.delete("message");
+        return next;
+      });
+    },
+    [pathString, setSearchParams]
+  );
+  return {
+    node: node2,
+    rows,
+    breadcrumbs,
+    selected,
+    drillDown,
+    goUp,
+    navigateTo,
+    select,
+    drillDownAndSelect
+  };
+}
+function findRowByName(rows, name) {
+  return rows.find((r2) => r2.name.toLowerCase() === name.toLowerCase());
+}
+function getSelectedSpans(rows, selected) {
+  if (!selected) return [];
+  const { name, spanIndex } = parsePathSegment(selected);
+  const row2 = findRowByName(rows, name);
+  if (!row2) return [];
+  const result2 = [];
+  const targetIndex = spanIndex !== null ? spanIndex - 1 : null;
+  for (let i2 = 0; i2 < row2.spans.length; i2++) {
+    const rowSpan = row2.spans[i2];
+    if (isSingleSpan(rowSpan)) {
+      if (targetIndex === null || i2 === targetIndex) {
+        result2.push(rowSpan.agent);
+      }
+    } else if (isParallelSpan(rowSpan)) {
+      if (spanIndex !== null) {
+        const agent = rowSpan.agents[spanIndex - 1];
+        if (agent) result2.push(agent);
+      } else {
+        result2.push(...rowSpan.agents);
+      }
+    }
+  }
+  return result2;
+}
+function computeMinimapSelection(rows, selected) {
+  if (!selected) return void 0;
+  const { name, spanIndex } = parsePathSegment(selected);
+  const row2 = findRowByName(rows, name);
+  if (!row2) return void 0;
+  const targetIndex = (spanIndex ?? 1) - 1;
+  for (const rowSpan of row2.spans) {
+    if (isSingleSpan(rowSpan)) {
+      const singleIndex = row2.spans.indexOf(rowSpan);
+      if (singleIndex === targetIndex || row2.spans.length === 1) {
+        const agent = rowSpan.agent;
+        return {
+          startTime: agent.startTime,
+          endTime: agent.endTime,
+          totalTokens: agent.totalTokens
+        };
+      }
+    } else if (isParallelSpan(rowSpan)) {
+      if (spanIndex !== null) {
+        const agent = rowSpan.agents[spanIndex - 1];
+        if (agent) {
+          return {
+            startTime: agent.startTime,
+            endTime: agent.endTime,
+            totalTokens: agent.totalTokens
+          };
+        }
+      }
+      const agents = getAgents(rowSpan);
+      const envelope = computeTimeEnvelope(agents);
+      const tokens = agents.reduce((sum, a2) => sum + a2.totalTokens, 0);
+      return { ...envelope, totalTokens: tokens };
+    }
+  }
+  return void 0;
+}
+function collectRawEvents(spans) {
+  const events = [];
+  const sourceSpans = /* @__PURE__ */ new Map();
+  if (spans.length === 1) {
+    collectFromContent(spans[0].content, events, sourceSpans);
+  } else {
+    collectFromContent(spans, events, sourceSpans);
+  }
+  return { events, sourceSpans };
+}
+function collectFromContent(content2, out, sourceSpans) {
+  for (const item of content2) {
+    if (item.type === "event") {
+      out.push(item.event);
+    } else {
+      const beginEvent = {
+        event: "span_begin",
+        name: item.name,
+        id: item.id,
+        span_id: item.id,
+        type: item.spanType,
+        timestamp: item.startTime.toISOString(),
+        parent_id: null,
+        pending: false,
+        working_start: 0,
+        uuid: null,
+        metadata: null
+      };
+      out.push(beginEvent);
+      if (item.spanType === "agent") {
+        sourceSpans.set(item.id, item);
+      } else {
+        collectFromContent(item.content, out, sourceSpans);
+      }
+      const endEvent = {
+        event: "span_end",
+        id: `${item.id}-end`,
+        span_id: item.id,
+        timestamp: item.endTime.toISOString(),
+        pending: false,
+        working_start: 0,
+        uuid: null,
+        metadata: null
+      };
+      out.push(endEvent);
+    }
+  }
+}
+function buildSpanSelectKeys(rows) {
+  const keys = /* @__PURE__ */ new Map();
+  for (const row2 of rows) {
+    const needsIndex = row2.spans.length > 1;
+    for (let i2 = 0; i2 < row2.spans.length; i2++) {
+      const rowSpan = row2.spans[i2];
+      if (isSingleSpan(rowSpan)) {
+        keys.set(rowSpan.agent.id, {
+          name: row2.name,
+          spanIndex: needsIndex ? i2 + 1 : void 0
+        });
+      } else if (isParallelSpan(rowSpan)) {
+        for (let j = 0; j < rowSpan.agents.length; j++) {
+          keys.set(rowSpan.agents[j].id, {
+            name: row2.name,
+            spanIndex: j + 1,
+            parallel: true
+          });
+        }
+      }
+    }
+  }
+  return keys;
+}
+function attachSourceSpans(nodes, spanMap) {
+  for (const node2 of nodes) {
+    if (node2.event.event === "span_begin") {
+      const spanId = node2.event.span_id;
+      if (spanId) {
+        const span = spanMap.get(spanId);
+        if (span) node2.sourceSpan = span;
+      }
+    }
+    if (node2.children.length > 0) {
+      attachSourceSpans(node2.children, spanMap);
+    }
+  }
+}
 const STEP = "step";
 const ACTION_BEGIN = "begin";
 const SPAN_BEGIN = "span_begin";
@@ -14247,6 +15834,8 @@ class EventNode {
   event;
   children = [];
   depth;
+  /** The TimelineSpan this node was synthesized from, if any. */
+  sourceSpan;
   constructor(id, event, depth) {
     this.id = id;
     this.event = event;
@@ -14561,15 +16150,19 @@ const injectScorersSpan = (events) => {
   }
   return results;
 };
-const useEventNodes = (events, running) => {
+const useEventNodes = (events, running, sourceSpans) => {
   const { eventTree, defaultCollapsedIds } = reactExports.useMemo(() => {
     const resolvedEvents = fixupEventStream(events, !running);
     const rawEventTree = treeifyEvents(resolvedEvents, 0);
+    if (sourceSpans && sourceSpans.size > 0) {
+      attachSourceSpans(rawEventTree, sourceSpans);
+    }
     const filterEmpty = (eventNodes) => {
       return eventNodes.filter((node2) => {
         if (node2.children && node2.children.length > 0) {
           node2.children = filterEmpty(node2.children);
         }
+        if (node2.sourceSpan) return true;
         return node2.event.event !== "span_begin" && node2.event.event !== "step" || node2.children && node2.children.length > 0;
       });
     };
@@ -14589,7 +16182,7 @@ const useEventNodes = (events, running) => {
     };
     findCollapsibleEvents(eventTree2);
     return { eventTree: eventTree2, defaultCollapsedIds: defaultCollapsedIds2 };
-  }, [events, running]);
+  }, [events, running, sourceSpans]);
   return { eventNodes: eventTree, defaultCollapsedIds };
 };
 const collapseFilters = [
@@ -14603,7 +16196,83 @@ const collapseFilters = [
   (event) => event.event === "tool" && !event.agent && !event.failed,
   (event) => event.event === "subtask"
 ];
-const styles$l = {};
+const styles$m = {};
+const card$1 = "_card_yr25w_1";
+const header = "_header_yr25w_13";
+const icon = "_icon_yr25w_22";
+const title$2 = "_title_yr25w_26";
+const meta = "_meta_yr25w_32";
+const disclosure = "_disclosure_yr25w_37";
+const description = "_description_yr25w_42";
+const styles$l = {
+  card: card$1,
+  header,
+  icon,
+  title: title$2,
+  meta,
+  disclosure,
+  description
+};
+const TimelineSelectContext = reactExports.createContext(
+  null
+);
+function useTimelineSelect() {
+  return reactExports.useContext(TimelineSelectContext);
+}
+const AgentCardView = ({ span, className: className2 }) => {
+  const select = useTimelineSelect();
+  const handleClick = reactExports.useCallback(() => {
+    select?.(span.id);
+  }, [select, span.id]);
+  const title2 = span.name.toLowerCase();
+  const tokens = formatTokenCount(span.totalTokens);
+  const duration = formatDurationShort(span.startTime, span.endTime);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.card, className2), onClick: handleClick, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.header, "text-size-small"), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "i",
+        {
+          className: clsx(
+            ApplicationIcons.agent,
+            styles$l.icon,
+            "text-style-secondary"
+          )
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: clsx(
+            styles$l.title,
+            "text-style-secondary",
+            "text-style-label"
+          ),
+          children: [
+            "sub-agent: ",
+            title2
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", {}),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.meta, "text-style-secondary"), children: [
+        tokens,
+        " · ",
+        duration
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "i",
+        {
+          className: clsx(
+            ApplicationIcons.chevron.right,
+            styles$l.disclosure,
+            "text-style-secondary"
+          )
+        }
+      )
+    ] }),
+    span.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.description, "text-size-small"), children: span.description })
+  ] });
+};
 const title$1 = "_title_19l1b_1";
 const contents = "_contents_19l1b_8";
 const styles$k = {
@@ -14612,12 +16281,12 @@ const styles$k = {
 };
 const EventRow = ({
   title: title2,
-  icon,
+  icon: icon2,
   className: className2,
   children: children2
 }) => {
   const contentEl = title2 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx("text-size-small", styles$k.title, className2), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: icon || ApplicationIcons.metadata }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: icon2 || ApplicationIcons.metadata }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-style-label"), children: title2 }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: children2 })
   ] }) : "";
@@ -14777,7 +16446,7 @@ const EventPanel = ({
   title: title2,
   subTitle,
   text: text2,
-  icon,
+  icon: icon2,
   children: children2,
   childIds,
   collapsibleContent,
@@ -14811,7 +16480,7 @@ const EventPanel = ({
   if (isCollapsible && !useBottomDongle) {
     gridColumns.push("minmax(0, max-content)");
   }
-  if (icon) {
+  if (icon2) {
     gridColumns.push("max-content");
   }
   gridColumns.push("minmax(0, max-content)");
@@ -14825,7 +16494,7 @@ const EventPanel = ({
     setCollapsed(!collapsed);
   }, [setCollapsed, collapsed, childIds]);
   const [mouseOver, setMouseOver] = reactExports.useState(false);
-  const titleEl = title2 || icon || filteredArrChildren.length > 1 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+  const titleEl = title2 || icon2 || filteredArrChildren.length > 1 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       title: subTitle,
@@ -14846,11 +16515,11 @@ const EventPanel = ({
             className: collapsed ? ApplicationIcons.chevron.right : ApplicationIcons.chevron.down
           }
         ) : "",
-        icon ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        icon2 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
           "i",
           {
             className: clsx(
-              icon || ApplicationIcons.metadata,
+              icon2 || ApplicationIcons.metadata,
               "text-style-secondary"
             ),
             onClick: toggleCollapse
@@ -15637,13 +17306,13 @@ const SampleLimitEventView = ({
     }
   };
   const title2 = resolve_title(eventNode.event.type);
-  const icon = resolve_icon(eventNode.event.type);
+  const icon2 = resolve_icon(eventNode.event.type);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     EventPanel,
     {
       eventNodeId: eventNode.id,
       title: title2,
-      icon,
+      icon: icon2,
       className: className2,
       children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx("text-size-smaller"), children: eventNode.event.message })
     }
@@ -16998,10 +18667,10 @@ const textDeltaReverse = (delta) => {
       continue;
     const lineStart = line.slice(0, 1);
     if (lineStart === "@") {
-      const header = headerRegex.exec(line);
-      if (header !== null) {
+      const header2 = headerRegex.exec(line);
+      if (header2 !== null) {
         const lineHeader = i2;
-        lines[lineHeader] = `@@ -${header[3]},${header[4]} +${header[1]},${header[2]} @@`;
+        lines[lineHeader] = `@@ -${header2[3]},${header2[4]} +${header2[1]},${header2[2]} @@`;
       }
     } else if (lineStart === "+") {
       lines[i2] = `-${(_a2 = lines[i2]) === null || _a2 === void 0 ? void 0 : _a2.slice(1)}`;
@@ -18363,49 +20032,49 @@ async function parse$2(data) {
     const result2 = parseJsonl(text2);
     if (result2 !== void 0) {
       const {
-        header,
+        header: header2,
         events
       } = result2;
-      if (header.version === 2) {
-        return parseAsciicastV2(header, events);
-      } else if (header.version === 3) {
-        return parseAsciicastV3(header, events);
+      if (header2.version === 2) {
+        return parseAsciicastV2(header2, events);
+      } else if (header2.version === 3) {
+        return parseAsciicastV3(header2, events);
       } else {
-        throw `asciicast v${header.version} format not supported`;
+        throw `asciicast v${header2.version} format not supported`;
       }
     } else {
-      const header = JSON.parse(text2);
-      if (header.version === 1) {
-        return parseAsciicastV1(header);
+      const header2 = JSON.parse(text2);
+      if (header2.version === 1) {
+        return parseAsciicastV1(header2);
       }
     }
   } else if (typeof data === "object" && data.version === 1) {
     return parseAsciicastV1(data);
   } else if (Array.isArray(data)) {
-    const header = data[0];
-    if (header.version === 2) {
+    const header2 = data[0];
+    if (header2.version === 2) {
       const events = data.slice(1, data.length);
-      return parseAsciicastV2(header, events);
-    } else if (header.version === 3) {
+      return parseAsciicastV2(header2, events);
+    } else if (header2.version === 3) {
       const events = data.slice(1, data.length);
-      return parseAsciicastV3(header, events);
+      return parseAsciicastV3(header2, events);
     } else {
-      throw `asciicast v${header.version} format not supported`;
+      throw `asciicast v${header2.version} format not supported`;
     }
   }
   throw "invalid data";
 }
 function parseJsonl(jsonl) {
   const lines = jsonl.split("\n");
-  let header;
+  let header2;
   try {
-    header = JSON.parse(lines[0]);
+    header2 = JSON.parse(lines[0]);
   } catch (_error) {
     return;
   }
   const events = new Stream(lines).drop(1).filter((l2) => l2[0] === "[").map(JSON.parse);
   return {
-    header,
+    header: header2,
     events
   };
 }
@@ -18421,16 +20090,16 @@ function parseAsciicastV1(data) {
     events
   };
 }
-function parseAsciicastV2(header, events) {
+function parseAsciicastV2(header2, events) {
   return {
-    cols: header.width,
-    rows: header.height,
-    theme: parseTheme$1(header.theme),
+    cols: header2.width,
+    rows: header2.height,
+    theme: parseTheme$1(header2.theme),
     events,
-    idleTimeLimit: header.idle_time_limit
+    idleTimeLimit: header2.idle_time_limit
   };
 }
-function parseAsciicastV3(header, events) {
+function parseAsciicastV3(header2, events) {
   if (!(events instanceof Stream)) {
     events = new Stream(events);
   }
@@ -18440,11 +20109,11 @@ function parseAsciicastV3(header, events) {
     return [time, e[1], e[2]];
   });
   return {
-    cols: header.term.cols,
-    rows: header.term.rows,
-    theme: parseTheme$1(header.term?.theme),
+    cols: header2.term.cols,
+    rows: header2.term.rows,
+    theme: parseTheme$1(header2.term?.theme),
     events,
-    idleTimeLimit: header.idle_time_limit
+    idleTimeLimit: header2.idle_time_limit
   };
 }
 function parseTheme$1(theme) {
@@ -18463,13 +20132,13 @@ function parseTheme$1(theme) {
   }
 }
 function unparseAsciicastV2(recording2) {
-  const header = JSON.stringify({
+  const header2 = JSON.stringify({
     version: 2,
     width: recording2.cols,
     height: recording2.rows
   });
   const events = recording2.events.map(JSON.stringify).join("\n");
-  return `${header}
+  return `${header2}
 ${events}
 `;
 }
@@ -19667,8 +21336,8 @@ class BinaryReader {
 function ascicastV2Handler() {
   let parse2 = parseHeader;
   function parseHeader(buffer2) {
-    const header = JSON.parse(buffer2);
-    if (header.version !== 2) {
+    const header2 = JSON.parse(buffer2);
+    if (header2.version !== 2) {
       throw "not an asciicast v2 stream";
     }
     parse2 = parseEvent;
@@ -19676,8 +21345,8 @@ function ascicastV2Handler() {
       time: 0,
       term: {
         size: {
-          cols: header.width,
-          rows: header.height
+          cols: header2.width,
+          rows: header2.height
         }
       }
     };
@@ -19702,22 +21371,22 @@ function ascicastV3Handler() {
   let parse2 = parseHeader;
   let currentTime = 0;
   function parseHeader(buffer2) {
-    const header = JSON.parse(buffer2);
-    if (header.version !== 3) {
+    const header2 = JSON.parse(buffer2);
+    if (header2.version !== 3) {
       throw "not an asciicast v3 stream";
     }
     parse2 = parseEvent;
     const term = {
       size: {
-        cols: header.term.cols,
-        rows: header.term.rows
+        cols: header2.term.cols,
+        rows: header2.term.rows
       }
     };
-    if (header.term.theme) {
+    if (header2.term.theme) {
       term.theme = {
-        foreground: header.term.theme.fg,
-        background: header.term.theme.bg,
-        palette: header.term.theme.palette.split(":")
+        foreground: header2.term.theme.fg,
+        background: header2.term.theme.bg,
+        palette: header2.term.theme.palette.split(":")
       };
     }
     return {
@@ -20075,8 +21744,8 @@ async function parse$1(responses, _ref) {
   const buffer2 = await responses[1].arrayBuffer();
   const array = new Uint8Array(buffer2);
   const dataOffset = array.findIndex((byte) => byte == 10) + 1;
-  const header = textDecoder.decode(array.subarray(0, dataOffset));
-  const sizeMatch = header.match(/COLUMNS="(\d+)" LINES="(\d+)"/);
+  const header2 = textDecoder.decode(array.subarray(0, dataOffset));
+  const sizeMatch = header2.match(/COLUMNS="(\d+)" LINES="(\d+)"/);
   if (sizeMatch !== null) {
     cols = parseInt(sizeMatch[1], 10);
     rows = parseInt(sizeMatch[2], 10);
@@ -20585,11 +22254,11 @@ class Core {
     this.cursor = void 0;
   }
   async _initializeDriver() {
-    const meta = await this.driver.init();
-    this.cols = this.cols ?? meta.cols ?? 80;
-    this.rows = this.rows ?? meta.rows ?? 24;
-    this.duration = this.duration ?? meta.duration;
-    this.markers = this._normalizeMarkers(meta.markers) ?? this.markers ?? [];
+    const meta2 = await this.driver.init();
+    this.cols = this.cols ?? meta2.cols ?? 80;
+    this.rows = this.rows ?? meta2.rows ?? 24;
+    this.duration = this.duration ?? meta2.duration;
+    this.markers = this._normalizeMarkers(meta2.markers) ?? this.markers ?? [];
     if (this.cols === 0) {
       this.cols = 80;
     }
@@ -20597,14 +22266,14 @@ class Core {
       this.rows = 24;
     }
     this._initializeVt(this.cols, this.rows);
-    const poster = meta.poster !== void 0 ? this._renderPoster(meta.poster) : null;
+    const poster = meta2.poster !== void 0 ? this._renderPoster(meta2.poster) : null;
     this._dispatchEvent("metadata", {
       cols: this.cols,
       rows: this.rows,
       duration: this.duration,
       markers: this.markers,
-      theme: meta.theme,
-      hasAudio: meta.hasAudio,
+      theme: meta2.theme,
+      hasAudio: meta2.hasAudio,
       poster
     });
   }
@@ -24962,7 +26631,10 @@ const RenderedEventNode = reactExports.memo(
             className: className2
           }
         );
-      case "span_begin":
+      case "span_begin": {
+        if (node2.sourceSpan?.spanType === "agent") {
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(AgentCardView, { span: node2.sourceSpan, className: className2 });
+        }
         return /* @__PURE__ */ jsxRuntimeExports.jsx(
           SpanEventView,
           {
@@ -24971,6 +26643,7 @@ const RenderedEventNode = reactExports.memo(
             className: className2
           }
         );
+      }
       case "step":
         return /* @__PURE__ */ jsxRuntimeExports.jsx(
           StepEventView,
@@ -25114,45 +26787,59 @@ const TranscriptViewNodes = ({
       eventNodes: flattenedNodes,
       scrollRef,
       offsetTop,
-      className: clsx(styles$l.listContainer, className2),
+      className: clsx(styles$m.listContainer, className2),
       initialEventId
     }
   );
 };
 export {
   ANSIDisplay as A,
+  TYPE_SCORER as B,
   CopyButton as C,
   DisplayModeContext as D,
   EventNode as E,
+  useVirtuosoState as F,
+  flatTree as G,
+  kTranscriptOutlineCollapseScope as H,
+  useScrollTrack as I,
   JSONPanel as J,
+  computeBarPosition as K,
   LiveVirtualList as L,
   MetaDataGrid as M,
+  formatTokenCount as N,
+  findBranchesByForkedAt as O,
   PulsingDots as P,
+  parsePathSegment as Q,
   RecordTree as R,
   ScoreValue as S,
   TranscriptViewNodes as T,
+  createBranchSpan as U,
   Yr as Y,
   LabeledValue as a,
   ModelUsagePanel as b,
   MarkdownDivWithReferences as c,
   ChatView as d,
   eventTypeValues as e,
-  useTranscriptNavigation as f,
-  kCollapsibleEventTypes as g,
-  ChatMessageRow as h,
+  buildTimeline as f,
+  useTimeline as g,
+  computeRowLayouts as h,
   isJson as i,
-  useStatefulScrollPosition as j,
-  kTranscriptCollapseScope as k,
-  useProperty as l,
-  useCollapseTranscriptEvent as m,
-  kSandboxSignalName as n,
-  TYPE_SCORERS as o,
-  TYPE_SCORER as p,
-  useVirtuosoState as q,
-  resolveMessages as r,
-  flatTree as s,
-  kTranscriptOutlineCollapseScope as t,
+  getSelectedSpans as j,
+  collectRawEvents as k,
+  computeMinimapSelection as l,
+  useTranscriptNavigation as m,
+  buildSpanSelectKeys as n,
+  kTranscriptCollapseScope as o,
+  TimelineSelectContext as p,
+  kCollapsibleEventTypes as q,
+  rowHasEvents as r,
+  resolveMessages as s,
+  ChatMessageRow as t,
   useEventNodes as u,
-  useScrollTrack as v
+  useStatefulScrollPosition as v,
+  useProperty as w,
+  useCollapseTranscriptEvent as x,
+  kSandboxSignalName as y,
+  TYPE_SCORERS as z
 };
 //# sourceMappingURL=TranscriptViewNodes.js.map

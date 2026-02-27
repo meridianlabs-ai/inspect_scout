@@ -710,6 +710,51 @@ a._citationLink_1ggvf_9:hover {
     opacity: 0.8;
   }
 }
+._card_yr25w_1 {
+  position: relative;
+  background-color: var(--bs-secondary-bg);
+  padding: 0.625rem;
+  border: solid 1px var(--bs-border-color);
+  cursor: pointer;
+}
+
+._card_yr25w_1:hover {
+  background-color: var(--bs-secondary-bg-subtle);
+}
+
+._header_yr25w_13 {
+  display: grid;
+  grid-template-columns:
+    max-content minmax(0, max-content) auto minmax(0, max-content)
+    max-content;
+  column-gap: 0.3em;
+  align-items: baseline;
+}
+
+._icon_yr25w_22 {
+  font-size: 0.9em;
+}
+
+._title_yr25w_26 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+._meta_yr25w_32 {
+  white-space: nowrap;
+  justify-self: end;
+}
+
+._disclosure_yr25w_37 {
+  font-size: 0.8em;
+  margin-left: 0.3em;
+}
+
+._description_yr25w_42 {
+  margin-top: 0.25em;
+  font-size: 0.85em;
+}
 ._title_19l1b_1 {
   margin-left: 0.5em;
   display: grid;

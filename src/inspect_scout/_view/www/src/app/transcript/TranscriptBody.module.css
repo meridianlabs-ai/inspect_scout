@@ -51,9 +51,8 @@
 .eventsContainer {
   display: grid;
   width: 100%;
-  grid-template-columns: 180px 1px 1fr;
+  grid-template-columns: var(--outline-width, 180px) 1px 1fr;
   min-height: 100vh;
-  transition: grid-template-columns 0.3s ease;
   padding-bottom: 44px;
 }
 

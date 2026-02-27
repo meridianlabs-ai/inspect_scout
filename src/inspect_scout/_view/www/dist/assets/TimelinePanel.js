@@ -1,7 +1,7 @@
 import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
-import { l as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
-import { u as useTimeline, c as computeTimeMapping, a as computeRowLayouts, g as getSelectedSpans, e as computeMinimapSelection, d as collectRawEvents, T as TimelineSwimLanes, f as TranscriptOutline } from "./timelineEventNodes.js";
+import { w as useProperty, g as useTimeline, h as computeRowLayouts, j as getSelectedSpans, l as computeMinimapSelection, k as collectRawEvents, u as useEventNodes, n as buildSpanSelectKeys, p as TimelineSelectContext, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
+import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import "./_commonjsHelpers.js";
 import "./ToolButton.js";
@@ -1654,21 +1654,21 @@ const timelineScenarios = [
   branchesSingleFork(),
   branchesMultipleForks()
 ];
-const container = "_container_1w6el_1";
-const headerRow = "_headerRow_1w6el_8";
-const title = "_title_1w6el_17";
-const scenarioSelect = "_scenarioSelect_1w6el_25";
-const markerDepthSelect = "_markerDepthSelect_1w6el_29";
-const scenarioDescription = "_scenarioDescription_1w6el_33";
-const content = "_content_1w6el_38";
-const eventsContainer = "_eventsContainer_1w6el_45";
-const outlineCollapsed = "_outlineCollapsed_1w6el_53";
-const outlinePane = "_outlinePane_1w6el_57";
-const outline = "_outline_1w6el_53";
-const outlineToggle = "_outlineToggle_1w6el_70";
-const eventsSeparator = "_eventsSeparator_1w6el_78";
-const eventList = "_eventList_1w6el_82";
-const emptyEvents = "_emptyEvents_1w6el_86";
+const container = "_container_e2stj_1";
+const headerRow = "_headerRow_e2stj_8";
+const title = "_title_e2stj_17";
+const scenarioSelect = "_scenarioSelect_e2stj_25";
+const markerDepthSelect = "_markerDepthSelect_e2stj_29";
+const scenarioDescription = "_scenarioDescription_e2stj_33";
+const content = "_content_e2stj_38";
+const eventsContainer = "_eventsContainer_e2stj_45";
+const outlineCollapsed = "_outlineCollapsed_e2stj_52";
+const outlinePane = "_outlinePane_e2stj_56";
+const outline = "_outline_e2stj_52";
+const outlineToggle = "_outlineToggle_e2stj_69";
+const eventsSeparator = "_eventsSeparator_e2stj_77";
+const eventList = "_eventList_e2stj_81";
+const emptyEvents = "_emptyEvents_e2stj_85";
 const styles = {
   container,
   headerRow,
@@ -1696,6 +1696,7 @@ const TimelinePanel = () => {
     { defaultValue: true, cleanup: false }
   );
   const isOutlineCollapsed = !!outlineCollapsed2;
+  const [outlineWidth, setOutlineWidth] = reactExports.useState();
   const scenario = timelineScenarios[selectedIndex];
   const timeline = scenario?.timeline ?? timelineScenarios[0].timeline;
   const state = useTimeline(timeline);
@@ -1723,11 +1724,32 @@ const TimelinePanel = () => {
     () => computeMinimapSelection(state.rows, state.selected),
     [state.rows, state.selected]
   );
-  const rawEvents = reactExports.useMemo(
+  const { events: rawEvents, sourceSpans } = reactExports.useMemo(
     () => collectRawEvents(selectedSpans),
     [selectedSpans]
   );
-  const { eventNodes, defaultCollapsedIds } = useEventNodes(rawEvents, false);
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(
+    rawEvents,
+    false,
+    sourceSpans
+  );
+  const spanSelectKeys = reactExports.useMemo(
+    () => buildSpanSelectKeys(state.rows),
+    [state.rows]
+  );
+  const { select, drillDownAndSelect } = state;
+  const selectBySpanId = reactExports.useCallback(
+    (spanId) => {
+      const key = spanSelectKeys.get(spanId);
+      if (!key) return;
+      if (key.parallel && key.spanIndex) {
+        drillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
+      } else {
+        select(key.name, key.spanIndex);
+      }
+    },
+    [spanSelectKeys, select, drillDownAndSelect]
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.container, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.headerRow, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: styles.title, children: "Timeline" }),
@@ -1788,13 +1810,16 @@ const TimelinePanel = () => {
           }
         }
       ),
-      eventNodes.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineSelectContext.Provider, { value: selectBySpanId, children: eventNodes.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
           className: clsx(
             styles.eventsContainer,
             isOutlineCollapsed && styles.outlineCollapsed
           ),
+          style: !isOutlineCollapsed && outlineWidth ? {
+            "--outline-width": `${outlineWidth}px`
+          } : void 0,
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.outlinePane, children: [
               !isOutlineCollapsed && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1802,7 +1827,8 @@ const TimelinePanel = () => {
                 {
                   eventNodes,
                   defaultCollapsedIds,
-                  className: styles.outline
+                  className: styles.outline,
+                  onWidthChange: setOutlineWidth
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1825,7 +1851,7 @@ const TimelinePanel = () => {
             ) })
           ]
         }
-      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.emptyEvents, children: "Select a swimlane row to view events" })
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.emptyEvents, children: "Select a swimlane row to view events" }) })
     ] })
   ] });
 };

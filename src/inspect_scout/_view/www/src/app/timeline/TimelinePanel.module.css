@@ -45,9 +45,8 @@
 .eventsContainer {
   flex: 1;
   display: grid;
-  grid-template-columns: 180px 1px 1fr;
+  grid-template-columns: var(--outline-width, 180px) 1px 1fr;
   overflow: hidden;
-  transition: grid-template-columns 0.3s ease;
 }
 
 .eventsContainer.outlineCollapsed {

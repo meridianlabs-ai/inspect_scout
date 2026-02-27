@@ -1,6 +1,7 @@
 import { VscodeSplitLayout } from "@vscode-elements/react-elements";
 import clsx from "clsx";
 import {
+  CSSProperties,
   FC,
   ReactNode,
   RefObject,
@@ -23,6 +24,7 @@ import { ToolButton } from "../../components/ToolButton";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
+import { TimelineSelectContext } from "../../components/transcript/TimelineSelectContext";
 import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
 import {
   EventNode,
@@ -33,6 +35,7 @@ import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
 import { TimelineSwimLanes } from "../timeline/components/TimelineSwimLanes";
+import { buildSpanSelectKeys } from "../timeline/timelineEventNodes";
 import { messagesToStr } from "../utils/messages";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
@@ -184,9 +187,37 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     layouts: timelineLayouts,
     rootTimeMapping,
     selectedEvents,
+    sourceSpans,
     minimapSelection,
     hasTimeline,
   } = useTranscriptTimeline(filteredEvents);
+
+  // Build a span-ID-aware navigation function for agent card clicks.
+  // Maps each span's unique ID to the (name, spanIndex) pair that
+  // the swimlane selection system expects. Parallel spans drill down
+  // into the parallel container and select the specific instance.
+  const spanSelectKeys = useMemo(
+    () => buildSpanSelectKeys(timelineState.rows),
+    [timelineState.rows]
+  );
+  const {
+    select: timelineSelect,
+    drillDownAndSelect: timelineDrillDownAndSelect,
+  } = timelineState;
+  const selectBySpanId = useCallback(
+    (spanId: string) => {
+      const key = spanSelectKeys.get(spanId);
+      if (!key) return;
+      if (key.parallel && key.spanIndex) {
+        // Drill into the parallel container, select the specific instance.
+        // After drill-down, the child row is named "<name> <spanIndex>".
+        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
+      } else {
+        timelineSelect(key.name, key.spanIndex);
+      }
+    },
+    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+  );
 
   // Sticky swimlane state — when the swimlane scrolls past the tab bar,
   // it collapses and sticks below it.
@@ -227,7 +258,8 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   // Transcript event data
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     selectedEvents,
-    false
+    false,
+    sourceSpans
   );
   const hasMatchingEvents = eventNodes.length > 0;
 
@@ -273,6 +305,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
 
   // Track whether the outline has displayable nodes (reported by TranscriptOutline)
   const [outlineHasNodes, setOutlineHasNodes] = useState(true);
+  const [outlineWidth, setOutlineWidth] = useState<number | undefined>();
   const handleOutlineHasNodesChange = useCallback(
     (hasNodes: boolean) => {
       setOutlineHasNodes(hasNodes);
@@ -456,98 +489,106 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
       scrollable={false}
     >
-      <div className={styles.eventsTabContent}>
-        {hasTimeline && timelineData && (
-          <StickyScroll
-            scrollRef={scrollRef}
-            offsetTop={40}
-            zIndex={500}
-            preserveHeight={true}
-            onStickyChange={handleSwimLaneStickyChange}
-          >
-            <div ref={swimLaneStickyContentRef}>
-              <TimelineSwimLanes
-                layouts={timelineLayouts}
-                selected={timelineState.selected}
-                node={timelineState.node}
-                onSelect={timelineState.select}
-                onDrillDown={timelineState.drillDown}
-                onGoUp={timelineState.goUp}
-                minimap={{
-                  root: timelineData.root,
-                  selection: minimapSelection,
-                  mapping: rootTimeMapping,
-                }}
-                breadcrumb={{
-                  breadcrumbs: timelineState.breadcrumbs,
-                  atRoot,
-                  onGoUp: timelineState.goUp,
-                  onNavigate: timelineState.navigateTo,
-                  selected: timelineState.selected,
-                  onScrollToTop: scrollToTop,
-                }}
-                onMarkerNavigate={handleMarkerNavigate}
-                isSticky={isSwimLaneSticky}
-                forceCollapsed={isSwimLaneSticky && !markerNavSticky}
-                noAnimation={isSwimLaneSticky && !markerNavSticky}
-              />
-            </div>
-          </StickyScroll>
-        )}
-        <div
-          className={clsx(
-            styles.eventsContainer,
-            outlineCollapsed && styles.outlineCollapsed
+      <TimelineSelectContext.Provider value={selectBySpanId}>
+        <div className={styles.eventsTabContent}>
+          {hasTimeline && timelineData && (
+            <StickyScroll
+              scrollRef={scrollRef}
+              offsetTop={40}
+              zIndex={500}
+              preserveHeight={true}
+              onStickyChange={handleSwimLaneStickyChange}
+            >
+              <div ref={swimLaneStickyContentRef}>
+                <TimelineSwimLanes
+                  layouts={timelineLayouts}
+                  selected={timelineState.selected}
+                  node={timelineState.node}
+                  onSelect={timelineState.select}
+                  onDrillDown={timelineState.drillDown}
+                  onGoUp={timelineState.goUp}
+                  minimap={{
+                    root: timelineData.root,
+                    selection: minimapSelection,
+                    mapping: rootTimeMapping,
+                  }}
+                  breadcrumb={{
+                    breadcrumbs: timelineState.breadcrumbs,
+                    atRoot,
+                    onGoUp: timelineState.goUp,
+                    onNavigate: timelineState.navigateTo,
+                    selected: timelineState.selected,
+                    onScrollToTop: scrollToTop,
+                  }}
+                  onMarkerNavigate={handleMarkerNavigate}
+                  isSticky={isSwimLaneSticky}
+                  forceCollapsed={isSwimLaneSticky && !markerNavSticky}
+                  noAnimation={isSwimLaneSticky && !markerNavSticky}
+                />
+              </div>
+            </StickyScroll>
           )}
-        >
-          <StickyScroll
-            scrollRef={scrollRef}
-            className={styles.eventsOutline}
-            offsetTop={40 + stickySwimLaneHeight}
+          <div
+            className={clsx(
+              styles.eventsContainer,
+              outlineCollapsed && styles.outlineCollapsed
+            )}
+            style={
+              !outlineCollapsed && outlineWidth
+                ? ({ "--outline-width": `${outlineWidth}px` } as CSSProperties)
+                : undefined
+            }
           >
-            {!outlineCollapsed && (
-              <TranscriptOutline
+            <StickyScroll
+              scrollRef={scrollRef}
+              className={styles.eventsOutline}
+              offsetTop={40 + stickySwimLaneHeight}
+            >
+              {!outlineCollapsed && (
+                <TranscriptOutline
+                  eventNodes={eventNodes}
+                  defaultCollapsedIds={defaultCollapsedIds}
+                  scrollRef={scrollRef}
+                  onHasNodesChange={handleOutlineHasNodesChange}
+                  onWidthChange={setOutlineWidth}
+                />
+              )}
+              <button
+                type="button"
+                className={styles.outlineToggle}
+                onClick={
+                  outlineHasNodes
+                    ? () => toggleOutline(!outlineCollapsed)
+                    : undefined
+                }
+                aria-disabled={!outlineHasNodes}
+                title={
+                  outlineHasNodes
+                    ? undefined
+                    : "No outline available for the current filter"
+                }
+                aria-label={outlineCollapsed ? "Show outline" : "Hide outline"}
+              >
+                <i className={ApplicationIcons.sidebar} />
+              </button>
+            </StickyScroll>
+            <div className={styles.eventsSeparator} />
+            {hasMatchingEvents ? (
+              <TranscriptViewNodes
+                id={"transcript-events-list"}
                 eventNodes={eventNodes}
                 defaultCollapsedIds={defaultCollapsedIds}
+                initialEventId={eventParam}
+                offsetTop={40 + stickySwimLaneHeight}
+                className={styles.eventsList}
                 scrollRef={scrollRef}
-                onHasNodesChange={handleOutlineHasNodesChange}
               />
+            ) : (
+              <NoContentsPanel text="No events match the current filter" />
             )}
-            <button
-              type="button"
-              className={styles.outlineToggle}
-              onClick={
-                outlineHasNodes
-                  ? () => toggleOutline(!outlineCollapsed)
-                  : undefined
-              }
-              aria-disabled={!outlineHasNodes}
-              title={
-                outlineHasNodes
-                  ? undefined
-                  : "No outline available for the current filter"
-              }
-              aria-label={outlineCollapsed ? "Show outline" : "Hide outline"}
-            >
-              <i className={ApplicationIcons.sidebar} />
-            </button>
-          </StickyScroll>
-          <div className={styles.eventsSeparator} />
-          {hasMatchingEvents ? (
-            <TranscriptViewNodes
-              id={"transcript-events-list"}
-              eventNodes={eventNodes}
-              defaultCollapsedIds={defaultCollapsedIds}
-              initialEventId={eventParam}
-              offsetTop={40 + stickySwimLaneHeight}
-              className={styles.eventsList}
-              scrollRef={scrollRef}
-            />
-          ) : (
-            <NoContentsPanel text="No events match the current filter" />
-          )}
+          </div>
         </div>
-      </div>
+      </TimelineSelectContext.Provider>
       <TranscriptFilterPopover
         showing={transcriptFilterShowing}
         setShowing={setTranscriptFilterShowing}

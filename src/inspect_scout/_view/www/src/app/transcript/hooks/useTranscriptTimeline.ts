@@ -4,8 +4,8 @@
  * Bridges the flat Event[] from the transcript API to the timeline swimlane
  * pipeline: buildTimeline → useTimeline → layouts + selectedEvents.
  *
- * When no child row is selected, returns the original events directly to
- * avoid the collectRawEvents round-trip.
+ * Always runs through collectRawEvents so that sourceSpans (used for
+ * agent card rendering) are populated for the selected row.
  */
 
 import { useEffect, useMemo, useRef } from "react";
@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   buildTimeline,
   type Timeline,
+  type TimelineSpan,
 } from "../../../components/transcript/timeline";
 import type { Event } from "../../../types/api-types";
 import type { MinimapSelection } from "../../timeline/components/TimelineMinimap";
@@ -32,6 +33,8 @@ import {
 } from "../../timeline/utils/swimlaneLayout";
 import { computeTimeMapping, type TimeMapping } from "../../timeline/utils/timeMapping";
 
+const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
+
 interface TranscriptTimelineResult {
   /** The built Timeline, or null if events are empty. */
   timeline: Timeline | null;
@@ -45,22 +48,12 @@ interface TranscriptTimelineResult {
   rootTimeMapping: TimeMapping;
   /** Events scoped to the selected swimlane row (or all events if no child selected). */
   selectedEvents: Event[];
+  /** Agent spans keyed by span ID, for attaching to EventNodes. */
+  sourceSpans: ReadonlyMap<string, TimelineSpan>;
   /** Minimap selection for the breadcrumb row. */
   minimapSelection: MinimapSelection | undefined;
   /** Whether the timeline has meaningful structure (non-empty root with children). */
   hasTimeline: boolean;
-}
-
-/**
- * Determines whether the current selection is the parent/root row
- * (meaning all events should be shown without filtering).
- */
-function isParentSelected(
-  selected: string | null,
-  parentRowName: string | undefined
-): boolean {
-  if (selected === null || parentRowName === undefined) return true;
-  return selected.toLowerCase() === parentRowName.toLowerCase();
 }
 
 export function useTranscriptTimeline(
@@ -103,20 +96,17 @@ export function useTranscriptTimeline(
     [visibleRows, timeMapping]
   );
 
-  const parentRowName = state.rows[0]?.name;
-  const parentSelected = isParentSelected(state.selected, parentRowName);
-  const atRoot = state.breadcrumbs.length <= 1;
-
-  const selectedEvents = useMemo(() => {
-    // Optimization: when the parent row is selected *at the root level*,
-    // use original events directly to avoid the collectRawEvents round-trip.
-    // When drilled down, the parent row represents a sub-span, so we must
-    // still filter through getSelectedSpans → collectRawEvents.
-    if (atRoot && parentSelected) return events;
-
+  const { selectedEvents, sourceSpans } = useMemo(() => {
     const spans = getSelectedSpans(state.rows, state.selected);
-    return collectRawEvents(spans);
-  }, [events, atRoot, parentSelected, state.rows, state.selected]);
+    if (spans.length === 0) {
+      return { selectedEvents: events, sourceSpans: emptySourceSpans };
+    }
+    const collected = collectRawEvents(spans);
+    return {
+      selectedEvents: collected.events,
+      sourceSpans: collected.sourceSpans,
+    };
+  }, [events, state.rows, state.selected]);
 
   const minimapSelection = useMemo(
     () => computeMinimapSelection(state.rows, state.selected),
@@ -134,6 +124,7 @@ export function useTranscriptTimeline(
     timeMapping,
     rootTimeMapping,
     selectedEvents,
+    sourceSpans,
     minimapSelection,
     hasTimeline,
   };

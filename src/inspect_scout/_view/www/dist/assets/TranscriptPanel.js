@@ -5,12 +5,12 @@ import { u as useServerTranscriptsInfinite, T as TRANSCRIPTS_INFINITE_SCROLL_CON
 import { C as ChatViewVirtualList, V as ValidationCaseEditor, N as NextPreviousNav, g as getTranscriptDisplayName } from "./NextPreviousNav.js";
 import { u as useTranscriptsDir } from "./useTranscriptsDir.js";
 import { V as VscodeSplitLayout } from "./VscodeTreeItem.js";
-import { e as eventTypeValues, f as useTranscriptNavigation, u as useEventNodes, k as kTranscriptCollapseScope, T as TranscriptViewNodes, M as MetaDataGrid, D as DisplayModeContext, g as kCollapsibleEventTypes, S as ScoreValue } from "./TranscriptViewNodes.js";
+import { e as eventTypeValues, f as buildTimeline, g as useTimeline, r as rowHasEvents, h as computeRowLayouts, j as getSelectedSpans, k as collectRawEvents, l as computeMinimapSelection, m as useTranscriptNavigation, n as buildSpanSelectKeys, u as useEventNodes, o as kTranscriptCollapseScope, p as TimelineSelectContext, T as TranscriptViewNodes, M as MetaDataGrid, D as DisplayModeContext, q as kCollapsibleEventTypes, S as ScoreValue } from "./TranscriptViewNodes.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";
 import { b as TabPanel, a as TabSet, T as TaskName } from "./TaskName.js";
 import { P as PopOver, T as ToolButton, d as formatDateTime, f as formatNumber, e as formatTime } from "./ToolButton.js";
 import { T as ToolDropdownButton } from "./ToolDropdownButton.js";
-import { b as buildTimeline, u as useTimeline, r as rowHasEvents, c as computeTimeMapping, a as computeRowLayouts, g as getSelectedSpans, d as collectRawEvents, e as computeMinimapSelection, T as TimelineSwimLanes, f as TranscriptOutline } from "./timelineEventNodes.js";
+import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 import "./_commonjsHelpers.js";
 import "./Navbar.js";
 import "./index2.js";
@@ -398,10 +398,7 @@ const useTranscriptColumnFilter = () => {
     arrangedEventTypes
   };
 };
-function isParentSelected(selected2, parentRowName) {
-  if (selected2 === null || parentRowName === void 0) return true;
-  return selected2.toLowerCase() === parentRowName.toLowerCase();
-}
+const emptySourceSpans = /* @__PURE__ */ new Map();
 function useTranscriptTimeline(events) {
   const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
   const state = useTimeline(timeline);
@@ -428,14 +425,17 @@ function useTranscriptTimeline(events) {
     () => computeRowLayouts(visibleRows, timeMapping, "direct"),
     [visibleRows, timeMapping]
   );
-  const parentRowName = state.rows[0]?.name;
-  const parentSelected = isParentSelected(state.selected, parentRowName);
-  const atRoot = state.breadcrumbs.length <= 1;
-  const selectedEvents = reactExports.useMemo(() => {
-    if (atRoot && parentSelected) return events;
+  const { selectedEvents, sourceSpans } = reactExports.useMemo(() => {
     const spans = getSelectedSpans(state.rows, state.selected);
-    return collectRawEvents(spans);
-  }, [events, atRoot, parentSelected, state.rows, state.selected]);
+    if (spans.length === 0) {
+      return { selectedEvents: events, sourceSpans: emptySourceSpans };
+    }
+    const collected = collectRawEvents(spans);
+    return {
+      selectedEvents: collected.events,
+      sourceSpans: collected.sourceSpans
+    };
+  }, [events, state.rows, state.selected]);
   const minimapSelection = reactExports.useMemo(
     () => computeMinimapSelection(state.rows, state.selected),
     [state.rows, state.selected]
@@ -448,26 +448,27 @@ function useTranscriptTimeline(events) {
     timeMapping,
     rootTimeMapping,
     selectedEvents,
+    sourceSpans,
     minimapSelection,
     hasTimeline
   };
 }
-const tabs = "_tabs_vgk45_7";
-const chatTab = "_chatTab_vgk45_24";
-const metadata = "_metadata_vgk45_32";
-const scrollable = "_scrollable_vgk45_37";
-const eventsSeparator = "_eventsSeparator_vgk45_43";
-const eventsList = "_eventsList_vgk45_47";
-const eventsContainer = "_eventsContainer_vgk45_51";
-const outlineCollapsed = "_outlineCollapsed_vgk45_60";
-const eventsTab = "_eventsTab_vgk45_64";
-const eventsTabContent = "_eventsTabContent_vgk45_68";
-const eventsOutline = "_eventsOutline_vgk45_76";
-const outlineToggle = "_outlineToggle_vgk45_81";
-const tabTool = "_tabTool_vgk45_95";
-const splitLayout = "_splitLayout_vgk45_100";
-const splitStart = "_splitStart_vgk45_105";
-const validationSidebar = "_validationSidebar_vgk45_110";
+const tabs = "_tabs_48snv_7";
+const chatTab = "_chatTab_48snv_24";
+const metadata = "_metadata_48snv_32";
+const scrollable = "_scrollable_48snv_37";
+const eventsSeparator = "_eventsSeparator_48snv_43";
+const eventsList = "_eventsList_48snv_47";
+const eventsContainer = "_eventsContainer_48snv_51";
+const outlineCollapsed = "_outlineCollapsed_48snv_59";
+const eventsTab = "_eventsTab_48snv_63";
+const eventsTabContent = "_eventsTabContent_48snv_67";
+const eventsOutline = "_eventsOutline_48snv_75";
+const outlineToggle = "_outlineToggle_48snv_80";
+const tabTool = "_tabTool_48snv_94";
+const splitLayout = "_splitLayout_48snv_99";
+const splitStart = "_splitStart_48snv_104";
+const validationSidebar = "_validationSidebar_48snv_109";
 const styles$4 = {
   tabs,
   chatTab,
@@ -668,9 +669,30 @@ const TranscriptBody = ({
     layouts: timelineLayouts,
     rootTimeMapping,
     selectedEvents,
+    sourceSpans,
     minimapSelection,
     hasTimeline
   } = useTranscriptTimeline(filteredEvents);
+  const spanSelectKeys = reactExports.useMemo(
+    () => buildSpanSelectKeys(timelineState.rows),
+    [timelineState.rows]
+  );
+  const {
+    select: timelineSelect,
+    drillDownAndSelect: timelineDrillDownAndSelect
+  } = timelineState;
+  const selectBySpanId = reactExports.useCallback(
+    (spanId) => {
+      const key = spanSelectKeys.get(spanId);
+      if (!key) return;
+      if (key.parallel && key.spanIndex) {
+        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
+      } else {
+        timelineSelect(key.name, key.spanIndex);
+      }
+    },
+    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+  );
   const [isSwimLaneSticky, setIsSwimLaneSticky] = reactExports.useState(false);
   const [stickySwimLaneHeight, setStickySwimLaneHeight] = reactExports.useState(0);
   const swimLaneStickyContentRef = reactExports.useRef(null);
@@ -698,7 +720,8 @@ const TranscriptBody = ({
   }, [isSwimLaneSticky]);
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     selectedEvents,
-    false
+    false,
+    sourceSpans
   );
   const hasMatchingEvents = eventNodes.length > 0;
   reactExports.useEffect(() => {
@@ -733,6 +756,7 @@ const TranscriptBody = ({
     [setTranscriptState]
   );
   const [outlineHasNodes, setOutlineHasNodes] = reactExports.useState(true);
+  const [outlineWidth, setOutlineWidth] = reactExports.useState();
   const handleOutlineHasNodesChange = reactExports.useCallback(
     (hasNodes) => {
       setOutlineHasNodes(hasNodes);
@@ -890,7 +914,7 @@ const TranscriptBody = ({
       selected: resolvedSelectedTranscriptTab === kTranscriptEventsTabId,
       scrollable: false,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$4.eventsTabContent, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineSelectContext.Provider, { value: selectBySpanId, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$4.eventsTabContent, children: [
           hasTimeline && timelineData && /* @__PURE__ */ jsxRuntimeExports.jsx(
             StickyScroll,
             {
@@ -936,6 +960,7 @@ const TranscriptBody = ({
                 styles$4.eventsContainer,
                 outlineCollapsed2 && styles$4.outlineCollapsed
               ),
+              style: !outlineCollapsed2 && outlineWidth ? { "--outline-width": `${outlineWidth}px` } : void 0,
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   StickyScroll,
@@ -950,7 +975,8 @@ const TranscriptBody = ({
                           eventNodes,
                           defaultCollapsedIds,
                           scrollRef,
-                          onHasNodesChange: handleOutlineHasNodesChange
+                          onHasNodesChange: handleOutlineHasNodesChange,
+                          onWidthChange: setOutlineWidth
                         }
                       ),
                       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -984,7 +1010,7 @@ const TranscriptBody = ({
               ]
             }
           )
-        ] }),
+        ] }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           TranscriptFilterPopover,
           {

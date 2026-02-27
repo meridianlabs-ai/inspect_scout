@@ -11,6 +11,7 @@ import type {
   TimelineEvent,
   TimelineSpan,
 } from "../../components/transcript/timeline";
+import { EventNode } from "../../components/transcript/types";
 import type {
   Event,
   SpanBeginEvent,
@@ -136,6 +137,16 @@ export function computeMinimapSelection(
   return undefined;
 }
 
+// =============================================================================
+// Collected events
+// =============================================================================
+
+export interface CollectedEvents {
+  events: Event[];
+  /** Agent spans keyed by span ID, for attaching to EventNodes after tree construction. */
+  sourceSpans: Map<string, TimelineSpan>;
+}
+
 /**
  * Collects raw Event[] from TimelineSpan content trees.
  *
@@ -143,22 +154,29 @@ export function computeMinimapSelection(
  * is the implicit context). When multiple spans are provided, each is wrapped
  * in synthetic span_begin/span_end events so treeifyEvents can reconstruct
  * the grouping (e.g. parallel agents shown as collapsible sections).
+ *
+ * Agent spans (spanType === "agent") are emitted as empty span_begin/span_end
+ * pairs with no child events — their content is accessed by selecting the
+ * swimlane row. The returned sourceSpans map allows attaching the original
+ * TimelineSpan to the resulting EventNodes for rich rendering.
  */
-export function collectRawEvents(spans: TimelineSpan[]): Event[] {
+export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
   const events: Event[] = [];
+  const sourceSpans = new Map<string, TimelineSpan>();
   if (spans.length === 1) {
-    collectFromContent(spans[0]!.content, events);
+    collectFromContent(spans[0]!.content, events, sourceSpans);
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
-    collectFromContent(spans, events);
+    collectFromContent(spans, events, sourceSpans);
   }
-  return events;
+  return { events, sourceSpans };
 }
 
 function collectFromContent(
   content: ReadonlyArray<TimelineEvent | TimelineSpan>,
-  out: Event[]
+  out: Event[],
+  sourceSpans: Map<string, TimelineSpan>
 ): void {
   for (const item of content) {
     if (item.type === "event") {
@@ -180,8 +198,14 @@ function collectFromContent(
       };
       out.push(beginEvent);
 
-      // Recurse into child content
-      collectFromContent(item.content, out);
+      if (item.spanType === "agent") {
+        // Agent spans: emit empty begin/end pair. Content is accessed
+        // by selecting the swimlane row, not by expanding in-place.
+        sourceSpans.set(item.id, item);
+      } else {
+        // Non-agent spans: recurse into child content
+        collectFromContent(item.content, out, sourceSpans);
+      }
 
       // Emit synthetic span_end
       const endEvent: SpanEndEvent = {
@@ -195,6 +219,79 @@ function collectFromContent(
         metadata: null,
       };
       out.push(endEvent);
+    }
+  }
+}
+
+// =============================================================================
+// Span select key lookup
+// =============================================================================
+
+export interface SpanSelectKey {
+  name: string;
+  spanIndex?: number;
+  /** True when the span is part of a parallel group (requires drill-down). */
+  parallel?: boolean;
+}
+
+/**
+ * Builds a lookup from span ID to the (name, spanIndex) pair needed to
+ * select that span in the swimlane UI.
+ *
+ * For single-span rows, only the name is needed. For rows with multiple
+ * spans (iterative or parallel), a 1-based spanIndex distinguishes them.
+ * Parallel spans are flagged so the caller can drill down before selecting.
+ */
+export function buildSpanSelectKeys(
+  rows: SwimlaneRow[]
+): ReadonlyMap<string, SpanSelectKey> {
+  const keys = new Map<string, SpanSelectKey>();
+  for (const row of rows) {
+    const needsIndex = row.spans.length > 1;
+    for (let i = 0; i < row.spans.length; i++) {
+      const rowSpan = row.spans[i]!;
+      if (isSingleSpan(rowSpan)) {
+        keys.set(rowSpan.agent.id, {
+          name: row.name,
+          spanIndex: needsIndex ? i + 1 : undefined,
+        });
+      } else if (isParallelSpan(rowSpan)) {
+        for (let j = 0; j < rowSpan.agents.length; j++) {
+          keys.set(rowSpan.agents[j]!.id, {
+            name: row.name,
+            spanIndex: j + 1,
+            parallel: true,
+          });
+        }
+      }
+    }
+  }
+  return keys;
+}
+
+// =============================================================================
+// Source span attachment
+// =============================================================================
+
+/**
+ * Walks the EventNode tree and attaches sourceSpan to any span_begin node
+ * whose span_id matches an entry in the map. This links synthetic span events
+ * back to their original TimelineSpan for rich rendering.
+ */
+export function attachSourceSpans(
+  nodes: EventNode[],
+  spanMap: ReadonlyMap<string, TimelineSpan>
+): void {
+  for (const node of nodes) {
+    if (node.event.event === "span_begin") {
+      const spanId = node.event.span_id;
+      if (spanId) {
+        const span = spanMap.get(spanId);
+        if (span) node.sourceSpan = span;
+      }
+    }
+    if (node.children.length > 0) {
+      attachSourceSpans(node.children, spanMap);
     }
   }
 }

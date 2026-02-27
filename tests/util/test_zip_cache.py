@@ -1,4 +1,4 @@
-"""Tests for the global central-directory cache in async_zip.
+"""Tests for the global central-directory cache in zip_cache.
 
 Verifies cross-instance sharing, cache-hit fast path, separate entries
 for different files, and concurrent access correctness.
@@ -11,18 +11,21 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+import anyio
 import pytest
+from inspect_ai._util import async_zip as async_zip_mod
+from inspect_ai._util.async_zip import CentralDirectory
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_scout._util import async_zip as async_zip_mod
-from inspect_scout._util.async_zip import AsyncZipReader, central_directories_cache
-from inspect_scout._util.zip_common import ZipCompressionMethod, ZipEntry
+from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
+from inspect_scout._util import zip_cache as zip_cache_mod
+from inspect_scout._util.zip_cache import CachedAsyncZipReader
 
 
 @pytest.fixture(autouse=True)
 def _clear_cache() -> None:
     """Clear global cache before each test to ensure isolation."""
-    central_directories_cache.clear()
-    async_zip_mod._filename_locks.clear()
+    zip_cache_mod._cache.clear()
+    zip_cache_mod._filename_locks.clear()
 
 
 @pytest.fixture
@@ -47,12 +50,12 @@ async def test_cross_instance_sharing(zip_file_a: Path) -> None:
     path = str(zip_file_a)
 
     async with AsyncFilesystem() as fs:
-        reader1 = AsyncZipReader(fs, path)
+        reader1 = CachedAsyncZipReader(fs, path)
         entry1 = await reader1.get_member_entry("hello.json")
 
-        assert path in central_directories_cache
+        assert path in zip_cache_mod._cache
 
-        reader2 = AsyncZipReader(fs, path)
+        reader2 = CachedAsyncZipReader(fs, path)
         entry2 = await reader2.get_member_entry("hello.json")
 
     assert entry1 == entry2
@@ -69,10 +72,10 @@ async def test_cache_hit_fast_path() -> None:
         uncompressed_size=100,
         local_header_offset=0,
     )
-    central_directories_cache[fake_path] = [fake_entry]
+    zip_cache_mod._cache[fake_path] = CentralDirectory(entries=[fake_entry])
 
     async with AsyncFilesystem() as fs:
-        reader = AsyncZipReader(fs, fake_path)
+        reader = CachedAsyncZipReader(fs, fake_path)
         entry = await reader.get_member_entry("cached.json")
 
     assert entry == fake_entry
@@ -86,14 +89,14 @@ async def test_different_files_separate_entries(
     path_a, path_b = str(zip_file_a), str(zip_file_b)
 
     async with AsyncFilesystem() as fs:
-        reader_a = AsyncZipReader(fs, path_a)
+        reader_a = CachedAsyncZipReader(fs, path_a)
         entry_a = await reader_a.get_member_entry("hello.json")
 
-        reader_b = AsyncZipReader(fs, path_b)
+        reader_b = CachedAsyncZipReader(fs, path_b)
         entry_b = await reader_b.get_member_entry("world.json")
 
-    assert path_a in central_directories_cache
-    assert path_b in central_directories_cache
+    assert path_a in zip_cache_mod._cache
+    assert path_b in zip_cache_mod._cache
     assert entry_a.filename == "hello.json"
     assert entry_b.filename == "world.json"
 
@@ -108,19 +111,17 @@ async def test_concurrent_access_parses_once(zip_file_a: Path) -> None:
 
     async def counting_parse(
         filesystem: AsyncFilesystem, filename: str
-    ) -> list[ZipEntry]:
+    ) -> CentralDirectory:
         nonlocal parse_count
         parse_count += 1
         return await original_parse(filesystem, filename)
 
     with patch.object(async_zip_mod, "_parse_central_directory", counting_parse):
         async with AsyncFilesystem() as fs:
-            import anyio
-
             async with anyio.create_task_group() as tg:
 
                 async def read_member() -> None:
-                    reader = AsyncZipReader(fs, path)
+                    reader = CachedAsyncZipReader(fs, path)
                     await reader.get_member_entry("hello.json")
 
                 for _ in range(10):

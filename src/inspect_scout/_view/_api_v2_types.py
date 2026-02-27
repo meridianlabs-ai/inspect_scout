@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
+from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
@@ -15,7 +16,6 @@ from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-from .._util.zip_common import ZipCompressionMethod
 
 
 @dataclass

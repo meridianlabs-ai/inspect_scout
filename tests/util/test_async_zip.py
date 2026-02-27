@@ -8,9 +8,9 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_scout._util.async_zip import AsyncZipReader
-from inspect_scout._util.compression_transcoding import _DeflateCompressStream
+from inspect_ai._util.compression_transcoding import _DeflateCompressStream
 
 # Import zipfile-zstd for Python < 3.14 (monkey-patches zipfile to support zstd)
 if sys.version_info < (3, 14):

@@ -67,13 +67,23 @@ class NoCacheStaticFiles(StaticFiles):
 
         response = super().file_response(full_path, stat_result, scope, status_code)
 
-        # We have seen sporadic caching of the core JS file in safari though I
-        # wasn't able to consistently reproduce it. To be safe, disable caching
-        # for all JS files for the time being
-        if str(full_path).endswith(".js"):
-            response.headers["cache-control"] = "no-cache, no-store, must-revalidate"
-            response.headers["pragma"] = "no-cache"
-            response.headers["expires"] = "0"
+        # HTTP is designed to cache as much as possible, so even if no Cache-Control is given,
+        # responses will get stored and reused if certain conditions are met. This is called
+        # heuristic caching.
+        #
+        # It is heuristically known that content which has not been updated for a full year will
+        # not be updated for some time after that. Therefore, the client stores this response
+        # (despite the lack of max-age) and reuses it for a while. How long to reuse is up to the
+        # implementation, but the specification recommends about 10% (in this case 0.1 year)
+        # of the time after storing.
+        #
+        # Heuristic caching is a workaround that came before Cache-Control support became widely adopted,
+        # and basically all responses should explicitly specify a Cache-Control header.
+        #
+        # To be safe, disable caching
+        response.headers["cache-control"] = "no-cache, no-store, must-revalidate"
+        response.headers["pragma"] = "no-cache"
+        response.headers["expires"] = "0"
 
         return response
 

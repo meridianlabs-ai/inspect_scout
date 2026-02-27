@@ -10,7 +10,7 @@ _filename_locks: dict[str, anyio.Lock] = {}
 _locks_lock = anyio.Lock()
 
 
-class CachedAsyncZipReader(AsyncZipReader):
+class CachingAsyncZipReader(AsyncZipReader):
     """AsyncZipReader with process-wide central-directory cache.
 
     Multiple reader instances hitting the same file share one parsed

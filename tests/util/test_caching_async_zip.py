@@ -17,8 +17,8 @@ from inspect_ai._util import async_zip as async_zip_mod
 from inspect_ai._util.async_zip import CentralDirectory
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
-from inspect_scout._util import cached_async_zip as cached_async_zip_mod
-from inspect_scout._util.cached_async_zip import CachedAsyncZipReader
+from inspect_scout._util import caching_async_zip as cached_async_zip_mod
+from inspect_scout._util.caching_async_zip import CachingAsyncZipReader
 
 
 @pytest.fixture(autouse=True)
@@ -50,12 +50,12 @@ async def test_cross_instance_sharing(zip_file_a: Path) -> None:
     path = str(zip_file_a)
 
     async with AsyncFilesystem() as fs:
-        reader1 = CachedAsyncZipReader(fs, path)
+        reader1 = CachingAsyncZipReader(fs, path)
         entry1 = await reader1.get_member_entry("hello.json")
 
         assert path in cached_async_zip_mod._cache
 
-        reader2 = CachedAsyncZipReader(fs, path)
+        reader2 = CachingAsyncZipReader(fs, path)
         entry2 = await reader2.get_member_entry("hello.json")
 
     assert entry1 == entry2
@@ -75,7 +75,7 @@ async def test_cache_hit_fast_path() -> None:
     cached_async_zip_mod._cache[fake_path] = CentralDirectory(entries=[fake_entry])
 
     async with AsyncFilesystem() as fs:
-        reader = CachedAsyncZipReader(fs, fake_path)
+        reader = CachingAsyncZipReader(fs, fake_path)
         entry = await reader.get_member_entry("cached.json")
 
     assert entry == fake_entry
@@ -89,10 +89,10 @@ async def test_different_files_separate_entries(
     path_a, path_b = str(zip_file_a), str(zip_file_b)
 
     async with AsyncFilesystem() as fs:
-        reader_a = CachedAsyncZipReader(fs, path_a)
+        reader_a = CachingAsyncZipReader(fs, path_a)
         entry_a = await reader_a.get_member_entry("hello.json")
 
-        reader_b = CachedAsyncZipReader(fs, path_b)
+        reader_b = CachingAsyncZipReader(fs, path_b)
         entry_b = await reader_b.get_member_entry("world.json")
 
     assert path_a in cached_async_zip_mod._cache
@@ -121,7 +121,7 @@ async def test_concurrent_access_parses_once(zip_file_a: Path) -> None:
             async with anyio.create_task_group() as tg:
 
                 async def read_member() -> None:
-                    reader = CachedAsyncZipReader(fs, path)
+                    reader = CachingAsyncZipReader(fs, path)
                     await reader.get_member_entry("hello.json")
 
                 for _ in range(10):

@@ -14874,6 +14874,10 @@ function buildTimeline(events) {
   }
   return { name: "Default", description: "", root: root2 };
 }
+const defaultMarkerConfig = {
+  kinds: ["compaction", "branch"],
+  depth: "direct"
+};
 function isErrorEvent(event) {
   if (event.event === "tool") {
     return event.error !== null;
@@ -15128,7 +15132,7 @@ function formatTokenCount(tokens) {
   }
   return String(tokens);
 }
-function computeRowLayouts(rows, mapping, markerDepth) {
+function computeRowLayouts(rows, mapping, markerDepth, markerKinds) {
   return rows.map((row2, index) => {
     const isParent = index === 0;
     const spans = row2.spans.map((rowSpan) => {
@@ -15162,7 +15166,8 @@ function computeRowLayouts(rows, mapping, markerDepth) {
         description: null
       };
     });
-    const markers = collectRowMarkers(row2, markerDepth, mapping);
+    const allMarkers = collectRowMarkers(row2, markerDepth, mapping);
+    const markers = markerKinds ? allMarkers.filter((m) => markerKinds.includes(m.kind)) : allMarkers;
     const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
     return {
       name: row2.name,
@@ -26794,26 +26799,27 @@ const TranscriptViewNodes = ({
 };
 export {
   ANSIDisplay as A,
-  TYPE_SCORER as B,
+  TYPE_SCORERS as B,
   CopyButton as C,
   DisplayModeContext as D,
   EventNode as E,
-  useVirtuosoState as F,
-  flatTree as G,
-  kTranscriptOutlineCollapseScope as H,
-  useScrollTrack as I,
+  TYPE_SCORER as F,
+  useVirtuosoState as G,
+  flatTree as H,
+  kTranscriptOutlineCollapseScope as I,
   JSONPanel as J,
-  computeBarPosition as K,
+  useScrollTrack as K,
   LiveVirtualList as L,
   MetaDataGrid as M,
-  formatTokenCount as N,
-  findBranchesByForkedAt as O,
+  computeBarPosition as N,
+  formatTokenCount as O,
   PulsingDots as P,
-  parsePathSegment as Q,
+  findBranchesByForkedAt as Q,
   RecordTree as R,
   ScoreValue as S,
   TranscriptViewNodes as T,
-  createBranchSpan as U,
+  parsePathSegment as U,
+  createBranchSpan as V,
   Yr as Y,
   LabeledValue as a,
   ModelUsagePanel as b,
@@ -26822,24 +26828,24 @@ export {
   eventTypeValues as e,
   useTranscriptNavigation as f,
   ChatMessageRow as g,
-  buildTimeline as h,
+  defaultMarkerConfig as h,
   isJson as i,
-  useTimeline as j,
-  rowHasEvents as k,
-  computeRowLayouts as l,
-  getSelectedSpans as m,
-  collectRawEvents as n,
-  computeMinimapSelection as o,
-  buildSpanSelectKeys as p,
-  kTranscriptCollapseScope as q,
+  buildTimeline as j,
+  useTimeline as k,
+  rowHasEvents as l,
+  computeRowLayouts as m,
+  getSelectedSpans as n,
+  collectRawEvents as o,
+  computeMinimapSelection as p,
+  buildSpanSelectKeys as q,
   resolveMessages as r,
-  useProperty as s,
-  TimelineSelectContext as t,
+  kTranscriptCollapseScope as s,
+  useProperty as t,
   useEventNodes as u,
-  kCollapsibleEventTypes as v,
-  useStatefulScrollPosition as w,
-  useCollapseTranscriptEvent as x,
-  kSandboxSignalName as y,
-  TYPE_SCORERS as z
+  TimelineSelectContext as v,
+  kCollapsibleEventTypes as w,
+  useStatefulScrollPosition as x,
+  useCollapseTranscriptEvent as y,
+  kSandboxSignalName as z
 };
 //# sourceMappingURL=TranscriptViewNodes.js.map

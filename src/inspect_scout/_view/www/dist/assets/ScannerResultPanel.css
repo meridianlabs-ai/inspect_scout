@@ -79,15 +79,15 @@
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
-._container_wqwns_1 {
+._container_1tjfz_1 {
   height: 100%;
   overflow-y: hidden;
   display: flex;
   flex-direction: column;
 }
 
-._scrollable_wqwns_8 {
-  padding: 0.5rem;
+._scrollable_1tjfz_8 {
+  padding: 0;
   overflow-y: auto;
   flex: 1;
   min-height: 0;

@@ -200,7 +200,8 @@ export function formatTokenCount(tokens: number): string {
 export function computeRowLayouts(
   rows: SwimlaneRow[],
   mapping: TimeMapping,
-  markerDepth: MarkerDepth
+  markerDepth: MarkerDepth,
+  markerKinds?: MarkerKind[]
 ): RowLayout[] {
   return rows.map((row, index) => {
     const isParent = index === 0;
@@ -240,8 +241,11 @@ export function computeRowLayouts(
       };
     });
 
-    // Collect markers for this row
-    const markers = collectRowMarkers(row, markerDepth, mapping);
+    // Collect markers for this row, optionally filtering by kind
+    const allMarkers = collectRowMarkers(row, markerDepth, mapping);
+    const markers = markerKinds
+      ? allMarkers.filter((m) => markerKinds.includes(m.kind))
+      : allMarkers;
 
     // Derive row-level parallel count from spans
     const rowParallelCount =

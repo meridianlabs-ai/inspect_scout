@@ -1,6 +1,6 @@
 import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
-import { s as useProperty, j as useTimeline, l as computeRowLayouts, m as getSelectedSpans, o as computeMinimapSelection, n as collectRawEvents, u as useEventNodes, p as buildSpanSelectKeys, t as TimelineSelectContext, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
+import { t as useProperty, k as useTimeline, m as computeRowLayouts, n as getSelectedSpans, p as computeMinimapSelection, o as collectRawEvents, u as useEventNodes, q as buildSpanSelectKeys, v as TimelineSelectContext, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
 import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import "./_commonjsHelpers.js";

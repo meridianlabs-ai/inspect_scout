@@ -1,5 +1,5 @@
 import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore } from "./index.js";
-import { x as useCollapseTranscriptEvent, P as PulsingDots, y as kSandboxSignalName, E as EventNode, z as TYPE_SCORERS, B as TYPE_SCORER, F as useVirtuosoState, f as useTranscriptNavigation, G as flatTree, H as kTranscriptOutlineCollapseScope, I as useScrollTrack, Y as Yr, s as useProperty, K as computeBarPosition, N as formatTokenCount, O as findBranchesByForkedAt, Q as parsePathSegment, U as createBranchSpan } from "./TranscriptViewNodes.js";
+import { y as useCollapseTranscriptEvent, P as PulsingDots, z as kSandboxSignalName, E as EventNode, B as TYPE_SCORERS, F as TYPE_SCORER, G as useVirtuosoState, f as useTranscriptNavigation, H as flatTree, I as kTranscriptOutlineCollapseScope, K as useScrollTrack, Y as Yr, t as useProperty, N as computeBarPosition, O as formatTokenCount, Q as findBranchesByForkedAt, U as parsePathSegment, V as createBranchSpan } from "./TranscriptViewNodes.js";
 import { e as formatTime, g as formatDuration, h as formatDurationShort, P as PopOver } from "./ToolButton.js";
 const parsePackageName = (name) => {
   if (name.includes("/")) {

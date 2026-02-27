@@ -28,6 +28,7 @@ import { useStore } from "../../../state/store";
 import type { Event } from "../../../types/api-types";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
 import { buildSpanSelectKeys } from "../timelineEventNodes";
+import type { MarkerConfig } from "../utils/markers";
 
 import styles from "./TimelineEventsView.module.css";
 import { TimelineSwimLanes } from "./TimelineSwimLanes";
@@ -53,6 +54,8 @@ interface TimelineEventsViewProps {
   collapsed?: boolean;
   /** Called when a marker (error, compaction) is clicked on the swimlane. */
   onMarkerNavigate?: (eventId: string) => void;
+  /** Controls which marker kinds are shown and at what depth. */
+  markerConfig?: MarkerConfig;
   className?: string;
 }
 
@@ -100,6 +103,7 @@ export const TimelineEventsView = forwardRef<
     id,
     collapsed,
     onMarkerNavigate,
+    markerConfig,
     className,
   },
   ref
@@ -117,7 +121,7 @@ export const TimelineEventsView = forwardRef<
     sourceSpans,
     minimapSelection,
     hasTimeline,
-  } = useTranscriptTimeline(events);
+  } = useTranscriptTimeline(events, markerConfig);
 
   // ---------------------------------------------------------------------------
   // Span selection context (agent card clicks → swimlane selection)

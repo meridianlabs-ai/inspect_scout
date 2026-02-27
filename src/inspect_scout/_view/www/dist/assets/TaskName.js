@@ -1,5 +1,5 @@
 import { j as jsxRuntimeExports, r as reactExports, c as clsx } from "./index.js";
-import { w as useStatefulScrollPosition } from "./TranscriptViewNodes.js";
+import { x as useStatefulScrollPosition } from "./TranscriptViewNodes.js";
 const tabs = "_tabs_tfvnu_1";
 const tabContents = "_tabContents_tfvnu_5";
 const scrollable = "_scrollable_tfvnu_10";

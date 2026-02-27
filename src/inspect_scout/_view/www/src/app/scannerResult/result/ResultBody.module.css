@@ -6,7 +6,7 @@
 }
 
 .scrollable {
-  padding: 0.5rem;
+  padding: 0;
   overflow-y: auto;
   flex: 1;
   min-height: 0;

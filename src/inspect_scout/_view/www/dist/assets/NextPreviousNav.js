@@ -5,7 +5,7 @@ import { F as Field } from "./FormFields.js";
 import { u as useDropdownPosition, s as styles$7, a as useValidationSets, b as useValidationCase, c as useValidationCases, d as useCreateValidationSet, e as useDeleteValidationCase, f as useUpdateValidationCase, v as validationQueryKeys, i as isValidFilename, h as hasValidationSetExtension, V as ValidationSetSelector, g as extractUniqueLabels, j as ValidationSplitSelector, k as extractUniqueSplits } from "./ValidationSplitSelector.js";
 import { C as Chip, A as AutocompleteInput } from "./Chip.js";
 import { P as PopOver } from "./ToolButton.js";
-import { r as resolveMessages, g as ChatMessageRow, L as LiveVirtualList, h as buildTimeline, j as useTimeline, k as rowHasEvents, l as computeRowLayouts, m as getSelectedSpans, n as collectRawEvents, o as computeMinimapSelection, p as buildSpanSelectKeys, u as useEventNodes, q as kTranscriptCollapseScope, s as useProperty, t as TimelineSelectContext, T as TranscriptViewNodes, v as kCollapsibleEventTypes } from "./TranscriptViewNodes.js";
+import { r as resolveMessages, g as ChatMessageRow, L as LiveVirtualList, h as defaultMarkerConfig, j as buildTimeline, k as useTimeline, l as rowHasEvents, m as computeRowLayouts, n as getSelectedSpans, o as collectRawEvents, p as computeMinimapSelection, q as buildSpanSelectKeys, u as useEventNodes, s as kTranscriptCollapseScope, t as useProperty, v as TimelineSelectContext, T as TranscriptViewNodes, w as kCollapsibleEventTypes } from "./TranscriptViewNodes.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";
 import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 function formatTaskName(parts) {
@@ -1500,7 +1500,7 @@ const StickyScroll = ({
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapperRef, style: wrapperStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: contentRef, className: contentClassName, style: contentStyle, children }) });
 };
 const emptySourceSpans = /* @__PURE__ */ new Map();
-function useTranscriptTimeline(events) {
+function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
   const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
   const state = useTimeline(timeline);
   const prevTimelineRef = reactExports.useRef(timeline);
@@ -1523,8 +1523,13 @@ function useTranscriptTimeline(events) {
     [timeline.root]
   );
   const layouts = reactExports.useMemo(
-    () => computeRowLayouts(visibleRows, timeMapping, "direct"),
-    [visibleRows, timeMapping]
+    () => computeRowLayouts(
+      visibleRows,
+      timeMapping,
+      markerConfig.depth,
+      markerConfig.kinds
+    ),
+    [visibleRows, timeMapping, markerConfig.depth, markerConfig.kinds]
   );
   const { selectedEvents, sourceSpans } = reactExports.useMemo(() => {
     const spans = getSelectedSpans(state.rows, state.selected);
@@ -1594,6 +1599,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
   id,
   collapsed,
   onMarkerNavigate,
+  markerConfig,
   className
 }, ref) {
   const {
@@ -1605,7 +1611,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     sourceSpans,
     minimapSelection,
     hasTimeline
-  } = useTranscriptTimeline(events);
+  } = useTranscriptTimeline(events, markerConfig);
   const spanSelectKeys = reactExports.useMemo(
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]

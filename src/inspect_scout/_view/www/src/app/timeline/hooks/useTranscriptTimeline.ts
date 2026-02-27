@@ -22,6 +22,7 @@ import {
   computeMinimapSelection,
   getSelectedSpans,
 } from "../timelineEventNodes";
+import { type MarkerConfig, defaultMarkerConfig } from "../utils/markers";
 import {
   computeRowLayouts,
   rowHasEvents,
@@ -55,7 +56,8 @@ interface TranscriptTimelineResult {
 }
 
 export function useTranscriptTimeline(
-  events: Event[]
+  events: Event[],
+  markerConfig: MarkerConfig = defaultMarkerConfig
 ): TranscriptTimelineResult {
   const timeline = useMemo(() => buildTimeline(events), [events]);
 
@@ -90,8 +92,14 @@ export function useTranscriptTimeline(
   );
 
   const layouts = useMemo(
-    () => computeRowLayouts(visibleRows, timeMapping, "direct"),
-    [visibleRows, timeMapping]
+    () =>
+      computeRowLayouts(
+        visibleRows,
+        timeMapping,
+        markerConfig.depth,
+        markerConfig.kinds
+      ),
+    [visibleRows, timeMapping, markerConfig.depth, markerConfig.kinds]
   );
 
   const { selectedEvents, sourceSpans } = useMemo(() => {

@@ -31,6 +31,16 @@ export interface TimelineMarker {
 
 export type MarkerDepth = "direct" | "children" | "recursive";
 
+export interface MarkerConfig {
+  kinds: MarkerKind[];
+  depth: MarkerDepth;
+}
+
+export const defaultMarkerConfig: MarkerConfig = {
+  kinds: ["compaction", "branch"],
+  depth: "direct",
+};
+
 // =============================================================================
 // Event Classification
 // =============================================================================

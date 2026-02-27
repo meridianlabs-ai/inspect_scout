@@ -968,19 +968,20 @@ const MARKER_ICONS = {
 };
 const TimelineSwimLanes = ({
   layouts,
-  selected: selected2,
-  node,
-  onSelect,
-  onDrillDown,
-  onGoUp,
-  minimap: minimap2,
-  breadcrumb,
+  timeline,
+  header,
   isSticky,
   forceCollapsed,
   noAnimation: noAnimation2,
-  showErrorMarkers,
   onMarkerNavigate
 }) => {
+  const {
+    node,
+    selected: selected2,
+    select: onSelect,
+    drillDown: onDrillDown,
+    goUp: onGoUp
+  } = timeline;
   const parsedSelection = reactExports.useMemo(() => parseSelected(selected2), [selected2]);
   const [collapsed, setCollapsed] = useProperty(
     "timeline",
@@ -1088,7 +1089,6 @@ const TimelineSwimLanes = ({
       ),
       onBranchHover: handleBranchHover,
       onBranchLeave: handleBranchLeave,
-      showErrorMarkers,
       onMarkerNavigate
     },
     `${layout.name}-${rowIndex}`
@@ -1102,7 +1102,7 @@ const TimelineSwimLanes = ({
       role: "grid",
       "aria-label": "Timeline swimlane",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: breadcrumb && /* @__PURE__ */ jsxRuntimeExports.jsx(BreadcrumbRow, { ...breadcrumb, minimap: minimap2 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: header && /* @__PURE__ */ jsxRuntimeExports.jsx(BreadcrumbRow, { ...header, selected: selected2, onGoUp }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -1115,7 +1115,7 @@ const TimelineSwimLanes = ({
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: parentRow && renderRow(
                 parentRow,
                 0,
-                breadcrumb?.atRoot && parentRow.name === "solvers" ? "main" : void 0
+                header?.atRoot && parentRow.name === "solvers" ? "main" : void 0
               ) }),
               childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.scrollSection, children: childRows.map((layout, i) => renderRow(layout, i + 1)) })
             ] })
@@ -1157,7 +1157,6 @@ const SwimlaneRow = ({
   onDrillDown,
   onBranchHover,
   onBranchLeave,
-  showErrorMarkers,
   onMarkerNavigate
 }) => {
   const hasSelectedSpan = layout.spans.some(
@@ -1187,7 +1186,7 @@ const SwimlaneRow = ({
         },
         spanIndex
       )),
-      layout.markers.filter((m) => showErrorMarkers || m.kind !== "error").map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      layout.markers.map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         MarkerGlyph,
         {
           marker: marker2,

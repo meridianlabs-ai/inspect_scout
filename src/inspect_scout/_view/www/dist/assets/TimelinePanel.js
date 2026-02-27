@@ -1791,22 +1791,16 @@ const TimelinePanel = () => {
         TimelineSwimLanes,
         {
           layouts,
-          selected: state.selected,
-          node: state.node,
-          onSelect: state.select,
-          onDrillDown: state.drillDown,
-          onGoUp: state.goUp,
-          minimap: {
-            root: timeline.root,
-            selection: minimapSelection,
-            mapping: rootTimeMapping
-          },
-          breadcrumb: {
+          timeline: state,
+          header: {
             breadcrumbs: state.breadcrumbs,
             atRoot,
-            onGoUp: state.goUp,
             onNavigate: state.navigateTo,
-            selected: state.selected
+            minimap: {
+              root: timeline.root,
+              selection: minimapSelection,
+              mapping: rootTimeMapping
+            }
           }
         }
       ),

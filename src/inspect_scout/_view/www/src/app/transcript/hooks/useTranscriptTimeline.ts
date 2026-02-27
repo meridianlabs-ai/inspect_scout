@@ -31,7 +31,10 @@ import {
   rowHasEvents,
   type RowLayout,
 } from "../../timeline/utils/swimlaneLayout";
-import { computeTimeMapping, type TimeMapping } from "../../timeline/utils/timeMapping";
+import {
+  computeTimeMapping,
+  type TimeMapping,
+} from "../../timeline/utils/timeMapping";
 
 const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
 

@@ -3,14 +3,12 @@ import { FC, useCallback, useMemo, useState } from "react";
 
 import { ApplicationIcons } from "../../../components/icons";
 import { PopOver } from "../../../components/PopOver";
-import type {
-  TimelineBranch,
-  TimelineSpan,
-} from "../../../components/transcript/timeline";
+import type { TimelineBranch } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
 import { formatTime } from "../../../utils/format";
 import {
   type BreadcrumbSegment,
+  type TimelineState,
   createBranchSpan,
   findBranchesByForkedAt,
   parsePathSegment,
@@ -29,44 +27,38 @@ import styles from "./TimelineSwimLanes.module.css";
 // Types
 // =============================================================================
 
+/** Navigation subset of TimelineState needed by the swimlane component. */
+export type TimelineNavigation = Pick<
+  TimelineState,
+  "node" | "selected" | "select" | "drillDown" | "goUp"
+>;
+
+/** Header configuration: breadcrumb navigation + optional minimap. */
+export interface TimelineHeaderProps {
+  breadcrumbs: BreadcrumbSegment[];
+  atRoot: boolean;
+  onNavigate: (path: string) => void;
+  /** Called on any breadcrumb click to scroll the view to the top. */
+  onScrollToTop?: () => void;
+  /** Minimap props for the zoom indicator. */
+  minimap?: TimelineMinimapProps;
+}
+
 interface TimelineSwimLanesProps {
   /** Row layouts computed by computeRowLayouts. */
   layouts: RowLayout[];
-  /** Currently selected span identifier (e.g. "explore" or "explore-2"), or null. */
-  selected: string | null;
-  /** The current drill-down node (for branch lookup). */
-  node: TimelineSpan;
-  /** Called when a span is clicked (selection). */
-  onSelect: (name: string, spanIndex?: number) => void;
-  /** Called when a span is double-clicked or a branch popover entry is clicked. */
-  onDrillDown: (name: string, spanIndex?: number) => void;
-  /** Called on Escape key (go up). */
-  onGoUp: () => void;
-  /** Minimap props for the zoom indicator row. */
-  minimap?: TimelineMinimapProps;
-  /** Breadcrumb props for the navigation row. */
-  breadcrumb?: BreadcrumbRowProps;
+  /** Timeline navigation state (selection, drill-down, go-up). */
+  timeline: TimelineNavigation;
+  /** Breadcrumb + minimap header configuration. */
+  header?: TimelineHeaderProps;
   /** Whether the swimlane is currently in sticky mode (opaque background). */
   isSticky?: boolean;
   /** Force collapsed visual state (e.g. when sticky). */
   forceCollapsed?: boolean;
   /** Disable collapse/expand animation (e.g. during sticky transitions). */
   noAnimation?: boolean;
-  /** Show error markers on swimlane bars. Defaults to false. */
-  showErrorMarkers?: boolean;
   /** Called when an error or compaction marker is clicked. */
   onMarkerNavigate?: (eventId: string) => void;
-}
-
-export interface BreadcrumbRowProps {
-  breadcrumbs: BreadcrumbSegment[];
-  atRoot: boolean;
-  onGoUp: () => void;
-  onNavigate: (path: string) => void;
-  /** Currently selected row name, shown as a read-only tail segment. */
-  selected?: string | null;
-  /** Called on any breadcrumb click to scroll the view to the top. */
-  onScrollToTop?: () => void;
 }
 
 // =============================================================================
@@ -126,19 +118,20 @@ const MARKER_ICONS: Record<string, { icon: string; tooltip: string }> = {
 
 export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   layouts,
-  selected,
-  node,
-  onSelect,
-  onDrillDown,
-  onGoUp,
-  minimap,
-  breadcrumb,
+  timeline,
+  header,
   isSticky,
   forceCollapsed,
   noAnimation,
-  showErrorMarkers,
   onMarkerNavigate,
 }) => {
+  const {
+    node,
+    selected,
+    select: onSelect,
+    drillDown: onDrillDown,
+    goUp: onGoUp,
+  } = timeline;
   const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
 
   // Collapse state — persisted across sessions.
@@ -284,7 +277,6 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       }
       onBranchHover={handleBranchHover}
       onBranchLeave={handleBranchLeave}
-      showErrorMarkers={showErrorMarkers}
       onMarkerNavigate={onMarkerNavigate}
     />
   );
@@ -299,7 +291,9 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     >
       {/* Pinned: breadcrumb (with minimap) + parent row */}
       <div className={styles.pinnedSection}>
-        {breadcrumb && <BreadcrumbRow {...breadcrumb} minimap={minimap} />}
+        {header && (
+          <BreadcrumbRow {...header} selected={selected} onGoUp={onGoUp} />
+        )}
       </div>
 
       {/* Collapsible rows: parent + children */}
@@ -316,7 +310,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
               renderRow(
                 parentRow,
                 0,
-                breadcrumb?.atRoot && parentRow.name === "solvers"
+                header?.atRoot && parentRow.name === "solvers"
                   ? "main"
                   : undefined
               )}
@@ -368,8 +362,6 @@ interface SwimlaneRowProps {
   onDrillDown: (spanIndex: number) => void;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
-  /** Show error markers on swimlane bars. Defaults to false. */
-  showErrorMarkers?: boolean;
   onMarkerNavigate?: (eventId: string) => void;
 }
 
@@ -381,7 +373,6 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   onDrillDown,
   onBranchHover,
   onBranchLeave,
-  showErrorMarkers,
   onMarkerNavigate,
 }) => {
   const hasSelectedSpan = layout.spans.some((_, i) =>
@@ -417,17 +408,15 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
           ))}
 
           {/* Markers */}
-          {layout.markers
-            .filter((m) => showErrorMarkers || m.kind !== "error")
-            .map((marker, i) => (
-              <MarkerGlyph
-                key={i}
-                marker={marker}
-                onBranchHover={onBranchHover}
-                onBranchLeave={onBranchLeave}
-                onMarkerNavigate={onMarkerNavigate}
-              />
-            ))}
+          {layout.markers.map((marker, i) => (
+            <MarkerGlyph
+              key={i}
+              marker={marker}
+              onBranchHover={onBranchHover}
+              onBranchLeave={onBranchLeave}
+              onMarkerNavigate={onMarkerNavigate}
+            />
+          ))}
         </div>
       </div>
 
@@ -443,8 +432,11 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
 // BreadcrumbRow (internal)
 // =============================================================================
 
-interface InternalBreadcrumbRowProps extends BreadcrumbRowProps {
-  minimap?: TimelineMinimapProps;
+interface InternalBreadcrumbRowProps extends TimelineHeaderProps {
+  /** Currently selected span identifier, sourced from timeline navigation. */
+  selected: string | null;
+  /** Go up one level, sourced from timeline navigation. */
+  onGoUp: () => void;
 }
 
 const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({

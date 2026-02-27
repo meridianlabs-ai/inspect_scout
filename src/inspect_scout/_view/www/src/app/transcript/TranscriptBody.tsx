@@ -502,23 +502,17 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
               <div ref={swimLaneStickyContentRef}>
                 <TimelineSwimLanes
                   layouts={timelineLayouts}
-                  selected={timelineState.selected}
-                  node={timelineState.node}
-                  onSelect={timelineState.select}
-                  onDrillDown={timelineState.drillDown}
-                  onGoUp={timelineState.goUp}
-                  minimap={{
-                    root: timelineData.root,
-                    selection: minimapSelection,
-                    mapping: rootTimeMapping,
-                  }}
-                  breadcrumb={{
+                  timeline={timelineState}
+                  header={{
                     breadcrumbs: timelineState.breadcrumbs,
                     atRoot,
-                    onGoUp: timelineState.goUp,
                     onNavigate: timelineState.navigateTo,
-                    selected: timelineState.selected,
                     onScrollToTop: scrollToTop,
+                    minimap: {
+                      root: timelineData.root,
+                      selection: minimapSelection,
+                      mapping: rootTimeMapping,
+                    },
                   }}
                   onMarkerNavigate={handleMarkerNavigate}
                   isSticky={isSwimLaneSticky}

@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Internal: Remove duplicated async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) and import from `inspect_ai` instead.
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
 - Scanner Tools: `message_numbering()`, `scanner_prompt()`, `generate_answer()`, and `parse_answer()` functions for building custom scanners with fine-grained control.
 - Scanner Tools: `ResultReducer` for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.

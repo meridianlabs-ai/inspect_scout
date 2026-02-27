@@ -14,12 +14,12 @@ import pytest
 if TYPE_CHECKING:
     from tests.conftest import CallTracker
 
+from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
 from inspect_scout._transcript.types import EventFilter, MessageFilter
-from inspect_scout._util.async_zip import AsyncZipReader
 
 
 def create_json_stream(data: dict[str, Any]) -> io.BytesIO:

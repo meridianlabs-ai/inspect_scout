@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from os import PathLike
 from typing import Any, Literal, Protocol, Sequence, TypeAlias
 
+from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.log._file import (
@@ -10,8 +11,6 @@ from inspect_ai.log._file import (
 )
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
-
-from .._util.zip_common import ZipCompressionMethod
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""

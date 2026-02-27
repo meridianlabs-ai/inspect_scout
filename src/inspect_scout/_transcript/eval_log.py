@@ -17,6 +17,7 @@ from typing import (
 
 import pandas as pd
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.zip_common import ZipEntry
 from inspect_ai.analysis._dataframe.columns import Column
 from inspect_ai.analysis._dataframe.evals.columns import (
     EvalColumn,
@@ -54,9 +55,8 @@ from .._query.condition import Condition, ScalarValue
 from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
-from .._util.async_zip import AsyncZipReader
+from .._util.caching_async_zip import CachingAsyncZipReader
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-from .._util.zip_common import ZipEntry
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns
@@ -500,7 +500,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 if self._files_cache
                 else t.source_uri
             )
-            zip_reader = AsyncZipReader(fs, source_uri)
+            zip_reader = CachingAsyncZipReader(fs, source_uri)
             entry = await zip_reader.get_member_entry(sample_filename)
             inner_cm = await zip_reader.open_member_raw(entry)
             return TranscriptMessagesAndEvents(
@@ -540,7 +540,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
     async def _get_zip_reader_and_entry(
         self, t: TranscriptInfo
-    ) -> tuple[AsyncZipReader, ZipEntry]:
+    ) -> tuple[CachingAsyncZipReader, ZipEntry]:
         """Get ZIP reader and entry for transcript's sample file."""
         id_, epoch = self._get_sample_id_and_epoch(t)
         sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
@@ -557,7 +557,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             if self._files_cache
             else t.source_uri
         )
-        zip_reader = AsyncZipReader(self._fs, source_uri)
+        zip_reader = CachingAsyncZipReader(self._fs, source_uri)
         entry = await zip_reader.get_member_entry(sample_file_name)
         return zip_reader, entry
 

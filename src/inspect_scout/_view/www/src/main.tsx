@@ -14,6 +14,13 @@ import { ApiProvider, createStore, StoreProvider } from "./state/store";
 import { defaultRetry } from "./utils/react-query";
 import { getVscodeApi } from "./utils/vscode";
 
+declare global {
+  interface Window {
+    __SCOUT_BASE_PATH__?: string;
+    __SCOUT_DISABLE_SSE__?: boolean;
+  }
+}
+
 // Find the root element and render into it
 const containerId = "app";
 const container = document.getElementById(containerId);
@@ -30,7 +37,11 @@ const root = createRoot(container);
 const selectApi = (): ScoutApiV2 => {
   const vscodeApi = getVscodeApi();
   if (!vscodeApi) {
-    return apiScoutServer();
+    const basePath = window.__SCOUT_BASE_PATH__ ?? "";
+    return apiScoutServer({
+      apiBaseUrl: `${basePath}/api/v2`,
+      disableSSE: window.__SCOUT_DISABLE_SSE__,
+    });
   }
 
   const protocolVersion =

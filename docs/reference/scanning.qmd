@@ -19,9 +19,9 @@ reference: inspect_scout
 ### ScannerWork
 ### Worklist
 
-## Status
+## Configuration
 
-### Status
+### ScanSpec
 ### ScanOptions
 ### ScanRevision
 ### ScanTranscripts

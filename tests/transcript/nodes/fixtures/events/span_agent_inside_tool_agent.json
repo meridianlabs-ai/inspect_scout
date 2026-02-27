@@ -1,0 +1,125 @@
+{
+  "description": "Span-based agent nested inside a tool-spawned agent",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-main",
+      "id": "main-agent",
+      "name": "coordinator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "span_id": "main-agent",
+      "id": "tool-delegate",
+      "function": "run_sub_workflow",
+      "agent": "sub_workflow",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:15Z",
+      "events": [
+        {
+          "event": "model",
+          "uuid": "e-002a",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:05Z",
+          "completed": "2024-01-01T00:00:06Z",
+          "output": {
+            "usage": {
+              "input_tokens": 80,
+              "output_tokens": 40
+            }
+          }
+        },
+        {
+          "event": "model",
+          "uuid": "e-002b",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:07Z",
+          "completed": "2024-01-01T00:00:08Z",
+          "output": {
+            "usage": {
+              "input_tokens": 90,
+              "output_tokens": 45
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:16Z",
+      "completed": "2024-01-01T00:00:17Z",
+      "output": {
+        "usage": {
+          "input_tokens": 120,
+          "output_tokens": 60
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-main-end",
+      "span_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:18Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:19Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main-agent",
+      "name": "coordinator",
+      "source": {
+        "source": "span",
+        "span_id": "main-agent"
+      },
+      "event_uuids": ["e-001", "e-003"],
+      "children": [
+        {
+          "id": "tool-agent-tool-delegate",
+          "name": "sub_workflow",
+          "source": {
+            "source": "tool"
+          },
+          "event_uuids": ["e-002a", "e-002b"],
+          "total_tokens": 255
+        }
+      ],
+      "total_tokens": 585
+    },
+    "scoring": null
+  }
+}

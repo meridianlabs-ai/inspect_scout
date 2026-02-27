@@ -48,6 +48,7 @@ def view_command(
     host: str,
     port: int,
     browser: bool | None,
+    root_path: str,
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
@@ -63,4 +64,5 @@ def view_command(
         mode=mode,
         authorization=resolve_view_authorization(),
         log_level=common["log_level"],
+        root_path=root_path,
     )

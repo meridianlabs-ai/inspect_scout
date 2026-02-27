@@ -31,8 +31,8 @@ website:
           href: reference/scanning.qmd#scannerwork
         - text: Worklist
           href: reference/scanning.qmd#worklist
-        - text: Status
-          href: reference/scanning.qmd#status
+        - text: ScanSpec
+          href: reference/scanning.qmd#scanspec
         - text: ScanOptions
           href: reference/scanning.qmd#scanoptions
         - text: ScanRevision
@@ -79,6 +79,8 @@ website:
           href: reference/transcript.qmd#transcripts_from
         - text: Transcript
           href: reference/transcript.qmd#transcript
+        - text: TranscriptInfo
+          href: reference/transcript.qmd#transcriptinfo
         - text: Transcripts
           href: reference/transcript.qmd#transcripts
         - text: TranscriptsReader
@@ -103,6 +105,30 @@ website:
           href: reference/transcript.qmd#logcolumns
         - text: log_columns
           href: reference/transcript.qmd#log_columns
+        - text: transcript_messages
+          href: reference/transcript.qmd#transcript_messages
+        - text: segment_messages
+          href: reference/transcript.qmd#segment_messages
+        - text: span_messages
+          href: reference/transcript.qmd#span_messages
+        - text: MessagesSegment
+          href: reference/transcript.qmd#messagessegment
+        - text: timeline_build
+          href: reference/transcript.qmd#timeline_build
+        - text: timeline_filter
+          href: reference/transcript.qmd#timeline_filter
+        - text: timeline_messages
+          href: reference/transcript.qmd#timeline_messages
+        - text: Timeline
+          href: reference/transcript.qmd#timeline
+        - text: TimelineBranch
+          href: reference/transcript.qmd#timelinebranch
+        - text: TimelineEvent
+          href: reference/transcript.qmd#timelineevent
+        - text: TimelineMessages
+          href: reference/transcript.qmd#timelinemessages
+        - text: TimelineSpan
+          href: reference/transcript.qmd#timelinespan
         - text: observe
           href: reference/transcript.qmd#observe
         - text: observe_update
@@ -130,6 +156,22 @@ website:
           href: reference/scanner.qmd#llm_scanner
         - text: grep_scanner
           href: reference/scanner.qmd#grep_scanner
+        - text: message_numbering
+          href: reference/scanner.qmd#message_numbering
+        - text: scanner_prompt
+          href: reference/scanner.qmd#scanner_prompt
+        - text: generate_answer
+          href: reference/scanner.qmd#generate_answer
+        - text: parse_answer
+          href: reference/scanner.qmd#parse_answer
+        - text: ResultReducer
+          href: reference/scanner.qmd#resultreducer
+        - text: Answer
+          href: reference/scanner.qmd#answer
+        - text: answer_type
+          href: reference/scanner.qmd#answer_type
+        - text: AnswerSpec
+          href: reference/scanner.qmd#answerspec
         - text: AnswerMultiLabel
           href: reference/scanner.qmd#answermultilabel
         - text: AnswerStructured
@@ -146,6 +188,8 @@ website:
           href: reference/scanner.qmd#messagetype
         - text: EventType
           href: reference/scanner.qmd#eventtype
+        - text: TranscriptContent
+          href: reference/scanner.qmd#transcriptcontent
         - text: RefusalError
           href: reference/scanner.qmd#refusalerror
         - text: scanner
@@ -163,6 +207,8 @@ website:
           href: reference/sources.qmd#langsmith
         - text: logfire
           href: reference/sources.qmd#logfire
+        - text: claude_code
+          href: reference/sources.qmd#claude_code
       - section: async
         href: reference/async.qmd
         contents:
@@ -191,3 +237,5 @@ website:
         href: reference/scout_trace.qmd
       - text: scout db
         href: reference/scout_db.qmd
+      - text: scout import
+        href: reference/scout_import.qmd

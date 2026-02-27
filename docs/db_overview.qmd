@@ -25,7 +25,7 @@ These articles cover transcript databases in more depth:
 
 2. [Capturing Transcripts](db_capturing.qmd) --- Describes how to capture transcripts from running LLM code using the `@observe` decorator / context-manager.
 
-3. [Importing Transcripts](db_importing.qmd) --- Covers building a database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, and custom sources using the import API.
+3. [Importing Transcripts](db_importing.qmd) --- Covers building a database from Inspect Logs, Arize Phoenix, LangSmith, Logfire, Claude Code, and custom sources using the import API.
 
 
 ## Publishing Transcripts

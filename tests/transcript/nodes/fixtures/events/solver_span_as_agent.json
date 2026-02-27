@@ -1,0 +1,73 @@
+{
+  "description": "A solver span (type=solver) should be treated as an agent span",
+  "events": [
+    {
+      "event": "span_begin",
+      "id": "solvers",
+      "name": "solvers",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "id": "solver-1",
+      "name": "chain_of_thought",
+      "type": "solver",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "solver-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": { "input_tokens": 100, "output_tokens": 50 }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "id": "tc-1",
+      "function": "think",
+      "span_id": "solver-1",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "solver-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:06Z",
+      "completed": "2024-01-01T00:00:07Z",
+      "output": {
+        "usage": { "input_tokens": 200, "output_tokens": 100 }
+      }
+    },
+    {
+      "event": "span_end",
+      "id": "solver-1",
+      "span_id": "solver-1",
+      "timestamp": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "span_end",
+      "id": "solvers",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:09Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "solver-1",
+      "name": "chain_of_thought",
+      "source": { "source": "span", "span_id": "solver-1" },
+      "event_uuids": ["e-001", "e-002", "e-003"],
+      "total_tokens": 450
+    },
+    "scoring": null
+  }
+}

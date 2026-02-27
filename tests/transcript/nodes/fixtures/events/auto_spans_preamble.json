@@ -1,0 +1,52 @@
+{
+  "description": "Non-model event before model events — without auto-detection, all events remain flat in root agent",
+  "events": [
+    {
+      "event": "info",
+      "uuid": "e-info",
+      "source": "setup",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "input": [
+        {"role": "system", "content": "Agent X"},
+        {"role": "user", "content": "Task X"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "X response"}}]
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z",
+      "input": [
+        {"role": "system", "content": "Agent Y"},
+        {"role": "user", "content": "Task Y"}
+      ],
+      "output": {
+        "usage": {"input_tokens": 100, "output_tokens": 50},
+        "choices": [{"message": {"role": "assistant", "content": "Y response"}}]
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {"source": "span", "span_id": "main"},
+      "event_uuids": ["e-info", "e-001", "e-002"],
+      "total_tokens": 300
+    },
+    "scoring": null
+  }
+}

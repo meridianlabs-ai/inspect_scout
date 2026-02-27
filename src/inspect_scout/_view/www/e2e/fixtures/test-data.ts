@@ -10,9 +10,7 @@ import type {
   TranscriptsResponse,
 } from "../../src/types/api-types";
 
-export function createAppConfig(
-  overrides?: Partial<AppConfig>,
-): AppConfig {
+export function createAppConfig(overrides?: Partial<AppConfig>): AppConfig {
   return {
     home_dir: "/home/test",
     project_dir: "/home/test/project",
@@ -27,7 +25,7 @@ export function createAppConfig(
 }
 
 export function createTranscriptInfo(
-  overrides: Partial<TranscriptInfo> & { transcript_id: string },
+  overrides: Partial<TranscriptInfo> & { transcript_id: string }
 ): TranscriptInfo {
   return {
     metadata: {},
@@ -36,7 +34,7 @@ export function createTranscriptInfo(
 }
 
 export function createScanRow(
-  overrides: Partial<ScanRow> & { scan_id: string },
+  overrides: Partial<ScanRow> & { scan_id: string }
 ): ScanRow {
   return {
     location: `/scans/${overrides.scan_id}`,
@@ -55,7 +53,7 @@ export function createScanRow(
 }
 
 export function createTranscriptsResponse(
-  items: TranscriptInfo[] = [],
+  items: TranscriptInfo[] = []
 ): TranscriptsResponse {
   return {
     items,
@@ -64,9 +62,7 @@ export function createTranscriptsResponse(
   } satisfies TranscriptsResponse;
 }
 
-export function createScansResponse(
-  items: ScanRow[] = [],
-): ScansResponse {
+export function createScansResponse(items: ScanRow[] = []): ScansResponse {
   return {
     items,
     next_cursor: null,
@@ -90,8 +86,7 @@ export function createStatus(overrides?: Partial<Status>): Status {
   return {
     complete: true,
     errors: [],
-    location:
-      "/home/test/project/.scans/scan_id=aBcDeFgHiJkLmNoPqRsTuV",
+    location: "/home/test/project/.scans/scan_id=aBcDeFgHiJkLmNoPqRsTuV",
     spec: {
       scan_id: "aBcDeFgHiJkLmNoPqRsTuV",
       scan_name: "eval-safety",
@@ -106,11 +101,12 @@ export function createStatus(overrides?: Partial<Status>): Status {
 }
 
 export function createMessagesEventsResponse(
-  overrides?: Partial<MessagesEventsResponse>,
+  overrides?: Partial<MessagesEventsResponse>
 ): MessagesEventsResponse {
   return {
     messages: [],
     events: [],
+    timelines: [],
     ...overrides,
   } satisfies MessagesEventsResponse;
 }

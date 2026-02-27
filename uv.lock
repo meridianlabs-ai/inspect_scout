@@ -225,7 +225,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.75.0"
+version = "0.83.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -237,9 +237,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/1f/08e95f4b7e2d35205ae5dcbb4ae97e7d477fc521c275c02609e2931ece2d/anthropic-0.75.0.tar.gz", hash = "sha256:e8607422f4ab616db2ea5baacc215dd5f028da99ce2f022e33c7c535b29f3dfb", size = 439565, upload-time = "2025-11-24T20:41:45.28Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/e5/02cd2919ec327b24234abb73082e6ab84c451182cc3cc60681af700f4c63/anthropic-0.83.0.tar.gz", hash = "sha256:a8732c68b41869266c3034541a31a29d8be0f8cd0a714f9edce3128b351eceb4", size = 534058, upload-time = "2026-02-19T19:26:38.904Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/1c/1cd02b7ae64302a6e06724bf80a96401d5313708651d277b1458504a1730/anthropic-0.75.0-py3-none-any.whl", hash = "sha256:ea8317271b6c15d80225a9f3c670152746e88805a7a61e14d4a374577164965b", size = 388164, upload-time = "2025-11-24T20:41:43.587Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/75/b9d58e4e2a4b1fc3e75ffbab978f999baf8b7c4ba9f96e60edb918ba386b/anthropic-0.83.0-py3-none-any.whl", hash = "sha256:f069ef508c73b8f9152e8850830d92bd5ef185645dbacf234bb213344a274810", size = 456991, upload-time = "2026-02-19T19:26:40.114Z" },
 ]
 
 [[package]]
@@ -1472,8 +1472,8 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.179"
-source = { registry = "https://pypi.org/simple" }
+version = "0.3.184.dev4+ge278d921"
+source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main#e278d92129e5615cee2acc73eb01742fd468a204" }
 dependencies = [
     { name = "aioboto3" },
     { name = "aiohttp" },
@@ -1516,10 +1516,6 @@ dependencies = [
     { name = "zipp" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/37/c48d49c56509ec2edba45597e25f7a6a0a559841f7ced1bdfabe9defb375/inspect_ai-0.3.179.tar.gz", hash = "sha256:49b19019d8b7e71f3318d911473b71fa1eb8a40ff97f21509d12fa83f251c6d6", size = 43423537, upload-time = "2026-02-12T19:13:53.122Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/a7/81b6946f7ede1b304380ce4d8eadbbff1cc26fa1a49ccda29be3cff9da96/inspect_ai-0.3.179-py3-none-any.whl", hash = "sha256:86b33e759925b5c9f3f4c43919e386c452ed94b8c49312a509d3f051356bd21e", size = 34582288, upload-time = "2026-02-12T19:13:43.722Z" },
-]
 
 [[package]]
 name = "inspect-scout"
@@ -1534,6 +1530,7 @@ dependencies = [
     { name = "ijson" },
     { name = "importlib-metadata" },
     { name = "inspect-ai" },
+    { name = "inspect-swe" },
     { name = "jinja2" },
     { name = "jsonlines" },
     { name = "jsonschema" },
@@ -1629,7 +1626,7 @@ doc = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'dev'" },
+    { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.80.0" },
     { name = "anyio", specifier = ">=4.8.0" },
     { name = "arize-phoenix-client", marker = "extra == 'dev'" },
     { name = "build", marker = "extra == 'dist'" },
@@ -1638,12 +1635,13 @@ requires-dist = [
     { name = "dill", specifier = ">=0.4.0" },
     { name = "duckdb", specifier = ">=1.4.0" },
     { name = "fastapi", specifier = ">=0.128.1" },
-    { name = "google-genai", marker = "extra == 'dev'" },
+    { name = "google-genai", marker = "extra == 'dev'", specifier = ">=1.56.0" },
     { name = "griffe", marker = "extra == 'doc'" },
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", specifier = ">=0.3.179" },
+    { name = "inspect-ai", git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main" },
+    { name = "inspect-swe", specifier = ">=0.2.37" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },
     { name = "jsonschema", specifier = ">3.1.1" },
@@ -1654,7 +1652,7 @@ requires-dist = [
     { name = "markdown", marker = "extra == 'doc'" },
     { name = "mmh3", specifier = ">=5.0.0" },
     { name = "mypy", marker = "extra == 'dev'" },
-    { name = "openai", marker = "extra == 'dev'" },
+    { name = "openai", marker = "extra == 'dev'", specifier = ">=2.17.0" },
     { name = "pandas", specifier = ">=2.0.0,<3.0.0" },
     { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.3.2.250926" },
     { name = "panflute", marker = "extra == 'doc'" },
@@ -1722,6 +1720,26 @@ doc = [
     { name = "markdown" },
     { name = "panflute" },
     { name = "pyyaml" },
+]
+
+[[package]]
+name = "inspect-swe"
+version = "0.2.37"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx" },
+    { name = "inspect-ai" },
+    { name = "nest-asyncio" },
+    { name = "platformdirs" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e7/a8/7b8b7010eec69bd0a84e412f7a12954d0d51462081a86528773ad4ff857d/inspect_swe-0.2.37.tar.gz", hash = "sha256:860f9325f8fbad06183ba36ff6617ec7eba2fd4b8d31f6897f6c6de601f447cd", size = 44924, upload-time = "2026-02-24T21:35:12.485Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/0e/66944ad07c82d19cb82e72ba4d68fc5068be23e63ba334f565eb34683a31/inspect_swe-0.2.37-py3-none-any.whl", hash = "sha256:93eba3cbdd3fd8969fe00e26762cfb4a5404dff7842b5db62558ca51ed3fac5a", size = 58076, upload-time = "2026-02-24T21:35:11.097Z" },
 ]
 
 [[package]]
@@ -3076,11 +3094,11 @@ wheels = [
 
 [[package]]
 name = "nest-asyncio2"
-version = "1.7.1"
+version = "1.7.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2d/eb/ecf8bbf9d22a4e8f7be1628336fe0202da7660790053aa28abeb6c15eb14/nest_asyncio2-1.7.1.tar.gz", hash = "sha256:a1fe5bbbd20894dcceb1842322d74992c5834d5ab692af2c4f59a9a4fcf75fe8", size = 13797, upload-time = "2025-11-20T20:46:07.085Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/73/731debf26e27e0a0323d7bda270dc2f634b398e38f040a09da1f4351d0aa/nest_asyncio2-1.7.2.tar.gz", hash = "sha256:1921d70b92cc4612c374928d081552efb59b83d91b2b789d935c665fa01729a8", size = 14743, upload-time = "2026-02-13T00:34:04.386Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/48/c1f1ddcfd04bba60470235c2f83733ecff43ebe068dc7715aab60bc92ad8/nest_asyncio2-1.7.1-py3-none-any.whl", hash = "sha256:f83bc1744c3cfa7d47fd29431e5e168db6cb76eda1bb20108955c32f60d7eddf", size = 7504, upload-time = "2025-11-20T20:46:05.704Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/3c/3179b85b0e1c3659f0369940200cd6d0fa900e6cefcc7ea0bc6dd0e29ffb/nest_asyncio2-1.7.2-py3-none-any.whl", hash = "sha256:f5dfa702f3f81f6a03857e9a19e2ba578c0946a4ad417b4c50a24d7ba641fe01", size = 7843, upload-time = "2026-02-13T00:34:02.691Z" },
 ]
 
 [[package]]
@@ -3298,7 +3316,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "2.14.0"
+version = "2.23.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -3310,9 +3328,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/b1/12fe1c196bea326261718eb037307c1c1fe1dedc2d2d4de777df822e6238/openai-2.14.0.tar.gz", hash = "sha256:419357bedde9402d23bf8f2ee372fca1985a73348debba94bddff06f19459952", size = 626938, upload-time = "2025-12-19T03:28:45.742Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/4b/dc1d84b8237205ebe48a1b1c9c3a8e1ab9fd08b30811b6d787196df58fd6/openai-2.23.0.tar.gz", hash = "sha256:7d24cc8087d5e8eed58e98aaa823391d39d12f9a9a2755770f67c7bb2004d94c", size = 657323, upload-time = "2026-02-24T03:20:20.323Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/4b/7c1a00c2c3fbd004253937f7520f692a9650767aa73894d7a34f0d65d3f4/openai-2.14.0-py3-none-any.whl", hash = "sha256:7ea40aca4ffc4c4a776e77679021b47eec1160e341f42ae086ba949c9dcc9183", size = 1067558, upload-time = "2025-12-19T03:28:43.727Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/5f/bcdf0fb510c24f021e485f920677da363cd59d6e0310171bf2cad6e052b5/openai-2.23.0-py3-none-any.whl", hash = "sha256:1041d40bebf845053fda1946104f8bf9c3e2df957a41c3878c55c72c352630e9", size = 1118971, upload-time = "2026-02-24T03:20:18.708Z" },
 ]
 
 [[package]]

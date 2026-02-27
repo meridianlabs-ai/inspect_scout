@@ -1,0 +1,118 @@
+{
+  "description": "Tool span containing model events - detected as agent, becomes root with orphan events folded in",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "solvers",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 25
+        }
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-tool",
+      "id": "tool-span",
+      "name": "execute_code",
+      "type": "tool",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:03Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "tool-span",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-003",
+      "span_id": "tool-span",
+      "id": "tool-1",
+      "function": "run_python",
+      "timestamp": "2024-01-01T00:00:06Z",
+      "completed": "2024-01-01T00:00:07Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "span_id": "tool-span",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:08Z",
+      "completed": "2024-01-01T00:00:09Z",
+      "output": {
+        "usage": {
+          "input_tokens": 75,
+          "output_tokens": 40
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-tool-end",
+      "span_id": "tool-span",
+      "timestamp": "2024-01-01T00:00:10Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "span_id": "solvers",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z",
+      "output": {
+        "usage": {
+          "input_tokens": 60,
+          "output_tokens": 30
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:13Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "tool-span",
+      "name": "execute_code",
+      "source": {
+        "source": "tool"
+      },
+      "event_uuids": [
+        "e-001",
+        "e-005",
+        "e-002",
+        "e-003",
+        "e-004"
+      ],
+      "total_tokens": 430
+    },
+    "scoring": null
+  }
+}

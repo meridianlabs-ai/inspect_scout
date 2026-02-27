@@ -261,6 +261,12 @@ def _generate_decorator(spec: ScannerDecoratorSpec) -> str:
     if spec.version != 0:
         args.append(f"version={spec.version}")
 
+    if spec.timeline:
+        if spec.timeline == "all":
+            args.append('timeline="all"')
+        else:
+            args.append(f"timeline={spec.timeline!r}")
+
     if args:
         return f"@scanner({', '.join(args)})"
     else:
@@ -287,6 +293,9 @@ def _generate_llm_scanner_call(spec: LLMScannerSpec) -> str:
     if spec.model:
         args.append(f'model="{spec.model}"')
 
+    if spec.model_role:
+        args.append(f'model_role="{spec.model_role}"')
+
     if spec.retry_refusals is not None and spec.retry_refusals != 3:
         args.append(f"retry_refusals={spec.retry_refusals}")
 
@@ -297,6 +306,21 @@ def _generate_llm_scanner_call(spec: LLMScannerSpec) -> str:
             args.append(f'template="""{template_escaped}"""')
         else:
             args.append(f'template="{template}"')
+
+    if spec.name:
+        args.append(f'name="{spec.name}"')
+
+    if spec.context_window is not None:
+        args.append(f"context_window={spec.context_window}")
+
+    if spec.compaction is not None:
+        if isinstance(spec.compaction, str):
+            args.append(f'compaction="{spec.compaction}"')
+        else:
+            args.append(f"compaction={spec.compaction}")
+
+    if spec.depth is not None:
+        args.append(f"depth={spec.depth}")
 
     # Format nicely
     if len(args) <= 2 and all(len(a) < 40 for a in args):
@@ -469,6 +493,22 @@ class _ScannerTransformer(cst.CSTTransformer):
                 )
             )
 
+        if spec.timeline:
+            if spec.timeline == "all":
+                new_args.append(
+                    cst.Arg(
+                        keyword=cst.Name("timeline"),
+                        value=cst.SimpleString('"all"'),
+                    )
+                )
+            else:
+                new_args.append(
+                    cst.Arg(
+                        keyword=cst.Name("timeline"),
+                        value=_list_to_cst(spec.timeline),
+                    )
+                )
+
         if new_args:
             new_call = cst.Call(func=cst.Name("scanner"), args=new_args)
             return decorator.with_changes(decorator=new_call)
@@ -518,6 +558,14 @@ class _ScannerTransformer(cst.CSTTransformer):
                 )
             )
 
+        if spec.model_role:
+            new_args.append(
+                cst.Arg(
+                    keyword=cst.Name("model_role"),
+                    value=cst.SimpleString(f'"{spec.model_role}"'),
+                )
+            )
+
         if spec.retry_refusals is not None and spec.retry_refusals != 3:
             new_args.append(
                 cst.Arg(
@@ -543,6 +591,46 @@ class _ScannerTransformer(cst.CSTTransformer):
                         value=cst.SimpleString(f'"{template}"'),
                     )
                 )
+
+        if spec.name:
+            new_args.append(
+                cst.Arg(
+                    keyword=cst.Name("name"),
+                    value=cst.SimpleString(f'"{spec.name}"'),
+                )
+            )
+
+        if spec.context_window is not None:
+            new_args.append(
+                cst.Arg(
+                    keyword=cst.Name("context_window"),
+                    value=cst.Integer(str(spec.context_window)),
+                )
+            )
+
+        if spec.compaction is not None:
+            if isinstance(spec.compaction, str):
+                new_args.append(
+                    cst.Arg(
+                        keyword=cst.Name("compaction"),
+                        value=cst.SimpleString(f'"{spec.compaction}"'),
+                    )
+                )
+            else:
+                new_args.append(
+                    cst.Arg(
+                        keyword=cst.Name("compaction"),
+                        value=cst.Integer(str(spec.compaction)),
+                    )
+                )
+
+        if spec.depth is not None:
+            new_args.append(
+                cst.Arg(
+                    keyword=cst.Name("depth"),
+                    value=cst.Integer(str(spec.depth)),
+                )
+            )
 
         return call.with_changes(args=new_args)
 

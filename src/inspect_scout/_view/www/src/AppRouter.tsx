@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, lazy, Suspense, useEffect } from "react";
 import {
   createHashRouter,
   Outlet,
@@ -7,16 +7,9 @@ import {
 } from "react-router-dom";
 
 import { ActivityBarLayout } from "./app/components/ActivityBarLayout";
-import { ProjectPanel } from "./app/project/ProjectPanel";
-import { RunScanPanel } from "./app/runScan/RunScanPanel";
-import { ScanPanel } from "./app/scan/ScanPanel";
-import { ScannerResultPanel } from "./app/scannerResult/ScannerResultPanel";
-import { ScansPanel } from "./app/scans/ScansPanel";
 import { useAppConfig } from "./app/server/useAppConfig";
-import { TranscriptPanel } from "./app/transcript/TranscriptPanel";
-import { TranscriptsPanel } from "./app/transcripts/TranscriptsPanel";
-import { ValidationPanel } from "./app/validation/ValidationPanel";
 import { FindBand } from "./components/FindBand";
+import { LoadingBar } from "./components/LoadingBar";
 import {
   LoggingNavigate,
   useLoggingNavigate,
@@ -32,6 +25,7 @@ import {
   kTranscriptsRouteUrlPattern,
   kTranscriptDetailRoute,
   kProjectRouteUrlPattern,
+  kTimelineRouteUrlPattern,
   kValidationRouteUrlPattern,
   scanResultRoute,
   scanRoute,
@@ -39,6 +33,48 @@ import {
 } from "./router/url";
 import { useStore } from "./state/store";
 import { AppConfig } from "./types/api-types";
+
+const ScansPanel = lazy(() =>
+  import("./app/scans/ScansPanel").then((m) => ({ default: m.ScansPanel }))
+);
+const ScanPanel = lazy(() =>
+  import("./app/scan/ScanPanel").then((m) => ({ default: m.ScanPanel }))
+);
+const ScannerResultPanel = lazy(() =>
+  import("./app/scannerResult/ScannerResultPanel").then((m) => ({
+    default: m.ScannerResultPanel,
+  }))
+);
+const TranscriptsPanel = lazy(() =>
+  import("./app/transcripts/TranscriptsPanel").then((m) => ({
+    default: m.TranscriptsPanel,
+  }))
+);
+const TranscriptPanel = lazy(() =>
+  import("./app/transcript/TranscriptPanel").then((m) => ({
+    default: m.TranscriptPanel,
+  }))
+);
+const ProjectPanel = lazy(() =>
+  import("./app/project/ProjectPanel").then((m) => ({
+    default: m.ProjectPanel,
+  }))
+);
+const ValidationPanel = lazy(() =>
+  import("./app/validation/ValidationPanel").then((m) => ({
+    default: m.ValidationPanel,
+  }))
+);
+const RunScanPanel = lazy(() =>
+  import("./app/runScan/RunScanPanel").then((m) => ({
+    default: m.RunScanPanel,
+  }))
+);
+const TimelinePanel = lazy(() =>
+  import("./app/timeline/TimelinePanel").then((m) => ({
+    default: m.TimelinePanel,
+  }))
+);
 
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
@@ -57,7 +93,11 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     useWindowMessaging();
     useRoutingInitializer(config.scans.dir);
 
-    const content = <Outlet />;
+    const content = (
+      <Suspense fallback={<LoadingBar loading />}>
+        <Outlet />
+      </Suspense>
+    );
     return (
       <>
         {showFind && (
@@ -155,6 +195,10 @@ export const createAppRouter = (config: AppRouterConfig) => {
           {
             path: kTranscriptDetailRoute,
             element: <TranscriptPanel />,
+          },
+          {
+            path: kTimelineRouteUrlPattern,
+            element: <TimelinePanel />,
           },
           {
             path: "/run",

@@ -1,0 +1,113 @@
+{
+  "description": "Agent inferred from tool call with nested events",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "id": "tool-1",
+      "function": "delegate_task",
+      "agent": "sub_agent",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "events": [
+        {
+          "event": "model",
+          "uuid": "e-002a",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:04Z",
+          "completed": "2024-01-01T00:00:05Z",
+          "output": {
+            "usage": {
+              "input_tokens": 75,
+              "output_tokens": 30
+            }
+          }
+        },
+        {
+          "event": "tool",
+          "uuid": "e-002b",
+          "id": "tool-2",
+          "function": "read_file",
+          "timestamp": "2024-01-01T00:00:06Z",
+          "completed": "2024-01-01T00:00:07Z"
+        },
+        {
+          "event": "model",
+          "uuid": "e-002c",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:08Z",
+          "completed": "2024-01-01T00:00:09Z",
+          "output": {
+            "usage": {
+              "input_tokens": 80,
+              "output_tokens": 40
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z",
+      "output": {
+        "usage": {
+          "input_tokens": 120,
+          "output_tokens": 60
+        }
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "content_structure": [
+        {
+          "type": "event",
+          "uuid": "e-001"
+        },
+        {
+          "type": "agent",
+          "id": "tool-agent-tool-1",
+          "name": "sub_agent",
+          "source": {
+            "source": "tool"
+          },
+          "nested_uuids": [
+            "e-002a",
+            "e-002b",
+            "e-002c"
+          ],
+          "total_tokens": 225
+        },
+        {
+          "type": "event",
+          "uuid": "e-003"
+        }
+      ],
+      "total_tokens": 555
+    },
+    "scoring": null
+  }
+}

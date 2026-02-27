@@ -10,7 +10,7 @@
 | [Sources](/reference/sources.qmd) | Import transcripts from various sources. |
 | [Async](/reference/async.qmd) | Async functions for scanning. |
 
-#### Scount CLI
+#### Scout CLI
 
 |  |  |
 |------------------------------------|------------------------------------|

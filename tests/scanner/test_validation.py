@@ -417,6 +417,67 @@ def test_all_supported_event_types() -> None:
     ) == len(all_events)
 
 
+# Timeline validation tests
+
+
+def test_timeline_with_timeline_type() -> None:
+    """timeline='all' with Timeline type should work."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline="all")
+    def test_scanner() -> Scanner[Timeline]:
+        async def scan(timeline: Timeline) -> Result:
+            return Result(value={"ok": True})
+
+        return scan
+
+    scanner_instance: Any = test_scanner()
+    assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
+
+
+def test_timeline_with_list_timeline_type() -> None:
+    """timeline='all' with list[Timeline] type should work."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner(timeline="all")
+    def test_scanner() -> Scanner[list[Timeline]]:
+        async def scan(timelines: list[Timeline]) -> Result:
+            return Result(value={"count": len(timelines)})
+
+        return scan
+
+    scanner_instance: Any = test_scanner()
+    assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
+
+
+def test_timeline_with_transcript_type() -> None:
+    """timeline='all' with Transcript type should work."""
+
+    @scanner(timeline="all")
+    def test_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value={"id": transcript.transcript_id})
+
+        return scan
+
+    scanner_instance: Any = test_scanner()
+    assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
+
+
+def test_timeline_with_wrong_type_fails() -> None:
+    """timeline='all' with ChatMessage type should fail."""
+    with pytest.raises(TypeError, match="must accept Timeline"):
+
+        @scanner(timeline="all")
+        def test_scanner() -> Scanner[ChatMessage]:
+            async def scan(message: ChatMessage) -> Result:
+                return Result(value={"bad": True})
+
+            return scan
+
+        test_scanner()
+
+
 # Parametrized tests
 
 

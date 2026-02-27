@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import keyword
 from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator, cast
 
@@ -26,6 +27,9 @@ def make_command_docs(
     """Create the Markdown lines for a command and its sub-commands."""
     command = command.replace("-", "_")
     module = command
+    # Python keywords can't be module names, so we use the {command}_command convention
+    if keyword.iskeyword(module):
+        module = f"{module}_command"
     for line in _recursively_make_command_docs(
         f"scout {command}",
         load_command(f"inspect_scout._cli.{module}", f"{command}_command"),

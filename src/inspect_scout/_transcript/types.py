@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from os import PathLike
 from typing import Any, Literal, Protocol, Sequence, TypeAlias
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.log._file import (
     EvalLogInfo,
@@ -60,6 +61,7 @@ EventType = Literal[
 
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
+TimelineFilter: TypeAlias = Literal[True] | Literal["all"] | Sequence[EventType] | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -68,8 +70,20 @@ LogPaths: TypeAlias = (
 
 @dataclass
 class TranscriptContent:
+    """Content filters for transcript loading.
+
+    Specifies which messages, events, and timeline data to include
+    when loading transcript content for scanning.
+    """
+
     messages: MessageFilter = field(default=None)
+    """Filter for which message types to include."""
+
     events: EventFilter = field(default=None)
+    """Filter for which event types to include."""
+
+    timeline: TimelineFilter = field(default=None)
+    """Filter for which timeline events to include."""
 
 
 class BytesContextManager:
@@ -203,3 +217,6 @@ class Transcript(TranscriptInfo):
 
     events: list[Event] = Field(default_factory=list)
     """Events from transcript."""
+
+    timelines: list[Timeline] = Field(default_factory=list)
+    """Timeline views over the transcript."""

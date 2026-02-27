@@ -1,9 +1,4 @@
-import { ReactElement } from "react";
-
-import { RunScanPanel } from "../app/runScan/RunScanPanel";
-import { ScansPanel } from "../app/scans/ScansPanel";
-import { TranscriptsPanel } from "../app/transcripts/TranscriptsPanel";
-import { ValidationPanel } from "../app/validation/ValidationPanel";
+// import { TimelinePanel } from "../app/timeline/TimelinePanel";
 import { ApplicationIcons } from "../components/icons";
 
 declare const __SCOUT_RUN_SCAN__: boolean;
@@ -15,7 +10,6 @@ export interface ActivityConfig {
   route: string;
   routePatterns?: string[];
   description?: string;
-  element: ReactElement;
 }
 
 const allActivities: ActivityConfig[] = [
@@ -26,7 +20,6 @@ const allActivities: ActivityConfig[] = [
     route: "/project",
     routePatterns: ["/project"],
     description: "Project settings",
-    element: <></>,
   },
   {
     id: "transcripts",
@@ -34,7 +27,6 @@ const allActivities: ActivityConfig[] = [
     icon: ApplicationIcons.transcript,
     route: "/transcripts",
     description: "View transcripts",
-    element: <TranscriptsPanel />,
   },
   {
     id: "scans",
@@ -43,7 +35,6 @@ const allActivities: ActivityConfig[] = [
     route: "/scans",
     routePatterns: ["/scans", "/scan"],
     description: "View results",
-    element: <ScansPanel />,
   },
   {
     id: "runScan",
@@ -51,7 +42,6 @@ const allActivities: ActivityConfig[] = [
     icon: ApplicationIcons.play,
     route: "/run",
     description: "Run scans and view active scans",
-    element: <RunScanPanel />,
   },
   {
     id: "validation",
@@ -60,8 +50,14 @@ const allActivities: ActivityConfig[] = [
     route: "/validation",
     routePatterns: ["/validation"],
     description: "Manage validation sets",
-    element: <ValidationPanel />,
   },
+  // {
+  //   id: "timeline",
+  //   label: "Timeline",
+  //   icon: ApplicationIcons.timeline,
+  //   route: "/timeline",
+  //   description: "Timeline prototype",
+  // },
 ];
 
 export const activities = allActivities.filter(

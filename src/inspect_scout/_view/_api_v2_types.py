@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
@@ -267,6 +268,7 @@ class MessagesEventsResponse(BaseModel):
 
     messages: list[ChatMessage]
     events: list[Event]
+    timelines: list[Timeline]
     attachments: dict[str, str] | None = None
 
     model_config = ConfigDict(extra="allow")

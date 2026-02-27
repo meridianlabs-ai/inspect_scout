@@ -7,6 +7,7 @@ reference: "inspect_scout"
 
 ### transcripts_from
 ### Transcript
+### TranscriptInfo
 ### Transcripts
 ### TranscriptsReader
 ### SampleMetadata
@@ -25,6 +26,23 @@ reference: "inspect_scout"
 ### columns
 ### LogColumns
 ### log_columns
+
+## Messages
+
+::: {.callout-note}
+The messages functions linked to below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
+
+```python
+pip install git+https://github.com/meridianlabs-ai/inspect_scout
+```
+:::
+
+### transcript_messages
+### timeline_messages
+### segment_messages
+### span_messages
+### MessagesSegment
+### TimelineMessages
 
 ## Observe
 

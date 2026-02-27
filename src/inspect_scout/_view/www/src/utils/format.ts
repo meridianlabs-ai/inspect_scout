@@ -32,20 +32,29 @@ export const formatDataset = (
  */
 export const formatTime = (seconds: number): string => {
   if (seconds < 60) {
-    return `${formatPrettyDecimal(seconds, 0)} sec`;
+    return `${Math.round(seconds)} sec`;
   } else if (seconds < 60 * 60) {
-    return `${Math.floor(seconds / 60)} min ${Math.floor(seconds % 60)} sec`;
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return sec > 0 ? `${min} min ${sec} sec` : `${min} min`;
   } else if (seconds < 60 * 60 * 24) {
     const hours = Math.floor(seconds / (60 * 60));
     const minutes = Math.floor((seconds % (60 * 60)) / 60);
-    const remainingSeconds = seconds % 60;
-    return `${hours} hr ${minutes} min ${Math.floor(remainingSeconds)} sec`;
+    const sec = Math.floor(seconds % 60);
+    const parts = [`${hours} hr`];
+    if (minutes > 0) parts.push(`${minutes} min`);
+    if (sec > 0) parts.push(`${sec} sec`);
+    return parts.join(" ");
   } else {
     const days = Math.floor(seconds / (60 * 60 * 24));
     const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
     const minutes = Math.floor((seconds % (60 * 60)) / 60);
-    const remainingSeconds = seconds % 60;
-    return `${days} days ${hours} hr ${minutes} min ${Math.floor(remainingSeconds)} sec`;
+    const sec = Math.floor(seconds % 60);
+    const parts = [`${days} days`];
+    if (hours > 0) parts.push(`${hours} hr`);
+    if (minutes > 0) parts.push(`${minutes} min`);
+    if (sec > 0) parts.push(`${sec} sec`);
+    return parts.join(" ");
   }
 };
 
@@ -149,12 +158,27 @@ export function formatDateTime(date: Date): string {
 }
 
 /**
- * Returns the formatted duration between two dates
+ * Returns the formatted duration between two dates.
  */
 export function formatDuration(start: Date, end: Date): string {
   const durationMs = end.getTime() - start.getTime();
   const durationSec = durationMs / 1000;
   return formatTime(durationSec);
+}
+
+/**
+ * Compact duration format: "45s", "4m", "2h 5m".
+ * Drops zero-valued trailing units and uses single-char suffixes.
+ */
+export function formatDurationShort(start: Date, end: Date): string {
+  const totalSec = Math.round((end.getTime() - start.getTime()) / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const mins = Math.floor(totalSec / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (remMins === 0) return `${hours}h`;
+  return `${hours}h ${remMins}m`;
 }
 
 /**

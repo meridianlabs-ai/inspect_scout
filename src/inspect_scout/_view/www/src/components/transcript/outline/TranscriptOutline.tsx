@@ -235,11 +235,18 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
               selectedOutlineId ? selectedOutlineId === node.id : index === 0
             }
             getEventUrl={getEventUrl}
+            onSelect={setSelectedOutlineId}
           />
         );
       }
     },
-    [outlineNodeList, running, selectedOutlineId, getEventUrl]
+    [
+      outlineNodeList,
+      running,
+      selectedOutlineId,
+      getEventUrl,
+      setSelectedOutlineId,
+    ]
   );
 
   return (

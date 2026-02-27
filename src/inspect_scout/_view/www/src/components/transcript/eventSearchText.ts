@@ -37,7 +37,14 @@ export const eventSearchText = (node: EventNode): string[] => {
       const toolEvent = event;
       // Custom tool title (displayed instead of function name)
       if (toolEvent.view?.title) {
-        texts.push(toolEvent.view.title);
+        const resolvedTitle = toolEvent.view.title.replace(
+          /\{\{(\w+)\}\}/g,
+          (match, key: string) =>
+            Object.hasOwn(toolEvent.arguments, key)
+              ? String(toolEvent.arguments[key])
+              : match,
+        );
+        texts.push(resolvedTitle);
       }
       // Tool function name
       if (toolEvent.function) {

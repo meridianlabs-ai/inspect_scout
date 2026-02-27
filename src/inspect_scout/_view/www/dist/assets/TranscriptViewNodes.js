@@ -12744,6 +12744,17 @@ const extractInputMetadata = (toolName) => {
     return void 0;
   }
 };
+const substituteToolCallContent = (content2, args2) => {
+  const replace2 = (text2) => text2.replace(
+    /\{\{(\w+)\}\}/g,
+    (match2, key2) => Object.hasOwn(args2, key2) ? String(args2[key2]) : match2
+  );
+  return {
+    ...content2,
+    title: content2.title ? replace2(content2.title) : content2.title,
+    content: replace2(content2.content)
+  };
+};
 const extractInput = (args2, inputDescriptor) => {
   const formatArg = (key2, value2) => {
     const quotedValue = value2 === null ? "None" : typeof value2 === "string" ? `"${value2}"` : typeof value2 === "object" || Array.isArray(value2) ? JSON.stringify(value2, void 0, 2) : String(value2);
@@ -13158,7 +13169,7 @@ const ChatMessageRow = ({
               description: description2,
               contentType,
               output: resolvedToolOutput,
-              view: tool_call.view ?? void 0
+              view: tool_call.view ? substituteToolCallContent(tool_call.view, tool_call.arguments) : void 0
             },
             `tool-call-${idx}`
           )
@@ -24533,6 +24544,13 @@ const ToolEventView = ({
     () => resolveToolInput(event.function, event.arguments),
     [event.function, event.arguments]
   );
+  const resolvedView = reactExports.useMemo(
+    () => event.view ? substituteToolCallContent(
+      event.view,
+      event.arguments
+    ) : void 0,
+    [event.view, event.arguments]
+  );
   const { approvalNode, lastModelNode } = reactExports.useMemo(() => {
     const approvalNode2 = children2.find((e) => {
       return e.event.event === "approval";
@@ -24545,7 +24563,7 @@ const ToolEventView = ({
       lastModelNode: lastModelNode2
     };
   }, [event.events]);
-  const title2 = `Tool: ${event.view?.title || event.function}`;
+  const title2 = `Tool: ${resolvedView?.title || event.function}`;
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     EventPanel,
     {
@@ -24569,7 +24587,7 @@ const ToolEventView = ({
             contentType,
             output: event.error?.message || event.result || "",
             mode: "compact",
-            view: event.view ? event.view : void 0
+            view: resolvedView
           }
         ),
         lastModelNode ? /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -24619,7 +24637,11 @@ const eventSearchText = (node2) => {
     case "tool": {
       const toolEvent = event;
       if (toolEvent.view?.title) {
-        texts.push(toolEvent.view.title);
+        const resolvedTitle = toolEvent.view.title.replace(
+          /\{\{(\w+)\}\}/g,
+          (match2, key2) => Object.hasOwn(toolEvent.arguments, key2) ? String(toolEvent.arguments[key2]) : match2
+        );
+        texts.push(resolvedTitle);
       }
       if (toolEvent.function) {
         texts.push(toolEvent.function);

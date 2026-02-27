@@ -1,3 +1,5 @@
+import { ToolCallContent } from "../../../types/api-types";
+
 export const kToolTodoContentType = "agent/todo-list";
 export interface ToolCallResult {
   name: string;
@@ -84,6 +86,25 @@ const extractInputMetadata = (
   } else {
     return undefined;
   }
+};
+
+/**
+ * Substitutes `{{param_name}}` placeholders in tool call content
+ * with actual values from the tool call arguments.
+ */
+export const substituteToolCallContent = (
+  content: ToolCallContent,
+  args: Record<string, unknown>,
+): ToolCallContent => {
+  const replace = (text: string): string =>
+    text.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
+      Object.hasOwn(args, key) ? String(args[key]) : match,
+    );
+  return {
+    ...content,
+    title: content.title ? replace(content.title) : content.title,
+    content: replace(content.content),
+  };
 };
 
 const extractInput = (

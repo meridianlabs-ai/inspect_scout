@@ -289,11 +289,20 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
             session_ids.append(transcript.source_id)
             seen_ids.add(transcript.source_id)
 
-    # Rebuild unified timeline and compute total active time
+    # Compute total active time from the merged timeline.
+    # When sessions overlap in time (plan+execute with the same start
+    # timestamp), timeline_build may classify all content as branches,
+    # leaving root.content empty and causing end_time to fail.  Fall back
+    # to summing individual transcript times in that case.
     timeline = timeline_build(merged_events)
     root = timeline.root
-    wall_clock = (root.end_time - root.start_time).total_seconds()
-    total_time = wall_clock - root.idle_time
+    if root.content:
+        wall_clock = (root.end_time - root.start_time).total_seconds()
+        total_time = wall_clock - root.idle_time
+    else:
+        total_time = sum(
+            t.total_time for t in transcripts if t.total_time
+        )
 
     # Build merged metadata
     metadata = dict(first.metadata)

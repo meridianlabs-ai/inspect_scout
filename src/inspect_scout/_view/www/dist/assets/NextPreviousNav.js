@@ -2,10 +2,12 @@ import { j as jsxRuntimeExports, r as reactExports, c as clsx, A as ApplicationI
 import { a as VscodeButton, b as VscodeRadioGroup, c as VscodeRadio, d as VscodeSingleSelect, e as VscodeOption, f as VscodeTextfield, g as VscodeDivider } from "./VscodeTreeItem.js";
 import { M as Modal } from "./Modal.js";
 import { F as Field } from "./FormFields.js";
-import { u as useDropdownPosition, s as styles$6, a as useValidationSets, b as useValidationCase, c as useValidationCases, d as useCreateValidationSet, e as useDeleteValidationCase, f as useUpdateValidationCase, v as validationQueryKeys, i as isValidFilename, h as hasValidationSetExtension, V as ValidationSetSelector, g as extractUniqueLabels, j as ValidationSplitSelector, k as extractUniqueSplits } from "./ValidationSplitSelector.js";
+import { u as useDropdownPosition, s as styles$7, a as useValidationSets, b as useValidationCase, c as useValidationCases, d as useCreateValidationSet, e as useDeleteValidationCase, f as useUpdateValidationCase, v as validationQueryKeys, i as isValidFilename, h as hasValidationSetExtension, V as ValidationSetSelector, g as extractUniqueLabels, j as ValidationSplitSelector, k as extractUniqueSplits } from "./ValidationSplitSelector.js";
 import { C as Chip, A as AutocompleteInput } from "./Chip.js";
 import { P as PopOver } from "./ToolButton.js";
-import { t as resolveMessages, v as ChatMessageRow, L as LiveVirtualList } from "./TranscriptViewNodes.js";
+import { r as resolveMessages, g as ChatMessageRow, L as LiveVirtualList, h as buildTimeline, j as useTimeline, k as rowHasEvents, l as computeRowLayouts, m as getSelectedSpans, n as collectRawEvents, o as computeMinimapSelection, p as buildSpanSelectKeys, u as useEventNodes, q as kTranscriptCollapseScope, s as useProperty, t as TimelineSelectContext, T as TranscriptViewNodes, v as kCollapsibleEventTypes } from "./TranscriptViewNodes.js";
+import { N as NoContentsPanel } from "./NoContentsPanel.js";
+import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 function formatTaskName(parts) {
   const { taskSet, taskId, taskRepeat } = parts;
   if (!taskSet && !taskId && taskRepeat === void 0) {
@@ -37,7 +39,7 @@ function getTranscriptDisplayName(transcript) {
 }
 const content$1 = "_content_10rzs_1";
 const warning = "_warning_10rzs_11";
-const styles$5 = {
+const styles$6 = {
   content: content$1,
   warning
 };
@@ -64,9 +66,9 @@ const ConfirmationDialog = ({
         /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeButton, { secondary: true, onClick: onHide, children: cancelLabel }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeButton, { onClick: onConfirm, disabled: isConfirming, children: isConfirming ? confirmingLabel : confirmLabel })
       ] }),
-      children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$5.content, children: [
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$6.content, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: message }),
-        warning2 && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: styles$5.warning, children: warning2 })
+        warning2 && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: styles$6.warning, children: warning2 })
       ] })
     }
   );
@@ -76,7 +78,7 @@ const iconButton = "_iconButton_poq0z_6";
 const backdrop = "_backdrop_poq0z_33";
 const menu = "_menu_poq0z_42";
 const menuItem = "_menuItem_poq0z_60";
-const styles$4 = {
+const styles$5 = {
   wrapper,
   iconButton,
   backdrop,
@@ -94,11 +96,11 @@ const MenuActionButton = ({
     setShowMenu(false);
     onSelect(value);
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$4.wrapper, children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$5.wrapper, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
       {
-        className: styles$4.iconButton,
+        className: styles$5.iconButton,
         onClick: () => setShowMenu((prev) => !prev),
         title,
         disabled: disabled2,
@@ -106,11 +108,11 @@ const MenuActionButton = ({
       }
     ),
     showMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.backdrop, onClick: () => setShowMenu(false) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.menu, children: items.map((item2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$5.backdrop, onClick: () => setShowMenu(false) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$5.menu, children: items.map((item2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
-          className: styles$4.menuItem,
+          className: styles$5.menuItem,
           onClick: () => handleSelect(item2.value),
           disabled: item2.disabled,
           children: [
@@ -140,7 +142,7 @@ const createError = "_createError_oam2j_107";
 const infoBox = "_infoBox_oam2j_142";
 const idField = "_idField_oam2j_148";
 const idValue = "_idValue_oam2j_153";
-const styles$3 = {
+const styles$4 = {
   container: container$1,
   header,
   headerTitle,
@@ -165,7 +167,7 @@ const popoverContent = "_popoverContent_1nqcj_18";
 const popoverField = "_popoverField_1nqcj_25";
 const popoverLabel = "_popoverLabel_1nqcj_31";
 const popoverActions = "_popoverActions_1nqcj_35";
-const styles$2 = {
+const styles$3 = {
   inputContainer,
   labelChip,
   popoverContent,
@@ -215,7 +217,7 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
     setIsPopoverOpen(true);
   }, []);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.inputContainer, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.inputContainer, children: [
       labelEntries.map(([key, value]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         Chip,
         {
@@ -223,7 +225,7 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
           value: value ? "true" : "false",
           title: `Click to toggle "${key}" to ${value ? "false" : "true"}`,
           closeTitle: `Remove label "${key}"`,
-          className: clsx(styles$2.labelChip, "text-size-smallest"),
+          className: clsx(styles$3.labelChip, "text-size-smallest"),
           onClick: () => handleToggleLabel(key),
           onClose: () => handleRemoveLabel(key)
         },
@@ -236,7 +238,7 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
           icon: ApplicationIcons.add,
           value: "Add",
           title: "Add a new label",
-          className: clsx(styles$2.labelChip, "text-size-smallest"),
+          className: clsx(styles$3.labelChip, "text-size-smallest"),
           onClick: handleOpenPopover
         }
       )
@@ -256,13 +258,13 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
           padding: "0.4rem",
           backgroundColor: "var(--bs-light)"
         },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.popoverContent, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.popoverField, children: [
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.popoverContent, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.popoverField, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "label",
               {
                 htmlFor: "validation-label-name",
-                className: clsx("text-size-smallest", styles$2.popoverLabel),
+                className: clsx("text-size-smallest", styles$3.popoverLabel),
                 children: "Label"
               }
             ),
@@ -281,8 +283,8 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
               }
             )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.popoverField, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: clsx("text-size-smallest", styles$2.popoverLabel), children: "Value" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.popoverField, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: clsx("text-size-smallest", styles$3.popoverLabel), children: "Value" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               VscodeRadioGroup,
               {
@@ -310,7 +312,7 @@ const ValidationCaseLabelsEditor = ({ labels, availableLabels, onChange }) => {
               }
             )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.popoverActions, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.popoverActions, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeButton, { secondary: true, onClick: handleCancel, children: "Cancel" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               VscodeButton,
@@ -348,13 +350,13 @@ const ValidationCasePredicateSelector = ({ value, onChange, disabled: disabled2 
     const newValue = e.target.value;
     onChange(newValue);
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: styles$6.container, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref, className: styles$7.container, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     VscodeSingleSelect,
     {
       position,
       value: value ?? defaultValue,
       onChange: handleChange,
-      className: styles$6.select,
+      className: styles$7.select,
       disabled: disabled2,
       children: PREDICATES.map((predicate) => /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeOption, { value: predicate.value, children: predicate.label }, predicate.value))
     }
@@ -372,8 +374,8 @@ const extractUniquePredicates = (cases) => {
 };
 var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
 var freeSelf = typeof self == "object" && self && self.Object === Object && self;
-var root = freeGlobal || freeSelf || Function("return this")();
-var Symbol$1 = root.Symbol;
+var root$1 = freeGlobal || freeSelf || Function("return this")();
+var Symbol$1 = root$1.Symbol;
 var objectProto$1 = Object.prototype;
 var hasOwnProperty = objectProto$1.hasOwnProperty;
 var nativeObjectToString$1 = objectProto$1.toString;
@@ -454,7 +456,7 @@ function toNumber(value) {
   return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
 }
 var now = function() {
-  return root.Date.now();
+  return root$1.Date.now();
 };
 var FUNC_ERROR_TEXT = "Expected a function";
 var nativeMax = Math.max, nativeMin = Math.min;
@@ -908,7 +910,7 @@ const ValidationCaseEditorComponent = ({
       title: "More actions"
     }
   ) : void 0;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$3.container, className), children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$4.container, className), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       SidebarHeader,
       {
@@ -918,7 +920,7 @@ const ValidationCaseEditorComponent = ({
         onClose: closeValidationSidebar
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$3.content, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(SidebarPanel, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.content, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(SidebarPanel, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(SecondaryDisplayValue, { label: "ID", value: transcriptId }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(Field, { label: "Validation Set", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -932,7 +934,7 @@ const ValidationCaseEditorComponent = ({
             appConfig: config
           }
         ),
-        createError2 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$3.createError, children: createError2 })
+        createError2 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.createError, children: createError2 })
       ] }),
       !isEditable && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeDivider, {}),
@@ -1057,7 +1059,7 @@ const ValidationCaseEditorComponent = ({
   ] });
 };
 const SidebarPanel = ({ children }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$3.panel, children });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.panel, children });
 };
 const SidebarHeader = ({
   icon,
@@ -1066,18 +1068,18 @@ const SidebarHeader = ({
   actions,
   onClose
 }) => {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.header, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: styles$3.headerTitle, children: [
-      icon && /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(icon, styles$3.headerIcon) }),
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$4.header, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: styles$4.headerTitle, children: [
+      icon && /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(icon, styles$4.headerIcon) }),
       title
     ] }),
-    secondary && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$3.headerSecondary, children: secondary }),
-    (actions || onClose) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$3.headerActions, children: [
+    secondary && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$4.headerSecondary, children: secondary }),
+    (actions || onClose) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$4.headerActions, children: [
       actions,
       onClose && /* @__PURE__ */ jsxRuntimeExports.jsx(
         "i",
         {
-          className: clsx(ApplicationIcons.close, styles$3.clickable),
+          className: clsx(ApplicationIcons.close, styles$4.clickable),
           onClick: onClose
         }
       )
@@ -1092,22 +1094,22 @@ const SecondaryDisplayValue = ({
     "div",
     {
       className: clsx(
-        styles$3.idField,
+        styles$4.idField,
         "text-size-smaller",
         "text-style-secondary"
       ),
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$3.idLabel, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$4.idLabel, children: [
           label,
           ":"
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$3.idValue, children: value })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$4.idValue, children: value })
       ]
     }
   );
 };
-const InfoBox = ({ children }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx("text-size-smaller", styles$3.infoBox), children: [
-  /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.info, styles$3.infoIcon) }),
+const InfoBox = ({ children }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx("text-size-smaller", styles$4.infoBox), children: [
+  /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: clsx(ApplicationIcons.info, styles$4.infoIcon) }),
   /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children })
 ] });
 const SaveStatus = ({ status, error }) => {
@@ -1115,11 +1117,11 @@ const SaveStatus = ({ status, error }) => {
     "div",
     {
       className: clsx(
-        styles$3.saveStatusContainer,
-        status === "error" && styles$3.saveStatusError,
-        status === "idle" && styles$3.saveStatusHidden
+        styles$4.saveStatusContainer,
+        status === "error" && styles$4.saveStatusError,
+        status === "idle" && styles$4.saveStatusHidden
       ),
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$3.saveStatus, children: status === "saving" ? "Saving..." : status === "saved" ? "Saved" : status === "error" ? error || "Error saving changes" : "" })
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$4.saveStatus, children: status === "saving" ? "Saving..." : status === "saved" ? "Saved" : status === "error" ? error || "Error saving changes" : "" })
     }
   );
 };
@@ -1140,7 +1142,7 @@ const isOtherTarget = (target) => {
   return true;
 };
 const item = "_item_5fj0m_6";
-const styles$1 = {
+const styles$2 = {
   item
 };
 const messageSearchText = (resolved) => {
@@ -1343,7 +1345,7 @@ const ChatViewVirtualListComponent = reactExports.memo(
       return /* @__PURE__ */ jsxRuntimeExports.jsx(
         "div",
         {
-          className: clsx(styles$1.item),
+          className: clsx(styles$2.item),
           "data-index": props["data-index"],
           "data-item-group-index": props["data-item-group-index"],
           "data-item-index": props["data-item-index"],
@@ -1373,6 +1375,438 @@ const ChatViewVirtualListComponent = reactExports.memo(
     );
   }
 );
+const StickyScroll = ({
+  children,
+  scrollRef,
+  offsetTop = 0,
+  zIndex = 100,
+  className = "",
+  stickyClassName = "is-sticky",
+  onStickyChange,
+  preserveHeight = false
+}) => {
+  const wrapperRef = reactExports.useRef(null);
+  const contentRef = reactExports.useRef(null);
+  const [isSticky, setIsSticky] = reactExports.useState(false);
+  const [dimensions, setDimensions] = reactExports.useState({
+    width: 0,
+    height: 0,
+    left: 0,
+    stickyTop: 0,
+    // Store the position where the element should stick
+    preStickHeight: 0
+    // Height captured just before entering sticky mode
+  });
+  reactExports.useEffect(() => {
+    const wrapper2 = wrapperRef.current;
+    const content2 = contentRef.current;
+    const scrollContainer = scrollRef.current;
+    if (!wrapper2 || !content2 || !scrollContainer) {
+      return;
+    }
+    const sentinel = document.createElement("div");
+    sentinel.style.position = "absolute";
+    sentinel.style.top = "0px";
+    sentinel.style.left = "0";
+    sentinel.style.width = "1px";
+    sentinel.style.height = "1px";
+    sentinel.style.pointerEvents = "none";
+    wrapper2.prepend(sentinel);
+    const widthTracker = document.createElement("div");
+    widthTracker.style.position = "absolute";
+    widthTracker.style.top = "0";
+    widthTracker.style.left = "0";
+    widthTracker.style.width = "100%";
+    widthTracker.style.height = "0";
+    widthTracker.style.pointerEvents = "none";
+    widthTracker.style.visibility = "hidden";
+    wrapper2.prepend(widthTracker);
+    const updateDimensions = () => {
+      if (wrapper2 && scrollContainer) {
+        const contentRect = content2.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const trackerRect = widthTracker.getBoundingClientRect();
+        const stickyTop = containerRect.top + offsetTop;
+        setDimensions((prev) => ({
+          ...prev,
+          // Use the width tracker to get the right width that respects
+          // the parent container's current width, rather than the content's width
+          width: trackerRect.width,
+          height: contentRect.height,
+          left: trackerRect.left,
+          stickyTop
+        }));
+      }
+    };
+    updateDimensions();
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        updateDimensions();
+        if (isSticky) {
+          handleScroll();
+        }
+      });
+    });
+    resizeObserver.observe(wrapper2);
+    resizeObserver.observe(scrollContainer);
+    resizeObserver.observe(content2);
+    const handleScroll = () => {
+      const sentinelRect = sentinel.getBoundingClientRect();
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const shouldBeSticky = sentinelRect.top < containerRect.top + offsetTop;
+      if (shouldBeSticky !== isSticky) {
+        if (shouldBeSticky && preserveHeight && content2) {
+          const capturedHeight = content2.getBoundingClientRect().height;
+          setDimensions((prev) => ({
+            ...prev,
+            preStickHeight: capturedHeight
+          }));
+        }
+        updateDimensions();
+        setIsSticky(shouldBeSticky);
+        if (onStickyChange) {
+          onStickyChange(shouldBeSticky);
+        }
+      }
+    };
+    scrollContainer.addEventListener("scroll", handleScroll);
+    handleScroll();
+    return () => {
+      resizeObserver.disconnect();
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (sentinel.parentNode) {
+        sentinel.parentNode.removeChild(sentinel);
+      }
+      if (widthTracker.parentNode) {
+        widthTracker.parentNode.removeChild(widthTracker);
+      }
+    };
+  }, [scrollRef, offsetTop, onStickyChange, isSticky, preserveHeight]);
+  const wrapperStyle = {
+    position: "relative",
+    height: isSticky ? `${preserveHeight ? dimensions.preStickHeight : dimensions.height}px` : "auto"
+    // Don't constrain width - let it flow naturally with the content
+  };
+  const contentStyle = isSticky ? {
+    position: "fixed",
+    top: `${dimensions.stickyTop}px`,
+    left: `${dimensions.left}px`,
+    width: `${dimensions.width}px`,
+    // Keep explicit width to prevent expanding to 100%
+    maxHeight: `calc(100vh - ${dimensions.stickyTop}px)`,
+    zIndex
+  } : {};
+  const contentClassName = isSticky && stickyClassName ? `${className} ${stickyClassName}`.trim() : className;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapperRef, style: wrapperStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: contentRef, className: contentClassName, style: contentStyle, children }) });
+};
+const emptySourceSpans = /* @__PURE__ */ new Map();
+function useTranscriptTimeline(events) {
+  const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
+  const state = useTimeline(timeline);
+  const prevTimelineRef = reactExports.useRef(timeline);
+  reactExports.useEffect(() => {
+    if (prevTimelineRef.current !== timeline) {
+      prevTimelineRef.current = timeline;
+      state.navigateTo("");
+    }
+  }, [timeline]);
+  const visibleRows = reactExports.useMemo(
+    () => state.rows.filter((row, i) => i === 0 || rowHasEvents(row)),
+    [state.rows]
+  );
+  const timeMapping = reactExports.useMemo(
+    () => computeTimeMapping(state.node),
+    [state.node]
+  );
+  const rootTimeMapping = reactExports.useMemo(
+    () => computeTimeMapping(timeline.root),
+    [timeline.root]
+  );
+  const layouts = reactExports.useMemo(
+    () => computeRowLayouts(visibleRows, timeMapping, "direct"),
+    [visibleRows, timeMapping]
+  );
+  const { selectedEvents, sourceSpans } = reactExports.useMemo(() => {
+    const spans = getSelectedSpans(state.rows, state.selected);
+    if (spans.length === 0) {
+      return { selectedEvents: events, sourceSpans: emptySourceSpans };
+    }
+    const collected = collectRawEvents(spans);
+    return {
+      selectedEvents: collected.events,
+      sourceSpans: collected.sourceSpans
+    };
+  }, [events, state.rows, state.selected]);
+  const minimapSelection = reactExports.useMemo(
+    () => computeMinimapSelection(state.rows, state.selected),
+    [state.rows, state.selected]
+  );
+  const hasTimeline = timeline.root.content.length > 0 && timeline.root.content.some((item2) => item2.type === "span");
+  return {
+    timeline: hasTimeline ? timeline : null,
+    state,
+    layouts,
+    timeMapping,
+    rootTimeMapping,
+    selectedEvents,
+    sourceSpans,
+    minimapSelection,
+    hasTimeline
+  };
+}
+const root = "_root_f0ryp_1";
+const eventsContainer = "_eventsContainer_f0ryp_9";
+const outlineCollapsed = "_outlineCollapsed_f0ryp_17";
+const eventsOutline = "_eventsOutline_f0ryp_21";
+const outlineToggle = "_outlineToggle_f0ryp_26";
+const eventsSeparator = "_eventsSeparator_f0ryp_40";
+const eventsList = "_eventsList_f0ryp_44";
+const styles$1 = {
+  root,
+  eventsContainer,
+  outlineCollapsed,
+  eventsOutline,
+  outlineToggle,
+  eventsSeparator,
+  eventsList
+};
+const collectAllCollapsibleIds = (nodes) => {
+  const result = {};
+  const traverse = (nodeList) => {
+    for (const node of nodeList) {
+      if (kCollapsibleEventTypes.includes(node.event.event)) {
+        result[node.id] = true;
+      }
+      if (node.children.length > 0) {
+        traverse(node.children);
+      }
+    }
+  };
+  traverse(nodes);
+  return result;
+};
+const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2({
+  events,
+  scrollRef,
+  offsetTop = 0,
+  initialEventId,
+  defaultOutlineExpanded = false,
+  id,
+  collapsed,
+  onMarkerNavigate,
+  className
+}, ref) {
+  const {
+    timeline: timelineData,
+    state: timelineState,
+    layouts: timelineLayouts,
+    rootTimeMapping,
+    selectedEvents,
+    sourceSpans,
+    minimapSelection,
+    hasTimeline
+  } = useTranscriptTimeline(events);
+  const spanSelectKeys = reactExports.useMemo(
+    () => buildSpanSelectKeys(timelineState.rows),
+    [timelineState.rows]
+  );
+  const {
+    select: timelineSelect,
+    drillDownAndSelect: timelineDrillDownAndSelect
+  } = timelineState;
+  const selectBySpanId = reactExports.useCallback(
+    (spanId) => {
+      const key = spanSelectKeys.get(spanId);
+      if (!key) return;
+      if (key.parallel && key.spanIndex) {
+        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
+      } else {
+        timelineSelect(key.name, key.spanIndex);
+      }
+    },
+    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+  );
+  const suppressCollapseRef = reactExports.useRef(false);
+  const [markerNavSticky, setMarkerNavSticky] = reactExports.useState(false);
+  const [isSwimLaneSticky, setIsSwimLaneSticky] = reactExports.useState(false);
+  const [stickySwimLaneHeight, setStickySwimLaneHeight] = reactExports.useState(0);
+  const swimLaneStickyContentRef = reactExports.useRef(null);
+  reactExports.useImperativeHandle(
+    ref,
+    () => ({
+      suppressNextCollapse: () => {
+        suppressCollapseRef.current = true;
+      }
+    }),
+    []
+  );
+  const handleSwimLaneStickyChange = reactExports.useCallback((sticky) => {
+    setIsSwimLaneSticky(sticky);
+    if (sticky && suppressCollapseRef.current) {
+      suppressCollapseRef.current = false;
+      setMarkerNavSticky(true);
+    } else if (!sticky) {
+      setStickySwimLaneHeight(0);
+      setMarkerNavSticky(false);
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    const el = swimLaneStickyContentRef.current;
+    if (!isSwimLaneSticky || !el) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      setStickySwimLaneHeight(el.getBoundingClientRect().height);
+    });
+    observer.observe(el);
+    setStickySwimLaneHeight(el.getBoundingClientRect().height);
+    return () => observer.disconnect();
+  }, [isSwimLaneSticky]);
+  const { eventNodes, defaultCollapsedIds } = useEventNodes(
+    selectedEvents,
+    false,
+    sourceSpans
+  );
+  const hasMatchingEvents = eventNodes.length > 0;
+  reactExports.useEffect(() => {
+    if (!initialEventId) {
+      scrollRef.current?.scrollTo({ top: 0 });
+    }
+  }, [selectedEvents, initialEventId, scrollRef]);
+  const setCollapsedEvents = useStore(
+    (state) => state.setTranscriptCollapsedEvents
+  );
+  reactExports.useEffect(() => {
+    if (events.length <= 0 || collapsed === void 0) {
+      return;
+    }
+    if (!collapsed && Object.keys(defaultCollapsedIds).length > 0) {
+      setCollapsedEvents(kTranscriptCollapseScope, defaultCollapsedIds);
+    } else if (collapsed) {
+      const allCollapsibleIds = collectAllCollapsibleIds(eventNodes);
+      setCollapsedEvents(kTranscriptCollapseScope, allCollapsibleIds);
+    }
+  }, [
+    defaultCollapsedIds,
+    eventNodes,
+    collapsed,
+    setCollapsedEvents,
+    events.length
+  ]);
+  const [outlineCollapsed2, setOutlineCollapsed] = useProperty(
+    "timelineEvents",
+    "outlineCollapsed",
+    { defaultValue: !defaultOutlineExpanded, cleanup: false }
+  );
+  const isOutlineCollapsed = outlineCollapsed2 ?? !defaultOutlineExpanded;
+  const [reportedHasNodes, setReportedHasNodes] = reactExports.useState(true);
+  const outlineHasNodes = isOutlineCollapsed ? hasMatchingEvents : reportedHasNodes;
+  const [outlineWidth, setOutlineWidth] = reactExports.useState();
+  const handleOutlineHasNodesChange = reactExports.useCallback(
+    (hasNodes) => {
+      setReportedHasNodes(hasNodes);
+      if (!hasNodes && !isOutlineCollapsed) {
+        setOutlineCollapsed(true);
+      }
+    },
+    [isOutlineCollapsed, setOutlineCollapsed]
+  );
+  const atRoot = timelineState.breadcrumbs.length <= 1;
+  const scrollToTop = reactExports.useCallback(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [scrollRef]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineSelectContext.Provider, { value: selectBySpanId, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$1.root, className), children: [
+    hasTimeline && timelineData && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      StickyScroll,
+      {
+        scrollRef,
+        offsetTop,
+        zIndex: 500,
+        preserveHeight: true,
+        onStickyChange: handleSwimLaneStickyChange,
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: swimLaneStickyContentRef, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          TimelineSwimLanes,
+          {
+            layouts: timelineLayouts,
+            timeline: timelineState,
+            header: {
+              breadcrumbs: timelineState.breadcrumbs,
+              atRoot,
+              onNavigate: timelineState.navigateTo,
+              onScrollToTop: scrollToTop,
+              minimap: {
+                root: timelineData.root,
+                selection: minimapSelection,
+                mapping: rootTimeMapping
+              }
+            },
+            onMarkerNavigate,
+            isSticky: isSwimLaneSticky,
+            forceCollapsed: isSwimLaneSticky && !markerNavSticky,
+            noAnimation: isSwimLaneSticky && !markerNavSticky
+          }
+        ) })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: clsx(
+          styles$1.eventsContainer,
+          isOutlineCollapsed && styles$1.outlineCollapsed
+        ),
+        style: !isOutlineCollapsed && outlineWidth ? { "--outline-width": `${outlineWidth}px` } : void 0,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            StickyScroll,
+            {
+              scrollRef,
+              className: styles$1.eventsOutline,
+              offsetTop: offsetTop + stickySwimLaneHeight,
+              children: [
+                !isOutlineCollapsed && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  TranscriptOutline,
+                  {
+                    eventNodes,
+                    defaultCollapsedIds,
+                    scrollRef,
+                    onHasNodesChange: handleOutlineHasNodesChange,
+                    onWidthChange: setOutlineWidth
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    className: styles$1.outlineToggle,
+                    onClick: outlineHasNodes ? () => setOutlineCollapsed(!isOutlineCollapsed) : void 0,
+                    "aria-disabled": !outlineHasNodes,
+                    title: outlineHasNodes ? void 0 : "No outline available for the current filter",
+                    "aria-label": isOutlineCollapsed ? "Show outline" : "Hide outline",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.sidebar })
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.eventsSeparator }),
+          hasMatchingEvents ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TranscriptViewNodes,
+            {
+              id,
+              eventNodes,
+              defaultCollapsedIds,
+              initialEventId,
+              offsetTop: offsetTop + stickySwimLaneHeight,
+              className: styles$1.eventsList,
+              scrollRef
+            }
+          ) : /* @__PURE__ */ jsxRuntimeExports.jsx(NoContentsPanel, { text: "No events match the current filter" })
+        ]
+      }
+    )
+  ] }) });
+});
 const container = "_container_1i4o7_1";
 const nav = "_nav_1i4o7_9";
 const disabled = "_disabled_1i4o7_9";
@@ -1442,6 +1876,7 @@ const NextPreviousNav = ({
 export {
   ChatViewVirtualList as C,
   NextPreviousNav as N,
+  TimelineEventsView as T,
   ValidationCaseEditor as V,
   getTranscriptDisplayName as g
 };

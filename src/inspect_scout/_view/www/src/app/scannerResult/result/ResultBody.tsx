@@ -5,13 +5,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChatViewVirtualList } from "../../../components/chat/ChatViewVirtualList";
 import { ApplicationIcons } from "../../../components/icons";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
-import { TranscriptView } from "../../../components/transcript/TranscriptView";
 import { transcriptRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
+import type { Event } from "../../../types/api-types";
 import {
   ColumnHeader,
   ColumnHeaderButton,
 } from "../../components/ColumnHeader";
+import { TimelineEventsView } from "../../timeline/components/TimelineEventsView";
 import {
   ScanResultInputData,
   isEventInput,
@@ -85,7 +86,7 @@ interface InputRendererProps {
   className?: string | string[];
   resultData?: ScanResultData;
   inputData: ScanResultInputData;
-  scrollRef?: React.RefObject<HTMLDivElement | null>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   initialMessageId?: string | null;
   initialEventId?: string | null;
   highlightLabeled?: boolean;
@@ -128,13 +129,10 @@ const InputRenderer: FC<InputRendererProps> = ({
         />
       );
     } else if (inputData.input.events && inputData.input.events.length > 0) {
-      return (
-        <TranscriptView
-          id={"scan-input-transcript"}
-          events={inputData.input.events}
-          scrollRef={scrollRef}
-          initialEventId={initialEventId}
-        />
+      return renderEventsView(
+        inputData.input.events,
+        scrollRef,
+        initialEventId
       );
     } else {
       return <NoContentsPanel text="No transcript input available" />;
@@ -166,24 +164,23 @@ const InputRenderer: FC<InputRendererProps> = ({
       />
     );
   } else if (isEventsInput(inputData)) {
-    return (
-      <TranscriptView
-        id={"scan-input-transcript"}
-        events={inputData.input}
-        scrollRef={scrollRef}
-        initialEventId={initialEventId}
-      />
-    );
+    return renderEventsView(inputData.input, scrollRef, initialEventId);
   } else if (isEventInput(inputData)) {
-    return (
-      <TranscriptView
-        id={"scan-input-transcript"}
-        events={[inputData.input]}
-        scrollRef={scrollRef}
-        initialEventId={initialEventId}
-      />
-    );
+    return renderEventsView([inputData.input], scrollRef, initialEventId);
   } else {
     return <div>Unsupported Input Type</div>;
   }
 };
+
+const renderEventsView = (
+  events: Event[],
+  scrollRef: React.RefObject<HTMLDivElement | null>,
+  initialEventId: string | null | undefined
+) => (
+  <TimelineEventsView
+    events={events}
+    scrollRef={scrollRef}
+    id="scan-input-events"
+    initialEventId={initialEventId}
+  />
+);

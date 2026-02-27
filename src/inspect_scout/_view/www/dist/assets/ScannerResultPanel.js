@@ -5,8 +5,8 @@ import { T as TaskName, a as TabSet, b as TabPanel } from "./TaskName.js";
 import { f as formatNumber, T as ToolButton } from "./ToolButton.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { a as useScanRoute, u as useScansDir, S as ScansNavbar } from "./useScansDir.js";
-import { g as useSelectedScanDataframe, j as parseScanResultData, f as useSelectedScanner, C as Card, a as CardHeader, b as CardBody, k as isTranscriptInput, T as TranscriptView, l as isMessagesInput, m as isMessageInput, n as isEventsInput, o as isEventInput, u as useMarkdownRefs, V as Value, c as ValidationResult, E as Explanation, e as resultIdentifier, h as useSelectedScan, i as getScanDisplayName } from "./refs.js";
-import { C as ChatViewVirtualList, N as NextPreviousNav, g as getTranscriptDisplayName, V as ValidationCaseEditor } from "./NextPreviousNav.js";
+import { g as useSelectedScanDataframe, j as parseScanResultData, f as useSelectedScanner, C as Card, a as CardHeader, b as CardBody, k as isTranscriptInput, l as isMessagesInput, m as isMessageInput, n as isEventsInput, o as isEventInput, u as useMarkdownRefs, V as Value, c as ValidationResult, E as Explanation, e as resultIdentifier, T as TranscriptView, h as useSelectedScan, i as getScanDisplayName } from "./refs.js";
+import { C as ChatViewVirtualList, T as TimelineEventsView, N as NextPreviousNav, g as getTranscriptDisplayName, V as ValidationCaseEditor } from "./NextPreviousNav.js";
 import { u as useTranscriptsDir } from "./useTranscriptsDir.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";
 import "./_commonjsHelpers.js";
@@ -20,6 +20,7 @@ import "./FormFields.js";
 import "./ValidationSplitSelector.js";
 import "./useMutation.js";
 import "./Chip.js";
+import "./TimelineSwimLanes.js";
 const useSelectedScanResultData = (scanResultUuid) => {
   const { data: columnTable } = useSelectedScanDataframe();
   return useScanResultData(columnTable, scanResultUuid);
@@ -442,14 +443,10 @@ const InputRenderer = ({
         }
       );
     } else if (inputData.input.events && inputData.input.events.length > 0) {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(
-        TranscriptView,
-        {
-          id: "scan-input-transcript",
-          events: inputData.input.events,
-          scrollRef,
-          initialEventId
-        }
+      return renderEventsView(
+        inputData.input.events,
+        scrollRef,
+        initialEventId
       );
     } else {
       return /* @__PURE__ */ jsxRuntimeExports.jsx(NoContentsPanel, { text: "No transcript input available" });
@@ -483,29 +480,22 @@ const InputRenderer = ({
       }
     );
   } else if (isEventsInput(inputData)) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      TranscriptView,
-      {
-        id: "scan-input-transcript",
-        events: inputData.input,
-        scrollRef,
-        initialEventId
-      }
-    );
+    return renderEventsView(inputData.input, scrollRef, initialEventId);
   } else if (isEventInput(inputData)) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(
-      TranscriptView,
-      {
-        id: "scan-input-transcript",
-        events: [inputData.input],
-        scrollRef,
-        initialEventId
-      }
-    );
+    return renderEventsView([inputData.input], scrollRef, initialEventId);
   } else {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: "Unsupported Input Type" });
   }
 };
+const renderEventsView = (events, scrollRef, initialEventId) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  TimelineEventsView,
+  {
+    events,
+    scrollRef,
+    id: "scan-input-events",
+    initialEventId
+  }
+);
 const container$2 = "_container_19by0_1";
 const styles$4 = {
   container: container$2

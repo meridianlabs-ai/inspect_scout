@@ -12,6 +12,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import HTMLResponse
 from starlette.types import Scope
 
+from inspect_scout._lfs import LFSError, resolve_lfs_directory
+from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
     DEFAULT_SCANS_DIR,
     DEFAULT_SERVER_HOST,
@@ -120,7 +122,20 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = Path(__file__).parent / "www" / "dist"
+    try:
+        dist = resolve_lfs_directory(
+            Path(__file__).parent / "dist",
+            cache_dir=scout_cache_dir("dist"),
+            repo_url="https://github.com/meridianlabs-ai/inspect_scout.git",
+        )
+    except LFSError as e:
+        raise RuntimeError(
+            f"{e}\n"
+            "To fix this, either:\n"
+            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
+            "  2. Check your network connection\n"
+            "  3. Build locally: cd src/inspect_scout/_view/ts-mono && pnpm build"
+        ) from e
     app.mount(
         "/",
         NoCacheStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),

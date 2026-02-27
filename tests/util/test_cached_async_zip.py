@@ -1,4 +1,4 @@
-"""Tests for the global central-directory cache in zip_cache.
+"""Tests for the global central-directory cache in cached_async_zip.
 
 Verifies cross-instance sharing, cache-hit fast path, separate entries
 for different files, and concurrent access correctness.
@@ -17,15 +17,15 @@ from inspect_ai._util import async_zip as async_zip_mod
 from inspect_ai._util.async_zip import CentralDirectory
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
-from inspect_scout._util import zip_cache as zip_cache_mod
-from inspect_scout._util.zip_cache import CachedAsyncZipReader
+from inspect_scout._util import cached_async_zip as cached_async_zip_mod
+from inspect_scout._util.cached_async_zip import CachedAsyncZipReader
 
 
 @pytest.fixture(autouse=True)
 def _clear_cache() -> None:
     """Clear global cache before each test to ensure isolation."""
-    zip_cache_mod._cache.clear()
-    zip_cache_mod._filename_locks.clear()
+    cached_async_zip_mod._cache.clear()
+    cached_async_zip_mod._filename_locks.clear()
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ async def test_cross_instance_sharing(zip_file_a: Path) -> None:
         reader1 = CachedAsyncZipReader(fs, path)
         entry1 = await reader1.get_member_entry("hello.json")
 
-        assert path in zip_cache_mod._cache
+        assert path in cached_async_zip_mod._cache
 
         reader2 = CachedAsyncZipReader(fs, path)
         entry2 = await reader2.get_member_entry("hello.json")
@@ -72,7 +72,7 @@ async def test_cache_hit_fast_path() -> None:
         uncompressed_size=100,
         local_header_offset=0,
     )
-    zip_cache_mod._cache[fake_path] = CentralDirectory(entries=[fake_entry])
+    cached_async_zip_mod._cache[fake_path] = CentralDirectory(entries=[fake_entry])
 
     async with AsyncFilesystem() as fs:
         reader = CachedAsyncZipReader(fs, fake_path)
@@ -95,8 +95,8 @@ async def test_different_files_separate_entries(
         reader_b = CachedAsyncZipReader(fs, path_b)
         entry_b = await reader_b.get_member_entry("world.json")
 
-    assert path_a in zip_cache_mod._cache
-    assert path_b in zip_cache_mod._cache
+    assert path_a in cached_async_zip_mod._cache
+    assert path_b in cached_async_zip_mod._cache
     assert entry_a.filename == "hello.json"
     assert entry_b.filename == "world.json"
 

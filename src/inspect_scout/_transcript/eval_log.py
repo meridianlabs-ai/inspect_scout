@@ -56,7 +56,7 @@ from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-from .._util.zip_cache import CachedAsyncZipReader as AsyncZipReader
+from .._util.cached_async_zip import CachedAsyncZipReader as AsyncZipReader
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns

@@ -11,7 +11,6 @@
 - Scout View: Properly sort scanner results using the value type.
 - Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
 - Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
-- Bugfix: (cherry-pick inspect_ai#3260) Fix async ZIP parser crash on valid `.eval` files whose compressed data contained a false ZIP64 EOCD Locator signature.
 
 ## 0.4.19 (17 February 2026)
 

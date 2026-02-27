@@ -399,9 +399,6 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
         )}
       >
         {displayName ?? layout.name}
-        {layout.parallelCount !== null && (
-          <span className={styles.parallelBadge}>({layout.parallelCount})</span>
-        )}
       </div>
 
       {/* Bar area cell */}

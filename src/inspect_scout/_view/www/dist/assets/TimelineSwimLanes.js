@@ -893,7 +893,6 @@ const barInner = "_barInner_8a9rm_144";
 const fill = "_fill_8a9rm_150";
 const fillParent = "_fillParent_8a9rm_168";
 const fillSelected = "_fillSelected_8a9rm_172";
-const parallelBadge = "_parallelBadge_8a9rm_177";
 const drillDown = "_drillDown_8a9rm_184";
 const marker = "_marker_8a9rm_209";
 const markerError = "_markerError_8a9rm_229";
@@ -930,7 +929,6 @@ const styles = {
   fill,
   fillParent,
   fillSelected,
-  parallelBadge,
   drillDown,
   marker,
   markerError,
@@ -1168,7 +1166,7 @@ const SwimlaneRow = ({
     (_, i) => isSpanSelected(layout, i, parsedSelection)
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.row, role: "row", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
         className: clsx(
@@ -1176,14 +1174,7 @@ const SwimlaneRow = ({
           !layout.isParent && styles.labelChild,
           hasSelectedSpan && styles.labelSelected
         ),
-        children: [
-          displayName ?? layout.name,
-          layout.parallelCount !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.parallelBadge, children: [
-            "(",
-            layout.parallelCount,
-            ")"
-          ] })
-        ]
+        children: displayName ?? layout.name
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.barArea, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.barInner, children: [

@@ -22,6 +22,7 @@ from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_call import ToolCallError
 
 from .detection import detect_provider_format, get_model_name
+from .extraction import extract_input_messages, extract_output, extract_tools
 
 
 def _to_float(value: Any) -> float | None:
@@ -42,7 +43,6 @@ def _to_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
-from .extraction import extract_input_messages, extract_output, extract_tools
 
 
 def _get_timestamp(call: Any, attr: str = "started_at") -> datetime:
@@ -122,8 +122,12 @@ async def to_model_event(call: Any) -> ModelEvent:
     # Provider SDKs may use sentinel objects (e.g. anthropic.Omit) for unset
     # fields which are not valid floats/ints.
     config = GenerateConfig(
-        temperature=_to_float(inputs.get("temperature")) if isinstance(inputs, dict) else None,
-        max_tokens=_to_int(inputs.get("max_tokens")) if isinstance(inputs, dict) else None,
+        temperature=_to_float(inputs.get("temperature"))
+        if isinstance(inputs, dict)
+        else None,
+        max_tokens=_to_int(inputs.get("max_tokens"))
+        if isinstance(inputs, dict)
+        else None,
         top_p=_to_float(inputs.get("top_p")) if isinstance(inputs, dict) else None,
         stop_seqs=inputs.get("stop") if isinstance(inputs, dict) else None,
     )

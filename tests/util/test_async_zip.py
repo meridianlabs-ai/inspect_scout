@@ -1,5 +1,6 @@
 import json
 import os
+import struct
 import sys
 import zipfile
 import zlib
@@ -200,6 +201,30 @@ async def test_read_zstd_compressed_member(zstd_zip_file: Path) -> None:
         data = b"".join(chunks)
         parsed = json.loads(data.decode("utf-8"))
         assert parsed["message"] == "hello zstd"
+
+
+@pytest.mark.asyncio
+async def test_false_zip64_locator_in_compressed_data(tmp_path: Path) -> None:
+    """False ZIP64 locator signature in compressed data must be ignored."""
+    zip_path = tmp_path / "false_locator.zip"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("data.json", json.dumps({"key": "value"}))
+
+    # Inject PK\x06\x07 into the compressed data region so it falls within
+    # the last-65KB tail that _find_central_directory reads.
+    data = zip_path.read_bytes()
+    eocd_pos = data.rfind(b"PK\x05\x06")
+    cd_offset = struct.unpack_from("<I", data, eocd_pos + 16)[0]
+    inject_pos = cd_offset // 2
+    patched = data[:inject_pos] + b"PK\x06\x07" + data[inject_pos + 4 :]
+    assert len(patched) == len(data)
+    zip_path.write_bytes(patched)
+
+    # Must NOT raise ValueError("Corrupt ZIP64 structure")
+    async with AsyncFilesystem() as fs:
+        reader = AsyncZipReader(fs, str(zip_path))
+        await reader.get_member_entry("data.json")
 
 
 @pytest.mark.asyncio

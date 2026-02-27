@@ -66,6 +66,8 @@ def as_scorer(
                     "id": state.sample_id,
                     "epoch": state.epoch,
                     "sample_metadata": state.metadata,
+                    "target": target.target if len(target) > 1 else target.text,
+                    "scores": state.scores,
                 },
                 messages=messages,
                 events=events,

@@ -8164,6 +8164,21 @@
             "default": null,
             "title": "Pending"
           },
+          "role_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ModelUsage"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Role Usage"
+          },
           "score": {
             "$ref": "#/components/schemas/Score"
           },

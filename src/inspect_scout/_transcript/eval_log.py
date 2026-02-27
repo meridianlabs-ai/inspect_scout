@@ -55,8 +55,8 @@ from .._query.condition import Condition, ScalarValue
 from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
+from .._util.cached_async_zip import CachedAsyncZipReader
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-from .._util.cached_async_zip import CachedAsyncZipReader as AsyncZipReader
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns
@@ -500,7 +500,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 if self._files_cache
                 else t.source_uri
             )
-            zip_reader = AsyncZipReader(fs, source_uri)
+            zip_reader = CachedAsyncZipReader(fs, source_uri)
             entry = await zip_reader.get_member_entry(sample_filename)
             inner_cm = await zip_reader.open_member_raw(entry)
             return TranscriptMessagesAndEvents(
@@ -540,7 +540,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
     async def _get_zip_reader_and_entry(
         self, t: TranscriptInfo
-    ) -> tuple[AsyncZipReader, ZipEntry]:
+    ) -> tuple[CachedAsyncZipReader, ZipEntry]:
         """Get ZIP reader and entry for transcript's sample file."""
         id_, epoch = self._get_sample_id_and_epoch(t)
         sample_file_name = f"samples/{id_}_epoch_{epoch}.json"
@@ -557,7 +557,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             if self._files_cache
             else t.source_uri
         )
-        zip_reader = AsyncZipReader(self._fs, source_uri)
+        zip_reader = CachedAsyncZipReader(self._fs, source_uri)
         entry = await zip_reader.get_member_entry(sample_file_name)
         return zip_reader, entry
 

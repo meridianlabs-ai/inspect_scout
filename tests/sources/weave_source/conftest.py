@@ -16,6 +16,7 @@ def get_weave_test_project() -> str:
     """Return the Weave test project, reading env at call time."""
     return os.environ.get("WEAVE_PROJECT", _DEFAULT_WEAVE_PROJECT)
 
+
 F = TypeVar("F", bound=Callable[..., Any])
 
 

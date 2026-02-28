@@ -55,7 +55,7 @@
 }
 /* Self-contained minimap — flex row: mode label + bar area */
 
-._container_t8wdo_3 {
+._container_6x5se_3 {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -69,7 +69,7 @@
  * Stable-width label — renders both time/token values in a CSS grid stack.
  * The cell sizes to the wider value; only the active one is visible.
  */
-._stableLabel_t8wdo_17 {
+._stableLabel_6x5se_17 {
   display: grid;
   font-size: 0.6rem;
   line-height: 1.4;
@@ -80,23 +80,23 @@
   white-space: nowrap;
 }
 
-._stableLabel_t8wdo_17 > * {
+._stableLabel_6x5se_17 > * {
   grid-area: 1 / 1;
 }
 
-._alignRight_t8wdo_32 {
+._alignRight_6x5se_32 {
   justify-items: end;
 }
 
-._alignLeft_t8wdo_36 {
+._alignLeft_6x5se_36 {
   justify-items: start;
 }
 
-._hidden_t8wdo_40 {
+._hidden_6x5se_40 {
   visibility: hidden;
 }
 
-._minimap_t8wdo_44 {
+._minimap_6x5se_44 {
   position: relative;
   height: 18px;
   flex: 1;
@@ -104,7 +104,7 @@
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
-._track_t8wdo_52 {
+._track_6x5se_52 {
   position: absolute;
   left: 0;
   right: 0;
@@ -116,21 +116,8 @@
   opacity: 0.25;
 }
 
-/*
- * Selection region wrapper — anchored at the midpoint of the selection
- * with transform: translateX(-50%) so it stays centered. min-width
- * ensures the markers and pill remain visible even for sub-pixel widths.
- */
-._selectionRegion_t8wdo_69 {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  min-width: 24px;
-  transform: translateX(-50%);
-}
-
-/* Selection region fill — highlight between markers on the track */
-._regionFill_t8wdo_78 {
+/* Fill line — spans the full selection region (absolute inside it) */
+._regionFill_6x5se_65 {
   position: absolute;
   left: 0;
   right: 0;
@@ -142,46 +129,52 @@
   opacity: 0.45;
 }
 
-/* Vertical bar markers at selection region boundaries */
-._marker_t8wdo_91 {
-  position: absolute;
-  top: 50%;
-  height: 9px;
+/* Vertical bar markers — flex items inside selectionRegion */
+._marker_6x5se_78 {
   width: 1px;
+  height: 9px;
+  flex-shrink: 0;
   background-color: var(--bs-primary);
   opacity: 0.7;
-  transform: translateY(-50%);
+  position: relative;
   z-index: 1;
 }
 
-._markerLeft_t8wdo_102 {
-  left: 0;
-}
-
-._markerRight_t8wdo_106 {
-  right: 0;
-}
-
-/* Section duration pill centered on the selection region */
-._sectionTime_t8wdo_111 {
+/*
+ * Selection region — anchored at bar.left (the span's start time).
+ * min-width (set inline as bar.width%) ensures markers span the proportional
+ * range; flex content sizing expands beyond that when the text is wider.
+ * Gap keeps the fill line visible between the markers and text pill.
+ * Contains: regionFill (absolute), marker, text pill, marker (flex items).
+ */
+._selectionRegion_6x5se_95 {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+/* Section duration pill — normal flow child that sizes the label region */
+._sectionTime_6x5se_106 {
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   user-select: none;
+  position: relative;
+  z-index: 1;
 }
 
-._sectionTimePill_t8wdo_123 {
+._sectionTimePill_6x5se_116 {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);
   border: none;
   border-radius: 3px;
-  padding: 0 1px;
+  padding: 0 3px;
   line-height: 1.4;
   white-space: nowrap;
   pointer-events: auto;

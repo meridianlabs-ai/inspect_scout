@@ -61,20 +61,7 @@
   opacity: 0.25;
 }
 
-/*
- * Selection region wrapper — anchored at the midpoint of the selection
- * with transform: translateX(-50%) so it stays centered. min-width
- * ensures the markers and pill remain visible even for sub-pixel widths.
- */
-.selectionRegion {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  min-width: 24px;
-  transform: translateX(-50%);
-}
-
-/* Selection region fill — highlight between markers on the track */
+/* Fill line — spans the full selection region (absolute inside it) */
 .regionFill {
   position: absolute;
   left: 0;
@@ -87,37 +74,43 @@
   opacity: 0.45;
 }
 
-/* Vertical bar markers at selection region boundaries */
+/* Vertical bar markers — flex items inside selectionRegion */
 .marker {
-  position: absolute;
-  top: 50%;
-  height: 9px;
   width: 1px;
+  height: 9px;
+  flex-shrink: 0;
   background-color: var(--bs-primary);
   opacity: 0.7;
-  transform: translateY(-50%);
+  position: relative;
   z-index: 1;
 }
 
-.markerLeft {
-  left: 0;
-}
-
-.markerRight {
-  right: 0;
-}
-
-/* Section duration pill centered on the selection region */
-.sectionTime {
+/*
+ * Selection region — anchored at bar.left (the span's start time).
+ * min-width (set inline as bar.width%) ensures markers span the proportional
+ * range; flex content sizing expands beyond that when the text is wider.
+ * Gap keeps the fill line visible between the markers and text pill.
+ * Contains: regionFill (absolute), marker, text pill, marker (flex items).
+ */
+.selectionRegion {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+/* Section duration pill — normal flow child that sizes the label region */
+.sectionTime {
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   user-select: none;
+  position: relative;
+  z-index: 1;
 }
 
 .sectionTimePill {
@@ -126,7 +119,7 @@
   background-color: var(--vscode-editor-background);
   border: none;
   border-radius: 3px;
-  padding: 0 1px;
+  padding: 0 3px;
   line-height: 1.4;
   white-space: nowrap;
   pointer-events: auto;

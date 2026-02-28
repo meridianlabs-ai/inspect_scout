@@ -501,7 +501,8 @@ const InputRenderer = ({
         events: inputData.input,
         scrollRef,
         id: "scan-input-events",
-        initialEventId
+        initialEventId,
+        timeline: false
       }
     );
   } else if (isEventInput(inputData)) {
@@ -511,7 +512,8 @@ const InputRenderer = ({
         events: [inputData.input],
         scrollRef,
         id: "scan-input-events",
-        initialEventId
+        initialEventId,
+        timeline: false
       }
     );
   } else {

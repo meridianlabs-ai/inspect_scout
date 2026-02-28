@@ -760,20 +760,18 @@ function findSegment(segments, ms) {
   if (hi >= 0) return segments[hi];
   return null;
 }
-const container = "_container_t8wdo_3";
-const stableLabel = "_stableLabel_t8wdo_17";
-const alignRight = "_alignRight_t8wdo_32";
-const alignLeft = "_alignLeft_t8wdo_36";
-const hidden = "_hidden_t8wdo_40";
-const minimap = "_minimap_t8wdo_44";
-const track = "_track_t8wdo_52";
-const selectionRegion = "_selectionRegion_t8wdo_69";
-const regionFill = "_regionFill_t8wdo_78";
-const marker$1 = "_marker_t8wdo_91";
-const markerLeft = "_markerLeft_t8wdo_102";
-const markerRight = "_markerRight_t8wdo_106";
-const sectionTime = "_sectionTime_t8wdo_111";
-const sectionTimePill = "_sectionTimePill_t8wdo_123";
+const container = "_container_6x5se_3";
+const stableLabel = "_stableLabel_6x5se_17";
+const alignRight = "_alignRight_6x5se_32";
+const alignLeft = "_alignLeft_6x5se_36";
+const hidden = "_hidden_6x5se_40";
+const minimap = "_minimap_6x5se_44";
+const track = "_track_6x5se_52";
+const regionFill = "_regionFill_6x5se_65";
+const marker$1 = "_marker_6x5se_78";
+const selectionRegion = "_selectionRegion_6x5se_95";
+const sectionTime = "_sectionTime_6x5se_106";
+const sectionTimePill = "_sectionTimePill_6x5se_116";
 const styles$1 = {
   container,
   stableLabel,
@@ -782,11 +780,9 @@ const styles$1 = {
   hidden,
   minimap,
   track,
-  selectionRegion,
   regionFill,
   marker: marker$1,
-  markerLeft,
-  markerRight,
+  selectionRegion,
   sectionTime,
   sectionTimePill
 };
@@ -858,15 +854,12 @@ const TimelineMinimap = ({
         "div",
         {
           className: styles$1.selectionRegion,
-          style: {
-            left: `${bar.left + bar.width / 2}%`,
-            width: `${bar.width}%`
-          },
+          style: bar.left + bar.width / 2 < 50 ? { left: `${bar.left}%`, minWidth: `${bar.width}%` } : { right: `${100 - bar.left - bar.width}%`, minWidth: `${bar.width}%` },
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.regionFill }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.marker, styles$1.markerLeft) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$1.marker, styles$1.markerRight) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.sectionTime, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.sectionTimePill, onClick: toggle2, children: sectionLabel }) })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.marker }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.sectionTime, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.sectionTimePill, onClick: toggle2, children: sectionLabel }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.marker })
           ]
         }
       )

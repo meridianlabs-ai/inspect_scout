@@ -139,6 +139,7 @@
         "span_id": "main"
       },
       "event_uuids": ["e-001", "e-002", "e-007", "e-008", "e-009"],
+      "total_tokens": 1500,
       "branches": [
         {
           "forked_at": "e-002",

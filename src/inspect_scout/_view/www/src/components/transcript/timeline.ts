@@ -249,9 +249,9 @@ function createTimelineSpan(
     branches,
     description,
     utility,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
-    totalTokens: sumTokens(content),
+    startTime: minStartTime([...content, ...branches]),
+    endTime: maxEndTime([...content, ...branches]),
+    totalTokens: sumTokens([...content, ...branches]),
   };
 }
 
@@ -995,7 +995,7 @@ function detectAutoBranches(span: TimelineSpan): void {
   span.branches.reverse();
 
   // Recompute totalTokens since content was modified
-  span.totalTokens = sumTokens(span.content);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
 }
 
 /**
@@ -1030,7 +1030,7 @@ function classifyBranches(
   }
 
   // Recompute totalTokens since child spans may have changed
-  span.totalTokens = sumTokens(span.content);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
 }
 
 // =============================================================================
@@ -1266,16 +1266,31 @@ export function buildTimeline(events: Event[]): Timeline {
       if (initSpanObj) {
         agentNode.content = [initSpanObj, ...agentNode.content];
         // Recompute timing
-        agentNode.startTime = minStartTime(agentNode.content);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.startTime = minStartTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
       }
 
       // Append scoring as a child span
       if (scoringSpan) {
         agentNode.content.push(scoringSpan);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
       }
 
       root = agentNode;

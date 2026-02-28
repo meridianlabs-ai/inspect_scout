@@ -376,6 +376,7 @@ function labelForOutlineNode(node) {
       return node.event.event;
   }
 }
+const kFramesToStabilize = 10;
 const EventPaddingNode = {
   id: "padding",
   event: {
@@ -401,7 +402,8 @@ const TranscriptOutline = ({
   style,
   onHasNodesChange,
   onWidthChange,
-  onNavigateToEvent
+  onNavigateToEvent,
+  scrollTrackOffset
 }) => {
   const id = "transcript-tree";
   const listHandle = reactExports.useRef(null);
@@ -415,12 +417,37 @@ const TranscriptOutline = ({
   const setSelectedOutlineId = useStore(
     (state) => state.setTranscriptOutlineId
   );
-  const sampleDetailNavigation = { event: void 0 };
   const isProgrammaticScrolling = reactExports.useRef(false);
-  reactExports.useRef(null);
-  reactExports.useRef(0);
-  reactExports.useEffect(() => {
-  }, [sampleDetailNavigation.event, setSelectedOutlineId, scrollRef]);
+  const lastScrollPosition = reactExports.useRef(null);
+  const stableFrameCount = reactExports.useRef(0);
+  const beginProgrammaticScroll = reactExports.useCallback(() => {
+    isProgrammaticScrolling.current = true;
+    lastScrollPosition.current = null;
+    stableFrameCount.current = 0;
+    const checkScrollStabilized = () => {
+      if (!isProgrammaticScrolling.current) return;
+      const currentPosition = scrollRef?.current?.scrollTop ?? null;
+      if (currentPosition === lastScrollPosition.current) {
+        stableFrameCount.current++;
+        if (stableFrameCount.current >= kFramesToStabilize) {
+          isProgrammaticScrolling.current = false;
+          return;
+        }
+      } else {
+        stableFrameCount.current = 0;
+        lastScrollPosition.current = currentPosition;
+      }
+      requestAnimationFrame(checkScrollStabilized);
+    };
+    requestAnimationFrame(checkScrollStabilized);
+  }, [scrollRef]);
+  const handleOutlineSelect = reactExports.useCallback(
+    (nodeId) => {
+      setSelectedOutlineId(nodeId);
+      beginProgrammaticScroll();
+    },
+    [setSelectedOutlineId, beginProgrammaticScroll]
+  );
   const outlineNodeList = reactExports.useMemo(() => {
     const nodeList = flatTree(
       eventNodes,
@@ -483,7 +510,8 @@ const TranscriptOutline = ({
         }
       }
     },
-    scrollRef
+    scrollRef,
+    { topOffset: scrollTrackOffset }
   );
   reactExports.useEffect(() => {
     if (!collapsedEvents && Object.keys(defaultCollapsedIds).length > 0) {
@@ -510,7 +538,7 @@ const TranscriptOutline = ({
             running: running && index === outlineNodeList.length - 1,
             selected: selectedOutlineId ? selectedOutlineId === node.id : index === 0,
             getEventUrl,
-            onSelect: setSelectedOutlineId,
+            onSelect: handleOutlineSelect,
             onNavigateToEvent
           },
           node.id
@@ -522,7 +550,7 @@ const TranscriptOutline = ({
       running,
       selectedOutlineId,
       getEventUrl,
-      setSelectedOutlineId,
+      handleOutlineSelect,
       onNavigateToEvent
     ]
   );

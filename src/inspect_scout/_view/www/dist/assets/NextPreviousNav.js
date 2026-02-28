@@ -1784,7 +1784,8 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
                     scrollRef,
                     onHasNodesChange: handleOutlineHasNodesChange,
                     onWidthChange: setOutlineWidth,
-                    onNavigateToEvent: handleOutlineNavigate
+                    onNavigateToEvent: handleOutlineNavigate,
+                    scrollTrackOffset: offsetTop + stickySwimLaneHeight
                   }
                 ),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(

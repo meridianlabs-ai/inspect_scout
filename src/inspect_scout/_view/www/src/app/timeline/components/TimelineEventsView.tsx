@@ -350,6 +350,7 @@ export const TimelineEventsView = forwardRef<
                 onHasNodesChange={handleOutlineHasNodesChange}
                 onWidthChange={setOutlineWidth}
                 onNavigateToEvent={handleOutlineNavigate}
+                scrollTrackOffset={offsetTop + stickySwimLaneHeight}
               />
             )}
             <button

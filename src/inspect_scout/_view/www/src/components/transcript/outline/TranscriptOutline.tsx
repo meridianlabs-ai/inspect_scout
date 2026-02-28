@@ -44,6 +44,8 @@ interface TranscriptOutlineProps {
   onWidthChange?: (width: number) => void;
   /** Called when user clicks an outline item but URL-based navigation is unavailable. */
   onNavigateToEvent?: (eventId: string) => void;
+  /** Offset from the top of the scroll container where visible content begins (e.g. sticky header height). */
+  scrollTrackOffset?: number;
 }
 
 // hack: add a padding node to the end of the list so
@@ -76,6 +78,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   onHasNodesChange,
   onWidthChange,
   onNavigateToEvent,
+  scrollTrackOffset,
 }) => {
   const id = "transcript-tree";
   // The virtual list handle and state
@@ -96,52 +99,47 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   const setSelectedOutlineId = useStore(
     (state) => state.setTranscriptOutlineId
   );
-  const sampleDetailNavigation = { event: undefined }; // useSampleDetailNavigation();
-
-  // Flag to indicate programmatic scrolling is in progress
+  // Flag to indicate programmatic scrolling is in progress.
+  // While true, useScrollTrack updates are suppressed so the
+  // click-based selection isn't overwritten mid-scroll.
   const isProgrammaticScrolling = useRef(false);
-  // Last position to check for scroll stabilization
   const lastScrollPosition = useRef<number | null>(null);
-  // Frame count for detecting scroll stabilization
   const stableFrameCount = useRef(0);
 
-  useEffect(() => {
-    if (sampleDetailNavigation.event) {
-      // Set the flag to indicate we're in programmatic scrolling
-      isProgrammaticScrolling.current = true;
-      lastScrollPosition.current = null;
-      stableFrameCount.current = 0;
+  const beginProgrammaticScroll = useCallback(() => {
+    isProgrammaticScrolling.current = true;
+    lastScrollPosition.current = null;
+    stableFrameCount.current = 0;
 
-      setSelectedOutlineId(sampleDetailNavigation.event);
+    const checkScrollStabilized = () => {
+      if (!isProgrammaticScrolling.current) return;
 
-      // Start monitoring to detect when scrolling has stabilized
-      const checkScrollStabilized = () => {
-        if (!isProgrammaticScrolling.current) return;
+      const currentPosition = scrollRef?.current?.scrollTop ?? null;
 
-        const currentPosition = scrollRef?.current?.scrollTop ?? null;
-
-        if (currentPosition === lastScrollPosition.current) {
-          stableFrameCount.current++;
-
-          // If position has been stable for a few frames, consider scrolling complete
-          if (stableFrameCount.current >= kFramesToStabilize) {
-            isProgrammaticScrolling.current = false;
-            return;
-          }
-        } else {
-          // Reset stability counter if position changed
-          stableFrameCount.current = 0;
-          lastScrollPosition.current = currentPosition;
+      if (currentPosition === lastScrollPosition.current) {
+        stableFrameCount.current++;
+        if (stableFrameCount.current >= kFramesToStabilize) {
+          isProgrammaticScrolling.current = false;
+          return;
         }
+      } else {
+        stableFrameCount.current = 0;
+        lastScrollPosition.current = currentPosition;
+      }
 
-        // Continue checking until scrolling stabilizes
-        requestAnimationFrame(checkScrollStabilized);
-      };
-
-      // Start the RAF loop to detect scroll stabilization
       requestAnimationFrame(checkScrollStabilized);
-    }
-  }, [sampleDetailNavigation.event, setSelectedOutlineId, scrollRef]);
+    };
+
+    requestAnimationFrame(checkScrollStabilized);
+  }, [scrollRef]);
+
+  const handleOutlineSelect = useCallback(
+    (nodeId: string) => {
+      setSelectedOutlineId(nodeId);
+      beginProgrammaticScroll();
+    },
+    [setSelectedOutlineId, beginProgrammaticScroll]
+  );
 
   const outlineNodeList = useMemo(() => {
     // flattten the event tree
@@ -223,7 +221,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
         }
       }
     },
-    scrollRef
+    scrollRef,
+    { topOffset: scrollTrackOffset }
   );
 
   // Update the collapsed events when the default collapsed IDs change
@@ -256,7 +255,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
               selectedOutlineId ? selectedOutlineId === node.id : index === 0
             }
             getEventUrl={getEventUrl}
-            onSelect={setSelectedOutlineId}
+            onSelect={handleOutlineSelect}
             onNavigateToEvent={onNavigateToEvent}
           />
         );
@@ -267,7 +266,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       running,
       selectedOutlineId,
       getEventUrl,
-      setSelectedOutlineId,
+      handleOutlineSelect,
       onNavigateToEvent,
     ]
   );

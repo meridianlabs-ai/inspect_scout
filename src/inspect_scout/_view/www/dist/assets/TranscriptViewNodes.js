@@ -302,7 +302,7 @@ function useScrollTrack(elementIds, onElementVisible, scrollRef, options) {
   const findTopmostVisibleElement = reactExports.useCallback(() => {
     const container2 = scrollRef?.current;
     const containerRect = container2?.getBoundingClientRect();
-    const topOffset = 50;
+    const topOffset = options?.topOffset ?? 50;
     const viewportTop = containerRect ? containerRect.top + topOffset : topOffset;
     const viewportBottom = containerRect ? containerRect.bottom : window.innerHeight;
     const viewportHeight = viewportBottom - viewportTop;
@@ -345,7 +345,7 @@ function useScrollTrack(elementIds, onElementVisible, scrollRef, options) {
   }, [elementIds, scrollRef, options?.topOffset]);
   const checkVisibility = reactExports.useCallback(() => {
     const now = Date.now();
-    const checkInterval = 100;
+    const checkInterval = options?.checkInterval ?? 100;
     if (now - lastCheckRef.current < checkInterval) {
       return;
     }

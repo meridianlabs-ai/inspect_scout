@@ -42,7 +42,7 @@ def get_weave_client(
         ImportError: If weave package is not installed
     """
     try:
-        import weave
+        import weave  # type: ignore[import-not-found]
     except ImportError as e:
         raise ImportError(
             "The weave package is required for Weave import. "

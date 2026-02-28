@@ -78,8 +78,10 @@ async def weave(
         raise ValueError("'project' must be provided")
 
     try:
-        import weave
-        from weave.trace_server.trace_server_interface import CallsFilter
+        import weave  # type: ignore[import-not-found]
+        from weave.trace_server.trace_server_interface import (
+            CallsFilter,  # type: ignore[import-not-found]
+        )
     except ImportError as e:
         raise ImportError(
             "The weave package is required for Weave import. "

@@ -79,8 +79,8 @@ async def weave(
 
     try:
         import weave  # type: ignore[import-not-found]
-        from weave.trace_server.trace_server_interface import (
-            CallsFilter,  # type: ignore[import-not-found]
+        from weave.trace_server.trace_server_interface import (  # type: ignore[import-not-found]
+            CallsFilter,
         )
     except ImportError as e:
         raise ImportError(

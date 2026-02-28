@@ -59,6 +59,8 @@ interface TimelineEventsViewProps {
   onMarkerNavigate?: (eventId: string) => void;
   /** Controls which marker kinds are shown and at what depth. */
   markerConfig?: MarkerConfig;
+  /** Controls swimlane visibility. `"auto"` shows when data has child spans. Default: `"auto"`. */
+  timeline?: true | false | "auto";
   className?: string;
 }
 
@@ -107,6 +109,7 @@ export const TimelineEventsView = forwardRef<
     collapsed,
     onMarkerNavigate,
     markerConfig,
+    timeline: timelineProp = "auto",
     className,
   },
   ref
@@ -276,6 +279,9 @@ export const TimelineEventsView = forwardRef<
   // Derived values
   // ---------------------------------------------------------------------------
 
+  const showSwimlanes =
+    timelineProp === true || (timelineProp === "auto" && hasTimeline);
+
   const atRoot = timelineState.breadcrumbs.length <= 1;
 
   const scrollToTop = useCallback(() => {
@@ -289,7 +295,7 @@ export const TimelineEventsView = forwardRef<
   return (
     <TimelineSelectContext.Provider value={selectBySpanId}>
       <div className={clsx(styles.root, className)}>
-        {hasTimeline && timelineData && (
+        {showSwimlanes && (
           <StickyScroll
             scrollRef={scrollRef}
             offsetTop={offsetTop}

@@ -184,6 +184,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         scrollRef={scrollRef}
         id="scan-input-events"
         initialEventId={initialEventId}
+        timeline={false}
       />
     );
   } else if (isEventInput(inputData)) {
@@ -193,6 +194,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         scrollRef={scrollRef}
         id="scan-input-events"
         initialEventId={initialEventId}
+        timeline={false}
       />
     );
   } else {

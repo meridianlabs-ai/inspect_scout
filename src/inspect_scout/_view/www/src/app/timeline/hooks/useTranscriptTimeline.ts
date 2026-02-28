@@ -35,8 +35,8 @@ import { type TimelineState, useTimeline } from "./useTimeline";
 const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
 
 interface TranscriptTimelineResult {
-  /** The built Timeline, or null if events are empty. */
-  timeline: Timeline | null;
+  /** The built Timeline. Always present (even for root-only timelines). */
+  timeline: Timeline;
   /** Full useTimeline state (node, rows, breadcrumbs, navigation). */
   state: TimelineState;
   /** Computed row layouts for the swimlane UI. */
@@ -124,7 +124,7 @@ export function useTranscriptTimeline(
     timeline.root.content.some((item) => item.type === "span");
 
   return {
-    timeline: hasTimeline ? timeline : null,
+    timeline,
     state,
     layouts,
     timeMapping,

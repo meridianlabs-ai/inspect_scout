@@ -1548,7 +1548,7 @@ function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
   );
   const hasTimeline = timeline.root.content.length > 0 && timeline.root.content.some((item2) => item2.type === "span");
   return {
-    timeline: hasTimeline ? timeline : null,
+    timeline,
     state,
     layouts,
     timeMapping,
@@ -1600,6 +1600,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
   collapsed,
   onMarkerNavigate,
   markerConfig,
+  timeline: timelineProp = "auto",
   className
 }, ref) {
   const {
@@ -1721,12 +1722,13 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     },
     [isOutlineCollapsed, setOutlineCollapsed]
   );
+  const showSwimlanes = timelineProp === true || timelineProp === "auto" && hasTimeline;
   const atRoot = timelineState.breadcrumbs.length <= 1;
   const scrollToTop = reactExports.useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [scrollRef]);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineSelectContext.Provider, { value: selectBySpanId, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$1.root, className), children: [
-    hasTimeline && timelineData && /* @__PURE__ */ jsxRuntimeExports.jsx(
+    showSwimlanes && /* @__PURE__ */ jsxRuntimeExports.jsx(
       StickyScroll,
       {
         scrollRef,

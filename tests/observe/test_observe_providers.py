@@ -1447,7 +1447,7 @@ class TestGoogleProvider:
                 # Second turn
                 response2 = await client.aio.models.generate_content(
                     model="gemini-3-flash-preview",
-                    contents=history,  # type: ignore[arg-type]
+                    contents=history,  # type: ignore[arg-type,unused-ignore]
                     config={"max_output_tokens": 50},
                 )
                 assert "Carol" in (response2.text or "")

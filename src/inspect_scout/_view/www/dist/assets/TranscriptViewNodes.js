@@ -26527,7 +26527,7 @@ const TranscriptVirtualListComponent = ({
       offsetTop,
       renderRow,
       live: running,
-      animation: running,
+      animation: !!running,
       itemSearchText: eventSearchText
     }
   );

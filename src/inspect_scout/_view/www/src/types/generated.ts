@@ -2000,6 +2000,11 @@ export interface components {
          * @description Model call (raw request/response data).
          */
         ModelCall: {
+            /**
+             * Error
+             * @default null
+             */
+            error: boolean | null;
             /** Request */
             request: {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -3221,6 +3226,13 @@ export interface components {
              * @default null
              */
             pending: boolean | null;
+            /**
+             * Role Usage
+             * @default null
+             */
+            role_usage: {
+                [key: string]: components["schemas"]["ModelUsage"];
+            } | null;
             score: components["schemas"]["Score"];
             /**
              * Span Id

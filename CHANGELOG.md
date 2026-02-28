@@ -7,6 +7,10 @@
 - Transcript DB: `claude_code()` source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
+- Transcripts: unthin `target` and and add `scores` from sample JSON.
+- Scout View: Properly sort scanner results using the value type.
+- Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
+- Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 
 ## 0.4.19 (17 February 2026)
 

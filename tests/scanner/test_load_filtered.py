@@ -1,18 +1,25 @@
 """Tests for load_filtered_transcript function."""
 
+from __future__ import annotations
+
 import io
 import json
-import time
+import math
+from collections import Counter
 from collections.abc import AsyncIterable, AsyncIterator
-from typing import Any, Counter, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pytest
+
+if TYPE_CHECKING:
+    from tests.conftest import CallTracker
+
+from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
 from inspect_scout._transcript.types import EventFilter, MessageFilter
-from inspect_scout._util.async_zip import AsyncZipReader
 
 
 def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
@@ -23,42 +30,44 @@ def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
 @pytest.mark.asyncio
 async def test_basic_loading() -> None:
     """Test basic transcript loading."""
-    data = {
-        "id": "test-001",
-        "metadata": {
-            "eval_name": "diffecient",
-            "eval_file_path": "some_path",
-            "variant_name": "hard",
-            "first_solve_time": 454,
-            "category": "cryptography",
-            "competition": "Sekai-2022",
-            "some_object": {"hi": "there"},
-        },
-        "messages": [
-            {"id": "m1", "role": "user", "content": "Hello"},
-            {"id": "m2", "role": "assistant", "content": "Hi"},
-        ],
-        "events": [
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "span_id": "s1",
-                "timestamp": 1640995200.123,
-                "event": "score",
-                "score": {"value": 0.85},
+                "id": "test-001",
+                "metadata": {
+                    "eval_name": "diffecient",
+                    "eval_file_path": "some_path",
+                    "variant_name": "hard",
+                    "first_solve_time": 454,
+                    "category": "cryptography",
+                    "competition": "Sekai-2022",
+                    "some_object": {"hi": "there"},
+                },
+                "messages": [
+                    {"id": "m1", "role": "user", "content": "Hello"},
+                    {"id": "m2", "role": "assistant", "content": "Hi"},
+                ],
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": 1640995200.123,
+                        "event": "score",
+                        "score": {"value": 0.85},
+                    }
+                ],
+                "attachments": {},
             }
-        ],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test-001",
-        source_type="test",
-        source_id="source-001",
-        source_uri="/test.json",
-        metadata={"test": True},
+        ),
+        TranscriptInfo(
+            transcript_id="test-001",
+            source_type="test",
+            source_id="source-001",
+            source_uri="/test.json",
+            metadata={"test": True},
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert isinstance(result, Transcript)
     assert result.transcript_id == "test-001"
@@ -93,26 +102,28 @@ async def test_message_filtering(
     message_filter: MessageFilter, expected_count: int, expected_roles: list[str]
 ) -> None:
     """Test message filtering with different filter configurations."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "User message"},
-            {"role": "assistant", "content": "Assistant message"},
-            {"role": "system", "content": "System message"},
-        ],
-        "events": [],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {"role": "user", "content": "User message"},
+                    {"role": "assistant", "content": "Assistant message"},
+                    {"role": "system", "content": "System message"},
+                ],
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        message_filter,
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, message_filter, "all")
 
     assert len(result.messages) == expected_count
     actual_roles = [msg.role for msg in result.messages]
@@ -133,37 +144,44 @@ async def test_event_filtering(
     event_filter: EventFilter, expected_count: int, expected_types: list[str]
 ) -> None:
     """Test event filtering with different filter configurations."""
-    data = {
-        "id": "test",
-        "messages": [],
-        "events": [
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "span_id": "s1",
-                "timestamp": 1.0,
-                "event": "span_begin",
-                "id": "s1",
-                "name": "test_span",
-            },
-            {
-                "span_id": "s2",
-                "timestamp": 2.0,
-                "event": "score",
-                "score": {"value": 0.85},
-            },
-            {"span_id": "s3", "timestamp": 3.0, "event": "span_end", "id": "s1"},
-        ],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+                "id": "test",
+                "messages": [],
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": 1.0,
+                        "event": "span_begin",
+                        "id": "s1",
+                        "name": "test_span",
+                    },
+                    {
+                        "span_id": "s2",
+                        "timestamp": 2.0,
+                        "event": "score",
+                        "score": {"value": 0.85},
+                    },
+                    {
+                        "span_id": "s3",
+                        "timestamp": 3.0,
+                        "event": "span_end",
+                        "id": "s1",
+                    },
+                ],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        event_filter,
     )
-
-    result = await load_filtered_transcript(stream, info, "all", event_filter)
 
     assert len(result.events) == expected_count
     actual_types = [evt.event for evt in result.events]
@@ -173,34 +191,41 @@ async def test_event_filtering(
 @pytest.mark.asyncio
 async def test_combined_filtering() -> None:
     """Test filtering both messages and events simultaneously."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "Q"},
-            {"role": "assistant", "content": "A"},
-            {"role": "system", "content": "S"},
-        ],
-        "events": [
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "span_id": "s1",
-                "timestamp": 1.0,
-                "event": "score",
-                "score": {"value": 0.9},
-            },
-            {"span_id": "s2", "timestamp": 2.0, "event": "error", "error": "Test"},
-        ],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+                "id": "test",
+                "messages": [
+                    {"role": "user", "content": "Q"},
+                    {"role": "assistant", "content": "A"},
+                    {"role": "system", "content": "S"},
+                ],
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": 1.0,
+                        "event": "score",
+                        "score": {"value": 0.9},
+                    },
+                    {
+                        "span_id": "s2",
+                        "timestamp": 2.0,
+                        "event": "error",
+                        "error": "Test",
+                    },
+                ],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        ["user"],
+        ["score"],
     )
-
-    result = await load_filtered_transcript(stream, info, ["user"], ["score"])
 
     assert len(result.messages) == 1
     assert result.messages[0].role == "user"
@@ -211,50 +236,52 @@ async def test_combined_filtering() -> None:
 @pytest.mark.asyncio
 async def test_attachment_resolution() -> None:
     """Test resolution of attachment references."""
-    data = {
-        "id": "test",
-        "messages": [
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "role": "user",
-                "content": "attachment://a1b2c3d4e5f678901234567890123456",
-            },
-            {
-                "role": "assistant",
-                "content": [
+                "id": "test",
+                "messages": [
                     {
-                        "type": "text",
-                        "text": "attachment://b2c3d4e5f67890123456789012345678",
+                        "role": "user",
+                        "content": "attachment://a1b2c3d4e5f678901234567890123456",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "attachment://b2c3d4e5f67890123456789012345678",
+                            }
+                        ],
+                    },
+                ],
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": 1.0,
+                        "event": "tool",
+                        "id": "tool1",
+                        "function": "test_function",
+                        "arguments": {},
+                        "result": "attachment://c3d4e5f6789012345678901234567890",
                     }
                 ],
-            },
-        ],
-        "events": [
-            {
-                "span_id": "s1",
-                "timestamp": 1.0,
-                "event": "tool",
-                "id": "tool1",
-                "function": "test_function",
-                "arguments": {},
-                "result": "attachment://c3d4e5f6789012345678901234567890",
+                "attachments": {
+                    "a1b2c3d4e5f678901234567890123456": "Content A",
+                    "b2c3d4e5f67890123456789012345678": "Content B",
+                    "c3d4e5f6789012345678901234567890": "Content C",
+                },
             }
-        ],
-        "attachments": {
-            "a1b2c3d4e5f678901234567890123456": "Content A",
-            "b2c3d4e5f67890123456789012345678": "Content B",
-            "c3d4e5f6789012345678901234567890": "Content C",
-        },
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert result.messages[0].content == "Content A"
     assert result.messages[1].text == "Content B"
@@ -265,24 +292,29 @@ async def test_attachment_resolution() -> None:
 @pytest.mark.asyncio
 async def test_missing_attachments() -> None:
     """Test handling of missing attachment references."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "attachment://missingabcdef1234567890123456"}
-        ],
-        "events": [],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "attachment://missingabcdef1234567890123456",
+                    }
+                ],
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     # Missing attachment should remain as reference
     assert "attachment://missingabcdef1234567890123456" in result.messages[0].content
@@ -291,29 +323,31 @@ async def test_missing_attachments() -> None:
 @pytest.mark.asyncio
 async def test_malformed_attachments() -> None:
     """Test handling of malformed attachment references."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "attachment://short"},
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "role": "user",
-                "content": "attachment://toolong123456789012345678901234567890",
-            },
-            {"role": "user", "content": "Regular text without attachments"},
-        ],
-        "events": [],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+                "id": "test",
+                "messages": [
+                    {"role": "user", "content": "attachment://short"},
+                    {
+                        "role": "user",
+                        "content": "attachment://toolong123456789012345678901234567890",
+                    },
+                    {"role": "user", "content": "Regular text without attachments"},
+                ],
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     # Malformed references should remain unchanged
     assert result.messages[0].content == "attachment://short"
@@ -327,26 +361,31 @@ async def test_malformed_attachments() -> None:
 @pytest.mark.asyncio
 async def test_unicode_and_special_chars() -> None:
     """Test handling of unicode and special characters in attachments."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "attachment://a1b2c3d4e5f678901234567890123456"}
-        ],
-        "events": [],
-        "attachments": {
-            "a1b2c3d4e5f678901234567890123456": "Unicode: éñ中文🌟\nSpecial: @#$%"
-        },
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "attachment://a1b2c3d4e5f678901234567890123456",
+                    }
+                ],
+                "events": [],
+                "attachments": {
+                    "a1b2c3d4e5f678901234567890123456": "Unicode: éñ中文🌟\nSpecial: @#$%"
+                },
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert result.messages[0].content == "Unicode: éñ中文🌟\nSpecial: @#$%"
 
@@ -354,17 +393,19 @@ async def test_unicode_and_special_chars() -> None:
 @pytest.mark.asyncio
 async def test_empty_transcript() -> None:
     """Test handling of empty transcript."""
-    data = {"id": "empty", "messages": [], "events": [], "attachments": {}}
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="empty",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {"id": "empty", "messages": [], "events": [], "attachments": {}}
+        ),
+        TranscriptInfo(
+            transcript_id="empty",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     assert len(result.messages) == 0
     assert len(result.events) == 0
@@ -405,22 +446,24 @@ async def test_json5_nan_inf_fallback(data_type: Literal["io", "iterable"]) -> N
         if data_type == "iterable"
         else io.BytesIO(json5_content)
     )
-    info = TranscriptInfo(
-        transcript_id="json5-test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
-        metadata={"original": "metadata"},
-    )
 
-    result = await load_filtered_transcript(source, info, "all", "all")
+    result = await load_filtered_transcript(
+        source,
+        TranscriptInfo(
+            transcript_id="json5-test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+            metadata={"original": "metadata"},
+        ),
+        "all",
+        "all",
+    )
 
     assert result.transcript_id == "json5-test"
     assert len(result.messages) == 2
     assert len(result.events) == 1
     # Verify NaN/Inf values are parsed (they become Python float nan/inf)
-    import math
-
     sample_meta = result.metadata["sample_metadata"]
     assert math.isnan(sample_meta["score"])
     assert math.isinf(sample_meta["limit"]) and sample_meta["limit"] > 0
@@ -430,7 +473,9 @@ async def test_json5_nan_inf_fallback(data_type: Literal["io", "iterable"]) -> N
 @pytest.mark.asyncio
 async def test_json5_fallback_with_filtering() -> None:
     """Test that json5 fallback applies filtering correctly."""
-    json5_content = b"""{
+    result = await load_filtered_transcript(
+        io.BytesIO(
+            b"""{
         "id": "filter-test",
         "metadata": {},
         "messages": [
@@ -444,17 +489,16 @@ async def test_json5_fallback_with_filtering() -> None:
         ],
         "attachments": {}
     }"""
-
-    stream = io.BytesIO(json5_content)
-    info = TranscriptInfo(
-        transcript_id="filter-test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+        ),
+        TranscriptInfo(
+            transcript_id="filter-test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        ["user"],
+        ["score"],
     )
-
-    # Filter: only user messages, only score events
-    result = await load_filtered_transcript(stream, info, ["user"], ["score"])
 
     assert len(result.messages) == 1
     assert result.messages[0].role == "user"
@@ -463,102 +507,65 @@ async def test_json5_fallback_with_filtering() -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_and_filter() -> None:
-    """Test filtering of messages and events."""
-    data = {
-        "id": "test",
-        "messages": [
-            {"role": "user", "content": "Hello"},
-            {"role": "system", "content": "System"},
-        ],
-        "events": [
-            {
-                "span_id": "s1",
-                "timestamp": 1.0,
-                "event": "score",
-                "score": {"value": 0.9},
-            },
-            {"span_id": "s2", "timestamp": 2.0, "event": "error", "error": "Error"},
-        ],
-        "attachments": {},
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
-        metadata={"key": "value"},
-    )
-
-    transcript = await load_filtered_transcript(stream, info, ["user"], ["score"])
-
-    assert isinstance(transcript, Transcript)
-    assert transcript.transcript_id == "test"
-    assert transcript.metadata == {"key": "value"}
-    assert len(transcript.messages) == 1
-    assert transcript.messages[0].role == "user"
-    assert len(transcript.events) == 1
-    assert transcript.events[0].event == "score"
-
-
-@pytest.mark.asyncio
 async def test_attachment_resolution_in_nested_structures() -> None:
     """Test attachment resolution in deeply nested structures (lists and dicts)."""
-    data = {
-        "id": "test",
-        "messages": [
+    result = await load_filtered_transcript(
+        create_json_stream(
             {
-                "role": "user",
-                "content": [
+                "id": "test",
+                "messages": [
                     {
-                        "type": "text",
-                        "text": "attachment://a1b2c3d4e5f678901234567890123456",
-                    },
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "attachment://a1b2c3d4e5f678901234567890123456",
+                            },
+                        ],
+                    }
                 ],
-            }
-        ],
-        "events": [
-            {
-                "span_id": "s1",
-                "timestamp": 1.0,
-                "event": "tool",
-                "id": "tool1",
-                "function": "test_function",
-                "arguments": {
-                    "list_input": [
-                        "attachment://b2c3d4e5f67890123456789012345678",
-                        {"nested_key": "attachment://c3d4e5f6789012345678901234567890"},
-                    ],
-                    "dict_input": {
-                        "key1": "attachment://d4e5f67890123456789012345678901a",
-                        "nested": {
-                            "key2": "attachment://e5f67890123456789012345678901ab2"
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": 1.0,
+                        "event": "tool",
+                        "id": "tool1",
+                        "function": "test_function",
+                        "arguments": {
+                            "list_input": [
+                                "attachment://b2c3d4e5f67890123456789012345678",
+                                {
+                                    "nested_key": "attachment://c3d4e5f6789012345678901234567890"
+                                },
+                            ],
+                            "dict_input": {
+                                "key1": "attachment://d4e5f67890123456789012345678901a",
+                                "nested": {
+                                    "key2": "attachment://e5f67890123456789012345678901ab2"
+                                },
+                            },
                         },
-                    },
+                        "result": "test result",
+                    }
+                ],
+                "attachments": {
+                    "a1b2c3d4e5f678901234567890123456": "Resolved A",
+                    "b2c3d4e5f67890123456789012345678": "Resolved B",
+                    "c3d4e5f6789012345678901234567890": "Resolved C",
+                    "d4e5f67890123456789012345678901a": "Resolved D",
+                    "e5f67890123456789012345678901ab2": "Resolved E",
                 },
-                "result": "test result",
             }
-        ],
-        "attachments": {
-            "a1b2c3d4e5f678901234567890123456": "Resolved A",
-            "b2c3d4e5f67890123456789012345678": "Resolved B",
-            "c3d4e5f6789012345678901234567890": "Resolved C",
-            "d4e5f67890123456789012345678901a": "Resolved D",
-            "e5f67890123456789012345678901ab2": "Resolved E",
-        },
-    }
-
-    stream = create_json_stream(data)
-    info = TranscriptInfo(
-        transcript_id="test",
-        source_type="test",
-        source_id="42",
-        source_uri="/test.json",
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
     )
-
-    result = await load_filtered_transcript(stream, info, "all", "all")
 
     # Check message content array resolution
     assert result.messages[0].text == "Resolved A"
@@ -587,6 +594,222 @@ async def test_attachment_resolution_in_nested_structures() -> None:
     )
 
 
+@pytest.mark.asyncio
+async def test_early_exit_when_no_events_no_attachment_refs(
+    call_tracker: CallTracker,
+) -> None:
+    """Early exit fires when events=None and messages have no attachment refs."""
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the answer",
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi"},
+                ],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {"key": "value"},
+                "events": [
+                    {"span_id": "s1", "timestamp": 1.0, "event": "info", "data": {}},
+                ],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        None,
+        on_early_exit=call_tracker,
+    )
+
+    assert call_tracker.called
+    assert len(result.messages) == 2
+    assert not result.events
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_early_exit_suppressed_by_attachment_refs(
+    call_tracker: CallTracker,
+) -> None:
+    """Early exit does NOT fire when messages contain attachment refs."""
+    attachment_id = "a1b2c3d4e5f678901234567890123456"
+
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the answer",
+                "messages": [
+                    {"role": "user", "content": f"attachment://{attachment_id}"},
+                    {"role": "assistant", "content": "Hi"},
+                ],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {"key": "value"},
+                "events": [],
+                "attachments": {attachment_id: "Resolved content"},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        None,
+        on_early_exit=call_tracker,
+    )
+
+    assert not call_tracker.called
+    assert len(result.messages) == 2
+    assert result.messages[0].content == "Resolved content"
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_early_exit_preserves_sample_metadata(
+    call_tracker: CallTracker,
+) -> None:
+    """sample_metadata must be unthinned even when early exit fires (events=None)."""
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the answer",
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                ],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {"full_key": "full_value", "nested": {"a": 1}},
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+            metadata={"existing": "kept"},
+        ),
+        "all",
+        None,
+        on_early_exit=call_tracker,
+    )
+
+    assert call_tracker.called
+    assert result.metadata["existing"] == "kept"
+    assert result.metadata["sample_metadata"] == {
+        "full_key": "full_value",
+        "nested": {"a": 1},
+    }
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_target_unthinned_string() -> None:
+    """`target` (string) from sample JSON replaces thinned index value in metadata."""
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the full answer",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {},
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+            metadata={"target": "thinned"},
+        ),
+        "all",
+        None,
+    )
+
+    assert result.metadata["target"] == "the full answer"
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_target_unthinned_list() -> None:
+    """`target` (list) from sample JSON replaces thinned index value in metadata."""
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": ["answer A", "answer B"],
+                "messages": [{"role": "user", "content": "Hello"}],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {},
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+            metadata={"target": "thinned"},
+        ),
+        "all",
+        None,
+    )
+
+    assert result.metadata["target"] == ["answer A", "answer B"]
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_scores_unthinned() -> None:
+    """`scores` from sample JSON available in metadata after loading."""
+    scores = {
+        "accuracy": {"value": "C", "answer": "C", "explanation": "Correct"},
+        "relevance": {"value": "I", "answer": "B"},
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the answer",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "output": {},
+                "scores": scores,
+                "metadata": {},
+                "events": [],
+                "attachments": {},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        None,
+    )
+
+    assert result.metadata["scores"] == scores
+
+
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_s3_eval_assistant_tool_filter() -> None:
@@ -602,7 +825,6 @@ async def test_s3_eval_assistant_tool_filter() -> None:
     )
 
     async with AsyncFilesystem() as fs:
-        start = time.time()
         async with await AsyncZipReader(fs, s3_path).open_member(member_name) as stream:
             result = await load_filtered_transcript(
                 stream,
@@ -610,9 +832,10 @@ async def test_s3_eval_assistant_tool_filter() -> None:
                 ["assistant", "tool"],  # Filter for assistant and tool messages
                 None,
             )
-        duration = time.time() - start
-        print(f"Parse took {duration:.3f}s")
 
+    assert (
+        result.metadata["sample_metadata"]["hints_text"] == "cc @nstarman from #14274"
+    )
     assert isinstance(result, Transcript)
     assert result.transcript_id == "what id?"
     assert result.source_uri == s3_path

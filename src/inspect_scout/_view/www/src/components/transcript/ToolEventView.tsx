@@ -3,7 +3,10 @@ import { FC, useMemo } from "react";
 
 import { ApprovalEvent, ModelEvent, ToolEvent } from "../../types/api-types";
 import { ChatView } from "../chat/ChatView";
-import { resolveToolInput } from "../chat/tools/tool";
+import {
+  resolveToolInput,
+  substituteToolCallContent,
+} from "../chat/tools/tool";
 import { ToolCallView } from "../chat/tools/ToolCallView";
 import { ApplicationIcons } from "../icons";
 import { PulsingDots } from "../PulsingDots";
@@ -36,6 +39,18 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
     [event.function, event.arguments]
   );
 
+  // Resolve {{placeholder}} substitutions in tool call view content
+  const resolvedView = useMemo(
+    () =>
+      event.view
+        ? substituteToolCallContent(
+            event.view,
+            event.arguments as Record<string, unknown>
+          )
+        : undefined,
+    [event.view, event.arguments]
+  );
+
   const { approvalNode, lastModelNode } = useMemo(() => {
     const approvalNode = children.find((e) => {
       return e.event.event === "approval";
@@ -55,7 +70,7 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.events]);
 
-  const title = `Tool: ${event.view?.title || event.function}`;
+  const title = `Tool: ${resolvedView?.title || event.function}`;
   return (
     <EventPanel
       eventNodeId={eventNode.id}
@@ -80,7 +95,7 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
           contentType={contentType}
           output={event.error?.message || event.result || ""}
           mode="compact"
-          view={event.view ? event.view : undefined}
+          view={resolvedView}
         />
 
         {lastModelNode ? (

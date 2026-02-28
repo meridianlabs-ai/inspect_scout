@@ -47,6 +47,8 @@ class ParseState:
     attachment_refs: set[str] = field(default_factory=set)
     attachments: dict[str, str] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+    target: str | list[str] | None = None
+    scores: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +210,62 @@ def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
             continue
 
 
+SCORES_PREFIX = "scores."
+
+
+@_ijson_coroutine  # type: ignore
+def scores_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Coroutine to build the scores object from streaming JSON events."""
+    builder: ObjectBuilder | None = None
+    while True:
+        prefix, event, value = yield
+        if not (prefix == "scores" or prefix.startswith(SCORES_PREFIX)):
+            continue
+        if prefix == "scores" and event == "start_map":
+            builder = ObjectBuilder()
+            builder.event(event, value)
+            continue
+        if builder is None:
+            continue
+        if prefix == "scores" and event == "end_map":
+            try:
+                builder.event(event, value)
+                state.scores = builder.value
+            except Exception:
+                pass
+            builder = None
+            continue
+        try:
+            builder.event(event, value)
+        except Exception:
+            builder = None
+            continue
+
+
+TARGET_PREFIX = "target."
+
+
+@_ijson_coroutine  # type: ignore
+def target_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Coroutine to capture the target field (scalar string or list of strings)."""
+    while True:
+        prefix, event, value = yield
+        if prefix != "target" and not prefix.startswith(TARGET_PREFIX):
+            continue
+        if prefix == "target" and event == "string":
+            state.target = value
+            return
+        if prefix == "target" and event == "start_array":
+            items: list[str] = []
+            while True:
+                prefix, event, value = yield
+                if prefix == "target" and event == "end_array":
+                    state.target = items
+                    return
+                if prefix == "target.item" and event == "string":
+                    items.append(value)
+
+
 __all__ = [
     "ListProcessingConfig",
     "ParseState",
@@ -216,6 +274,10 @@ __all__ = [
     "timeline_item_coroutine",
     "attachments_coroutine",
     "metadata_coroutine",
+    "scores_coroutine",
+    "target_coroutine",
+    "SCORES_PREFIX",
+    "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENTS_PREFIX",

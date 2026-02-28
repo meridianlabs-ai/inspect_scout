@@ -6,7 +6,7 @@ import { ChatMessageTool } from "../../types/api-types";
 import { ChatMessage } from "./ChatMessage";
 import styles from "./ChatMessageRow.module.css";
 import { ResolvedMessage } from "./messages";
-import { resolveToolInput } from "./tools/tool";
+import { resolveToolInput, substituteToolCallContent } from "./tools/tool";
 import { ToolCallView } from "./tools/ToolCallView";
 import { ChatViewToolCallStyle, ContentTool } from "./types";
 
@@ -120,7 +120,14 @@ export const ChatMessageRow: FC<ChatMessageRowProps> = ({
             description={description}
             contentType={contentType}
             output={resolvedToolOutput}
-            view={tool_call.view ?? undefined}
+            view={
+              tool_call.view
+                ? substituteToolCallContent(
+                    tool_call.view,
+                    tool_call.arguments as Record<string, unknown>
+                  )
+                : undefined
+            }
           />
         );
       }

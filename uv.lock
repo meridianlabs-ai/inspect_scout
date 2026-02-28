@@ -1605,8 +1605,8 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.184.dev4+ge278d921"
-source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main#e278d92129e5615cee2acc73eb01742fd468a204" }
+version = "0.3.184"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioboto3" },
     { name = "aiohttp" },
@@ -1648,6 +1648,10 @@ dependencies = [
     { name = "zipfile-zstd", marker = "python_full_version < '3.14'" },
     { name = "zipp" },
     { name = "zstandard" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/f2/e3953f781c23cc3542dd1e924b40a85c62089c885a7073c02120bf64b17f/inspect_ai-0.3.184.tar.gz", hash = "sha256:9b81ba2406f51d0d34c47e8eb161a7bc4efac43d8836160930e396c64b4553c7", size = 43895358, upload-time = "2026-02-28T15:09:29.217Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/ac/be6f78092f427795b9e434ee690dccf22d5bdd78baa4163bbe400c91c845/inspect_ai-0.3.184-py3-none-any.whl", hash = "sha256:d6745abe483b0683a3a5c0709ff734903fd7afc4753dd76323fb4055cf2baad3", size = 34984494, upload-time = "2026-02-28T15:09:23.353Z" },
 ]
 
 [[package]]
@@ -1774,7 +1778,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main" },
+    { name = "inspect-ai", specifier = ">=0.3.184" },
     { name = "inspect-swe", specifier = ">=0.2.37" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },

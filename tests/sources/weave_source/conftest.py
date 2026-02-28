@@ -71,7 +71,7 @@ def weave_client() -> Any:
         pytest.skip: If weave package is not installed or API key not set
     """
     try:
-        import weave
+        import weave  # type: ignore[import-not-found]
     except ImportError:
         pytest.skip("weave package not installed")
 

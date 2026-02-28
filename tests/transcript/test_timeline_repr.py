@@ -233,7 +233,7 @@ def test_basic_repr() -> None:
 
     output = repr(tl)
 
-    assert "transcript" in output
+    assert "main" in output
     assert "explore" in output
     assert "│" in output
 
@@ -243,7 +243,7 @@ def test_empty_timeline() -> None:
     root = _make_span("root")
     tl = _make_timeline(root)
     output = repr(tl)
-    assert "empty" in output
+    assert output == "main"
 
 
 # =============================================================================
@@ -397,7 +397,7 @@ def test_single_event_timeline() -> None:
     tl = _make_timeline(root)
 
     output = repr(tl)
-    assert "transcript" in output
+    assert "main" in output
     assert "█" in output
 
 
@@ -418,5 +418,5 @@ def test_deeply_nested() -> None:
     output = repr(tl)
     lines = output.strip().split("\n")
     assert len(lines) >= 4
-    assert "root" in lines[0]
+    assert "main" in lines[0]
     assert "inner" in output

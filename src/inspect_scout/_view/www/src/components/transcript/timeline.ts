@@ -286,8 +286,9 @@ function createTimelineSpan(
         "Callers must guard against empty content before calling the factory."
     );
   }
-  const startTime = minStartTime(content);
-  const endTime = maxEndTime(content);
+  const allNodes = [...content, ...branches];
+  const startTime = minStartTime(allNodes);
+  const endTime = maxEndTime(allNodes);
   return {
     type: "span",
     id,
@@ -299,8 +300,8 @@ function createTimelineSpan(
     utility,
     startTime,
     endTime,
-    totalTokens: sumTokens(content),
-    idleTime: computeIdleTime(content, startTime, endTime),
+    totalTokens: sumTokens(allNodes),
+    idleTime: computeIdleTime(allNodes, startTime, endTime),
   };
 }
 
@@ -1048,8 +1049,12 @@ function detectAutoBranches(span: TimelineSpan): void {
   span.branches.reverse();
 
   // Recompute totalTokens and idleTime since content was modified
-  span.totalTokens = sumTokens(span.content);
-  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
+  span.idleTime = computeIdleTime(
+    [...span.content, ...span.branches],
+    span.startTime,
+    span.endTime
+  );
 }
 
 /**
@@ -1084,8 +1089,12 @@ function classifyBranches(
   }
 
   // Recompute totalTokens and idleTime since child spans may have changed
-  span.totalTokens = sumTokens(span.content);
-  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
+  span.idleTime = computeIdleTime(
+    [...span.content, ...span.branches],
+    span.startTime,
+    span.endTime
+  );
 }
 
 // =============================================================================
@@ -1322,11 +1331,20 @@ export function buildTimeline(events: Event[]): Timeline {
       if (initSpanObj) {
         agentNode.content = [initSpanObj, ...agentNode.content];
         // Recompute timing
-        agentNode.startTime = minStartTime(agentNode.content);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.startTime = minStartTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
         agentNode.idleTime = computeIdleTime(
-          agentNode.content,
+          [...agentNode.content, ...agentNode.branches],
           agentNode.startTime,
           agentNode.endTime
         );
@@ -1335,11 +1353,16 @@ export function buildTimeline(events: Event[]): Timeline {
       // Append scoring as a child span
       if (scoringSpan) {
         agentNode.content.push(scoringSpan);
-        agentNode.startTime = minStartTime(agentNode.content);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches,
+        ]);
         agentNode.idleTime = computeIdleTime(
-          agentNode.content,
+          [...agentNode.content, ...agentNode.branches],
           agentNode.startTime,
           agentNode.endTime
         );

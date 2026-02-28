@@ -175,6 +175,7 @@
         "span_id": "main-agent"
       },
       "event_uuids": ["e-001", "e-002", "e-007"],
+      "total_tokens": 900,
       "branches": [
         {
           "forked_at": "e-002",

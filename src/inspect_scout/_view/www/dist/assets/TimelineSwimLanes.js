@@ -804,7 +804,13 @@ const TimelineMinimap = ({
     },
     [isTokenMode, setShowTokens]
   );
-  const bar = selection ? computeBarPosition(
+  const bar = selection ? mapping ? {
+    left: mapping.toPercent(selection.startTime),
+    width: Math.max(
+      0,
+      mapping.toPercent(selection.endTime) - mapping.toPercent(selection.startTime)
+    )
+  } : computeBarPosition(
     selection.startTime,
     selection.endTime,
     root.startTime,
@@ -854,7 +860,10 @@ const TimelineMinimap = ({
         "div",
         {
           className: styles$1.selectionRegion,
-          style: bar.left + bar.width / 2 < 50 ? { left: `${bar.left}%`, minWidth: `${bar.width}%` } : { right: `${100 - bar.left - bar.width}%`, minWidth: `${bar.width}%` },
+          style: bar.left + bar.width / 2 < 50 ? { left: `${bar.left}%`, minWidth: `${bar.width}%` } : {
+            right: `${100 - bar.left - bar.width}%`,
+            minWidth: `${bar.width}%`
+          },
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.regionFill }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.marker }),

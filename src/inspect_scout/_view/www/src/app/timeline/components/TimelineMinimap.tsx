@@ -54,12 +54,21 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   );
 
   const bar = selection
-    ? computeBarPosition(
-        selection.startTime,
-        selection.endTime,
-        root.startTime,
-        root.endTime
-      )
+    ? mapping
+      ? {
+          left: mapping.toPercent(selection.startTime),
+          width: Math.max(
+            0,
+            mapping.toPercent(selection.endTime) -
+              mapping.toPercent(selection.startTime)
+          ),
+        }
+      : computeBarPosition(
+          selection.startTime,
+          selection.endTime,
+          root.startTime,
+          root.endTime
+        )
     : null;
 
   const showRegion = bar !== null;
@@ -125,7 +134,10 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
             style={
               bar.left + bar.width / 2 < 50
                 ? { left: `${bar.left}%`, minWidth: `${bar.width}%` }
-                : { right: `${100 - bar.left - bar.width}%`, minWidth: `${bar.width}%` }
+                : {
+                    right: `${100 - bar.left - bar.width}%`,
+                    minWidth: `${bar.width}%`,
+                  }
             }
           >
             <div className={styles.regionFill} />

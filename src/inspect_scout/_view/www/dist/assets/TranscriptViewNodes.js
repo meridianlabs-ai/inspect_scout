@@ -26791,7 +26791,7 @@ const TranscriptViewNodes = reactExports.forwardRef(function TranscriptViewNodes
         listHandle.current.scrollToIndex({
           index: idx,
           align: "start",
-          behavior: "smooth",
+          behavior: "auto",
           offset: offsetTop ? -offsetTop : void 0
         });
       }

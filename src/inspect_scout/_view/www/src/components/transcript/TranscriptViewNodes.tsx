@@ -71,7 +71,7 @@ export const TranscriptViewNodes = forwardRef<
         listHandle.current.scrollToIndex({
           index: idx,
           align: "start",
-          behavior: "smooth",
+          behavior: "auto",
           offset: offsetTop ? -offsetTop : undefined,
         });
       }

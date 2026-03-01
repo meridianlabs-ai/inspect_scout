@@ -11351,7 +11351,7 @@ const MarkdownDivComponent = reactExports.forwardRef(
     const cachedHtml = renderCache.get(cacheKey);
     const applyPostProcess = (html) => {
       const processed = postProcess2 ? postProcess2(html) : html;
-      return unescapeSupHtmlEntities(processed);
+      return unescapeAllowedHtmlTags(processed);
     };
     const [renderedHtml, setRenderedHtml] = reactExports.useState(() => {
       if (cachedHtml) {
@@ -11578,11 +11578,11 @@ const unprotectMarkdown = (txt) => {
   txt = txt.replaceAll("(close:767A125E)", "]");
   return txt;
 };
-function unescapeSupHtmlEntities(str) {
+function unescapeAllowedHtmlTags(str) {
   if (!str) {
     return str;
   }
-  return str.replace(/&lt;sup&gt;/g, "<sup>").replace(/&lt;\/sup&gt;/g, "</sup>");
+  return str.replace(/&lt;sup&gt;/g, "<sup>").replace(/&lt;\/sup&gt;/g, "</sup>").replace(/&lt;details&gt;/g, "<details>").replace(/&lt;\/details&gt;/g, "</details>").replace(/&lt;summary&gt;/g, "<summary>").replace(/&lt;\/summary&gt;/g, "</summary>");
 }
 function unescapeCodeHtmlEntities(str) {
   if (!str) return str;

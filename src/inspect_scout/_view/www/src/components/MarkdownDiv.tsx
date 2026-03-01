@@ -29,7 +29,7 @@ const MarkdownDivComponent = forwardRef<HTMLDivElement, MarkdownDivProps>(
     // Apply post-processing to get final HTML
     const applyPostProcess = (html: string): string => {
       const processed = postProcess ? postProcess(html) : html;
-      return unescapeSupHtmlEntities(processed);
+      return unescapeAllowedHtmlTags(processed);
     };
 
     // Initialize with content (cached or unrendered markdown)
@@ -393,14 +393,17 @@ const unprotectMarkdown = (txt: string): string => {
   return txt;
 };
 
-function unescapeSupHtmlEntities(str: string): string {
-  // replace &lt;sup&gt; with <sup>
+function unescapeAllowedHtmlTags(str: string): string {
   if (!str) {
     return str;
   }
   return str
     .replace(/&lt;sup&gt;/g, "<sup>")
-    .replace(/&lt;\/sup&gt;/g, "</sup>");
+    .replace(/&lt;\/sup&gt;/g, "</sup>")
+    .replace(/&lt;details&gt;/g, "<details>")
+    .replace(/&lt;\/details&gt;/g, "</details>")
+    .replace(/&lt;summary&gt;/g, "<summary>")
+    .replace(/&lt;\/summary&gt;/g, "</summary>");
 }
 
 function unescapeCodeHtmlEntities(str: string): string {

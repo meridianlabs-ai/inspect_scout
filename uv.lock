@@ -1662,7 +1662,7 @@ requires-dist = [
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
     { name = "inspect-ai", specifier = ">=0.3.185" },
-    { name = "inspect-swe", specifier = ">=0.2.39" },
+    { name = "inspect-swe", git = "https://github.com/meridianlabs-ai/inspect_swe.git?rev=main" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },
     { name = "jsonschema", specifier = ">3.1.1" },
@@ -1745,8 +1745,8 @@ doc = [
 
 [[package]]
 name = "inspect-swe"
-version = "0.2.39"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.40.dev1"
+source = { git = "https://github.com/meridianlabs-ai/inspect_swe.git?rev=main#2417a78c684f79e2c7b9c08811d2c0a178c3a3ee" }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "anyio" },
@@ -1758,10 +1758,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "sniffio" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/04/72/4f8ad2cb56a0201dde39d05f8c14c75c62a00a2dcbdf530274e51a91c652/inspect_swe-0.2.39.tar.gz", hash = "sha256:e07344ed6e62d675f9447e56ce7d5711e206158af9e7e698723548e7a7ec051c", size = 63728, upload-time = "2026-03-01T17:24:24.403Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/ac/11f9b2e9f41e8e1b322cf0734b5002824db89892e4e0c525b3d945d57f27/inspect_swe-0.2.39-py3-none-any.whl", hash = "sha256:36da1b99d447de9653546f208365e89301b68561f02cdc2d6838eceb36a71642", size = 90082, upload-time = "2026-03-01T17:24:23.309Z" },
 ]
 
 [[package]]

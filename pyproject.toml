@@ -22,7 +22,7 @@ dependencies = [
     "ijson>=3.2.0",
     "importlib-metadata",
     "inspect_ai>=0.3.185",
-    "inspect-swe>=0.2.39",
+    "inspect-swe @ git+https://github.com/meridianlabs-ai/inspect_swe.git@main",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
     "jsonschema>3.1.1",

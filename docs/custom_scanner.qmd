@@ -256,7 +256,9 @@ def my_scanner() -> Scanner[Timeline]: ...
 def my_scanner() -> Scanner[Timeline]: ...
 ```
 
-Timeline scanning differs from transcript scanning in that each span in the timeline tree is scanned independently, allowing you to analyze individual agent invocations and their relationships. See the [Timelines](timelines.qmd) article for a full description of the timeline data model and examples of timeline scanners.
+Timeline scanning differs from transcript scanning in that each span in the timeline tree is scanned independently, allowing you to analyze individual agent invocations and their relationships. 
+
+Note that timeline scanners are available only in the development version of Inspect Scout. See the [Multi Agent](multi_agent.qmd) article for a full description of the timeline data model and examples of timeline scanners.
 
 ## Multiple Results {#multiple-results}
 

@@ -50,6 +50,7 @@ website:
           - href: grep_scanner.qmd
           - href: custom_scanner.qmd
           - href: scanner_tools.qmd
+          - href: multi_agent.qmd
       - text: "Transcripts"
         menu:
           - href: db_overview.qmd
@@ -93,7 +94,7 @@ website:
             - href: grep_scanner.qmd
             - href: custom_scanner.qmd
             - href: scanner_tools.qmd
-            - href: timelines.qmd
+            - href: multi_agent.qmd
         - text: Transcripts
           href: db_overview.qmd
           contents:

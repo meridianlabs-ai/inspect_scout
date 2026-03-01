@@ -1,28 +1,3 @@
-<!doctype html>
-<html lang="en" data-bs-theme="light">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Inspect Scout</title>
-    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
-
-    <script>
-      // Forward the theme (dark or light) onto the root html element
-      // this parameter will tend to appear when the view is hosted within
-      // an iframe (e.g. in vscode)
-      const urlParams = new URLSearchParams(window.location.search);
-      const theme = urlParams.get("inspectViewThemeCategory");
-      if (theme) {
-        document.documentElement.setAttribute("data-text-highlight", theme);
-        document.documentElement.setAttribute("data-bs-theme", theme);
-      }
-    </script>
-    <script type="module" crossorigin src="./assets/index.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers.js">
-    <link rel="stylesheet" crossorigin href="./assets/index.css">
-  </head>
-
-  <body style="min-width: 450px">
-    <div id="app"></div>
-  </body>
-</html>
+version https://git-lfs.github.com/spec/v1
+oid sha256:f9634fdcc57911b32330212d765152ecc64d526435f26ef59933ce104f027b6f
+size 1131

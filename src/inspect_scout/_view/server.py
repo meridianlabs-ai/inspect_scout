@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -7,11 +8,13 @@ import anyio
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
+from inspect_ai._lfs import LFSError, resolve_lfs_directory
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
 from starlette.types import Scope
 
+from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
     DEFAULT_SCANS_DIR,
     DEFAULT_SERVER_HOST,
@@ -22,10 +25,66 @@ from inspect_scout._view.types import ViewConfig
 from .._display._display import display
 from ._api_v2 import v2_api_app
 
+_IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
+_DIST_DIR = Path(__file__).parent / "www" / "dist"
+_REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
 
-class NoCacheStaticFiles(StaticFiles):
-    """StaticFiles that prevents caching of JS files during development.
 
+def resolve_dist_directory() -> Path:
+    """Resolve the frontend dist directory, downloading LFS objects if needed.
+
+    To test without Git LFS (simulates a user without LFS installed)::
+
+        # Enter test state — discard LFS content, leave pointer stubs
+        git lfs uninstall
+        GIT_LFS_SKIP_SMUDGE=1 git rm --cached -r src/inspect_scout/_view/www/dist
+        GIT_LFS_SKIP_SMUDGE=1 git reset --hard
+        # WARNING: git reset --hard discards uncommitted changes
+
+        # Verify — LFS files should be ~130-byte pointer stubs
+        head -1 src/inspect_scout/_view/www/dist/index.html
+        # Expected: "version https://git-lfs.github.com/spec/v1"
+
+        # Restore
+        git lfs install
+        git lfs pull
+    """
+    # The LFS module logs download progress at INFO, but scout's default log
+    # display level is WARNING. Add a temporary handler so users see download
+    # activity during startup.
+    lfs_logger = logging.getLogger("inspect_ai._lfs")
+    prev_level = lfs_logger.level
+    lfs_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    lfs_logger.addHandler(handler)
+    try:
+        result = resolve_lfs_directory(
+            _DIST_DIR,
+            cache_dir=scout_cache_dir("dist"),
+            repo_url=_REPO_URL,
+        )
+        if result != _DIST_DIR:
+            display().print(f"Serving static data from {result}")
+
+        return result
+    except LFSError as e:
+        raise RuntimeError(
+            f"{e}\n"
+            "To fix this, either:\n"
+            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
+            "  2. Build locally: cd src/inspect_scout/_view/www && pnpm build"
+        ) from e
+    finally:
+        lfs_logger.removeHandler(handler)
+        lfs_logger.setLevel(prev_level)
+
+
+class ScoutStaticFiles(StaticFiles):
+    """StaticFiles with runtime config injection and cache headers.
+
+    Hashed assets under ``assets/`` are served with immutable cache headers.
     When root_path is set, injects a script tag into index.html so the
     frontend knows the base path for API requests behind a reverse proxy.
     """
@@ -66,15 +125,10 @@ class NoCacheStaticFiles(StaticFiles):
             )
 
         response = super().file_response(full_path, stat_result, scope, status_code)
-
-        # We have seen sporadic caching of the core JS file in safari though I
-        # wasn't able to consistently reproduce it. To be safe, disable caching
-        # for all JS files for the time being
-        if str(full_path).endswith(".js"):
-            response.headers["cache-control"] = "no-cache, no-store, must-revalidate"
-            response.headers["pragma"] = "no-cache"
-            response.headers["expires"] = "0"
-
+        if "/assets/" in str(full_path):
+            response.headers["cache-control"] = _IMMUTABLE_CACHE
+        else:
+            response.headers["cache-control"] = "no-cache"
         return response
 
 
@@ -120,10 +174,10 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = Path(__file__).parent / "www" / "dist"
+    dist = resolve_dist_directory()
     app.mount(
         "/",
-        NoCacheStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),
+        ScoutStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),
         name="static",
     )
 

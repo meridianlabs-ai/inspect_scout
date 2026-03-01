@@ -62,7 +62,6 @@ export default defineConfig(({ mode }) => {
     // App build configuration
     return {
       ...baseConfig,
-      mode: "development",
       base: "",
       server: {
         proxy: {
@@ -74,12 +73,13 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: "dist",
-        minify: false,
+        emptyOutDir: true,
+        minify: true,
         rollupOptions: {
           output: {
-            entryFileNames: `assets/index.js`,
-            chunkFileNames: `assets/[name].js`,
-            assetFileNames: `assets/[name].[ext]`,
+            entryFileNames: `assets/[name]-[hash].js`,
+            chunkFileNames: `assets/[name]-[hash].js`,
+            assetFileNames: `assets/[name]-[hash].[ext]`,
           },
         },
         sourcemap: true,

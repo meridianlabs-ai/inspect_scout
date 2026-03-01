@@ -177,7 +177,13 @@ export const RenderedEventNode: FC<RenderedEventNodeProps> = memo(
 
       case "span_begin": {
         if (node.sourceSpan?.spanType === "agent") {
-          return <AgentCardView span={node.sourceSpan} className={className} />;
+          return (
+            <AgentCardView
+              span={node.sourceSpan}
+              toolEvent={node.agentToolEvent}
+              className={className}
+            />
+          );
         }
         return (
           <SpanEventView

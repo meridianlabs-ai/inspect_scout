@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { attachSourceSpans } from "../../../app/timeline/timelineEventNodes";
 import type { TimelineSpan } from "../../../components/transcript/timeline";
-import {
+import type {
   Event,
   SpanBeginEvent,
   StepEvent,
@@ -16,7 +16,8 @@ import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
 export const useEventNodes = (
   events: Event[],
   running: boolean,
-  sourceSpans?: ReadonlyMap<string, TimelineSpan>
+  sourceSpans?: ReadonlyMap<string, TimelineSpan>,
+  agentToolEvents?: ReadonlyMap<string, ToolEvent>
 ) => {
   // Normalize Events in a flattened filtered list
   const { eventTree, defaultCollapsedIds } = useMemo((): {
@@ -32,7 +33,7 @@ export const useEventNodes = (
     // Attach source span references before filtering so filterEmpty
     // can preserve agent card nodes (which have no children by design).
     if (sourceSpans && sourceSpans.size > 0) {
-      attachSourceSpans(rawEventTree, sourceSpans);
+      attachSourceSpans(rawEventTree, sourceSpans, agentToolEvents);
     }
 
     // Now filter the tree to remove empty spans
@@ -79,7 +80,7 @@ export const useEventNodes = (
     findCollapsibleEvents(eventTree);
 
     return { eventTree, defaultCollapsedIds };
-  }, [events, running, sourceSpans]);
+  }, [events, running, sourceSpans, agentToolEvents]);
 
   return { eventNodes: eventTree, defaultCollapsedIds };
 };

@@ -1500,6 +1500,7 @@ const StickyScroll = ({
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapperRef, style: wrapperStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: contentRef, className: contentClassName, style: contentStyle, children }) });
 };
 const emptySourceSpans = /* @__PURE__ */ new Map();
+const emptyAgentToolEvents = /* @__PURE__ */ new Map();
 function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
   const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
   const state = useTimeline(timeline);
@@ -1531,15 +1532,20 @@ function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
     ),
     [visibleRows, timeMapping, markerConfig.depth, markerConfig.kinds]
   );
-  const { selectedEvents, sourceSpans } = reactExports.useMemo(() => {
+  const { selectedEvents, sourceSpans, agentToolEvents } = reactExports.useMemo(() => {
     const spans = getSelectedSpans(state.rows, state.selected);
     if (spans.length === 0) {
-      return { selectedEvents: events, sourceSpans: emptySourceSpans };
+      return {
+        selectedEvents: events,
+        sourceSpans: emptySourceSpans,
+        agentToolEvents: emptyAgentToolEvents
+      };
     }
     const collected = collectRawEvents(spans);
     return {
       selectedEvents: collected.events,
-      sourceSpans: collected.sourceSpans
+      sourceSpans: collected.sourceSpans,
+      agentToolEvents: collected.agentToolEvents
     };
   }, [events, state.rows, state.selected]);
   const minimapSelection = reactExports.useMemo(
@@ -1555,6 +1561,7 @@ function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
     rootTimeMapping,
     selectedEvents,
     sourceSpans,
+    agentToolEvents,
     minimapSelection,
     hasTimeline
   };
@@ -1610,6 +1617,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     rootTimeMapping,
     selectedEvents,
     sourceSpans,
+    agentToolEvents,
     minimapSelection,
     hasTimeline
   } = useTranscriptTimeline(events, markerConfig);
@@ -1672,7 +1680,8 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     selectedEvents,
     false,
-    sourceSpans
+    sourceSpans,
+    agentToolEvents
   );
   const hasMatchingEvents = eventNodes.length > 0;
   const eventsListRef = reactExports.useRef(null);

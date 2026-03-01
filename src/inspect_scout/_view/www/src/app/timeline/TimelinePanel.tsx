@@ -87,14 +87,16 @@ export const TimelinePanel: FC = () => {
     [state.rows, state.selected]
   );
 
-  const { events: rawEvents, sourceSpans } = useMemo(
-    () => collectRawEvents(selectedSpans),
-    [selectedSpans]
-  );
+  const {
+    events: rawEvents,
+    sourceSpans,
+    agentToolEvents,
+  } = useMemo(() => collectRawEvents(selectedSpans), [selectedSpans]);
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     rawEvents,
     false,
-    sourceSpans
+    sourceSpans,
+    agentToolEvents
   );
 
   const spanSelectKeys = useMemo(

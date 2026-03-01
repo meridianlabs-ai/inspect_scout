@@ -9302,6 +9302,18 @@
             "default": null,
             "title": "Agent"
           },
+          "agent_span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Span Id"
+          },
           "arguments": {
             "additionalProperties": {
               "$ref": "#/components/schemas/JsonValue"

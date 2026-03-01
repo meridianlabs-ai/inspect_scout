@@ -16,6 +16,7 @@ import type {
   Event,
   SpanBeginEvent,
   SpanEndEvent,
+  ToolEvent,
 } from "../../types/api-types";
 
 import type { MinimapSelection } from "./components/TimelineMinimap";
@@ -145,6 +146,8 @@ export interface CollectedEvents {
   events: Event[];
   /** Agent spans keyed by span ID, for attaching to EventNodes after tree construction. */
   sourceSpans: Map<string, TimelineSpan>;
+  /** ToolEvents that precede agent spans, keyed by span ID. */
+  agentToolEvents: Map<string, ToolEvent>;
 }
 
 /**
@@ -163,23 +166,44 @@ export interface CollectedEvents {
 export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
   const events: Event[] = [];
   const sourceSpans = new Map<string, TimelineSpan>();
+  const agentToolEvents = new Map<string, ToolEvent>();
   if (spans.length === 1) {
-    collectFromContent(spans[0]!.content, events, sourceSpans);
+    collectFromContent(spans[0]!.content, events, sourceSpans, agentToolEvents);
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
-    collectFromContent(spans, events, sourceSpans);
+    collectFromContent(spans, events, sourceSpans, agentToolEvents);
   }
-  return { events, sourceSpans };
+  return { events, sourceSpans, agentToolEvents };
 }
 
 function collectFromContent(
   content: ReadonlyArray<TimelineEvent | TimelineSpan>,
   out: Event[],
-  sourceSpans: Map<string, TimelineSpan>
+  sourceSpans: Map<string, TimelineSpan>,
+  agentToolEvents: Map<string, ToolEvent>
 ): void {
-  for (const item of content) {
+  for (let i = 0; i < content.length; i++) {
+    const item = content[i]!;
     if (item.type === "event") {
+      // Look-ahead: if this is a ToolEvent immediately followed by a matching
+      // agent span, suppress the ToolEvent and store it for the AgentCardView
+      // to display. Match via agent_span_id on the ToolEvent, falling back to
+      // the legacy "agent-{toolEvent.id}" convention.
+      if (item.event.event === "tool") {
+        const next = content[i + 1];
+        if (next && next.type === "span" && next.spanType === "agent") {
+          const toolEvent = item.event;
+          if (
+            (toolEvent.agent_span_id != null &&
+              toolEvent.agent_span_id === next.id) ||
+            next.id === `agent-${toolEvent.id}`
+          ) {
+            agentToolEvents.set(next.id, toolEvent);
+            continue; // skip emitting; the next iteration handles the span
+          }
+        }
+      }
       out.push(item.event);
     } else {
       // Emit synthetic span_begin
@@ -204,7 +228,7 @@ function collectFromContent(
         sourceSpans.set(item.id, item);
       } else {
         // Non-agent spans: recurse into child content
-        collectFromContent(item.content, out, sourceSpans);
+        collectFromContent(item.content, out, sourceSpans, agentToolEvents);
       }
 
       // Emit synthetic span_end
@@ -280,7 +304,8 @@ export function buildSpanSelectKeys(
  */
 export function attachSourceSpans(
   nodes: EventNode[],
-  spanMap: ReadonlyMap<string, TimelineSpan>
+  spanMap: ReadonlyMap<string, TimelineSpan>,
+  agentToolEvents?: ReadonlyMap<string, ToolEvent>
 ): void {
   for (const node of nodes) {
     if (node.event.event === "span_begin") {
@@ -288,10 +313,12 @@ export function attachSourceSpans(
       if (spanId) {
         const span = spanMap.get(spanId);
         if (span) node.sourceSpan = span;
+        const toolEvent = agentToolEvents?.get(spanId);
+        if (toolEvent) node.agentToolEvent = toolEvent;
       }
     }
     if (node.children.length > 0) {
-      attachSourceSpans(node.children, spanMap);
+      attachSourceSpans(node.children, spanMap, agentToolEvents);
     }
   }
 }

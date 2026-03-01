@@ -1,16 +1,12 @@
 .card {
   position: relative;
-  background-color: var(--bs-secondary-bg);
-  padding: 0.625rem;
   border: solid 1px var(--bs-border-color);
   cursor: pointer;
 }
 
-.card:hover {
-  background-color: var(--bs-secondary-bg-subtle);
-}
-
 .header {
+  background-color: var(--bs-secondary-bg);
+  padding: 0.625rem;
   display: grid;
   grid-template-columns:
     max-content minmax(0, max-content) auto minmax(0, max-content)
@@ -39,7 +35,18 @@
   margin-left: 0.3em;
 }
 
+.card:hover .header,
+.card:hover .description {
+  background-color: var(--bs-secondary-bg-subtle);
+}
+
 .description {
-  margin-top: 0.25em;
+  background-color: var(--bs-secondary-bg);
+  padding: 0 0.625rem 0.625rem;
   font-size: 0.85em;
+}
+
+.result {
+  padding: 0.625rem;
+  cursor: default;
 }

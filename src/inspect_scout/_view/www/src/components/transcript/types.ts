@@ -94,6 +94,8 @@ export class EventNode<T extends EventType = EventType> {
   depth: number;
   /** The TimelineSpan this node was synthesized from, if any. */
   sourceSpan?: TimelineSpan;
+  /** The ToolEvent that preceded this agent span, if any. */
+  agentToolEvent?: ToolEvent;
 
   constructor(id: string, event: T, depth: number) {
     this.id = id;

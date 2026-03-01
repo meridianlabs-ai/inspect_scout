@@ -282,8 +282,16 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
-        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
+        try:
+            input_value: str = result.get_field(scanner, "uuid", uuid, "input").as_py()
+            input_type: str | None = result.get_field(
+                scanner, "uuid", uuid, "input_type"
+            ).as_py()
+        except KeyError:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"UUID '{uuid}' not found in scanner '{scanner}' results",
+            ) from None
 
         return Response(
             content=input_value,

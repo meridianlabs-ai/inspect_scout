@@ -568,22 +568,27 @@ a._citationLink_1ggvf_9:hover {
 ._inProgress_1t8rx_9 {
   font-weight: bold;
 }
-._outputPre_fhwyo_1 {
+._outputPre_9tdb6_1 {
   padding: 0.5em;
   margin-top: 0.25em;
   margin-bottom: 0;
 }
 
-._toolView_fhwyo_7 {
-  margin-top: 0.25em;
+._toolView_9tdb6_7 {
   padding: 0.5em !important;
+  padding-top: 0 !important;
 }
 
-._toolView_fhwyo_7 pre {
+._toolView_9tdb6_7 pre {
   margin-bottom: 0;
 }
 
-._outputCode_fhwyo_16 {
+._toolView_9tdb6_7 p > code {
+  font-size: 0.8rem !important;
+  color: var(--bs-body-color) !important;
+}
+
+._outputCode_9tdb6_21 {
   font-size: 0.8rem !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;

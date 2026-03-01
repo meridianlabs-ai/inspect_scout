@@ -5,12 +5,17 @@
 }
 
 .toolView {
-  margin-top: 0.25em;
   padding: 0.5em !important;
+  padding-top: 0 !important;
 }
 
 .toolView pre {
   margin-bottom: 0;
+}
+
+.toolView p > code {
+  font-size: 0.8rem !important;
+  color: var(--bs-body-color) !important;
 }
 
 .outputCode {

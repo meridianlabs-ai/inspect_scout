@@ -145,15 +145,23 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
         ) : (
           ""
         )}
-        <ToolInput
-          contentType={contentType}
-          contents={contents}
-          toolCallView={view}
-        />
+        <ExpandablePanel
+          id={`${id}-tool-input`}
+          collapse={true}
+          border={false}
+          lines={20}
+          className={clsx("text-size-small")}
+        >
+          <ToolInput
+            contentType={contentType}
+            contents={contents}
+            toolCallView={view}
+          />
+        </ExpandablePanel>
       </div>
       {hasContent && collapsible ? (
         <ExpandablePanel
-          id={`${id}-tool-input`}
+          id={`${id}-tool-content`}
           collapse={collapse}
           border={true}
           lines={15}

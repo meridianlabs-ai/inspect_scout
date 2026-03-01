@@ -12899,9 +12899,9 @@ const TodoWriteInput = ({ contents: contents2, parentRef }) => {
     ] });
   }) });
 };
-const outputPre = "_outputPre_fhwyo_1";
-const toolView = "_toolView_fhwyo_7";
-const outputCode = "_outputCode_fhwyo_16";
+const outputPre = "_outputPre_9tdb6_1";
+const toolView = "_toolView_9tdb6_7";
+const outputCode = "_outputCode_9tdb6_21";
 const styles$r = {
   outputPre,
   toolView,
@@ -12919,7 +12919,7 @@ const ToolInput = (props) => {
       {
         markdown: toolCallView2.content || "",
         ref: sourceCodeRef,
-        className: clsx("tool-output", styles$r.toolView, className2)
+        className: clsx(styles$r.toolView, className2)
       }
     );
   } else {
@@ -13057,18 +13057,28 @@ const ToolCallView = ({
         }
       ) : "",
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        ToolInput,
+        ExpandablePanel,
         {
-          contentType,
-          contents: contents2,
-          toolCallView: view
+          id: `${id}-tool-input`,
+          collapse: true,
+          border: false,
+          lines: 20,
+          className: clsx("text-size-small"),
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ToolInput,
+            {
+              contentType,
+              contents: contents2,
+              toolCallView: view
+            }
+          )
         }
       )
     ] }),
     hasContent && collapsible ? /* @__PURE__ */ jsxRuntimeExports.jsx(
       ExpandablePanel,
       {
-        id: `${id}-tool-input`,
+        id: `${id}-tool-content`,
         collapse,
         border: true,
         lines: 15,
@@ -14164,8 +14174,9 @@ function createTimelineSpan(id, name, spanType, content2, utility = false, branc
       `createTimelineSpan called with empty content for span "${name}" (id=${id}). Callers must guard against empty content before calling the factory.`
     );
   }
-  const startTime = minStartTime(content2);
-  const endTime = maxEndTime(content2);
+  const allNodes = [...content2, ...branches];
+  const startTime = minStartTime(allNodes);
+  const endTime = maxEndTime(allNodes);
   return {
     type: "span",
     id,
@@ -14177,8 +14188,8 @@ function createTimelineSpan(id, name, spanType, content2, utility = false, branc
     utility,
     startTime,
     endTime,
-    totalTokens: sumTokens(content2),
-    idleTime: computeIdleTime(content2, startTime, endTime)
+    totalTokens: sumTokens(allNodes),
+    idleTime: computeIdleTime(allNodes, startTime, endTime)
   };
 }
 function createBranch(forkedAt, content2) {
@@ -14661,8 +14672,12 @@ function detectAutoBranches(span) {
     span.content.splice(start, end - start);
   }
   span.branches.reverse();
-  span.totalTokens = sumTokens(span.content);
-  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
+  span.idleTime = computeIdleTime(
+    [...span.content, ...span.branches],
+    span.startTime,
+    span.endTime
+  );
 }
 function classifyBranches(span, hasExplicitBranches, isRoot = true) {
   if (!hasExplicitBranches && !isRoot) {
@@ -14680,8 +14695,12 @@ function classifyBranches(span, hasExplicitBranches, isRoot = true) {
       }
     }
   }
-  span.totalTokens = sumTokens(span.content);
-  span.idleTime = computeIdleTime(span.content, span.startTime, span.endTime);
+  span.totalTokens = sumTokens([...span.content, ...span.branches]);
+  span.idleTime = computeIdleTime(
+    [...span.content, ...span.branches],
+    span.startTime,
+    span.endTime
+  );
 }
 function getSystemPrompt(span) {
   for (const item of span.content) {
@@ -14816,22 +14835,36 @@ function buildTimeline(events) {
       classifyBranches(agentNode, hasExplicitBranches);
       if (initSpanObj) {
         agentNode.content = [initSpanObj, ...agentNode.content];
-        agentNode.startTime = minStartTime(agentNode.content);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.startTime = minStartTime([
+          ...agentNode.content,
+          ...agentNode.branches
+        ]);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches
+        ]);
         agentNode.idleTime = computeIdleTime(
-          agentNode.content,
+          [...agentNode.content, ...agentNode.branches],
           agentNode.startTime,
           agentNode.endTime
         );
       }
       if (scoringSpan) {
         agentNode.content.push(scoringSpan);
-        agentNode.startTime = minStartTime(agentNode.content);
-        agentNode.endTime = maxEndTime(agentNode.content);
-        agentNode.totalTokens = sumTokens(agentNode.content);
+        agentNode.endTime = maxEndTime([
+          ...agentNode.content,
+          ...agentNode.branches
+        ]);
+        agentNode.totalTokens = sumTokens([
+          ...agentNode.content,
+          ...agentNode.branches
+        ]);
         agentNode.idleTime = computeIdleTime(
-          agentNode.content,
+          [...agentNode.content, ...agentNode.branches],
           agentNode.startTime,
           agentNode.endTime
         );

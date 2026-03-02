@@ -1045,8 +1045,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             col_type = schema.field(field.name).type
             expected_type = field.pyarrow_type
 
-            # String columns: allow large_string as equivalent
-            if expected_type == pa.string():
+            # String columns: allow both string and large_string (backward compat)
+            if pa.types.is_string(expected_type) or pa.types.is_large_string(
+                expected_type
+            ):
                 if col_type not in (pa.string(), pa.large_string()):
                     raise ValueError(
                         f"'{field.name}' column must be string type, got {col_type}"
@@ -1224,13 +1226,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Reserved columns with fixed types (from central schema definition)
         reserved_cols = reserved_columns()
         fields: list[tuple[str, pa.DataType]] = [
-            (
-                f.name,
-                pa.large_string()
-                if pa.types.is_string(f.pyarrow_type)
-                else f.pyarrow_type,
-            )
-            for f in TRANSCRIPT_SCHEMA_FIELDS
+            (f.name, f.pyarrow_type) for f in TRANSCRIPT_SCHEMA_FIELDS
         ]
 
         # Discover all metadata keys across all rows
@@ -2204,7 +2200,7 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
 
 def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
     """Convert PyArrow type to DuckDB SQL type string."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "VARCHAR"
     elif pa_type == pa.int64():
         return "BIGINT"
@@ -2222,7 +2218,7 @@ def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
 
 def _duckdb_default_value(pa_type: pa.DataType) -> str:
     """Get default value literal for a PyArrow type in DuckDB."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "''"
     elif pa_type in (pa.int64(), pa.int32()):
         return "0"

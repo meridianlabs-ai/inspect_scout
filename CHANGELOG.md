@@ -6,6 +6,7 @@
 - Scanner Tools: `transcript_messages()`, `segment_messages()`, and `span_messages()` functions for extracting and segmenting transcript messages.
 - Transcript DB: `claude_code()` source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
+- Serialization: Use `pa.large_string` for string types to support larger column/file sizes. 
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
 - Transcripts: unthin `target` and and add `scores` from sample JSON.
 - Scout View: Properly sort scanner results using the value type.

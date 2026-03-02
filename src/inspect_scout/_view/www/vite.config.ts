@@ -86,6 +86,7 @@ export default defineConfig(({ mode }) => {
                 return "vendor-grid";
               if (/asciinema/.test(id)) return "vendor-asciinema";
               if (/prismjs/.test(id)) return "vendor-prism";
+              if (/@tanstack/.test(id)) return "vendor-tanstack";
               return "vendor";
             },
             entryFileNames: `assets/[name]-[hash].js`,

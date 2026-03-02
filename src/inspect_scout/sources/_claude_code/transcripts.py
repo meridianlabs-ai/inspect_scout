@@ -478,7 +478,7 @@ async def _create_transcript(
         source_uri=source_uri,
         date=first_timestamp,
         task_set=project_path,
-        task_id=metadata.get("slug"),
+        task_id=metadata.get("slug") or base_session_id,
         task_repeat=1,
         agent="claude-code",
         agent_args=None,

@@ -78,6 +78,7 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks(id) {
+              if (id.includes("json-worker")) return "json-worker";
               if (!id.includes("node_modules")) return;
               if (/mathjax|mathxyjax|markdown-it/.test(id))
                 return "vendor-markdown";

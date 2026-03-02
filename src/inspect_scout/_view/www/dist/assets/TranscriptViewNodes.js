@@ -11853,9 +11853,9 @@ const WebSearch = ({ query: query2 }) => {
     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: clsx(styles$D.query, "text-size-smallest"), children: query2 })
   ] });
 };
-const result$2 = "_result_1mixg_12";
+const result$1 = "_result_1mixg_12";
 const styles$C = {
-  result: result$2
+  result: result$1
 };
 const WebSearchResults = ({
   results
@@ -15610,28 +15610,16 @@ function computeMinimapSelection(rows, selected) {
 function collectRawEvents(spans) {
   const events = [];
   const sourceSpans = /* @__PURE__ */ new Map();
-  const agentToolEvents = /* @__PURE__ */ new Map();
   if (spans.length === 1) {
-    collectFromContent(spans[0].content, events, sourceSpans, agentToolEvents);
+    collectFromContent(spans[0].content, events, sourceSpans);
   } else {
-    collectFromContent(spans, events, sourceSpans, agentToolEvents);
+    collectFromContent(spans, events, sourceSpans);
   }
-  return { events, sourceSpans, agentToolEvents };
+  return { events, sourceSpans };
 }
-function collectFromContent(content2, out, sourceSpans, agentToolEvents) {
-  for (let i2 = 0; i2 < content2.length; i2++) {
-    const item = content2[i2];
+function collectFromContent(content2, out, sourceSpans) {
+  for (const item of content2) {
     if (item.type === "event") {
-      if (item.event.event === "tool") {
-        const next = content2[i2 + 1];
-        if (next && next.type === "span" && next.spanType === "agent") {
-          const toolEvent = item.event;
-          if (toolEvent.agent_span_id != null && toolEvent.agent_span_id === next.id || next.id === `agent-${toolEvent.id}`) {
-            agentToolEvents.set(next.id, toolEvent);
-            continue;
-          }
-        }
-      }
       out.push(item.event);
     } else {
       const beginEvent = {
@@ -15651,7 +15639,7 @@ function collectFromContent(content2, out, sourceSpans, agentToolEvents) {
       if (item.spanType === "agent") {
         sourceSpans.set(item.id, item);
       } else {
-        collectFromContent(item.content, out, sourceSpans, agentToolEvents);
+        collectFromContent(item.content, out, sourceSpans);
       }
       const endEvent = {
         event: "span_end",
@@ -15691,19 +15679,17 @@ function buildSpanSelectKeys(rows) {
   }
   return keys;
 }
-function attachSourceSpans(nodes, spanMap, agentToolEvents) {
+function attachSourceSpans(nodes, spanMap) {
   for (const node2 of nodes) {
     if (node2.event.event === "span_begin") {
       const spanId = node2.event.span_id;
       if (spanId) {
         const span = spanMap.get(spanId);
         if (span) node2.sourceSpan = span;
-        const toolEvent = agentToolEvents?.get(spanId);
-        if (toolEvent) node2.agentToolEvent = toolEvent;
       }
     }
     if (node2.children.length > 0) {
-      attachSourceSpans(node2.children, spanMap, agentToolEvents);
+      attachSourceSpans(node2.children, spanMap);
     }
   }
 }
@@ -15902,8 +15888,6 @@ class EventNode {
   depth;
   /** The TimelineSpan this node was synthesized from, if any. */
   sourceSpan;
-  /** The ToolEvent that preceded this agent span, if any. */
-  agentToolEvent;
   constructor(id, event, depth) {
     this.id = id;
     this.event = event;
@@ -16218,12 +16202,12 @@ const injectScorersSpan = (events) => {
   }
   return results;
 };
-const useEventNodes = (events, running, sourceSpans, agentToolEvents) => {
+const useEventNodes = (events, running, sourceSpans) => {
   const { eventTree, defaultCollapsedIds } = reactExports.useMemo(() => {
     const resolvedEvents = fixupEventStream(events, !running);
     const rawEventTree = treeifyEvents(resolvedEvents, 0);
     if (sourceSpans && sourceSpans.size > 0) {
-      attachSourceSpans(rawEventTree, sourceSpans, agentToolEvents);
+      attachSourceSpans(rawEventTree, sourceSpans);
     }
     const filterEmpty = (eventNodes) => {
       return eventNodes.filter((node2) => {
@@ -16250,7 +16234,7 @@ const useEventNodes = (events, running, sourceSpans, agentToolEvents) => {
     };
     findCollapsibleEvents(eventTree2);
     return { eventTree: eventTree2, defaultCollapsedIds: defaultCollapsedIds2 };
-  }, [events, running, sourceSpans, agentToolEvents]);
+  }, [events, running, sourceSpans]);
   return { eventNodes: eventTree, defaultCollapsedIds };
 };
 const collapseFilters = [
@@ -16265,14 +16249,13 @@ const collapseFilters = [
   (event) => event.event === "subtask"
 ];
 const styles$m = {};
-const card$1 = "_card_1u5pb_1";
-const header = "_header_1u5pb_7";
-const icon = "_icon_1u5pb_18";
-const title$2 = "_title_1u5pb_22";
-const meta = "_meta_1u5pb_28";
-const disclosure = "_disclosure_1u5pb_33";
-const description = "_description_1u5pb_39";
-const result$1 = "_result_1u5pb_49";
+const card$1 = "_card_yr25w_1";
+const header = "_header_yr25w_13";
+const icon = "_icon_yr25w_22";
+const title$2 = "_title_yr25w_26";
+const meta = "_meta_yr25w_32";
+const disclosure = "_disclosure_yr25w_37";
+const description = "_description_yr25w_42";
 const styles$l = {
   card: card$1,
   header,
@@ -16280,8 +16263,7 @@ const styles$l = {
   title: title$2,
   meta,
   disclosure,
-  description,
-  result: result$1
+  description
 };
 const TimelineSelectContext = reactExports.createContext(
   null
@@ -16289,11 +16271,7 @@ const TimelineSelectContext = reactExports.createContext(
 function useTimelineSelect() {
   return reactExports.useContext(TimelineSelectContext);
 }
-const AgentCardView = ({
-  span,
-  toolEvent,
-  className: className2
-}) => {
+const AgentCardView = ({ span, className: className2 }) => {
   const select = useTimelineSelect();
   const handleClick = reactExports.useCallback(() => {
     select?.(span.id);
@@ -16301,7 +16279,6 @@ const AgentCardView = ({
   const title2 = span.name.toLowerCase();
   const tokens = formatTokenCount(span.totalTokens);
   const duration = formatDurationShort(span.startTime, span.endTime);
-  const resultContent = toolEvent ? normalizeResult(toolEvent.result) : null;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.card, className2), onClick: handleClick, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: clsx(styles$l.header, "text-size-small"), children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -16345,53 +16322,9 @@ const AgentCardView = ({
         }
       )
     ] }),
-    span.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.description, "text-size-small"), children: span.description }),
-    resultContent && resultContent.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: styles$l.result,
-        onClick: (e) => e.stopPropagation(),
-        onKeyDown: (e) => {
-          if (e.key === "Enter" || e.key === " ") e.stopPropagation();
-        },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          ExpandablePanel,
-          {
-            id: `agent-result-${span.id}`,
-            collapse: true,
-            border: true,
-            lines: 20,
-            className: clsx("text-size-small"),
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              MessageContent,
-              {
-                contents: resultContent,
-                context: defaultContext()
-              }
-            )
-          }
-        )
-      }
-    )
+    span.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.description, "text-size-small"), children: span.description })
   ] });
 };
-function normalizeResult(result2) {
-  if (Array.isArray(result2)) {
-    return result2.filter(isMessageContent);
-  }
-  if (typeof result2 === "object" && result2 !== null && "type" in result2) {
-    return [result2];
-  }
-  return [
-    {
-      type: "text",
-      text: String(result2),
-      refusal: null,
-      internal: null,
-      citations: null
-    }
-  ];
-}
 const title$1 = "_title_19l1b_1";
 const contents = "_contents_19l1b_8";
 const styles$k = {
@@ -26763,14 +26696,7 @@ const RenderedEventNode = reactExports.memo(
         );
       case "span_begin": {
         if (node2.sourceSpan?.spanType === "agent") {
-          return /* @__PURE__ */ jsxRuntimeExports.jsx(
-            AgentCardView,
-            {
-              span: node2.sourceSpan,
-              toolEvent: node2.agentToolEvent,
-              className: className2
-            }
-          );
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(AgentCardView, { span: node2.sourceSpan, className: className2 });
         }
         return /* @__PURE__ */ jsxRuntimeExports.jsx(
           SpanEventView,

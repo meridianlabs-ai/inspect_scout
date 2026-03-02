@@ -125,7 +125,6 @@ export const TimelineEventsView = forwardRef<
     rootTimeMapping,
     selectedEvents,
     sourceSpans,
-    agentToolEvents,
     minimapSelection,
     hasTimeline,
   } = useTranscriptTimeline(events, markerConfig);
@@ -207,8 +206,7 @@ export const TimelineEventsView = forwardRef<
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     selectedEvents,
     false,
-    sourceSpans,
-    agentToolEvents
+    sourceSpans
   );
   const hasMatchingEvents = eventNodes.length > 0;
 

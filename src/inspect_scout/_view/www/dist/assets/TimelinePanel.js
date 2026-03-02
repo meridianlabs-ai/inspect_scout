@@ -148,7 +148,6 @@ function makeToolEventNode(fn, args, result, startSec, endSec, tokens) {
     working_start: startSec,
     working_time: endSec - startSec,
     agent: null,
-    agent_span_id: null,
     completed: null,
     error: null,
     failed: null,
@@ -184,7 +183,6 @@ function makeToolErrorEventNode(fn, errorMsg, errorType, startSec, endSec, token
     error: { message: errorMsg, type: errorType },
     failed: true,
     agent: null,
-    agent_span_id: null,
     completed: null,
     message_id: null,
     metadata: null,
@@ -1726,16 +1724,14 @@ const TimelinePanel = () => {
     () => computeMinimapSelection(state.rows, state.selected),
     [state.rows, state.selected]
   );
-  const {
-    events: rawEvents,
-    sourceSpans,
-    agentToolEvents
-  } = reactExports.useMemo(() => collectRawEvents(selectedSpans), [selectedSpans]);
+  const { events: rawEvents, sourceSpans } = reactExports.useMemo(
+    () => collectRawEvents(selectedSpans),
+    [selectedSpans]
+  );
   const { eventNodes, defaultCollapsedIds } = useEventNodes(
     rawEvents,
     false,
-    sourceSpans,
-    agentToolEvents
+    sourceSpans
   );
   const spanSelectKeys = reactExports.useMemo(
     () => buildSpanSelectKeys(state.rows),

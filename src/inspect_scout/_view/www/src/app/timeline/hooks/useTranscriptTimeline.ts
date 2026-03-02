@@ -15,7 +15,7 @@ import {
   type Timeline,
   type TimelineSpan,
 } from "../../../components/transcript/timeline";
-import type { Event, ToolEvent } from "../../../types/api-types";
+import type { Event } from "../../../types/api-types";
 import type { MinimapSelection } from "../components/TimelineMinimap";
 import {
   collectRawEvents,
@@ -33,7 +33,6 @@ import { computeTimeMapping, type TimeMapping } from "../utils/timeMapping";
 import { type TimelineState, useTimeline } from "./useTimeline";
 
 const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
-const emptyAgentToolEvents: ReadonlyMap<string, ToolEvent> = new Map();
 
 interface TranscriptTimelineResult {
   /** The built Timeline. Always present (even for root-only timelines). */
@@ -50,8 +49,6 @@ interface TranscriptTimelineResult {
   selectedEvents: Event[];
   /** Agent spans keyed by span ID, for attaching to EventNodes. */
   sourceSpans: ReadonlyMap<string, TimelineSpan>;
-  /** ToolEvents that precede agent spans, keyed by span ID. */
-  agentToolEvents: ReadonlyMap<string, ToolEvent>;
   /** Minimap selection for the breadcrumb row. */
   minimapSelection: MinimapSelection | undefined;
   /** Whether the timeline has meaningful structure (non-empty root with children). */
@@ -105,20 +102,15 @@ export function useTranscriptTimeline(
     [visibleRows, timeMapping, markerConfig.depth, markerConfig.kinds]
   );
 
-  const { selectedEvents, sourceSpans, agentToolEvents } = useMemo(() => {
+  const { selectedEvents, sourceSpans } = useMemo(() => {
     const spans = getSelectedSpans(state.rows, state.selected);
     if (spans.length === 0) {
-      return {
-        selectedEvents: events,
-        sourceSpans: emptySourceSpans,
-        agentToolEvents: emptyAgentToolEvents,
-      };
+      return { selectedEvents: events, sourceSpans: emptySourceSpans };
     }
     const collected = collectRawEvents(spans);
     return {
       selectedEvents: collected.events,
       sourceSpans: collected.sourceSpans,
-      agentToolEvents: collected.agentToolEvents,
     };
   }, [events, state.rows, state.selected]);
 
@@ -139,7 +131,6 @@ export function useTranscriptTimeline(
     rootTimeMapping,
     selectedEvents,
     sourceSpans,
-    agentToolEvents,
     minimapSelection,
     hasTimeline,
   };

@@ -3743,11 +3743,6 @@ export interface components {
              * @default null
              */
             agent: string | null;
-            /**
-             * Agent Span Id
-             * @default null
-             */
-            agent_span_id: string | null;
             /** Arguments */
             arguments: {
                 [key: string]: components["schemas"]["JsonValue"];

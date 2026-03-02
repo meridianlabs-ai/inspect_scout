@@ -8,6 +8,11 @@
  */
 import { lazy, useEffect } from "react";
 
+declare global {
+  // Set by e2e tests to prevent prefetch from racing with @msw/playwright
+  var __TEST_DISABLE_PREFETCH: boolean | undefined;
+}
+
 const routeImports = [
   () => import("./app/scans/ScansPanel"),
   () => import("./app/scan/ScanPanel"),
@@ -67,6 +72,10 @@ export const TimelinePanel = lazy(() =>
  */
 export const usePrefetchRoutes = () => {
   useEffect(() => {
+    // Skip in e2e tests — the burst of concurrent chunk requests triggers a
+    // race in @msw/playwright's catch-all route handler ("Route is already handled!").
+    if (globalThis.__TEST_DISABLE_PREFETCH) return;
+
     requestIdleCallback(() => {
       routeImports.forEach((load) => void load());
     });

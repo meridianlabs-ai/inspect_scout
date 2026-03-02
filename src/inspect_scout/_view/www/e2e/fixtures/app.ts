@@ -56,9 +56,12 @@ interface AppFixtures {
 }
 
 export const test = base.extend<AppFixtures>({
-  // Override page to inject SSE mock before any navigation
+  // Override page to inject SSE mock and disable route prefetch before any navigation
   page: async ({ page }, use) => {
     await page.addInitScript(MOCK_EVENT_SOURCE_SCRIPT);
+    await page.addInitScript(() => {
+      globalThis.__TEST_DISABLE_PREFETCH = true;
+    });
     await use(page); // eslint-disable-line react-hooks/rules-of-hooks
   },
 

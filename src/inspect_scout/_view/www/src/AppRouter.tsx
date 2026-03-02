@@ -1,4 +1,4 @@
-import { FC, lazy, Suspense, useEffect } from "react";
+import { FC, Suspense, useEffect } from "react";
 import {
   createHashRouter,
   Outlet,
@@ -15,6 +15,18 @@ import {
   useLoggingNavigate,
 } from "./debugging/navigationDebugging";
 import { useWindowMessaging } from "./hooks/useWindowMessaging";
+import {
+  ScansPanel,
+  ScanPanel,
+  ScannerResultPanel,
+  TranscriptsPanel,
+  TranscriptPanel,
+  ProjectPanel,
+  ValidationPanel,
+  RunScanPanel,
+  TimelinePanel,
+  usePrefetchRoutes,
+} from "./lazyRoutes";
 import {
   kScansRootRouteUrlPattern,
   kScansRouteUrlPattern,
@@ -34,48 +46,6 @@ import {
 import { useStore } from "./state/store";
 import { AppConfig } from "./types/api-types";
 
-const ScansPanel = lazy(() =>
-  import("./app/scans/ScansPanel").then((m) => ({ default: m.ScansPanel }))
-);
-const ScanPanel = lazy(() =>
-  import("./app/scan/ScanPanel").then((m) => ({ default: m.ScanPanel }))
-);
-const ScannerResultPanel = lazy(() =>
-  import("./app/scannerResult/ScannerResultPanel").then((m) => ({
-    default: m.ScannerResultPanel,
-  }))
-);
-const TranscriptsPanel = lazy(() =>
-  import("./app/transcripts/TranscriptsPanel").then((m) => ({
-    default: m.TranscriptsPanel,
-  }))
-);
-const TranscriptPanel = lazy(() =>
-  import("./app/transcript/TranscriptPanel").then((m) => ({
-    default: m.TranscriptPanel,
-  }))
-);
-const ProjectPanel = lazy(() =>
-  import("./app/project/ProjectPanel").then((m) => ({
-    default: m.ProjectPanel,
-  }))
-);
-const ValidationPanel = lazy(() =>
-  import("./app/validation/ValidationPanel").then((m) => ({
-    default: m.ValidationPanel,
-  }))
-);
-const RunScanPanel = lazy(() =>
-  import("./app/runScan/RunScanPanel").then((m) => ({
-    default: m.RunScanPanel,
-  }))
-);
-const TimelinePanel = lazy(() =>
-  import("./app/timeline/TimelinePanel").then((m) => ({
-    default: m.TimelinePanel,
-  }))
-);
-
 export interface AppRouterConfig {
   mode: "scans" | "workbench";
   config: AppConfig;
@@ -92,6 +62,7 @@ const createAppLayout = (routerConfig: AppRouterConfig) => {
     useFindBandShortcut();
     useWindowMessaging();
     useRoutingInitializer(config.scans.dir);
+    usePrefetchRoutes();
 
     const content = (
       <Suspense fallback={<LoadingBar loading />}>

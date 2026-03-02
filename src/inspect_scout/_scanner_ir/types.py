@@ -39,6 +39,7 @@ class LLMScannerSpec(BaseModel):
         "boolean", "numeric", "string", "labels", "multi_labels", "structured"
     ]
     labels: list[str] | None = Field(default=None)
+    allow_none: bool = Field(default=False)
     structured_spec: StructuredAnswerSpec | None = Field(default=None)
     model: str | None = Field(default=None)
     model_role: str | None = Field(default=None)

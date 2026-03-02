@@ -12,6 +12,9 @@ class AnswerMultiLabel(NamedTuple):
     Label values (e.g. A, B, C) will be provided automatically.
     """
 
+    allow_none: bool = False
+    """Allow the model to respond with NONE when no labels apply."""
+
 
 class AnswerStructured(NamedTuple):
     """Answer with structured output.

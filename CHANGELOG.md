@@ -1,6 +1,7 @@
 ## Unreleased
 
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
+- LLM Scanner: `AnswerMultiLabel(allow_none=True)` lets the model respond with `ANSWER: NONE` when no labels apply.
 - Scanner Tools: `message_numbering()`, `scanner_prompt()`, `generate_answer()`, and `parse_answer()` functions for building custom scanners with fine-grained control.
 - Scanner Tools: `ResultReducer` for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
 - Scanner Tools: `transcript_messages()`, `segment_messages()`, and `span_messages()` functions for extracting and segmenting transcript messages.

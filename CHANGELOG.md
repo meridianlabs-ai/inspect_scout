@@ -9,6 +9,7 @@
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
 - Transcripts: unthin `target` and and add `scores` from sample JSON.
 - Scout View: Properly sort scanner results using the value type.
+- Scout View: Enable minification and caching of view static assets.
 - Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
 - Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 

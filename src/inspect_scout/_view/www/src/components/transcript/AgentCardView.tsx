@@ -1,12 +1,15 @@
 import clsx from "clsx";
-import { FC, useCallback } from "react";
+import { FC, MouseEvent, useCallback, useMemo } from "react";
 
 import { formatTokenCount } from "../../app/timeline/utils/swimlaneLayout";
 import { formatDurationShort } from "../../utils/format";
+import { ExpandablePanel } from "../ExpandablePanel";
 import { ApplicationIcons } from "../icons";
+import { MarkdownDiv } from "../MarkdownDiv";
 
 import styles from "./AgentCardView.module.css";
 import type { TimelineSpan } from "./timeline";
+import { getSpanResultOutput } from "./timeline";
 import { useTimelineSelect } from "./TimelineSelectContext";
 
 interface AgentCardViewProps {
@@ -20,6 +23,12 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
   const handleClick = useCallback(() => {
     select?.(span.id);
   }, [select, span.id]);
+
+  const stopPropagation = useCallback((e: MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const resultOutput = useMemo(() => getSpanResultOutput(span), [span]);
 
   const title = span.name.toLowerCase();
   const tokens = formatTokenCount(span.totalTokens);
@@ -59,6 +68,17 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
       {span.description && (
         <div className={clsx(styles.description, "text-size-small")}>
           {span.description}
+        </div>
+      )}
+      {resultOutput && (
+        <div className={styles.resultPanel} onClick={stopPropagation}>
+          <ExpandablePanel
+            id={`agent-result-${span.id}`}
+            collapse={true}
+            lines={15}
+          >
+            <MarkdownDiv markdown={resultOutput} />
+          </ExpandablePanel>
         </div>
       )}
     </div>

@@ -43,3 +43,11 @@
   margin-top: 0.25em;
   font-size: 0.85em;
 }
+
+.resultPanel {
+  margin: 0.5em -0.625rem -0.625rem;
+  padding: 0.5em 0.625rem 0.625rem;
+  border-top: solid 1px var(--bs-border-color);
+  background-color: var(--bs-body-bg);
+  font-size: var(--inspect-font-size-base);
+}

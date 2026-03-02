@@ -111,6 +111,7 @@ function makeToolEventNode(
       : null,
     failed: options?.error ? true : null,
     agent: null,
+    agent_span_id: null,
     completed: null,
     message_id: null,
     metadata: null,

@@ -1234,6 +1234,42 @@ function classifyUtilityAgents(
  * - Utility agent classification (single-turn, different system prompt)
  * - Recursive branch classification
  */
+// =============================================================================
+// Span Result Extraction
+// =============================================================================
+
+/**
+ * Extract the text output from the last ModelEvent in a span's content.
+ *
+ * Walks `span.content` in reverse to find the final model event, then
+ * returns the assistant message text from `output.choices[0].message`.
+ * Returns `undefined` if no model event is found or it has no text.
+ */
+export function getSpanResultOutput(span: TimelineSpan): string | undefined {
+  for (let i = span.content.length - 1; i >= 0; i--) {
+    const item = span.content[i]!;
+    if (item.type === "event" && item.event.event === "model") {
+      const choices = item.event.output.choices;
+      if (choices.length === 0) return undefined;
+      const message = choices[0]!.message;
+      if (typeof message.content === "string") {
+        return message.content || undefined;
+      }
+      if (Array.isArray(message.content)) {
+        const parts: string[] = [];
+        for (const c of message.content) {
+          if ("text" in c && typeof c.text === "string") {
+            parts.push(c.text);
+          }
+        }
+        return parts.length > 0 ? parts.join("\n") : undefined;
+      }
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export function buildTimeline(events: Event[]): Timeline {
   if (events.length === 0) {
     const emptyRoot: TimelineSpan = {

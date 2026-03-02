@@ -164,7 +164,12 @@ export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
   const events: Event[] = [];
   const sourceSpans = new Map<string, TimelineSpan>();
   if (spans.length === 1) {
-    collectFromContent(spans[0]!.content, events, sourceSpans);
+    // When viewing a single agent span, the spawning ToolEvent (which wraps
+    // the entire agent execution) duplicates the first MODEL CALL's input and
+    // the last ASSISTANT response. Detect and skip it at the top level only.
+    const span = spans[0]!;
+    const agentSpanId = span.spanType === "agent" ? span.id : undefined;
+    collectFromContent(span.content, events, sourceSpans, agentSpanId);
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
@@ -176,10 +181,21 @@ export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
 function collectFromContent(
   content: ReadonlyArray<TimelineEvent | TimelineSpan>,
   out: Event[],
-  sourceSpans: Map<string, TimelineSpan>
+  sourceSpans: Map<string, TimelineSpan>,
+  skipAgentSpanId?: string
 ): void {
   for (const item of content) {
     if (item.type === "event") {
+      // Skip the spawning ToolEvent when viewing a sub-agent's own content.
+      // Match the specific agent_span_id so we only skip the tool that
+      // spawned this exact agent, not any other agent-spawning tool.
+      if (
+        skipAgentSpanId &&
+        item.event.event === "tool" &&
+        item.event.agent_span_id === skipAgentSpanId
+      ) {
+        continue;
+      }
       out.push(item.event);
     } else {
       // Emit synthetic span_begin

@@ -715,7 +715,7 @@ a._citationLink_1ggvf_9:hover {
     opacity: 0.8;
   }
 }
-._card_yr25w_1 {
+._card_1apye_1 {
   position: relative;
   background-color: var(--bs-secondary-bg);
   padding: 0.625rem;
@@ -723,11 +723,11 @@ a._citationLink_1ggvf_9:hover {
   cursor: pointer;
 }
 
-._card_yr25w_1:hover {
+._card_1apye_1:hover {
   background-color: var(--bs-secondary-bg-subtle);
 }
 
-._header_yr25w_13 {
+._header_1apye_13 {
   display: grid;
   grid-template-columns:
     max-content minmax(0, max-content) auto minmax(0, max-content)
@@ -736,29 +736,37 @@ a._citationLink_1ggvf_9:hover {
   align-items: baseline;
 }
 
-._icon_yr25w_22 {
+._icon_1apye_22 {
   font-size: 0.9em;
 }
 
-._title_yr25w_26 {
+._title_1apye_26 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-._meta_yr25w_32 {
+._meta_1apye_32 {
   white-space: nowrap;
   justify-self: end;
 }
 
-._disclosure_yr25w_37 {
+._disclosure_1apye_37 {
   font-size: 0.8em;
   margin-left: 0.3em;
 }
 
-._description_yr25w_42 {
+._description_1apye_42 {
   margin-top: 0.25em;
   font-size: 0.85em;
+}
+
+._resultPanel_1apye_47 {
+  margin: 0.5em -0.625rem -0.625rem;
+  padding: 0.5em 0.625rem 0.625rem;
+  border-top: solid 1px var(--bs-border-color);
+  background-color: var(--bs-body-bg);
+  font-size: var(--inspect-font-size-base);
 }
 ._title_19l1b_1 {
   margin-left: 0.5em;

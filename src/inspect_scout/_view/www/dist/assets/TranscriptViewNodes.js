@@ -14767,6 +14767,30 @@ function classifyUtilityAgents(node2, parentSystemPrompt = null) {
     }
   }
 }
+function getSpanResultOutput(span) {
+  for (let i2 = span.content.length - 1; i2 >= 0; i2--) {
+    const item = span.content[i2];
+    if (item.type === "event" && item.event.event === "model") {
+      const choices = item.event.output.choices;
+      if (choices.length === 0) return void 0;
+      const message2 = choices[0].message;
+      if (typeof message2.content === "string") {
+        return message2.content || void 0;
+      }
+      if (Array.isArray(message2.content)) {
+        const parts = [];
+        for (const c of message2.content) {
+          if ("text" in c && typeof c.text === "string") {
+            parts.push(c.text);
+          }
+        }
+        return parts.length > 0 ? parts.join("\n") : void 0;
+      }
+      return void 0;
+    }
+  }
+  return void 0;
+}
 function buildTimeline(events) {
   if (events.length === 0) {
     const emptyRoot = {
@@ -15611,15 +15635,20 @@ function collectRawEvents(spans) {
   const events = [];
   const sourceSpans = /* @__PURE__ */ new Map();
   if (spans.length === 1) {
-    collectFromContent(spans[0].content, events, sourceSpans);
+    const span = spans[0];
+    const agentSpanId = span.spanType === "agent" ? span.id : void 0;
+    collectFromContent(span.content, events, sourceSpans, agentSpanId);
   } else {
     collectFromContent(spans, events, sourceSpans);
   }
   return { events, sourceSpans };
 }
-function collectFromContent(content2, out, sourceSpans) {
+function collectFromContent(content2, out, sourceSpans, skipAgentSpanId) {
   for (const item of content2) {
     if (item.type === "event") {
+      if (skipAgentSpanId && item.event.event === "tool" && item.event.agent_span_id === skipAgentSpanId) {
+        continue;
+      }
       out.push(item.event);
     } else {
       const beginEvent = {
@@ -16249,13 +16278,14 @@ const collapseFilters = [
   (event) => event.event === "subtask"
 ];
 const styles$m = {};
-const card$1 = "_card_yr25w_1";
-const header = "_header_yr25w_13";
-const icon = "_icon_yr25w_22";
-const title$2 = "_title_yr25w_26";
-const meta = "_meta_yr25w_32";
-const disclosure = "_disclosure_yr25w_37";
-const description = "_description_yr25w_42";
+const card$1 = "_card_1apye_1";
+const header = "_header_1apye_13";
+const icon = "_icon_1apye_22";
+const title$2 = "_title_1apye_26";
+const meta = "_meta_1apye_32";
+const disclosure = "_disclosure_1apye_37";
+const description = "_description_1apye_42";
+const resultPanel = "_resultPanel_1apye_47";
 const styles$l = {
   card: card$1,
   header,
@@ -16263,7 +16293,8 @@ const styles$l = {
   title: title$2,
   meta,
   disclosure,
-  description
+  description,
+  resultPanel
 };
 const TimelineSelectContext = reactExports.createContext(
   null
@@ -16276,6 +16307,10 @@ const AgentCardView = ({ span, className: className2 }) => {
   const handleClick = reactExports.useCallback(() => {
     select?.(span.id);
   }, [select, span.id]);
+  const stopPropagation = reactExports.useCallback((e) => {
+    e.stopPropagation();
+  }, []);
+  const resultOutput = reactExports.useMemo(() => getSpanResultOutput(span), [span]);
   const title2 = span.name.toLowerCase();
   const tokens = formatTokenCount(span.totalTokens);
   const duration = formatDurationShort(span.startTime, span.endTime);
@@ -16322,7 +16357,16 @@ const AgentCardView = ({ span, className: className2 }) => {
         }
       )
     ] }),
-    span.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.description, "text-size-small"), children: span.description })
+    span.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$l.description, "text-size-small"), children: span.description }),
+    resultOutput && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$l.resultPanel, onClick: stopPropagation, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ExpandablePanel,
+      {
+        id: `agent-result-${span.id}`,
+        collapse: true,
+        lines: 15,
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(MarkdownDiv, { markdown: resultOutput })
+      }
+    ) })
   ] });
 };
 const title$1 = "_title_19l1b_1";

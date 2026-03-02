@@ -1226,7 +1226,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         fields: list[tuple[str, pa.DataType]] = [
             (
                 f.name,
-                pa.large_string() if pa.types.is_string(f.pyarrow_type) else f.pyarrow_type,
+                pa.large_string()
+                if pa.types.is_string(f.pyarrow_type)
+                else f.pyarrow_type,
             )
             for f in TRANSCRIPT_SCHEMA_FIELDS
         ]

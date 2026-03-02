@@ -119,6 +119,7 @@
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);
   color: var(--vscode-foreground);
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   align-items: center;
@@ -127,6 +128,29 @@
 
 .labelSelected {
   color: var(--vscode-textLink-foreground);
+}
+
+/* Expand/collapse chevron in label */
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 8px;
+}
+
+.chevron:hover {
+  color: var(--vscode-foreground);
+}
+
+.chevronSpacer {
+  display: inline-block;
+  width: 12px;
+  flex-shrink: 0;
 }
 
 /* Bar area */
@@ -312,6 +336,7 @@
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -347,4 +372,6 @@
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;
+  -webkit-user-select: none;
+  user-select: none;
 }

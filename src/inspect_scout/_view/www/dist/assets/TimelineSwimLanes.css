@@ -180,7 +180,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_17q59_1 {
+._swimlane_a04b9_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -196,7 +196,7 @@
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_17q59_17 {
+._pinnedSection_a04b9_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -204,7 +204,7 @@
 }
 
 /* Scrollable section: child rows */
-._scrollSection_17q59_25 {
+._scrollSection_a04b9_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -213,13 +213,13 @@
   overflow-y: auto;
 }
 
-._swimlane_17q59_1:focus-visible {
+._swimlane_a04b9_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_17q59_40 {
+._collapsibleSection_a04b9_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -232,26 +232,26 @@
   opacity: 1;
 }
 
-._collapsibleCollapsed_17q59_53 {
+._collapsibleCollapsed_a04b9_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_17q59_60 {
+._noAnimation_a04b9_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_17q59_65 {
+._swimlaneSticky_a04b9_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_17q59_72 {
+._collapsibleInner_a04b9_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -261,7 +261,7 @@
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_17q59_82 {
+._collapseToggle_a04b9_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -282,50 +282,74 @@
   line-height: 1;
 }
 
-._collapseToggle_17q59_82:hover {
+._collapseToggle_a04b9_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_17q59_110 {
+._row_a04b9_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_17q59_116 {
+._label_a04b9_116 {
   padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);
   color: var(--vscode-foreground);
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-._labelSelected_17q59_128 {
+._labelSelected_a04b9_129 {
   color: var(--vscode-textLink-foreground);
+}
+
+/* Expand/collapse chevron in label */
+
+._chevron_a04b9_135 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 8px;
+}
+
+._chevron_a04b9_135:hover {
+  color: var(--vscode-foreground);
+}
+
+._chevronSpacer_a04b9_150 {
+  display: inline-block;
+  width: 12px;
+  flex-shrink: 0;
 }
 
 /* Bar area */
 
-._barArea_17q59_134 {
+._barArea_a04b9_158 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_17q59_140 {
+._barInner_a04b9_164 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_17q59_146 {
+._fill_a04b9_170 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -339,32 +363,32 @@
   cursor: pointer;
 }
 
-._fill_17q59_146:hover {
+._fill_a04b9_170:hover {
   opacity: 0.5;
 }
 
-._fillParent_17q59_164 {
+._fillParent_a04b9_188 {
   opacity: 0.2;
 }
 
-._fillSelected_17q59_168 {
+._fillSelected_a04b9_192 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
 /* Row is selected but a different span within the row is focused */
-._fillDimmed_17q59_174 {
+._fillDimmed_a04b9_198 {
   opacity: 0.15;
 }
 
-._parallelBadge_17q59_178 {
+._parallelBadge_a04b9_202 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Markers */
 
-._marker_17q59_185 {
+._marker_a04b9_209 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -380,11 +404,11 @@
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_17q59_185 > * {
+._marker_a04b9_209 > * {
   pointer-events: none;
 }
 
-._markerError_17q59_205 {
+._markerError_a04b9_229 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -395,7 +419,7 @@
   cursor: pointer;
 }
 
-._markerError_17q59_205::after {
+._markerError_a04b9_229::after {
   content: "";
   position: absolute;
   top: 0;
@@ -405,7 +429,7 @@
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_17q59_226 {
+._markerCompaction_a04b9_250 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -417,20 +441,20 @@
   cursor: pointer;
 }
 
-._markerBranch_17q59_238 {
+._markerBranch_a04b9_262 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_17q59_245 {
+._branchPopover_a04b9_269 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_17q59_251 {
+._branchEntry_a04b9_275 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -445,28 +469,28 @@
   white-space: nowrap;
 }
 
-._branchEntry_17q59_251:hover {
+._branchEntry_a04b9_275:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_17q59_271 {
+._branchLabel_a04b9_295 {
   font-weight: 500;
 }
 
-._branchMeta_17q59_275 {
+._branchMeta_a04b9_299 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_17q59_251:hover ._branchMeta_17q59_275 {
+._branchEntry_a04b9_275:hover ._branchMeta_a04b9_299 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_17q59_287 {
+._breadcrumbRow_a04b9_311 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -476,7 +500,7 @@
   overflow: hidden;
 }
 
-._breadcrumbTrail_17q59_297 {
+._breadcrumbTrail_a04b9_321 {
   display: flex;
   align-items: center;
   gap: 0;
@@ -484,20 +508,21 @@
   overflow: hidden;
 }
 
-._breadcrumbSegment_17q59_305 {
+._breadcrumbSegment_a04b9_329 {
   display: flex;
   align-items: center;
   white-space: nowrap;
 }
 
-._breadcrumbDivider_17q59_311 {
+._breadcrumbDivider_a04b9_335 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
+  -webkit-user-select: none;
   user-select: none;
 }
 
-._breadcrumbLink_17q59_318 {
+._breadcrumbLink_a04b9_343 {
   background: none;
   border: none;
   cursor: pointer;
@@ -506,12 +531,12 @@
   padding: 0 2px;
 }
 
-._breadcrumbLink_17q59_318:hover {
+._breadcrumbLink_a04b9_343:hover {
   color: var(--vscode-foreground);
   text-decoration: underline;
 }
 
-._breadcrumbCurrent_17q59_332 {
+._breadcrumbCurrent_a04b9_357 {
   background: none;
   border: none;
   color: var(--vscode-foreground);
@@ -522,11 +547,13 @@
 
 /* Token cell */
 
-._tokens_17q59_343 {
+._tokens_a04b9_368 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;
+  -webkit-user-select: none;
+  user-select: none;
 }

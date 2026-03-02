@@ -5,6 +5,7 @@ import { ApplicationIcons } from "../../../components/icons";
 import { PopOver } from "../../../components/PopOver";
 import type { TimelineBranch } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
+import { useStore } from "../../../state/store";
 import { formatTime } from "../../../utils/format";
 import {
   type TimelineState,
@@ -157,6 +158,71 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     setCollapsed(!isCollapsed);
   }, [isCollapsed, setCollapsed]);
 
+  // Row expand/collapse state — stored in Zustand collapsedBuckets.
+  // Keys that are collapsed have `true` in the bucket; default is expanded.
+  const collapsedBucket = useStore(
+    (state) => state.collapsedBuckets["timeline-swimlane-rows"]
+  );
+  const stableCollapsedBucket = useMemo(
+    () => collapsedBucket ?? {},
+    [collapsedBucket]
+  );
+  const setRowCollapsed = useStore((state) => state.setCollapsed);
+
+  // Compute which rows have children (need a chevron dongle)
+  const parentKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const layout of layouts) {
+      // A row is a parent if any other row's key starts with it + "/"
+      const prefix = layout.key + "/";
+      for (const other of layouts) {
+        if (other.key.startsWith(prefix)) {
+          keys.add(layout.key);
+          break;
+        }
+      }
+    }
+    return keys;
+  }, [layouts]);
+
+  // Determine if a row is collapsed. Default: depth >= 1 parent rows start
+  // collapsed (only first level shown). Explicit store entries override.
+  const isRowCollapsed = useCallback(
+    (rowKey: string): boolean => {
+      const explicit = stableCollapsedBucket[rowKey];
+      if (explicit !== undefined) return explicit;
+      // Default: collapse parent rows at depth >= 1
+      const layout = layouts.find((l) => l.key === rowKey);
+      return (
+        layout !== undefined && layout.depth >= 1 && parentKeys.has(rowKey)
+      );
+    },
+    [stableCollapsedBucket, layouts, parentKeys]
+  );
+
+  // Filter out rows whose ancestors are collapsed
+  const visibleLayouts = useMemo(() => {
+    return layouts.filter((layout) => {
+      // Check if any ancestor is collapsed
+      const parts = layout.key.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const ancestorKey = parts.slice(0, i).join("/");
+        if (isRowCollapsed(ancestorKey)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [layouts, isRowCollapsed]);
+
+  const handleToggleRowCollapse = useCallback(
+    (rowKey: string) => {
+      const current = isRowCollapsed(rowKey);
+      setRowCollapsed("timeline-swimlane-rows", rowKey, !current);
+    },
+    [isRowCollapsed, setRowCollapsed]
+  );
+
   // Branch popover state
   const [branchPopover, setBranchPopover] = useState<{
     forkedAt: string;
@@ -186,7 +252,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      const rowKeys = layouts.map((l) => l.key);
+      const rowKeys = visibleLayouts.map((l) => l.key);
       // Arrow keys navigate by row key (strip span index)
       const currentIndex = selectedRowKey
         ? rowKeys.indexOf(selectedRowKey)
@@ -219,7 +285,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         }
       }
     },
-    [layouts, selectedRowKey, onSelect, clearSelection, branchPopover]
+    [visibleLayouts, selectedRowKey, onSelect, clearSelection, branchPopover]
   );
 
   // Find branches matching the popover's forkedAt UUID.
@@ -228,14 +294,16 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     return findBranchesByForkedAt(node, branchPopover.forkedAt);
   }, [branchPopover, node]);
 
-  const parentRow = layouts[0];
-  const childRows = layouts.slice(1);
+  const parentRow = visibleLayouts[0];
+  const childRows = visibleLayouts.slice(1);
 
   const renderRow = (layout: RowLayout, displayName?: string) => {
     const isRowSelected = selectedRowKey === layout.key;
     const selectedSpanIndex = isRowSelected
       ? (parsedSelection?.spanIndex ?? null)
       : null;
+    const hasChildren = parentKeys.has(layout.key);
+    const isRowExpanded = hasChildren ? !isRowCollapsed(layout.key) : undefined;
 
     return (
       <SwimlaneRow
@@ -244,6 +312,10 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         displayName={displayName}
         isRowSelected={isRowSelected}
         selectedSpanIndex={selectedSpanIndex}
+        isExpanded={isRowExpanded}
+        onToggleExpand={
+          hasChildren ? () => handleToggleRowCollapse(layout.key) : undefined
+        }
         onSelectRow={() => onSelect(layout.key)}
         onSelectSpan={(spanIndex) =>
           onSelect(buildSelectionKey(layout.key, spanIndex))
@@ -333,6 +405,10 @@ interface SwimlaneRowProps {
   isRowSelected: boolean;
   /** The span index that is sub-selected, or null if the whole row is selected. */
   selectedSpanIndex: number | null;
+  /** Whether the row's children are expanded. undefined = no children (leaf). */
+  isExpanded?: boolean;
+  /** Toggle expand/collapse for this row. Only provided for rows with children. */
+  onToggleExpand?: () => void;
   /** Select the whole row (label click). */
   onSelectRow: () => void;
   /** Select a specific span within the row (bar click). */
@@ -347,6 +423,8 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   displayName,
   isRowSelected,
   selectedSpanIndex,
+  isExpanded,
+  onToggleExpand,
   onSelectRow,
   onSelectSpan,
   onBranchHover,
@@ -354,15 +432,42 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   onMarkerNavigate,
 }) => {
   const hasMultipleSpans = layout.spans.length > 1;
+  const hasChildren = isExpanded !== undefined;
+
+  const handleChevronClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onToggleExpand?.();
+    },
+    [onToggleExpand]
+  );
 
   return (
     <div className={styles.row} role="row">
       {/* Label cell — depth-based indentation; clicking selects the whole row */}
       <div
         className={clsx(styles.label, isRowSelected && styles.labelSelected)}
-        style={{ paddingLeft: `${0.95 + layout.depth * 0.5}rem` }}
+        style={{ paddingLeft: `${0.3 + layout.depth * 0.5}rem` }}
         onClick={onSelectRow}
       >
+        {hasChildren ? (
+          <span
+            className={styles.chevron}
+            onClick={handleChevronClick}
+            role="button"
+            aria-label={isExpanded ? "Collapse" : "Expand"}
+          >
+            <i
+              className={
+                isExpanded
+                  ? ApplicationIcons.chevron.down
+                  : ApplicationIcons.chevron.right
+              }
+            />
+          </span>
+        ) : (
+          <span className={styles.chevronSpacer} />
+        )}
         {displayName ?? layout.name}
       </div>
 
@@ -396,6 +501,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
                 onSelect={() =>
                   hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow()
                 }
+                onDoubleClick={onToggleExpand}
               />
             );
           })}
@@ -481,6 +587,8 @@ interface BarFillProps {
   /** Row is selected but a different span is focused. */
   isDimmed: boolean;
   onSelect: () => void;
+  /** Toggle expand/collapse on double-click. Only for rows with children. */
+  onDoubleClick?: () => void;
 }
 
 const BarFill: FC<BarFillProps> = ({
@@ -489,6 +597,7 @@ const BarFill: FC<BarFillProps> = ({
   isSelected,
   isDimmed,
   onSelect,
+  onDoubleClick,
 }) => {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -496,6 +605,14 @@ const BarFill: FC<BarFillProps> = ({
       onSelect();
     },
     [onSelect]
+  );
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDoubleClick?.();
+    },
+    [onDoubleClick]
   );
 
   return (
@@ -512,6 +629,7 @@ const BarFill: FC<BarFillProps> = ({
       }}
       title={span.description ?? undefined}
       onClick={handleClick}
+      onDoubleClick={onDoubleClick ? handleDoubleClick : undefined}
     />
   );
 };

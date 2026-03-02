@@ -1013,39 +1013,41 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_17q59_1";
-const pinnedSection = "_pinnedSection_17q59_17";
-const scrollSection = "_scrollSection_17q59_25";
-const collapsibleSection = "_collapsibleSection_17q59_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_17q59_53";
-const noAnimation = "_noAnimation_17q59_60";
-const swimlaneSticky = "_swimlaneSticky_17q59_65";
-const collapsibleInner = "_collapsibleInner_17q59_72";
-const collapseToggle = "_collapseToggle_17q59_82";
-const row = "_row_17q59_110";
-const label = "_label_17q59_116";
-const labelSelected = "_labelSelected_17q59_128";
-const barArea = "_barArea_17q59_134";
-const barInner = "_barInner_17q59_140";
-const fill = "_fill_17q59_146";
-const fillParent = "_fillParent_17q59_164";
-const fillSelected = "_fillSelected_17q59_168";
-const fillDimmed = "_fillDimmed_17q59_174";
-const marker = "_marker_17q59_185";
-const markerError = "_markerError_17q59_205";
-const markerCompaction = "_markerCompaction_17q59_226";
-const markerBranch = "_markerBranch_17q59_238";
-const branchPopover = "_branchPopover_17q59_245";
-const branchEntry = "_branchEntry_17q59_251";
-const branchLabel = "_branchLabel_17q59_271";
-const branchMeta = "_branchMeta_17q59_275";
-const breadcrumbRow = "_breadcrumbRow_17q59_287";
-const breadcrumbTrail = "_breadcrumbTrail_17q59_297";
-const breadcrumbSegment = "_breadcrumbSegment_17q59_305";
-const breadcrumbDivider = "_breadcrumbDivider_17q59_311";
-const breadcrumbLink = "_breadcrumbLink_17q59_318";
-const breadcrumbCurrent = "_breadcrumbCurrent_17q59_332";
-const tokens = "_tokens_17q59_343";
+const swimlane = "_swimlane_a04b9_1";
+const pinnedSection = "_pinnedSection_a04b9_17";
+const scrollSection = "_scrollSection_a04b9_25";
+const collapsibleSection = "_collapsibleSection_a04b9_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_a04b9_53";
+const noAnimation = "_noAnimation_a04b9_60";
+const swimlaneSticky = "_swimlaneSticky_a04b9_65";
+const collapsibleInner = "_collapsibleInner_a04b9_72";
+const collapseToggle = "_collapseToggle_a04b9_82";
+const row = "_row_a04b9_110";
+const label = "_label_a04b9_116";
+const labelSelected = "_labelSelected_a04b9_129";
+const chevron = "_chevron_a04b9_135";
+const chevronSpacer = "_chevronSpacer_a04b9_150";
+const barArea = "_barArea_a04b9_158";
+const barInner = "_barInner_a04b9_164";
+const fill = "_fill_a04b9_170";
+const fillParent = "_fillParent_a04b9_188";
+const fillSelected = "_fillSelected_a04b9_192";
+const fillDimmed = "_fillDimmed_a04b9_198";
+const marker = "_marker_a04b9_209";
+const markerError = "_markerError_a04b9_229";
+const markerCompaction = "_markerCompaction_a04b9_250";
+const markerBranch = "_markerBranch_a04b9_262";
+const branchPopover = "_branchPopover_a04b9_269";
+const branchEntry = "_branchEntry_a04b9_275";
+const branchLabel = "_branchLabel_a04b9_295";
+const branchMeta = "_branchMeta_a04b9_299";
+const breadcrumbRow = "_breadcrumbRow_a04b9_311";
+const breadcrumbTrail = "_breadcrumbTrail_a04b9_321";
+const breadcrumbSegment = "_breadcrumbSegment_a04b9_329";
+const breadcrumbDivider = "_breadcrumbDivider_a04b9_335";
+const breadcrumbLink = "_breadcrumbLink_a04b9_343";
+const breadcrumbCurrent = "_breadcrumbCurrent_a04b9_357";
+const tokens = "_tokens_a04b9_368";
 const styles = {
   swimlane,
   pinnedSection,
@@ -1059,6 +1061,8 @@ const styles = {
   row,
   label,
   labelSelected,
+  chevron,
+  chevronSpacer,
   barArea,
   barInner,
   fill,
@@ -1127,6 +1131,55 @@ const TimelineSwimLanes = ({
   const toggleCollapsed = reactExports.useCallback(() => {
     setCollapsed(!isCollapsed);
   }, [isCollapsed, setCollapsed]);
+  const collapsedBucket = useStore(
+    (state) => state.collapsedBuckets["timeline-swimlane-rows"]
+  );
+  const stableCollapsedBucket = reactExports.useMemo(
+    () => collapsedBucket ?? {},
+    [collapsedBucket]
+  );
+  const setRowCollapsed = useStore((state) => state.setCollapsed);
+  const parentKeys = reactExports.useMemo(() => {
+    const keys = /* @__PURE__ */ new Set();
+    for (const layout of layouts) {
+      const prefix = layout.key + "/";
+      for (const other of layouts) {
+        if (other.key.startsWith(prefix)) {
+          keys.add(layout.key);
+          break;
+        }
+      }
+    }
+    return keys;
+  }, [layouts]);
+  const isRowCollapsed = reactExports.useCallback(
+    (rowKey) => {
+      const explicit = stableCollapsedBucket[rowKey];
+      if (explicit !== void 0) return explicit;
+      const layout = layouts.find((l) => l.key === rowKey);
+      return layout !== void 0 && layout.depth >= 1 && parentKeys.has(rowKey);
+    },
+    [stableCollapsedBucket, layouts, parentKeys]
+  );
+  const visibleLayouts = reactExports.useMemo(() => {
+    return layouts.filter((layout) => {
+      const parts = layout.key.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const ancestorKey = parts.slice(0, i).join("/");
+        if (isRowCollapsed(ancestorKey)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [layouts, isRowCollapsed]);
+  const handleToggleRowCollapse = reactExports.useCallback(
+    (rowKey) => {
+      const current = isRowCollapsed(rowKey);
+      setRowCollapsed("timeline-swimlane-rows", rowKey, !current);
+    },
+    [isRowCollapsed, setRowCollapsed]
+  );
   const [branchPopover2, setBranchPopover] = reactExports.useState(null);
   const handleBranchHover = reactExports.useCallback(
     (forkedAt, element) => {
@@ -1145,7 +1198,7 @@ const TimelineSwimLanes = ({
   );
   const handleKeyDown = reactExports.useCallback(
     (e) => {
-      const rowKeys = layouts.map((l) => l.key);
+      const rowKeys = visibleLayouts.map((l) => l.key);
       const currentIndex = selectedRowKey ? rowKeys.indexOf(selectedRowKey) : -1;
       switch (e.key) {
         case "ArrowDown": {
@@ -1173,17 +1226,19 @@ const TimelineSwimLanes = ({
         }
       }
     },
-    [layouts, selectedRowKey, onSelect, clearSelection, branchPopover2]
+    [visibleLayouts, selectedRowKey, onSelect, clearSelection, branchPopover2]
   );
   const branchLookup = reactExports.useMemo(() => {
     if (!branchPopover2) return null;
     return findBranchesByForkedAt(node, branchPopover2.forkedAt);
   }, [branchPopover2, node]);
-  const parentRow = layouts[0];
-  const childRows = layouts.slice(1);
+  const parentRow = visibleLayouts[0];
+  const childRows = visibleLayouts.slice(1);
   const renderRow = (layout, displayName) => {
     const isRowSelected = selectedRowKey === layout.key;
     const selectedSpanIndex = isRowSelected ? parsedSelection?.spanIndex ?? null : null;
+    const hasChildren = parentKeys.has(layout.key);
+    const isRowExpanded = hasChildren ? !isRowCollapsed(layout.key) : void 0;
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       SwimlaneRow,
       {
@@ -1191,6 +1246,8 @@ const TimelineSwimLanes = ({
         displayName,
         isRowSelected,
         selectedSpanIndex,
+        isExpanded: isRowExpanded,
+        onToggleExpand: hasChildren ? () => handleToggleRowCollapse(layout.key) : void 0,
         onSelectRow: () => onSelect(layout.key),
         onSelectSpan: (spanIndex) => onSelect(buildSelectionKey(layout.key, spanIndex)),
         onBranchHover: handleBranchHover,
@@ -1266,6 +1323,8 @@ const SwimlaneRow = ({
   displayName,
   isRowSelected,
   selectedSpanIndex,
+  isExpanded,
+  onToggleExpand,
   onSelectRow,
   onSelectSpan,
   onBranchHover,
@@ -1273,14 +1332,39 @@ const SwimlaneRow = ({
   onMarkerNavigate
 }) => {
   const hasMultipleSpans = layout.spans.length > 1;
+  const hasChildren = isExpanded !== void 0;
+  const handleChevronClick = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      onToggleExpand?.();
+    },
+    [onToggleExpand]
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.row, role: "row", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         className: clsx(styles.label, isRowSelected && styles.labelSelected),
-        style: { paddingLeft: `${0.95 + layout.depth * 0.5}rem` },
+        style: { paddingLeft: `${0.3 + layout.depth * 0.5}rem` },
         onClick: onSelectRow,
-        children: displayName ?? layout.name
+        children: [
+          hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: styles.chevron,
+              onClick: handleChevronClick,
+              role: "button",
+              "aria-label": isExpanded ? "Collapse" : "Expand",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "i",
+                {
+                  className: isExpanded ? ApplicationIcons.chevron.down : ApplicationIcons.chevron.right
+                }
+              )
+            }
+          ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.chevronSpacer }),
+          displayName ?? layout.name
+        ]
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.barArea, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.barInner, children: [
@@ -1294,7 +1378,8 @@ const SwimlaneRow = ({
             isParent: layout.isParent,
             isSelected: isBarSelected,
             isDimmed: isBarDimmed,
-            onSelect: () => hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow()
+            onSelect: () => hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow(),
+            onDoubleClick: onToggleExpand
           },
           spanIndex
         );
@@ -1345,7 +1430,8 @@ const BarFill = ({
   isParent,
   isSelected,
   isDimmed,
-  onSelect
+  onSelect,
+  onDoubleClick
 }) => {
   const handleClick = reactExports.useCallback(
     (e) => {
@@ -1353,6 +1439,13 @@ const BarFill = ({
       onSelect();
     },
     [onSelect]
+  );
+  const handleDoubleClick = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      onDoubleClick?.();
+    },
+    [onDoubleClick]
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
@@ -1368,7 +1461,8 @@ const BarFill = ({
         width: `${span.bar.width}%`
       },
       title: span.description ?? void 0,
-      onClick: handleClick
+      onClick: handleClick,
+      onDoubleClick: onDoubleClick ? handleDoubleClick : void 0
     }
   );
 };

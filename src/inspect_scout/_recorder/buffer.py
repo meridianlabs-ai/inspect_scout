@@ -452,7 +452,7 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
                 seen_columns.add(key)
                 columns.append(key)
 
-    arrays: dict[str, pa.Array] = {}
+    arrays: dict[str, pa.Array[Any]] = {}
     for column in columns:
         values = [record.get(column) for record in norm]
         non_null_values = [value for value in values if value is not None]

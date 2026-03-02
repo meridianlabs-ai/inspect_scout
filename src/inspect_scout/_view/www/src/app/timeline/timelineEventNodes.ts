@@ -27,6 +27,48 @@ import {
 } from "./utils/swimlaneRows";
 
 // =============================================================================
+// Selection parsing
+// =============================================================================
+
+/**
+ * Parsed selection: a row key with an optional span index.
+ *
+ * Format: `"rowKey"` selects the whole row, `"rowKey:N"` selects
+ * span index N (0-based) within an iterative row.
+ */
+export interface ParsedSelection {
+  rowKey: string;
+  spanIndex: number | null;
+}
+
+/**
+ * Parses a selection string into row key + optional span index.
+ * Returns null for null/empty input.
+ */
+export function parseSelection(
+  selected: string | null
+): ParsedSelection | null {
+  if (!selected) return null;
+  const colonIdx = selected.lastIndexOf(":");
+  if (colonIdx === -1) return { rowKey: selected, spanIndex: null };
+  const suffix = selected.slice(colonIdx + 1);
+  const idx = Number(suffix);
+  if (!Number.isInteger(idx) || idx < 0) {
+    // Not a valid span index — treat the whole string as the row key
+    return { rowKey: selected, spanIndex: null };
+  }
+  return { rowKey: selected.slice(0, colonIdx), spanIndex: idx };
+}
+
+/**
+ * Builds a selection string from row key + optional span index.
+ */
+export function buildSelectionKey(rowKey: string, spanIndex?: number): string {
+  if (spanIndex !== undefined) return `${rowKey}:${spanIndex}`;
+  return rowKey;
+}
+
+// =============================================================================
 // Row lookup
 // =============================================================================
 
@@ -45,18 +87,27 @@ function findRowByKey(
 /**
  * Resolves the selected swimlane row key to TimelineSpan(s).
  *
- * In the flat view, each row has exactly one SingleSpan, so this simply
- * returns the agent from the matching row.
+ * When the selection includes a span index (e.g. `"explore:1"`), returns
+ * only that specific span. Otherwise returns all spans from the row.
  */
 export function getSelectedSpans(
   rows: SwimlaneRow[],
   selected: string | null
 ): TimelineSpan[] {
-  if (!selected) return [];
+  const parsed = parseSelection(selected);
+  if (!parsed) return [];
 
-  const row = findRowByKey(rows, selected);
+  const row = findRowByKey(rows, parsed.rowKey);
   if (!row) return [];
 
+  // Sub-selection: return only the indexed span
+  if (parsed.spanIndex !== null) {
+    const span = row.spans[parsed.spanIndex];
+    if (!span) return [];
+    return isSingleSpan(span) ? [span.agent] : getAgents(span);
+  }
+
+  // Whole row: return all spans
   const result: TimelineSpan[] = [];
   for (const rowSpan of row.spans) {
     if (isSingleSpan(rowSpan)) {
@@ -75,18 +126,27 @@ export function getSelectedSpans(
 /**
  * Computes the minimap selection for the currently selected swimlane row.
  *
- * Returns the time range and token count for the selected row's span.
+ * When a span index is present, shows just that span's range.
+ * Otherwise shows the full row's range.
  */
 export function computeMinimapSelection(
   rows: SwimlaneRow[],
   selected: string | null
 ): MinimapSelection | undefined {
-  if (!selected) return undefined;
-  const row = findRowByKey(rows, selected);
+  const parsed = parseSelection(selected);
+  if (!parsed) return undefined;
+  const row = findRowByKey(rows, parsed.rowKey);
   if (!row) return undefined;
 
-  // In the flat view, each row typically has a single span
-  const allAgents = row.spans.flatMap(getAgents);
+  // Determine which spans to include
+  const spans =
+    parsed.spanIndex !== null
+      ? row.spans[parsed.spanIndex]
+        ? [row.spans[parsed.spanIndex]!]
+        : []
+      : row.spans;
+
+  const allAgents = spans.flatMap(getAgents);
   if (allAgents.length === 0) return undefined;
 
   if (allAgents.length === 1) {
@@ -98,7 +158,6 @@ export function computeMinimapSelection(
     };
   }
 
-  // Multiple agents (shouldn't normally happen in flat view, but handle gracefully)
   const envelope = computeTimeEnvelope(allAgents);
   const tokens = allAgents.reduce((sum, a) => sum + a.totalTokens, 0);
   return { ...envelope, totalTokens: tokens };
@@ -216,20 +275,29 @@ export interface SpanSelectKey {
 }
 
 /**
- * Builds a lookup from span ID to the row key needed to select that span
+ * Builds a lookup from span ID to the selection key needed to select that span
  * in the swimlane UI.
+ *
+ * For rows with multiple spans (iterative), each span ID maps to a key with
+ * the span index suffix (e.g. `"explore:0"`). For single-span rows, the key
+ * is just the row key.
  */
 export function buildSpanSelectKeys(
   rows: SwimlaneRow[]
 ): ReadonlyMap<string, SpanSelectKey> {
   const keys = new Map<string, SpanSelectKey>();
   for (const row of rows) {
-    for (const rowSpan of row.spans) {
+    const hasMultipleSpans = row.spans.length > 1;
+    for (let i = 0; i < row.spans.length; i++) {
+      const rowSpan = row.spans[i]!;
+      const selectKey = hasMultipleSpans
+        ? buildSelectionKey(row.key, i)
+        : row.key;
       if (isSingleSpan(rowSpan)) {
-        keys.set(rowSpan.agent.id, { key: row.key });
+        keys.set(rowSpan.agent.id, { key: selectKey });
       } else {
         for (const agent of getAgents(rowSpan)) {
-          keys.set(agent.id, { key: row.key });
+          keys.set(agent.id, { key: selectKey });
         }
       }
     }

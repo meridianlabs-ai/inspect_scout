@@ -11,6 +11,7 @@ import {
   createBranchSpan,
   findBranchesByForkedAt,
 } from "../hooks/useTimeline";
+import { buildSelectionKey, parseSelection } from "../timelineEventNodes";
 import type {
   PositionedMarker,
   PositionedSpan,
@@ -22,6 +23,54 @@ import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
 import styles from "./TimelineSwimLanes.module.css";
 
 // =============================================================================
+// Breadcrumb computation
+// =============================================================================
+
+export interface BreadcrumbSegment {
+  /** Display name for this segment. */
+  label: string;
+  /** Selection key to navigate to this segment. */
+  key: string;
+}
+
+/**
+ * Builds breadcrumb segments from the layouts and selected key.
+ *
+ * The selected key encodes tree position (e.g. "transcript/build/test").
+ * We find ancestor rows by matching prefix keys, producing a trail like:
+ * [main, Build, Test] where "Test" is the currently selected row.
+ */
+export function buildBreadcrumbs(
+  layouts: RowLayout[],
+  selectedRowKey: string | null
+): BreadcrumbSegment[] {
+  if (!selectedRowKey) return [];
+
+  // Build a lookup from key to layout
+  const byKey = new Map<string, RowLayout>();
+  for (const layout of layouts) {
+    byKey.set(layout.key, layout);
+  }
+
+  // Walk the key segments to find ancestor rows.
+  // Key format: "transcript/build/test" → ancestors are "transcript", "transcript/build"
+  const parts = selectedRowKey.split("/");
+  const segments: BreadcrumbSegment[] = [];
+
+  for (let i = 1; i <= parts.length; i++) {
+    const ancestorKey = parts.slice(0, i).join("/");
+    const layout = byKey.get(ancestorKey);
+    if (layout) {
+      const label =
+        layout.depth === 0 && layout.name === "solvers" ? "main" : layout.name;
+      segments.push({ label, key: layout.key });
+    }
+  }
+
+  return segments;
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -31,13 +80,17 @@ export type TimelineNavigation = Pick<
   "node" | "selected" | "select" | "clearSelection"
 >;
 
-/** Header configuration: root label + optional minimap. */
+/** Header configuration: root label + optional minimap + breadcrumbs. */
 export interface TimelineHeaderProps {
   rootLabel: string;
   /** Called on header click to scroll the view to the top. */
   onScrollToTop?: () => void;
   /** Minimap props for the zoom indicator. */
   minimap?: TimelineMinimapProps;
+  /** Breadcrumb segments derived from the selected row's ancestry. */
+  breadcrumbs?: BreadcrumbSegment[];
+  /** Called when a breadcrumb segment is clicked. */
+  onBreadcrumbSelect?: (key: string) => void;
 }
 
 interface TimelineSwimLanesProps {
@@ -121,10 +174,23 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     setBranchPopover(null);
   }, []);
 
+  // Parse selection into row key + optional span index
+  const parsedSelection = useMemo(() => parseSelection(selected), [selected]);
+  const selectedRowKey = parsedSelection?.rowKey ?? null;
+
+  // Compute breadcrumbs from the selected row's ancestry
+  const breadcrumbs = useMemo(
+    () => buildBreadcrumbs(layouts, selectedRowKey),
+    [layouts, selectedRowKey]
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       const rowKeys = layouts.map((l) => l.key);
-      const currentIndex = selected ? rowKeys.indexOf(selected) : -1;
+      // Arrow keys navigate by row key (strip span index)
+      const currentIndex = selectedRowKey
+        ? rowKeys.indexOf(selectedRowKey)
+        : -1;
 
       switch (e.key) {
         case "ArrowDown": {
@@ -153,7 +219,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         }
       }
     },
-    [layouts, selected, onSelect, clearSelection, branchPopover]
+    [layouts, selectedRowKey, onSelect, clearSelection, branchPopover]
   );
 
   // Find branches matching the popover's forkedAt UUID.
@@ -165,18 +231,29 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   const parentRow = layouts[0];
   const childRows = layouts.slice(1);
 
-  const renderRow = (layout: RowLayout, displayName?: string) => (
-    <SwimlaneRow
-      key={layout.key}
-      layout={layout}
-      displayName={displayName}
-      isSelected={selected === layout.key}
-      onSelect={() => onSelect(layout.key)}
-      onBranchHover={handleBranchHover}
-      onBranchLeave={handleBranchLeave}
-      onMarkerNavigate={onMarkerNavigate}
-    />
-  );
+  const renderRow = (layout: RowLayout, displayName?: string) => {
+    const isRowSelected = selectedRowKey === layout.key;
+    const selectedSpanIndex = isRowSelected
+      ? (parsedSelection?.spanIndex ?? null)
+      : null;
+
+    return (
+      <SwimlaneRow
+        key={layout.key}
+        layout={layout}
+        displayName={displayName}
+        isRowSelected={isRowSelected}
+        selectedSpanIndex={selectedSpanIndex}
+        onSelectRow={() => onSelect(layout.key)}
+        onSelectSpan={(spanIndex) =>
+          onSelect(buildSelectionKey(layout.key, spanIndex))
+        }
+        onBranchHover={handleBranchHover}
+        onBranchLeave={handleBranchLeave}
+        onMarkerNavigate={onMarkerNavigate}
+      />
+    );
+  };
 
   return (
     <div
@@ -186,17 +263,18 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       role="grid"
       aria-label="Timeline swimlane"
     >
-      {/* Pinned: header row (with minimap) + parent row — always visible */}
+      {/* Pinned: header row (breadcrumbs + minimap) — always visible */}
       <div className={styles.pinnedSection}>
-        {header && <HeaderRow {...header} />}
-        {parentRow &&
-          renderRow(
-            parentRow,
-            parentRow.name === "solvers" ? "main" : undefined
-          )}
+        {header && (
+          <HeaderRow
+            {...header}
+            breadcrumbs={breadcrumbs}
+            onBreadcrumbSelect={onSelect}
+          />
+        )}
       </div>
 
-      {/* Collapsible child rows */}
+      {/* Collapsible: parent row + child rows */}
       <div
         className={clsx(
           styles.collapsibleSection,
@@ -205,6 +283,11 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         )}
       >
         <div className={styles.collapsibleInner}>
+          {parentRow &&
+            renderRow(
+              parentRow,
+              parentRow.name === "solvers" ? "main" : undefined
+            )}
           {childRows.length > 0 && (
             <div className={styles.scrollSection}>
               {childRows.map((layout) => renderRow(layout))}
@@ -246,8 +329,14 @@ interface SwimlaneRowProps {
   layout: RowLayout;
   /** Override the displayed label (defaults to layout.name). */
   displayName?: string;
-  isSelected: boolean;
-  onSelect: () => void;
+  /** Whether this row is selected (whole row or a span within it). */
+  isRowSelected: boolean;
+  /** The span index that is sub-selected, or null if the whole row is selected. */
+  selectedSpanIndex: number | null;
+  /** Select the whole row (label click). */
+  onSelectRow: () => void;
+  /** Select a specific span within the row (bar click). */
+  onSelectSpan: (spanIndex: number) => void;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
   onMarkerNavigate?: (eventId: string) => void;
@@ -256,18 +345,23 @@ interface SwimlaneRowProps {
 const SwimlaneRow: FC<SwimlaneRowProps> = ({
   layout,
   displayName,
-  isSelected,
-  onSelect,
+  isRowSelected,
+  selectedSpanIndex,
+  onSelectRow,
+  onSelectSpan,
   onBranchHover,
   onBranchLeave,
   onMarkerNavigate,
 }) => {
+  const hasMultipleSpans = layout.spans.length > 1;
+
   return (
     <div className={styles.row} role="row">
-      {/* Label cell — depth-based indentation */}
+      {/* Label cell — depth-based indentation; clicking selects the whole row */}
       <div
-        className={clsx(styles.label, isSelected && styles.labelSelected)}
+        className={clsx(styles.label, isRowSelected && styles.labelSelected)}
         style={{ paddingLeft: `${0.95 + layout.depth * 0.5}rem` }}
+        onClick={onSelectRow}
       >
         {displayName ?? layout.name}
       </div>
@@ -276,15 +370,35 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
       <div className={styles.barArea}>
         <div className={styles.barInner}>
           {/* Fills */}
-          {layout.spans.map((span, spanIndex) => (
-            <BarFill
-              key={spanIndex}
-              span={span}
-              isParent={layout.isParent}
-              isSelected={isSelected}
-              onSelect={onSelect}
-            />
-          ))}
+          {layout.spans.map((span, spanIndex) => {
+            // For multi-span rows: a bar is "selected" only if it's the sub-selected span,
+            // or if the whole row is selected (no span index).
+            // For single-span rows: selected when the row is selected.
+            const isBarSelected =
+              isRowSelected &&
+              (!hasMultipleSpans ||
+                selectedSpanIndex === null ||
+                selectedSpanIndex === spanIndex);
+            // "Dimmed" = row is selected but a different specific span is focused
+            const isBarDimmed =
+              isRowSelected &&
+              hasMultipleSpans &&
+              selectedSpanIndex !== null &&
+              selectedSpanIndex !== spanIndex;
+
+            return (
+              <BarFill
+                key={spanIndex}
+                span={span}
+                isParent={layout.isParent}
+                isSelected={isBarSelected}
+                isDimmed={isBarDimmed}
+                onSelect={() =>
+                  hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow()
+                }
+              />
+            );
+          })}
 
           {/* Markers */}
           {layout.markers.map((marker, i) => (
@@ -315,12 +429,42 @@ const HeaderRow: FC<TimelineHeaderProps> = ({
   rootLabel,
   minimap,
   onScrollToTop,
+  breadcrumbs,
+  onBreadcrumbSelect,
 }) => {
+  const hasBreadcrumbs = breadcrumbs && breadcrumbs.length > 1;
+  const rootDisplay = rootLabel === "solvers" ? "main" : rootLabel;
+
   return (
     <div className={styles.breadcrumbRow}>
-      <button className={styles.breadcrumbCurrent} onClick={onScrollToTop}>
-        {rootLabel === "solvers" ? "main" : rootLabel}
-      </button>
+      {hasBreadcrumbs ? (
+        <div className={styles.breadcrumbTrail}>
+          {breadcrumbs.map((segment, i) => {
+            const isLast = i === breadcrumbs.length - 1;
+            return (
+              <span key={segment.key} className={styles.breadcrumbSegment}>
+                {i > 0 && <span className={styles.breadcrumbDivider}>/</span>}
+                {isLast ? (
+                  <span className={styles.breadcrumbCurrent}>
+                    {segment.label}
+                  </span>
+                ) : (
+                  <button
+                    className={styles.breadcrumbLink}
+                    onClick={() => onBreadcrumbSelect?.(segment.key)}
+                  >
+                    {segment.label}
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <button className={styles.breadcrumbCurrent} onClick={onScrollToTop}>
+          {rootDisplay}
+        </button>
+      )}
       {minimap && <TimelineMinimap {...minimap} />}
     </div>
   );
@@ -334,6 +478,8 @@ interface BarFillProps {
   span: PositionedSpan;
   isParent: boolean;
   isSelected: boolean;
+  /** Row is selected but a different span is focused. */
+  isDimmed: boolean;
   onSelect: () => void;
 }
 
@@ -341,6 +487,7 @@ const BarFill: FC<BarFillProps> = ({
   span,
   isParent,
   isSelected,
+  isDimmed,
   onSelect,
 }) => {
   const handleClick = useCallback(
@@ -356,7 +503,8 @@ const BarFill: FC<BarFillProps> = ({
       className={clsx(
         styles.fill,
         isParent && styles.fillParent,
-        isSelected && styles.fillSelected
+        isSelected && styles.fillSelected,
+        isDimmed && styles.fillDimmed
       )}
       style={{
         left: `${span.bar.left}%`,

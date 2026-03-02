@@ -14200,6 +14200,26 @@ function isSingleSpan(span) {
 function getAgents(span) {
   return isSingleSpan(span) ? [span.agent] : span.agents;
 }
+const OVERLAP_TOLERANCE_MS = 100;
+function partitionIntoClusters(sorted) {
+  if (sorted.length === 0) return [];
+  const clusters = [];
+  let current = [sorted[0]];
+  let clusterEnd = sorted[0].endTime.getTime();
+  for (let i2 = 1; i2 < sorted.length; i2++) {
+    const span = sorted[i2];
+    if (span.startTime.getTime() < clusterEnd + OVERLAP_TOLERANCE_MS) {
+      current.push(span);
+      clusterEnd = Math.max(clusterEnd, span.endTime.getTime());
+    } else {
+      clusters.push(current);
+      current = [span];
+      clusterEnd = span.endTime.getTime();
+    }
+  }
+  clusters.push(current);
+  return clusters;
+}
 function buildParentRow(node2) {
   return {
     key: node2.name.toLowerCase(),
@@ -14226,13 +14246,18 @@ function groupByName(spans) {
 }
 function computeFlatSwimlaneRows(root2) {
   const parentRow = buildParentRow(root2);
-  const childRows = flattenChildren(root2, 0, root2.name.toLowerCase());
+  const childRows = flattenChildren([root2], 0, root2.name.toLowerCase());
   return [parentRow, ...childRows];
 }
-function flattenChildren(node2, parentDepth, parentKey) {
-  const children2 = node2.content.filter(
-    (item) => item.type === "span" && !item.utility
-  );
+function flattenChildren(nodes, parentDepth, parentKey) {
+  const children2 = [];
+  for (const node2 of nodes) {
+    for (const item of node2.content) {
+      if (item.type === "span" && !item.utility) {
+        children2.push(item);
+      }
+    }
+  }
   if (children2.length === 0) return [];
   const groups = groupByName(children2);
   const depth = parentDepth + 1;
@@ -14240,35 +14265,52 @@ function flattenChildren(node2, parentDepth, parentKey) {
   for (const [displayName, spans] of groups) {
     const sorted = [...spans].sort(compareByTime);
     const baseName = displayName.toLowerCase();
-    if (sorted.length === 1) {
+    const clusters = partitionIntoClusters(sorted);
+    const hasParallel = clusters.some((c) => c.length > 1);
+    if (!hasParallel) {
+      const rowSpans = sorted.map((s) => ({ agent: s }));
+      const first2 = sorted[0];
+      const endTime = sorted.reduce(
+        (latest, s) => s.endTime.getTime() > latest.getTime() ? s.endTime : latest,
+        first2.endTime
+      );
       entries.push({
         displayName,
-        span: sorted[0],
-        key: `${parentKey}/${baseName}`
+        key: `${parentKey}/${baseName}`,
+        spans: sorted,
+        rowSpans,
+        totalTokens: sorted.reduce((sum, s) => sum + s.totalTokens, 0),
+        startTime: first2.startTime,
+        endTime
       });
     } else {
       for (let i2 = 0; i2 < sorted.length; i2++) {
+        const span = sorted[i2];
         entries.push({
           displayName: `${displayName} ${i2 + 1}`,
-          span: sorted[i2],
-          key: `${parentKey}/${baseName}-${i2 + 1}`
+          key: `${parentKey}/${baseName}-${i2 + 1}`,
+          spans: [span],
+          rowSpans: [{ agent: span }],
+          totalTokens: span.totalTokens,
+          startTime: span.startTime,
+          endTime: span.endTime
         });
       }
     }
   }
-  entries.sort((a2, b) => compareByTime(a2.span, b.span));
+  entries.sort((a2, b) => compareByTime(a2, b));
   const result2 = [];
   for (const entry of entries) {
     result2.push({
       key: entry.key,
       name: entry.displayName,
       depth,
-      spans: [{ agent: entry.span }],
-      totalTokens: entry.span.totalTokens,
-      startTime: entry.span.startTime,
-      endTime: entry.span.endTime
+      spans: entry.rowSpans,
+      totalTokens: entry.totalTokens,
+      startTime: entry.startTime,
+      endTime: entry.endTime
     });
-    result2.push(...flattenChildren(entry.span, depth, entry.key));
+    result2.push(...flattenChildren(entry.spans, depth, entry.key));
   }
   return result2;
 }
@@ -14385,13 +14427,34 @@ function collectRowMarkers(row2, depth, mapping) {
   allMarkers.sort((a2, b) => a2.left - b.left);
   return allMarkers;
 }
+function parseSelection(selected) {
+  if (!selected) return null;
+  const colonIdx = selected.lastIndexOf(":");
+  if (colonIdx === -1) return { rowKey: selected, spanIndex: null };
+  const suffix = selected.slice(colonIdx + 1);
+  const idx = Number(suffix);
+  if (!Number.isInteger(idx) || idx < 0) {
+    return { rowKey: selected, spanIndex: null };
+  }
+  return { rowKey: selected.slice(0, colonIdx), spanIndex: idx };
+}
+function buildSelectionKey(rowKey, spanIndex) {
+  if (spanIndex !== void 0) return `${rowKey}:${spanIndex}`;
+  return rowKey;
+}
 function findRowByKey(rows, key2) {
   return rows.find((r2) => r2.key === key2);
 }
 function getSelectedSpans(rows, selected) {
-  if (!selected) return [];
-  const row2 = findRowByKey(rows, selected);
+  const parsed = parseSelection(selected);
+  if (!parsed) return [];
+  const row2 = findRowByKey(rows, parsed.rowKey);
   if (!row2) return [];
+  if (parsed.spanIndex !== null) {
+    const span = row2.spans[parsed.spanIndex];
+    if (!span) return [];
+    return isSingleSpan(span) ? [span.agent] : getAgents(span);
+  }
   const result2 = [];
   for (const rowSpan of row2.spans) {
     if (isSingleSpan(rowSpan)) {
@@ -14403,10 +14466,12 @@ function getSelectedSpans(rows, selected) {
   return result2;
 }
 function computeMinimapSelection(rows, selected) {
-  if (!selected) return void 0;
-  const row2 = findRowByKey(rows, selected);
+  const parsed = parseSelection(selected);
+  if (!parsed) return void 0;
+  const row2 = findRowByKey(rows, parsed.rowKey);
   if (!row2) return void 0;
-  const allAgents = row2.spans.flatMap(getAgents);
+  const spans = parsed.spanIndex !== null ? row2.spans[parsed.spanIndex] ? [row2.spans[parsed.spanIndex]] : [] : row2.spans;
+  const allAgents = spans.flatMap(getAgents);
   if (allAgents.length === 0) return void 0;
   if (allAgents.length === 1) {
     const agent = allAgents[0];
@@ -14476,12 +14541,15 @@ function collectFromContent(content2, out, sourceSpans, skipAgentSpanId) {
 function buildSpanSelectKeys(rows) {
   const keys = /* @__PURE__ */ new Map();
   for (const row2 of rows) {
-    for (const rowSpan of row2.spans) {
+    const hasMultipleSpans = row2.spans.length > 1;
+    for (let i2 = 0; i2 < row2.spans.length; i2++) {
+      const rowSpan = row2.spans[i2];
+      const selectKey = hasMultipleSpans ? buildSelectionKey(row2.key, i2) : row2.key;
       if (isSingleSpan(rowSpan)) {
-        keys.set(rowSpan.agent.id, { key: row2.key });
+        keys.set(rowSpan.agent.id, { key: selectKey });
       } else {
         for (const agent of getAgents(rowSpan)) {
-          keys.set(agent.id, { key: row2.key });
+          keys.set(agent.id, { key: selectKey });
         }
       }
     }
@@ -26578,9 +26646,11 @@ export {
   computeBarPosition as N,
   formatTokenCount as O,
   PulsingDots as P,
+  parseSelection as Q,
   RecordTree as R,
   ScoreValue as S,
   TranscriptViewNodes as T,
+  buildSelectionKey as U,
   Yr as Y,
   LabeledValue as a,
   ModelUsagePanel as b,

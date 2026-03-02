@@ -180,7 +180,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_2dnir_1 {
+._swimlane_17q59_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -196,7 +196,7 @@
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_2dnir_17 {
+._pinnedSection_17q59_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -204,7 +204,7 @@
 }
 
 /* Scrollable section: child rows */
-._scrollSection_2dnir_25 {
+._scrollSection_17q59_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -213,13 +213,13 @@
   overflow-y: auto;
 }
 
-._swimlane_2dnir_1:focus-visible {
+._swimlane_17q59_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_2dnir_40 {
+._collapsibleSection_17q59_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -232,26 +232,26 @@
   opacity: 1;
 }
 
-._collapsibleCollapsed_2dnir_53 {
+._collapsibleCollapsed_17q59_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_2dnir_60 {
+._noAnimation_17q59_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_2dnir_65 {
+._swimlaneSticky_17q59_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_2dnir_72 {
+._collapsibleInner_17q59_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -261,7 +261,7 @@
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_2dnir_82 {
+._collapseToggle_17q59_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -282,20 +282,20 @@
   line-height: 1;
 }
 
-._collapseToggle_2dnir_82:hover {
+._collapseToggle_17q59_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_2dnir_110 {
+._row_17q59_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_2dnir_116 {
+._label_17q59_116 {
   padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -307,25 +307,25 @@
   gap: 2px;
 }
 
-._labelSelected_2dnir_128 {
+._labelSelected_17q59_128 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_2dnir_134 {
+._barArea_17q59_134 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_2dnir_140 {
+._barInner_17q59_140 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_2dnir_146 {
+._fill_17q59_146 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -339,27 +339,32 @@
   cursor: pointer;
 }
 
-._fill_2dnir_146:hover {
+._fill_17q59_146:hover {
   opacity: 0.5;
 }
 
-._fillParent_2dnir_164 {
+._fillParent_17q59_164 {
   opacity: 0.2;
 }
 
-._fillSelected_2dnir_168 {
+._fillSelected_17q59_168 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_2dnir_173 {
+/* Row is selected but a different span within the row is focused */
+._fillDimmed_17q59_174 {
+  opacity: 0.15;
+}
+
+._parallelBadge_17q59_178 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Markers */
 
-._marker_2dnir_180 {
+._marker_17q59_185 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -375,11 +380,11 @@
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_2dnir_180 > * {
+._marker_17q59_185 > * {
   pointer-events: none;
 }
 
-._markerError_2dnir_200 {
+._markerError_17q59_205 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -390,7 +395,7 @@
   cursor: pointer;
 }
 
-._markerError_2dnir_200::after {
+._markerError_17q59_205::after {
   content: "";
   position: absolute;
   top: 0;
@@ -400,7 +405,7 @@
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_2dnir_221 {
+._markerCompaction_17q59_226 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -412,20 +417,20 @@
   cursor: pointer;
 }
 
-._markerBranch_2dnir_233 {
+._markerBranch_17q59_238 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_2dnir_240 {
+._branchPopover_17q59_245 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_2dnir_246 {
+._branchEntry_17q59_251 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -440,28 +445,28 @@
   white-space: nowrap;
 }
 
-._branchEntry_2dnir_246:hover {
+._branchEntry_17q59_251:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_2dnir_266 {
+._branchLabel_17q59_271 {
   font-weight: 500;
 }
 
-._branchMeta_2dnir_270 {
+._branchMeta_17q59_275 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_2dnir_246:hover ._branchMeta_2dnir_270 {
+._branchEntry_17q59_251:hover ._branchMeta_17q59_275 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_2dnir_282 {
+._breadcrumbRow_17q59_287 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -471,23 +476,53 @@
   overflow: hidden;
 }
 
-._breadcrumbCurrent_2dnir_292 {
+._breadcrumbTrail_17q59_297 {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+._breadcrumbSegment_17q59_305 {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+._breadcrumbDivider_17q59_311 {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+  user-select: none;
+}
+
+._breadcrumbLink_17q59_318 {
   background: none;
   border: none;
   cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+}
+
+._breadcrumbLink_17q59_318:hover {
+  color: var(--vscode-foreground);
+  text-decoration: underline;
+}
+
+._breadcrumbCurrent_17q59_332 {
+  background: none;
+  border: none;
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_2dnir_292:hover {
-  text-decoration: underline;
-}
-
 /* Token cell */
 
-._tokens_2dnir_308 {
+._tokens_17q59_343 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

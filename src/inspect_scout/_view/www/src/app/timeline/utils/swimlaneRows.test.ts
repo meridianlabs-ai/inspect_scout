@@ -465,26 +465,26 @@ describe("computeFlatSwimlaneRows", () => {
   });
 
   describe("iterative agents (S2)", () => {
-    it("expands iterative agents into separate numbered rows", () => {
+    it("collapses iterative agents onto one row with multiple bars", () => {
       const node = getScenarioRoot(S2_ITERATIVE);
       const rows = computeFlatSwimlaneRows(node);
 
       const exploreRows = rows.filter((r) => r.name.startsWith("Explore"));
-      expect(exploreRows).toHaveLength(2);
-      expect(exploreRows.map((r) => r.name)).toEqual([
-        "Explore 1",
-        "Explore 2",
-      ]);
+      expect(exploreRows).toHaveLength(1);
+      expect(exploreRows[0]!.name).toBe("Explore");
+      // Two non-overlapping spans → two SingleSpan bars
+      expect(exploreRows[0]!.spans).toHaveLength(2);
+      expect(isSingleSpan(exploreRows[0]!.spans[0]!)).toBe(true);
+      expect(isSingleSpan(exploreRows[0]!.spans[1]!)).toBe(true);
     });
 
-    it("preserves per-instance token counts", () => {
+    it("aggregates token counts across iterative spans", () => {
       const node = getScenarioRoot(S2_ITERATIVE);
       const rows = computeFlatSwimlaneRows(node);
 
-      const exploreRows = rows.filter((r) => r.name.startsWith("Explore"));
+      const exploreRow = rows.find((r) => r.name === "Explore")!;
       // explore1 = 7200, explore2 = 7300
-      expect(exploreRows[0]!.totalTokens).toBe(7200);
-      expect(exploreRows[1]!.totalTokens).toBe(7300);
+      expect(exploreRow.totalTokens).toBe(14500);
     });
   });
 
@@ -512,7 +512,7 @@ describe("computeFlatSwimlaneRows", () => {
   });
 
   describe("edge cases", () => {
-    it("numbers same-name agents even if non-overlapping", () => {
+    it("collapses non-overlapping same-name agents onto one row", () => {
       const parent = makeSpan("Root", 0, 50, 10000, [
         makeSpan("explore", 2, 10, 3000),
         makeSpan("Explore", 12, 20, 3000),
@@ -520,11 +520,10 @@ describe("computeFlatSwimlaneRows", () => {
       ]);
       const rows = computeFlatSwimlaneRows(parent);
 
-      // 3 same-name (case-insensitive) → numbered
-      expect(rows).toHaveLength(4); // parent + 3 explore
-      expect(rows[1]!.name).toBe("explore 1");
-      expect(rows[2]!.name).toBe("explore 2");
-      expect(rows[3]!.name).toBe("explore 3");
+      // 3 same-name (case-insensitive), non-overlapping → one row with 3 bars
+      expect(rows).toHaveLength(2); // parent + 1 explore
+      expect(rows[1]!.name).toBe("explore");
+      expect(rows[1]!.spans).toHaveLength(3);
     });
 
     it("single child uses unnumbered name", () => {

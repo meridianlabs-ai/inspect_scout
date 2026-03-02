@@ -239,80 +239,122 @@ function buildRowFromGroup(
  * recursively walks all descendant spans in depth-first pre-order. Each row carries
  * a `depth` for indentation and a unique `key` for selection.
  *
- * Parallel (overlapping) and iterative (sequential same-name) spans are expanded
- * into separate numbered rows ("Explore 1", "Explore 2") rather than grouped.
+ * Same-name non-overlapping spans (iterative) are collapsed onto a single row
+ * with multiple bars. Same-name overlapping spans (parallel) are expanded into
+ * separate numbered rows.
  */
 export function computeFlatSwimlaneRows(root: TimelineSpan): SwimlaneRow[] {
   const parentRow = buildParentRow(root);
-  const childRows = flattenChildren(root, 0, root.name.toLowerCase());
+  const childRows = flattenChildren([root], 0, root.name.toLowerCase());
   return [parentRow, ...childRows];
 }
 
 /**
- * Recursively flattens all descendant spans into rows in depth-first pre-order.
+ * An entry produced by expanding a name group. Each entry becomes one row.
+ * For iterative groups, there's a single entry with all spans merged.
+ * For parallel groups, each span gets its own entry with a numbered name.
+ */
+interface FlatEntry {
+  displayName: string;
+  key: string;
+  /** All TimelineSpans that contribute to this row's bars. */
+  spans: TimelineSpan[];
+  /** Pre-built RowSpans for this row (one SingleSpan per iterative span). */
+  rowSpans: RowSpan[];
+  totalTokens: number;
+  startTime: Date;
+  endTime: Date;
+}
+
+/**
+ * Recursively flattens descendant spans into rows in depth-first pre-order.
  *
- * For each level, groups children by name, then expands each group into
- * individually numbered rows when there are multiple instances.
+ * Accepts multiple parent nodes so that iterative spans at the same level
+ * can have their children merged before recursing.
+ *
+ * For each name group, partitions into overlapping clusters:
+ * - If no cluster has >1 span (all iterative/sequential) → one row, multiple bars
+ * - If any cluster has >1 span (parallel) → separate numbered rows per span
  */
 function flattenChildren(
-  node: TimelineSpan,
+  nodes: TimelineSpan[],
   parentDepth: number,
   parentKey: string
 ): SwimlaneRow[] {
-  const children = node.content.filter(
-    (item): item is TimelineSpan => item.type === "span" && !item.utility
-  );
+  // Collect all non-utility child spans from all parent nodes
+  const children: TimelineSpan[] = [];
+  for (const node of nodes) {
+    for (const item of node.content) {
+      if (item.type === "span" && !item.utility) {
+        children.push(item);
+      }
+    }
+  }
   if (children.length === 0) return [];
 
   const groups = groupByName(children);
   const depth = parentDepth + 1;
 
-  // Build (displayName, individual span, key) entries from each group,
-  // numbering instances when a group has more than one span.
-  const entries: Array<{
-    displayName: string;
-    span: TimelineSpan;
-    key: string;
-  }> = [];
+  // Expand each group into one or more FlatEntries
+  const entries: FlatEntry[] = [];
 
   for (const [displayName, spans] of groups) {
     const sorted = [...spans].sort(compareByTime);
     const baseName = displayName.toLowerCase();
+    const clusters = partitionIntoClusters(sorted);
+    const hasParallel = clusters.some((c) => c.length > 1);
 
-    if (sorted.length === 1) {
+    if (!hasParallel) {
+      // All non-overlapping (iterative): one row with one bar per cluster
+      const rowSpans: RowSpan[] = sorted.map((s) => ({ agent: s }));
+      const first = sorted[0]!;
+      const endTime = sorted.reduce(
+        (latest, s) =>
+          s.endTime.getTime() > latest.getTime() ? s.endTime : latest,
+        first.endTime
+      );
       entries.push({
         displayName,
-        span: sorted[0]!,
         key: `${parentKey}/${baseName}`,
+        spans: sorted,
+        rowSpans,
+        totalTokens: sorted.reduce((sum, s) => sum + s.totalTokens, 0),
+        startTime: first.startTime,
+        endTime,
       });
     } else {
-      // Multiple instances: number each one
+      // Has overlapping spans (parallel): separate numbered rows per span
       for (let i = 0; i < sorted.length; i++) {
+        const span = sorted[i]!;
         entries.push({
           displayName: `${displayName} ${i + 1}`,
-          span: sorted[i]!,
           key: `${parentKey}/${baseName}-${i + 1}`,
+          spans: [span],
+          rowSpans: [{ agent: span }],
+          totalTokens: span.totalTokens,
+          startTime: span.startTime,
+          endTime: span.endTime,
         });
       }
     }
   }
 
   // Sort all entries by start time for correct visual order
-  entries.sort((a, b) => compareByTime(a.span, b.span));
+  entries.sort((a, b) => compareByTime(a, b));
 
-  // Build rows with recursive descent into each entry's children
+  // Emit rows with recursive descent
   const result: SwimlaneRow[] = [];
   for (const entry of entries) {
     result.push({
       key: entry.key,
       name: entry.displayName,
       depth,
-      spans: [{ agent: entry.span }],
-      totalTokens: entry.span.totalTokens,
-      startTime: entry.span.startTime,
-      endTime: entry.span.endTime,
+      spans: entry.rowSpans,
+      totalTokens: entry.totalTokens,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
     });
-    result.push(...flattenChildren(entry.span, depth, entry.key));
+    result.push(...flattenChildren(entry.spans, depth, entry.key));
   }
 
   return result;

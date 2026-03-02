@@ -87,7 +87,7 @@ describe("useTimeline", () => {
     }
   });
 
-  it("expands iterative agents into separate rows (S2)", () => {
+  it("collapses iterative agents onto one row with multiple bars (S2)", () => {
     const timeline = getTimeline(S2_ITERATIVE);
     const { result } = renderHook(() => useTimeline(timeline), {
       wrapper: createWrapper(),
@@ -96,13 +96,12 @@ describe("useTimeline", () => {
     const exploreRows = result.current.rows.filter((r) =>
       r.name.startsWith("Explore")
     );
-    expect(exploreRows).toHaveLength(2);
-    expect(exploreRows[0]!.name).toBe("Explore 1");
-    expect(exploreRows[1]!.name).toBe("Explore 2");
-
-    for (const row of exploreRows) {
-      expect(row.spans).toHaveLength(1);
-      expect(isSingleSpan(row.spans[0]!)).toBe(true);
+    expect(exploreRows).toHaveLength(1);
+    expect(exploreRows[0]!.name).toBe("Explore");
+    // Two non-overlapping invocations → two SingleSpan bars on one row
+    expect(exploreRows[0]!.spans).toHaveLength(2);
+    for (const span of exploreRows[0]!.spans) {
+      expect(isSingleSpan(span)).toBe(true);
     }
   });
 

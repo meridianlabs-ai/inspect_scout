@@ -170,6 +170,11 @@
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
+/* Row is selected but a different span within the row is focused */
+.fillDimmed {
+  opacity: 0.15;
+}
+
 .parallelBadge {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
@@ -289,18 +294,48 @@
   overflow: hidden;
 }
 
-.breadcrumbCurrent {
+.breadcrumbTrail {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumbSegment {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.breadcrumbDivider {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+  user-select: none;
+}
+
+.breadcrumbLink {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--vscode-foreground);
-  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
 }
 
-.breadcrumbCurrent:hover {
+.breadcrumbLink:hover {
+  color: var(--vscode-foreground);
   text-decoration: underline;
+}
+
+.breadcrumbCurrent {
+  background: none;
+  border: none;
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
 }
 
 /* Token cell */

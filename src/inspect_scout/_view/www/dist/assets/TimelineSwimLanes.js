@@ -1,5 +1,5 @@
 import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore, i as useSearchParams } from "./index.js";
-import { x as useCollapseTranscriptEvent, P as PulsingDots, y as kSandboxSignalName, E as EventNode, z as TYPE_SCORERS, B as TYPE_SCORER, F as useVirtuosoState, f as useTranscriptNavigation, G as flatTree, H as kTranscriptOutlineCollapseScope, I as useScrollTrack, Y as Yr, K as computeFlatSwimlaneRows, s as useProperty, N as computeBarPosition, O as formatTokenCount } from "./TranscriptViewNodes.js";
+import { x as useCollapseTranscriptEvent, P as PulsingDots, y as kSandboxSignalName, E as EventNode, z as TYPE_SCORERS, B as TYPE_SCORER, F as useVirtuosoState, f as useTranscriptNavigation, G as flatTree, H as kTranscriptOutlineCollapseScope, I as useScrollTrack, Y as Yr, K as computeFlatSwimlaneRows, s as useProperty, N as computeBarPosition, O as formatTokenCount, Q as parseSelection, U as buildSelectionKey } from "./TranscriptViewNodes.js";
 import { e as formatTime, g as formatDuration, h as formatDurationShort, P as PopOver } from "./ToolButton.js";
 const parsePackageName = (name) => {
   if (name.includes("/")) {
@@ -1013,34 +1013,39 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_2dnir_1";
-const pinnedSection = "_pinnedSection_2dnir_17";
-const scrollSection = "_scrollSection_2dnir_25";
-const collapsibleSection = "_collapsibleSection_2dnir_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_2dnir_53";
-const noAnimation = "_noAnimation_2dnir_60";
-const swimlaneSticky = "_swimlaneSticky_2dnir_65";
-const collapsibleInner = "_collapsibleInner_2dnir_72";
-const collapseToggle = "_collapseToggle_2dnir_82";
-const row = "_row_2dnir_110";
-const label = "_label_2dnir_116";
-const labelSelected = "_labelSelected_2dnir_128";
-const barArea = "_barArea_2dnir_134";
-const barInner = "_barInner_2dnir_140";
-const fill = "_fill_2dnir_146";
-const fillParent = "_fillParent_2dnir_164";
-const fillSelected = "_fillSelected_2dnir_168";
-const marker = "_marker_2dnir_180";
-const markerError = "_markerError_2dnir_200";
-const markerCompaction = "_markerCompaction_2dnir_221";
-const markerBranch = "_markerBranch_2dnir_233";
-const branchPopover = "_branchPopover_2dnir_240";
-const branchEntry = "_branchEntry_2dnir_246";
-const branchLabel = "_branchLabel_2dnir_266";
-const branchMeta = "_branchMeta_2dnir_270";
-const breadcrumbRow = "_breadcrumbRow_2dnir_282";
-const breadcrumbCurrent = "_breadcrumbCurrent_2dnir_292";
-const tokens = "_tokens_2dnir_308";
+const swimlane = "_swimlane_17q59_1";
+const pinnedSection = "_pinnedSection_17q59_17";
+const scrollSection = "_scrollSection_17q59_25";
+const collapsibleSection = "_collapsibleSection_17q59_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_17q59_53";
+const noAnimation = "_noAnimation_17q59_60";
+const swimlaneSticky = "_swimlaneSticky_17q59_65";
+const collapsibleInner = "_collapsibleInner_17q59_72";
+const collapseToggle = "_collapseToggle_17q59_82";
+const row = "_row_17q59_110";
+const label = "_label_17q59_116";
+const labelSelected = "_labelSelected_17q59_128";
+const barArea = "_barArea_17q59_134";
+const barInner = "_barInner_17q59_140";
+const fill = "_fill_17q59_146";
+const fillParent = "_fillParent_17q59_164";
+const fillSelected = "_fillSelected_17q59_168";
+const fillDimmed = "_fillDimmed_17q59_174";
+const marker = "_marker_17q59_185";
+const markerError = "_markerError_17q59_205";
+const markerCompaction = "_markerCompaction_17q59_226";
+const markerBranch = "_markerBranch_17q59_238";
+const branchPopover = "_branchPopover_17q59_245";
+const branchEntry = "_branchEntry_17q59_251";
+const branchLabel = "_branchLabel_17q59_271";
+const branchMeta = "_branchMeta_17q59_275";
+const breadcrumbRow = "_breadcrumbRow_17q59_287";
+const breadcrumbTrail = "_breadcrumbTrail_17q59_297";
+const breadcrumbSegment = "_breadcrumbSegment_17q59_305";
+const breadcrumbDivider = "_breadcrumbDivider_17q59_311";
+const breadcrumbLink = "_breadcrumbLink_17q59_318";
+const breadcrumbCurrent = "_breadcrumbCurrent_17q59_332";
+const tokens = "_tokens_17q59_343";
 const styles = {
   swimlane,
   pinnedSection,
@@ -1059,6 +1064,7 @@ const styles = {
   fill,
   fillParent,
   fillSelected,
+  fillDimmed,
   marker,
   markerError,
   markerCompaction,
@@ -1068,9 +1074,31 @@ const styles = {
   branchLabel,
   branchMeta,
   breadcrumbRow,
+  breadcrumbTrail,
+  breadcrumbSegment,
+  breadcrumbDivider,
+  breadcrumbLink,
   breadcrumbCurrent,
   tokens
 };
+function buildBreadcrumbs(layouts, selectedRowKey) {
+  if (!selectedRowKey) return [];
+  const byKey = /* @__PURE__ */ new Map();
+  for (const layout of layouts) {
+    byKey.set(layout.key, layout);
+  }
+  const parts = selectedRowKey.split("/");
+  const segments = [];
+  for (let i = 1; i <= parts.length; i++) {
+    const ancestorKey = parts.slice(0, i).join("/");
+    const layout = byKey.get(ancestorKey);
+    if (layout) {
+      const label2 = layout.depth === 0 && layout.name === "solvers" ? "main" : layout.name;
+      segments.push({ label: label2, key: layout.key });
+    }
+  }
+  return segments;
+}
 const MARKER_ICONS = {
   error: { icon: ApplicationIcons.error, tooltip: "Error event" },
   compaction: {
@@ -1109,10 +1137,16 @@ const TimelineSwimLanes = ({
   const handleBranchLeave = reactExports.useCallback(() => {
     setBranchPopover(null);
   }, []);
+  const parsedSelection = reactExports.useMemo(() => parseSelection(selected2), [selected2]);
+  const selectedRowKey = parsedSelection?.rowKey ?? null;
+  const breadcrumbs = reactExports.useMemo(
+    () => buildBreadcrumbs(layouts, selectedRowKey),
+    [layouts, selectedRowKey]
+  );
   const handleKeyDown = reactExports.useCallback(
     (e) => {
       const rowKeys = layouts.map((l) => l.key);
-      const currentIndex = selected2 ? rowKeys.indexOf(selected2) : -1;
+      const currentIndex = selectedRowKey ? rowKeys.indexOf(selectedRowKey) : -1;
       switch (e.key) {
         case "ArrowDown": {
           e.preventDefault();
@@ -1139,7 +1173,7 @@ const TimelineSwimLanes = ({
         }
       }
     },
-    [layouts, selected2, onSelect, clearSelection, branchPopover2]
+    [layouts, selectedRowKey, onSelect, clearSelection, branchPopover2]
   );
   const branchLookup = reactExports.useMemo(() => {
     if (!branchPopover2) return null;
@@ -1147,19 +1181,25 @@ const TimelineSwimLanes = ({
   }, [branchPopover2, node]);
   const parentRow = layouts[0];
   const childRows = layouts.slice(1);
-  const renderRow = (layout, displayName) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-    SwimlaneRow,
-    {
-      layout,
-      displayName,
-      isSelected: selected2 === layout.key,
-      onSelect: () => onSelect(layout.key),
-      onBranchHover: handleBranchHover,
-      onBranchLeave: handleBranchLeave,
-      onMarkerNavigate
-    },
-    layout.key
-  );
+  const renderRow = (layout, displayName) => {
+    const isRowSelected = selectedRowKey === layout.key;
+    const selectedSpanIndex = isRowSelected ? parsedSelection?.spanIndex ?? null : null;
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SwimlaneRow,
+      {
+        layout,
+        displayName,
+        isRowSelected,
+        selectedSpanIndex,
+        onSelectRow: () => onSelect(layout.key),
+        onSelectSpan: (spanIndex) => onSelect(buildSelectionKey(layout.key, spanIndex)),
+        onBranchHover: handleBranchHover,
+        onBranchLeave: handleBranchLeave,
+        onMarkerNavigate
+      },
+      layout.key
+    );
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -1169,13 +1209,14 @@ const TimelineSwimLanes = ({
       role: "grid",
       "aria-label": "Timeline swimlane",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.pinnedSection, children: [
-          header && /* @__PURE__ */ jsxRuntimeExports.jsx(HeaderRow, { ...header }),
-          parentRow && renderRow(
-            parentRow,
-            parentRow.name === "solvers" ? "main" : void 0
-          )
-        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: header && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          HeaderRow,
+          {
+            ...header,
+            breadcrumbs,
+            onBreadcrumbSelect: onSelect
+          }
+        ) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -1184,7 +1225,13 @@ const TimelineSwimLanes = ({
               isCollapsed && styles.collapsibleCollapsed,
               noAnimation2 && styles.noAnimation
             ),
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.collapsibleInner, children: childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.scrollSection, children: childRows.map((layout) => renderRow(layout)) }) })
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.collapsibleInner, children: [
+              parentRow && renderRow(
+                parentRow,
+                parentRow.name === "solvers" ? "main" : void 0
+              ),
+              childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.scrollSection, children: childRows.map((layout) => renderRow(layout)) })
+            ] })
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1217,32 +1264,41 @@ const TimelineSwimLanes = ({
 const SwimlaneRow = ({
   layout,
   displayName,
-  isSelected,
-  onSelect,
+  isRowSelected,
+  selectedSpanIndex,
+  onSelectRow,
+  onSelectSpan,
   onBranchHover,
   onBranchLeave,
   onMarkerNavigate
 }) => {
+  const hasMultipleSpans = layout.spans.length > 1;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.row, role: "row", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: clsx(styles.label, isSelected && styles.labelSelected),
+        className: clsx(styles.label, isRowSelected && styles.labelSelected),
         style: { paddingLeft: `${0.95 + layout.depth * 0.5}rem` },
+        onClick: onSelectRow,
         children: displayName ?? layout.name
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.barArea, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.barInner, children: [
-      layout.spans.map((span, spanIndex) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        BarFill,
-        {
-          span,
-          isParent: layout.isParent,
-          isSelected,
-          onSelect
-        },
-        spanIndex
-      )),
+      layout.spans.map((span, spanIndex) => {
+        const isBarSelected = isRowSelected && (!hasMultipleSpans || selectedSpanIndex === null || selectedSpanIndex === spanIndex);
+        const isBarDimmed = isRowSelected && hasMultipleSpans && selectedSpanIndex !== null && selectedSpanIndex !== spanIndex;
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(
+          BarFill,
+          {
+            span,
+            isParent: layout.isParent,
+            isSelected: isBarSelected,
+            isDimmed: isBarDimmed,
+            onSelect: () => hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow()
+          },
+          spanIndex
+        );
+      }),
       layout.markers.map((marker2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         MarkerGlyph,
         {
@@ -1260,10 +1316,27 @@ const SwimlaneRow = ({
 const HeaderRow = ({
   rootLabel,
   minimap: minimap2,
-  onScrollToTop
+  onScrollToTop,
+  breadcrumbs,
+  onBreadcrumbSelect
 }) => {
+  const hasBreadcrumbs = breadcrumbs && breadcrumbs.length > 1;
+  const rootDisplay = rootLabel === "solvers" ? "main" : rootLabel;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.breadcrumbRow, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: styles.breadcrumbCurrent, onClick: onScrollToTop, children: rootLabel === "solvers" ? "main" : rootLabel }),
+    hasBreadcrumbs ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.breadcrumbTrail, children: breadcrumbs.map((segment, i) => {
+      const isLast = i === breadcrumbs.length - 1;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.breadcrumbSegment, children: [
+        i > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbDivider, children: "/" }),
+        isLast ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbCurrent, children: segment.label }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: styles.breadcrumbLink,
+            onClick: () => onBreadcrumbSelect?.(segment.key),
+            children: segment.label
+          }
+        )
+      ] }, segment.key);
+    }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: styles.breadcrumbCurrent, onClick: onScrollToTop, children: rootDisplay }),
     minimap2 && /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineMinimap, { ...minimap2 })
   ] });
 };
@@ -1271,6 +1344,7 @@ const BarFill = ({
   span,
   isParent,
   isSelected,
+  isDimmed,
   onSelect
 }) => {
   const handleClick = reactExports.useCallback(
@@ -1286,7 +1360,8 @@ const BarFill = ({
       className: clsx(
         styles.fill,
         isParent && styles.fillParent,
-        isSelected && styles.fillSelected
+        isSelected && styles.fillSelected,
+        isDimmed && styles.fillDimmed
       ),
       style: {
         left: `${span.bar.left}%`,

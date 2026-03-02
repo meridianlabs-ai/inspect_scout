@@ -1045,8 +1045,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             col_type = schema.field(field.name).type
             expected_type = field.pyarrow_type
 
-            # String columns: allow large_string as equivalent
-            if expected_type == pa.string():
+            # String columns: allow both string and large_string (backward compat)
+            if pa.types.is_string(expected_type) or pa.types.is_large_string(
+                expected_type
+            ):
                 if col_type not in (pa.string(), pa.large_string()):
                     raise ValueError(
                         f"'{field.name}' column must be string type, got {col_type}"
@@ -1253,14 +1255,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         values = [row.get(key) for row in rows if row.get(key) is not None]
 
         if not values:
-            return pa.string()  # All NULL → default to string
+            return pa.large_string()  # All NULL → default to large string
 
         # Determine types present
         types = {type(v) for v in values}
 
         # Infer appropriate PyArrow type
         if types == {str}:
-            return pa.string()
+            return pa.large_string()
         elif types == {bool}:
             return pa.bool_()
         elif types == {int}:
@@ -1274,8 +1276,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Mix of numeric types → use float
             return pa.float64()
         else:
-            # Mixed incompatible types → use string
-            return pa.string()
+            # Mixed incompatible types → use large string
+            return pa.large_string()
 
     async def _write_parquet_batch(
         self, batch: list[dict[str, Any]], session_id: str | None = None
@@ -1296,9 +1298,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Infer schema from actual data
             schema = self._infer_schema(batch)
 
-            # Create DataFrame and convert to PyArrow table
+            # Use inferred schema (which promotes strings to large_string)
+            # so Arrow uses 64-bit string offsets.
             df = pd.DataFrame(batch)
-            table = pa.Table.from_pandas(df, schema=schema)
+            table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
 
             # Generate filename and write to storage
             filename = self._generate_parquet_filename(session_id)
@@ -2197,7 +2200,7 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
 
 def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
     """Convert PyArrow type to DuckDB SQL type string."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "VARCHAR"
     elif pa_type == pa.int64():
         return "BIGINT"
@@ -2215,7 +2218,7 @@ def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
 
 def _duckdb_default_value(pa_type: pa.DataType) -> str:
     """Get default value literal for a PyArrow type in DuckDB."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "''"
     elif pa_type in (pa.int64(), pa.int32()):
         return "0"

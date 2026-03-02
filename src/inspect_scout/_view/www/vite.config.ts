@@ -77,6 +77,16 @@ export default defineConfig(({ mode }) => {
         minify: mode !== "development",
         rollupOptions: {
           output: {
+            manualChunks(id) {
+              if (!id.includes("node_modules")) return;
+              if (/mathjax|mathxyjax|markdown-it/.test(id))
+                return "vendor-markdown";
+              if (/ag-grid|apache-arrow|arquero|flechette|acorn/.test(id))
+                return "vendor-grid";
+              if (/asciinema/.test(id)) return "vendor-asciinema";
+              if (/prismjs/.test(id)) return "vendor-prism";
+              return "vendor";
+            },
             entryFileNames: `assets/[name]-[hash].js`,
             chunkFileNames: `assets/[name]-[hash].js`,
             assetFileNames: `assets/[name]-[hash].[ext]`,

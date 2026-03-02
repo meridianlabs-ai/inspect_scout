@@ -1,4 +1,4 @@
-import { r as reactExports, q as loading } from "./index.js";
+import { r as reactExports, z as loading } from "./index.js";
 function useMapAsyncData(input, transform, errorTransform) {
   return reactExports.useMemo(() => {
     const isArray = Array.isArray(input);

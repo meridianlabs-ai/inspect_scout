@@ -1,4 +1,4 @@
-import { G as useParams, s as skipToken, r as reactExports, q as loading, v as data, a as useApi, b as useAsyncDataFromQuery, j as jsxRuntimeExports, u as useStore, c as clsx, i as useSearchParams, z as getValidationParam, B as updateValidationParam, A as ApplicationIcons, m as useLoggingNavigate, x as transcriptRoute, e as useAppConfig, L as LoadingBar, f as ErrorPanel, H as ApiError } from "./index.js";
+import { M as useParams, s as skipToken, r as reactExports, z as loading, B as data, a as useApi, b as useAsyncDataFromQuery, j as jsxRuntimeExports, u as useStore, c as clsx, m as useSearchParams, G as getValidationParam, H as updateValidationParam, A as ApplicationIcons, v as useLoggingNavigate, D as transcriptRoute, e as useAppConfig, L as LoadingBar, f as ErrorPanel, N as ApiError } from "./index.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { u as useFilterConditions, T as TranscriptsNavbar } from "./useFilterConditions.js";
 import { u as useServerTranscriptsInfinite, T as TRANSCRIPTS_INFINITE_SCROLL_CONFIG } from "./constants.js";

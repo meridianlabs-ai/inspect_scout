@@ -1,4 +1,4 @@
-import { j as jsxRuntimeExports, c as clsx, a as useApi, r as reactExports, U as useQuery, s as skipToken, J as useQueryClient, w as useNavigate, A as ApplicationIcons, x as transcriptRoute, u as useStore, e as useAppConfig } from "./index.js";
+import { j as jsxRuntimeExports, c as clsx, a as useApi, r as reactExports, Z as useQuery, s as skipToken, P as useQueryClient, C as useNavigate, A as ApplicationIcons, D as transcriptRoute, u as useStore, e as useAppConfig } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption, f as VscodeTextfield, a as VscodeButton, j as VscodeCheckbox } from "./VscodeTreeItem.js";
 import { M as Modal } from "./Modal.js";
 import { T as TextInput } from "./TextInput.js";

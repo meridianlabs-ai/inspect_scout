@@ -1,4 +1,4 @@
-import { G as useParams, u as useStore, e as useAppConfig, r as reactExports, W as parseScanParams, i as useSearchParams, d as scanRoute, X as scansRoute, V as dirname, A as ApplicationIcons, j as jsxRuntimeExports, T as appAliasedPath } from "./index.js";
+import { M as useParams, u as useStore, e as useAppConfig, r as reactExports, $ as parseScanParams, m as useSearchParams, d as scanRoute, a0 as scansRoute, _ as dirname, A as ApplicationIcons, j as jsxRuntimeExports, Y as appAliasedPath } from "./index.js";
 import { j as join, N as Navbar, E as EditablePath } from "./Navbar.js";
 const useScanRoute = () => {
   const params = useParams();

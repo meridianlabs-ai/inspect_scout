@@ -26066,7 +26066,7 @@ const createImpl = (createState) => {
   Object.assign(useBoundStore, api2);
   return useBoundStore;
 };
-const create = ((createState) => createImpl);
+const create = ((createState) => createState ? createImpl(createState) : createImpl);
 const __vite_import_meta_env__ = { "BASE_URL": "./", "DEV": false, "MODE": "development", "PROD": true, "SSR": false };
 const trackedConnections = /* @__PURE__ */ new Map();
 const getTrackedConnectionState = (name) => {
@@ -28014,6 +28014,7 @@ const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 const kScannerQueryParam = "scanner";
 const kValidationQueryParam = "validation";
 const kValidationSetQueryParam = "validationSet";
+const kDataframeColumnsQueryParam = "cols";
 const scanRoute = (scansDir, relativePath, searchParams) => {
   const encodedDir = encodeBase64Url(scansDir);
   const route = `/scan/${encodedDir}/${relativePath}`;
@@ -28132,6 +28133,21 @@ const updateValidationSetParam = (searchParams, uri) => {
     newParams.set(kValidationSetQueryParam, encodeBase64Url(uri));
   } else {
     newParams.delete(kValidationSetQueryParam);
+  }
+  return newParams;
+};
+const getColumnsParam = (searchParams) => {
+  const raw = searchParams.get(kDataframeColumnsQueryParam);
+  if (!raw) return void 0;
+  const columns = raw.split(",").filter(Boolean);
+  return columns.length > 0 ? columns : void 0;
+};
+const updateColumnsParam = (searchParams, columns) => {
+  const newParams = new URLSearchParams(searchParams);
+  if (columns && columns.length > 0) {
+    newParams.set(kDataframeColumnsQueryParam, columns.join(","));
+  } else {
+    newParams.delete(kDataframeColumnsQueryParam);
   }
   return newParams;
 };
@@ -29150,49 +29166,54 @@ root.render(
   ] })
 );
 export {
-  Link as $,
+  parseScanParams as $,
   ApplicationIcons as A,
-  updateValidationParam as B,
-  lib as C,
-  asyncJsonParse as D,
+  data as B,
+  useNavigate as C,
+  transcriptRoute as D,
   ExtendedFindProvider as E,
-  openRouteInNewTab as F,
-  useParams as G,
-  ApiError as H,
-  getValidationSetParam as I,
-  useQueryClient as J,
-  updateValidationSetParam as K,
+  projectOrAppAliasedPath as F,
+  getValidationParam as G,
+  updateValidationParam as H,
+  lib as I,
+  asyncJsonParse as J,
+  openRouteInNewTab as K,
   LoadingBar as L,
-  infiniteQueryBehavior as M,
-  hasPreviousPage as N,
-  hasNextPage as O,
-  useBaseQuery as P,
-  QueryObserver as Q,
+  useParams as M,
+  ApiError as N,
+  getValidationSetParam as O,
+  useQueryClient as P,
+  updateValidationSetParam as Q,
   React as R,
-  useBlocker as S,
-  appAliasedPath as T,
-  useQuery as U,
-  dirname as V,
-  parseScanParams as W,
-  scansRoute as X,
-  AppModeContext as Y,
-  transcriptsRoute as Z,
-  decodeBase64Url as _,
+  QueryObserver as S,
+  infiniteQueryBehavior as T,
+  hasPreviousPage as U,
+  hasNextPage as V,
+  useBaseQuery as W,
+  useBlocker as X,
+  appAliasedPath as Y,
+  useQuery as Z,
+  dirname as _,
   useApi as a,
-  Subscribable as a0,
-  shallowEqualObjects as a1,
-  hashKey as a2,
-  getDefaultState as a3,
-  notifyManager as a4,
-  noop as a5,
-  shouldThrowError as a6,
-  prismExports as a7,
-  debounce as a8,
-  parseTranscriptParams as a9,
-  __vitePreload as aa,
-  iconForMimeType as ab,
-  isHostedEnvironment as ac,
-  useExtendedFind as ad,
+  scansRoute as a0,
+  AppModeContext as a1,
+  transcriptsRoute as a2,
+  decodeBase64Url as a3,
+  Link as a4,
+  Subscribable as a5,
+  shallowEqualObjects as a6,
+  hashKey as a7,
+  getDefaultState as a8,
+  notifyManager as a9,
+  noop as aa,
+  shouldThrowError as ab,
+  prismExports as ac,
+  debounce as ad,
+  parseTranscriptParams as ae,
+  __vitePreload as af,
+  iconForMimeType as ag,
+  isHostedEnvironment as ah,
+  useExtendedFind as ai,
   useAsyncDataFromQuery as b,
   clsx as c,
   scanRoute as d,
@@ -29200,23 +29221,23 @@ export {
   ErrorPanel as f,
   fo as g,
   reactDomExports as h,
-  useSearchParams as i,
+  create as i,
   jsxRuntimeExports as j,
   keepPreviousData as k,
-  scanResultRoute as l,
-  useLoggingNavigate as m,
-  basename as n,
-  updateScannerParam as o,
-  getScannerParam as p,
-  loading as q,
+  createJSONStorage as l,
+  useSearchParams as m,
+  getColumnsParam as n,
+  updateColumnsParam as o,
+  persist as p,
+  scanResultRoute as q,
   reactExports as r,
   skipToken as s,
   toRelativePath as t,
   useStore as u,
-  data as v,
-  useNavigate as w,
-  transcriptRoute as x,
-  projectOrAppAliasedPath as y,
-  getValidationParam as z
+  useLoggingNavigate as v,
+  basename as w,
+  updateScannerParam as x,
+  getScannerParam as y,
+  loading as z
 };
 //# sourceMappingURL=index.js.map

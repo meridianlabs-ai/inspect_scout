@@ -1,4 +1,4 @@
-import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore } from "./index.js";
+import { r as reactExports, j as jsxRuntimeExports, c as clsx, a4 as Link, A as ApplicationIcons, u as useStore } from "./index.js";
 import { l as useCollapseTranscriptEvent, P as PulsingDots, m as kSandboxSignalName, E as EventNode, n as TYPE_SCORERS, o as TYPE_SCORER, p as useVirtuosoState, q as useTranscriptNavigation, s as flatTree, t as kTranscriptOutlineCollapseScope, v as useScrollTrack, Y as Yr } from "./TranscriptViewNodes.js";
 import "./ToolButton.js";
 const parsePackageName = (name) => {

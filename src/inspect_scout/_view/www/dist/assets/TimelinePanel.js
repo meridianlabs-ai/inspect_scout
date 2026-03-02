@@ -1,4 +1,4 @@
-import { j as jsxRuntimeExports, c as clsx, i as useSearchParams, r as reactExports, A as ApplicationIcons } from "./index.js";
+import { j as jsxRuntimeExports, c as clsx, m as useSearchParams, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
 import { j as useProperty, u as useEventNodes, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
 import { T as TranscriptOutline } from "./TranscriptOutline.js";

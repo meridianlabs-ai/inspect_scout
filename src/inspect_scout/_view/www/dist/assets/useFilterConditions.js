@@ -1,4 +1,4 @@
-import { r as reactExports, Y as AppModeContext, u as useStore, i as useSearchParams, G as useParams, Z as transcriptsRoute, A as ApplicationIcons, j as jsxRuntimeExports } from "./index.js";
+import { r as reactExports, a1 as AppModeContext, u as useStore, m as useSearchParams, M as useParams, a2 as transcriptsRoute, A as ApplicationIcons, j as jsxRuntimeExports } from "./index.js";
 import { N as Navbar, E as EditablePath } from "./Navbar.js";
 const TranscriptsNavbar = ({
   transcriptsDir,

@@ -1,5 +1,5 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./lib-CBtriEt5.js","./chunk-DfAF0w94.js","./wgxpath.install-node-Csk64Aj9.js","./liteDOM-Cp0aN3bP.js","./_commonjsHelpers.js","./xypic-DrMJn58R.js","./tex-svg-full-BI3fonbT.js"])))=>i.map(i=>d[i]);
-import { r as reactExports, a7 as prismExports, j as jsxRuntimeExports, c as clsx, u as useStore, a8 as debounce$1, G as useParams, a9 as parseTranscriptParams, i as useSearchParams, x as transcriptRoute, R as React, g as fo, A as ApplicationIcons, aa as __vitePreload, m as useLoggingNavigate, ab as iconForMimeType, ac as isHostedEnvironment, C as lib$1, ad as useExtendedFind } from "./index.js";
+import { r as reactExports, ac as prismExports, j as jsxRuntimeExports, c as clsx, u as useStore, ad as debounce$1, M as useParams, ae as parseTranscriptParams, m as useSearchParams, D as transcriptRoute, R as React, g as fo, A as ApplicationIcons, af as __vitePreload, v as useLoggingNavigate, ag as iconForMimeType, ah as isHostedEnvironment, I as lib$1, ai as useExtendedFind } from "./index.js";
 import { T as ToolButton, P as PopOver, f as formatNumber, d as formatDateTime, e as formatTime$1 } from "./ToolButton.js";
 import { l } from "./chunk-DfAF0w94.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";

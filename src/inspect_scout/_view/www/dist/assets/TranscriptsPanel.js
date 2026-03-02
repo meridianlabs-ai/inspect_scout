@@ -1,4 +1,4 @@
-import { u as useStore, r as reactExports, j as jsxRuntimeExports, x as transcriptRoute, e as useAppConfig, c as clsx, L as LoadingBar, f as ErrorPanel, s as skipToken } from "./index.js";
+import { u as useStore, r as reactExports, j as jsxRuntimeExports, D as transcriptRoute, e as useAppConfig, c as clsx, L as LoadingBar, f as ErrorPanel, s as skipToken } from "./index.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { F as Footer } from "./Footer.js";
 import { T as TranscriptsNavbar } from "./useFilterConditions.js";

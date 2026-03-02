@@ -21,22 +21,71 @@
 
 .links {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   padding-bottom: 0.2em;
   margin-bottom: 0.4em;
   column-gap: 0.3em;
+  row-gap: 0.2em;
   border-bottom: solid 1px var(--bs-border-color);
 }
 
-.links a {
+.link {
   cursor: pointer;
   text-decoration: none;
   color: var(--bs-link-color);
 }
 
-.links a:hover {
+.link:hover {
   color: var(--bs-link-hover-color);
 }
 
 .selected {
   font-weight: 600;
+}
+
+.presetItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.presetDelete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: transparent;
+  font-size: 0.7em;
+  line-height: 1;
+  padding: 0;
+  margin-left: 0.15em;
+  transition: color 0.15s;
+}
+
+.presetItem:hover .presetDelete {
+  color: var(--bs-secondary-color);
+}
+
+.presetDelete:hover {
+  color: var(--bs-danger, #dc3545);
+}
+
+.presetSaveRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.presetInput {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 0.1em 0.35em;
+  font-size: inherit;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  width: 8em;
+}
+
+.presetInput:focus {
+  outline: none;
+  border-color: var(--bs-primary);
 }

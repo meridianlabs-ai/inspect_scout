@@ -1,4 +1,4 @@
-import { Q as QueryObserver, M as infiniteQueryBehavior, N as hasPreviousPage, O as hasNextPage, P as useBaseQuery } from "./index.js";
+import { S as QueryObserver, T as infiniteQueryBehavior, U as hasPreviousPage, V as hasNextPage, W as useBaseQuery } from "./index.js";
 var InfiniteQueryObserver = class extends QueryObserver {
   constructor(client, options) {
     super(client, options);

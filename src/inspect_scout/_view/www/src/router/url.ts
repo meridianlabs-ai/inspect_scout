@@ -22,6 +22,7 @@ export const kScanIdPattern = /scan_id=[a-zA-Z0-9_.-]{22}$/;
 export const kScannerQueryParam = "scanner";
 export const kValidationQueryParam = "validation";
 export const kValidationSetQueryParam = "validationSet";
+export const kDataframeColumnsQueryParam = "cols";
 
 // Helper functions to generate routes
 export const scanRoute = (
@@ -260,6 +261,30 @@ export const updateValidationSetParam = (
     newParams.set(kValidationSetQueryParam, encodeBase64Url(uri));
   } else {
     newParams.delete(kValidationSetQueryParam);
+  }
+  return newParams;
+};
+
+// Retrieves the dataframe columns parameter from URL search params.
+export const getColumnsParam = (
+  searchParams: URLSearchParams
+): string[] | undefined => {
+  const raw = searchParams.get(kDataframeColumnsQueryParam);
+  if (!raw) return undefined;
+  const columns = raw.split(",").filter(Boolean);
+  return columns.length > 0 ? columns : undefined;
+};
+
+// Updates the dataframe columns parameter in URL search params.
+export const updateColumnsParam = (
+  searchParams: URLSearchParams,
+  columns: string[] | undefined
+): URLSearchParams => {
+  const newParams = new URLSearchParams(searchParams);
+  if (columns && columns.length > 0) {
+    newParams.set(kDataframeColumnsQueryParam, columns.join(","));
+  } else {
+    newParams.delete(kDataframeColumnsQueryParam);
   }
   return newParams;
 };

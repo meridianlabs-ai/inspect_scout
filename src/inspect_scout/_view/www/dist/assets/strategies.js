@@ -1,4 +1,4 @@
-import { r as reactExports, j as jsxRuntimeExports, h as reactDomExports, m as useLoggingNavigate, F as openRouteInNewTab, c as clsx, A as ApplicationIcons } from "./index.js";
+import { r as reactExports, j as jsxRuntimeExports, h as reactDomExports, v as useLoggingNavigate, K as openRouteInNewTab, c as clsx, A as ApplicationIcons } from "./index.js";
 import { P as PopOver } from "./ToolButton.js";
 import { b as useColumnFilterPopover, C as ColumnFilterButton, c as ColumnFilterEditor } from "./useFilterBarHandlers.js";
 import "./transcriptColumns.js";

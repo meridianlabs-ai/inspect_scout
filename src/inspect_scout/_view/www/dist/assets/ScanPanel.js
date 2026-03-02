@@ -1,4 +1,4 @@
-import { a as useApi, b as useAsyncDataFromQuery, r as reactExports, R as React, g as fo, h as reactDomExports, j as jsxRuntimeExports, u as useStore, c as clsx, A as ApplicationIcons, i as useSearchParams, l as scanResultRoute, m as useLoggingNavigate, n as basename, L as LoadingBar, f as ErrorPanel, o as updateScannerParam, t as toRelativePath, e as useAppConfig, p as getScannerParam, E as ExtendedFindProvider } from "./index.js";
+import { a as useApi, b as useAsyncDataFromQuery, r as reactExports, R as React, g as fo, h as reactDomExports, j as jsxRuntimeExports, u as useStore, c as clsx, A as ApplicationIcons, i as create, p as persist, l as createJSONStorage, m as useSearchParams, n as getColumnsParam, o as updateColumnsParam, q as scanResultRoute, v as useLoggingNavigate, w as basename, L as LoadingBar, f as ErrorPanel, x as updateScannerParam, t as toRelativePath, e as useAppConfig, y as getScannerParam, E as ExtendedFindProvider } from "./index.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import { a as useScanRoute, u as useScansDir, S as ScansNavbar } from "./useScansDir.js";
 import { C as Card, a as CardHeader, b as CardBody, p as parseScanResultSummaries, u as useMarkdownRefs, E as Explanation, V as Value, c as ValidationResult, r as resultIdentifierStr, d as resultLog, e as resultIdentifier, i as isNumberValue, f as isBooleanValue, g as isStringValue, h as isArrayValue, j as isObjectValue, k as useSelectedScanner, l as useSelectedScanDataframe, m as useSelectedScan, n as getScanDisplayName } from "./refs.js";
@@ -15682,17 +15682,17 @@ var DragAndDropImageComponent2 = class extends Component {
     this.registerCSS(dragAndDropImageComponentCSS);
   }
   postConstruct() {
-    const create = (iconName) => _createIcon(iconName, this.beans, null);
+    const create2 = (iconName) => _createIcon(iconName, this.beans, null);
     this.dropIconMap = {
-      pinned: create("columnMovePin"),
-      hide: create("columnMoveHide"),
-      move: create("columnMoveMove"),
-      left: create("columnMoveLeft"),
-      right: create("columnMoveRight"),
-      group: create("columnMoveGroup"),
-      aggregate: create("columnMoveValue"),
-      pivot: create("columnMovePivot"),
-      notAllowed: create("dropNotAllowed")
+      pinned: create2("columnMovePin"),
+      hide: create2("columnMoveHide"),
+      move: create2("columnMoveMove"),
+      left: create2("columnMoveLeft"),
+      right: create2("columnMoveRight"),
+      group: create2("columnMoveGroup"),
+      aggregate: create2("columnMoveValue"),
+      pivot: create2("columnMovePivot"),
+      notAllowed: create2("dropNotAllowed")
     };
   }
   init(params) {
@@ -57276,6 +57276,20 @@ const ScannerDataframeClearFiltersButton = () => {
     }
   );
 };
+const useUserSettings = create()(
+  persist(
+    (set) => ({
+      dataframeColumnPresets: [],
+      setDataframeColumnPresets: (presets) => {
+        set({ dataframeColumnPresets: presets });
+      }
+    }),
+    {
+      name: "inspect-scout-user-settings",
+      storage: createJSONStorage(() => localStorage)
+    }
+  )
+);
 const defaultColumns = [
   "transcript_id",
   "value",
@@ -57295,15 +57309,25 @@ const defaultColumns = [
   "scan_events",
   "timestamp"
 ];
-const grid = "_grid_hbkjn_1";
-const row$2 = "_row_hbkjn_8";
-const links = "_links_hbkjn_22";
-const selected$2 = "_selected_hbkjn_40";
+const grid = "_grid_xg2ux_1";
+const row$2 = "_row_xg2ux_8";
+const links = "_links_xg2ux_22";
+const link$1 = "_link_xg2ux_22";
+const selected$2 = "_selected_xg2ux_43";
+const presetItem = "_presetItem_xg2ux_47";
+const presetDelete = "_presetDelete_xg2ux_52";
+const presetSaveRow = "_presetSaveRow_xg2ux_72";
+const presetInput = "_presetInput_xg2ux_78";
 const styles$d = {
   grid,
   row: row$2,
   links,
-  selected: selected$2
+  link: link$1,
+  selected: selected$2,
+  presetItem,
+  presetDelete,
+  presetSaveRow,
+  presetInput
 };
 const columnsGroups = {
   Transcript: [
@@ -57353,7 +57377,7 @@ const columnsGroups = {
     "label",
     "value_type",
     "answer",
-    "scan_tokens_total",
+    "scan_total_tokens",
     "scan_model_usage",
     "scan_events",
     "timestamp",
@@ -57442,6 +57466,126 @@ const useDataframeColumns = () => {
     arrangedColumns
   };
 };
+const useColumnsUrlSync = (filtered, isDefault) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const initializedRef = reactExports.useRef(false);
+  const skipFirstSyncRef = reactExports.useRef(true);
+  reactExports.useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    const urlColumns = getColumnsParam(searchParams);
+    if (urlColumns) {
+      setFilteredColumns(urlColumns);
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    if (skipFirstSyncRef.current) {
+      skipFirstSyncRef.current = false;
+      return;
+    }
+    setSearchParams(
+      (prev) => updateColumnsParam(prev, isDefault ? void 0 : filtered),
+      { replace: true }
+    );
+  }, [filtered, isDefault, setSearchParams]);
+};
+const InlinePresets = ({ filtered }) => {
+  const presets = useUserSettings((s) => s.dataframeColumnPresets);
+  const setPresets = useUserSettings((s) => s.setDataframeColumnPresets);
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const [isSaving, setIsSaving] = reactExports.useState(false);
+  const [presetName, setPresetName] = reactExports.useState("");
+  const inputRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (isSaving && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isSaving]);
+  const handleSave = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    const newPreset = { name, columns: [...filtered] };
+    setPresets([...presets, newPreset]);
+    setPresetName("");
+    setIsSaving(false);
+  };
+  const handleDelete = (index, e) => {
+    e.stopPropagation();
+    setPresets(presets.filter((_, i) => i !== index));
+  };
+  const handleLoad = (preset) => {
+    setFilteredColumns(preset.columns);
+  };
+  if (presets.length === 0 && !isSaving) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      "|",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("a", { className: styles$d.link, onClick: () => setIsSaving(true), children: "Save current..." })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    presets.map((preset, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+      "|",
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$d.presetItem, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "a",
+          {
+            className: styles$d.link,
+            onClick: () => handleLoad(preset),
+            title: `Load "${preset.name}" (${preset.columns.length} columns)`,
+            children: preset.name
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: styles$d.presetDelete,
+            onClick: (e) => handleDelete(index, e),
+            title: `Delete "${preset.name}"`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: "bi bi-x-circle" })
+          }
+        )
+      ] })
+    ] }, index)),
+    "|",
+    isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles$d.presetSaveRow, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          ref: inputRef,
+          className: styles$d.presetInput,
+          type: "text",
+          placeholder: "Preset name",
+          value: presetName,
+          onChange: (e) => setPresetName(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") handleSave();
+            if (e.key === "Escape") {
+              setIsSaving(false);
+              setPresetName("");
+            }
+          }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("a", { className: styles$d.link, onClick: handleSave, children: "Save" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "a",
+        {
+          className: styles$d.link,
+          onClick: () => {
+            setIsSaving(false);
+            setPresetName("");
+          },
+          children: "Cancel"
+        }
+      )
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("a", { className: styles$d.link, onClick: () => setIsSaving(true), children: "Save current..." })
+  ] });
+};
 const ScannerDataframeColumnsPopover = ({ positionEl }) => {
   const showFilter = useStore((state) => state.dataframeShowFilterColumns);
   const setShowFilter = useStore(
@@ -57456,6 +57600,7 @@ const ScannerDataframeColumnsPopover = ({ positionEl }) => {
     filtered,
     arrangedColumns
   } = useDataframeColumns();
+  useColumnsUrlSync(filtered, isDefaultFilter);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     PopOver,
     {
@@ -57489,7 +57634,8 @@ const ScannerDataframeColumnsPopover = ({ positionEl }) => {
               onClick: () => setAllFilter(),
               children: "All"
             }
-          )
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(InlinePresets, { filtered })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: clsx(styles$d.grid, "text-size-smaller"), children: arrangedColumns(3).map((columnGroup, colIndex) => {
           return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: Object.entries(columnGroup).map(([groupName, columns]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -57534,11 +57680,6 @@ const ScannerDataframeColumnsPopover = ({ positionEl }) => {
   );
 };
 const FEEDBACK_DURATION_MS = 2e3;
-const sanitizeFilename = (name, fallback = "scan") => {
-  const sanitized = name.replace(/[/\\<>:"|?*]/g, "_");
-  return sanitized || fallback;
-};
-const getFileTimestamp = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 19).replace(/[:-]/g, "");
 const useOperationStatus = () => {
   const [status, setStatus] = reactExports.useState("idle");
   const timeoutRef = reactExports.useRef(null);
@@ -57569,6 +57710,11 @@ const useOperationStatus = () => {
   }, []);
   return [status, setTransientStatus];
 };
+const sanitizeFilename = (name, fallback = "scan") => {
+  const sanitized = name.replace(/[/\\<>:"|?*]/g, "_");
+  return sanitized || fallback;
+};
+const getFileTimestamp = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 19).replace(/[:-]/g, "");
 const ScannerDataframeCopyCSVButton = () => {
   const gridApi = useDataframeGridApi();
   const visibleColumns = useStore((state) => state.dataframeFilterColumns);
@@ -58917,7 +59063,14 @@ const ScanPanelBody = ({
   }, [searchParams, setSelectedResultsTab]);
   const handleTabChange = (tabId) => {
     setSelectedResultsTab(tabId);
-    setSearchParams({ tab: tabId });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tabId);
+        return next;
+      },
+      { replace: true }
+    );
   };
   const selectedResultsView = useStore((state) => state.selectedResultsView) || kSegmentList;
   const setSelectedResultsView = useStore(

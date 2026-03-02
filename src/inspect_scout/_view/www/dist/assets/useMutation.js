@@ -1,4 +1,4 @@
-import { a0 as Subscribable, a1 as shallowEqualObjects, a2 as hashKey, a3 as getDefaultState, a4 as notifyManager, J as useQueryClient, r as reactExports, a5 as noop, a6 as shouldThrowError } from "./index.js";
+import { a5 as Subscribable, a6 as shallowEqualObjects, a7 as hashKey, a8 as getDefaultState, a9 as notifyManager, P as useQueryClient, r as reactExports, aa as noop, ab as shouldThrowError } from "./index.js";
 var MutationObserver = class extends Subscribable {
   #client;
   #currentResult = void 0;

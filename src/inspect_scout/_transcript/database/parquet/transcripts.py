@@ -1224,7 +1224,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Reserved columns with fixed types (from central schema definition)
         reserved_cols = reserved_columns()
         fields: list[tuple[str, pa.DataType]] = [
-            (f.name, f.pyarrow_type) for f in TRANSCRIPT_SCHEMA_FIELDS
+            (
+                f.name,
+                pa.large_string() if pa.types.is_string(f.pyarrow_type) else f.pyarrow_type,
+            )
+            for f in TRANSCRIPT_SCHEMA_FIELDS
         ]
 
         # Discover all metadata keys across all rows
@@ -1253,14 +1257,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         values = [row.get(key) for row in rows if row.get(key) is not None]
 
         if not values:
-            return pa.string()  # All NULL → default to string
+            return pa.large_string()  # All NULL → default to large string
 
         # Determine types present
         types = {type(v) for v in values}
 
         # Infer appropriate PyArrow type
         if types == {str}:
-            return pa.string()
+            return pa.large_string()
         elif types == {bool}:
             return pa.bool_()
         elif types == {int}:
@@ -1274,8 +1278,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Mix of numeric types → use float
             return pa.float64()
         else:
-            # Mixed incompatible types → use string
-            return pa.string()
+            # Mixed incompatible types → use large string
+            return pa.large_string()
 
     async def _write_parquet_batch(
         self, batch: list[dict[str, Any]], session_id: str | None = None
@@ -1296,9 +1300,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Infer schema from actual data
             schema = self._infer_schema(batch)
 
-            # Create DataFrame and convert to PyArrow table
+            # Use inferred schema (which promotes strings to large_string)
+            # so Arrow uses 64-bit string offsets.
             df = pd.DataFrame(batch)
-            table = pa.Table.from_pandas(df, schema=schema)
+            table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
 
             # Generate filename and write to storage
             filename = self._generate_parquet_filename(session_id)

@@ -27,7 +27,7 @@
     "prebuild": "pnpm types:generate",
     "build": "npm run build:app",
     "build:lib": "vite build --mode library",
-    "build:app": "vite build --mode development",
+    "build:app": "vite build",
     "watch": "vite build --watch",
     "watch:dev": "NODE_ENV=development vite build --watch --mode development",
     "dev": "vite",

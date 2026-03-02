@@ -123,10 +123,13 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = _resolve_dist_directory()
     app.mount(
         "/",
-        _ScoutStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),
+        _ScoutStaticFiles(
+            directory=_resolve_dist_directory().as_posix(),
+            html=True,
+            root_path=root_path,
+        ),
         name="static",
     )
 

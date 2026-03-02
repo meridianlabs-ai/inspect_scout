@@ -8,7 +8,6 @@ import {
   S7_FLAT,
   S8_MANY,
   getScenarioRoot,
-  makeSpan,
   ts,
 } from "../testHelpers";
 
@@ -16,7 +15,6 @@ import {
   computeBarPosition,
   computeRowLayouts,
   formatTokenCount,
-  isDrillable,
   timestampToPercent,
 } from "./swimlaneLayout";
 import { computeSwimlaneRows } from "./swimlaneRows";
@@ -97,41 +95,6 @@ describe("computeBarPosition", () => {
     const bar = computeBarPosition(ts(49), ts(51), viewStart, viewEnd);
     expect(bar.left).toBe(49);
     expect(bar.width).toBeCloseTo(2);
-  });
-});
-
-// =============================================================================
-// isDrillable
-// =============================================================================
-
-describe("isDrillable", () => {
-  it("returns true for a SingleSpan with child spans", () => {
-    const child = makeSpan("Child", 5, 10, 100);
-    const agent = makeSpan("Parent", 0, 20, 500, [child]);
-    expect(isDrillable({ agent })).toBe(true);
-  });
-
-  it("returns false for a SingleSpan with only events (no child spans)", () => {
-    const agent = makeSpan("Leaf", 0, 10, 100);
-    expect(isDrillable({ agent })).toBe(false);
-  });
-
-  it("returns false for a SingleSpan with only utility children", () => {
-    const utilChild = makeSpan("util", 5, 10, 50, [], { utility: true });
-    const agent = makeSpan("Parent", 0, 20, 500, [utilChild]);
-    expect(isDrillable({ agent })).toBe(false);
-  });
-
-  it("returns true for a ParallelSpan", () => {
-    const agents = [makeSpan("A", 0, 10, 100), makeSpan("B", 2, 12, 100)];
-    expect(isDrillable({ agents })).toBe(true);
-  });
-
-  it("returns false for a scoring span (leaf with no children)", () => {
-    const agent = makeSpan("Scoring", 40, 50, 3200, [], {
-      spanType: "scorers",
-    });
-    expect(isDrillable({ agent })).toBe(false);
   });
 });
 
@@ -289,7 +252,7 @@ describe("computeRowLayouts", () => {
       expect(exploreLayout).toBeDefined();
       expect(exploreLayout!.spans).toHaveLength(1);
       expect(exploreLayout!.spans[0]!.parallelCount).toBe(3);
-      expect(exploreLayout!.spans[0]!.drillable).toBe(true);
+      expect(exploreLayout!.spans[0]!.drillable).toBe(false);
     });
   });
 

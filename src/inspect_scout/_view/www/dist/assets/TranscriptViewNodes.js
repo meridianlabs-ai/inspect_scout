@@ -14078,6 +14078,1004 @@ const prepareSearchTerm = (term) => {
     jsonEscaped: lower.replace(/"/g, '\\"')
   };
 };
+const defaultMarkerConfig = {
+  kinds: ["compaction", "branch"],
+  depth: "direct"
+};
+function isErrorEvent(event) {
+  if (event.event === "tool") {
+    return event.error !== null;
+  }
+  if (event.event === "model") {
+    return event.error !== null || event.output.error !== null;
+  }
+  return false;
+}
+function isCompactionEvent(event) {
+  return event.event === "compaction";
+}
+function errorTooltip(event) {
+  if (event.event === "tool") {
+    const msg = event.error?.message ?? "Unknown error";
+    return `Error (${event.function}): ${msg}`;
+  }
+  if (event.event === "model") {
+    const msg = (typeof event.error === "string" ? event.error : null) ?? (typeof event.output.error === "string" ? event.output.error : null) ?? "Unknown error";
+    return `Error (${event.model}): ${msg}`;
+  }
+  return "Error";
+}
+function collectMarkers(node2, depth) {
+  const markers = [];
+  collectEventMarkers(node2, depth, 0, markers);
+  collectBranchMarkers(node2, markers);
+  markers.sort((a2, b) => a2.timestamp.getTime() - b.timestamp.getTime());
+  return markers;
+}
+function collectEventMarkers(node2, depth, currentLevel, markers) {
+  for (const item of node2.content) {
+    if (item.type === "event") {
+      addEventMarker(item, markers);
+    } else if (item.type === "span" && shouldDescend(depth, currentLevel)) {
+      collectEventMarkers(item, depth, currentLevel + 1, markers);
+    }
+  }
+}
+function shouldDescend(depth, currentLevel) {
+  if (depth === "direct") return false;
+  if (depth === "children") return currentLevel === 0;
+  return true;
+}
+function addEventMarker(eventNode, markers) {
+  const event = eventNode.event;
+  const uuid = event.uuid;
+  if (isErrorEvent(event)) {
+    markers.push({
+      kind: "error",
+      timestamp: eventNode.startTime,
+      reference: uuid ?? "",
+      tooltip: errorTooltip(event)
+    });
+  } else if (isCompactionEvent(event)) {
+    const ce2 = event;
+    const before = ce2.tokens_before?.toLocaleString() ?? "?";
+    const after = ce2.tokens_after?.toLocaleString() ?? "?";
+    markers.push({
+      kind: "compaction",
+      timestamp: eventNode.startTime,
+      reference: uuid ?? "",
+      tooltip: `Context compaction: ${before} → ${after} tokens`
+    });
+  }
+}
+function collectBranchMarkers(node2, markers) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const branch of node2.branches) {
+    const existing = groups.get(branch.forkedAt);
+    if (existing) {
+      existing.push(branch);
+    } else {
+      groups.set(branch.forkedAt, [branch]);
+    }
+  }
+  for (const [forkedAt, branches] of groups) {
+    const timestamp = resolveForkedAtTimestamp(node2, forkedAt);
+    if (timestamp) {
+      markers.push({
+        kind: "branch",
+        timestamp,
+        reference: forkedAt,
+        tooltip: branchTooltip(branches)
+      });
+    }
+  }
+}
+function branchTooltip(branches) {
+  const count = branches.length;
+  const totalTokens = branches.reduce((sum, b) => sum + b.totalTokens, 0);
+  const tokenStr = formatCompactTokens(totalTokens);
+  const envelope = computeTimeEnvelope(branches);
+  const duration = formatDuration(envelope.startTime, envelope.endTime);
+  const label2 = count === 1 ? "1 branch" : `${count} branches`;
+  return `${label2} (${tokenStr}, ${duration})`;
+}
+function formatCompactTokens(tokens) {
+  return `${formatTokenCount(tokens)} tokens`;
+}
+function resolveForkedAtTimestamp(node2, forkedAt) {
+  if (!forkedAt) return null;
+  for (const item of node2.content) {
+    if (item.type === "event" && item.event.uuid === forkedAt) {
+      return item.startTime;
+    }
+  }
+  return null;
+}
+function compareByTime(a2, b) {
+  return a2.startTime.getTime() - b.startTime.getTime() || a2.endTime.getTime() - b.endTime.getTime();
+}
+function isSingleSpan(span) {
+  return "agent" in span;
+}
+function getAgents(span) {
+  return isSingleSpan(span) ? [span.agent] : span.agents;
+}
+function buildParentRow(node2) {
+  return {
+    key: node2.name.toLowerCase(),
+    name: node2.name,
+    depth: 0,
+    spans: [{ agent: node2 }],
+    totalTokens: node2.totalTokens,
+    startTime: node2.startTime,
+    endTime: node2.endTime
+  };
+}
+function groupByName(spans) {
+  const map2 = /* @__PURE__ */ new Map();
+  for (const span of spans) {
+    const key2 = span.name.toLowerCase();
+    const existing = map2.get(key2);
+    if (existing) {
+      existing.spans.push(span);
+    } else {
+      map2.set(key2, { displayName: span.name, spans: [span] });
+    }
+  }
+  return Array.from(map2.values()).map((g) => [g.displayName, g.spans]);
+}
+function computeFlatSwimlaneRows(root2) {
+  const parentRow = buildParentRow(root2);
+  const childRows = flattenChildren(root2, 0, root2.name.toLowerCase());
+  return [parentRow, ...childRows];
+}
+function flattenChildren(node2, parentDepth, parentKey) {
+  const children2 = node2.content.filter(
+    (item) => item.type === "span" && !item.utility
+  );
+  if (children2.length === 0) return [];
+  const groups = groupByName(children2);
+  const depth = parentDepth + 1;
+  const entries = [];
+  for (const [displayName, spans] of groups) {
+    const sorted = [...spans].sort(compareByTime);
+    const baseName = displayName.toLowerCase();
+    if (sorted.length === 1) {
+      entries.push({
+        displayName,
+        span: sorted[0],
+        key: `${parentKey}/${baseName}`
+      });
+    } else {
+      for (let i2 = 0; i2 < sorted.length; i2++) {
+        entries.push({
+          displayName: `${displayName} ${i2 + 1}`,
+          span: sorted[i2],
+          key: `${parentKey}/${baseName}-${i2 + 1}`
+        });
+      }
+    }
+  }
+  entries.sort((a2, b) => compareByTime(a2.span, b.span));
+  const result2 = [];
+  for (const entry of entries) {
+    result2.push({
+      key: entry.key,
+      name: entry.displayName,
+      depth,
+      spans: [{ agent: entry.span }],
+      totalTokens: entry.span.totalTokens,
+      startTime: entry.span.startTime,
+      endTime: entry.span.endTime
+    });
+    result2.push(...flattenChildren(entry.span, depth, entry.key));
+  }
+  return result2;
+}
+function timestampToPercent(timestamp, viewStart, viewEnd) {
+  const range = viewEnd.getTime() - viewStart.getTime();
+  if (range <= 0) return 0;
+  const offset = timestamp.getTime() - viewStart.getTime();
+  return Math.max(0, Math.min(100, offset / range * 100));
+}
+function computeBarPosition(spanStart, spanEnd, viewStart, viewEnd) {
+  const left = timestampToPercent(spanStart, viewStart, viewEnd);
+  const right = timestampToPercent(spanEnd, viewStart, viewEnd);
+  return { left, width: Math.max(0, right - left) };
+}
+function computeTimeEnvelope(items) {
+  const first2 = items[0];
+  let startTime = first2.startTime;
+  let endTime = first2.endTime;
+  for (let i2 = 1; i2 < items.length; i2++) {
+    const item = items[i2];
+    if (item.startTime < startTime) startTime = item.startTime;
+    if (item.endTime > endTime) endTime = item.endTime;
+  }
+  return { startTime, endTime };
+}
+function formatTokenCount(tokens) {
+  if (tokens >= 999950) {
+    return `${formatPrettyDecimal(tokens / 1e6, 1)}M`;
+  }
+  if (tokens >= 1e3) {
+    return `${formatPrettyDecimal(tokens / 1e3, 1)}k`;
+  }
+  return String(tokens);
+}
+function computeRowLayouts(rows, mapping, markerDepth, markerKinds) {
+  return rows.map((row2) => {
+    const isParent = row2.depth === 0;
+    const spans = row2.spans.map((rowSpan) => {
+      if (isSingleSpan(rowSpan)) {
+        const bar2 = computeBarFromMapping(
+          rowSpan.agent.startTime,
+          rowSpan.agent.endTime,
+          mapping
+        );
+        return {
+          bar: bar2,
+          drillable: false,
+          childCount: 0,
+          parallelCount: null,
+          description: rowSpan.agent.description ?? null
+        };
+      }
+      const agents = rowSpan.agents;
+      const envelope = computeTimeEnvelope(agents);
+      const bar = computeBarFromMapping(
+        envelope.startTime,
+        envelope.endTime,
+        mapping
+      );
+      return {
+        bar,
+        drillable: false,
+        childCount: 0,
+        parallelCount: agents.length,
+        description: null
+      };
+    });
+    const allMarkers = collectRowMarkers(row2, markerDepth, mapping);
+    const markers = markerKinds ? allMarkers.filter((m) => markerKinds.includes(m.kind)) : allMarkers;
+    const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
+    return {
+      key: row2.key,
+      name: row2.name,
+      isParent,
+      depth: row2.depth,
+      spans,
+      markers,
+      totalTokens: row2.totalTokens,
+      parallelCount: rowParallelCount
+    };
+  });
+}
+function computeBarFromMapping(spanStart, spanEnd, mapping) {
+  const left = mapping.toPercent(spanStart);
+  const right = mapping.toPercent(spanEnd);
+  return { left, width: Math.max(0, right - left) };
+}
+function spanHasEvents(span) {
+  for (const item of span.content) {
+    if (item.type === "event") return true;
+    if (item.type === "span" && spanHasEvents(item)) return true;
+  }
+  return false;
+}
+function rowHasEvents(row2) {
+  return row2.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
+}
+function collectRowMarkers(row2, depth, mapping) {
+  const allMarkers = [];
+  for (const rowSpan of row2.spans) {
+    const agents = getAgents(rowSpan);
+    for (const agent of agents) {
+      const markers = collectMarkers(agent, depth);
+      for (const m of markers) {
+        allMarkers.push({
+          left: mapping.toPercent(m.timestamp),
+          kind: m.kind,
+          reference: m.reference,
+          tooltip: m.tooltip
+        });
+      }
+    }
+  }
+  allMarkers.sort((a2, b) => a2.left - b.left);
+  return allMarkers;
+}
+function findRowByKey(rows, key2) {
+  return rows.find((r2) => r2.key === key2);
+}
+function getSelectedSpans(rows, selected) {
+  if (!selected) return [];
+  const row2 = findRowByKey(rows, selected);
+  if (!row2) return [];
+  const result2 = [];
+  for (const rowSpan of row2.spans) {
+    if (isSingleSpan(rowSpan)) {
+      result2.push(rowSpan.agent);
+    } else {
+      result2.push(...getAgents(rowSpan));
+    }
+  }
+  return result2;
+}
+function computeMinimapSelection(rows, selected) {
+  if (!selected) return void 0;
+  const row2 = findRowByKey(rows, selected);
+  if (!row2) return void 0;
+  const allAgents = row2.spans.flatMap(getAgents);
+  if (allAgents.length === 0) return void 0;
+  if (allAgents.length === 1) {
+    const agent = allAgents[0];
+    return {
+      startTime: agent.startTime,
+      endTime: agent.endTime,
+      totalTokens: agent.totalTokens
+    };
+  }
+  const envelope = computeTimeEnvelope(allAgents);
+  const tokens = allAgents.reduce((sum, a2) => sum + a2.totalTokens, 0);
+  return { ...envelope, totalTokens: tokens };
+}
+function collectRawEvents(spans) {
+  const events = [];
+  const sourceSpans = /* @__PURE__ */ new Map();
+  if (spans.length === 1) {
+    const span = spans[0];
+    const agentSpanId = span.spanType === "agent" ? span.id : void 0;
+    collectFromContent(span.content, events, sourceSpans, agentSpanId);
+  } else {
+    collectFromContent(spans, events, sourceSpans);
+  }
+  return { events, sourceSpans };
+}
+function collectFromContent(content2, out, sourceSpans, skipAgentSpanId) {
+  for (const item of content2) {
+    if (item.type === "event") {
+      if (skipAgentSpanId && item.event.event === "tool" && item.event.agent_span_id === skipAgentSpanId) {
+        continue;
+      }
+      out.push(item.event);
+    } else {
+      const beginEvent = {
+        event: "span_begin",
+        name: item.name,
+        id: item.id,
+        span_id: item.id,
+        type: item.spanType,
+        timestamp: item.startTime.toISOString(),
+        parent_id: null,
+        pending: false,
+        working_start: 0,
+        uuid: null,
+        metadata: null
+      };
+      out.push(beginEvent);
+      if (item.spanType === "agent") {
+        sourceSpans.set(item.id, item);
+      } else {
+        collectFromContent(item.content, out, sourceSpans);
+      }
+      const endEvent = {
+        event: "span_end",
+        id: `${item.id}-end`,
+        span_id: item.id,
+        timestamp: item.endTime.toISOString(),
+        pending: false,
+        working_start: 0,
+        uuid: null,
+        metadata: null
+      };
+      out.push(endEvent);
+    }
+  }
+}
+function buildSpanSelectKeys(rows) {
+  const keys = /* @__PURE__ */ new Map();
+  for (const row2 of rows) {
+    for (const rowSpan of row2.spans) {
+      if (isSingleSpan(rowSpan)) {
+        keys.set(rowSpan.agent.id, { key: row2.key });
+      } else {
+        for (const agent of getAgents(rowSpan)) {
+          keys.set(agent.id, { key: row2.key });
+        }
+      }
+    }
+  }
+  return keys;
+}
+function attachSourceSpans(nodes, spanMap) {
+  for (const node2 of nodes) {
+    if (node2.event.event === "span_begin") {
+      const spanId = node2.event.span_id;
+      if (spanId) {
+        const span = spanMap.get(spanId);
+        if (span) node2.sourceSpan = span;
+      }
+    }
+    if (node2.children.length > 0) {
+      attachSourceSpans(node2.children, spanMap);
+    }
+  }
+}
+const STEP = "step";
+const ACTION_BEGIN = "begin";
+const SPAN_BEGIN = "span_begin";
+const SPAN_END = "span_end";
+const TOOL = "tool";
+const STORE = "store";
+const STATE = "state";
+const TYPE_TOOL = "tool";
+const TYPE_SUBTASK = "subtask";
+const TYPE_SOLVER = "solver";
+const TYPE_SOLVERS = "solvers";
+const TYPE_AGENT = "agent";
+const TYPE_HANDOFF = "handoff";
+const TYPE_SCORERS = "scorers";
+const TYPE_SCORER = "scorer";
+const hasSpans = (events) => {
+  return events.some((event) => event.event === SPAN_BEGIN);
+};
+const kSandboxSignalName = "53787D8A-D3FC-426D-B383-9F880B70E4AA";
+const fixupEventStream = (events, filterPending = true) => {
+  const collapsed = processPendingEvents(events, filterPending);
+  const fixedUp = collapseSampleInit(collapsed);
+  return groupSandboxEvents(fixedUp);
+};
+const processPendingEvents = (events, filter) => {
+  return filter ? events.filter((e) => !e.pending) : events.reduce((acc, event) => {
+    if (!event.pending) {
+      acc.push(event);
+    } else {
+      const lastIndex = acc.length - 1;
+      if (lastIndex >= 0 && acc[lastIndex]?.pending && acc[lastIndex]?.event === event.event) {
+        acc[lastIndex] = event;
+      } else {
+        acc.push(event);
+      }
+    }
+    return acc;
+  }, []);
+};
+const collapseSampleInit = (events) => {
+  const hasSpans2 = events.some((e) => {
+    return e.event === "span_begin" || e.event === "span_end";
+  });
+  if (hasSpans2) {
+    return events;
+  }
+  const hasInitStep = events.findIndex((e) => {
+    return e.event === "step" && e.name === "init";
+  }) !== -1;
+  if (hasInitStep) {
+    return events;
+  }
+  const initEventIndex = events.findIndex((e) => {
+    return e.event === "sample_init";
+  });
+  const initEvent = events[initEventIndex];
+  if (!initEvent) {
+    return events;
+  }
+  const fixedUp = [...events];
+  fixedUp.splice(initEventIndex, 0, {
+    timestamp: initEvent.timestamp,
+    event: "step",
+    action: "begin",
+    type: null,
+    name: "sample_init",
+    pending: false,
+    working_start: 0,
+    span_id: initEvent.span_id,
+    uuid: null,
+    metadata: null
+  });
+  fixedUp.splice(initEventIndex + 2, 0, {
+    timestamp: initEvent.timestamp,
+    event: "step",
+    action: "end",
+    type: null,
+    name: "sample_init",
+    pending: false,
+    working_start: 0,
+    span_id: initEvent.span_id,
+    uuid: null,
+    metadata: null
+  });
+  return fixedUp;
+};
+const groupSandboxEvents = (events) => {
+  const result2 = [];
+  const pendingSandboxEvents = [];
+  const useSpans = hasSpans(events);
+  const pushPendingSandboxEvents = () => {
+    const timestamp = pendingSandboxEvents[pendingSandboxEvents.length - 1]?.timestamp || "";
+    if (useSpans) {
+      result2.push(createSpanBegin(kSandboxSignalName, timestamp, null));
+    } else {
+      result2.push(createStepEvent(kSandboxSignalName, timestamp, "begin"));
+    }
+    result2.push(...pendingSandboxEvents);
+    if (useSpans) {
+      result2.push(createSpanEnd(kSandboxSignalName, timestamp));
+    } else {
+      result2.push(createStepEvent(kSandboxSignalName, timestamp, "end"));
+    }
+    pendingSandboxEvents.length = 0;
+  };
+  for (const event of events) {
+    if (event.event === "sandbox") {
+      pendingSandboxEvents.push(event);
+      continue;
+    }
+    if (pendingSandboxEvents.length > 0) {
+      pushPendingSandboxEvents();
+    }
+    result2.push(event);
+  }
+  if (pendingSandboxEvents.length > 0) {
+    pushPendingSandboxEvents();
+  }
+  return result2;
+};
+const createStepEvent = (name, timestamp, action) => ({
+  timestamp,
+  event: "step",
+  action,
+  type: null,
+  name,
+  pending: false,
+  working_start: 0,
+  span_id: null,
+  uuid: null,
+  metadata: null
+});
+const createSpanBegin = (name, timestamp, parent_id) => {
+  return {
+    name,
+    id: `${name}-begin`,
+    span_id: name,
+    parent_id,
+    timestamp,
+    event: "span_begin",
+    type: null,
+    pending: false,
+    working_start: 0,
+    uuid: null,
+    metadata: null
+  };
+};
+const createSpanEnd = (name, timestamp) => {
+  return {
+    id: `${name}-end`,
+    timestamp,
+    event: "span_end",
+    pending: false,
+    working_start: 0,
+    span_id: name,
+    uuid: null,
+    metadata: null
+  };
+};
+const kTranscriptCollapseScope = "transcript-collapse";
+const kTranscriptOutlineCollapseScope = "transcript-outline";
+const kCollapsibleEventTypes = [
+  STEP,
+  SPAN_BEGIN,
+  TYPE_TOOL,
+  TYPE_SUBTASK
+];
+const eventTypeValues = [
+  "sample_init",
+  "sample_limit",
+  "state",
+  "store",
+  "model",
+  "logger",
+  "info",
+  "step",
+  "subtask",
+  "score",
+  "score_edit",
+  "tool",
+  "input",
+  "error",
+  "approval",
+  "compaction",
+  "sandbox",
+  "span_begin",
+  "span_end"
+];
+class EventNode {
+  id;
+  event;
+  children = [];
+  depth;
+  /** The TimelineSpan this node was synthesized from, if any. */
+  sourceSpan;
+  constructor(id, event, depth) {
+    this.id = id;
+    this.event = event;
+    this.depth = depth;
+  }
+}
+const transformTree = (roots) => {
+  const treeNodeTransformers = transformers();
+  const visitNode = (node2) => {
+    let currentNodes = [node2];
+    currentNodes = currentNodes.map((n2) => {
+      n2.children = n2.children.flatMap(visitNode);
+      return n2;
+    });
+    for (const transformer of treeNodeTransformers) {
+      const nextNodes = [];
+      for (const currentNode of currentNodes) {
+        if (transformer.matches(currentNode)) {
+          const result2 = transformer.process(currentNode);
+          if (Array.isArray(result2)) {
+            nextNodes.push(...result2);
+          } else {
+            nextNodes.push(result2);
+          }
+        } else {
+          nextNodes.push(currentNode);
+        }
+      }
+      currentNodes = nextNodes;
+    }
+    return currentNodes && currentNodes.length === 1 && currentNodes[0] ? currentNodes[0] : currentNodes;
+  };
+  const processedRoots = roots.flatMap(visitNode);
+  const flushedNodes = [];
+  for (const transformer of treeNodeTransformers) {
+    if (transformer.flush) {
+      const flushResults = transformer.flush();
+      if (flushResults && flushResults.length > 0) {
+        flushedNodes.push(...flushResults);
+      }
+    }
+  }
+  return [...processedRoots, ...flushedNodes];
+};
+const transformers = () => {
+  const treeNodeTransformers = [
+    {
+      name: "unwrap_tools",
+      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event.type === TYPE_TOOL,
+      process: (node2) => elevateChildNode(node2, TYPE_TOOL) || node2
+    },
+    {
+      name: "unwrap_subtasks",
+      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event.type === TYPE_SUBTASK,
+      process: (node2) => elevateChildNode(node2, TYPE_SUBTASK) || node2
+    },
+    {
+      name: "unwrap_agent_solver",
+      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_SOLVER && node2.children.length === 2 && node2.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.event.type === TYPE_AGENT && node2.children[1]?.event.event === STATE,
+      process: (node2) => skipFirstChildNode(node2)
+    },
+    {
+      name: "unwrap_agent_solver w/store",
+      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_SOLVER && node2.children.length === 3 && node2.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.event.type === TYPE_AGENT && node2.children[1]?.event.event === STATE && node2.children[2]?.event.event === STORE,
+      process: (node2) => skipFirstChildNode(node2)
+    },
+    {
+      name: "unwrap_handoff",
+      matches: (node2) => {
+        const isHandoffNode = node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_HANDOFF;
+        if (!isHandoffNode) {
+          return false;
+        }
+        if (node2.children.length === 1) {
+          return node2.children[0]?.event.event === TOOL && !!node2.children[0]?.event.agent;
+        } else {
+          return node2.children.length === 2 && node2.children[0]?.event.event === TOOL && node2.children[1]?.event.event === STORE && node2.children[0]?.children.length === 2 && node2.children[0]?.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.children[0]?.event.type === TYPE_AGENT;
+        }
+      },
+      process: (node2) => skipThisNode(node2)
+    },
+    {
+      name: "discard_solvers_span",
+      matches: (Node2) => Node2.event.event === SPAN_BEGIN && Node2.event.type === TYPE_SOLVERS,
+      process: (node2) => {
+        const nodes = discardNode(node2);
+        return nodes;
+      }
+    }
+  ];
+  return treeNodeTransformers;
+};
+const elevateChildNode = (node2, childEventType) => {
+  const targetIndex = node2.children.findIndex(
+    (child) => child.event.event === childEventType
+  );
+  if (targetIndex === -1) {
+    console.log(
+      `No ${childEventType} event found in a span, this is very unexpected.`
+    );
+    return null;
+  }
+  const targetNode = { ...node2.children[targetIndex] };
+  const remainingChildren = node2.children.filter((_, i2) => i2 !== targetIndex);
+  targetNode.depth = node2.depth;
+  targetNode.children = setDepth(remainingChildren, node2.depth + 1);
+  return targetNode;
+};
+const skipFirstChildNode = (node2) => {
+  const agentSpan = node2.children.splice(0, 1)[0];
+  node2.children.unshift(...reduceDepth(agentSpan?.children || []));
+  return node2;
+};
+const skipThisNode = (node2) => {
+  const newNode = { ...node2.children[0] };
+  newNode.depth = node2.depth;
+  newNode.children = reduceDepth(newNode.children || [], 2);
+  return newNode;
+};
+const discardNode = (node2) => {
+  const nodes = reduceDepth(node2.children, 1);
+  return nodes;
+};
+const reduceDepth = (nodes, depth = 1) => {
+  return nodes.map((node2) => {
+    if (node2.children.length > 0) {
+      node2.children = reduceDepth(node2.children, 1);
+    }
+    node2.depth = node2.depth - depth;
+    return node2;
+  });
+};
+const setDepth = (nodes, depth) => {
+  return nodes.map((node2) => {
+    if (node2.children.length > 0) {
+      node2.children = setDepth(node2.children, depth + 1);
+    }
+    node2.depth = depth;
+    return node2;
+  });
+};
+function treeifyEvents(events, depth) {
+  const useSpans = hasSpans(events);
+  events = injectScorersSpan(events);
+  const nodes = useSpans ? treeifyWithSpans(events, depth) : treeifyWithSteps(events, depth);
+  return useSpans ? transformTree(nodes) : nodes;
+}
+const treeifyWithSpans = (events, depth) => {
+  const { rootNodes, createNode } = createNodeFactory(depth);
+  const spanNodes = /* @__PURE__ */ new Map();
+  const processEvent = (event, parentOverride) => {
+    if (event.event === SPAN_END) {
+      return;
+    }
+    if (event.event === STEP && event.action !== ACTION_BEGIN) {
+      return;
+    }
+    const resolvedParent = resolveParentForEvent(event, spanNodes);
+    const parentNode = resolvedParent ?? null;
+    const node2 = createNode(event, parentNode);
+    if (event.event === SPAN_BEGIN) {
+      spanNodes.set(event.id, node2);
+    }
+  };
+  events.forEach((event) => processEvent(event));
+  return rootNodes;
+};
+const treeifyWithSteps = (events, depth) => {
+  const { rootNodes, createNode } = createNodeFactory(depth);
+  const stack = [];
+  const pushStack = (node2) => {
+    stack.push(node2);
+  };
+  const popStack = () => {
+    if (stack.length > 0) {
+      stack.pop();
+    }
+  };
+  const processEvent = (event) => {
+    const parent = stack.length > 0 ? stack[stack.length - 1] : null;
+    switch (event.event) {
+      case STEP:
+        if (event.action === ACTION_BEGIN) {
+          const node2 = createNode(event, parent || null);
+          pushStack(node2);
+        } else {
+          popStack();
+        }
+        break;
+      case SPAN_BEGIN: {
+        const node2 = createNode(event, parent || null);
+        pushStack(node2);
+        break;
+      }
+      case SPAN_END:
+        popStack();
+        break;
+      default:
+        createNode(event, parent || null);
+        break;
+    }
+  };
+  events.forEach(processEvent);
+  return rootNodes;
+};
+const createNodeFactory = (depth) => {
+  const rootNodes = [];
+  const childCounts = /* @__PURE__ */ new Map();
+  const pathByNode = /* @__PURE__ */ new Map();
+  const createNode = (event, parent) => {
+    const parentKey = parent ?? null;
+    const nextIndex = childCounts.get(parentKey) ?? 0;
+    childCounts.set(parentKey, nextIndex + 1);
+    const parentPath = parent ? pathByNode.get(parent) : void 0;
+    const path = parentPath !== void 0 ? `${parentPath}.${nextIndex}` : `${nextIndex}`;
+    const eventId = event.uuid || `event_node_${path}`;
+    const nodeDepth = parent ? parent.depth + 1 : depth;
+    const node2 = new EventNode(eventId, event, nodeDepth);
+    pathByNode.set(node2, path);
+    if (parent) {
+      parent.children.push(node2);
+    } else {
+      rootNodes.push(node2);
+    }
+    return node2;
+  };
+  return { rootNodes, createNode };
+};
+const resolveParentForEvent = (event, spanNodes) => {
+  if (event.event === SPAN_BEGIN) {
+    const parentId = event.parent_id;
+    if (parentId) {
+      return spanNodes.get(parentId) ?? null;
+    }
+    return null;
+  }
+  const spanId = getEventSpanId(event);
+  if (spanId !== null) {
+    return spanNodes.get(spanId) ?? null;
+  }
+  return null;
+};
+const getEventSpanId = (event) => {
+  const spanId = event.span_id;
+  return spanId ?? null;
+};
+const kBeginScorerId = "E617087FA405";
+const kEndScorerId = "C39922B09481";
+const kScorersSpanId = "C5A831026F2C";
+const injectScorersSpan = (events) => {
+  const results = [];
+  const collectedScorerEvents = [];
+  let hasCollectedScorers = false;
+  let collecting = null;
+  const flushCollected = () => {
+    if (collectedScorerEvents.length > 0) {
+      const beginSpan = {
+        name: "scorers",
+        id: kBeginScorerId,
+        span_id: kScorersSpanId,
+        event: SPAN_BEGIN,
+        type: TYPE_SCORERS,
+        timestamp: collectedScorerEvents[0]?.timestamp || "",
+        working_start: collectedScorerEvents[0]?.working_start || 0,
+        pending: false,
+        parent_id: null,
+        uuid: null,
+        metadata: null
+      };
+      const scoreEvents = collectedScorerEvents.map(
+        (event) => {
+          return {
+            ...event,
+            parent_id: event.event === "span_begin" ? event.parent_id || kScorersSpanId : null
+          };
+        }
+      );
+      const endSpan = {
+        id: kEndScorerId,
+        span_id: kScorersSpanId,
+        event: SPAN_END,
+        pending: false,
+        working_start: collectedScorerEvents[collectedScorerEvents.length - 1]?.working_start || 0,
+        timestamp: collectedScorerEvents[collectedScorerEvents.length - 1]?.timestamp || "",
+        uuid: null,
+        metadata: null
+      };
+      collectedScorerEvents.length = 0;
+      hasCollectedScorers = true;
+      return [beginSpan, ...scoreEvents, endSpan];
+    }
+    return [];
+  };
+  for (const event of events) {
+    if (event.event === SPAN_BEGIN && event.type === TYPE_SCORERS) {
+      return events;
+    }
+    if (event.event === SPAN_BEGIN && event.type === TYPE_SCORER && !hasCollectedScorers) {
+      collecting = event.span_id;
+    }
+    if (collecting) {
+      if (event.event === SPAN_END && event.span_id === collecting) {
+        collecting = null;
+        results.push(...flushCollected());
+        results.push(event);
+      } else {
+        collectedScorerEvents.push(event);
+      }
+    } else {
+      results.push(event);
+    }
+  }
+  return results;
+};
+const useEventNodes = (events, running, sourceSpans) => {
+  const { eventTree, defaultCollapsedIds } = reactExports.useMemo(() => {
+    const resolvedEvents = fixupEventStream(events, !running);
+    const rawEventTree = treeifyEvents(resolvedEvents, 0);
+    if (sourceSpans && sourceSpans.size > 0) {
+      attachSourceSpans(rawEventTree, sourceSpans);
+    }
+    const filterEmpty = (eventNodes) => {
+      return eventNodes.filter((node2) => {
+        if (node2.children && node2.children.length > 0) {
+          node2.children = filterEmpty(node2.children);
+        }
+        if (node2.sourceSpan) return true;
+        return node2.event.event !== "span_begin" && node2.event.event !== "step" || node2.children && node2.children.length > 0;
+      });
+    };
+    const eventTree2 = filterEmpty(rawEventTree);
+    const defaultCollapsedIds2 = {};
+    const findCollapsibleEvents = (nodes) => {
+      for (const node2 of nodes) {
+        if (kCollapsibleEventTypes.includes(node2.event.event) && collapseFilters.some(
+          (filter) => filter(
+            node2.event
+          )
+        )) {
+          defaultCollapsedIds2[node2.id] = true;
+        }
+        findCollapsibleEvents(node2.children);
+      }
+    };
+    findCollapsibleEvents(eventTree2);
+    return { eventTree: eventTree2, defaultCollapsedIds: defaultCollapsedIds2 };
+  }, [events, running, sourceSpans]);
+  return { eventNodes: eventTree, defaultCollapsedIds };
+};
+const collapseFilters = [
+  (event) => event.type === "solver" && event.name === "system_message",
+  (event) => {
+    if (event.event === "step" || event.event === "span_begin") {
+      return event.name === kSandboxSignalName || event.name === "init" || event.name === "sample_init";
+    }
+    return false;
+  },
+  (event) => event.event === "tool" && !event.agent && !event.failed,
+  (event) => event.event === "subtask"
+];
+const styles$m = {};
+const card$1 = "_card_1apye_1";
+const header = "_header_1apye_13";
+const icon = "_icon_1apye_22";
+const title$2 = "_title_1apye_26";
+const meta = "_meta_1apye_32";
+const disclosure = "_disclosure_1apye_37";
+const description = "_description_1apye_42";
+const resultPanel = "_resultPanel_1apye_47";
+const styles$l = {
+  card: card$1,
+  header,
+  icon,
+  title: title$2,
+  meta,
+  disclosure,
+  description,
+  resultPanel
+};
 function isSpanNode(item) {
   return typeof item === "object" && item !== null && "children" in item && Array.isArray(item.children);
 }
@@ -14945,1357 +15943,6 @@ function buildTimeline(events) {
   }
   return { name: "Default", description: "", root: root2 };
 }
-const defaultMarkerConfig = {
-  kinds: ["compaction", "branch"],
-  depth: "direct"
-};
-function isErrorEvent(event) {
-  if (event.event === "tool") {
-    return event.error !== null;
-  }
-  if (event.event === "model") {
-    return event.error !== null || event.output.error !== null;
-  }
-  return false;
-}
-function isCompactionEvent(event) {
-  return event.event === "compaction";
-}
-function errorTooltip(event) {
-  if (event.event === "tool") {
-    const msg = event.error?.message ?? "Unknown error";
-    return `Error (${event.function}): ${msg}`;
-  }
-  if (event.event === "model") {
-    const msg = (typeof event.error === "string" ? event.error : null) ?? (typeof event.output.error === "string" ? event.output.error : null) ?? "Unknown error";
-    return `Error (${event.model}): ${msg}`;
-  }
-  return "Error";
-}
-function collectMarkers(node2, depth) {
-  const markers = [];
-  collectEventMarkers(node2, depth, 0, markers);
-  collectBranchMarkers(node2, markers);
-  markers.sort((a2, b) => a2.timestamp.getTime() - b.timestamp.getTime());
-  return markers;
-}
-function collectEventMarkers(node2, depth, currentLevel, markers) {
-  for (const item of node2.content) {
-    if (item.type === "event") {
-      addEventMarker(item, markers);
-    } else if (item.type === "span" && shouldDescend(depth, currentLevel)) {
-      collectEventMarkers(item, depth, currentLevel + 1, markers);
-    }
-  }
-}
-function shouldDescend(depth, currentLevel) {
-  if (depth === "direct") return false;
-  if (depth === "children") return currentLevel === 0;
-  return true;
-}
-function addEventMarker(eventNode, markers) {
-  const event = eventNode.event;
-  const uuid = event.uuid;
-  if (isErrorEvent(event)) {
-    markers.push({
-      kind: "error",
-      timestamp: eventNode.startTime,
-      reference: uuid ?? "",
-      tooltip: errorTooltip(event)
-    });
-  } else if (isCompactionEvent(event)) {
-    const ce2 = event;
-    const before = ce2.tokens_before?.toLocaleString() ?? "?";
-    const after = ce2.tokens_after?.toLocaleString() ?? "?";
-    markers.push({
-      kind: "compaction",
-      timestamp: eventNode.startTime,
-      reference: uuid ?? "",
-      tooltip: `Context compaction: ${before} → ${after} tokens`
-    });
-  }
-}
-function collectBranchMarkers(node2, markers) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const branch of node2.branches) {
-    const existing = groups.get(branch.forkedAt);
-    if (existing) {
-      existing.push(branch);
-    } else {
-      groups.set(branch.forkedAt, [branch]);
-    }
-  }
-  for (const [forkedAt, branches] of groups) {
-    const timestamp = resolveForkedAtTimestamp(node2, forkedAt);
-    if (timestamp) {
-      markers.push({
-        kind: "branch",
-        timestamp,
-        reference: forkedAt,
-        tooltip: branchTooltip(branches)
-      });
-    }
-  }
-}
-function branchTooltip(branches) {
-  const count = branches.length;
-  const totalTokens = branches.reduce((sum, b) => sum + b.totalTokens, 0);
-  const tokenStr = formatCompactTokens(totalTokens);
-  const envelope = computeTimeEnvelope(branches);
-  const duration = formatDuration(envelope.startTime, envelope.endTime);
-  const label2 = count === 1 ? "1 branch" : `${count} branches`;
-  return `${label2} (${tokenStr}, ${duration})`;
-}
-function formatCompactTokens(tokens) {
-  return `${formatTokenCount(tokens)} tokens`;
-}
-function resolveForkedAtTimestamp(node2, forkedAt) {
-  if (!forkedAt) return null;
-  for (const item of node2.content) {
-    if (item.type === "event" && item.event.uuid === forkedAt) {
-      return item.startTime;
-    }
-  }
-  return null;
-}
-function compareByTime(a2, b) {
-  return a2.startTime.getTime() - b.startTime.getTime() || a2.endTime.getTime() - b.endTime.getTime();
-}
-function isSingleSpan(span) {
-  return "agent" in span;
-}
-function isParallelSpan(span) {
-  return "agents" in span;
-}
-function getAgents(span) {
-  return isSingleSpan(span) ? [span.agent] : span.agents;
-}
-const OVERLAP_TOLERANCE_MS = 100;
-function computeSwimlaneRows(node2) {
-  const parentRow = buildParentRow(node2);
-  const children2 = node2.content.filter(
-    (item) => item.type === "span" && !item.utility
-  );
-  if (children2.length === 0) {
-    return [parentRow];
-  }
-  const groups = groupByName(children2);
-  const childRows = [];
-  for (const [displayName, spans] of groups) {
-    const row2 = buildRowFromGroup(displayName, spans);
-    if (row2) {
-      childRows.push(row2);
-    }
-  }
-  childRows.sort(compareByTime);
-  return [parentRow, ...childRows];
-}
-function partitionIntoClusters(sorted) {
-  if (sorted.length === 0) return [];
-  const clusters = [];
-  let current = [sorted[0]];
-  let clusterEnd = sorted[0].endTime.getTime();
-  for (let i2 = 1; i2 < sorted.length; i2++) {
-    const span = sorted[i2];
-    if (span.startTime.getTime() < clusterEnd + OVERLAP_TOLERANCE_MS) {
-      current.push(span);
-      clusterEnd = Math.max(clusterEnd, span.endTime.getTime());
-    } else {
-      clusters.push(current);
-      current = [span];
-      clusterEnd = span.endTime.getTime();
-    }
-  }
-  clusters.push(current);
-  return clusters;
-}
-function buildParentRow(node2) {
-  return {
-    name: node2.name,
-    spans: [{ agent: node2 }],
-    totalTokens: node2.totalTokens,
-    startTime: node2.startTime,
-    endTime: node2.endTime
-  };
-}
-function groupByName(spans) {
-  const map2 = /* @__PURE__ */ new Map();
-  for (const span of spans) {
-    const key2 = span.name.toLowerCase();
-    const existing = map2.get(key2);
-    if (existing) {
-      existing.spans.push(span);
-    } else {
-      map2.set(key2, { displayName: span.name, spans: [span] });
-    }
-  }
-  return Array.from(map2.values()).map((g) => [g.displayName, g.spans]);
-}
-function buildRowFromGroup(displayName, spans) {
-  const sorted = [...spans].sort(compareByTime);
-  const first2 = sorted[0];
-  if (!first2) {
-    return null;
-  }
-  const rowSpans = partitionIntoClusters(sorted).map(
-    (cluster) => cluster.length === 1 ? { agent: cluster[0] } : { agents: cluster }
-  );
-  const startTime = first2.startTime;
-  const endTime = sorted.reduce(
-    (latest, span) => span.endTime.getTime() > latest.getTime() ? span.endTime : latest,
-    first2.endTime
-  );
-  const totalTokens = sorted.reduce((sum, span) => sum + span.totalTokens, 0);
-  return {
-    name: displayName,
-    spans: rowSpans,
-    totalTokens,
-    startTime,
-    endTime
-  };
-}
-function timestampToPercent(timestamp, viewStart, viewEnd) {
-  const range = viewEnd.getTime() - viewStart.getTime();
-  if (range <= 0) return 0;
-  const offset = timestamp.getTime() - viewStart.getTime();
-  return Math.max(0, Math.min(100, offset / range * 100));
-}
-function computeBarPosition(spanStart, spanEnd, viewStart, viewEnd) {
-  const left = timestampToPercent(spanStart, viewStart, viewEnd);
-  const right = timestampToPercent(spanEnd, viewStart, viewEnd);
-  return { left, width: Math.max(0, right - left) };
-}
-function isDrillable(span) {
-  if (isParallelSpan(span)) return true;
-  if (isSingleSpan(span)) {
-    return span.agent.content.some(
-      (item) => item.type === "span" && !item.utility
-    );
-  }
-  return false;
-}
-function drillableChildCount(span) {
-  if (isParallelSpan(span)) return span.agents.length;
-  if (isSingleSpan(span)) {
-    return span.agent.content.filter(
-      (item) => item.type === "span" && !item.utility
-    ).length;
-  }
-  return 0;
-}
-function computeTimeEnvelope(items) {
-  const first2 = items[0];
-  let startTime = first2.startTime;
-  let endTime = first2.endTime;
-  for (let i2 = 1; i2 < items.length; i2++) {
-    const item = items[i2];
-    if (item.startTime < startTime) startTime = item.startTime;
-    if (item.endTime > endTime) endTime = item.endTime;
-  }
-  return { startTime, endTime };
-}
-function formatTokenCount(tokens) {
-  if (tokens >= 999950) {
-    return `${formatPrettyDecimal(tokens / 1e6, 1)}M`;
-  }
-  if (tokens >= 1e3) {
-    return `${formatPrettyDecimal(tokens / 1e3, 1)}k`;
-  }
-  return String(tokens);
-}
-function computeRowLayouts(rows, mapping, markerDepth, markerKinds) {
-  return rows.map((row2, index) => {
-    const isParent = index === 0;
-    const spans = row2.spans.map((rowSpan) => {
-      if (isSingleSpan(rowSpan)) {
-        const bar2 = computeBarFromMapping(
-          rowSpan.agent.startTime,
-          rowSpan.agent.endTime,
-          mapping
-        );
-        const drillable = !isParent && isDrillable(rowSpan);
-        return {
-          bar: bar2,
-          drillable,
-          childCount: drillable ? drillableChildCount(rowSpan) : 0,
-          parallelCount: null,
-          description: rowSpan.agent.description ?? null
-        };
-      }
-      const agents = rowSpan.agents;
-      const envelope = computeTimeEnvelope(agents);
-      const bar = computeBarFromMapping(
-        envelope.startTime,
-        envelope.endTime,
-        mapping
-      );
-      return {
-        bar,
-        drillable: !isParent,
-        childCount: !isParent ? agents.length : 0,
-        parallelCount: agents.length,
-        description: null
-      };
-    });
-    const allMarkers = collectRowMarkers(row2, markerDepth, mapping);
-    const markers = markerKinds ? allMarkers.filter((m) => markerKinds.includes(m.kind)) : allMarkers;
-    const rowParallelCount = spans.length === 1 && spans[0].parallelCount !== null ? spans[0].parallelCount : null;
-    return {
-      name: row2.name,
-      isParent,
-      spans,
-      markers,
-      totalTokens: row2.totalTokens,
-      parallelCount: rowParallelCount
-    };
-  });
-}
-function computeBarFromMapping(spanStart, spanEnd, mapping) {
-  const left = mapping.toPercent(spanStart);
-  const right = mapping.toPercent(spanEnd);
-  return { left, width: Math.max(0, right - left) };
-}
-function spanHasEvents(span) {
-  for (const item of span.content) {
-    if (item.type === "event") return true;
-    if (item.type === "span" && spanHasEvents(item)) return true;
-  }
-  return false;
-}
-function rowHasEvents(row2) {
-  return row2.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
-}
-function collectRowMarkers(row2, depth, mapping) {
-  const allMarkers = [];
-  for (const rowSpan of row2.spans) {
-    const agents = getAgents(rowSpan);
-    for (const agent of agents) {
-      const markers = collectMarkers(agent, depth);
-      for (const m of markers) {
-        allMarkers.push({
-          left: mapping.toPercent(m.timestamp),
-          kind: m.kind,
-          reference: m.reference,
-          tooltip: m.tooltip
-        });
-      }
-    }
-  }
-  allMarkers.sort((a2, b) => a2.left - b.left);
-  return allMarkers;
-}
-const kPathParam = "path";
-const kSelectedParam = "selected";
-function parsePathSegment(segment) {
-  const match2 = /^(.+)-(\d+)$/.exec(segment);
-  if (match2) {
-    const name = match2[1];
-    const index = parseInt(match2[2], 10);
-    if (index >= 1) {
-      return { name, spanIndex: index };
-    }
-  }
-  return { name: segment, spanIndex: null };
-}
-function resolvePath(timeline, pathString) {
-  if (!pathString) return timeline.root;
-  const segments = pathString.split("/").filter((s) => s.length > 0);
-  if (segments.length === 0) return timeline.root;
-  let current = timeline.root;
-  for (const segment of segments) {
-    const branchSpan = resolveBranchSegment(current, segment);
-    if (branchSpan) {
-      current = branchSpan;
-      continue;
-    }
-    const { name, spanIndex } = parsePathSegment(segment);
-    const child = findChildSpan(current, name, spanIndex);
-    if (!child) return null;
-    current = child;
-  }
-  return current;
-}
-function buildBreadcrumbs(pathString, timeline) {
-  const crumbs = [{ label: timeline.root.name, path: "" }];
-  if (!pathString) return crumbs;
-  const segments = pathString.split("/").filter((s) => s.length > 0);
-  let current = timeline.root;
-  for (let i2 = 0; i2 < segments.length; i2++) {
-    const segment = segments[i2];
-    const path = segments.slice(0, i2 + 1).join("/");
-    if (current) {
-      const branchSpan = resolveBranchSegment(current, segment);
-      if (branchSpan) {
-        crumbs.push({ label: branchSpan.name, path });
-        current = branchSpan;
-      } else {
-        const { name, spanIndex } = parsePathSegment(segment);
-        const child = findChildSpan(current, name, spanIndex);
-        if (child) {
-          crumbs.push({ label: child.name, path });
-          current = child;
-        } else {
-          crumbs.push({ label: segment, path });
-          current = null;
-        }
-      }
-    } else {
-      crumbs.push({ label: segment, path });
-    }
-  }
-  return crumbs;
-}
-function findChildSpan(parent, name, spanIndex) {
-  const lowerName = name.toLowerCase();
-  const matches = [];
-  for (const item of parent.content) {
-    if (item.type === "span" && item.name.toLowerCase() === lowerName) {
-      matches.push(item);
-    }
-  }
-  if (matches.length === 0) return null;
-  if (spanIndex !== null) {
-    return matches[spanIndex - 1] ?? null;
-  }
-  if (matches.length === 1) {
-    return matches[0];
-  }
-  return createParallelContainer(matches);
-}
-function createParallelContainer(agents) {
-  const displayName = agents[0].name;
-  const { startTime, endTime } = computeTimeEnvelope(agents);
-  const totalTokens = agents.reduce((sum, a2) => sum + a2.totalTokens, 0);
-  const sorted = [...agents].sort(compareByTime);
-  const numberedAgents = sorted.map((agent, i2) => ({
-    ...agent,
-    name: `${displayName} ${i2 + 1}`
-  }));
-  return {
-    type: "span",
-    id: `parallel-${displayName.toLowerCase()}`,
-    name: displayName,
-    spanType: "agent",
-    content: numberedAgents,
-    branches: [],
-    utility: false,
-    startTime,
-    endTime,
-    totalTokens,
-    idleTime: computeIdleTime(numberedAgents, startTime, endTime)
-  };
-}
-const BRANCH_PREFIX = "@branch-";
-function resolveBranchSegment(parent, segment) {
-  if (!segment.startsWith(BRANCH_PREFIX)) return null;
-  const indexStr = segment.slice(BRANCH_PREFIX.length);
-  const index = parseInt(indexStr, 10);
-  if (isNaN(index) || index < 1) return null;
-  const branch = parent.branches[index - 1];
-  if (!branch) return null;
-  return createBranchSpan(branch, index);
-}
-function createBranchSpan(branch, index) {
-  const label2 = deriveBranchLabel(branch, index);
-  const childSpans = branch.content.filter(
-    (item) => item.type === "span"
-  );
-  if (childSpans.length === 1) {
-    return {
-      ...childSpans[0],
-      name: `↳ ${childSpans[0].name}`
-    };
-  }
-  return {
-    type: "span",
-    id: `branch-${branch.forkedAt}-${index}`,
-    name: `↳ ${label2}`,
-    spanType: "branch",
-    content: branch.content,
-    branches: [],
-    utility: false,
-    startTime: branch.startTime,
-    endTime: branch.endTime,
-    totalTokens: branch.totalTokens,
-    idleTime: branch.idleTime
-  };
-}
-function deriveBranchLabel(branch, index) {
-  for (const item of branch.content) {
-    if (item.type === "span") return item.name;
-  }
-  return `Branch ${index}`;
-}
-function findBranchesByForkedAt(node2, forkedAt, pathSoFar = []) {
-  const matches = [];
-  for (let i2 = 0; i2 < node2.branches.length; i2++) {
-    const branch = node2.branches[i2];
-    if (branch.forkedAt === forkedAt) {
-      matches.push({ branch, index: i2 + 1 });
-    }
-  }
-  if (matches.length > 0) {
-    return { owner: node2, ownerPath: pathSoFar, branches: matches };
-  }
-  for (const item of node2.content) {
-    if (item.type === "span") {
-      const found = findBranchesByForkedAt(item, forkedAt, [
-        ...pathSoFar,
-        item.name.toLowerCase()
-      ]);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-function useTimeline(timeline) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const pathString = searchParams.get(kPathParam) ?? "";
-  const selectedParam = searchParams.get(kSelectedParam) ?? null;
-  const resolved = reactExports.useMemo(
-    () => resolvePath(timeline, pathString),
-    [timeline, pathString]
-  );
-  const node2 = reactExports.useMemo(() => resolved ?? timeline.root, [timeline, resolved]);
-  const rows = reactExports.useMemo(() => computeSwimlaneRows(node2), [node2]);
-  const selected = reactExports.useMemo(() => {
-    if (selectedParam !== null) return selectedParam;
-    return rows[0]?.name ?? null;
-  }, [selectedParam, rows]);
-  const breadcrumbs = reactExports.useMemo(
-    () => buildBreadcrumbs(pathString, timeline),
-    [pathString, timeline]
-  );
-  const drillDown = reactExports.useCallback(
-    (name, spanIndex) => {
-      const segment = spanIndex ? `${name}-${spanIndex}` : name;
-      const newPath = pathString ? `${pathString}/${segment}` : segment;
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set(kPathParam, newPath);
-        next.delete(kSelectedParam);
-        next.delete("event");
-        next.delete("message");
-        return next;
-      });
-    },
-    [pathString, setSearchParams]
-  );
-  const goUp = reactExports.useCallback(() => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete("event");
-      next.delete("message");
-      if (next.has(kSelectedParam)) {
-        next.delete(kSelectedParam);
-        return next;
-      }
-      if (pathString) {
-        const segments = pathString.split("/");
-        segments.pop();
-        const newPath = segments.join("/");
-        if (newPath) {
-          next.set(kPathParam, newPath);
-        } else {
-          next.delete(kPathParam);
-        }
-      }
-      return next;
-    });
-  }, [pathString, setSearchParams]);
-  const navigateTo = reactExports.useCallback(
-    (path) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (path) {
-          next.set(kPathParam, path);
-        } else {
-          next.delete(kPathParam);
-        }
-        next.delete(kSelectedParam);
-        next.delete("event");
-        next.delete("message");
-        return next;
-      });
-    },
-    [setSearchParams]
-  );
-  const select = reactExports.useCallback(
-    (name, spanIndex) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (name) {
-            const value2 = spanIndex ? `${name}-${spanIndex}` : name;
-            next.set(kSelectedParam, value2);
-          } else {
-            next.delete(kSelectedParam);
-          }
-          next.delete("event");
-          next.delete("message");
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams]
-  );
-  const drillDownAndSelect = reactExports.useCallback(
-    (drillName, selectName, selectSpanIndex) => {
-      const segment = drillName;
-      const newPath = pathString ? `${pathString}/${segment}` : segment;
-      const selectedValue = selectSpanIndex ? `${selectName}-${selectSpanIndex}` : selectName;
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set(kPathParam, newPath);
-        next.set(kSelectedParam, selectedValue);
-        next.delete("event");
-        next.delete("message");
-        return next;
-      });
-    },
-    [pathString, setSearchParams]
-  );
-  return {
-    node: node2,
-    rows,
-    breadcrumbs,
-    selected,
-    drillDown,
-    goUp,
-    navigateTo,
-    select,
-    drillDownAndSelect
-  };
-}
-function findRowByName(rows, name) {
-  return rows.find((r2) => r2.name.toLowerCase() === name.toLowerCase());
-}
-function getSelectedSpans(rows, selected) {
-  if (!selected) return [];
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row2 = findRowByName(rows, name);
-  if (!row2) return [];
-  const result2 = [];
-  const targetIndex = spanIndex !== null ? spanIndex - 1 : null;
-  for (let i2 = 0; i2 < row2.spans.length; i2++) {
-    const rowSpan = row2.spans[i2];
-    if (isSingleSpan(rowSpan)) {
-      if (targetIndex === null || i2 === targetIndex) {
-        result2.push(rowSpan.agent);
-      }
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) result2.push(agent);
-      } else {
-        result2.push(...rowSpan.agents);
-      }
-    }
-  }
-  return result2;
-}
-function computeMinimapSelection(rows, selected) {
-  if (!selected) return void 0;
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row2 = findRowByName(rows, name);
-  if (!row2) return void 0;
-  const targetIndex = (spanIndex ?? 1) - 1;
-  for (const rowSpan of row2.spans) {
-    if (isSingleSpan(rowSpan)) {
-      const singleIndex = row2.spans.indexOf(rowSpan);
-      if (singleIndex === targetIndex || row2.spans.length === 1) {
-        const agent = rowSpan.agent;
-        return {
-          startTime: agent.startTime,
-          endTime: agent.endTime,
-          totalTokens: agent.totalTokens
-        };
-      }
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) {
-          return {
-            startTime: agent.startTime,
-            endTime: agent.endTime,
-            totalTokens: agent.totalTokens
-          };
-        }
-      }
-      const agents = getAgents(rowSpan);
-      const envelope = computeTimeEnvelope(agents);
-      const tokens = agents.reduce((sum, a2) => sum + a2.totalTokens, 0);
-      return { ...envelope, totalTokens: tokens };
-    }
-  }
-  return void 0;
-}
-function collectRawEvents(spans) {
-  const events = [];
-  const sourceSpans = /* @__PURE__ */ new Map();
-  if (spans.length === 1) {
-    const span = spans[0];
-    const agentSpanId = span.spanType === "agent" ? span.id : void 0;
-    collectFromContent(span.content, events, sourceSpans, agentSpanId);
-  } else {
-    collectFromContent(spans, events, sourceSpans);
-  }
-  return { events, sourceSpans };
-}
-function collectFromContent(content2, out, sourceSpans, skipAgentSpanId) {
-  for (const item of content2) {
-    if (item.type === "event") {
-      if (skipAgentSpanId && item.event.event === "tool" && item.event.agent_span_id === skipAgentSpanId) {
-        continue;
-      }
-      out.push(item.event);
-    } else {
-      const beginEvent = {
-        event: "span_begin",
-        name: item.name,
-        id: item.id,
-        span_id: item.id,
-        type: item.spanType,
-        timestamp: item.startTime.toISOString(),
-        parent_id: null,
-        pending: false,
-        working_start: 0,
-        uuid: null,
-        metadata: null
-      };
-      out.push(beginEvent);
-      if (item.spanType === "agent") {
-        sourceSpans.set(item.id, item);
-      } else {
-        collectFromContent(item.content, out, sourceSpans);
-      }
-      const endEvent = {
-        event: "span_end",
-        id: `${item.id}-end`,
-        span_id: item.id,
-        timestamp: item.endTime.toISOString(),
-        pending: false,
-        working_start: 0,
-        uuid: null,
-        metadata: null
-      };
-      out.push(endEvent);
-    }
-  }
-}
-function buildSpanSelectKeys(rows) {
-  const keys = /* @__PURE__ */ new Map();
-  for (const row2 of rows) {
-    const needsIndex = row2.spans.length > 1;
-    for (let i2 = 0; i2 < row2.spans.length; i2++) {
-      const rowSpan = row2.spans[i2];
-      if (isSingleSpan(rowSpan)) {
-        keys.set(rowSpan.agent.id, {
-          name: row2.name,
-          spanIndex: needsIndex ? i2 + 1 : void 0
-        });
-      } else if (isParallelSpan(rowSpan)) {
-        for (let j = 0; j < rowSpan.agents.length; j++) {
-          keys.set(rowSpan.agents[j].id, {
-            name: row2.name,
-            spanIndex: j + 1,
-            parallel: true
-          });
-        }
-      }
-    }
-  }
-  return keys;
-}
-function attachSourceSpans(nodes, spanMap) {
-  for (const node2 of nodes) {
-    if (node2.event.event === "span_begin") {
-      const spanId = node2.event.span_id;
-      if (spanId) {
-        const span = spanMap.get(spanId);
-        if (span) node2.sourceSpan = span;
-      }
-    }
-    if (node2.children.length > 0) {
-      attachSourceSpans(node2.children, spanMap);
-    }
-  }
-}
-const STEP = "step";
-const ACTION_BEGIN = "begin";
-const SPAN_BEGIN = "span_begin";
-const SPAN_END = "span_end";
-const TOOL = "tool";
-const STORE = "store";
-const STATE = "state";
-const TYPE_TOOL = "tool";
-const TYPE_SUBTASK = "subtask";
-const TYPE_SOLVER = "solver";
-const TYPE_SOLVERS = "solvers";
-const TYPE_AGENT = "agent";
-const TYPE_HANDOFF = "handoff";
-const TYPE_SCORERS = "scorers";
-const TYPE_SCORER = "scorer";
-const hasSpans = (events) => {
-  return events.some((event) => event.event === SPAN_BEGIN);
-};
-const kSandboxSignalName = "53787D8A-D3FC-426D-B383-9F880B70E4AA";
-const fixupEventStream = (events, filterPending = true) => {
-  const collapsed = processPendingEvents(events, filterPending);
-  const fixedUp = collapseSampleInit(collapsed);
-  return groupSandboxEvents(fixedUp);
-};
-const processPendingEvents = (events, filter) => {
-  return filter ? events.filter((e) => !e.pending) : events.reduce((acc, event) => {
-    if (!event.pending) {
-      acc.push(event);
-    } else {
-      const lastIndex = acc.length - 1;
-      if (lastIndex >= 0 && acc[lastIndex]?.pending && acc[lastIndex]?.event === event.event) {
-        acc[lastIndex] = event;
-      } else {
-        acc.push(event);
-      }
-    }
-    return acc;
-  }, []);
-};
-const collapseSampleInit = (events) => {
-  const hasSpans2 = events.some((e) => {
-    return e.event === "span_begin" || e.event === "span_end";
-  });
-  if (hasSpans2) {
-    return events;
-  }
-  const hasInitStep = events.findIndex((e) => {
-    return e.event === "step" && e.name === "init";
-  }) !== -1;
-  if (hasInitStep) {
-    return events;
-  }
-  const initEventIndex = events.findIndex((e) => {
-    return e.event === "sample_init";
-  });
-  const initEvent = events[initEventIndex];
-  if (!initEvent) {
-    return events;
-  }
-  const fixedUp = [...events];
-  fixedUp.splice(initEventIndex, 0, {
-    timestamp: initEvent.timestamp,
-    event: "step",
-    action: "begin",
-    type: null,
-    name: "sample_init",
-    pending: false,
-    working_start: 0,
-    span_id: initEvent.span_id,
-    uuid: null,
-    metadata: null
-  });
-  fixedUp.splice(initEventIndex + 2, 0, {
-    timestamp: initEvent.timestamp,
-    event: "step",
-    action: "end",
-    type: null,
-    name: "sample_init",
-    pending: false,
-    working_start: 0,
-    span_id: initEvent.span_id,
-    uuid: null,
-    metadata: null
-  });
-  return fixedUp;
-};
-const groupSandboxEvents = (events) => {
-  const result2 = [];
-  const pendingSandboxEvents = [];
-  const useSpans = hasSpans(events);
-  const pushPendingSandboxEvents = () => {
-    const timestamp = pendingSandboxEvents[pendingSandboxEvents.length - 1]?.timestamp || "";
-    if (useSpans) {
-      result2.push(createSpanBegin(kSandboxSignalName, timestamp, null));
-    } else {
-      result2.push(createStepEvent(kSandboxSignalName, timestamp, "begin"));
-    }
-    result2.push(...pendingSandboxEvents);
-    if (useSpans) {
-      result2.push(createSpanEnd(kSandboxSignalName, timestamp));
-    } else {
-      result2.push(createStepEvent(kSandboxSignalName, timestamp, "end"));
-    }
-    pendingSandboxEvents.length = 0;
-  };
-  for (const event of events) {
-    if (event.event === "sandbox") {
-      pendingSandboxEvents.push(event);
-      continue;
-    }
-    if (pendingSandboxEvents.length > 0) {
-      pushPendingSandboxEvents();
-    }
-    result2.push(event);
-  }
-  if (pendingSandboxEvents.length > 0) {
-    pushPendingSandboxEvents();
-  }
-  return result2;
-};
-const createStepEvent = (name, timestamp, action) => ({
-  timestamp,
-  event: "step",
-  action,
-  type: null,
-  name,
-  pending: false,
-  working_start: 0,
-  span_id: null,
-  uuid: null,
-  metadata: null
-});
-const createSpanBegin = (name, timestamp, parent_id) => {
-  return {
-    name,
-    id: `${name}-begin`,
-    span_id: name,
-    parent_id,
-    timestamp,
-    event: "span_begin",
-    type: null,
-    pending: false,
-    working_start: 0,
-    uuid: null,
-    metadata: null
-  };
-};
-const createSpanEnd = (name, timestamp) => {
-  return {
-    id: `${name}-end`,
-    timestamp,
-    event: "span_end",
-    pending: false,
-    working_start: 0,
-    span_id: name,
-    uuid: null,
-    metadata: null
-  };
-};
-const kTranscriptCollapseScope = "transcript-collapse";
-const kTranscriptOutlineCollapseScope = "transcript-outline";
-const kCollapsibleEventTypes = [
-  STEP,
-  SPAN_BEGIN,
-  TYPE_TOOL,
-  TYPE_SUBTASK
-];
-const eventTypeValues = [
-  "sample_init",
-  "sample_limit",
-  "state",
-  "store",
-  "model",
-  "logger",
-  "info",
-  "step",
-  "subtask",
-  "score",
-  "score_edit",
-  "tool",
-  "input",
-  "error",
-  "approval",
-  "compaction",
-  "sandbox",
-  "span_begin",
-  "span_end"
-];
-class EventNode {
-  id;
-  event;
-  children = [];
-  depth;
-  /** The TimelineSpan this node was synthesized from, if any. */
-  sourceSpan;
-  constructor(id, event, depth) {
-    this.id = id;
-    this.event = event;
-    this.depth = depth;
-  }
-}
-const transformTree = (roots) => {
-  const treeNodeTransformers = transformers();
-  const visitNode = (node2) => {
-    let currentNodes = [node2];
-    currentNodes = currentNodes.map((n2) => {
-      n2.children = n2.children.flatMap(visitNode);
-      return n2;
-    });
-    for (const transformer of treeNodeTransformers) {
-      const nextNodes = [];
-      for (const currentNode of currentNodes) {
-        if (transformer.matches(currentNode)) {
-          const result2 = transformer.process(currentNode);
-          if (Array.isArray(result2)) {
-            nextNodes.push(...result2);
-          } else {
-            nextNodes.push(result2);
-          }
-        } else {
-          nextNodes.push(currentNode);
-        }
-      }
-      currentNodes = nextNodes;
-    }
-    return currentNodes && currentNodes.length === 1 && currentNodes[0] ? currentNodes[0] : currentNodes;
-  };
-  const processedRoots = roots.flatMap(visitNode);
-  const flushedNodes = [];
-  for (const transformer of treeNodeTransformers) {
-    if (transformer.flush) {
-      const flushResults = transformer.flush();
-      if (flushResults && flushResults.length > 0) {
-        flushedNodes.push(...flushResults);
-      }
-    }
-  }
-  return [...processedRoots, ...flushedNodes];
-};
-const transformers = () => {
-  const treeNodeTransformers = [
-    {
-      name: "unwrap_tools",
-      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event.type === TYPE_TOOL,
-      process: (node2) => elevateChildNode(node2, TYPE_TOOL) || node2
-    },
-    {
-      name: "unwrap_subtasks",
-      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event.type === TYPE_SUBTASK,
-      process: (node2) => elevateChildNode(node2, TYPE_SUBTASK) || node2
-    },
-    {
-      name: "unwrap_agent_solver",
-      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_SOLVER && node2.children.length === 2 && node2.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.event.type === TYPE_AGENT && node2.children[1]?.event.event === STATE,
-      process: (node2) => skipFirstChildNode(node2)
-    },
-    {
-      name: "unwrap_agent_solver w/store",
-      matches: (node2) => node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_SOLVER && node2.children.length === 3 && node2.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.event.type === TYPE_AGENT && node2.children[1]?.event.event === STATE && node2.children[2]?.event.event === STORE,
-      process: (node2) => skipFirstChildNode(node2)
-    },
-    {
-      name: "unwrap_handoff",
-      matches: (node2) => {
-        const isHandoffNode = node2.event.event === SPAN_BEGIN && node2.event["type"] === TYPE_HANDOFF;
-        if (!isHandoffNode) {
-          return false;
-        }
-        if (node2.children.length === 1) {
-          return node2.children[0]?.event.event === TOOL && !!node2.children[0]?.event.agent;
-        } else {
-          return node2.children.length === 2 && node2.children[0]?.event.event === TOOL && node2.children[1]?.event.event === STORE && node2.children[0]?.children.length === 2 && node2.children[0]?.children[0]?.event.event === SPAN_BEGIN && node2.children[0]?.children[0]?.event.type === TYPE_AGENT;
-        }
-      },
-      process: (node2) => skipThisNode(node2)
-    },
-    {
-      name: "discard_solvers_span",
-      matches: (Node2) => Node2.event.event === SPAN_BEGIN && Node2.event.type === TYPE_SOLVERS,
-      process: (node2) => {
-        const nodes = discardNode(node2);
-        return nodes;
-      }
-    }
-  ];
-  return treeNodeTransformers;
-};
-const elevateChildNode = (node2, childEventType) => {
-  const targetIndex = node2.children.findIndex(
-    (child) => child.event.event === childEventType
-  );
-  if (targetIndex === -1) {
-    console.log(
-      `No ${childEventType} event found in a span, this is very unexpected.`
-    );
-    return null;
-  }
-  const targetNode = { ...node2.children[targetIndex] };
-  const remainingChildren = node2.children.filter((_, i2) => i2 !== targetIndex);
-  targetNode.depth = node2.depth;
-  targetNode.children = setDepth(remainingChildren, node2.depth + 1);
-  return targetNode;
-};
-const skipFirstChildNode = (node2) => {
-  const agentSpan = node2.children.splice(0, 1)[0];
-  node2.children.unshift(...reduceDepth(agentSpan?.children || []));
-  return node2;
-};
-const skipThisNode = (node2) => {
-  const newNode = { ...node2.children[0] };
-  newNode.depth = node2.depth;
-  newNode.children = reduceDepth(newNode.children || [], 2);
-  return newNode;
-};
-const discardNode = (node2) => {
-  const nodes = reduceDepth(node2.children, 1);
-  return nodes;
-};
-const reduceDepth = (nodes, depth = 1) => {
-  return nodes.map((node2) => {
-    if (node2.children.length > 0) {
-      node2.children = reduceDepth(node2.children, 1);
-    }
-    node2.depth = node2.depth - depth;
-    return node2;
-  });
-};
-const setDepth = (nodes, depth) => {
-  return nodes.map((node2) => {
-    if (node2.children.length > 0) {
-      node2.children = setDepth(node2.children, depth + 1);
-    }
-    node2.depth = depth;
-    return node2;
-  });
-};
-function treeifyEvents(events, depth) {
-  const useSpans = hasSpans(events);
-  events = injectScorersSpan(events);
-  const nodes = useSpans ? treeifyWithSpans(events, depth) : treeifyWithSteps(events, depth);
-  return useSpans ? transformTree(nodes) : nodes;
-}
-const treeifyWithSpans = (events, depth) => {
-  const { rootNodes, createNode } = createNodeFactory(depth);
-  const spanNodes = /* @__PURE__ */ new Map();
-  const processEvent = (event, parentOverride) => {
-    if (event.event === SPAN_END) {
-      return;
-    }
-    if (event.event === STEP && event.action !== ACTION_BEGIN) {
-      return;
-    }
-    const resolvedParent = resolveParentForEvent(event, spanNodes);
-    const parentNode = resolvedParent ?? null;
-    const node2 = createNode(event, parentNode);
-    if (event.event === SPAN_BEGIN) {
-      spanNodes.set(event.id, node2);
-    }
-  };
-  events.forEach((event) => processEvent(event));
-  return rootNodes;
-};
-const treeifyWithSteps = (events, depth) => {
-  const { rootNodes, createNode } = createNodeFactory(depth);
-  const stack = [];
-  const pushStack = (node2) => {
-    stack.push(node2);
-  };
-  const popStack = () => {
-    if (stack.length > 0) {
-      stack.pop();
-    }
-  };
-  const processEvent = (event) => {
-    const parent = stack.length > 0 ? stack[stack.length - 1] : null;
-    switch (event.event) {
-      case STEP:
-        if (event.action === ACTION_BEGIN) {
-          const node2 = createNode(event, parent || null);
-          pushStack(node2);
-        } else {
-          popStack();
-        }
-        break;
-      case SPAN_BEGIN: {
-        const node2 = createNode(event, parent || null);
-        pushStack(node2);
-        break;
-      }
-      case SPAN_END:
-        popStack();
-        break;
-      default:
-        createNode(event, parent || null);
-        break;
-    }
-  };
-  events.forEach(processEvent);
-  return rootNodes;
-};
-const createNodeFactory = (depth) => {
-  const rootNodes = [];
-  const childCounts = /* @__PURE__ */ new Map();
-  const pathByNode = /* @__PURE__ */ new Map();
-  const createNode = (event, parent) => {
-    const parentKey = parent ?? null;
-    const nextIndex = childCounts.get(parentKey) ?? 0;
-    childCounts.set(parentKey, nextIndex + 1);
-    const parentPath = parent ? pathByNode.get(parent) : void 0;
-    const path = parentPath !== void 0 ? `${parentPath}.${nextIndex}` : `${nextIndex}`;
-    const eventId = event.uuid || `event_node_${path}`;
-    const nodeDepth = parent ? parent.depth + 1 : depth;
-    const node2 = new EventNode(eventId, event, nodeDepth);
-    pathByNode.set(node2, path);
-    if (parent) {
-      parent.children.push(node2);
-    } else {
-      rootNodes.push(node2);
-    }
-    return node2;
-  };
-  return { rootNodes, createNode };
-};
-const resolveParentForEvent = (event, spanNodes) => {
-  if (event.event === SPAN_BEGIN) {
-    const parentId = event.parent_id;
-    if (parentId) {
-      return spanNodes.get(parentId) ?? null;
-    }
-    return null;
-  }
-  const spanId = getEventSpanId(event);
-  if (spanId !== null) {
-    return spanNodes.get(spanId) ?? null;
-  }
-  return null;
-};
-const getEventSpanId = (event) => {
-  const spanId = event.span_id;
-  return spanId ?? null;
-};
-const kBeginScorerId = "E617087FA405";
-const kEndScorerId = "C39922B09481";
-const kScorersSpanId = "C5A831026F2C";
-const injectScorersSpan = (events) => {
-  const results = [];
-  const collectedScorerEvents = [];
-  let hasCollectedScorers = false;
-  let collecting = null;
-  const flushCollected = () => {
-    if (collectedScorerEvents.length > 0) {
-      const beginSpan = {
-        name: "scorers",
-        id: kBeginScorerId,
-        span_id: kScorersSpanId,
-        event: SPAN_BEGIN,
-        type: TYPE_SCORERS,
-        timestamp: collectedScorerEvents[0]?.timestamp || "",
-        working_start: collectedScorerEvents[0]?.working_start || 0,
-        pending: false,
-        parent_id: null,
-        uuid: null,
-        metadata: null
-      };
-      const scoreEvents = collectedScorerEvents.map(
-        (event) => {
-          return {
-            ...event,
-            parent_id: event.event === "span_begin" ? event.parent_id || kScorersSpanId : null
-          };
-        }
-      );
-      const endSpan = {
-        id: kEndScorerId,
-        span_id: kScorersSpanId,
-        event: SPAN_END,
-        pending: false,
-        working_start: collectedScorerEvents[collectedScorerEvents.length - 1]?.working_start || 0,
-        timestamp: collectedScorerEvents[collectedScorerEvents.length - 1]?.timestamp || "",
-        uuid: null,
-        metadata: null
-      };
-      collectedScorerEvents.length = 0;
-      hasCollectedScorers = true;
-      return [beginSpan, ...scoreEvents, endSpan];
-    }
-    return [];
-  };
-  for (const event of events) {
-    if (event.event === SPAN_BEGIN && event.type === TYPE_SCORERS) {
-      return events;
-    }
-    if (event.event === SPAN_BEGIN && event.type === TYPE_SCORER && !hasCollectedScorers) {
-      collecting = event.span_id;
-    }
-    if (collecting) {
-      if (event.event === SPAN_END && event.span_id === collecting) {
-        collecting = null;
-        results.push(...flushCollected());
-        results.push(event);
-      } else {
-        collectedScorerEvents.push(event);
-      }
-    } else {
-      results.push(event);
-    }
-  }
-  return results;
-};
-const useEventNodes = (events, running, sourceSpans) => {
-  const { eventTree, defaultCollapsedIds } = reactExports.useMemo(() => {
-    const resolvedEvents = fixupEventStream(events, !running);
-    const rawEventTree = treeifyEvents(resolvedEvents, 0);
-    if (sourceSpans && sourceSpans.size > 0) {
-      attachSourceSpans(rawEventTree, sourceSpans);
-    }
-    const filterEmpty = (eventNodes) => {
-      return eventNodes.filter((node2) => {
-        if (node2.children && node2.children.length > 0) {
-          node2.children = filterEmpty(node2.children);
-        }
-        if (node2.sourceSpan) return true;
-        return node2.event.event !== "span_begin" && node2.event.event !== "step" || node2.children && node2.children.length > 0;
-      });
-    };
-    const eventTree2 = filterEmpty(rawEventTree);
-    const defaultCollapsedIds2 = {};
-    const findCollapsibleEvents = (nodes) => {
-      for (const node2 of nodes) {
-        if (kCollapsibleEventTypes.includes(node2.event.event) && collapseFilters.some(
-          (filter) => filter(
-            node2.event
-          )
-        )) {
-          defaultCollapsedIds2[node2.id] = true;
-        }
-        findCollapsibleEvents(node2.children);
-      }
-    };
-    findCollapsibleEvents(eventTree2);
-    return { eventTree: eventTree2, defaultCollapsedIds: defaultCollapsedIds2 };
-  }, [events, running, sourceSpans]);
-  return { eventNodes: eventTree, defaultCollapsedIds };
-};
-const collapseFilters = [
-  (event) => event.type === "solver" && event.name === "system_message",
-  (event) => {
-    if (event.event === "step" || event.event === "span_begin") {
-      return event.name === kSandboxSignalName || event.name === "init" || event.name === "sample_init";
-    }
-    return false;
-  },
-  (event) => event.event === "tool" && !event.agent && !event.failed,
-  (event) => event.event === "subtask"
-];
-const styles$m = {};
-const card$1 = "_card_1apye_1";
-const header = "_header_1apye_13";
-const icon = "_icon_1apye_22";
-const title$2 = "_title_1apye_26";
-const meta = "_meta_1apye_32";
-const disclosure = "_disclosure_1apye_37";
-const description = "_description_1apye_42";
-const resultPanel = "_resultPanel_1apye_47";
-const styles$l = {
-  card: card$1,
-  header,
-  icon,
-  title: title$2,
-  meta,
-  disclosure,
-  description,
-  resultPanel
-};
 const TimelineSelectContext = reactExports.createContext(
   null
 );
@@ -26916,27 +26563,24 @@ const TranscriptViewNodes = reactExports.forwardRef(function TranscriptViewNodes
 });
 export {
   ANSIDisplay as A,
-  TYPE_SCORERS as B,
+  TYPE_SCORER as B,
   CopyButton as C,
   DisplayModeContext as D,
   EventNode as E,
-  TYPE_SCORER as F,
-  useVirtuosoState as G,
-  flatTree as H,
-  kTranscriptOutlineCollapseScope as I,
+  useVirtuosoState as F,
+  flatTree as G,
+  kTranscriptOutlineCollapseScope as H,
+  useScrollTrack as I,
   JSONPanel as J,
-  useScrollTrack as K,
+  computeFlatSwimlaneRows as K,
   LiveVirtualList as L,
   MetaDataGrid as M,
   computeBarPosition as N,
   formatTokenCount as O,
   PulsingDots as P,
-  findBranchesByForkedAt as Q,
   RecordTree as R,
   ScoreValue as S,
   TranscriptViewNodes as T,
-  parsePathSegment as U,
-  createBranchSpan as V,
   Yr as Y,
   LabeledValue as a,
   ModelUsagePanel as b,
@@ -26948,21 +26592,21 @@ export {
   defaultMarkerConfig as h,
   isJson as i,
   buildTimeline as j,
-  useTimeline as k,
-  rowHasEvents as l,
-  computeRowLayouts as m,
-  getSelectedSpans as n,
-  collectRawEvents as o,
-  computeMinimapSelection as p,
-  buildSpanSelectKeys as q,
+  rowHasEvents as k,
+  computeRowLayouts as l,
+  getSelectedSpans as m,
+  collectRawEvents as n,
+  computeMinimapSelection as o,
+  buildSpanSelectKeys as p,
+  kTranscriptCollapseScope as q,
   resolveMessages as r,
-  kTranscriptCollapseScope as s,
-  useProperty as t,
+  useProperty as s,
+  TimelineSelectContext as t,
   useEventNodes as u,
-  TimelineSelectContext as v,
-  kCollapsibleEventTypes as w,
-  useStatefulScrollPosition as x,
-  useCollapseTranscriptEvent as y,
-  kSandboxSignalName as z
+  kCollapsibleEventTypes as v,
+  useStatefulScrollPosition as w,
+  useCollapseTranscriptEvent as x,
+  kSandboxSignalName as y,
+  TYPE_SCORERS as z
 };
 //# sourceMappingURL=TranscriptViewNodes.js.map

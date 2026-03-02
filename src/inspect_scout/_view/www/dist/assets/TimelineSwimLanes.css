@@ -180,7 +180,7 @@
   pointer-events: auto;
   cursor: pointer;
 }
-._swimlane_12tiy_1 {
+._swimlane_2dnir_1 {
   --swimlane-row-height: 18px;
   --swimlane-minimap-height: 24px;
   --swimlane-grid-columns: auto 1fr auto;
@@ -196,7 +196,7 @@
 }
 
 /* Pinned section: minimap + parent row — always visible */
-._pinnedSection_12tiy_17 {
+._pinnedSection_2dnir_17 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -204,7 +204,7 @@
 }
 
 /* Scrollable section: child rows */
-._scrollSection_12tiy_25 {
+._scrollSection_2dnir_25 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -213,13 +213,13 @@
   overflow-y: auto;
 }
 
-._swimlane_12tiy_1:focus-visible {
+._swimlane_2dnir_1:focus-visible {
   box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
 }
 
 /* Collapsible rows — fade + slide animation */
 
-._collapsibleSection_12tiy_40 {
+._collapsibleSection_2dnir_40 {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: subgrid;
@@ -232,26 +232,26 @@
   opacity: 1;
 }
 
-._collapsibleCollapsed_12tiy_53 {
+._collapsibleCollapsed_2dnir_53 {
   grid-template-rows: 0fr;
   padding-bottom: 0;
   opacity: 0;
 }
 
 /* Disable animation during sticky transitions */
-._noAnimation_12tiy_60 {
+._noAnimation_2dnir_60 {
   transition: none;
 }
 
 /* Sticky state — opaque background so it covers scrolled content */
-._swimlaneSticky_12tiy_65 {
+._swimlaneSticky_2dnir_65 {
   background-color: var(--bs-body-bg);
   /* Overlap by 1px so the tab bar's bottom border doesn't leave a gap */
   margin-top: -1px;
   padding-top: 1px;
 }
 
-._collapsibleInner_12tiy_72 {
+._collapsibleInner_2dnir_72 {
   grid-column: 1 / -1;
   overflow: hidden;
   display: grid;
@@ -261,7 +261,7 @@
 
 /* Collapse toggle — hangs below the bottom border, centered */
 
-._collapseToggle_12tiy_82 {
+._collapseToggle_2dnir_82 {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -282,20 +282,20 @@
   line-height: 1;
 }
 
-._collapseToggle_12tiy_82:hover {
+._collapseToggle_2dnir_82:hover {
   color: var(--vscode-foreground);
   background-color: var(--bs-secondary-bg);
 }
 
 /* Row — display:contents so all rows share the parent grid columns */
 
-._row_12tiy_110 {
+._row_2dnir_110 {
   display: contents;
 }
 
 /* Label cell */
 
-._label_12tiy_116 {
+._label_2dnir_116 {
   padding: 0 0.5rem 0 1.45rem;
   white-space: nowrap;
   font-size: var(--inspect-font-size-smallest);
@@ -307,29 +307,25 @@
   gap: 2px;
 }
 
-._labelChild_12tiy_128 {
-  padding-left: 1.95rem;
-}
-
-._labelSelected_12tiy_132 {
+._labelSelected_2dnir_128 {
   color: var(--vscode-textLink-foreground);
 }
 
 /* Bar area */
 
-._barArea_12tiy_138 {
+._barArea_2dnir_134 {
   height: var(--swimlane-row-height);
   border-left: 1px solid var(--bs-border-color);
   border-right: 1px solid var(--bs-border-color);
 }
 
-._barInner_12tiy_144 {
+._barInner_2dnir_140 {
   position: relative;
   height: 100%;
   margin: 0 4px;
 }
 
-._fill_12tiy_150 {
+._fill_2dnir_146 {
   position: absolute;
   top: 1px;
   bottom: 1px;
@@ -343,27 +339,27 @@
   cursor: pointer;
 }
 
-._fill_12tiy_150:hover {
+._fill_2dnir_146:hover {
   opacity: 0.5;
 }
 
-._fillParent_12tiy_168 {
+._fillParent_2dnir_164 {
   opacity: 0.2;
 }
 
-._fillSelected_12tiy_172 {
+._fillSelected_2dnir_168 {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
 }
 
-._parallelBadge_12tiy_177 {
+._parallelBadge_2dnir_173 {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
 }
 
 /* Markers */
 
-._marker_12tiy_184 {
+._marker_2dnir_180 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -379,11 +375,11 @@
     drop-shadow(0 0 1px var(--bs-body-bg));
 }
 
-._marker_12tiy_184 > * {
+._marker_2dnir_180 > * {
   pointer-events: none;
 }
 
-._markerError_12tiy_204 {
+._markerError_2dnir_200 {
   top: 1px;
   bottom: 1px;
   height: auto;
@@ -394,7 +390,7 @@
   cursor: pointer;
 }
 
-._markerError_12tiy_204::after {
+._markerError_2dnir_200::after {
   content: "";
   position: absolute;
   top: 0;
@@ -404,7 +400,7 @@
   background-color: var(--vscode-errorForeground, #f44747);
 }
 
-._markerCompaction_12tiy_225 {
+._markerCompaction_2dnir_221 {
   color: var(--bs-body-bg);
   rotate: none;
   font-size: 16px;
@@ -416,20 +412,20 @@
   cursor: pointer;
 }
 
-._markerBranch_12tiy_237 {
+._markerBranch_2dnir_233 {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
 }
 
 /* Branch popover */
 
-._branchPopover_12tiy_244 {
+._branchPopover_2dnir_240 {
   display: flex;
   flex-direction: column;
   min-width: 180px;
 }
 
-._branchEntry_12tiy_250 {
+._branchEntry_2dnir_246 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -444,28 +440,28 @@
   white-space: nowrap;
 }
 
-._branchEntry_12tiy_250:hover {
+._branchEntry_2dnir_246:hover {
   background-color: var(--bs-primary);
   color: var(--bs-white, #fff);
 }
 
-._branchLabel_12tiy_270 {
+._branchLabel_2dnir_266 {
   font-weight: 500;
 }
 
-._branchMeta_12tiy_274 {
+._branchMeta_2dnir_270 {
   color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smaller, 0.75rem);
 }
 
-._branchEntry_12tiy_250:hover ._branchMeta_12tiy_274 {
+._branchEntry_2dnir_246:hover ._branchMeta_2dnir_270 {
   color: inherit;
   opacity: 0.8;
 }
 
 /* Breadcrumb row */
 
-._breadcrumbRow_12tiy_286 {
+._breadcrumbRow_2dnir_282 {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -475,50 +471,7 @@
   overflow: hidden;
 }
 
-._breadcrumbBack_12tiy_296 {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--vscode-foreground);
-  padding: 2px 4px 2px 4px;
-  font-size: var(--inspect-font-size-smallestest);
-  line-height: 1;
-  border-radius: var(--bs-border-radius);
-  flex-shrink: 0;
-  margin-top: -1px;
-}
-
-._breadcrumbBack_12tiy_296:hover:not(:disabled) {
-  color: var(--vscode-textLink-foreground);
-  background-color: var(--bs-secondary-bg);
-}
-
-._breadcrumbBack_12tiy_296:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-._breadcrumbGroup_12tiy_319 {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-._breadcrumbLink_12tiy_326 {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--vscode-textLink-foreground);
-  padding: 0 2px;
-  font-size: var(--inspect-font-size-smallest);
-}
-
-._breadcrumbLink_12tiy_326:hover {
-  text-decoration: underline;
-}
-
-._breadcrumbCurrent_12tiy_339 {
+._breadcrumbCurrent_2dnir_292 {
   background: none;
   border: none;
   cursor: pointer;
@@ -528,33 +481,13 @@
   padding: 0 2px;
 }
 
-._breadcrumbCurrent_12tiy_339:hover {
+._breadcrumbCurrent_2dnir_292:hover {
   text-decoration: underline;
-}
-
-._breadcrumbSelection_12tiy_353 {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--vscode-foreground);
-  font-weight: 600;
-  font-size: var(--inspect-font-size-smallest);
-  padding: 0 2px;
-}
-
-._breadcrumbSelection_12tiy_353:hover {
-  text-decoration: underline;
-}
-
-._breadcrumbDivider_12tiy_367 {
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.75rem;
-  padding: 0 1px 0 3px;
 }
 
 /* Token cell */
 
-._tokens_12tiy_375 {
+._tokens_2dnir_308 {
   padding: 0 0.75rem 0 0.5rem;
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);

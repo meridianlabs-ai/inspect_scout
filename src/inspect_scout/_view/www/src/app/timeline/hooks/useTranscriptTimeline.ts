@@ -8,7 +8,7 @@
  * agent card rendering) are populated for the selected row.
  */
 
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import {
   buildTimeline,
@@ -37,7 +37,7 @@ const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
 interface TranscriptTimelineResult {
   /** The built Timeline. Always present (even for root-only timelines). */
   timeline: Timeline;
-  /** Full useTimeline state (node, rows, breadcrumbs, navigation). */
+  /** Full useTimeline state (node, rows, navigation). */
   state: TimelineState;
   /** Computed row layouts for the swimlane UI. */
   layouts: RowLayout[];
@@ -63,21 +63,10 @@ export function useTranscriptTimeline(
 
   const state = useTimeline(timeline);
 
-  // Reset drill-down path when the timeline changes (e.g. navigating transcripts)
-  const prevTimelineRef = useRef(timeline);
-  useEffect(() => {
-    if (prevTimelineRef.current !== timeline) {
-      prevTimelineRef.current = timeline;
-      state.navigateTo("");
-    }
-    // Only react to timeline identity changes, not state.navigateTo
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeline]);
-
   // Filter out child rows whose spans contain no events.
-  // The parent row (index 0) is always kept.
+  // The parent row (depth 0) is always kept.
   const visibleRows = useMemo(
-    () => state.rows.filter((row, i) => i === 0 || rowHasEvents(row)),
+    () => state.rows.filter((row) => row.depth === 0 || rowHasEvents(row)),
     [state.rows]
   );
 

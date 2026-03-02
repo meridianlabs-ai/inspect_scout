@@ -38,7 +38,11 @@ export interface ParallelSpan {
 export type RowSpan = SingleSpan | ParallelSpan;
 
 export interface SwimlaneRow {
+  /** Unique key encoding tree position (e.g. "transcript/build/test"). */
+  key: string;
   name: string;
+  /** Depth in the span tree. 0 = root, 1 = direct child, etc. */
+  depth: number;
   spans: RowSpan[];
   totalTokens: number;
   startTime: Date;
@@ -148,7 +152,9 @@ function partitionIntoClusters(sorted: TimelineSpan[]): TimelineSpan[][] {
 
 function buildParentRow(node: TimelineSpan): SwimlaneRow {
   return {
+    key: node.name.toLowerCase(),
     name: node.name,
+    depth: 0,
     spans: [{ agent: node }],
     totalTokens: node.totalTokens,
     startTime: node.startTime,
@@ -180,7 +186,9 @@ function groupByName(spans: TimelineSpan[]): [string, TimelineSpan[]][] {
 
 function buildRowFromGroup(
   displayName: string,
-  spans: TimelineSpan[]
+  spans: TimelineSpan[],
+  depth = 1,
+  parentKey = ""
 ): SwimlaneRow | null {
   // Sort spans by start time, end time as tiebreaker
   const sorted = [...spans].sort(compareByTime);
@@ -205,11 +213,107 @@ function buildRowFromGroup(
   );
   const totalTokens = sorted.reduce((sum, span) => sum + span.totalTokens, 0);
 
+  const key = parentKey
+    ? `${parentKey}/${displayName.toLowerCase()}`
+    : displayName.toLowerCase();
+
   return {
+    key,
     name: displayName,
+    depth,
     spans: rowSpans,
     totalTokens,
     startTime,
     endTime,
   };
+}
+
+// =============================================================================
+// Flat (Fully Expanded) Computation
+// =============================================================================
+
+/**
+ * Computes a fully expanded flat list of swimlane rows from the entire span tree.
+ *
+ * Unlike `computeSwimlaneRows` (which only shows direct children), this function
+ * recursively walks all descendant spans in depth-first pre-order. Each row carries
+ * a `depth` for indentation and a unique `key` for selection.
+ *
+ * Parallel (overlapping) and iterative (sequential same-name) spans are expanded
+ * into separate numbered rows ("Explore 1", "Explore 2") rather than grouped.
+ */
+export function computeFlatSwimlaneRows(root: TimelineSpan): SwimlaneRow[] {
+  const parentRow = buildParentRow(root);
+  const childRows = flattenChildren(root, 0, root.name.toLowerCase());
+  return [parentRow, ...childRows];
+}
+
+/**
+ * Recursively flattens all descendant spans into rows in depth-first pre-order.
+ *
+ * For each level, groups children by name, then expands each group into
+ * individually numbered rows when there are multiple instances.
+ */
+function flattenChildren(
+  node: TimelineSpan,
+  parentDepth: number,
+  parentKey: string
+): SwimlaneRow[] {
+  const children = node.content.filter(
+    (item): item is TimelineSpan => item.type === "span" && !item.utility
+  );
+  if (children.length === 0) return [];
+
+  const groups = groupByName(children);
+  const depth = parentDepth + 1;
+
+  // Build (displayName, individual span, key) entries from each group,
+  // numbering instances when a group has more than one span.
+  const entries: Array<{
+    displayName: string;
+    span: TimelineSpan;
+    key: string;
+  }> = [];
+
+  for (const [displayName, spans] of groups) {
+    const sorted = [...spans].sort(compareByTime);
+    const baseName = displayName.toLowerCase();
+
+    if (sorted.length === 1) {
+      entries.push({
+        displayName,
+        span: sorted[0]!,
+        key: `${parentKey}/${baseName}`,
+      });
+    } else {
+      // Multiple instances: number each one
+      for (let i = 0; i < sorted.length; i++) {
+        entries.push({
+          displayName: `${displayName} ${i + 1}`,
+          span: sorted[i]!,
+          key: `${parentKey}/${baseName}-${i + 1}`,
+        });
+      }
+    }
+  }
+
+  // Sort all entries by start time for correct visual order
+  entries.sort((a, b) => compareByTime(a.span, b.span));
+
+  // Build rows with recursive descent into each entry's children
+  const result: SwimlaneRow[] = [];
+  for (const entry of entries) {
+    result.push({
+      key: entry.key,
+      name: entry.displayName,
+      depth,
+      spans: [{ agent: entry.span }],
+      totalTokens: entry.span.totalTokens,
+      startTime: entry.span.startTime,
+      endTime: entry.span.endTime,
+    });
+    result.push(...flattenChildren(entry.span, depth, entry.key));
+  }
+
+  return result;
 }

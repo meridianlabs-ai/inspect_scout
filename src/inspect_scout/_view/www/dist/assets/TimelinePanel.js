@@ -1,7 +1,7 @@
 import { j as jsxRuntimeExports, c as clsx, r as reactExports, A as ApplicationIcons } from "./index.js";
 import { d as VscodeSingleSelect, e as VscodeOption } from "./VscodeTreeItem.js";
-import { t as useProperty, k as useTimeline, m as computeRowLayouts, n as getSelectedSpans, p as computeMinimapSelection, o as collectRawEvents, u as useEventNodes, q as buildSpanSelectKeys, v as TimelineSelectContext, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
-import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
+import { s as useProperty, l as computeRowLayouts, m as getSelectedSpans, o as computeMinimapSelection, n as collectRawEvents, u as useEventNodes, p as buildSpanSelectKeys, t as TimelineSelectContext, T as TranscriptViewNodes } from "./TranscriptViewNodes.js";
+import { u as useTimeline, c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 import { u as useDocumentTitle } from "./useDocumentTitle.js";
 import "./_commonjsHelpers.js";
 import "./ToolButton.js";
@@ -1702,9 +1702,6 @@ const TimelinePanel = () => {
   const scenario = timelineScenarios[selectedIndex];
   const timeline = scenario?.timeline ?? timelineScenarios[0].timeline;
   const state = useTimeline(timeline);
-  reactExports.useEffect(() => {
-    state.navigateTo("");
-  }, []);
   const timeMapping = reactExports.useMemo(
     () => computeTimeMapping(state.node),
     [state.node]
@@ -1717,7 +1714,6 @@ const TimelinePanel = () => {
     () => computeRowLayouts(state.rows, timeMapping, markerDepth),
     [state.rows, timeMapping, markerDepth]
   );
-  const atRoot = state.breadcrumbs.length <= 1;
   const selectedSpans = reactExports.useMemo(
     () => getSelectedSpans(state.rows, state.selected),
     [state.rows, state.selected]
@@ -1739,18 +1735,14 @@ const TimelinePanel = () => {
     () => buildSpanSelectKeys(state.rows),
     [state.rows]
   );
-  const { select, drillDownAndSelect } = state;
+  const { select } = state;
   const selectBySpanId = reactExports.useCallback(
     (spanId) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      if (key.parallel && key.spanIndex) {
-        drillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
-      } else {
-        select(key.name, key.spanIndex);
-      }
+      select(key.key);
     },
-    [spanSelectKeys, select, drillDownAndSelect]
+    [spanSelectKeys, select]
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.container, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.headerRow, children: [
@@ -1762,7 +1754,7 @@ const TimelinePanel = () => {
           onChange: (e) => {
             const target = e.target;
             setSelectedIndex(Number(target.value));
-            state.navigateTo("");
+            state.clearSelection();
           },
           className: styles.scenarioSelect,
           children: timelineScenarios.map((s, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(VscodeOption, { value: String(i), children: s.name }, i))
@@ -1795,9 +1787,7 @@ const TimelinePanel = () => {
           layouts,
           timeline: state,
           header: {
-            breadcrumbs: state.breadcrumbs,
-            atRoot,
-            onNavigate: state.navigateTo,
+            rootLabel: timeline.root.name,
             minimap: {
               root: timeline.root,
               selection: minimapSelection,

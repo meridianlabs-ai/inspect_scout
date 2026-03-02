@@ -1,5 +1,5 @@
-import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore } from "./index.js";
-import { y as useCollapseTranscriptEvent, P as PulsingDots, z as kSandboxSignalName, E as EventNode, B as TYPE_SCORERS, F as TYPE_SCORER, G as useVirtuosoState, f as useTranscriptNavigation, H as flatTree, I as kTranscriptOutlineCollapseScope, K as useScrollTrack, Y as Yr, t as useProperty, N as computeBarPosition, O as formatTokenCount, Q as findBranchesByForkedAt, U as parsePathSegment, V as createBranchSpan } from "./TranscriptViewNodes.js";
+import { r as reactExports, j as jsxRuntimeExports, c as clsx, $ as Link, A as ApplicationIcons, u as useStore, i as useSearchParams } from "./index.js";
+import { x as useCollapseTranscriptEvent, P as PulsingDots, y as kSandboxSignalName, E as EventNode, z as TYPE_SCORERS, B as TYPE_SCORER, F as useVirtuosoState, f as useTranscriptNavigation, G as flatTree, H as kTranscriptOutlineCollapseScope, I as useScrollTrack, Y as Yr, K as computeFlatSwimlaneRows, s as useProperty, N as computeBarPosition, O as formatTokenCount } from "./TranscriptViewNodes.js";
 import { e as formatTime, g as formatDuration, h as formatDurationShort, P as PopOver } from "./ToolButton.js";
 const parsePackageName = (name) => {
   if (name.includes("/")) {
@@ -788,6 +788,105 @@ function findSegment(segments, ms) {
   if (hi >= 0) return segments[hi];
   return null;
 }
+const kSelectedParam = "selected";
+function findBranchesByForkedAt(node, forkedAt) {
+  const matches = [];
+  for (let i = 0; i < node.branches.length; i++) {
+    const branch = node.branches[i];
+    if (branch.forkedAt === forkedAt) {
+      matches.push({ branch, index: i + 1 });
+    }
+  }
+  if (matches.length > 0) {
+    return { owner: node, branches: matches };
+  }
+  for (const item of node.content) {
+    if (item.type === "span") {
+      const found = findBranchesByForkedAt(item, forkedAt);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+function createBranchSpan(branch, index) {
+  const label2 = deriveBranchLabel(branch, index);
+  const childSpans = branch.content.filter(
+    (item) => item.type === "span"
+  );
+  if (childSpans.length === 1) {
+    return {
+      ...childSpans[0],
+      name: `↳ ${childSpans[0].name}`
+    };
+  }
+  return {
+    type: "span",
+    id: `branch-${branch.forkedAt}-${index}`,
+    name: `↳ ${label2}`,
+    spanType: "branch",
+    content: branch.content,
+    branches: [],
+    utility: false,
+    startTime: branch.startTime,
+    endTime: branch.endTime,
+    totalTokens: branch.totalTokens,
+    idleTime: branch.idleTime
+  };
+}
+function deriveBranchLabel(branch, index) {
+  for (const item of branch.content) {
+    if (item.type === "span") return item.name;
+  }
+  return `Branch ${index}`;
+}
+function useTimeline(timeline) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedParam = searchParams.get(kSelectedParam) ?? null;
+  const node = timeline.root;
+  const rows = reactExports.useMemo(() => computeFlatSwimlaneRows(node), [node]);
+  const selected2 = reactExports.useMemo(() => {
+    if (selectedParam !== null) return selectedParam;
+    return rows[0]?.key ?? null;
+  }, [selectedParam, rows]);
+  const select = reactExports.useCallback(
+    (key) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (key) {
+            next.set(kSelectedParam, key);
+          } else {
+            next.delete(kSelectedParam);
+          }
+          next.delete("event");
+          next.delete("message");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+  const clearSelection = reactExports.useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(kSelectedParam);
+        next.delete("event");
+        next.delete("message");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+  return {
+    node,
+    rows,
+    selected: selected2,
+    select,
+    clearSelection
+  };
+}
 const container = "_container_6x5se_3";
 const stableLabel = "_stableLabel_6x5se_17";
 const alignRight = "_alignRight_6x5se_32";
@@ -914,40 +1013,34 @@ const TimelineMinimap = ({
     )
   ] });
 };
-const swimlane = "_swimlane_12tiy_1";
-const pinnedSection = "_pinnedSection_12tiy_17";
-const scrollSection = "_scrollSection_12tiy_25";
-const collapsibleSection = "_collapsibleSection_12tiy_40";
-const collapsibleCollapsed = "_collapsibleCollapsed_12tiy_53";
-const noAnimation = "_noAnimation_12tiy_60";
-const swimlaneSticky = "_swimlaneSticky_12tiy_65";
-const collapsibleInner = "_collapsibleInner_12tiy_72";
-const collapseToggle = "_collapseToggle_12tiy_82";
-const row = "_row_12tiy_110";
-const label = "_label_12tiy_116";
-const labelChild = "_labelChild_12tiy_128";
-const labelSelected = "_labelSelected_12tiy_132";
-const barArea = "_barArea_12tiy_138";
-const barInner = "_barInner_12tiy_144";
-const fill = "_fill_12tiy_150";
-const fillParent = "_fillParent_12tiy_168";
-const fillSelected = "_fillSelected_12tiy_172";
-const marker = "_marker_12tiy_184";
-const markerError = "_markerError_12tiy_204";
-const markerCompaction = "_markerCompaction_12tiy_225";
-const markerBranch = "_markerBranch_12tiy_237";
-const branchPopover = "_branchPopover_12tiy_244";
-const branchEntry = "_branchEntry_12tiy_250";
-const branchLabel = "_branchLabel_12tiy_270";
-const branchMeta = "_branchMeta_12tiy_274";
-const breadcrumbRow = "_breadcrumbRow_12tiy_286";
-const breadcrumbBack = "_breadcrumbBack_12tiy_296";
-const breadcrumbGroup = "_breadcrumbGroup_12tiy_319";
-const breadcrumbLink = "_breadcrumbLink_12tiy_326";
-const breadcrumbCurrent = "_breadcrumbCurrent_12tiy_339";
-const breadcrumbSelection = "_breadcrumbSelection_12tiy_353";
-const breadcrumbDivider = "_breadcrumbDivider_12tiy_367";
-const tokens = "_tokens_12tiy_375";
+const swimlane = "_swimlane_2dnir_1";
+const pinnedSection = "_pinnedSection_2dnir_17";
+const scrollSection = "_scrollSection_2dnir_25";
+const collapsibleSection = "_collapsibleSection_2dnir_40";
+const collapsibleCollapsed = "_collapsibleCollapsed_2dnir_53";
+const noAnimation = "_noAnimation_2dnir_60";
+const swimlaneSticky = "_swimlaneSticky_2dnir_65";
+const collapsibleInner = "_collapsibleInner_2dnir_72";
+const collapseToggle = "_collapseToggle_2dnir_82";
+const row = "_row_2dnir_110";
+const label = "_label_2dnir_116";
+const labelSelected = "_labelSelected_2dnir_128";
+const barArea = "_barArea_2dnir_134";
+const barInner = "_barInner_2dnir_140";
+const fill = "_fill_2dnir_146";
+const fillParent = "_fillParent_2dnir_164";
+const fillSelected = "_fillSelected_2dnir_168";
+const marker = "_marker_2dnir_180";
+const markerError = "_markerError_2dnir_200";
+const markerCompaction = "_markerCompaction_2dnir_221";
+const markerBranch = "_markerBranch_2dnir_233";
+const branchPopover = "_branchPopover_2dnir_240";
+const branchEntry = "_branchEntry_2dnir_246";
+const branchLabel = "_branchLabel_2dnir_266";
+const branchMeta = "_branchMeta_2dnir_270";
+const breadcrumbRow = "_breadcrumbRow_2dnir_282";
+const breadcrumbCurrent = "_breadcrumbCurrent_2dnir_292";
+const tokens = "_tokens_2dnir_308";
 const styles = {
   swimlane,
   pinnedSection,
@@ -960,7 +1053,6 @@ const styles = {
   collapseToggle,
   row,
   label,
-  labelChild,
   labelSelected,
   barArea,
   barInner,
@@ -976,27 +1068,9 @@ const styles = {
   branchLabel,
   branchMeta,
   breadcrumbRow,
-  breadcrumbBack,
-  breadcrumbGroup,
-  breadcrumbLink,
   breadcrumbCurrent,
-  breadcrumbSelection,
-  breadcrumbDivider,
   tokens
 };
-function parseSelected(selected2) {
-  if (!selected2) return null;
-  return parsePathSegment(selected2);
-}
-function isSpanSelected(layout, spanIndex, parsed) {
-  if (!parsed) return false;
-  if (layout.name.toLowerCase() !== parsed.name.toLowerCase()) return false;
-  if (layout.spans.length === 1) {
-    return true;
-  }
-  const selectedIdx = parsed.spanIndex ?? 1;
-  return selectedIdx === spanIndex + 1;
-}
 const MARKER_ICONS = {
   error: { icon: ApplicationIcons.error, tooltip: "Error event" },
   compaction: {
@@ -1014,14 +1088,7 @@ const TimelineSwimLanes = ({
   noAnimation: noAnimation2,
   onMarkerNavigate
 }) => {
-  const {
-    node,
-    selected: selected2,
-    select: onSelect,
-    drillDown: onDrillDown,
-    goUp: onGoUp
-  } = timeline;
-  const parsedSelection = reactExports.useMemo(() => parseSelected(selected2), [selected2]);
+  const { node, selected: selected2, select: onSelect, clearSelection } = timeline;
   const [collapsed, setCollapsed] = useProperty(
     "timeline",
     "swimlanesCollapsed",
@@ -1042,52 +1109,23 @@ const TimelineSwimLanes = ({
   const handleBranchLeave = reactExports.useCallback(() => {
     setBranchPopover(null);
   }, []);
-  const handleBranchSelect = reactExports.useCallback(
-    (branchSegment) => {
-      const lookup = findBranchesByForkedAt(
-        node,
-        branchPopover2?.forkedAt ?? ""
-      );
-      setBranchPopover(null);
-      if (lookup && lookup.ownerPath.length > 0) {
-        const fullSegment = [...lookup.ownerPath, branchSegment].join("/");
-        onDrillDown(fullSegment);
-      } else {
-        onDrillDown(branchSegment);
-      }
-    },
-    [onDrillDown, node, branchPopover2?.forkedAt]
-  );
   const handleKeyDown = reactExports.useCallback(
     (e) => {
-      const rowNames = layouts.map((l) => l.name);
-      const currentRowName = parsedSelection?.name.toLowerCase() ?? null;
-      const currentIndex = currentRowName ? rowNames.findIndex((n) => n.toLowerCase() === currentRowName) : -1;
+      const rowKeys = layouts.map((l) => l.key);
+      const currentIndex = selected2 ? rowKeys.indexOf(selected2) : -1;
       switch (e.key) {
         case "ArrowDown": {
           e.preventDefault();
-          const next = currentIndex < rowNames.length - 1 ? currentIndex + 1 : currentIndex;
-          const name = rowNames[next];
-          if (name !== void 0) onSelect(name);
+          const next = currentIndex < rowKeys.length - 1 ? currentIndex + 1 : currentIndex;
+          const key = rowKeys[next];
+          if (key !== void 0) onSelect(key);
           break;
         }
         case "ArrowUp": {
           e.preventDefault();
           const prev = currentIndex > 0 ? currentIndex - 1 : 0;
-          const name = rowNames[prev];
-          if (name !== void 0) onSelect(name);
-          break;
-        }
-        case "Enter": {
-          e.preventDefault();
-          if (parsedSelection) {
-            const layout = layouts.find(
-              (l) => l.name.toLowerCase() === parsedSelection.name.toLowerCase()
-            );
-            if (layout && layout.spans.some((s) => s.drillable)) {
-              onDrillDown(layout.name, parsedSelection.spanIndex ?? void 0);
-            }
-          }
+          const key = rowKeys[prev];
+          if (key !== void 0) onSelect(key);
           break;
         }
         case "Escape": {
@@ -1095,13 +1133,13 @@ const TimelineSwimLanes = ({
           if (branchPopover2) {
             setBranchPopover(null);
           } else {
-            onGoUp();
+            clearSelection();
           }
           break;
         }
       }
     },
-    [layouts, parsedSelection, onSelect, onDrillDown, onGoUp, branchPopover2]
+    [layouts, selected2, onSelect, clearSelection, branchPopover2]
   );
   const branchLookup = reactExports.useMemo(() => {
     if (!branchPopover2) return null;
@@ -1109,28 +1147,18 @@ const TimelineSwimLanes = ({
   }, [branchPopover2, node]);
   const parentRow = layouts[0];
   const childRows = layouts.slice(1);
-  const renderRow = (layout, rowIndex, displayName) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  const renderRow = (layout, displayName) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     SwimlaneRow,
     {
       layout,
       displayName,
-      parsedSelection,
-      onSelect: (spanIndex) => {
-        if (layout.spans.length > 1) {
-          onSelect(layout.name, spanIndex + 1);
-        } else {
-          onSelect(layout.name);
-        }
-      },
-      onDrillDown: (spanIndex) => onDrillDown(
-        layout.name,
-        layout.spans.length > 1 ? spanIndex + 1 : void 0
-      ),
+      isSelected: selected2 === layout.key,
+      onSelect: () => onSelect(layout.key),
       onBranchHover: handleBranchHover,
       onBranchLeave: handleBranchLeave,
       onMarkerNavigate
     },
-    `${layout.name}-${rowIndex}`
+    layout.key
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
@@ -1141,7 +1169,13 @@ const TimelineSwimLanes = ({
       role: "grid",
       "aria-label": "Timeline swimlane",
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: header && /* @__PURE__ */ jsxRuntimeExports.jsx(BreadcrumbRow, { ...header, selected: selected2, onGoUp }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.pinnedSection, children: [
+          header && /* @__PURE__ */ jsxRuntimeExports.jsx(HeaderRow, { ...header }),
+          parentRow && renderRow(
+            parentRow,
+            parentRow.name === "solvers" ? "main" : void 0
+          )
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
@@ -1150,14 +1184,7 @@ const TimelineSwimLanes = ({
               isCollapsed && styles.collapsibleCollapsed,
               noAnimation2 && styles.noAnimation
             ),
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.collapsibleInner, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.pinnedSection, children: parentRow && renderRow(
-                parentRow,
-                0,
-                header?.atRoot && parentRow.name === "solvers" ? "main" : void 0
-              ) }),
-              childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.scrollSection, children: childRows.map((layout, i) => renderRow(layout, i + 1)) })
-            ] })
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.collapsibleInner, children: childRows.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.scrollSection, children: childRows.map((layout) => renderRow(layout)) }) })
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1180,7 +1207,6 @@ const TimelineSwimLanes = ({
             isOpen: branchPopover2 !== null && branchLookup !== null,
             anchor: branchPopover2?.element ?? null,
             branches: branchLookup?.branches ?? [],
-            onSelect: handleBranchSelect,
             onClose: () => setBranchPopover(null)
           }
         )
@@ -1191,25 +1217,18 @@ const TimelineSwimLanes = ({
 const SwimlaneRow = ({
   layout,
   displayName,
-  parsedSelection,
+  isSelected,
   onSelect,
-  onDrillDown,
   onBranchHover,
   onBranchLeave,
   onMarkerNavigate
 }) => {
-  const hasSelectedSpan = layout.spans.some(
-    (_, i) => isSpanSelected(layout, i, parsedSelection)
-  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.row, role: "row", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: clsx(
-          styles.label,
-          !layout.isParent && styles.labelChild,
-          hasSelectedSpan && styles.labelSelected
-        ),
+        className: clsx(styles.label, isSelected && styles.labelSelected),
+        style: { paddingLeft: `${0.95 + layout.depth * 0.5}rem` },
         children: displayName ?? layout.name
       }
     ),
@@ -1219,9 +1238,8 @@ const SwimlaneRow = ({
         {
           span,
           isParent: layout.isParent,
-          isSelected: isSpanSelected(layout, spanIndex, parsedSelection),
-          onSelect: () => onSelect(spanIndex),
-          onDrillDown: () => onDrillDown(spanIndex)
+          isSelected,
+          onSelect
         },
         spanIndex
       )),
@@ -1239,75 +1257,13 @@ const SwimlaneRow = ({
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.tokens, children: formatTokenCount(layout.totalTokens) })
   ] });
 };
-const BreadcrumbRow = ({
-  breadcrumbs,
-  atRoot,
-  onGoUp,
-  onNavigate,
+const HeaderRow = ({
+  rootLabel,
   minimap: minimap2,
-  selected: selected2,
   onScrollToTop
 }) => {
-  const selectedLabel = selected2 ? parsePathSegment(selected2).name : null;
-  const lastBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
-  const showSelection = selectedLabel !== null && selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
-  const handleNavigate = reactExports.useCallback(
-    (path) => {
-      onNavigate(path);
-      onScrollToTop?.();
-    },
-    [onNavigate, onScrollToTop]
-  );
-  const handleGoUp = reactExports.useCallback(() => {
-    onGoUp();
-    onScrollToTop?.();
-  }, [onGoUp, onScrollToTop]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.breadcrumbRow, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        className: styles.breadcrumbBack,
-        onClick: handleGoUp,
-        disabled: atRoot && !showSelection,
-        title: "Go up one level (Escape)",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("i", { className: ApplicationIcons.navbar.back })
-      }
-    ),
-    breadcrumbs.map((segment, i) => {
-      const isLast = i === breadcrumbs.length - 1;
-      const label2 = i === 0 && segment.label === "solvers" ? "main" : segment.label;
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.breadcrumbGroup, children: [
-        i > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbDivider, children: "›" }),
-        isLast && !showSelection ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: styles.breadcrumbCurrent,
-            onClick: () => {
-              handleNavigate(segment.path);
-            },
-            children: label2
-          }
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: styles.breadcrumbLink,
-            onClick: () => handleNavigate(segment.path),
-            children: label2
-          }
-        )
-      ] }, segment.path + i);
-    }),
-    showSelection && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.breadcrumbGroup, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.breadcrumbDivider, children: "›" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          className: styles.breadcrumbSelection,
-          onClick: onScrollToTop,
-          children: selectedLabel
-        }
-      )
-    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: styles.breadcrumbCurrent, onClick: onScrollToTop, children: rootLabel === "solvers" ? "main" : rootLabel }),
     minimap2 && /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineMinimap, { ...minimap2 })
   ] });
 };
@@ -1315,8 +1271,7 @@ const BarFill = ({
   span,
   isParent,
   isSelected,
-  onSelect,
-  onDrillDown
+  onSelect
 }) => {
   const handleClick = reactExports.useCallback(
     (e) => {
@@ -1324,15 +1279,6 @@ const BarFill = ({
       onSelect();
     },
     [onSelect]
-  );
-  const handleDoubleClick = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      if (span.drillable) {
-        onDrillDown();
-      }
-    },
-    [span.drillable, onDrillDown]
   );
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
@@ -1347,8 +1293,7 @@ const BarFill = ({
         width: `${span.bar.width}%`
       },
       title: span.description ?? void 0,
-      onClick: handleClick,
-      onDoubleClick: handleDoubleClick
+      onClick: handleClick
     }
   );
 };
@@ -1418,7 +1363,6 @@ const BranchPopover = ({
   isOpen,
   anchor,
   branches,
-  onSelect,
   onClose
 }) => {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -1438,22 +1382,14 @@ const BranchPopover = ({
       children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.branchPopover, children: branches.map(({ branch, index }) => {
         const span = createBranchSpan(branch, index);
         const durationSec = (branch.endTime.getTime() - branch.startTime.getTime()) / 1e3;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            className: styles.branchEntry,
-            onClick: () => onSelect(`@branch-${index}`),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.branchLabel, children: span.name }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.branchMeta, children: [
-                formatTokenCount(branch.totalTokens),
-                " · ",
-                formatTime(durationSec)
-              ] })
-            ]
-          },
-          `branch-${index}`
-        );
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.branchEntry, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.branchLabel, children: span.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.branchMeta, children: [
+            formatTokenCount(branch.totalTokens),
+            " · ",
+            formatTime(durationSec)
+          ] })
+        ] }, `branch-${index}`);
       }) })
     }
   );
@@ -1461,6 +1397,7 @@ const BranchPopover = ({
 export {
   TimelineSwimLanes as T,
   TranscriptOutline as a,
-  computeTimeMapping as c
+  computeTimeMapping as c,
+  useTimeline as u
 };
 //# sourceMappingURL=TimelineSwimLanes.js.map

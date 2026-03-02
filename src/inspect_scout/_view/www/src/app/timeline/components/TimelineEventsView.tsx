@@ -137,21 +137,14 @@ export const TimelineEventsView = forwardRef<
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]
   );
-  const {
-    select: timelineSelect,
-    drillDownAndSelect: timelineDrillDownAndSelect,
-  } = timelineState;
+  const { select: timelineSelect } = timelineState;
   const selectBySpanId = useCallback(
     (spanId: string) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      if (key.parallel && key.spanIndex) {
-        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
-      } else {
-        timelineSelect(key.name, key.spanIndex);
-      }
+      timelineSelect(key.key);
     },
-    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+    [spanSelectKeys, timelineSelect]
   );
 
   // ---------------------------------------------------------------------------
@@ -282,8 +275,6 @@ export const TimelineEventsView = forwardRef<
   const showSwimlanes =
     timelineProp === true || (timelineProp === "auto" && hasTimeline);
 
-  const atRoot = timelineState.breadcrumbs.length <= 1;
-
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [scrollRef]);
@@ -308,9 +299,7 @@ export const TimelineEventsView = forwardRef<
                 layouts={timelineLayouts}
                 timeline={timelineState}
                 header={{
-                  breadcrumbs: timelineState.breadcrumbs,
-                  atRoot,
-                  onNavigate: timelineState.navigateTo,
+                  rootLabel: timelineData.root.name,
                   onScrollToTop: scrollToTop,
                   minimap: {
                     root: timelineData.root,

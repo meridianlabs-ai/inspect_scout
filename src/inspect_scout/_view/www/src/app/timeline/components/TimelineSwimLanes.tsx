@@ -7,11 +7,9 @@ import type { TimelineBranch } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
 import { formatTime } from "../../../utils/format";
 import {
-  type BreadcrumbSegment,
   type TimelineState,
   createBranchSpan,
   findBranchesByForkedAt,
-  parsePathSegment,
 } from "../hooks/useTimeline";
 import type {
   PositionedMarker,
@@ -30,15 +28,13 @@ import styles from "./TimelineSwimLanes.module.css";
 /** Navigation subset of TimelineState needed by the swimlane component. */
 export type TimelineNavigation = Pick<
   TimelineState,
-  "node" | "selected" | "select" | "drillDown" | "goUp"
+  "node" | "selected" | "select" | "clearSelection"
 >;
 
-/** Header configuration: breadcrumb navigation + optional minimap. */
+/** Header configuration: root label + optional minimap. */
 export interface TimelineHeaderProps {
-  breadcrumbs: BreadcrumbSegment[];
-  atRoot: boolean;
-  onNavigate: (path: string) => void;
-  /** Called on any breadcrumb click to scroll the view to the top. */
+  rootLabel: string;
+  /** Called on header click to scroll the view to the top. */
   onScrollToTop?: () => void;
   /** Minimap props for the zoom indicator. */
   minimap?: TimelineMinimapProps;
@@ -47,9 +43,9 @@ export interface TimelineHeaderProps {
 interface TimelineSwimLanesProps {
   /** Row layouts computed by computeRowLayouts. */
   layouts: RowLayout[];
-  /** Timeline navigation state (selection, drill-down, go-up). */
+  /** Timeline navigation state (selection). */
   timeline: TimelineNavigation;
-  /** Breadcrumb + minimap header configuration. */
+  /** Header configuration. */
   header?: TimelineHeaderProps;
   /** Whether the swimlane is currently in sticky mode (opaque background). */
   isSticky?: boolean;
@@ -59,44 +55,6 @@ interface TimelineSwimLanesProps {
   noAnimation?: boolean;
   /** Called when an error or compaction marker is clicked. */
   onMarkerNavigate?: (eventId: string) => void;
-}
-
-// =============================================================================
-// Selection helpers
-// =============================================================================
-
-interface ParsedSelection {
-  name: string;
-  spanIndex: number | null;
-}
-
-function parseSelected(selected: string | null): ParsedSelection | null {
-  if (!selected) return null;
-  return parsePathSegment(selected);
-}
-
-/**
- * Check if a specific span within a row is the selected one.
- * For single-span rows, any selection of that row name matches.
- * For multi-span rows, the span index must match.
- */
-function isSpanSelected(
-  layout: RowLayout,
-  spanIndex: number,
-  parsed: ParsedSelection | null
-): boolean {
-  if (!parsed) return false;
-  if (layout.name.toLowerCase() !== parsed.name.toLowerCase()) return false;
-
-  if (layout.spans.length === 1) {
-    // Single-span row: any selection of this name matches
-    return true;
-  }
-
-  // Multi-span row: match by span index (1-indexed)
-  // No suffix (spanIndex === null) → first span
-  const selectedIdx = parsed.spanIndex ?? 1;
-  return selectedIdx === spanIndex + 1;
 }
 
 // =============================================================================
@@ -125,14 +83,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   noAnimation,
   onMarkerNavigate,
 }) => {
-  const {
-    node,
-    selected,
-    select: onSelect,
-    drillDown: onDrillDown,
-    goUp: onGoUp,
-  } = timeline;
-  const parsedSelection = useMemo(() => parseSelected(selected), [selected]);
+  const { node, selected, select: onSelect, clearSelection } = timeline;
 
   // Collapse state — persisted across sessions.
   // Auto-collapse when the transcript is flat (single row, no children).
@@ -170,61 +121,25 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     setBranchPopover(null);
   }, []);
 
-  const handleBranchSelect = useCallback(
-    (branchSegment: string) => {
-      // Compute the owner path at select time to avoid stale closure issues
-      const lookup = findBranchesByForkedAt(
-        node,
-        branchPopover?.forkedAt ?? ""
-      );
-      setBranchPopover(null);
-      // Build the full drill-down path: owner path segments + branch segment
-      if (lookup && lookup.ownerPath.length > 0) {
-        const fullSegment = [...lookup.ownerPath, branchSegment].join("/");
-        onDrillDown(fullSegment);
-      } else {
-        onDrillDown(branchSegment);
-      }
-    },
-    [onDrillDown, node, branchPopover?.forkedAt]
-  );
-
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      const rowNames = layouts.map((l) => l.name);
-      const currentRowName = parsedSelection?.name.toLowerCase() ?? null;
-      const currentIndex = currentRowName
-        ? rowNames.findIndex((n) => n.toLowerCase() === currentRowName)
-        : -1;
+      const rowKeys = layouts.map((l) => l.key);
+      const currentIndex = selected ? rowKeys.indexOf(selected) : -1;
 
       switch (e.key) {
         case "ArrowDown": {
           e.preventDefault();
           const next =
-            currentIndex < rowNames.length - 1
-              ? currentIndex + 1
-              : currentIndex;
-          const name = rowNames[next];
-          if (name !== undefined) onSelect(name);
+            currentIndex < rowKeys.length - 1 ? currentIndex + 1 : currentIndex;
+          const key = rowKeys[next];
+          if (key !== undefined) onSelect(key);
           break;
         }
         case "ArrowUp": {
           e.preventDefault();
           const prev = currentIndex > 0 ? currentIndex - 1 : 0;
-          const name = rowNames[prev];
-          if (name !== undefined) onSelect(name);
-          break;
-        }
-        case "Enter": {
-          e.preventDefault();
-          if (parsedSelection) {
-            const layout = layouts.find(
-              (l) => l.name.toLowerCase() === parsedSelection.name.toLowerCase()
-            );
-            if (layout && layout.spans.some((s) => s.drillable)) {
-              onDrillDown(layout.name, parsedSelection.spanIndex ?? undefined);
-            }
-          }
+          const key = rowKeys[prev];
+          if (key !== undefined) onSelect(key);
           break;
         }
         case "Escape": {
@@ -232,18 +147,16 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
           if (branchPopover) {
             setBranchPopover(null);
           } else {
-            onGoUp();
+            clearSelection();
           }
           break;
         }
       }
     },
-    [layouts, parsedSelection, onSelect, onDrillDown, onGoUp, branchPopover]
+    [layouts, selected, onSelect, clearSelection, branchPopover]
   );
 
   // Find branches matching the popover's forkedAt UUID.
-  // Branches may be on the current node or on any child span in the tree,
-  // since markers are collected recursively from the content tree.
   const branchLookup = useMemo(() => {
     if (!branchPopover) return null;
     return findBranchesByForkedAt(node, branchPopover.forkedAt);
@@ -252,29 +165,13 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   const parentRow = layouts[0];
   const childRows = layouts.slice(1);
 
-  const renderRow = (
-    layout: RowLayout,
-    rowIndex: number,
-    displayName?: string
-  ) => (
+  const renderRow = (layout: RowLayout, displayName?: string) => (
     <SwimlaneRow
-      key={`${layout.name}-${rowIndex}`}
+      key={layout.key}
       layout={layout}
       displayName={displayName}
-      parsedSelection={parsedSelection}
-      onSelect={(spanIndex) => {
-        if (layout.spans.length > 1) {
-          onSelect(layout.name, spanIndex + 1);
-        } else {
-          onSelect(layout.name);
-        }
-      }}
-      onDrillDown={(spanIndex) =>
-        onDrillDown(
-          layout.name,
-          layout.spans.length > 1 ? spanIndex + 1 : undefined
-        )
-      }
+      isSelected={selected === layout.key}
+      onSelect={() => onSelect(layout.key)}
       onBranchHover={handleBranchHover}
       onBranchLeave={handleBranchLeave}
       onMarkerNavigate={onMarkerNavigate}
@@ -289,14 +186,17 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       role="grid"
       aria-label="Timeline swimlane"
     >
-      {/* Pinned: breadcrumb (with minimap) + parent row */}
+      {/* Pinned: header row (with minimap) + parent row — always visible */}
       <div className={styles.pinnedSection}>
-        {header && (
-          <BreadcrumbRow {...header} selected={selected} onGoUp={onGoUp} />
-        )}
+        {header && <HeaderRow {...header} />}
+        {parentRow &&
+          renderRow(
+            parentRow,
+            parentRow.name === "solvers" ? "main" : undefined
+          )}
       </div>
 
-      {/* Collapsible rows: parent + children */}
+      {/* Collapsible child rows */}
       <div
         className={clsx(
           styles.collapsibleSection,
@@ -305,19 +205,9 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         )}
       >
         <div className={styles.collapsibleInner}>
-          <div className={styles.pinnedSection}>
-            {parentRow &&
-              renderRow(
-                parentRow,
-                0,
-                header?.atRoot && parentRow.name === "solvers"
-                  ? "main"
-                  : undefined
-              )}
-          </div>
           {childRows.length > 0 && (
             <div className={styles.scrollSection}>
-              {childRows.map((layout, i) => renderRow(layout, i + 1))}
+              {childRows.map((layout) => renderRow(layout))}
             </div>
           )}
         </div>
@@ -342,7 +232,6 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         isOpen={branchPopover !== null && branchLookup !== null}
         anchor={branchPopover?.element ?? null}
         branches={branchLookup?.branches ?? []}
-        onSelect={handleBranchSelect}
         onClose={() => setBranchPopover(null)}
       />
     </div>
@@ -357,9 +246,8 @@ interface SwimlaneRowProps {
   layout: RowLayout;
   /** Override the displayed label (defaults to layout.name). */
   displayName?: string;
-  parsedSelection: ParsedSelection | null;
-  onSelect: (spanIndex: number) => void;
-  onDrillDown: (spanIndex: number) => void;
+  isSelected: boolean;
+  onSelect: () => void;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
   onMarkerNavigate?: (eventId: string) => void;
@@ -368,26 +256,18 @@ interface SwimlaneRowProps {
 const SwimlaneRow: FC<SwimlaneRowProps> = ({
   layout,
   displayName,
-  parsedSelection,
+  isSelected,
   onSelect,
-  onDrillDown,
   onBranchHover,
   onBranchLeave,
   onMarkerNavigate,
 }) => {
-  const hasSelectedSpan = layout.spans.some((_, i) =>
-    isSpanSelected(layout, i, parsedSelection)
-  );
-
   return (
     <div className={styles.row} role="row">
-      {/* Label cell */}
+      {/* Label cell — depth-based indentation */}
       <div
-        className={clsx(
-          styles.label,
-          !layout.isParent && styles.labelChild,
-          hasSelectedSpan && styles.labelSelected
-        )}
+        className={clsx(styles.label, isSelected && styles.labelSelected)}
+        style={{ paddingLeft: `${0.95 + layout.depth * 0.5}rem` }}
       >
         {displayName ?? layout.name}
       </div>
@@ -401,9 +281,8 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
               key={spanIndex}
               span={span}
               isParent={layout.isParent}
-              isSelected={isSpanSelected(layout, spanIndex, parsedSelection)}
-              onSelect={() => onSelect(spanIndex)}
-              onDrillDown={() => onDrillDown(spanIndex)}
+              isSelected={isSelected}
+              onSelect={onSelect}
             />
           ))}
 
@@ -429,98 +308,19 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
 };
 
 // =============================================================================
-// BreadcrumbRow (internal)
+// HeaderRow (internal)
 // =============================================================================
 
-interface InternalBreadcrumbRowProps extends TimelineHeaderProps {
-  /** Currently selected span identifier, sourced from timeline navigation. */
-  selected: string | null;
-  /** Go up one level, sourced from timeline navigation. */
-  onGoUp: () => void;
-}
-
-const BreadcrumbRow: FC<InternalBreadcrumbRowProps> = ({
-  breadcrumbs,
-  atRoot,
-  onGoUp,
-  onNavigate,
+const HeaderRow: FC<TimelineHeaderProps> = ({
+  rootLabel,
   minimap,
-  selected,
   onScrollToTop,
 }) => {
-  // Extract display name from selected (strip span index suffix)
-  const selectedLabel = selected ? parsePathSegment(selected).name : null;
-
-  // Suppress selection when it duplicates the last breadcrumb (parent row = current node)
-  const lastBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
-  const showSelection =
-    selectedLabel !== null &&
-    selectedLabel.toLowerCase() !== lastBreadcrumb?.label.toLowerCase();
-
-  const handleNavigate = useCallback(
-    (path: string) => {
-      onNavigate(path);
-      onScrollToTop?.();
-    },
-    [onNavigate, onScrollToTop]
-  );
-
-  const handleGoUp = useCallback(() => {
-    onGoUp();
-    onScrollToTop?.();
-  }, [onGoUp, onScrollToTop]);
-
   return (
     <div className={styles.breadcrumbRow}>
-      <button
-        className={styles.breadcrumbBack}
-        onClick={handleGoUp}
-        disabled={atRoot && !showSelection}
-        title="Go up one level (Escape)"
-      >
-        <i className={ApplicationIcons.navbar.back} />
+      <button className={styles.breadcrumbCurrent} onClick={onScrollToTop}>
+        {rootLabel === "solvers" ? "main" : rootLabel}
       </button>
-      {breadcrumbs.map((segment, i) => {
-        const isLast = i === breadcrumbs.length - 1;
-        // Show "main" for the root breadcrumb when it's the generic "solvers" name
-        const label =
-          i === 0 && segment.label === "solvers" ? "main" : segment.label;
-        return (
-          <span key={segment.path + i} className={styles.breadcrumbGroup}>
-            {i > 0 && (
-              <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
-            )}
-            {isLast && !showSelection ? (
-              <button
-                className={styles.breadcrumbCurrent}
-                onClick={() => {
-                  handleNavigate(segment.path);
-                }}
-              >
-                {label}
-              </button>
-            ) : (
-              <button
-                className={styles.breadcrumbLink}
-                onClick={() => handleNavigate(segment.path)}
-              >
-                {label}
-              </button>
-            )}
-          </span>
-        );
-      })}
-      {showSelection && (
-        <span className={styles.breadcrumbGroup}>
-          <span className={styles.breadcrumbDivider}>{"\u203A"}</span>
-          <button
-            className={styles.breadcrumbSelection}
-            onClick={onScrollToTop}
-          >
-            {selectedLabel}
-          </button>
-        </span>
-      )}
       {minimap && <TimelineMinimap {...minimap} />}
     </div>
   );
@@ -535,7 +335,6 @@ interface BarFillProps {
   isParent: boolean;
   isSelected: boolean;
   onSelect: () => void;
-  onDrillDown: () => void;
 }
 
 const BarFill: FC<BarFillProps> = ({
@@ -543,7 +342,6 @@ const BarFill: FC<BarFillProps> = ({
   isParent,
   isSelected,
   onSelect,
-  onDrillDown,
 }) => {
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -551,16 +349,6 @@ const BarFill: FC<BarFillProps> = ({
       onSelect();
     },
     [onSelect]
-  );
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (span.drillable) {
-        onDrillDown();
-      }
-    },
-    [span.drillable, onDrillDown]
   );
 
   return (
@@ -576,7 +364,6 @@ const BarFill: FC<BarFillProps> = ({
       }}
       title={span.description ?? undefined}
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
     />
   );
 };
@@ -668,14 +455,13 @@ const MarkerGlyph: FC<MarkerGlyphProps> = ({
 };
 
 // =============================================================================
-// BranchPopover (internal)
+// BranchPopover (internal — informational only)
 // =============================================================================
 
 interface BranchPopoverProps {
   isOpen: boolean;
   anchor: HTMLElement | null;
   branches: Array<{ branch: TimelineBranch; index: number }>;
-  onSelect: (branchSegment: string) => void;
   onClose: () => void;
 }
 
@@ -683,7 +469,6 @@ const BranchPopover: FC<BranchPopoverProps> = ({
   isOpen,
   anchor,
   branches,
-  onSelect,
   onClose,
 }) => {
   return (
@@ -706,18 +491,14 @@ const BranchPopover: FC<BranchPopoverProps> = ({
           const durationSec =
             (branch.endTime.getTime() - branch.startTime.getTime()) / 1000;
           return (
-            <button
-              key={`branch-${index}`}
-              className={styles.branchEntry}
-              onClick={() => onSelect(`@branch-${index}`)}
-            >
+            <div key={`branch-${index}`} className={styles.branchEntry}>
               <span className={styles.branchLabel}>{span.name}</span>
               <span className={styles.branchMeta}>
                 {formatTokenCount(branch.totalTokens)}
                 {" \u00B7 "}
                 {formatTime(durationSec)}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>

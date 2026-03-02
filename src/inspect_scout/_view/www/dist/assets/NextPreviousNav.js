@@ -5,9 +5,9 @@ import { F as Field } from "./FormFields.js";
 import { u as useDropdownPosition, s as styles$7, a as useValidationSets, b as useValidationCase, c as useValidationCases, d as useCreateValidationSet, e as useDeleteValidationCase, f as useUpdateValidationCase, v as validationQueryKeys, i as isValidFilename, h as hasValidationSetExtension, V as ValidationSetSelector, g as extractUniqueLabels, j as ValidationSplitSelector, k as extractUniqueSplits } from "./ValidationSplitSelector.js";
 import { C as Chip, A as AutocompleteInput } from "./Chip.js";
 import { P as PopOver } from "./ToolButton.js";
-import { r as resolveMessages, g as ChatMessageRow, L as LiveVirtualList, h as defaultMarkerConfig, j as buildTimeline, k as useTimeline, l as rowHasEvents, m as computeRowLayouts, n as getSelectedSpans, o as collectRawEvents, p as computeMinimapSelection, q as buildSpanSelectKeys, u as useEventNodes, s as kTranscriptCollapseScope, t as useProperty, v as TimelineSelectContext, T as TranscriptViewNodes, w as kCollapsibleEventTypes } from "./TranscriptViewNodes.js";
+import { r as resolveMessages, g as ChatMessageRow, L as LiveVirtualList, h as defaultMarkerConfig, j as buildTimeline, k as rowHasEvents, l as computeRowLayouts, m as getSelectedSpans, n as collectRawEvents, o as computeMinimapSelection, p as buildSpanSelectKeys, u as useEventNodes, q as kTranscriptCollapseScope, s as useProperty, t as TimelineSelectContext, T as TranscriptViewNodes, v as kCollapsibleEventTypes } from "./TranscriptViewNodes.js";
 import { N as NoContentsPanel } from "./NoContentsPanel.js";
-import { c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
+import { u as useTimeline, c as computeTimeMapping, T as TimelineSwimLanes, a as TranscriptOutline } from "./TimelineSwimLanes.js";
 function formatTaskName(parts) {
   const { taskSet, taskId, taskRepeat } = parts;
   if (!taskSet && !taskId && taskRepeat === void 0) {
@@ -1503,15 +1503,8 @@ const emptySourceSpans = /* @__PURE__ */ new Map();
 function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
   const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
   const state = useTimeline(timeline);
-  const prevTimelineRef = reactExports.useRef(timeline);
-  reactExports.useEffect(() => {
-    if (prevTimelineRef.current !== timeline) {
-      prevTimelineRef.current = timeline;
-      state.navigateTo("");
-    }
-  }, [timeline]);
   const visibleRows = reactExports.useMemo(
-    () => state.rows.filter((row, i) => i === 0 || rowHasEvents(row)),
+    () => state.rows.filter((row) => row.depth === 0 || rowHasEvents(row)),
     [state.rows]
   );
   const timeMapping = reactExports.useMemo(
@@ -1617,21 +1610,14 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]
   );
-  const {
-    select: timelineSelect,
-    drillDownAndSelect: timelineDrillDownAndSelect
-  } = timelineState;
+  const { select: timelineSelect } = timelineState;
   const selectBySpanId = reactExports.useCallback(
     (spanId) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      if (key.parallel && key.spanIndex) {
-        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
-      } else {
-        timelineSelect(key.name, key.spanIndex);
-      }
+      timelineSelect(key.key);
     },
-    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+    [spanSelectKeys, timelineSelect]
   );
   const suppressCollapseRef = reactExports.useRef(false);
   const [markerNavSticky, setMarkerNavSticky] = reactExports.useState(false);
@@ -1723,7 +1709,6 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     [isOutlineCollapsed, setOutlineCollapsed]
   );
   const showSwimlanes = timelineProp === true || timelineProp === "auto" && hasTimeline;
-  const atRoot = timelineState.breadcrumbs.length <= 1;
   const scrollToTop = reactExports.useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [scrollRef]);
@@ -1742,9 +1727,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
             layouts: timelineLayouts,
             timeline: timelineState,
             header: {
-              breadcrumbs: timelineState.breadcrumbs,
-              atRoot,
-              onNavigate: timelineState.navigateTo,
+              rootLabel: timelineData.root.name,
               onScrollToTop: scrollToTop,
               minimap: {
                 root: timelineData.root,

@@ -80,14 +80,15 @@ export default defineConfig(({ mode }) => {
             manualChunks(id) {
               if (id.includes("json-worker")) return "json-worker";
               if (!id.includes("node_modules")) return;
-              if (/mathjax|mathxyjax|markdown-it/.test(id))
-                return "vendor-markdown";
+              // Be careful about doing anything with mathxyjax3 since it ships
+              // pre-bundled chunks that communicate via globalThis.MathJax;
+              // forcing them into a single rollup chunk breaks the internal
+              // dynamic imports and global references.
               if (/ag-grid|apache-arrow|arquero|flechette|acorn/.test(id))
                 return "vendor-grid";
               if (/asciinema/.test(id)) return "vendor-asciinema";
               if (/prismjs/.test(id)) return "vendor-prism";
               if (/@tanstack/.test(id)) return "vendor-tanstack";
-              return "vendor";
             },
             entryFileNames: `assets/[name]-[hash].js`,
             chunkFileNames: `assets/[name]-[hash].js`,

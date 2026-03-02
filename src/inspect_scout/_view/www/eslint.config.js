@@ -62,7 +62,6 @@ export default tseslint.config(
       ],
       // These are disabled because we didn't have time to fix them, not because they are bad rules
       "no-unused-vars": "off",
-      // "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-redundant-type-constituents": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",

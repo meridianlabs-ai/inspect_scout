@@ -30,58 +30,7 @@ _DIST_DIR = Path(__file__).parent / "www" / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
 
 
-def resolve_dist_directory() -> Path:
-    """Resolve the frontend dist directory, downloading LFS objects if needed.
-
-    To test without Git LFS (simulates a user without LFS installed)::
-
-        # Enter test state — discard LFS content, leave pointer stubs
-        git lfs uninstall
-        GIT_LFS_SKIP_SMUDGE=1 git rm --cached -r src/inspect_scout/_view/www/dist
-        GIT_LFS_SKIP_SMUDGE=1 git reset --hard
-        # WARNING: git reset --hard discards uncommitted changes
-
-        # Verify — LFS files should be ~130-byte pointer stubs
-        head -1 src/inspect_scout/_view/www/dist/index.html
-        # Expected: "version https://git-lfs.github.com/spec/v1"
-
-        # Restore
-        git lfs install
-        git lfs pull
-    """
-    # The LFS module logs download progress at INFO, but scout's default log
-    # display level is WARNING. Add a temporary handler so users see download
-    # activity during startup.
-    lfs_logger = logging.getLogger("inspect_ai._lfs")
-    prev_level = lfs_logger.level
-    lfs_logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    lfs_logger.addHandler(handler)
-    try:
-        result = resolve_lfs_directory(
-            _DIST_DIR,
-            cache_dir=scout_cache_dir("dist"),
-            repo_url=_REPO_URL,
-        )
-        if result != _DIST_DIR:
-            display().print(f"Serving static data from {result}")
-
-        return result
-    except LFSError as e:
-        raise RuntimeError(
-            f"{e}\n"
-            "To fix this, either:\n"
-            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
-            "  2. Build locally: cd src/inspect_scout/_view/www && pnpm build"
-        ) from e
-    finally:
-        lfs_logger.removeHandler(handler)
-        lfs_logger.setLevel(prev_level)
-
-
-class ScoutStaticFiles(StaticFiles):
+class _ScoutStaticFiles(StaticFiles):
     """StaticFiles with runtime config injection and cache headers.
 
     Hashed assets under ``assets/`` are served with immutable cache headers.
@@ -174,10 +123,10 @@ def view_server(
     app = FastAPI()
     app.mount("/api/v2", v2_api)
 
-    dist = resolve_dist_directory()
+    dist = _resolve_dist_directory()
     app.mount(
         "/",
-        ScoutStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),
+        _ScoutStaticFiles(directory=dist.as_posix(), html=True, root_path=root_path),
         name="static",
     )
 
@@ -224,3 +173,54 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         if auth_header != self.authorization:
             return Response("Unauthorized", status_code=401)
         return await call_next(request)
+
+
+def _resolve_dist_directory() -> Path:
+    """Resolve the frontend dist directory, downloading LFS objects if needed.
+
+    To test without Git LFS (simulates a user without LFS installed)::
+
+        # Enter test state — discard LFS content, leave pointer stubs
+        git lfs uninstall
+        GIT_LFS_SKIP_SMUDGE=1 git rm --cached -r src/inspect_scout/_view/www/dist
+        GIT_LFS_SKIP_SMUDGE=1 git reset --hard
+        # WARNING: git reset --hard discards uncommitted changes
+
+        # Verify — LFS files should be ~130-byte pointer stubs
+        head -1 src/inspect_scout/_view/www/dist/index.html
+        # Expected: "version https://git-lfs.github.com/spec/v1"
+
+        # Restore
+        git lfs install
+        git lfs pull
+    """
+    # The LFS module logs download progress at INFO, but scout's default log
+    # display level is WARNING. Add a temporary handler so users see download
+    # activity during startup.
+    lfs_logger = logging.getLogger("inspect_ai._lfs")
+    prev_level = lfs_logger.level
+    lfs_logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    lfs_logger.addHandler(handler)
+    try:
+        result = resolve_lfs_directory(
+            _DIST_DIR,
+            cache_dir=scout_cache_dir("dist"),
+            repo_url=_REPO_URL,
+        )
+        if result != _DIST_DIR:
+            display().print(f"Serving static data from {result}")
+
+        return result
+    except LFSError as e:
+        raise RuntimeError(
+            f"{e}\n"
+            "To fix this, either:\n"
+            "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
+            "  2. Build locally: cd src/inspect_scout/_view/www && pnpm build"
+        ) from e
+    finally:
+        lfs_logger.removeHandler(handler)
+        lfs_logger.setLevel(prev_level)

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useMemo, useState } from "react";
+import { FC, useCallback, useMemo, useRef, useState } from "react";
 
 import { ApplicationIcons } from "../../../components/icons";
 import { PopOver } from "../../../components/PopOver";
@@ -12,6 +12,7 @@ import {
   createBranchSpan,
   findBranchesByForkedAt,
 } from "../hooks/useTimeline";
+import type { UseTimelineConfigResult } from "../hooks/useTimelineConfig";
 import { buildSelectionKey, parseSelection } from "../timelineEventNodes";
 import type {
   PositionedMarker,
@@ -21,6 +22,7 @@ import type {
 import { formatTokenCount } from "../utils/swimlaneLayout";
 
 import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
+import { TimelineOptionsPopover } from "./TimelineOptionsPopover";
 import styles from "./TimelineSwimLanes.module.css";
 
 // =============================================================================
@@ -92,6 +94,8 @@ export interface TimelineHeaderProps {
   breadcrumbs?: BreadcrumbSegment[];
   /** Called when a breadcrumb segment is clicked. */
   onBreadcrumbSelect?: (key: string) => void;
+  /** Timeline config for the options popover. When provided, shows the options button. */
+  timelineConfig?: UseTimelineConfigResult;
 }
 
 interface TimelineSwimLanesProps {
@@ -537,9 +541,13 @@ const HeaderRow: FC<TimelineHeaderProps> = ({
   onScrollToTop,
   breadcrumbs,
   onBreadcrumbSelect,
+  timelineConfig,
 }) => {
   const hasBreadcrumbs = breadcrumbs && breadcrumbs.length > 1;
   const rootDisplay = rootLabel === "solvers" ? "main" : rootLabel;
+
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsButtonRef = useRef<HTMLButtonElement | null>(null);
 
   return (
     <div className={styles.breadcrumbRow}>
@@ -571,7 +579,28 @@ const HeaderRow: FC<TimelineHeaderProps> = ({
           {rootDisplay}
         </button>
       )}
+      {timelineConfig && (
+        <button
+          ref={optionsButtonRef}
+          type="button"
+          className={styles.optionsButton}
+          onClick={() => setOptionsOpen((prev) => !prev)}
+          title="Timeline options"
+          aria-label="Timeline options"
+        >
+          <i className={ApplicationIcons.threeDots} />
+        </button>
+      )}
       {minimap && <TimelineMinimap {...minimap} />}
+      {timelineConfig && (
+        <TimelineOptionsPopover
+          isOpen={optionsOpen}
+          setIsOpen={setOptionsOpen}
+          // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver handles this in effects
+          positionEl={optionsButtonRef.current}
+          config={timelineConfig}
+        />
+      )}
     </div>
   );
 };

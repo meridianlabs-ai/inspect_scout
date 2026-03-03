@@ -318,6 +318,30 @@
   overflow: hidden;
 }
 
+.optionsButton {
+  background: none;
+  border: 1px solid var(--vscode-widget-border, var(--bs-border-color));
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 7px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 3px;
+  opacity: 0.6;
+}
+
+.optionsButton:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground);
+  opacity: 1;
+}
+
 .breadcrumbTrail {
   display: flex;
   align-items: center;

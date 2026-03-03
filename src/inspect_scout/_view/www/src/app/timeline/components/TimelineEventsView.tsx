@@ -30,6 +30,7 @@ import { useProperty } from "../../../state/hooks/useProperty";
 import { useStore } from "../../../state/store";
 import type { Event } from "../../../types/api-types";
 import type { TimelineOptions } from "../hooks/useTimeline";
+import { useTimelineConfig } from "../hooks/useTimelineConfig";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
 import { buildSpanSelectKeys } from "../timelineEventNodes";
 import type { MarkerConfig } from "../utils/markers";
@@ -119,6 +120,16 @@ export const TimelineEventsView = forwardRef<
   ref
 ) {
   // ---------------------------------------------------------------------------
+  // Timeline config (persistent user preferences)
+  // ---------------------------------------------------------------------------
+
+  const timelineConfig = useTimelineConfig();
+
+  // Props override hook values when explicitly provided
+  const resolvedMarkerConfig = markerConfig ?? timelineConfig.markerConfig;
+  const resolvedAgentConfig = agentConfig ?? timelineConfig.agentConfig;
+
+  // ---------------------------------------------------------------------------
   // Timeline pipeline
   // ---------------------------------------------------------------------------
 
@@ -131,7 +142,7 @@ export const TimelineEventsView = forwardRef<
     sourceSpans,
     minimapSelection,
     hasTimeline,
-  } = useTranscriptTimeline(events, markerConfig, agentConfig);
+  } = useTranscriptTimeline(events, resolvedMarkerConfig, resolvedAgentConfig);
 
   // ---------------------------------------------------------------------------
   // Span selection context (agent card clicks → swimlane selection)
@@ -310,6 +321,7 @@ export const TimelineEventsView = forwardRef<
                     selection: minimapSelection,
                     mapping: rootTimeMapping,
                   },
+                  timelineConfig,
                 }}
                 onMarkerNavigate={onMarkerNavigate}
                 isSticky={isSwimLaneSticky}

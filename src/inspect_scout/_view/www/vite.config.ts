@@ -78,17 +78,13 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks(id) {
-              if (id.includes("json-worker")) return "json-worker";
-              if (!id.includes("node_modules")) return;
-              // Be careful about doing anything with mathxyjax3 since it ships
-              // pre-bundled chunks that communicate via globalThis.MathJax;
-              // forcing them into a single rollup chunk breaks the internal
-              // dynamic imports and global references.
-              if (/ag-grid|apache-arrow|arquero|flechette|acorn/.test(id))
-                return "vendor-grid";
-              if (/asciinema/.test(id)) return "vendor-asciinema";
-              if (/prismjs/.test(id)) return "vendor-prism";
-              if (/@tanstack/.test(id)) return "vendor-tanstack";
+              // Let mathxyjax3's pre-built chunks stay separate —
+              // they use a global MathJax object set up by their entry
+              // and break if inlined out of order.
+              if (id.includes("mathxyjax3/dist/") && !id.endsWith("index.js")) {
+                return undefined;
+              }
+              // Everything else goes into the main bundle
             },
             entryFileNames: `assets/[name]-[hash].js`,
             chunkFileNames: `assets/[name]-[hash].js`,

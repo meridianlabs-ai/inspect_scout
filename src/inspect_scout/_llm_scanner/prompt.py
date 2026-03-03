@@ -49,6 +49,10 @@ LABELS_ANSWER_FORMAT_MULTI = (
     + "'ANSWER: $LETTERS' (without quotes) where $LETTERS is a comma-separated list of letters from {{ letters }} representing:\n{{ formatted_choices }}"
 )
 
+LABELS_ANSWER_FORMAT_MULTI_NONE_SUFFIX = (
+    "\n\nOr if none of the options apply, 'ANSWER: NONE'"
+)
+
 STR_ANSWER_PROMPT = "Answer the following question about the transcript above:"
 STR_ANSWER_FORMAT = (
     ANSWER_FORMAT_PREAMBLE

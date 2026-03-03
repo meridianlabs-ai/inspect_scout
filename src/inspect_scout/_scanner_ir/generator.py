@@ -341,7 +341,8 @@ def _generate_answer_arg(spec: LLMScannerSpec) -> str:
 
         case "multi_labels":
             labels_repr = repr(spec.labels)
-            return f"AnswerMultiLabel(labels={labels_repr})"
+            none_arg = ", allow_none=True" if spec.allow_none else ""
+            return f"AnswerMultiLabel(labels={labels_repr}{none_arg})"
 
         case "structured":
             if spec.structured_spec:
@@ -736,14 +737,22 @@ def _answer_to_cst(spec: LLMScannerSpec) -> cst.BaseExpression:
 
         case "multi_labels":
             if spec.labels:
+                args = [
+                    cst.Arg(
+                        keyword=cst.Name("labels"),
+                        value=_list_to_cst(spec.labels),
+                    )
+                ]
+                if spec.allow_none:
+                    args.append(
+                        cst.Arg(
+                            keyword=cst.Name("allow_none"),
+                            value=cst.Name("True"),
+                        )
+                    )
                 return cst.Call(
                     func=cst.Name("AnswerMultiLabel"),
-                    args=[
-                        cst.Arg(
-                            keyword=cst.Name("labels"),
-                            value=_list_to_cst(spec.labels),
-                        )
-                    ],
+                    args=args,
                 )
             return cst.SimpleString('"boolean"')
 

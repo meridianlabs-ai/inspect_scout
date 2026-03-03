@@ -24,7 +24,7 @@
       "completed": "2024-01-01T00:00:04Z",
       "input": [
         {"role": "system", "content": "Agent A"},
-        {"role": "user", "content": "Do task A"}
+        {"role": "user", "content": "Do task A again"}
       ],
       "output": {
         "usage": {"input_tokens": 100, "output_tokens": 50},

@@ -49,6 +49,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   scrollRef,
 }) => {
   const navigate = useNavigate();
+  // When the validation sidebar is open, a VscodeSplitLayout wraps the content
+  // in a separate scrollable div (splitStart). The virtualizer and other scroll
+  // listeners need the *actual* scroll container, not the outer transcriptContainer.
+  const splitStartRef = useRef<HTMLDivElement | null>(null);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const { getEventUrl } = useTranscriptNavigation();
   const tabParam = searchParams.get("tab");
@@ -152,8 +157,13 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setTranscriptState]
   );
 
-  // Validation sidebar - URL is the source of truth
+  // Validation sidebar - URL is the source of truth.
+  // When the sidebar is open, the split layout's start pane becomes the actual
+  // scroll container (not the outer transcriptContainer), so we swap the ref.
   const validationSidebarCollapsed = !getValidationParam(searchParams);
+  const activeScrollRef = validationSidebarCollapsed
+    ? scrollRef
+    : splitStartRef;
 
   const toggleValidationSidebar = useCallback(() => {
     setSearchParams((prevParams) => {
@@ -272,7 +282,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         toolCallStyle={"complete"}
         indented={false}
         className={styles.chatList}
-        scrollRef={scrollRef}
+        scrollRef={activeScrollRef}
         showLabels={true}
       />
     </TabPanel>
@@ -293,7 +303,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       <TimelineEventsView
         ref={viewRef}
         events={filteredEvents}
-        scrollRef={scrollRef}
+        scrollRef={activeScrollRef}
         offsetTop={40}
         initialEventId={eventParam}
         defaultOutlineExpanded={true}
@@ -385,7 +395,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
           minEnd="180px"
           minStart="200px"
         >
-          <div slot="start" className={styles.splitStart}>
+          <div slot="start" ref={splitStartRef} className={styles.splitStart}>
             {tabSetContent}
           </div>
           <div slot="end" className={styles.validationSidebar}>

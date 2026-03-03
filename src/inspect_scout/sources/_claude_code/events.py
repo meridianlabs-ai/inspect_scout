@@ -83,6 +83,7 @@ async def _load_agent_events(
     max_depth: int = 5,
     session_file: Path | None = None,
     agent_id: str | None = None,
+    prompt: str | None = None,
 ) -> list[Event]:
     """Load and process events from an agent session file or stream.
 
@@ -97,6 +98,7 @@ async def _load_agent_events(
         max_depth: Maximum remaining depth for loading nested subagents (0 = no loading)
         session_file: Path to the parent session JSONL file (for locating subagent files)
         agent_id: Pre-extracted agent ID (e.g., from toolUseResult.agentId)
+        prompt: The agent's prompt (used for file matching with team agents)
 
     Returns:
         List of Scout events from the agent session

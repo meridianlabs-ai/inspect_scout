@@ -108,10 +108,8 @@ def answer_from_argument(
                 multi_classification=True,
                 allow_none=answer.allow_none,
             )
-        case AnswerStructured():
-            return _StructuredAnswer(answer)
         case _:
-            raise ValueError(f"Invalid answer type: {answer}")
+            return _StructuredAnswer(answer)
 
 
 def answer_type(

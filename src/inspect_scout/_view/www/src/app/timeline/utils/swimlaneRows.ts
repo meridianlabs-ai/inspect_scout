@@ -83,13 +83,19 @@ const OVERLAP_TOLERANCE_MS = 100;
  * @returns Array of SwimlaneRow, with the parent row always first,
  *          followed by child rows ordered by earliest start time.
  */
-export function computeSwimlaneRows(node: TimelineSpan): SwimlaneRow[] {
+export function computeSwimlaneRows(
+  node: TimelineSpan,
+  options?: { includeUtility?: boolean }
+): SwimlaneRow[] {
+  const includeUtility = options?.includeUtility ?? false;
+
   // Parent row is always first
   const parentRow = buildParentRow(node);
 
-  // Collect non-utility child spans
+  // Collect child spans, optionally filtering utility agents
   const children = node.content.filter(
-    (item): item is TimelineSpan => item.type === "span" && !item.utility
+    (item): item is TimelineSpan =>
+      item.type === "span" && (includeUtility || !item.utility)
   );
 
   if (children.length === 0) {
@@ -243,9 +249,18 @@ function buildRowFromGroup(
  * with multiple bars. Same-name overlapping spans (parallel) are expanded into
  * separate numbered rows.
  */
-export function computeFlatSwimlaneRows(root: TimelineSpan): SwimlaneRow[] {
+export function computeFlatSwimlaneRows(
+  root: TimelineSpan,
+  options?: { includeUtility?: boolean }
+): SwimlaneRow[] {
+  const includeUtility = options?.includeUtility ?? false;
   const parentRow = buildParentRow(root);
-  const childRows = flattenChildren([root], 0, root.name.toLowerCase());
+  const childRows = flattenChildren(
+    [root],
+    0,
+    root.name.toLowerCase(),
+    includeUtility
+  );
   return [parentRow, ...childRows];
 }
 
@@ -279,13 +294,14 @@ interface FlatEntry {
 function flattenChildren(
   nodes: TimelineSpan[],
   parentDepth: number,
-  parentKey: string
+  parentKey: string,
+  includeUtility: boolean
 ): SwimlaneRow[] {
-  // Collect all non-utility child spans from all parent nodes
+  // Collect child spans, optionally filtering utility agents
   const children: TimelineSpan[] = [];
   for (const node of nodes) {
     for (const item of node.content) {
-      if (item.type === "span" && !item.utility) {
+      if (item.type === "span" && (includeUtility || !item.utility)) {
         children.push(item);
       }
     }
@@ -354,7 +370,7 @@ function flattenChildren(
       startTime: entry.startTime,
       endTime: entry.endTime,
     });
-    result.push(...flattenChildren(entry.spans, depth, entry.key));
+    result.push(...flattenChildren(entry.spans, depth, entry.key, includeUtility));
   }
 
   return result;

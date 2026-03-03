@@ -29,6 +29,7 @@ import {
 import { useProperty } from "../../../state/hooks/useProperty";
 import { useStore } from "../../../state/store";
 import type { Event } from "../../../types/api-types";
+import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
 import { buildSpanSelectKeys } from "../timelineEventNodes";
 import type { MarkerConfig } from "../utils/markers";
@@ -61,6 +62,8 @@ interface TimelineEventsViewProps {
   markerConfig?: MarkerConfig;
   /** Controls swimlane visibility. `"auto"` shows when data has child spans. Default: `"auto"`. */
   timeline?: true | false | "auto";
+  /** Controls which agents are included in the timeline. */
+  agentConfig?: TimelineOptions;
   className?: string;
 }
 
@@ -110,6 +113,7 @@ export const TimelineEventsView = forwardRef<
     onMarkerNavigate,
     markerConfig,
     timeline: timelineProp = "auto",
+    agentConfig,
     className,
   },
   ref
@@ -127,7 +131,7 @@ export const TimelineEventsView = forwardRef<
     sourceSpans,
     minimapSelection,
     hasTimeline,
-  } = useTranscriptTimeline(events, markerConfig);
+  } = useTranscriptTimeline(events, markerConfig, agentConfig);
 
   // ---------------------------------------------------------------------------
   // Span selection context (agent card clicks → swimlane selection)

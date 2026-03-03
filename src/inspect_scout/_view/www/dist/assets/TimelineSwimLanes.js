@@ -839,11 +839,15 @@ function deriveBranchLabel(branch, index) {
   }
   return `Branch ${index}`;
 }
-function useTimeline(timeline) {
+function useTimeline(timeline, options) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const includeUtility = options?.includeUtility ?? false;
   const selectedParam = searchParams.get(kSelectedParam) ?? null;
   const node = timeline.root;
-  const rows = reactExports.useMemo(() => computeFlatSwimlaneRows(node), [node]);
+  const rows = reactExports.useMemo(
+    () => computeFlatSwimlaneRows(node, { includeUtility }),
+    [node, includeUtility]
+  );
   const selected2 = reactExports.useMemo(() => {
     if (selectedParam !== null) return selectedParam;
     return rows[0]?.key ?? null;

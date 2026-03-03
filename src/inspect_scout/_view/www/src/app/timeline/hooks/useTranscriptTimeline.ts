@@ -30,7 +30,11 @@ import {
 } from "../utils/swimlaneLayout";
 import { computeTimeMapping, type TimeMapping } from "../utils/timeMapping";
 
-import { type TimelineState, useTimeline } from "./useTimeline";
+import {
+  type TimelineOptions,
+  type TimelineState,
+  useTimeline,
+} from "./useTimeline";
 
 const emptySourceSpans: ReadonlyMap<string, TimelineSpan> = new Map();
 
@@ -57,11 +61,12 @@ interface TranscriptTimelineResult {
 
 export function useTranscriptTimeline(
   events: Event[],
-  markerConfig: MarkerConfig = defaultMarkerConfig
+  markerConfig: MarkerConfig = defaultMarkerConfig,
+  timelineOptions?: TimelineOptions
 ): TranscriptTimelineResult {
   const timeline = useMemo(() => buildTimeline(events), [events]);
 
-  const state = useTimeline(timeline);
+  const state = useTimeline(timeline, timelineOptions);
 
   // Filter out child rows whose spans contain no events.
   // The parent row (depth 0) is always kept.

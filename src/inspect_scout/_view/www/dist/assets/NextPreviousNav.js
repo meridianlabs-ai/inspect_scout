@@ -1500,9 +1500,9 @@ const StickyScroll = ({
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: wrapperRef, style: wrapperStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: contentRef, className: contentClassName, style: contentStyle, children }) });
 };
 const emptySourceSpans = /* @__PURE__ */ new Map();
-function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig) {
+function useTranscriptTimeline(events, markerConfig = defaultMarkerConfig, timelineOptions) {
   const timeline = reactExports.useMemo(() => buildTimeline(events), [events]);
-  const state = useTimeline(timeline);
+  const state = useTimeline(timeline, timelineOptions);
   const visibleRows = reactExports.useMemo(
     () => state.rows.filter((row) => row.depth === 0 || rowHasEvents(row)),
     [state.rows]
@@ -1594,6 +1594,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
   onMarkerNavigate,
   markerConfig,
   timeline: timelineProp = "auto",
+  agentConfig,
   className
 }, ref) {
   const {
@@ -1605,7 +1606,7 @@ const TimelineEventsView = reactExports.forwardRef(function TimelineEventsView2(
     sourceSpans,
     minimapSelection,
     hasTimeline
-  } = useTranscriptTimeline(events, markerConfig);
+  } = useTranscriptTimeline(events, markerConfig, agentConfig);
   const spanSelectKeys = reactExports.useMemo(
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]

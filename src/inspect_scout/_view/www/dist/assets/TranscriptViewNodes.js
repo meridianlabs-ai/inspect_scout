@@ -14244,16 +14244,22 @@ function groupByName(spans) {
   }
   return Array.from(map2.values()).map((g) => [g.displayName, g.spans]);
 }
-function computeFlatSwimlaneRows(root2) {
+function computeFlatSwimlaneRows(root2, options) {
+  const includeUtility = options?.includeUtility ?? false;
   const parentRow = buildParentRow(root2);
-  const childRows = flattenChildren([root2], 0, root2.name.toLowerCase());
+  const childRows = flattenChildren(
+    [root2],
+    0,
+    root2.name.toLowerCase(),
+    includeUtility
+  );
   return [parentRow, ...childRows];
 }
-function flattenChildren(nodes, parentDepth, parentKey) {
+function flattenChildren(nodes, parentDepth, parentKey, includeUtility) {
   const children2 = [];
   for (const node2 of nodes) {
     for (const item of node2.content) {
-      if (item.type === "span" && !item.utility) {
+      if (item.type === "span" && (includeUtility || !item.utility)) {
         children2.push(item);
       }
     }
@@ -14310,7 +14316,7 @@ function flattenChildren(nodes, parentDepth, parentKey) {
       startTime: entry.startTime,
       endTime: entry.endTime
     });
-    result2.push(...flattenChildren(entry.spans, depth, entry.key));
+    result2.push(...flattenChildren(entry.spans, depth, entry.key, includeUtility));
   }
   return result2;
 }

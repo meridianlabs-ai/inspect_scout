@@ -138,8 +138,17 @@ function deriveBranchLabel(branch: TimelineBranch, index: number): string {
  * Computes a fully expanded flat list of swimlane rows from the timeline root.
  * Selection is driven by the `selected` URL search param using row keys.
  */
-export function useTimeline(timeline: Timeline): TimelineState {
+export interface TimelineOptions {
+  /** Include utility agents in the swimlane rows. Default: false. */
+  includeUtility?: boolean;
+}
+
+export function useTimeline(
+  timeline: Timeline,
+  options?: TimelineOptions
+): TimelineState {
   const [searchParams, setSearchParams] = useSearchParams();
+  const includeUtility = options?.includeUtility ?? false;
 
   const selectedParam = searchParams.get(kSelectedParam) ?? null;
 
@@ -147,7 +156,10 @@ export function useTimeline(timeline: Timeline): TimelineState {
   const node = timeline.root;
 
   // Compute flat swimlane rows for the entire tree
-  const rows = useMemo(() => computeFlatSwimlaneRows(node), [node]);
+  const rows = useMemo(
+    () => computeFlatSwimlaneRows(node, { includeUtility }),
+    [node, includeUtility]
+  );
 
   // Default selection: explicit param > root row key
   const selected = useMemo(() => {

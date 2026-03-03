@@ -894,7 +894,7 @@ async def test_transcript_messages_with_timelines() -> None:
 
 @pytest.mark.anyio
 async def test_transcript_messages_with_events() -> None:
-    """Dispatches to segment_messages with events."""
+    """Dispatches to timeline_messages when events are present."""
     events: list[Event] = [
         _make_model_event(input=[_user1], output_content="Response"),
     ]
@@ -916,7 +916,7 @@ async def test_transcript_messages_with_events() -> None:
         results.append(seg)
 
     assert len(results) == 1
-    assert not isinstance(results[0], TimelineMessages)
+    assert isinstance(results[0], TimelineMessages)
 
 
 @pytest.mark.anyio

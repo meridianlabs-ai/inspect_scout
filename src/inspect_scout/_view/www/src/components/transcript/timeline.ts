@@ -621,6 +621,26 @@ function buildSpanFromGenericSpan(
 }
 
 /**
+ * Recursively unwrap solver-type spans that contain exactly one agent child.
+ *
+ * This flattens unnecessary nesting (e.g. a "react" solver wrapping a single
+ * agent) so the timeline shows the agent directly.
+ */
+function unwrapSolverSpan(span: SpanNode): SpanNode {
+  while (span.type === "solver") {
+    const agentChildren = span.children.filter(
+      (child): child is SpanNode =>
+        isSpanNode(child) && child.type === "agent"
+    );
+    if (agentChildren.length !== 1) {
+      break;
+    }
+    span = agentChildren[0]!;
+  }
+  return span;
+}
+
+/**
  * Build agent hierarchy from the solvers span.
  *
  * Looks for explicit agent spans (type='agent') within the solvers span.
@@ -651,8 +671,9 @@ function buildAgentFromSolversSpan(
     // Build from explicit agent spans
     const firstAgentSpan = agentSpans[0];
     if (agentSpans.length === 1 && firstAgentSpan) {
+      const target = unwrapSolverSpan(firstAgentSpan);
       const result = buildSpanFromAgentSpan(
-        firstAgentSpan,
+        target,
         hasExplicitBranches,
         otherItems
       );
@@ -662,8 +683,8 @@ function buildAgentFromSolversSpan(
       // Agent span had no content — return an empty span preserving identity
       return {
         type: "span",
-        id: firstAgentSpan.id,
-        name: firstAgentSpan.name.toLowerCase(),
+        id: target.id,
+        name: target.name.toLowerCase(),
         spanType: "agent",
         content: [],
         branches: [],
@@ -1389,6 +1410,7 @@ export function buildTimeline(events: Event[]): Timeline {
     }
 
     if (agentNode) {
+      agentNode.name = "main";
       wrapUtilityEvents(agentNode);
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);

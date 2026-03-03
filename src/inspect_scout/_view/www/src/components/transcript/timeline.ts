@@ -346,6 +346,10 @@ function buildSpanTree(events: Event[]): TreeItem[] {
   const spansById = new Map<string, SpanNode>();
   const spanStack: SpanNode[] = [];
 
+  // Pre-register all spans so events referencing later spans can find them.
+  // This handles the case where span_begin events appear after the events
+  // they contain (e.g. agent spans appended to the transcript after their
+  // child events).
   for (const event of events) {
     if (event.event === "span_begin") {
       const span: SpanNode = {
@@ -358,6 +362,13 @@ function buildSpanTree(events: Event[]): TreeItem[] {
         beginEvent: event,
       };
       spansById.set(span.id, span);
+    }
+  }
+
+  // Main loop: build hierarchy and assign events to spans
+  for (const event of events) {
+    if (event.event === "span_begin") {
+      const span = spansById.get(event.id)!;
 
       // Determine where to place this span
       if (span.parentId && spansById.has(span.parentId)) {
@@ -400,6 +411,21 @@ function buildSpanTree(events: Event[]): TreeItem[] {
         root.push(event);
       }
     }
+  }
+
+  // Sort each span's children by timestamp to ensure chronological order,
+  // since events with a matching span_id may appear before the span_begin
+  // in the array.
+  const getTimestamp = (item: TreeItem): string => {
+    if (isSpanNode(item)) {
+      return item.beginEvent.timestamp;
+    }
+    return item.timestamp;
+  };
+  for (const span of spansById.values()) {
+    span.children.sort((a, b) =>
+      getTimestamp(a).localeCompare(getTimestamp(b)),
+    );
   }
 
   return root;

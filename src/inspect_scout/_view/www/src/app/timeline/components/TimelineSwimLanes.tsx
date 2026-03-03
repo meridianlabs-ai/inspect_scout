@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { FC, useCallback, useMemo, useState } from "react";
 
+import { formatTime } from "@tsmono/util";
+
 import { ApplicationIcons } from "../../../components/icons";
 import { PopOver } from "../../../components/PopOver";
 import type {
@@ -8,7 +10,6 @@ import type {
   TimelineSpan,
 } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
-import { formatTime } from "../../../utils/format";
 import {
   type BreadcrumbSegment,
   createBranchSpan,

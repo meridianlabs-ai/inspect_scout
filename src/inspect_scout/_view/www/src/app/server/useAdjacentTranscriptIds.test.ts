@@ -3,13 +3,14 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
+import { encodeBase64Url } from "@tsmono/util";
+
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
 import type {
   TranscriptInfo,
   TranscriptsResponse,
 } from "../../types/api-types";
-import { encodeBase64Url } from "../../utils/base64url";
 
 import { useAdjacentTranscriptIds } from "./useAdjacentTranscriptIds";
 

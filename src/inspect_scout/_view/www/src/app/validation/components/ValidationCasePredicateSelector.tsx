@@ -4,7 +4,8 @@ import {
 } from "@vscode-elements/react-elements";
 import { FC } from "react";
 
-import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
+import { useDropdownPosition } from "@tsmono/react/hooks";
+
 import { ValidationCase } from "../../../types/api-types";
 
 import styles from "./ValidationSetSelector.module.css";

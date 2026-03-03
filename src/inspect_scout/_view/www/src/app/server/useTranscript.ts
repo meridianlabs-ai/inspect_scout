@@ -1,9 +1,10 @@
 import { skipToken } from "@tanstack/react-query";
 
+import { useAsyncDataFromQuery } from "@tsmono/react/hooks";
+import { AsyncData } from "@tsmono/util";
+
 import { useApi } from "../../state/store";
 import { Transcript } from "../../types/api-types";
-import { AsyncData } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 type TranscriptParams = {
   location: string;

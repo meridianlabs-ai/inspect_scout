@@ -2,9 +2,10 @@ import { VscodeTextfield } from "@vscode-elements/react-elements";
 import { FC, useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
+import { dirname } from "@tsmono/util";
+
 import { Modal } from "../../../components/Modal";
 import { AppConfig } from "../../../types/api-types";
-import { dirname } from "../../../utils/path";
 import { projectOrAppAliasedPath } from "../../server/useAppConfig";
 import {
   getFilenameFromUri,

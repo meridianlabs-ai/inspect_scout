@@ -1,7 +1,8 @@
 import { FC } from "react";
 
+import { formatDateTime } from "@tsmono/util";
+
 import { ErrorEvent } from "../../types/api-types";
-import { formatDateTime } from "../../utils/format";
 import { ANSIDisplay } from "../AnsiDisplay";
 import { ApplicationIcons } from "../icons";
 

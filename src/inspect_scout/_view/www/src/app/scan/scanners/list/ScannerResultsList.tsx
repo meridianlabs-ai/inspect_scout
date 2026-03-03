@@ -4,6 +4,8 @@ import { FC, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { VirtuosoHandle } from "react-virtuoso";
 
+import { basename } from "@tsmono/util";
+
 import { LiveVirtualList } from "../../../../components/LiveVirtualList";
 import { LoadingBar } from "../../../../components/LoadingBar";
 import { NoContentsPanel } from "../../../../components/NoContentsPanel";
@@ -11,7 +13,6 @@ import { useLoggingNavigate } from "../../../../debugging/navigationDebugging";
 import { scanResultRoute } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
 import { Status } from "../../../../types/api-types";
-import { basename } from "../../../../utils/path";
 import { useScanResultSummaries } from "../../../hooks/useScanResultSummaries";
 import { useScanRoute } from "../../../hooks/useScanRoute";
 import {

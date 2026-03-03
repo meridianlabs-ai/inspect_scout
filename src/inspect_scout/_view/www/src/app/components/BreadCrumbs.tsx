@@ -2,8 +2,7 @@ import clsx from "clsx";
 import { FC, Fragment, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 
-import { basename, dirname } from "../../utils/path";
-import { prettyDirUri } from "../../utils/uri";
+import { basename, dirname, prettyDirUri } from "@tsmono/util";
 
 import styles from "./Breadcrumbs.module.css";
 import {

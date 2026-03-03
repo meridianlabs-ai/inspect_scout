@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 
-import { useMapAsyncData } from "../../hooks/useMapAsyncData";
+import { useMapAsyncData } from "@tsmono/react/hooks";
+import { AsyncData, data } from "@tsmono/util";
+
 import { useStore } from "../../state/store";
 import { Status } from "../../types/api-types";
-import { AsyncData, data } from "../../utils/asyncData";
 
 import { useSelectedScan } from "./useSelectedScan";
 

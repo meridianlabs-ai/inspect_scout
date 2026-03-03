@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { formatDateTime } from "@tsmono/util";
+
 import { StepEvent } from "../../types/api-types";
-import { formatDateTime } from "../../utils/format";
 
 import { EventPanel } from "./event/EventPanel";
 import { kSandboxSignalName } from "./transform/fixups";

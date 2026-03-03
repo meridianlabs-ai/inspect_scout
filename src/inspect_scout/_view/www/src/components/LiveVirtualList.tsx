@@ -9,7 +9,8 @@ import {
 } from "react";
 import { Components, Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import { usePreviousValue } from "../hooks/usePreviousValue";
+import { usePreviousValue } from "@tsmono/react/hooks";
+
 import { useProperty } from "../state/hooks/useProperty";
 import { useRafThrottle, useVirtuosoState } from "../state/scrolling";
 

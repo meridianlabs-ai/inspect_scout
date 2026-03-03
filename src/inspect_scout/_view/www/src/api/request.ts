@@ -1,14 +1,8 @@
-import { asyncJsonParse } from "../utils/json-worker";
+import { ApiError, asyncJsonParse } from "@tsmono/util";
+
+export { ApiError };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "HEAD";
-
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 export interface Request<T> {
   headers?: Record<string, string>;

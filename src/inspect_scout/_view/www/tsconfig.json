@@ -22,6 +22,20 @@
     "useUnknownInCatchVariables": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
+    // BEGIN MONOREPO MIGRATION HACK — remove when www/ moves into ts-mono workspace.
+    "baseUrl": ".",
+    "paths": {
+      "@tsmono/util": ["../ts-mono/packages/util/src/index.ts"],
+      "@tsmono/react": ["../ts-mono/packages/react/src/index.ts"],
+      "@tsmono/react/components": [
+        "../ts-mono/packages/react/src/components/index.ts"
+      ],
+      "@tsmono/react/hooks": ["../ts-mono/packages/react/src/hooks/index.ts"],
+      "@tanstack/react-query": ["./node_modules/@tanstack/react-query"],
+      "react": ["./node_modules/@types/react"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"]
+    },
+    // END MONOREPO MIGRATION HACK
     "plugins": [
       {
         "name": "typescript-plugin-css-modules"

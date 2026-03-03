@@ -10,6 +10,8 @@ import { create } from "zustand";
 import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
+import { debounce } from "@tsmono/util";
+
 import { ScoutApiV2 } from "../api/api";
 import { ColumnSizingStrategyKey } from "../app/components/columnSizing";
 import type { ScanColumnKey } from "../app/scans/columns";
@@ -21,7 +23,6 @@ import {
 } from "../app/types";
 import type { SimpleCondition } from "../query/types";
 import { TranscriptInfo } from "../types/api-types";
-import { debounce } from "../utils/sync";
 
 // Filter types for columns
 export type FilterType =

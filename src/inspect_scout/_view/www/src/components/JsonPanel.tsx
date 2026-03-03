@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { CSSProperties, FC, useMemo, useRef } from "react";
 
 import "./JsonPanel.css";
-import { maybeBase64 } from "../utils/base64";
+import { maybeBase64 } from "@tsmono/util";
 
 import { usePrismHighlight } from "./prism";
 

@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import { FC, ReactNode } from "react";
 
+import { asJsonObjArray, isJson } from "@tsmono/util";
+
 import { ContentToolUse } from "../../../types/api-types";
-import { asJsonObjArray, isJson } from "../../../utils/json";
 import { RecordTree } from "../../content/RecordTree";
 import { RenderedContent } from "../../content/RenderedContent";
 import ExpandablePanel from "../../ExpandablePanel";

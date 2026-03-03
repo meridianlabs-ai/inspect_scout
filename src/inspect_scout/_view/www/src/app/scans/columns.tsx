@@ -1,9 +1,9 @@
 import clsx from "clsx";
 
+import { formatNumber, printObject } from "@tsmono/util";
+
 import { ApplicationIcons } from "../../components/icons";
 import type { ScanRow as ApiScanRow } from "../../types/api-types";
-import { formatNumber } from "../../utils/format";
-import { printObject } from "../../utils/object";
 import type { AvailableColumn } from "../components/columnFilter";
 import { ExtendedColumnDef, BaseColumnMeta } from "../components/columnTypes";
 

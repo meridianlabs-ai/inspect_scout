@@ -5,8 +5,9 @@
  * rendering. All functions are pure with no DOM or React dependencies.
  */
 
+import { formatPrettyDecimal } from "@tsmono/util";
+
 import type { TimelineSpan } from "../../../components/transcript/timeline";
-import { formatPrettyDecimal } from "../../../utils/format";
 
 import { type MarkerDepth, type MarkerKind, collectMarkers } from "./markers";
 import {

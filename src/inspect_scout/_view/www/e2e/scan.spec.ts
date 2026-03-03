@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
 
+import { encodeBase64Url } from "@tsmono/util";
+
 import type { ScansResponse, Status } from "../src/types/api-types";
-import { encodeBase64Url } from "../src/utils/base64url";
 
 import { test, expect } from "./fixtures/app";
 import {
@@ -28,8 +29,8 @@ test("clicking a scan row opens the scan detail panel", async ({
             scan_name: "eval-safety",
             location: SCAN_LOCATION,
           }),
-        ]),
-      ),
+        ])
+      )
     ),
     http.get("*/api/v2/scans/:dir/:scanPath", () =>
       HttpResponse.json<Status>(
@@ -43,9 +44,9 @@ test("clicking a scan row opens the scan detail panel", async ({
             scanners: {},
             timestamp: "2024-01-15T10:30:00Z",
           },
-        }),
-      ),
-    ),
+        })
+      )
+    )
   );
 
   await page.goto("/#/scans");
@@ -62,8 +63,8 @@ test("scan panel shows error state when scan API fails", async ({
 }) => {
   network.use(
     http.get("*/api/v2/scans/:dir/:scanPath", () =>
-      HttpResponse.text("Internal Server Error", { status: 500 }),
-    ),
+      HttpResponse.text("Internal Server Error", { status: 500 })
+    )
   );
 
   const encodedDir = encodeBase64Url(SCANS_DIR);

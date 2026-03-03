@@ -5,8 +5,9 @@ import {
 } from "@vscode-elements/react-elements";
 import { FC, useMemo, useState } from "react";
 
+import { useDropdownPosition } from "@tsmono/react/hooks";
+
 import { Modal } from "../../../components/Modal";
-import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
 
 import styles from "./ValidationSplitSelector.module.css";
 

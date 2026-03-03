@@ -10,8 +10,9 @@ Converts OpenCode messages and parts to Inspect AI event types:
 
 from __future__ import annotations
 
+import sqlite3
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from logging import getLogger
 from pathlib import Path
 from typing import Any
@@ -25,32 +26,24 @@ from inspect_ai.event import (
     SpanEndEvent,
     ToolEvent,
 )
-from inspect_ai.model import ContentText, ModelOutput
+from inspect_ai.model import ModelOutput
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage
+from inspect_ai.model._model_output import ChatCompletionChoice, ModelUsage, StopReason
 from inspect_ai.tool._tool_call import ToolCall, ToolCallError
 
 from .client import (
+    _EPOCH,
     MessageRow,
     PartRow,
+    _ms_to_datetime,
     extract_child_session_id,
-    find_child_sessions,
     read_messages,
     read_parts,
     read_session,
 )
 
 logger = getLogger(__name__)
-
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def _ms_to_dt(ms: int | float | None) -> datetime:
-    """Convert ms epoch to datetime, defaulting to epoch."""
-    if ms is None or ms <= 0:
-        return _EPOCH
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +149,7 @@ def _build_model_event(
             input_tokens_cache_write=cache_write if cache_write else None,
         )
 
-    stop_reason = "tool_calls" if tool_calls else "stop"
+    stop_reason: StopReason = "tool_calls" if tool_calls else "stop"
 
     return ModelEvent(
         model=model_name,
@@ -197,8 +190,8 @@ def _build_tool_event(
         result = error_msg
 
     time_info = state.get("time", {})
-    start = _ms_to_dt(time_info.get("start"))
-    end = _ms_to_dt(time_info.get("end")) if time_info.get("end") else None
+    start = _ms_to_datetime(time_info.get("start"))
+    end = _ms_to_datetime(time_info.get("end")) if time_info.get("end") else None
 
     return ToolEvent(
         id=call_id,
@@ -222,8 +215,8 @@ def _build_tool_span(
     state = part.data.get("state", {})
     time_info = state.get("time", {})
 
-    start = _ms_to_dt(time_info.get("start"))
-    end = _ms_to_dt(time_info.get("end"))
+    start = _ms_to_datetime(time_info.get("start"))
+    end = _ms_to_datetime(time_info.get("end"))
     if start == _EPOCH:
         start = timestamp
     if end == _EPOCH:
@@ -249,11 +242,140 @@ def _build_tool_span(
 # ---------------------------------------------------------------------------
 
 
+async def _process_assistant_message(
+    msg: MessageRow,
+    msg_parts: list[PartRow],
+    model_name: str,
+    accumulated_input: list[Any],
+    db_path: Path | None,
+    max_depth: int,
+    conn: sqlite3.Connection | None,
+) -> list[Event]:
+    """Process one assistant message into events.
+
+    Mutates *accumulated_input* in place (appends assistant messages,
+    clears on compaction).
+
+    Args:
+        msg: The assistant message row
+        msg_parts: Parts belonging to this message
+        model_name: Model identifier from the message
+        accumulated_input: Running list of input messages (mutated in place)
+        db_path: Path to opencode.db (for child sessions)
+        max_depth: Maximum recursion depth for subagent loading
+        conn: Optional existing DB connection to reuse
+
+    Returns:
+        List of events produced from this message
+    """
+    timestamp = _ms_to_datetime(msg.time_created)
+    events: list[Event] = []
+
+    steps = _split_into_steps(msg_parts)
+
+    for step_parts in steps:
+        text_parts: list[PartRow] = []
+        tool_parts: list[PartRow] = []
+        step_finish: PartRow | None = None
+        patch_parts: list[PartRow] = []
+
+        for p in step_parts:
+            ptype = p.data.get("type")
+            if ptype == "text":
+                text_parts.append(p)
+            elif ptype == "tool":
+                tool_parts.append(p)
+            elif ptype == "step-finish":
+                step_finish = p
+            elif ptype == "patch":
+                patch_parts.append(p)
+            elif ptype == "compaction":
+                events.append(
+                    CompactionEvent(
+                        source="opencode",
+                        tokens_before=None,
+                        timestamp=_ms_to_datetime(p.time_created),
+                    )
+                )
+                accumulated_input.clear()
+            # step-start and reasoning are skipped
+
+        # Only emit ModelEvent if there's actual content
+        if not text_parts and not tool_parts:
+            # Handle patch-only steps
+            for pp in patch_parts:
+                events.append(
+                    InfoEvent(
+                        source="opencode",
+                        data={
+                            "type": "patch",
+                            "hash": pp.data.get("hash"),
+                            "files": pp.data.get("files", []),
+                        },
+                        timestamp=_ms_to_datetime(pp.time_created),
+                    )
+                )
+            continue
+
+        # Determine step timestamp from first content part
+        step_ts = timestamp
+        first_content = (
+            text_parts[0] if text_parts else (tool_parts[0] if tool_parts else None)
+        )
+        if first_content:
+            step_ts = _ms_to_datetime(first_content.time_created)
+
+        # Emit ModelEvent
+        model_event = _build_model_event(
+            text_parts,
+            tool_parts,
+            step_finish,
+            model_name,
+            accumulated_input,
+            step_ts,
+        )
+        events.append(model_event)
+
+        # Add assistant message to accumulated input
+        if model_event.output and model_event.output.message:
+            accumulated_input.append(model_event.output.message)
+
+        # Emit tool spans
+        for tp in tool_parts:
+            tool_name = tp.data.get("tool", "")
+            state = tp.data.get("state", {})
+
+            if tool_name == "task" and state.get("status") == "completed":
+                agent_events = await _build_agent_span(
+                    tp, db_path, max_depth, step_ts, conn=conn
+                )
+                events.extend(agent_events)
+            else:
+                events.extend(_build_tool_span(tp, step_ts))
+
+        # Emit patch info events
+        for pp in patch_parts:
+            events.append(
+                InfoEvent(
+                    source="opencode",
+                    data={
+                        "type": "patch",
+                        "hash": pp.data.get("hash"),
+                        "files": pp.data.get("files", []),
+                    },
+                    timestamp=_ms_to_datetime(pp.time_created),
+                )
+            )
+
+    return events
+
+
 async def process_session(
     messages: list[MessageRow],
     parts: list[PartRow],
     db_path: Path | None = None,
     max_depth: int = 3,
+    conn: sqlite3.Connection | None = None,
 ) -> list[Event]:
     """Convert an OpenCode session's messages and parts to Inspect AI events.
 
@@ -262,6 +384,7 @@ async def process_session(
         parts: Parts for this session, ordered by time_created
         db_path: Path to opencode.db (for loading child sessions)
         max_depth: Maximum depth for recursive subagent loading
+        conn: Optional existing DB connection to reuse
 
     Returns:
         List of Inspect AI events in chronological order
@@ -276,10 +399,8 @@ async def process_session(
 
     for msg in messages:
         role = msg.data.get("role")
-        timestamp = _ms_to_dt(msg.time_created)
 
         if role == "user":
-            # Extract user text from parts
             msg_parts = parts_by_msg.get(msg.id, [])
             text_pieces = [
                 p.data.get("text", "")
@@ -294,104 +415,16 @@ async def process_session(
         elif role == "assistant":
             msg_parts = parts_by_msg.get(msg.id, [])
             model_name = msg.data.get("modelID", "unknown")
-
-            # Split into steps
-            steps = _split_into_steps(msg_parts)
-
-            for step_parts in steps:
-                text_parts: list[PartRow] = []
-                tool_parts: list[PartRow] = []
-                step_finish: PartRow | None = None
-                patch_parts: list[PartRow] = []
-
-                for p in step_parts:
-                    ptype = p.data.get("type")
-                    if ptype == "text":
-                        text_parts.append(p)
-                    elif ptype == "tool":
-                        tool_parts.append(p)
-                    elif ptype == "step-finish":
-                        step_finish = p
-                    elif ptype == "patch":
-                        patch_parts.append(p)
-                    elif ptype == "compaction":
-                        events.append(
-                            CompactionEvent(
-                                source="opencode",
-                                tokens_before=None,
-                                timestamp=_ms_to_dt(p.time_created),
-                            )
-                        )
-                        accumulated_input.clear()
-                    # step-start and reasoning are skipped
-
-                # Only emit ModelEvent if there's actual content
-                if not text_parts and not tool_parts:
-                    # Handle patch-only steps
-                    for pp in patch_parts:
-                        events.append(
-                            InfoEvent(
-                                source="opencode",
-                                data={
-                                    "type": "patch",
-                                    "hash": pp.data.get("hash"),
-                                    "files": pp.data.get("files", []),
-                                },
-                                timestamp=_ms_to_dt(pp.time_created),
-                            )
-                        )
-                    continue
-
-                # Determine step timestamp from first content part
-                step_ts = timestamp
-                first_content = text_parts[0] if text_parts else (
-                    tool_parts[0] if tool_parts else None
-                )
-                if first_content:
-                    step_ts = _ms_to_dt(first_content.time_created)
-
-                # Emit ModelEvent
-                model_event = _build_model_event(
-                    text_parts,
-                    tool_parts,
-                    step_finish,
-                    model_name,
-                    accumulated_input,
-                    step_ts,
-                )
-                events.append(model_event)
-
-                # Add assistant message to accumulated input
-                if model_event.output and model_event.output.message:
-                    accumulated_input.append(model_event.output.message)
-
-                # Emit tool spans
-                for tp in tool_parts:
-                    tool_name = tp.data.get("tool", "")
-                    state = tp.data.get("state", {})
-
-                    if tool_name == "task" and state.get("status") == "completed":
-                        # Agent span for task tool
-                        agent_events = await _build_agent_span(
-                            tp, db_path, max_depth, step_ts
-                        )
-                        events.extend(agent_events)
-                    else:
-                        events.extend(_build_tool_span(tp, step_ts))
-
-                # Emit patch info events
-                for pp in patch_parts:
-                    events.append(
-                        InfoEvent(
-                            source="opencode",
-                            data={
-                                "type": "patch",
-                                "hash": pp.data.get("hash"),
-                                "files": pp.data.get("files", []),
-                            },
-                            timestamp=_ms_to_dt(pp.time_created),
-                        )
-                    )
+            assistant_events = await _process_assistant_message(
+                msg,
+                msg_parts,
+                model_name,
+                accumulated_input,
+                db_path,
+                max_depth,
+                conn,
+            )
+            events.extend(assistant_events)
 
     return events
 
@@ -401,6 +434,7 @@ async def _build_agent_span(
     db_path: Path | None,
     max_depth: int,
     fallback_ts: datetime,
+    conn: sqlite3.Connection | None = None,
 ) -> list[Event]:
     """Build an agent span for a task tool call.
 
@@ -411,8 +445,8 @@ async def _build_agent_span(
     tool_input = state.get("input", {})
     time_info = state.get("time", {})
 
-    start = _ms_to_dt(time_info.get("start"))
-    end = _ms_to_dt(time_info.get("end"))
+    start = _ms_to_datetime(time_info.get("start"))
+    end = _ms_to_datetime(time_info.get("end"))
     if start == _EPOCH:
         start = fallback_ts
     if end == _EPOCH:
@@ -442,7 +476,7 @@ async def _build_agent_span(
     # Load child session events
     if db_path and max_depth > 0:
         child_events = await _load_child_session_events(
-            task_part, db_path, max_depth
+            task_part, db_path, max_depth, conn=conn
         )
         # Re-parent top-level spans under the agent span
         for evt in child_events:
@@ -462,6 +496,7 @@ async def _load_child_session_events(
     task_part: PartRow,
     db_path: Path,
     max_depth: int,
+    conn: sqlite3.Connection | None = None,
 ) -> list[Event]:
     """Load events from a child session linked by a task tool part."""
     state = task_part.data.get("state", {})
@@ -471,18 +506,20 @@ async def _load_child_session_events(
     child_id = extract_child_session_id(output) if isinstance(output, str) else None
 
     if not child_id:
-        logger.debug(f"Could not extract child session ID from task part {task_part.id}")
+        logger.debug(
+            f"Could not extract child session ID from task part {task_part.id}"
+        )
         return []
 
     # Verify the child session exists
-    child_session = read_session(db_path, child_id)
+    child_session = read_session(db_path, child_id, conn=conn)
     if not child_session:
         logger.debug(f"Child session not found: {child_id}")
         return []
 
     # Load child session data
-    child_messages = read_messages(db_path, child_id)
-    child_parts = read_parts(db_path, child_id)
+    child_messages = read_messages(db_path, child_id, conn=conn)
+    child_parts = read_parts(db_path, child_id, conn=conn)
 
     if not child_messages:
         return []
@@ -493,4 +530,5 @@ async def _load_child_session_events(
         child_parts,
         db_path=db_path,
         max_depth=max_depth - 1,
+        conn=conn,
     )

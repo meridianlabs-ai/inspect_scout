@@ -17,10 +17,13 @@ from inspect_ai.model import ChatMessage, stable_message_ids
 if TYPE_CHECKING:
     from inspect_scout import Transcript
 
+    from .client import MessageRow, PartRow
+
 from .client import (
     DEFAULT_DB_PATH,
     OPENCODE_SOURCE_TYPE,
     _ms_to_iso,
+    _open_db,
     discover_sessions,
     read_messages,
     read_parts,
@@ -93,32 +96,34 @@ async def _process_session(
     """
     from inspect_scout import Transcript
     from inspect_scout._transcript.messages import span_messages
-    from inspect_scout._transcript.timeline import build_timeline
+    from inspect_scout._transcript.timeline import timeline_build
 
     from .client import read_session
 
-    session = read_session(db_path, session_id)
-    if not session:
-        return None
+    with _open_db(db_path) as conn:
+        session = read_session(db_path, session_id, conn=conn)
+        if not session:
+            return None
 
-    messages_rows = read_messages(db_path, session_id)
-    parts_rows = read_parts(db_path, session_id)
+        messages_rows = read_messages(db_path, session_id, conn=conn)
+        parts_rows = read_parts(db_path, session_id, conn=conn)
 
-    if not messages_rows:
-        return None
+        if not messages_rows:
+            return None
 
-    # Convert to Inspect AI events
-    scout_events: list[Event] = await process_session(
-        messages_rows,
-        parts_rows,
-        db_path=db_path,
-    )
+        # Convert to Inspect AI events (conn passed for child session loading)
+        scout_events: list[Event] = await process_session(
+            messages_rows,
+            parts_rows,
+            db_path=db_path,
+            conn=conn,
+        )
 
     if not scout_events:
         return None
 
     # Extract messages via timeline
-    timeline = build_timeline(scout_events)
+    timeline = timeline_build(scout_events)
     chat_messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
 
     if not chat_messages:
@@ -172,17 +177,17 @@ async def _process_session(
     )
 
 
-def _extract_model_name(messages: list) -> str:
+def _extract_model_name(messages: list[MessageRow]) -> str:
     """Extract model name from the first assistant message."""
     for msg in messages:
         if msg.data.get("role") == "assistant":
             model_id = msg.data.get("modelID", "")
             if model_id:
-                return model_id
+                return str(model_id)
     return "unknown"
 
 
-def _sum_tokens(parts: list) -> int:
+def _sum_tokens(parts: list[PartRow]) -> int:
     """Sum total tokens from step-finish parts."""
     total = 0
     for part in parts:

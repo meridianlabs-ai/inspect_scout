@@ -8,6 +8,8 @@ session, message, and part.
 import json
 import re
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from logging import getLogger
@@ -21,8 +23,16 @@ OPENCODE_SOURCE_TYPE = "opencode"
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
 
 
-def _ms_to_datetime(ms: int | float) -> datetime:
-    """Convert millisecond epoch timestamp to timezone-aware datetime."""
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _ms_to_datetime(ms: int | float | None) -> datetime:
+    """Convert millisecond epoch timestamp to timezone-aware datetime.
+
+    Returns the Unix epoch for None or non-positive values.
+    """
+    if ms is None or ms <= 0:
+        return _EPOCH
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 
 
@@ -68,10 +78,15 @@ class PartRow:
     data: dict[str, Any]
 
 
-def _get_connection(db_path: Path) -> sqlite3.Connection:
-    """Open a read-only SQLite connection."""
+@contextmanager
+def _open_db(db_path: Path) -> Iterator[sqlite3.Connection]:
+    """Open a read-only SQLite connection as a context manager."""
     uri = f"file:{db_path}?mode=ro"
-    return sqlite3.connect(uri, uri=True)
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def discover_sessions(
@@ -127,8 +142,7 @@ def discover_sessions(
         query += " LIMIT ?"
         params.append(limit)
 
-    conn = _get_connection(db_path)
-    try:
+    with _open_db(db_path) as conn:
         rows = conn.execute(query, params).fetchall()
         return [
             SessionRow(
@@ -145,62 +159,75 @@ def discover_sessions(
             )
             for r in rows
         ]
-    finally:
-        conn.close()
+
+
+def _session_from_row(row: tuple[Any, ...]) -> SessionRow:
+    """Build a SessionRow from a raw SQL row tuple."""
+    return SessionRow(
+        id=row[0],
+        project_id=row[1],
+        parent_id=row[2],
+        slug=row[3],
+        directory=row[4],
+        title=row[5],
+        version=row[6],
+        time_created=row[7],
+        time_updated=row[8],
+        time_archived=row[9],
+    )
+
+
+_SESSION_COLS = """id, project_id, parent_id, slug, directory, title,
+               version, time_created, time_updated, time_archived"""
 
 
 def read_session(
     db_path: Path,
     session_id: str,
+    conn: sqlite3.Connection | None = None,
 ) -> SessionRow | None:
     """Read a single session by ID (including child sessions).
 
     Args:
         db_path: Path to opencode.db
         session_id: The session ID to read
+        conn: Optional existing connection to reuse
 
     Returns:
         SessionRow or None if not found
     """
-    conn = _get_connection(db_path)
-    try:
-        row = conn.execute(
-            """SELECT id, project_id, parent_id, slug, directory, title,
-                      version, time_created, time_updated, time_archived
-               FROM session WHERE id = ?""",
+
+    def _query(c: sqlite3.Connection) -> SessionRow | None:
+        row = c.execute(
+            f"SELECT {_SESSION_COLS} FROM session WHERE id = ?",
             (session_id,),
         ).fetchone()
-        if not row:
-            return None
-        return SessionRow(
-            id=row[0],
-            project_id=row[1],
-            parent_id=row[2],
-            slug=row[3],
-            directory=row[4],
-            title=row[5],
-            version=row[6],
-            time_created=row[7],
-            time_updated=row[8],
-            time_archived=row[9],
-        )
-    finally:
-        conn.close()
+        return _session_from_row(row) if row else None
+
+    if conn is not None:
+        return _query(conn)
+    with _open_db(db_path) as c:
+        return _query(c)
 
 
-def read_messages(db_path: Path, session_id: str) -> list[MessageRow]:
+def read_messages(
+    db_path: Path,
+    session_id: str,
+    conn: sqlite3.Connection | None = None,
+) -> list[MessageRow]:
     """Read all messages for a session, ordered by time_created.
 
     Args:
         db_path: Path to opencode.db
         session_id: The session to read messages for
+        conn: Optional existing connection to reuse
 
     Returns:
         List of MessageRow ordered chronologically
     """
-    conn = _get_connection(db_path)
-    try:
-        rows = conn.execute(
+
+    def _query(c: sqlite3.Connection) -> list[MessageRow]:
+        rows = c.execute(
             """SELECT id, session_id, time_created, data
                FROM message
                WHERE session_id = ?
@@ -216,23 +243,31 @@ def read_messages(db_path: Path, session_id: str) -> list[MessageRow]:
             )
             for r in rows
         ]
-    finally:
-        conn.close()
+
+    if conn is not None:
+        return _query(conn)
+    with _open_db(db_path) as c:
+        return _query(c)
 
 
-def read_parts(db_path: Path, session_id: str) -> list[PartRow]:
+def read_parts(
+    db_path: Path,
+    session_id: str,
+    conn: sqlite3.Connection | None = None,
+) -> list[PartRow]:
     """Read all parts for a session, ordered by time_created.
 
     Args:
         db_path: Path to opencode.db
         session_id: The session to read parts for
+        conn: Optional existing connection to reuse
 
     Returns:
         List of PartRow ordered chronologically
     """
-    conn = _get_connection(db_path)
-    try:
-        rows = conn.execute(
+
+    def _query(c: sqlite3.Connection) -> list[PartRow]:
+        rows = c.execute(
             """SELECT id, message_id, session_id, time_created, data
                FROM part
                WHERE session_id = ?
@@ -249,47 +284,43 @@ def read_parts(db_path: Path, session_id: str) -> list[PartRow]:
             )
             for r in rows
         ]
-    finally:
-        conn.close()
+
+    if conn is not None:
+        return _query(conn)
+    with _open_db(db_path) as c:
+        return _query(c)
 
 
-def find_child_sessions(db_path: Path, parent_id: str) -> list[SessionRow]:
+def find_child_sessions(
+    db_path: Path,
+    parent_id: str,
+    conn: sqlite3.Connection | None = None,
+) -> list[SessionRow]:
     """Find child sessions (subagents) for a parent session.
 
     Args:
         db_path: Path to opencode.db
         parent_id: The parent session ID
+        conn: Optional existing connection to reuse
 
     Returns:
         List of child SessionRow ordered by time_created
     """
-    conn = _get_connection(db_path)
-    try:
-        rows = conn.execute(
-            """SELECT id, project_id, parent_id, slug, directory, title,
-                      version, time_created, time_updated, time_archived
+
+    def _query(c: sqlite3.Connection) -> list[SessionRow]:
+        rows = c.execute(
+            f"""SELECT {_SESSION_COLS}
                FROM session
                WHERE parent_id = ?
                ORDER BY time_created""",
             (parent_id,),
         ).fetchall()
-        return [
-            SessionRow(
-                id=r[0],
-                project_id=r[1],
-                parent_id=r[2],
-                slug=r[3],
-                directory=r[4],
-                title=r[5],
-                version=r[6],
-                time_created=r[7],
-                time_updated=r[8],
-                time_archived=r[9],
-            )
-            for r in rows
-        ]
-    finally:
-        conn.close()
+        return [_session_from_row(r) for r in rows]
+
+    if conn is not None:
+        return _query(conn)
+    with _open_db(db_path) as c:
+        return _query(c)
 
 
 def extract_child_session_id(tool_output: str) -> str | None:

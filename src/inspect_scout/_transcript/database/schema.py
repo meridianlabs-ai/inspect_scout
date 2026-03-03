@@ -37,43 +37,43 @@ class SchemaField:
 TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
     SchemaField(
         name="transcript_id",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=True,
         description="A globally unique identifier for a transcript.",
     ),
     SchemaField(
         name="source_type",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description='Type of transcript source (e.g. "weave", "logfire", "eval_log", etc.). Useful for providing a hint to readers about what might be available in the `metadata` field.',
     ),
     SchemaField(
         name="source_id",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Globally unique identifier for a transcript source (e.g. a project id).",
     ),
     SchemaField(
         name="source_uri",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="URI for source data (e.g. link to a web page or REST resource for discovering more about the transcript).",
     ),
     SchemaField(
         name="date",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="ISO 8601 datetime of transcript creation.",
     ),
     SchemaField(
         name="task_set",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Set from which transcript task was drawn (e.g. Inspect task name or benchmark name).",
     ),
     SchemaField(
         name="task_id",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Identifier for task (e.g. dataset sample id).",
     ),
@@ -85,33 +85,33 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
     ),
     SchemaField(
         name="agent",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Agent used to execute task.",
     ),
     SchemaField(
         name="agent_args",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Arguments passed to create agent.",
         json_serialized=True,
     ),
     SchemaField(
         name="model",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Main model used by agent.",
     ),
     SchemaField(
         name="model_options",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Generation options for main model.",
         json_serialized=True,
     ),
     SchemaField(
         name="score",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Value indicating score on task.",
         json_serialized=True,
@@ -142,33 +142,33 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
     ),
     SchemaField(
         name="error",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="Error message that terminated the task.",
     ),
     SchemaField(
         name="limit",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description='Limit that caused the task to exit (e.g. "tokens", "messages", etc.).',
     ),
     SchemaField(
         name="messages",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="List of ChatMessage with message history.",
         json_serialized=True,
     ),
     SchemaField(
         name="events",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="List of Event with event history (e.g. model events, tool events, etc.).",
         json_serialized=True,
     ),
     SchemaField(
         name="timelines",
-        pyarrow_type=pa.string(),
+        pyarrow_type=pa.large_string(),
         required=False,
         description="List of Timeline views over the transcript.",
         json_serialized=True,
@@ -307,8 +307,8 @@ def validate_transcript_schema(
         actual_type = schema.field(field.name).type
         expected_type = field.pyarrow_type
 
-        # String columns: allow large_string as equivalent
-        if expected_type == pa.string():
+        # String columns: allow both string and large_string (backward compat)
+        if pa.types.is_string(expected_type) or pa.types.is_large_string(expected_type):
             if actual_type not in (pa.string(), pa.large_string()):
                 errors.append(
                     TranscriptSchemaError(
@@ -456,6 +456,7 @@ def _pyarrow_to_avro_type(pa_type: pa.DataType, nullable: bool = True) -> Any:
     """Map PyArrow type to Avro type."""
     type_map: dict[pa.DataType, str] = {
         pa.string(): "string",
+        pa.large_string(): "string",
         pa.int64(): "long",
         pa.int32(): "int",
         pa.float64(): "double",
@@ -472,7 +473,7 @@ def _pyarrow_to_avro_type(pa_type: pa.DataType, nullable: bool = True) -> Any:
 
 def _pyarrow_to_json_type(pa_type: pa.DataType) -> str:
     """Map PyArrow type to JSON Schema type."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "string"
     elif pa_type in (pa.int64(), pa.int32()):
         return "integer"
@@ -486,7 +487,7 @@ def _pyarrow_to_json_type(pa_type: pa.DataType) -> str:
 
 def _pyarrow_to_pandas_dtype(pa_type: pa.DataType) -> str:
     """Map PyArrow type to pandas dtype string."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "object"
     elif pa_type == pa.int64():
         return "Int64"  # Nullable integer
@@ -506,6 +507,7 @@ def _pyarrow_type_to_display(pa_type: pa.DataType) -> str:
     """Convert PyArrow type to human-readable display string."""
     type_map: dict[pa.DataType, str] = {
         pa.string(): "string",
+        pa.large_string(): "string",
         pa.int64(): "int64",
         pa.int32(): "int32",
         pa.float64(): "float64",

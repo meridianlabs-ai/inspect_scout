@@ -442,7 +442,26 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
                     if col in record and record[col] is not None:
                         record[col] = str(record[col])
 
-    return pa.Table.from_pylist(norm)
+    # Build arrays column-wise so string columns can use large_string offsets.
+    # This avoids the ~2GB limit of Arrow's default string offset type.
+    columns: list[str] = []
+    seen_columns: set[str] = set()
+    for record in norm:
+        for key in record:
+            if key not in seen_columns:
+                seen_columns.add(key)
+                columns.append(key)
+
+    arrays: dict[str, pa.Array[Any]] = {}
+    for column in columns:
+        values = [record.get(column) for record in norm]
+        non_null_values = [value for value in values if value is not None]
+        if non_null_values and all(isinstance(value, str) for value in non_null_values):
+            arrays[column] = pa.array(values, type=pa.large_string())
+        else:
+            arrays[column] = pa.array(values)
+
+    return pa.table(arrays)
 
 
 def read_scan_errors(error_file: str) -> list[Error]:

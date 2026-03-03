@@ -29,7 +29,7 @@
       "timestamp": "2024-01-01T00:00:03Z",
       "completed": "2024-01-01T00:00:04Z",
       "input": [
-        {"role": "system", "content": "Agent Y"},
+        {"role": "system", "content": "Agent X"},
         {"role": "user", "content": "Task Y"}
       ],
       "output": {

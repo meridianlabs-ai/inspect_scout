@@ -31,7 +31,7 @@
       "timestamp": "2024-01-01T00:00:04Z",
       "completed": "2024-01-01T00:00:05Z",
       "input": [
-        {"role": "system", "content": "Agent B"},
+        {"role": "system", "content": "Agent A"},
         {"role": "user", "content": "Do task B"}
       ],
       "output": {

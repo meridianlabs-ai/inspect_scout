@@ -8,7 +8,7 @@
       "timestamp": "2024-01-01T00:00:01Z",
       "completed": "2024-01-01T00:00:02Z",
       "input": [
-        {"role": "system", "content": "You are agent A"},
+        {"role": "system", "content": "You are an assistant"},
         {"role": "user", "content": "Task 1"}
       ],
       "output": {
@@ -23,7 +23,7 @@
       "timestamp": "2024-01-01T00:00:03Z",
       "completed": "2024-01-01T00:00:04Z",
       "input": [
-        {"role": "system", "content": "You are agent B"},
+        {"role": "system", "content": "You are an assistant"},
         {"role": "user", "content": "Task 2"}
       ],
       "output": {
@@ -38,7 +38,7 @@
       "timestamp": "2024-01-01T00:00:05Z",
       "completed": "2024-01-01T00:00:06Z",
       "input": [
-        {"role": "system", "content": "You are agent C"},
+        {"role": "system", "content": "You are an assistant"},
         {"role": "user", "content": "Task 3"}
       ],
       "output": {

@@ -23,6 +23,10 @@ import { formatTokenCount } from "../utils/swimlaneLayout";
 
 import { TimelineMinimap, type TimelineMinimapProps } from "./TimelineMinimap";
 import { TimelineOptionsPopover } from "./TimelineOptionsPopover";
+import {
+  TimelineSelector,
+  type TimelineSelectorProps,
+} from "./TimelineSelector";
 import styles from "./TimelineSwimLanes.module.css";
 
 // =============================================================================
@@ -96,6 +100,8 @@ export interface TimelineHeaderProps {
   onBreadcrumbSelect?: (key: string) => void;
   /** Timeline config for the options popover. When provided, shows the options button. */
   timelineConfig?: UseTimelineConfigResult;
+  /** Timeline selector for switching between multiple timelines. */
+  timelineSelector?: TimelineSelectorProps;
 }
 
 interface TimelineSwimLanesProps {
@@ -542,6 +548,7 @@ const HeaderRow: FC<TimelineHeaderProps> = ({
   breadcrumbs,
   onBreadcrumbSelect,
   timelineConfig,
+  timelineSelector,
 }) => {
   const hasBreadcrumbs = breadcrumbs && breadcrumbs.length > 1;
   const rootDisplay = rootLabel === "solvers" ? "main" : rootLabel;
@@ -551,6 +558,12 @@ const HeaderRow: FC<TimelineHeaderProps> = ({
 
   return (
     <div className={styles.breadcrumbRow}>
+      {timelineSelector && (
+        <>
+          <TimelineSelector {...timelineSelector} />
+          <span className={styles.breadcrumbDivider}>/</span>
+        </>
+      )}
       {hasBreadcrumbs ? (
         <div className={styles.breadcrumbTrail}>
           {breadcrumbs.map((segment, i) => {

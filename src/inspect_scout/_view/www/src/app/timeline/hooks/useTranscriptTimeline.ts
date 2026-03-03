@@ -30,6 +30,7 @@ import {
 } from "../utils/swimlaneLayout";
 import { computeTimeMapping, type TimeMapping } from "../utils/timeMapping";
 
+import { useActiveTimeline } from "./useActiveTimeline";
 import {
   type TimelineOptions,
   type TimelineState,
@@ -57,6 +58,12 @@ interface TranscriptTimelineResult {
   minimapSelection: MinimapSelection | undefined;
   /** Whether the timeline has meaningful structure (non-empty root with children). */
   hasTimeline: boolean;
+  /** All available timelines (may be 1 or more). */
+  timelines: Timeline[];
+  /** Index of the currently active timeline. */
+  activeTimelineIndex: number;
+  /** Switch the active timeline by index. Resets selection. */
+  setActiveTimeline: (index: number) => void;
 }
 
 export function useTranscriptTimeline(
@@ -64,7 +71,15 @@ export function useTranscriptTimeline(
   markerConfig: MarkerConfig = defaultMarkerConfig,
   timelineOptions?: TimelineOptions
 ): TranscriptTimelineResult {
-  const timeline = useMemo(() => buildTimeline(events), [events]);
+  const builtTimeline = useMemo(() => buildTimeline(events), [events]);
+  const timelines = [builtTimeline];
+
+  // Simulate multiple timelines (temporary — replace when real ones arrive)
+  const {
+    active: timeline,
+    activeIndex: activeTimelineIndex,
+    setActive: setActiveTimeline,
+  } = useActiveTimeline(timelines);
 
   const state = useTimeline(timeline, timelineOptions);
 
@@ -127,5 +142,8 @@ export function useTranscriptTimeline(
     sourceSpans,
     minimapSelection,
     hasTimeline,
+    timelines,
+    activeTimelineIndex,
+    setActiveTimeline,
   };
 }

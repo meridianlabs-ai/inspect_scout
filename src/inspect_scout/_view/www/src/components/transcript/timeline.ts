@@ -7,7 +7,7 @@
  * since we don't have access to inspect_ai's event_tree().
  */
 
-import type { ChatMessage, Event } from "../../types/api-types";
+import type { ChatMessage, Event, ModelEvent } from "../../types/api-types";
 
 // =============================================================================
 // Span Tree Types (internal)
@@ -759,9 +759,9 @@ function unrollSpan(
     if (isSpanNode(child)) {
       if (isAgentSpan(child)) {
         const node = treeItemToNode(child, hasExplicitBranches);
-        if (node !== null) {
-          into.push(node);
-        }
+        if (node === null) continue;
+        if (node.type === "span" && node.content.length === 0) continue;
+        into.push(node);
       } else {
         unrollSpan(child, into, hasExplicitBranches);
       }
@@ -801,6 +801,7 @@ function processChildren(
       } else {
         const node = treeItemToNode(item, hasExplicitBranches);
         if (node === null) continue;
+        if (node.type === "span" && node.content.length === 0) continue;
         content.push(node);
       }
     }
@@ -939,169 +940,19 @@ function getBranchInput(
   return null;
 }
 
-// =============================================================================
-// TimelineBranch Auto-Detection
-// =============================================================================
-
 /**
- * Compute a fingerprint for a single ChatMessage.
+ * Recursively classify branches in the agent tree.
  *
- * Serializes role + content, ignoring auto-generated fields.
- * Uses full string as fingerprint (no crypto hash needed in TS).
- */
-function messageFingerprint(
-  msg: ChatMessage,
-  cache?: WeakMap<ChatMessage, string>
-): string {
-  if (cache) {
-    const cached = cache.get(msg);
-    if (cached !== undefined) return cached;
-  }
-
-  const role = msg.role;
-  let serialized: string;
-  if (typeof msg.content === "string") {
-    serialized = msg.content;
-  } else {
-    serialized = JSON.stringify(msg.content);
-  }
-  const result = `${role}:${serialized}`;
-
-  if (cache) {
-    cache.set(msg, result);
-  }
-  return result;
-}
-
-/**
- * Compute a fingerprint for a sequence of input messages.
- */
-function inputFingerprint(
-  messages: ChatMessage[],
-  cache?: WeakMap<ChatMessage, string>
-): string {
-  return messages.map((m) => messageFingerprint(m, cache)).join("|");
-}
-
-/**
- * Detect re-rolled ModelEvents with identical inputs and create branches.
- *
- * CompactionEvents act as hard boundaries: fingerprint grouping is done
- * independently within each region separated by compaction events, so
- * re-rolls are never matched across a compaction boundary.
- *
- * Mutates span in-place.
- */
-function detectAutoBranches(span: TimelineSpan): void {
-  // Cache message fingerprints by object identity to avoid re-serializing
-  const fpCache = new WeakMap<ChatMessage, string>();
-
-  // Split content into regions at compaction boundaries
-  const regions: [number, number][] = [];
-  let regionStart = 0;
-  for (let i = 0; i < span.content.length; i++) {
-    const item = span.content[i];
-    if (item && item.type === "event" && item.event.event === "compaction") {
-      regions.push([regionStart, i]);
-      regionStart = i + 1;
-    }
-  }
-  regions.push([regionStart, span.content.length]);
-
-  // Collect branch ranges across all regions
-  const branchRanges: [number, number, ChatMessage[]][] = [];
-
-  for (const [rStart, rEnd] of regions) {
-    // Find ModelEvent indices and their fingerprints within this region
-    const modelIndices: [number, string][] = [];
-    for (let i = rStart; i < rEnd; i++) {
-      const item = span.content[i];
-      if (item && item.type === "event" && item.event.event === "model") {
-        const inputMsgs = item.event.input;
-        if (!inputMsgs || inputMsgs.length === 0) continue;
-        const fp = inputFingerprint(inputMsgs, fpCache);
-        modelIndices.push([i, fp]);
-      }
-    }
-
-    // Group by fingerprint within this region
-    const fingerprintGroups = new Map<string, number[]>();
-    for (const [idx, fp] of modelIndices) {
-      const group = fingerprintGroups.get(fp);
-      if (group) {
-        group.push(idx);
-      } else {
-        fingerprintGroups.set(fp, [idx]);
-      }
-    }
-
-    // Only process groups with duplicates
-    for (const [, indices] of fingerprintGroups) {
-      if (indices.length <= 1) continue;
-
-      const firstItem = span.content[indices[0]!];
-      if (
-        !firstItem ||
-        firstItem.type !== "event" ||
-        firstItem.event.event !== "model"
-      ) {
-        continue;
-      }
-      const sharedInput = firstItem.event.input ?? [];
-
-      for (let i = 0; i < indices.length - 1; i++) {
-        const branchStart = indices[i]!;
-        const nextReroll = indices[i + 1]!;
-        branchRanges.push([branchStart, nextReroll, sharedInput]);
-      }
-    }
-  }
-
-  if (branchRanges.length === 0) return;
-
-  // Sort by start index descending so we can remove from the end first
-  branchRanges.sort((a, b) => b[0] - a[0]);
-
-  for (const [start, end, sharedInput] of branchRanges) {
-    const branchContent = span.content.slice(start, end);
-    if (branchContent.length > 0) {
-      const forkedAt = findForkedAt(span.content, sharedInput);
-      span.branches.push(createBranch(forkedAt, branchContent));
-    }
-    span.content.splice(start, end - start);
-  }
-
-  // Reverse branches so they're in original order
-  span.branches.reverse();
-
-  // Recompute totalTokens and idleTime since content was modified
-  span.totalTokens = sumTokens([...span.content, ...span.branches]);
-  span.idleTime = computeIdleTime(
-    [...span.content, ...span.branches],
-    span.startTime,
-    span.endTime
-  );
-}
-
-/**
- * Recursively detect branches in the span tree.
- *
- * Skips root since _classify_spans already ran detectAutoBranches on it
- * before branch classification.
+ * Recurses into child spans in both content and branches.
  */
 function classifyBranches(
   span: TimelineSpan,
-  hasExplicitBranches: boolean,
-  isRoot: boolean = true
+  hasExplicitBranches: boolean
 ): void {
-  if (!hasExplicitBranches && !isRoot) {
-    detectAutoBranches(span);
-  }
-
   // Recurse into child spans in content
   for (const item of span.content) {
     if (item.type === "span") {
-      classifyBranches(item, hasExplicitBranches, false);
+      classifyBranches(item, hasExplicitBranches);
     }
   }
 
@@ -1109,18 +960,168 @@ function classifyBranches(
   for (const branch of span.branches) {
     for (const item of branch.content) {
       if (item.type === "span") {
-        classifyBranches(item, hasExplicitBranches, false);
+        classifyBranches(item, hasExplicitBranches);
+      }
+    }
+  }
+}
+
+// =============================================================================
+// Utility Event Wrapping (bridge-based agents)
+// =============================================================================
+
+/**
+ * Strip the per-call billing header from a system prompt.
+ *
+ * Claude Code prepends a line like `x-anthropic-billing-header: ...`
+ * with a varying `cch=` hash. Removing it lets us compare prompts
+ * across calls.
+ */
+function normalizeSystemPrompt(prompt: string): string {
+  if (prompt.startsWith("x-anthropic-billing-header:")) {
+    const idx = prompt.indexOf("\n");
+    if (idx !== -1) {
+      return prompt.substring(idx + 1);
+    }
+    return ""; // prompt was only the header line
+  }
+  return prompt;
+}
+
+/**
+ * Extract and normalize the system prompt from a single ModelEvent.
+ */
+function getSystemPromptForEvent(event: ModelEvent): string | null {
+  const input = event.input;
+  if (!input) return null;
+  for (const msg of input) {
+    if (msg.role === "system") {
+      if (typeof msg.content === "string") {
+        return normalizeSystemPrompt(msg.content);
+      }
+      if (Array.isArray(msg.content)) {
+        const parts: string[] = [];
+        for (const c of msg.content) {
+          if ("text" in c && typeof c.text === "string") {
+            parts.push(c.text);
+          }
+        }
+        const raw = parts.length > 0 ? parts.join("\n") : null;
+        return raw ? normalizeSystemPrompt(raw) : null;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Check whether a ModelEvent's output contains tool calls.
+ */
+function hasToolCalls(event: ModelEvent): boolean {
+  const choices = event.output?.choices;
+  if (choices && choices.length > 0) {
+    const msg = choices[0]!.message;
+    if (msg.tool_calls && msg.tool_calls.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Wrap foreign-prompt model calls as synthetic utility spans.
+ *
+ * Within bridge-based agent spans (e.g. Claude Code), short extraction
+ * model calls use a different system prompt and produce no tool calls.
+ * This function detects them and wraps each one in a TimelineSpan
+ * with utility=true so downstream code treats them as utility agents.
+ *
+ * Operates recursively on the entire span tree.
+ */
+function wrapUtilityEvents(agent: TimelineSpan): void {
+  // --- Determine the primary system prompt for this span ---
+  let primaryPrompt: string | null = null;
+
+  // Prefer the prompt of the first ModelEvent that has tool calls
+  for (const item of agent.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const modelEvt = item.event as ModelEvent;
+      if (hasToolCalls(modelEvt)) {
+        primaryPrompt = getSystemPromptForEvent(modelEvt);
+        break;
       }
     }
   }
 
-  // Recompute totalTokens and idleTime since child spans may have changed
-  span.totalTokens = sumTokens([...span.content, ...span.branches]);
-  span.idleTime = computeIdleTime(
-    [...span.content, ...span.branches],
-    span.startTime,
-    span.endTime
-  );
+  // Fall back to the first ModelEvent's prompt
+  if (primaryPrompt === null) {
+    for (const item of agent.content) {
+      if (item.type === "event" && item.event.event === "model") {
+        primaryPrompt = getSystemPromptForEvent(item.event as ModelEvent);
+        break;
+      }
+    }
+  }
+
+  // No ModelEvents at all → nothing to wrap
+  if (primaryPrompt === null) {
+    // Still recurse into child spans
+    for (const item of agent.content) {
+      if (item.type === "span") {
+        wrapUtilityEvents(item);
+      }
+    }
+    for (const branch of agent.branches) {
+      for (const item of branch.content) {
+        if (item.type === "span") {
+          wrapUtilityEvents(item);
+        }
+      }
+    }
+    return;
+  }
+
+  // --- Scan and wrap utility candidates ---
+  const newContent: (TimelineEvent | TimelineSpan)[] = [];
+  for (const item of agent.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const modelEvt = item.event as ModelEvent;
+      const evtPrompt = getSystemPromptForEvent(modelEvt);
+      if (
+        evtPrompt !== null &&
+        evtPrompt !== primaryPrompt &&
+        !hasToolCalls(modelEvt)
+      ) {
+        // Wrap in a synthetic utility span
+        const wrapper = createTimelineSpan(
+          `utility-${item.event.uuid ?? "unknown"}`,
+          "utility",
+          "agent",
+          [item]
+        );
+        wrapper.utility = true;
+        newContent.push(wrapper);
+        continue;
+      }
+    }
+    newContent.push(item);
+  }
+
+  agent.content = newContent;
+
+  // --- Recurse into child spans and branches ---
+  for (const item of agent.content) {
+    if (item.type === "span") {
+      wrapUtilityEvents(item);
+    }
+  }
+  for (const branch of agent.branches) {
+    for (const item of branch.content) {
+      if (item.type === "span") {
+        wrapUtilityEvents(item);
+      }
+    }
+  }
 }
 
 // =============================================================================
@@ -1138,7 +1139,7 @@ function getSystemPrompt(span: TimelineSpan): string | null {
         for (const msg of input) {
           if (msg.role === "system") {
             if (typeof msg.content === "string") {
-              return msg.content;
+              return normalizeSystemPrompt(msg.content);
             }
             if (Array.isArray(msg.content)) {
               const parts: string[] = [];
@@ -1147,7 +1148,10 @@ function getSystemPrompt(span: TimelineSpan): string | null {
                   parts.push(c.text);
                 }
               }
-              return parts.length > 0 ? parts.join("\n") : null;
+              if (parts.length > 0) {
+                return normalizeSystemPrompt(parts.join("\n"));
+              }
+              return null;
             }
           }
         }
@@ -1256,7 +1260,7 @@ function classifyUtilityAgents(
  * dissolve into the parent's content list.
  *
  * **Phase 3 — Post-processing passes:**
- * - Auto-branch detection (re-rolled ModelEvents with identical inputs)
+ * - Utility event wrapping (bridge-based agents with foreign prompts)
  * - Utility agent classification (single-turn, different system prompt)
  * - Recursive branch classification
  */
@@ -1385,7 +1389,7 @@ export function buildTimeline(events: Event[]): Timeline {
     }
 
     if (agentNode) {
-      if (!hasExplicitBranches) detectAutoBranches(agentNode);
+      wrapUtilityEvents(agentNode);
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);
 
@@ -1462,7 +1466,7 @@ export function buildTimeline(events: Event[]): Timeline {
     // No phase spans - treat entire tree as agent
     const agentRoot = buildAgentFromTree(tree, hasExplicitBranches);
     if (agentRoot) {
-      if (!hasExplicitBranches) detectAutoBranches(agentRoot);
+      wrapUtilityEvents(agentRoot);
       classifyUtilityAgents(agentRoot);
       classifyBranches(agentRoot, hasExplicitBranches);
       root = agentRoot;

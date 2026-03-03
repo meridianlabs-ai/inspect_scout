@@ -186,7 +186,11 @@ export interface CollectedEvents {
  * swimlane row. The returned sourceSpans map allows attaching the original
  * TimelineSpan to the resulting EventNodes for rich rendering.
  */
-export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
+export function collectRawEvents(
+  spans: TimelineSpan[],
+  options?: { includeUtility?: boolean }
+): CollectedEvents {
+  const includeUtility = options?.includeUtility ?? false;
   const events: Event[] = [];
   const sourceSpans = new Map<string, TimelineSpan>();
   if (spans.length === 1) {
@@ -195,11 +199,11 @@ export function collectRawEvents(spans: TimelineSpan[]): CollectedEvents {
     // the last ASSISTANT response. Detect and skip it at the top level only.
     const span = spans[0]!;
     const agentSpanId = span.spanType === "agent" ? span.id : undefined;
-    collectFromContent(span.content, events, sourceSpans, agentSpanId);
+    collectFromContent(span.content, events, sourceSpans, agentSpanId, includeUtility);
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
-    collectFromContent(spans, events, sourceSpans);
+    collectFromContent(spans, events, sourceSpans, undefined, includeUtility);
   }
   return { events, sourceSpans };
 }
@@ -208,7 +212,8 @@ function collectFromContent(
   content: ReadonlyArray<TimelineEvent | TimelineSpan>,
   out: Event[],
   sourceSpans: Map<string, TimelineSpan>,
-  skipAgentSpanId?: string
+  skipAgentSpanId?: string,
+  includeUtility: boolean = false
 ): void {
   for (const item of content) {
     if (item.type === "event") {
@@ -223,6 +228,10 @@ function collectFromContent(
         continue;
       }
       out.push(item.event);
+    } else if (!includeUtility && item.utility) {
+      // Skip utility spans — internal model calls (e.g. file path extraction)
+      // that should not appear in the event tree or outline.
+      continue;
     } else {
       // Emit synthetic span_begin
       const beginEvent: SpanBeginEvent = {
@@ -246,7 +255,7 @@ function collectFromContent(
         sourceSpans.set(item.id, item);
       } else {
         // Non-agent spans: recurse into child content
-        collectFromContent(item.content, out, sourceSpans);
+        collectFromContent(item.content, out, sourceSpans, undefined, includeUtility);
       }
 
       // Emit synthetic span_end

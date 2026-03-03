@@ -204,7 +204,7 @@ describe("buildContentItems", () => {
   // Utility agents (S10)
   // ---------------------------------------------------------------------------
   describe("utility agents (S10)", () => {
-    it("includes utility spans as agent_cards", () => {
+    it("filters utility spans by default", () => {
       const node = getScenarioRoot(S10_UTILITY);
 
       // Utility spans are children of Build, not Transcript
@@ -214,6 +214,20 @@ describe("buildContentItems", () => {
       expect(buildSpan).toBeDefined();
 
       const items = buildContentItems(buildSpan!);
+
+      const agentCards = items.filter((i) => i.type === "agent_card");
+      expect(agentCards.length).toBe(0); // utility spans filtered out
+    });
+
+    it("includes utility spans when includeUtility is true", () => {
+      const node = getScenarioRoot(S10_UTILITY);
+
+      const buildSpan = node.content.find(
+        (c): c is TimelineSpan => c.type === "span" && c.name === "Build"
+      );
+      expect(buildSpan).toBeDefined();
+
+      const items = buildContentItems(buildSpan!, { includeUtility: true });
 
       const agentCards = items.filter((i) => i.type === "agent_card");
       expect(agentCards.length).toBe(4); // 4 utility spans

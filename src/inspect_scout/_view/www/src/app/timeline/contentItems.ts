@@ -45,15 +45,24 @@ export type ContentItem = EventItem | AgentCardItem | BranchCardItem;
  * whose UUID matches `branch.forkedAt`. Branches with unresolvable UUIDs
  * are appended at the end.
  *
- * Utility spans are always included — filtering is a UI concern.
+ * When `includeUtility` is false (default), utility spans are filtered out —
+ * they represent internal model calls (e.g. file path extraction) that should
+ * not appear in the UI.
  */
-export function buildContentItems(node: TimelineSpan): ContentItem[] {
-  // 1. Walk content chronologically
-  const items: ContentItem[] = node.content.map((child) =>
-    child.type === "event"
-      ? { type: "event" as const, eventNode: child }
-      : { type: "agent_card" as const, agentNode: child }
-  );
+export function buildContentItems(
+  node: TimelineSpan,
+  options?: { includeUtility?: boolean }
+): ContentItem[] {
+  const includeUtility = options?.includeUtility ?? false;
+
+  // 1. Walk content chronologically, optionally skipping utility spans
+  const items: ContentItem[] = node.content
+    .filter((child) => includeUtility || !(child.type === "span" && child.utility))
+    .map((child) =>
+      child.type === "event"
+        ? { type: "event" as const, eventNode: child }
+        : { type: "agent_card" as const, agentNode: child }
+    );
 
   // 2. Insert branch cards at fork points
   if (node.branches.length === 0) {

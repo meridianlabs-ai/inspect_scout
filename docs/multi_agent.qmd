@@ -3,17 +3,32 @@ title: "Multi Agent"
 ---
 
 ::: {.callout-note}
-The multi agent scanning features described below is available only in the development version of Inspect Scout. Install the development version from GitHub with:
+The multi agent scanning features described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
 
 ```python
 pip install git+https://github.com/meridianlabs-ai/inspect_scout
 ```
 :::
 
-
 ## Overview
 
-As AI agents become more sophisticated — orchestrating sub-agents, branching across parallel tool calls, and running long conversations that require context compaction — flat message lists lose critical structure. A multi-agent transcript might contain thousands of messages spanning multiple nested agent invocations, but a flat list gives no indication of which agent produced which messages or where tool boundaries fall.
+Traditionally, evaluation and scanning workflows have assumed that single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider:
+
+(1) Multiple sub-agents (often running in parallel) are created, producing transcripts with several indepedent message trajectories.
+
+(2) Compaction often further divides trajectories into multiple-phases (wherby the compacted away messages can be lost in updates to the conversation).
+
+(3) The total tokens consumed by these agents can often run into the tens of millions, further requiring that scanning be chunked into multiple steps.
+
+Below we'll describe the tools available in Scout to handle multi-agent transcripts. 
+
+## Scout View
+
+Scout View uses the agent spans included in transcript event streams to create a multi agent timeline (note that this relies on the transcript making use of agent spans, which varies depending on the source of transcript data). 
+
+
+
+## Timelines
 
 A timeline is a hierarchical tree of spans built automatically from transcript events. Each span represents an agent, tool, or scorer invocation, containing events (model calls, tool calls, compaction) with optional child spans. Timelines automatically detect:
 

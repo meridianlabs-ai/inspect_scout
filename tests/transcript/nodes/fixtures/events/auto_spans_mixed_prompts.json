@@ -38,7 +38,7 @@
       "timestamp": "2024-01-01T00:00:05Z",
       "completed": "2024-01-01T00:00:06Z",
       "input": [
-        {"role": "system", "content": "You are prompt B"},
+        {"role": "system", "content": "You are prompt A"},
         {"role": "user", "content": "Task B1"}
       ],
       "output": {

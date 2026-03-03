@@ -1,5 +1,5 @@
 {
-  "description": "Explicit branch span present globally suppresses auto-detection in a different agent",
+  "description": "Explicit branch in one agent with a sibling agent that has no branches",
   "events": [
     {
       "event": "span_begin",

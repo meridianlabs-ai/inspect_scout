@@ -1,5 +1,5 @@
 {
-  "description": "Model events with a re-roll — without auto-detection, all events remain flat in root agent (re-roll branch preserved)",
+  "description": "Model events with a re-roll — without auto-detection, all events remain flat in root agent",
   "events": [
     {
       "event": "model",
@@ -38,7 +38,7 @@
       "timestamp": "2024-01-01T00:00:05Z",
       "completed": "2024-01-01T00:00:06Z",
       "input": [
-        {"role": "system", "content": "Agent B"},
+        {"role": "system", "content": "Agent A"},
         {"role": "user", "content": "Do task B"}
       ],
       "output": {
@@ -53,13 +53,8 @@
       "id": "main",
       "name": "main",
       "source": {"source": "span", "span_id": "main"},
-      "branches": [
-        {
-          "forked_at": "",
-          "event_uuids": ["e-001"]
-        }
-      ],
-      "event_uuids": ["e-002", "e-003"],
+      "branches": [],
+      "event_uuids": ["e-001", "e-002", "e-003"],
       "total_tokens": 450
     },
     "scoring": null

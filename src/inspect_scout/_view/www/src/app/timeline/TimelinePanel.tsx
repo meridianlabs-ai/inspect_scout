@@ -13,7 +13,6 @@ import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewN
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useProperty } from "../../state/hooks/useProperty";
 
-import { TimelinePills } from "./components/TimelinePills";
 import { TimelineSwimLanes } from "./components/TimelineSwimLanes";
 import { useTimeline } from "./hooks/useTimeline";
 import { timelineScenarios } from "./syntheticNodes";
@@ -135,7 +134,6 @@ export const TimelinePanel: FC = () => {
         </span>
       </div>
       <div className={styles.content}>
-        <TimelinePills timelines={[]} activeIndex={0} onSelect={() => {}} />
         <TimelineSwimLanes
           layouts={layouts}
           timeline={state}

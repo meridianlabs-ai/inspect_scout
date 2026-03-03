@@ -370,7 +370,9 @@ function flattenChildren(
       startTime: entry.startTime,
       endTime: entry.endTime,
     });
-    result.push(...flattenChildren(entry.spans, depth, entry.key, includeUtility));
+    result.push(
+      ...flattenChildren(entry.spans, depth, entry.key, includeUtility)
+    );
   }
 
   return result;

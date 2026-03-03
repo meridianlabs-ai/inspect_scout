@@ -424,7 +424,7 @@ function buildSpanTree(events: Event[]): TreeItem[] {
   };
   for (const span of spansById.values()) {
     span.children.sort((a, b) =>
-      getTimestamp(a).localeCompare(getTimestamp(b)),
+      getTimestamp(a).localeCompare(getTimestamp(b))
     );
   }
 

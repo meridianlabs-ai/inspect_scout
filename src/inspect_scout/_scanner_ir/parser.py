@@ -219,6 +219,7 @@ def _parse_llm_scanner_call(
     question: str | None = None
     answer_type: str | None = None
     labels: list[str] | None = None
+    allow_none: bool = False
     structured_spec: StructuredAnswerSpec | None = None
     model: str | None = None
     model_role: str | None = None
@@ -246,7 +247,7 @@ def _parse_llm_scanner_call(
             parsed = _parse_answer_arg(value, tree)
             if parsed is None:
                 return None, "Could not parse answer argument"
-            answer_type, labels, structured_spec = parsed
+            answer_type, labels, structured_spec, allow_none = parsed
 
         elif key == "model":
             model = _eval_literal(value)
@@ -302,6 +303,7 @@ def _parse_llm_scanner_call(
             question=question,
             answer_type=answer_type,  # type: ignore[arg-type]
             labels=labels,
+            allow_none=allow_none,
             structured_spec=structured_spec,
             model=model,
             model_role=model_role,
@@ -318,16 +320,16 @@ def _parse_llm_scanner_call(
 
 def _parse_answer_arg(
     value: cst.BaseExpression, tree: cst.Module
-) -> tuple[str, list[str] | None, StructuredAnswerSpec | None] | None:
+) -> tuple[str, list[str] | None, StructuredAnswerSpec | None, bool] | None:
     """Parse the answer= argument.
 
-    Returns (answer_type, labels, structured_spec) or None if unparseable.
+    Returns (answer_type, labels, structured_spec, allow_none) or None if unparseable.
     """
     # Simple literal: "boolean", "numeric", "string"
     if _is_string_literal(value):
         literal = _eval_literal(value)
         if literal in ("boolean", "numeric", "string"):
-            return (literal, None, None)
+            return (literal, None, None, False)
 
     # List of labels: ["A", "B", "C"]
     if isinstance(value, cst.List):
@@ -337,25 +339,32 @@ def _parse_answer_arg(
                 labels.append(_eval_literal(el.value))
             else:
                 return None
-        return ("labels", labels, None)
+        return ("labels", labels, None, False)
 
-    # AnswerMultiLabel(labels=[...])
+    # AnswerMultiLabel(labels=[...], allow_none=True/False)
     if isinstance(value, cst.Call):
         func_name = _get_call_name(value)
 
         if func_name == "AnswerMultiLabel":
+            multi_labels: list[str] | None = None
+            allow_none = False
             for arg in value.args:
                 if arg.keyword and arg.keyword.value == "labels":
                     if isinstance(arg.value, cst.List):
-                        labels = []
+                        multi_labels = []
                         for el in arg.value.elements:
                             if isinstance(el, cst.Element) and _is_string_literal(
                                 el.value
                             ):
-                                labels.append(_eval_literal(el.value))
+                                multi_labels.append(_eval_literal(el.value))
                             else:
                                 return None
-                        return ("multi_labels", labels, None)
+                elif arg.keyword and arg.keyword.value == "allow_none":
+                    allow_none = (
+                        isinstance(arg.value, cst.Name) and arg.value.value == "True"
+                    )
+            if multi_labels is not None:
+                return ("multi_labels", multi_labels, None, allow_none)
 
         # AnswerStructured(type=ModelName) or AnswerStructured(type=list[ModelName])
         elif func_name == "AnswerStructured":
@@ -367,7 +376,7 @@ def _parse_answer_arg(
                         model_spec = _find_pydantic_model(tree, model_name)
                         if model_spec:
                             model_spec.is_list = is_list
-                            return ("structured", None, model_spec)
+                            return ("structured", None, model_spec, False)
 
     return None
 

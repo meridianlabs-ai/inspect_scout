@@ -142,6 +142,9 @@ export const TimelineEventsView = forwardRef<
     sourceSpans,
     minimapSelection,
     hasTimeline,
+    timelines,
+    activeTimelineIndex,
+    setActiveTimeline,
   } = useTranscriptTimeline(events, resolvedMarkerConfig, resolvedAgentConfig);
 
   // ---------------------------------------------------------------------------
@@ -322,6 +325,14 @@ export const TimelineEventsView = forwardRef<
                     mapping: rootTimeMapping,
                   },
                   timelineConfig,
+                  timelineSelector:
+                    timelines.length > 1
+                      ? {
+                          timelines,
+                          activeIndex: activeTimelineIndex,
+                          onSelect: setActiveTimeline,
+                        }
+                      : undefined,
                 }}
                 onMarkerNavigate={onMarkerNavigate}
                 isSticky={isSwimLaneSticky}

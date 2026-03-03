@@ -18,6 +18,7 @@
 
 ### Testing
 - Test observable behavior, not internal implementation details
+- Test through the narrowest public API that covers the behavior
 - Be efficient; avoid duplicate coverage
 - Prefer data/table driven tests for maintainability
 - Tests must be isolated; no shared mutable state or order dependencies

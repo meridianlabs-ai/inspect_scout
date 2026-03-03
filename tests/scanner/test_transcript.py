@@ -9,8 +9,12 @@ import pytest_asyncio
 from inspect_scout import columns as c
 from inspect_scout._query import Query, condition_as_sql
 from inspect_scout._query.order_by import OrderBy
-from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
-from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._scanspec import ScanTranscripts
+from inspect_scout._transcript.eval_log import (
+    EvalLogTranscriptsView,
+    _logs_df_from_snapshot,
+)
+from inspect_scout._transcript.types import TranscriptContent, TranscriptInfo
 
 
 def create_test_dataframe(num_samples: int = 10) -> pd.DataFrame:
@@ -595,6 +599,49 @@ async def test_connect_with_empty_dataframe() -> None:
         assert await db.count() == 0
         assert await db.distinct("model", None) == []
         assert await db.transcript_ids() == {}
+
+
+@pytest.mark.asyncio
+async def test_logs_df_from_snapshot_empty_transcript_ids() -> None:
+    """_logs_df_from_snapshot returns empty DataFrame when transcript_ids is empty.
+
+    Regression test: accessing df["sample_id"] on a zero-column DataFrame
+    raises KeyError. Guard added to return early when df.columns.empty.
+    """
+    snapshot = ScanTranscripts(type="eval_log", transcript_ids={})
+    df = _logs_df_from_snapshot(snapshot)
+    assert df.columns.empty
+
+
+@pytest.mark.asyncio
+async def test_read_raises_value_error_when_view_is_empty() -> None:
+    """read() raises ValueError when the transcript view is empty.
+
+    Regression test: calling _get_zip_reader_and_entry() on an empty view
+    would execute SQL against a missing table, causing OperationalError.
+    """
+    db = EvalLogTranscriptsView(pd.DataFrame())
+    t = TranscriptInfo(transcript_id="test-id", source_uri="dummy.json")
+    content = TranscriptContent()
+
+    async with db:
+        with pytest.raises(ValueError, match="empty"):
+            await db.read(t, content)
+
+
+@pytest.mark.asyncio
+async def test_read_messages_events_raises_value_error_when_view_is_empty() -> None:
+    """read_messages_events() raises ValueError when the transcript view is empty.
+
+    Regression test: _get_sample_id_and_epoch() executes SQL against a missing
+    table when _is_empty is True, causing OperationalError.
+    """
+    db = EvalLogTranscriptsView(pd.DataFrame())
+    t = TranscriptInfo(transcript_id="test-id", source_uri="dummy.json")
+
+    async with db:
+        with pytest.raises(ValueError, match="empty"):
+            await db.read_messages_events(t)
 
 
 @pytest.mark.asyncio

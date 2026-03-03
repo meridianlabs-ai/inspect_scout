@@ -22,6 +22,19 @@ export const resolveToolInput = (
   const { input, description, args } = extractInput(toolArgs, inputDescriptor);
   const functionCall =
     args.length > 0 ? `${toolName}(${args.join(", ")})` : toolName;
+
+  // For Task tool, use the subagent_type as the display name
+  if (fn === "Task" && toolArgs.subagent_type) {
+    const subagentType = String(toolArgs.subagent_type);
+    return {
+      name: fn,
+      functionCall: `Task: ${subagentType}`,
+      input,
+      description,
+      contentType: "markdown",
+    };
+  }
+
   return {
     name: fn,
     functionCall,
@@ -82,6 +95,12 @@ const extractInputMetadata = (
     return {
       inputArg: "plan",
       contentType: kToolTodoContentType,
+    };
+  } else if (toolName === "Task") {
+    return {
+      inputArg: "prompt",
+      descriptionArg: "description",
+      contentType: "markdown",
     };
   } else {
     return undefined;

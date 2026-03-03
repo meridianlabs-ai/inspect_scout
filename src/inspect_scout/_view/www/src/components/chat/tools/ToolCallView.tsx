@@ -11,8 +11,9 @@ import {
   ToolCallContent,
 } from "../../../types/api-types";
 import ExpandablePanel from "../../ExpandablePanel";
+import { MarkdownDiv } from "../../MarkdownDiv";
 import { MessageContent } from "../MessageContent";
-import { defaultContext } from "../MessageContents";
+import { defaultContext, MessagesContext } from "../MessageContents";
 import { ContentTool } from "../types";
 
 import { getCustomToolView } from "./customToolRendering";
@@ -159,7 +160,20 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
           />
         </ExpandablePanel>
       </div>
-      {hasContent && collapsible ? (
+      {contentType === "markdown" && hasContent ? (
+        <ExpandablePanel
+          id={`${id}-tool-content`}
+          collapse={collapse}
+          border={true}
+          lines={15}
+          className={clsx("text-size-small")}
+        >
+          <MarkdownToolOutput
+            contents={normalizedContent}
+            context={context}
+          />
+        </ExpandablePanel>
+      ) : hasContent && collapsible ? (
         <ExpandablePanel
           id={`${id}-tool-content`}
           collapse={collapse}
@@ -179,6 +193,46 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
 /**
  * Renders the ToolCallView component.
  */
+type NormalizedContentItem =
+  | ContentText
+  | ContentImage
+  | ContentAudio
+  | ContentVideo
+  | ContentTool
+  | ContentReasoning
+  | ContentData;
+
+/**
+ * Renders tool output with text as markdown, passing non-text content
+ * (e.g. images) through MessageContent for normal rendering.
+ */
+const MarkdownToolOutput: FC<{
+  contents: NormalizedContentItem[];
+  context: MessagesContext;
+}> = ({ contents, context }) => {
+  // Flatten tool wrapper to get inner content items
+  const items = contents.flatMap((c) =>
+    c.type === "tool" ? c.content : [c]
+  );
+
+  return (
+    <>
+      {items.map((item, i) => {
+        if (item.type === "text" && item.text) {
+          return <MarkdownDiv key={`md-${i}`} markdown={item.text} />;
+        }
+        return (
+          <MessageContent
+            key={`content-${i}`}
+            contents={[item] as NormalizedContentItem[]}
+            context={context}
+          />
+        );
+      })}
+    </>
+  );
+};
+
 const normalizeContent = (
   output:
     | string

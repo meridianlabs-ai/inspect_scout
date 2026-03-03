@@ -70,7 +70,7 @@ export const ToolEventView: FC<ToolEventViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.events]);
 
-  const title = `Tool: ${resolvedView?.title || event.function}`;
+  const title = `Tool: ${resolvedView?.title || functionCall}`;
   return (
     <EventPanel
       eventNodeId={eventNode.id}

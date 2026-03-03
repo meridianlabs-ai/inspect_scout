@@ -8,6 +8,8 @@ import {
   ChatMessageSystem,
   ChatMessageTool,
   ChatMessageUser,
+  ContentImage,
+  ContentText,
 } from "../../types/api-types";
 import { RecordTree } from "../content/RecordTree";
 import { CopyButton } from "../CopyButton";
@@ -17,6 +19,7 @@ import { LabeledValue } from "../LabeledValue";
 
 import styles from "./ChatMessage.module.css";
 import { MessageContents } from "./MessageContents";
+import { ToolOutput } from "./tools/ToolOutput";
 import { ChatViewToolCallStyle } from "./types";
 
 interface ChatMessageProps {
@@ -40,7 +43,10 @@ export const ChatMessage: FC<ChatMessageProps> = memo(
       ? getFullMessageUrl(message.id || "")
       : undefined;
 
-    const collapse = message.role === "system" || message.role === "user";
+    const isNonTaskTool =
+      message.role === "tool" && message.function !== "Task";
+    const collapse =
+      message.role === "system" || message.role === "user" || isNonTaskTool;
 
     const [mouseOver, setMouseOver] = useState(false);
 
@@ -87,7 +93,20 @@ export const ChatMessage: FC<ChatMessageProps> = memo(
             collapse={collapse}
             lines={collapse ? 15 : 25}
           >
-            <MessageContents key={`${id}-contents`} message={message} />
+            {isNonTaskTool ? (
+              <ToolOutput
+                output={
+                  typeof message.content === "string"
+                    ? message.content
+                    : message.content.filter(
+                        (c): c is ContentText | ContentImage =>
+                          c.type === "text" || c.type === "image"
+                      )
+                }
+              />
+            ) : (
+              <MessageContents key={`${id}-contents`} message={message} />
+            )}
           </ExpandablePanel>
 
           {message.metadata && Object.keys(message.metadata).length > 0 ? (

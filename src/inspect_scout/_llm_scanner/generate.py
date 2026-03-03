@@ -11,6 +11,7 @@ from typing import Literal, overload
 
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageUser,
     Model,
     ModelOutput,
     get_model,
@@ -24,7 +25,7 @@ from .._util.refusal import generate_retry_refusals
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
 from .structured import structured_generate, structured_schema
-from .types import AnswerSpec, AnswerStructured
+from .types import AnswerSpec, AnswerStructured, _TextualAnswerSpec
 
 
 def parse_answer(
@@ -70,7 +71,7 @@ async def generate_answer(
 @overload
 async def generate_answer(
     prompt: str | list[ChatMessage],
-    answer: AnswerSpec,
+    answer: _TextualAnswerSpec,
     *,
     model: str | Model | None = None,
     retry_refusals: int = 3,
@@ -128,14 +129,33 @@ async def generate_answer(
             max_attempts=answer.max_attempts,
             retry_refusals=retry_refusals,
         )
-        if value is None and parse:
+        if value is None:
             return Result(
                 value=None,
                 answer=model_output.completion,
                 metadata={"stop_reason": model_output.stop_reason},
             )
+        refs_fn = extract_refs or _no_references
+        result = resolved_answer.result_for_answer(
+            model_output, refs_fn, value_to_float
+        )
+        result.metadata = {
+            **(result.metadata or {}),
+            "stop_reason": model_output.stop_reason,
+        }
+        return result
+
+    elif parse:
+        return await _text_generate(
+            get_model(model),
+            prompt,
+            resolved_answer,
+            retry_refusals,
+            extract_refs or _no_references,
+            value_to_float,
+        )
     else:
-        model_output = await generate_retry_refusals(
+        return await generate_retry_refusals(
             get_model(model),
             prompt,
             tools=[],
@@ -144,16 +164,61 @@ async def generate_answer(
             retry_refusals=retry_refusals,
         )
 
-    if not parse:
-        return model_output
 
-    refs_fn = extract_refs or _no_references
-    result = resolved_answer.result_for_answer(model_output, refs_fn, value_to_float)
-    result.metadata = {
-        **(result.metadata or {}),
-        "stop_reason": model_output.stop_reason,
-    }
-    return result
+_TEXT_MAX_ATTEMPTS = 3
+
+
+async def _text_generate(
+    model: Model,
+    input: str | list[ChatMessage],
+    answer: Answer,
+    retry_refusals: int,
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None,
+) -> Result:
+    """Generate text with retry on parse failure.
+
+    When the model's response cannot be parsed, feeds format instructions
+    back as a user message and retries, up to ``_TEXT_MAX_ATTEMPTS`` times.
+    Returns a fully parsed ``Result`` (with refs, value_to_float, and
+    stop_reason metadata).
+    """
+    messages: list[ChatMessage] = (
+        [ChatMessageUser(content=input)] if isinstance(input, str) else list(input)
+    )
+
+    for attempt in range(_TEXT_MAX_ATTEMPTS):
+        output = await generate_retry_refusals(
+            model,
+            messages,
+            tools=[],
+            tool_choice=None,
+            config=None,
+            retry_refusals=retry_refusals,
+        )
+
+        result = answer.result_for_answer(output, extract_refs, value_to_float)
+        result.metadata = {
+            **(result.metadata or {}),
+            "stop_reason": output.stop_reason,
+        }
+
+        if result.answer is not None or attempt == _TEXT_MAX_ATTEMPTS - 1:
+            return result
+
+        # Parse failed — grow conversation with feedback
+        messages.append(output.message)
+        messages.append(
+            ChatMessageUser(
+                content=(
+                    "Your response could not be parsed. "
+                    "Please try again, following these instructions:\n\n"
+                    f"{answer.format}"
+                ),
+            )
+        )
+
+    raise AssertionError("unreachable")  # loop always returns
 
 
 def _no_references(_text: str) -> list[Reference]:

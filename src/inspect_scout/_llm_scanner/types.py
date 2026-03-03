@@ -46,12 +46,11 @@ class AnswerStructured(NamedTuple):
     """Maximum number of times to re-prompt the model to generate the correct schema."""
 
 
-AnswerSpec: TypeAlias = (
-    Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured
+# We construct AnswerSpec this way so that we can prohibit AnswerStructured w/parse: False
+_TextualAnswerSpec: TypeAlias = (
+    Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel
 )
+AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
 """Specification of the answer format for an LLM scanner.
 
 Pass ``"boolean"``, ``"numeric"``, or ``"string"`` for a simple answer;

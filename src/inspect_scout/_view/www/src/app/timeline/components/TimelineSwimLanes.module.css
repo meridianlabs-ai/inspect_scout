@@ -119,18 +119,38 @@
   font-size: var(--inspect-font-size-smallest);
   line-height: var(--swimlane-row-height);
   color: var(--vscode-foreground);
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.labelChild {
-  padding-left: 1.95rem;
-}
-
 .labelSelected {
   color: var(--vscode-textLink-foreground);
+}
+
+/* Expand/collapse chevron in label */
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  font-size: 8px;
+}
+
+.chevron:hover {
+  color: var(--vscode-foreground);
+}
+
+.chevronSpacer {
+  display: inline-block;
+  width: 12px;
+  flex-shrink: 0;
 }
 
 /* Bar area */
@@ -172,6 +192,11 @@
 .fillSelected {
   opacity: 0.7;
   box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+/* Row is selected but a different span within the row is focused */
+.fillDimmed {
+  opacity: 0.15;
 }
 
 .parallelBadge {
@@ -293,81 +318,49 @@
   overflow: hidden;
 }
 
-.breadcrumbBack {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--vscode-foreground);
-  padding: 2px 4px 2px 4px;
-  font-size: var(--inspect-font-size-smallestest);
-  line-height: 1;
-  border-radius: var(--bs-border-radius);
-  flex-shrink: 0;
-  margin-top: -1px;
-}
-
-.breadcrumbBack:hover:not(:disabled) {
-  color: var(--vscode-textLink-foreground);
-  background-color: var(--bs-secondary-bg);
-}
-
-.breadcrumbBack:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.breadcrumbGroup {
-  display: inline-flex;
+.breadcrumbTrail {
+  display: flex;
   align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumbSegment {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.breadcrumbDivider {
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .breadcrumbLink {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--vscode-textLink-foreground);
-  padding: 0 2px;
+  color: var(--vscode-descriptionForeground);
   font-size: var(--inspect-font-size-smallest);
+  padding: 0 2px;
 }
 
 .breadcrumbLink:hover {
+  color: var(--vscode-foreground);
   text-decoration: underline;
 }
 
 .breadcrumbCurrent {
   background: none;
   border: none;
-  cursor: pointer;
   color: var(--vscode-foreground);
   font-weight: 600;
   font-size: var(--inspect-font-size-smallest);
   padding: 0 2px;
-}
-
-.breadcrumbCurrent:hover {
-  text-decoration: underline;
-}
-
-.breadcrumbSelection {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--vscode-foreground);
-  font-weight: 600;
-  font-size: var(--inspect-font-size-smallest);
-  padding: 0 2px;
-}
-
-.breadcrumbSelection:hover {
-  text-decoration: underline;
-}
-
-.breadcrumbDivider {
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.75rem;
-  padding: 0 1px 0 3px;
 }
 
 /* Token cell */
@@ -379,4 +372,6 @@
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   text-align: right;
+  -webkit-user-select: none;
+  user-select: none;
 }

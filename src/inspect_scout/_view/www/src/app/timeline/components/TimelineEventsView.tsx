@@ -29,6 +29,7 @@ import {
 import { useProperty } from "../../../state/hooks/useProperty";
 import { useStore } from "../../../state/store";
 import type { Event } from "../../../types/api-types";
+import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
 import { buildSpanSelectKeys } from "../timelineEventNodes";
 import type { MarkerConfig } from "../utils/markers";
@@ -61,6 +62,8 @@ interface TimelineEventsViewProps {
   markerConfig?: MarkerConfig;
   /** Controls swimlane visibility. `"auto"` shows when data has child spans. Default: `"auto"`. */
   timeline?: true | false | "auto";
+  /** Controls which agents are included in the timeline. */
+  agentConfig?: TimelineOptions;
   className?: string;
 }
 
@@ -110,6 +113,7 @@ export const TimelineEventsView = forwardRef<
     onMarkerNavigate,
     markerConfig,
     timeline: timelineProp = "auto",
+    agentConfig,
     className,
   },
   ref
@@ -127,7 +131,7 @@ export const TimelineEventsView = forwardRef<
     sourceSpans,
     minimapSelection,
     hasTimeline,
-  } = useTranscriptTimeline(events, markerConfig);
+  } = useTranscriptTimeline(events, markerConfig, agentConfig);
 
   // ---------------------------------------------------------------------------
   // Span selection context (agent card clicks → swimlane selection)
@@ -137,21 +141,14 @@ export const TimelineEventsView = forwardRef<
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]
   );
-  const {
-    select: timelineSelect,
-    drillDownAndSelect: timelineDrillDownAndSelect,
-  } = timelineState;
+  const { select: timelineSelect } = timelineState;
   const selectBySpanId = useCallback(
     (spanId: string) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      if (key.parallel && key.spanIndex) {
-        timelineDrillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
-      } else {
-        timelineSelect(key.name, key.spanIndex);
-      }
+      timelineSelect(key.key);
     },
-    [spanSelectKeys, timelineSelect, timelineDrillDownAndSelect]
+    [spanSelectKeys, timelineSelect]
   );
 
   // ---------------------------------------------------------------------------
@@ -282,8 +279,6 @@ export const TimelineEventsView = forwardRef<
   const showSwimlanes =
     timelineProp === true || (timelineProp === "auto" && hasTimeline);
 
-  const atRoot = timelineState.breadcrumbs.length <= 1;
-
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [scrollRef]);
@@ -308,9 +303,7 @@ export const TimelineEventsView = forwardRef<
                 layouts={timelineLayouts}
                 timeline={timelineState}
                 header={{
-                  breadcrumbs: timelineState.breadcrumbs,
-                  atRoot,
-                  onNavigate: timelineState.navigateTo,
+                  rootLabel: timelineData.root.name,
                   onScrollToTop: scrollToTop,
                   minimap: {
                     root: timelineData.root,

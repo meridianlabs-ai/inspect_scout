@@ -16,7 +16,6 @@ import {
   type RowSpan,
   type SwimlaneRow,
   getAgents,
-  isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
 import type { TimeMapping } from "./timeMapping";
@@ -59,10 +58,14 @@ export interface PositionedMarker {
 
 /** Complete layout data for a single swimlane row. */
 export interface RowLayout {
+  /** Unique key for the row (tree-path based). */
+  key: string;
   /** Row name (for label column). */
   name: string;
-  /** Whether this is the parent row (index 0). */
+  /** Whether this is the parent row (depth 0). */
   isParent: boolean;
+  /** Depth in the span tree (0 = root). */
+  depth: number;
   /** Positioned spans (fills). */
   spans: PositionedSpan[];
   /** Positioned markers. */
@@ -106,39 +109,6 @@ export function computeBarPosition(
   const left = timestampToPercent(spanStart, viewStart, viewEnd);
   const right = timestampToPercent(spanEnd, viewStart, viewEnd);
   return { left, width: Math.max(0, right - left) };
-}
-
-// =============================================================================
-// Drillability
-// =============================================================================
-
-/**
- * Determines whether a RowSpan is drillable.
- *
- * A SingleSpan is drillable if its agent has non-utility child spans.
- * A ParallelSpan is always drillable (drill reveals individual instances).
- */
-export function isDrillable(span: RowSpan): boolean {
-  if (isParallelSpan(span)) return true;
-
-  if (isSingleSpan(span)) {
-    return span.agent.content.some(
-      (item): item is TimelineSpan => item.type === "span" && !item.utility
-    );
-  }
-
-  return false;
-}
-
-/** Counts the drillable children for disclosure label text. */
-function drillableChildCount(span: RowSpan): number {
-  if (isParallelSpan(span)) return span.agents.length;
-  if (isSingleSpan(span)) {
-    return span.agent.content.filter(
-      (item): item is TimelineSpan => item.type === "span" && !item.utility
-    ).length;
-  }
-  return 0;
 }
 
 // =============================================================================
@@ -203,8 +173,8 @@ export function computeRowLayouts(
   markerDepth: MarkerDepth,
   markerKinds?: MarkerKind[]
 ): RowLayout[] {
-  return rows.map((row, index) => {
-    const isParent = index === 0;
+  return rows.map((row) => {
+    const isParent = row.depth === 0;
 
     // Position each RowSpan
     const spans = row.spans.map((rowSpan): PositionedSpan => {
@@ -214,11 +184,10 @@ export function computeRowLayouts(
           rowSpan.agent.endTime,
           mapping
         );
-        const drillable = !isParent && isDrillable(rowSpan);
         return {
           bar,
-          drillable,
-          childCount: drillable ? drillableChildCount(rowSpan) : 0,
+          drillable: false,
+          childCount: 0,
           parallelCount: null,
           description: rowSpan.agent.description ?? null,
         };
@@ -234,8 +203,8 @@ export function computeRowLayouts(
       );
       return {
         bar,
-        drillable: !isParent,
-        childCount: !isParent ? agents.length : 0,
+        drillable: false,
+        childCount: 0,
         parallelCount: agents.length,
         description: null,
       };
@@ -254,8 +223,10 @@ export function computeRowLayouts(
         : null;
 
     return {
+      key: row.key,
       name: row.name,
       isParent,
+      depth: row.depth,
       spans,
       markers,
       totalTokens: row.totalTokens,

@@ -3,14 +3,7 @@ import {
   VscodeSingleSelect,
 } from "@vscode-elements/react-elements";
 import clsx from "clsx";
-import {
-  CSSProperties,
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { CSSProperties, FC, useCallback, useMemo, useState } from "react";
 
 import { ApplicationIcons } from "../../components/icons";
 import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
@@ -53,12 +46,6 @@ export const TimelinePanel: FC = () => {
   const timeline = scenario?.timeline ?? timelineScenarios[0]!.timeline;
   const state = useTimeline(timeline);
 
-  // Clear drill-down path on mount so reloads start at root
-  useEffect(() => {
-    state.navigateTo("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const timeMapping = useMemo(
     () => computeTimeMapping(state.node),
     [state.node]
@@ -73,8 +60,6 @@ export const TimelinePanel: FC = () => {
     () => computeRowLayouts(state.rows, timeMapping, markerDepth),
     [state.rows, timeMapping, markerDepth]
   );
-
-  const atRoot = state.breadcrumbs.length <= 1;
 
   // Resolved spans for the selected swimlane row (all spans, for event display)
   const selectedSpans = useMemo(
@@ -102,18 +87,14 @@ export const TimelinePanel: FC = () => {
     [state.rows]
   );
 
-  const { select, drillDownAndSelect } = state;
+  const { select } = state;
   const selectBySpanId = useCallback(
     (spanId: string) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      if (key.parallel && key.spanIndex) {
-        drillDownAndSelect(key.name, `${key.name} ${key.spanIndex}`);
-      } else {
-        select(key.name, key.spanIndex);
-      }
+      select(key.key);
     },
-    [spanSelectKeys, select, drillDownAndSelect]
+    [spanSelectKeys, select]
   );
 
   return (
@@ -126,7 +107,7 @@ export const TimelinePanel: FC = () => {
             // Cast required: @vscode-elements/react-elements types onChange as Event
             const target = e.target as HTMLSelectElement;
             setSelectedIndex(Number(target.value));
-            state.navigateTo("");
+            state.clearSelection();
           }}
           className={styles.scenarioSelect}
         >
@@ -159,9 +140,7 @@ export const TimelinePanel: FC = () => {
           layouts={layouts}
           timeline={state}
           header={{
-            breadcrumbs: state.breadcrumbs,
-            atRoot,
-            onNavigate: state.navigateTo,
+            rootLabel: timeline.root.name,
             minimap: {
               root: timeline.root,
               selection: minimapSelection,

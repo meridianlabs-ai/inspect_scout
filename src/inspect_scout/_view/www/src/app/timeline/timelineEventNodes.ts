@@ -19,25 +19,65 @@ import type {
 } from "../../types/api-types";
 
 import type { MinimapSelection } from "./components/TimelineMinimap";
-import { parsePathSegment } from "./hooks/useTimeline";
 import { computeTimeEnvelope } from "./utils/swimlaneLayout";
 import {
   type SwimlaneRow,
   getAgents,
-  isParallelSpan,
   isSingleSpan,
 } from "./utils/swimlaneRows";
+
+// =============================================================================
+// Selection parsing
+// =============================================================================
+
+/**
+ * Parsed selection: a row key with an optional span index.
+ *
+ * Format: `"rowKey"` selects the whole row, `"rowKey:N"` selects
+ * span index N (0-based) within an iterative row.
+ */
+export interface ParsedSelection {
+  rowKey: string;
+  spanIndex: number | null;
+}
+
+/**
+ * Parses a selection string into row key + optional span index.
+ * Returns null for null/empty input.
+ */
+export function parseSelection(
+  selected: string | null
+): ParsedSelection | null {
+  if (!selected) return null;
+  const colonIdx = selected.lastIndexOf(":");
+  if (colonIdx === -1) return { rowKey: selected, spanIndex: null };
+  const suffix = selected.slice(colonIdx + 1);
+  const idx = Number(suffix);
+  if (!Number.isInteger(idx) || idx < 0) {
+    // Not a valid span index — treat the whole string as the row key
+    return { rowKey: selected, spanIndex: null };
+  }
+  return { rowKey: selected.slice(0, colonIdx), spanIndex: idx };
+}
+
+/**
+ * Builds a selection string from row key + optional span index.
+ */
+export function buildSelectionKey(rowKey: string, spanIndex?: number): string {
+  if (spanIndex !== undefined) return `${rowKey}:${spanIndex}`;
+  return rowKey;
+}
 
 // =============================================================================
 // Row lookup
 // =============================================================================
 
-/** Find a swimlane row by name (case-insensitive). */
-function findRowByName(
+/** Find a swimlane row by key. */
+function findRowByKey(
   rows: SwimlaneRow[],
-  name: string
+  key: string
 ): SwimlaneRow | undefined {
-  return rows.find((r) => r.name.toLowerCase() === name.toLowerCase());
+  return rows.find((r) => r.key === key);
 }
 
 // =============================================================================
@@ -45,39 +85,35 @@ function findRowByName(
 // =============================================================================
 
 /**
- * Resolves the selected swimlane row identifier to TimelineSpan(s).
+ * Resolves the selected swimlane row key to TimelineSpan(s).
  *
- * For single-span rows, returns the single agent. For parallel rows with a
- * span index suffix (e.g. "Explore-2"), returns the specific agent. For
- * parallel rows without a suffix, returns all agents.
+ * When the selection includes a span index (e.g. `"explore:1"`), returns
+ * only that specific span. Otherwise returns all spans from the row.
  */
 export function getSelectedSpans(
   rows: SwimlaneRow[],
   selected: string | null
 ): TimelineSpan[] {
-  if (!selected) return [];
+  const parsed = parseSelection(selected);
+  if (!parsed) return [];
 
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row = findRowByName(rows, name);
+  const row = findRowByKey(rows, parsed.rowKey);
   if (!row) return [];
 
-  const result: TimelineSpan[] = [];
-  const targetIndex = spanIndex !== null ? spanIndex - 1 : null; // 0-based
+  // Sub-selection: return only the indexed span
+  if (parsed.spanIndex !== null) {
+    const span = row.spans[parsed.spanIndex];
+    if (!span) return [];
+    return isSingleSpan(span) ? [span.agent] : getAgents(span);
+  }
 
-  for (let i = 0; i < row.spans.length; i++) {
-    const rowSpan = row.spans[i]!;
+  // Whole row: return all spans
+  const result: TimelineSpan[] = [];
+  for (const rowSpan of row.spans) {
     if (isSingleSpan(rowSpan)) {
-      // For iterative rows, only include the targeted SingleSpan
-      if (targetIndex === null || i === targetIndex) {
-        result.push(rowSpan.agent);
-      }
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) result.push(agent);
-      } else {
-        result.push(...rowSpan.agents);
-      }
+      result.push(rowSpan.agent);
+    } else {
+      result.push(...getAgents(rowSpan));
     }
   }
   return result;
@@ -90,51 +126,41 @@ export function getSelectedSpans(
 /**
  * Computes the minimap selection for the currently selected swimlane row.
  *
- * Resolves a single visually-highlighted span: for iterative rows, the
- * specific SingleSpan is selected; for parallel rows with a span index,
- * the specific agent. Without an index, the envelope of all parallel agents
- * is returned.
+ * When a span index is present, shows just that span's range.
+ * Otherwise shows the full row's range.
  */
 export function computeMinimapSelection(
   rows: SwimlaneRow[],
   selected: string | null
 ): MinimapSelection | undefined {
-  if (!selected) return undefined;
-  const { name, spanIndex } = parsePathSegment(selected);
-  const row = findRowByName(rows, name);
+  const parsed = parseSelection(selected);
+  if (!parsed) return undefined;
+  const row = findRowByKey(rows, parsed.rowKey);
   if (!row) return undefined;
 
-  const targetIndex = (spanIndex ?? 1) - 1;
-  for (const rowSpan of row.spans) {
-    if (isSingleSpan(rowSpan)) {
-      const singleIndex = row.spans.indexOf(rowSpan);
-      if (singleIndex === targetIndex || row.spans.length === 1) {
-        const agent = rowSpan.agent;
-        return {
-          startTime: agent.startTime,
-          endTime: agent.endTime,
-          totalTokens: agent.totalTokens,
-        };
-      }
-    } else if (isParallelSpan(rowSpan)) {
-      if (spanIndex !== null) {
-        const agent = rowSpan.agents[spanIndex - 1];
-        if (agent) {
-          return {
-            startTime: agent.startTime,
-            endTime: agent.endTime,
-            totalTokens: agent.totalTokens,
-          };
-        }
-      }
-      // No index → envelope of all parallel agents
-      const agents = getAgents(rowSpan);
-      const envelope = computeTimeEnvelope(agents);
-      const tokens = agents.reduce((sum, a) => sum + a.totalTokens, 0);
-      return { ...envelope, totalTokens: tokens };
-    }
+  // Determine which spans to include
+  const spans =
+    parsed.spanIndex !== null
+      ? row.spans[parsed.spanIndex]
+        ? [row.spans[parsed.spanIndex]!]
+        : []
+      : row.spans;
+
+  const allAgents = spans.flatMap(getAgents);
+  if (allAgents.length === 0) return undefined;
+
+  if (allAgents.length === 1) {
+    const agent = allAgents[0]!;
+    return {
+      startTime: agent.startTime,
+      endTime: agent.endTime,
+      totalTokens: agent.totalTokens,
+    };
   }
-  return undefined;
+
+  const envelope = computeTimeEnvelope(allAgents);
+  const tokens = allAgents.reduce((sum, a) => sum + a.totalTokens, 0);
+  return { ...envelope, totalTokens: tokens };
 }
 
 // =============================================================================
@@ -244,40 +270,34 @@ function collectFromContent(
 // =============================================================================
 
 export interface SpanSelectKey {
-  name: string;
-  spanIndex?: number;
-  /** True when the span is part of a parallel group (requires drill-down). */
-  parallel?: boolean;
+  /** The row key to select. */
+  key: string;
 }
 
 /**
- * Builds a lookup from span ID to the (name, spanIndex) pair needed to
- * select that span in the swimlane UI.
+ * Builds a lookup from span ID to the selection key needed to select that span
+ * in the swimlane UI.
  *
- * For single-span rows, only the name is needed. For rows with multiple
- * spans (iterative or parallel), a 1-based spanIndex distinguishes them.
- * Parallel spans are flagged so the caller can drill down before selecting.
+ * For rows with multiple spans (iterative), each span ID maps to a key with
+ * the span index suffix (e.g. `"explore:0"`). For single-span rows, the key
+ * is just the row key.
  */
 export function buildSpanSelectKeys(
   rows: SwimlaneRow[]
 ): ReadonlyMap<string, SpanSelectKey> {
   const keys = new Map<string, SpanSelectKey>();
   for (const row of rows) {
-    const needsIndex = row.spans.length > 1;
+    const hasMultipleSpans = row.spans.length > 1;
     for (let i = 0; i < row.spans.length; i++) {
       const rowSpan = row.spans[i]!;
+      const selectKey = hasMultipleSpans
+        ? buildSelectionKey(row.key, i)
+        : row.key;
       if (isSingleSpan(rowSpan)) {
-        keys.set(rowSpan.agent.id, {
-          name: row.name,
-          spanIndex: needsIndex ? i + 1 : undefined,
-        });
-      } else if (isParallelSpan(rowSpan)) {
-        for (let j = 0; j < rowSpan.agents.length; j++) {
-          keys.set(rowSpan.agents[j]!.id, {
-            name: row.name,
-            spanIndex: j + 1,
-            parallel: true,
-          });
+        keys.set(rowSpan.agent.id, { key: selectKey });
+      } else {
+        for (const agent of getAgents(rowSpan)) {
+          keys.set(agent.id, { key: selectKey });
         }
       }
     }

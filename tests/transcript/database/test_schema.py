@@ -103,8 +103,8 @@ class TestTranscriptSchemaFields:
             "events",
         ]
         for name in string_fields:
-            assert field_map[name].pyarrow_type == pa.string(), (
-                f"{name} should be string"
+            assert field_map[name].pyarrow_type == pa.large_string(), (
+                f"{name} should be large_string"
             )
 
         # Integer fields
@@ -132,7 +132,7 @@ class TestTranscriptsDbSchema:
     def test_pyarrow_field_types(self) -> None:
         """PyArrow schema has correct field types."""
         schema = transcripts_db_schema(format="pyarrow")
-        assert schema.field("transcript_id").type == pa.string()
+        assert schema.field("transcript_id").type == pa.large_string()
         assert schema.field("task_repeat").type == pa.int64()
         assert schema.field("total_time").type == pa.float64()
         assert schema.field("success").type == pa.bool_()
@@ -439,12 +439,12 @@ class TestSchemaField:
         """Can create a basic SchemaField."""
         field = SchemaField(
             name="test_field",
-            pyarrow_type=pa.string(),
+            pyarrow_type=pa.large_string(),
             required=True,
             description="A test field",
         )
         assert field.name == "test_field"
-        assert field.pyarrow_type == pa.string()
+        assert field.pyarrow_type == pa.large_string()
         assert field.required is True
         assert field.description == "A test field"
         assert field.json_serialized is False  # default
@@ -453,7 +453,7 @@ class TestSchemaField:
         """Can create SchemaField with json_serialized=True."""
         field = SchemaField(
             name="json_field",
-            pyarrow_type=pa.string(),
+            pyarrow_type=pa.large_string(),
             required=False,
             description="A JSON field",
             json_serialized=True,

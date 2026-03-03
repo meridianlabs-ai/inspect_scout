@@ -1,4 +1,11 @@
-"""Tests for generate_answer — dispatch, retry, and parse flag behavior."""
+"""Tests for generate_answer — dispatch, retry, and parse flag behavior.
+
+Answer *parsing* correctness (valid/invalid values, edge cases, all answer types)
+belongs in test_parse_answer.py which tests parse_answer — the narrowest public API.
+This file tests generate_answer's own responsibilities: dispatch to the right backend,
+retry on malformed output, the parse flag, and reference extraction. The retry table
+needs one representative row per failure mode, not exhaustive per-type coverage.
+"""
 
 import re
 from unittest.mock import AsyncMock, patch

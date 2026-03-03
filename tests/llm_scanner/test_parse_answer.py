@@ -317,6 +317,66 @@ def test_parse_multi_classification(
 
 
 # ---------------------------------------------------------------------------
+# Multi-classification allow_none parsing
+# ---------------------------------------------------------------------------
+
+_ALLOW_NONE_LABELS = ["Violence or harm", "Illegal activity", "Privacy violations"]
+
+
+@pytest.mark.parametrize(
+    "allow_none,completion,expected_value,expected_answer,expected_explanation",
+    [
+        pytest.param(
+            True,
+            "None apply.\n\nANSWER: NONE",
+            [],
+            "NONE",
+            "None apply.",
+            id="none-accepted",
+        ),
+        pytest.param(
+            True,
+            "None apply.\n\nANSWER: none",
+            [],
+            "none",
+            "None apply.",
+            id="none-lowercase",
+        ),
+        pytest.param(
+            True,
+            "Analysis.\n\nANSWER: A,C",
+            ["Violence or harm", "Privacy violations"],
+            "A,C",
+            "Analysis.",
+            id="valid-letters-still-work",
+        ),
+        pytest.param(
+            False,
+            "None apply.\n\nANSWER: NONE",
+            None,
+            None,
+            "None apply.\n\nANSWER: NONE",
+            id="none-rejected",
+        ),
+    ],
+)
+def test_parse_multi_classification_allow_none(
+    allow_none: bool,
+    completion: str,
+    expected_value: list[str] | None,
+    expected_answer: str | None,
+    expected_explanation: str,
+) -> None:
+    output = ModelOutput(model="test", completion=completion)
+    result = parse_answer(
+        output, AnswerMultiLabel(_ALLOW_NONE_LABELS, allow_none=allow_none), _no_refs
+    )
+    assert result.value == expected_value
+    assert result.answer == expected_answer
+    assert result.explanation == expected_explanation
+
+
+# ---------------------------------------------------------------------------
 # String parsing
 # ---------------------------------------------------------------------------
 

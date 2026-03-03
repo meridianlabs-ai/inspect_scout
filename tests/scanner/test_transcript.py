@@ -581,6 +581,23 @@ async def test_connect_disconnect() -> None:
 
 
 @pytest.mark.asyncio
+async def test_connect_with_empty_dataframe() -> None:
+    """Empty DataFrame (zero columns) connects without crashing.
+
+    Regression test: pandas generates invalid SQL (CREATE TABLE t ())
+    when writing a zero-column DataFrame to SQLite.
+    """
+    db = EvalLogTranscriptsView(pd.DataFrame())
+
+    async with db:
+        # All query methods should return empty results, not raise
+        assert [item async for item in db.select(Query())] == []
+        assert await db.count() == 0
+        assert await db.distinct("model", None) == []
+        assert await db.transcript_ids() == {}
+
+
+@pytest.mark.asyncio
 async def test_select_all(db: EvalLogTranscriptsView) -> None:
     """Test querying all records."""
     results = [item async for item in db.select(Query())]

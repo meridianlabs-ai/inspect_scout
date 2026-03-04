@@ -1066,7 +1066,7 @@ function wrapUtilityEvents(agent: TimelineSpan): void {
   // Prefer the prompt of the first ModelEvent that has tool calls
   for (const item of agent.content) {
     if (item.type === "event" && item.event.event === "model") {
-      const modelEvt = item.event as ModelEvent;
+      const modelEvt = item.event;
       if (hasToolCalls(modelEvt)) {
         primaryPrompt = getSystemPromptForEvent(modelEvt);
         break;
@@ -1078,7 +1078,7 @@ function wrapUtilityEvents(agent: TimelineSpan): void {
   if (primaryPrompt === null) {
     for (const item of agent.content) {
       if (item.type === "event" && item.event.event === "model") {
-        primaryPrompt = getSystemPromptForEvent(item.event as ModelEvent);
+        primaryPrompt = getSystemPromptForEvent(item.event);
         break;
       }
     }
@@ -1106,7 +1106,7 @@ function wrapUtilityEvents(agent: TimelineSpan): void {
   const newContent: (TimelineEvent | TimelineSpan)[] = [];
   for (const item of agent.content) {
     if (item.type === "event" && item.event.event === "model") {
-      const modelEvt = item.event as ModelEvent;
+      const modelEvt = item.event;
       const evtPrompt = getSystemPromptForEvent(modelEvt);
       if (
         evtPrompt !== null &&

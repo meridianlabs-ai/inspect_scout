@@ -57,7 +57,9 @@ export function buildContentItems(
 
   // 1. Walk content chronologically, optionally skipping utility spans
   const items: ContentItem[] = node.content
-    .filter((child) => includeUtility || !(child.type === "span" && child.utility))
+    .filter(
+      (child) => includeUtility || !(child.type === "span" && child.utility)
+    )
     .map((child) =>
       child.type === "event"
         ? { type: "event" as const, eventNode: child }

@@ -168,10 +168,7 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
           lines={15}
           className={clsx("text-size-small")}
         >
-          <MarkdownToolOutput
-            contents={normalizedContent}
-            context={context}
-          />
+          <MarkdownToolOutput contents={normalizedContent} context={context} />
         </ExpandablePanel>
       ) : hasContent && collapsible ? (
         <ExpandablePanel
@@ -211,9 +208,7 @@ const MarkdownToolOutput: FC<{
   context: MessagesContext;
 }> = ({ contents, context }) => {
   // Flatten tool wrapper to get inner content items
-  const items = contents.flatMap((c) =>
-    c.type === "tool" ? c.content : [c]
-  );
+  const items = contents.flatMap((c) => (c.type === "tool" ? c.content : [c]));
 
   return (
     <>

@@ -199,7 +199,13 @@ export function collectRawEvents(
     // the last ASSISTANT response. Detect and skip it at the top level only.
     const span = spans[0]!;
     const agentSpanId = span.spanType === "agent" ? span.id : undefined;
-    collectFromContent(span.content, events, sourceSpans, agentSpanId, includeUtility);
+    collectFromContent(
+      span.content,
+      events,
+      sourceSpans,
+      agentSpanId,
+      includeUtility
+    );
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
@@ -255,7 +261,13 @@ function collectFromContent(
         sourceSpans.set(item.id, item);
       } else {
         // Non-agent spans: recurse into child content
-        collectFromContent(item.content, out, sourceSpans, undefined, includeUtility);
+        collectFromContent(
+          item.content,
+          out,
+          sourceSpans,
+          undefined,
+          includeUtility
+        );
       }
 
       // Emit synthetic span_end

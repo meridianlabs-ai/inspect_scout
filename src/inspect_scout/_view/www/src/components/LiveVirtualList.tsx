@@ -291,8 +291,14 @@ export const LiveVirtualList = <T,>({
     }
   }, [scrollRef, handleScroll]);
 
-  // Scroll to index when component mounts or targetIndex changes
+  // Scroll to index when component mounts or targetIndex changes.
+  // offsetTop is read via ref so that changes to it (e.g. swimlane height
+  // changing during headroom collapse) don't re-trigger the scroll.
   const hasScrolled = useRef(false);
+  const offsetTopRef = useRef(offsetTop);
+  useEffect(() => {
+    offsetTopRef.current = offsetTop;
+  }, [offsetTop]);
   useEffect(() => {
     if (initialTopMostItemIndex !== undefined && listHandle.current) {
       // If there is an initial index, scroll to it after a short delay
@@ -305,15 +311,13 @@ export const LiveVirtualList = <T,>({
             : !hasScrolled.current
               ? "auto"
               : "smooth",
-          offset: offsetTop ? -offsetTop : undefined,
+          offset: offsetTopRef.current ? -offsetTopRef.current : undefined,
         });
         hasScrolled.current = true;
       }, 50);
       return () => clearTimeout(timer);
     }
-    // TODO: lint react-hooks/exhaustive-deps Fix this
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialTopMostItemIndex, listHandle, offsetTop]);
+  }, [initialTopMostItemIndex, listHandle, animation]);
 
   // Watch for scrolling to stop and trigger pending search callback
   useEffect(() => {

@@ -19,7 +19,10 @@ export const TranscriptTitle: FC<TranscriptTitleProps> = ({ transcript }) => {
     {
       label: (
         <>
-          {`Transcript — ${transcript.transcript_id}`}
+          Transcript —{" "}
+          <span className={styles.transcriptId}>
+            {transcript.transcript_id}
+          </span>
           <CopyButton value={transcript.transcript_id} />
         </>
       ),

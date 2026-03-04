@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -227,13 +228,51 @@ export const TimelineEventsView = forwardRef<
     eventsListRef.current?.scrollToEvent(eventId);
   }, []);
 
-  // Reset scroll position when the selected events change.
-  // Skip when a deep-link is active.
-  useEffect(() => {
-    if (!initialEventId) {
-      scrollRef.current?.scrollTo({ top: 0 });
+  // Per-agent scroll position persistence using Virtuoso StateSnapshot.
+  // Each agent gets its own Virtuoso instance (via React `key`) so that
+  // item measurements and scroll position are preserved independently.
+  // On first visit to an agent, scroll to top since the shared scroll
+  // container may still be at the previous agent's offset.
+  const selected = timelineState.selected;
+  const eventsListId = selected ? `${id}:${selected}` : id;
+  const listPositions = useStore((state) => state.listPositions);
+  const clearListPosition = useStore((state) => state.clearListPosition);
+
+  // When the selection changes, scroll to top if the new agent has no
+  // saved Virtuoso state (first visit). Returning visits are handled by
+  // Virtuoso's restoreStateFrom on remount.
+  useLayoutEffect(() => {
+    if (initialEventId) return; // deep-link takes priority
+
+    const virtuosoKey = `live-virtual-list-${eventsListId}`;
+    if (!listPositions[virtuosoKey] && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0 });
     }
-  }, [selectedEvents, initialEventId, scrollRef]);
+  }, [eventsListId, initialEventId, scrollRef, listPositions]);
+
+  // Clean up per-agent state when the transcript panel unmounts
+  // (e.g. navigating to a different transcript).
+  const clearTranscriptOutlineId = useStore(
+    (state) => state.clearTranscriptOutlineId
+  );
+  const listPositionsRef = useRef(listPositions);
+  useEffect(() => {
+    listPositionsRef.current = listPositions;
+  }, [listPositions]);
+
+  useEffect(() => {
+    const prefix = `live-virtual-list-${id}:`;
+    return () => {
+      // Clear per-agent Virtuoso snapshots
+      for (const key of Object.keys(listPositionsRef.current)) {
+        if (key.startsWith(prefix)) {
+          clearListPosition(key);
+        }
+      }
+      // Clear stale outline highlight
+      clearTranscriptOutlineId();
+    };
+  }, [id, clearListPosition, clearTranscriptOutlineId]);
 
   // Bulk collapse/expand effect driven by parent's `collapsed` prop
   const setCollapsedEvents = useStore(
@@ -391,8 +430,9 @@ export const TimelineEventsView = forwardRef<
           <div className={styles.eventsSeparator} />
           {hasMatchingEvents ? (
             <TranscriptViewNodes
+              key={eventsListId}
               ref={eventsListRef}
-              id={id}
+              id={eventsListId}
               eventNodes={eventNodes}
               defaultCollapsedIds={defaultCollapsedIds}
               initialEventId={initialEventId}

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { CopyButton } from "../../components/CopyButton";
 import { Transcript } from "../../types/api-types";
 import { formatDateTime, formatNumber, formatTime } from "../../utils/format";
 import { HeadingGrid, HeadingValue } from "../components/HeadingGrid";
@@ -16,7 +17,12 @@ interface TranscriptTitleProps {
 export const TranscriptTitle: FC<TranscriptTitleProps> = ({ transcript }) => {
   const cols: HeadingValue[] = [
     {
-      label: "Transcript",
+      label: (
+        <>
+          {`Transcript — ${transcript.transcript_id}`}
+          <CopyButton value={transcript.transcript_id} />
+        </>
+      ),
       value: (
         <TaskName
           taskId={transcript.task_id}

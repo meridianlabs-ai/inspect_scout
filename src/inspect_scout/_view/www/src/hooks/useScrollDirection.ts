@@ -52,28 +52,40 @@ export function useScrollDirection(
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Already have it — sync immediately.
-    if (scrollRef.current) {
+    // Sync immediately if available.
+    const sync = () => {
       setScrollEl((prev) =>
-        prev === scrollRef.current ? prev : scrollRef.current
+        prev === scrollRef.current ? prev : (scrollRef.current ?? null)
       );
-      return;
-    }
+    };
+    sync();
 
-    // Not yet rendered. Watch the DOM for additions so we notice as soon
-    // as the ref target mounts.
-    const observer = new MutationObserver(() => {
-      if (scrollRef.current) {
-        setScrollEl(scrollRef.current);
-        observer.disconnect();
-      }
-    });
+    // The ref target may unmount and remount (e.g. navigating between
+    // transcripts). A MutationObserver detects DOM changes so we can
+    // re-sync whenever the element appears or disappears.
+    const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [scrollRef]);
 
+  // Reset hidden state when the scroll element changes (e.g. transcript
+  // navigation unmounts/remounts the container). Uses "adjust state during
+  // render" pattern to avoid setState-in-effect.
+  const [prevScrollEl, setPrevScrollEl] = useState(scrollEl);
+  if (prevScrollEl !== scrollEl) {
+    setPrevScrollEl(scrollEl);
+    if (hidden) {
+      setHidden(false);
+    }
+  }
+
   // Attach the scroll listener to the resolved element.
+  // Reset ref-based internal state when the element changes.
   useEffect(() => {
+    directionAnchorRef.current = 0;
+    lastDirectionRef.current = "up";
+    transitionLockedRef.current = false;
+
     if (!scrollEl) return;
 
     const onScroll = () => {

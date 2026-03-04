@@ -156,20 +156,15 @@ export const LiveVirtualList = <T,>({
   // conditionally rendered, so we watch the DOM for it to appear.
   const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    if (scrollRef?.current) {
-      setScrollParent((prev) =>
-        prev === scrollRef.current ? prev : scrollRef.current
-      );
-      return;
-    }
     if (!scrollRef) return;
-    // Not yet rendered — watch the DOM for additions.
-    const observer = new MutationObserver(() => {
-      if (scrollRef.current) {
-        setScrollParent(scrollRef.current);
-        observer.disconnect();
-      }
-    });
+    const sync = () => {
+      setScrollParent((prev) =>
+        prev === scrollRef.current ? prev : (scrollRef.current ?? null)
+      );
+    };
+    sync();
+    // The ref target may unmount and remount, so keep watching.
+    const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [scrollRef]);

@@ -32,7 +32,8 @@ export const CompactionEventView: FC<CompactionEventViewProps> = ({
   }
   data = { ...data, ...(event.metadata || {}) };
 
-  const source = event.source && event.source !== "inspect" ? event.source : "";
+  const source =
+    event.source && event.source !== "inspect" ? ": " + event.source : "";
 
   return (
     <EventPanel

@@ -11,6 +11,7 @@
 - Serialization: Use `pa.large_string` for string types to support larger column/file sizes. 
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
 - Transcripts: unthin `target` and and add `scores` from sample JSON.
+- Transcripts: Set row group size to 25 (specify as rows not bytes).
 - Scout View: Properly sort scanner results using the value type.
 - Scout View: Enable minification and caching of view static assets.
 - Scout View: Fix issue rendering transcript events when showing the validation panel.

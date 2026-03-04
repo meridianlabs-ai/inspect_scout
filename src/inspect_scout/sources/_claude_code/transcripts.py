@@ -43,6 +43,7 @@ from inspect_swe._claude_code._events.tree import (
     get_conversation_events,
     split_on_clear,
 )
+from inspect_swe._claude_code._events.util import parse_timestamp as _parse_timestamp
 
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
@@ -495,6 +496,32 @@ async def _create_transcript(
         events=scout_events,
         metadata=metadata,
     )
+
+
+def sum_latency(events: list[BaseEvent]) -> float:
+    """Calculate total time from first to last event.
+
+    Args:
+        events: List of events
+
+    Returns:
+        Duration in seconds, or 0.0 if cannot be calculated
+    """
+    if not events:
+        return 0.0
+
+    timestamps = []
+    for event in events:
+        ts = _parse_timestamp(event.timestamp)
+        if ts:
+            timestamps.append(ts)
+
+    if len(timestamps) < 2:
+        return 0.0
+
+    timestamps.sort()
+    duration = (timestamps[-1] - timestamps[0]).total_seconds()
+    return max(0.0, duration)
 
 
 # Re-exports

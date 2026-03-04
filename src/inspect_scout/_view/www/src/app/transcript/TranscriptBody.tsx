@@ -22,10 +22,7 @@ import { ToolDropdownButton } from "../../components/ToolDropdownButton";
 import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
-import {
-  TimelineEventsView,
-  type TimelineEventsViewHandle,
-} from "../timeline/components/TimelineEventsView";
+import { TimelineEventsView } from "../timeline/components/TimelineEventsView";
 import { messagesToStr } from "../utils/messages";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
@@ -93,15 +90,11 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     [setSelectedTranscriptTab, setSearchParams]
   );
 
-  // Ref to the TimelineEventsView for suppress-collapse during marker navigation.
-  const viewRef = useRef<TimelineEventsViewHandle>(null);
-
   // Navigate to a specific event when a marker is clicked on the timeline.
   const handleMarkerNavigate = useCallback(
     (eventId: string) => {
       const url = getEventUrl(eventId);
       if (!url) return;
-      viewRef.current?.suppressNextCollapse();
       void navigate(url);
     },
     [getEventUrl, navigate]
@@ -301,7 +294,6 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       scrollable={false}
     >
       <TimelineEventsView
-        ref={viewRef}
         events={filteredEvents}
         scrollRef={activeScrollRef}
         offsetTop={40}

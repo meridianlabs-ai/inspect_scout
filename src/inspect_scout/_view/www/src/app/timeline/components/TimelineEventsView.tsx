@@ -1,11 +1,10 @@
 import clsx from "clsx";
 import {
   CSSProperties,
+  FC,
   RefObject,
-  forwardRef,
   useCallback,
   useEffect,
-  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -69,11 +68,6 @@ interface TimelineEventsViewProps {
   className?: string;
 }
 
-/** Imperative handle for parent to suppress swimlane collapse during programmatic scrolls. */
-export interface TimelineEventsViewHandle {
-  suppressNextCollapse: () => void;
-}
-
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -100,26 +94,20 @@ const collectAllCollapsibleIds = (
 // Component
 // =============================================================================
 
-export const TimelineEventsView = forwardRef<
-  TimelineEventsViewHandle,
-  TimelineEventsViewProps
->(function TimelineEventsView(
-  {
-    events,
-    scrollRef,
-    offsetTop = 0,
-    initialEventId,
-    defaultOutlineExpanded = false,
-    id,
-    collapsed,
-    onMarkerNavigate,
-    markerConfig,
-    timeline: timelineProp = "auto",
-    agentConfig,
-    className,
-  },
-  ref
-) {
+export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
+  events,
+  scrollRef,
+  offsetTop = 0,
+  initialEventId,
+  defaultOutlineExpanded = false,
+  id,
+  collapsed,
+  onMarkerNavigate,
+  markerConfig,
+  timeline: timelineProp = "auto",
+  agentConfig,
+  className,
+}) => {
   // ---------------------------------------------------------------------------
   // Timeline config (persistent user preferences)
   // ---------------------------------------------------------------------------
@@ -170,30 +158,14 @@ export const TimelineEventsView = forwardRef<
   // Sticky swimlane state
   // ---------------------------------------------------------------------------
 
-  const suppressCollapseRef = useRef(false);
-  const [markerNavSticky, setMarkerNavSticky] = useState(false);
   const [isSwimLaneSticky, setIsSwimLaneSticky] = useState(false);
   const [stickySwimLaneHeight, setStickySwimLaneHeight] = useState(0);
   const swimLaneStickyContentRef = useRef<HTMLDivElement | null>(null);
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      suppressNextCollapse: () => {
-        suppressCollapseRef.current = true;
-      },
-    }),
-    []
-  );
-
   const handleSwimLaneStickyChange = useCallback((sticky: boolean) => {
     setIsSwimLaneSticky(sticky);
-    if (sticky && suppressCollapseRef.current) {
-      suppressCollapseRef.current = false;
-      setMarkerNavSticky(true);
-    } else if (!sticky) {
+    if (!sticky) {
       setStickySwimLaneHeight(0);
-      setMarkerNavSticky(false);
     }
   }, []);
 
@@ -375,8 +347,6 @@ export const TimelineEventsView = forwardRef<
                 }}
                 onMarkerNavigate={onMarkerNavigate}
                 isSticky={isSwimLaneSticky}
-                forceCollapsed={isSwimLaneSticky && !markerNavSticky}
-                noAnimation={isSwimLaneSticky && !markerNavSticky}
               />
             </div>
           </StickyScroll>
@@ -447,4 +417,4 @@ export const TimelineEventsView = forwardRef<
       </div>
     </TimelineSelectContext.Provider>
   );
-});
+};

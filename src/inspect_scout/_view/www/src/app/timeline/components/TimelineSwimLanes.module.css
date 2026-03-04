@@ -56,11 +56,6 @@
   opacity: 0;
 }
 
-/* Disable animation during sticky transitions */
-.noAnimation {
-  transition: none;
-}
-
 /* Sticky state — opaque background so it covers scrolled content */
 .swimlaneSticky {
   background-color: var(--bs-body-bg);

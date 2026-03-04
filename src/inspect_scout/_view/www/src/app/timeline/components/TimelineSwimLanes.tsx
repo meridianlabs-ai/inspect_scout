@@ -113,10 +113,6 @@ interface TimelineSwimLanesProps {
   header?: TimelineHeaderProps;
   /** Whether the swimlane is currently in sticky mode (opaque background). */
   isSticky?: boolean;
-  /** Force collapsed visual state (e.g. when sticky). */
-  forceCollapsed?: boolean;
-  /** Disable collapse/expand animation (e.g. during sticky transitions). */
-  noAnimation?: boolean;
   /** Called when an error or compaction marker is clicked. */
   onMarkerNavigate?: (eventId: string) => void;
 }
@@ -143,8 +139,6 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   timeline,
   header,
   isSticky,
-  forceCollapsed,
-  noAnimation,
   onMarkerNavigate,
 }) => {
   const { node, selected, select: onSelect, clearSelection } = timeline;
@@ -159,11 +153,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     { cleanup: false }
   );
   const isFlat = layouts.length <= 1;
-  // When forceCollapsed (sticky mode), default to collapsed unless
-  // the user has explicitly expanded via the toggle (collapsed === false).
-  const isCollapsed = forceCollapsed
-    ? collapsed !== false
-    : (collapsed ?? isFlat);
+  const isCollapsed = collapsed ?? isFlat;
   const toggleCollapsed = useCallback(() => {
     setCollapsed(!isCollapsed);
   }, [isCollapsed, setCollapsed]);
@@ -360,8 +350,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
       <div
         className={clsx(
           styles.collapsibleSection,
-          isCollapsed && styles.collapsibleCollapsed,
-          noAnimation && styles.noAnimation
+          isCollapsed && styles.collapsibleCollapsed
         )}
       >
         <div className={styles.collapsibleInner}>

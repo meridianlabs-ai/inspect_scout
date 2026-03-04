@@ -318,6 +318,10 @@ interface FlatEntry {
    *  together (grouped) rather than being interleaved by individual start
    *  time with entries from other agent names. */
   groupStartTime: Date;
+  /** Lane index within a parallel group (0-based). Preserves the greedy
+   *  bin-packing order from `assignToLanes` so that numbered entries like
+   *  "Explore 1" always sort before "Explore 2". -1 for non-parallel. */
+  laneIndex: number;
 }
 
 /**
@@ -381,6 +385,7 @@ function flattenChildren(
         startTime: first.startTime,
         endTime,
         groupStartTime,
+        laneIndex: -1,
       });
     } else {
       // Has overlapping spans: assign to lanes via bin-packing.
@@ -406,6 +411,7 @@ function flattenChildren(
           startTime: first.startTime,
           endTime,
           groupStartTime,
+          laneIndex: -1,
         });
       } else {
         // Multiple lanes needed: one numbered row per lane
@@ -427,6 +433,7 @@ function flattenChildren(
             startTime: first.startTime,
             endTime,
             groupStartTime,
+            laneIndex: i,
           });
         }
       }
@@ -434,10 +441,12 @@ function flattenChildren(
   }
 
   // Sort entries by group start time (keeps same-name entries together),
-  // then by individual start time within a group.
+  // then by lane index (preserves "Explore 1" before "Explore 2"),
+  // then by individual start time for non-parallel entries.
   entries.sort(
     (a, b) =>
       a.groupStartTime.getTime() - b.groupStartTime.getTime() ||
+      a.laneIndex - b.laneIndex ||
       compareByTime(a, b)
   );
 

@@ -629,8 +629,7 @@ function buildSpanFromGenericSpan(
 function unwrapSolverSpan(span: SpanNode): SpanNode {
   while (span.type === "solver") {
     const agentChildren = span.children.filter(
-      (child): child is SpanNode =>
-        isSpanNode(child) && child.type === "agent"
+      (child): child is SpanNode => isSpanNode(child) && child.type === "agent"
     );
     if (agentChildren.length !== 1) {
       break;

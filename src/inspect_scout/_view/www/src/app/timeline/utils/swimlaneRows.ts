@@ -125,6 +125,40 @@ export function computeSwimlaneRows(
 // =============================================================================
 
 /**
+ * Assigns time-sorted spans to lanes using greedy bin-packing.
+ *
+ * Each lane contains non-overlapping spans. The number of lanes equals
+ * the maximum parallelism level (minimum possible).
+ * Input must be sorted by start time.
+ */
+export function assignToLanes(sorted: TimelineSpan[]): TimelineSpan[][] {
+  if (sorted.length === 0) return [];
+
+  const lanes: { spans: TimelineSpan[]; endTime: number }[] = [];
+
+  for (const span of sorted) {
+    const spanStart = span.startTime.getTime();
+    let assigned = false;
+    for (const lane of lanes) {
+      if (lane.endTime + OVERLAP_TOLERANCE_MS <= spanStart) {
+        lane.spans.push(span);
+        lane.endTime = span.endTime.getTime();
+        assigned = true;
+        break;
+      }
+    }
+    if (!assigned) {
+      lanes.push({
+        spans: [span],
+        endTime: span.endTime.getTime(),
+      });
+    }
+  }
+
+  return lanes.map((l) => l.spans);
+}
+
+/**
  * Partitions time-sorted spans into clusters of overlapping spans.
  *
  * Uses a sweep-line: extends the current cluster while spans overlap its
@@ -289,7 +323,8 @@ interface FlatEntry {
  *
  * For each name group, partitions into overlapping clusters:
  * - If no cluster has >1 span (all iterative/sequential) → one row, multiple bars
- * - If any cluster has >1 span (parallel) → separate numbered rows per span
+ * - If any cluster has >1 span (parallel) → lanes via bin-packing, reusing lanes
+ *   for non-overlapping spans (number of lanes = max parallelism level)
  */
 function flattenChildren(
   nodes: TimelineSpan[],
@@ -339,18 +374,50 @@ function flattenChildren(
         endTime,
       });
     } else {
-      // Has overlapping spans (parallel): separate numbered rows per span
-      for (let i = 0; i < sorted.length; i++) {
-        const span = sorted[i]!;
+      // Has overlapping spans: assign to lanes via bin-packing.
+      // Each lane becomes one row with multiple non-overlapping bars.
+      const lanes = assignToLanes(sorted);
+
+      if (lanes.length === 1) {
+        // All spans fit in one lane — treat as iterative (no number suffix)
+        const laneSpans = lanes[0]!;
+        const rowSpans: RowSpan[] = laneSpans.map((s) => ({ agent: s }));
+        const first = laneSpans[0]!;
+        const endTime = laneSpans.reduce(
+          (latest, s) =>
+            s.endTime.getTime() > latest.getTime() ? s.endTime : latest,
+          first.endTime
+        );
         entries.push({
-          displayName: `${displayName} ${i + 1}`,
-          key: `${parentKey}/${baseName}-${i + 1}`,
-          spans: [span],
-          rowSpans: [{ agent: span }],
-          totalTokens: span.totalTokens,
-          startTime: span.startTime,
-          endTime: span.endTime,
+          displayName,
+          key: `${parentKey}/${baseName}`,
+          spans: laneSpans,
+          rowSpans,
+          totalTokens: laneSpans.reduce((sum, s) => sum + s.totalTokens, 0),
+          startTime: first.startTime,
+          endTime,
         });
+      } else {
+        // Multiple lanes needed: one numbered row per lane
+        for (let i = 0; i < lanes.length; i++) {
+          const laneSpans = lanes[i]!;
+          const rowSpans: RowSpan[] = laneSpans.map((s) => ({ agent: s }));
+          const first = laneSpans[0]!;
+          const endTime = laneSpans.reduce(
+            (latest, s) =>
+              s.endTime.getTime() > latest.getTime() ? s.endTime : latest,
+            first.endTime
+          );
+          entries.push({
+            displayName: `${displayName} ${i + 1}`,
+            key: `${parentKey}/${baseName}-${i + 1}`,
+            spans: laneSpans,
+            rowSpans,
+            totalTokens: laneSpans.reduce((sum, s) => sum + s.totalTokens, 0),
+            startTime: first.startTime,
+            endTime,
+          });
+        }
       }
     }
   }

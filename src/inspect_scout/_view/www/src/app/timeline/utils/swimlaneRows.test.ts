@@ -16,6 +16,7 @@ import {
 } from "../testHelpers";
 
 import {
+  assignToLanes,
   computeFlatSwimlaneRows,
   computeSwimlaneRows,
   isParallelSpan,
@@ -535,5 +536,176 @@ describe("computeFlatSwimlaneRows", () => {
       expect(rows).toHaveLength(2);
       expect(rows[1]!.name).toBe("Build"); // no number suffix
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Lane reuse (mixed parallel + sequential)
+  // ---------------------------------------------------------------------------
+  describe("lane reuse", () => {
+    it("packs non-overlapping spans into minimum lanes", () => {
+      // 5 Explore spans, max 2 concurrent at any time
+      // E1: 0-10, E2: 5-15 (overlap), E3: 20-30, E4: 25-35 (overlap), E5: 40-50
+      // Lane 1: E1, E3, E5 | Lane 2: E2, E4
+      const parent = makeSpan("Root", 0, 60, 50000, [
+        makeSpan("Explore", 0, 10, 3000),
+        makeSpan("Explore", 5, 15, 4000),
+        makeSpan("Explore", 20, 30, 5000),
+        makeSpan("Explore", 25, 35, 6000),
+        makeSpan("Explore", 40, 50, 7000),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      // Parent + 2 lanes
+      expect(rows).toHaveLength(3);
+      expect(rows[0]!.name).toBe("Root");
+
+      const exploreRows = rows.filter((r) => r.name.startsWith("Explore"));
+      expect(exploreRows).toHaveLength(2);
+      expect(exploreRows[0]!.name).toBe("Explore 1");
+      expect(exploreRows[1]!.name).toBe("Explore 2");
+
+      // Lane 1: 3 bars (E1, E3, E5)
+      expect(exploreRows[0]!.spans).toHaveLength(3);
+      // Lane 2: 2 bars (E2, E4)
+      expect(exploreRows[1]!.spans).toHaveLength(2);
+    });
+
+    it("assigns unique hierarchical keys to lanes", () => {
+      const parent = makeSpan("Root", 0, 40, 20000, [
+        makeSpan("Explore", 0, 10, 3000),
+        makeSpan("Explore", 5, 15, 4000),
+        makeSpan("Explore", 20, 30, 5000),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      expect(rows[1]!.key).toBe("root/explore-1");
+      expect(rows[2]!.key).toBe("root/explore-2");
+    });
+
+    it("aggregates tokens per lane", () => {
+      const parent = makeSpan("Root", 0, 60, 50000, [
+        makeSpan("Explore", 0, 10, 3000),
+        makeSpan("Explore", 5, 15, 4000),
+        makeSpan("Explore", 20, 30, 5000),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      const exploreRows = rows.filter((r) => r.name.startsWith("Explore"));
+      // Lane 1: 3000 + 5000 = 8000
+      expect(exploreRows[0]!.totalTokens).toBe(8000);
+      // Lane 2: 4000
+      expect(exploreRows[1]!.totalTokens).toBe(4000);
+    });
+
+    it("computes correct time range per lane", () => {
+      const parent = makeSpan("Root", 0, 60, 50000, [
+        makeSpan("Explore", 0, 10, 3000),
+        makeSpan("Explore", 5, 15, 4000),
+        makeSpan("Explore", 20, 30, 5000),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      const exploreRows = rows.filter((r) => r.name.startsWith("Explore"));
+      // Lane 1: E1(0-10) + E3(20-30) → start=0, end=30
+      expect(exploreRows[0]!.startTime).toEqual(ts(0));
+      expect(exploreRows[0]!.endTime).toEqual(ts(30));
+      // Lane 2: E2(5-15) → start=5, end=15
+      expect(exploreRows[1]!.startTime).toEqual(ts(5));
+      expect(exploreRows[1]!.endTime).toEqual(ts(15));
+    });
+
+    it("merges children from multiple spans in the same lane", () => {
+      const parent = makeSpan("Root", 0, 60, 50000, [
+        makeSpan("Explore", 0, 10, 3000, [
+          makeSpan("Search", 2, 8, 1500),
+        ]),
+        makeSpan("Explore", 5, 15, 4000, [
+          makeSpan("Analyze", 7, 13, 2000),
+        ]),
+        makeSpan("Explore", 20, 30, 5000, [
+          makeSpan("Search", 22, 28, 2500),
+        ]),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      // Lane 1: E1(0-10) + E3(20-30) → children: Search(2-8), Search(22-28)
+      // Lane 2: E2(5-15) → children: Analyze(7-13)
+      const searchRows = rows.filter((r) => r.name === "Search");
+      expect(searchRows).toHaveLength(1);
+      expect(searchRows[0]!.spans).toHaveLength(2); // two bars
+      expect(searchRows[0]!.depth).toBe(2);
+
+      const analyzeRows = rows.filter((r) => r.name === "Analyze");
+      expect(analyzeRows).toHaveLength(1);
+      expect(analyzeRows[0]!.depth).toBe(2);
+    });
+
+    it("all spans are SingleSpan (not grouped as ParallelSpan)", () => {
+      const parent = makeSpan("Root", 0, 60, 50000, [
+        makeSpan("Explore", 0, 10, 3000),
+        makeSpan("Explore", 5, 15, 4000),
+        makeSpan("Explore", 20, 30, 5000),
+      ]);
+      const rows = computeFlatSwimlaneRows(parent);
+
+      for (const row of rows) {
+        for (const span of row.spans) {
+          expect(isSingleSpan(span)).toBe(true);
+        }
+      }
+    });
+  });
+});
+
+// =============================================================================
+// assignToLanes
+// =============================================================================
+
+describe("assignToLanes", () => {
+  it("returns empty array for empty input", () => {
+    expect(assignToLanes([])).toEqual([]);
+  });
+
+  it("puts all non-overlapping spans in one lane", () => {
+    const spans = [
+      makeSpan("A", 0, 10, 100),
+      makeSpan("B", 20, 30, 100),
+      makeSpan("C", 40, 50, 100),
+    ];
+    const lanes = assignToLanes(spans);
+
+    expect(lanes).toHaveLength(1);
+    expect(lanes[0]).toHaveLength(3);
+  });
+
+  it("puts all overlapping spans in separate lanes", () => {
+    const spans = [
+      makeSpan("A", 0, 10, 100),
+      makeSpan("B", 2, 12, 100),
+      makeSpan("C", 4, 14, 100),
+    ];
+    const lanes = assignToLanes(spans);
+
+    expect(lanes).toHaveLength(3);
+    expect(lanes[0]).toHaveLength(1);
+    expect(lanes[1]).toHaveLength(1);
+    expect(lanes[2]).toHaveLength(1);
+  });
+
+  it("reuses lanes when spans become available", () => {
+    // A: 0-10, B: 5-15, C: 20-30, D: 25-35, E: 40-50
+    // Lane 1: A, C, E | Lane 2: B, D
+    const spans = [
+      makeSpan("A", 0, 10, 100),
+      makeSpan("B", 5, 15, 100),
+      makeSpan("C", 20, 30, 100),
+      makeSpan("D", 25, 35, 100),
+      makeSpan("E", 40, 50, 100),
+    ];
+    const lanes = assignToLanes(spans);
+
+    expect(lanes).toHaveLength(2);
+    expect(lanes[0]).toHaveLength(3); // A, C, E
+    expect(lanes[1]).toHaveLength(2); // B, D
   });
 });

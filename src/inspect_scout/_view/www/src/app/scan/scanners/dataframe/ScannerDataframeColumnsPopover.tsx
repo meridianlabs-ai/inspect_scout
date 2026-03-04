@@ -223,9 +223,11 @@ const columnsMatch = (a: string[], b: string[]): boolean =>
 
 const MAX_PRESET_NAME_LENGTH = 20;
 
-const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
-  const presets = useUserSettings((s) => s.dataframeColumnPresets);
-  const setPresets = useUserSettings((s) => s.setDataframeColumnPresets);
+const InlinePresets: FC<{
+  filtered: string[];
+  presets: ColumnPreset[];
+  setPresets: (presets: ColumnPreset[]) => void;
+}> = ({ filtered, presets, setPresets }) => {
   const setFilteredColumns = useStore(
     (state) => state.setDataframeFilterColumns
   );
@@ -239,6 +241,13 @@ const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
       inputRef.current.focus();
     }
   }, [isSaving]);
+
+  const matchingColumnPreset = presets.find((p) =>
+    columnsMatch(p.columns, filtered)
+  );
+  const isDefault = columnsMatch(filtered, defaultColumns);
+  const isAll = columnsMatch(filtered, Object.values(columnsGroups).flat());
+  const isExistingPreset = !!matchingColumnPreset || isDefault || isAll;
 
   const handleSave = () => {
     const name = presetName.trim().slice(0, MAX_PRESET_NAME_LENGTH);
@@ -276,17 +285,6 @@ const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
     setIsSaving(true);
   };
 
-  if (presets.length === 0 && !isSaving) {
-    return (
-      <>
-        {" | "}
-        <button className={styles.saveButton} onClick={startSaving}>
-          Save current...
-        </button>
-      </>
-    );
-  }
-
   return (
     <>
       {presets.map((preset, index) => (
@@ -294,7 +292,12 @@ const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
           {" | "}
           <span className={styles.presetItem}>
             <a
-              className={styles.link}
+              className={clsx(
+                styles.link,
+                matchingColumnPreset?.name === preset.name
+                  ? styles.selected
+                  : undefined
+              )}
               onClick={() => handleLoad(preset)}
               title={`Load "${preset.name}" (${preset.columns.length} columns)`}
             >
@@ -310,52 +313,62 @@ const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
           </span>
         </Fragment>
       ))}
-      {" | "}
-      {isSaving ? (
-        <span className={styles.presetSaveRow}>
-          <input
-            ref={inputRef}
-            className={styles.presetInput}
-            type="text"
-            placeholder="Preset name"
-            maxLength={MAX_PRESET_NAME_LENGTH}
-            value={presetName}
-            onChange={(e) => {
-              setPresetName(e.target.value);
-              setSaveError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") {
+
+      {isSaving && (
+        <>
+          {" | "}
+          <span className={styles.presetSaveRow}>
+            <input
+              ref={inputRef}
+              className={styles.presetInput}
+              type="text"
+              placeholder="Preset name"
+              maxLength={MAX_PRESET_NAME_LENGTH}
+              value={presetName}
+              onChange={(e) => {
+                setPresetName(e.target.value);
+                setSaveError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") {
+                  setIsSaving(false);
+                  setPresetName("");
+                  setSaveError("");
+                }
+              }}
+            />
+            <button className={styles.saveButton} onClick={handleSave}>
+              Save
+            </button>
+            <a
+              className={clsx(styles.link, styles.cancelButton)}
+              onClick={() => {
                 setIsSaving(false);
                 setPresetName("");
                 setSaveError("");
-              }
-            }}
-          />
-          <button className={styles.saveButton} onClick={handleSave}>
-            Save
-          </button>
-          <a
-            className={styles.link}
-            onClick={() => {
-              setIsSaving(false);
-              setPresetName("");
-              setSaveError("");
-            }}
+              }}
+            >
+              Cancel
+            </a>
+            {saveError && (
+              <span style={{ color: "var(--bs-danger, #dc3545)" }}>
+                {saveError}
+              </span>
+            )}
+          </span>
+        </>
+      )}
+      {!isSaving && !isExistingPreset && (
+        <>
+          {" | "}
+          <button
+            className={clsx(styles.saveLink, "text-size-small")}
+            onClick={startSaving}
           >
-            Cancel
-          </a>
-          {saveError && (
-            <span style={{ color: "var(--bs-danger, #dc3545)" }}>
-              {saveError}
-            </span>
-          )}
-        </span>
-      ) : (
-        <button className={styles.saveButton} onClick={startSaving}>
-          Save current...
-        </button>
+            Save current...
+          </button>
+        </>
       )}
     </>
   );
@@ -380,6 +393,9 @@ export const ScannerDataframeColumnsPopover: FC<
   } = useDataframeColumns();
 
   useColumnsUrlSync(filtered, isDefaultFilter);
+
+  const presets = useUserSettings((s) => s.dataframeColumnPresets);
+  const setPresets = useUserSettings((s) => s.setDataframeColumnPresets);
 
   return (
     <PopOver
@@ -411,7 +427,11 @@ export const ScannerDataframeColumnsPopover: FC<
         >
           All
         </a>
-        <InlinePresets filtered={filtered} />
+        <InlinePresets
+          filtered={filtered}
+          presets={presets}
+          setPresets={setPresets}
+        />
       </div>
 
       <div className={clsx(styles.grid, "text-size-smaller")}>

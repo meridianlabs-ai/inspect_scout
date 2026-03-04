@@ -69,6 +69,8 @@
   padding: 0;
   margin-left: 0.15em;
   color: var(--bs-secondary-color);
+  margin-top: 4px;
+  margin-left: 2px;
 }
 
 .presetItem:hover .presetDelete {
@@ -88,8 +90,8 @@
 .presetInput {
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  padding: 0.1em 0.35em;
-  font-size: inherit;
+  padding: 0em 0.35em;
+  font-size: var(--inspect-font-size-small);
   background: var(--bs-body-bg);
   color: var(--bs-body-color);
   width: 8em;
@@ -107,9 +109,22 @@
   background: none;
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
-  padding: 0 0.4em;
-  font-size: inherit;
+  padding: 0 0.2em;
   line-height: 1.4;
+  font-size: var(--inspect-font-size-smaller);
+}
+
+.cancelButton {
+  font-size: var(--inspect-font-size-smaller);
+}
+
+.saveLink {
+  cursor: pointer;
+  color: var(--bs-link-color);
+  border: none;
+  line-height: 1.4;
+  background: none;
+  padding: 0;
 }
 
 .saveButton:hover {

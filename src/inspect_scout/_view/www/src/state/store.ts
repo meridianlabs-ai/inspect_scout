@@ -3,7 +3,7 @@ import {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import type { GridState } from "ag-grid-community";
+import { GridState } from "ag-grid-community";
 import { createContext, useContext } from "react";
 import { StateSnapshot } from "react-virtuoso";
 import { create } from "zustand";

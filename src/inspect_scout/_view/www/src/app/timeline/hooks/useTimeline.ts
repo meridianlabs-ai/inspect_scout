@@ -161,7 +161,7 @@ export function useTimeline(
     [node, includeUtility]
   );
 
-  // Default selection: explicit param > root row key
+  // Default selection: explicit param > root row key.
   const selected = useMemo(() => {
     if (selectedParam !== null) return selectedParam;
     return rows[0]?.key ?? null;

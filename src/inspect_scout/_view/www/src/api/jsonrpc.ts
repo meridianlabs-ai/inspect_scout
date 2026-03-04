@@ -1,5 +1,6 @@
+import { VSCodeApi } from "@tsmono/util";
+
 import { JsonArray, JsonObject, JsonValue } from "../types/json-value";
-import { VSCodeApi } from "../utils/vscode";
 
 // Type definitions
 export type JsonRpcParams = JsonArray | JsonObject;

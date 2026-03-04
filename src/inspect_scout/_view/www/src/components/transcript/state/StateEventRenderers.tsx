@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import { FC, Fragment, JSX, ReactNode } from "react";
 
+import { isRecord } from "@tsmono/util";
+
 import { ChatMessage, JsonChange } from "../../../types/api-types";
-import { isRecord } from "../../../utils/type";
 import { ChatView } from "../../chat/ChatView";
 import { HumanBaselineView, SessionLog } from "../../HumanBaselineView";
 

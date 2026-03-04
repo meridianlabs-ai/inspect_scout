@@ -1,6 +1,7 @@
 import { skipToken } from "@tanstack/react-query";
 
-import { AsyncData } from "../../utils/asyncData";
+import { AsyncData } from "@tsmono/util";
+
 import { useScanDataframeInput } from "../server/useScanDataframeInput";
 import { ScanResultInputData } from "../types";
 

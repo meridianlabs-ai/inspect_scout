@@ -42,6 +42,7 @@ export default tseslint.config(
       import: importPlugin,
     },
     rules: {
+      "import/no-duplicates": "error",
       "import/order": [
         "error",
         {
@@ -53,6 +54,15 @@ export default tseslint.config(
             "sibling",
             "index",
           ],
+          // BEGIN MONOREPO MIGRATION HACK — remove when www/ moves into ts-mono workspace.
+          pathGroups: [
+            {
+              pattern: "@tsmono/**",
+              group: "internal",
+            },
+          ],
+          pathGroupsExcludedImportTypes: ["builtin"],
+          // END MONOREPO MIGRATION HACK
           "newlines-between": "always",
           alphabetize: {
             order: "asc",

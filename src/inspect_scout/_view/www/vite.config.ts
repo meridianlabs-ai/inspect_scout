@@ -1,16 +1,60 @@
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import dts from "vite-plugin-dts";
+
+// ---------------------------------------------------------------------------
+// BEGIN MONOREPO MIGRATION HACK — remove when www/ moves into ts-mono workspace.
+//
+// We alias @tsmono/* to ts-mono/packages/*/src so www/ can consume shared
+// code before the full migration. Because those source files live outside
+// www/, two problems arise:
+//   1. Rollup resolves their bare imports (json5, react, …) relative to the
+//      source file's location, where no node_modules exists.
+//   2. esbuild walks up to ts-mono's tsconfig.json which extends a workspace
+//      package (@tsmono/tsconfig) that isn't installed.
+//
+// resolveMonorepoDeps() fixes (1); esbuild.tsconfigRaw fixes (2).
+// ---------------------------------------------------------------------------
+const tsMonoDir = resolve(__dirname, "../ts-mono");
+function resolveMonorepoDeps(): Plugin {
+  return {
+    name: "resolve-monorepo-deps",
+    enforce: "pre",
+    async resolveId(source, importer, options) {
+      if (!importer?.startsWith(tsMonoDir) || source.startsWith(".")) return;
+      const resolved = await this.resolve(source, resolve(__dirname, "src/_virtual.ts"), {
+        ...options,
+        skipSelf: true,
+      });
+      return resolved;
+    },
+  };
+}
+// END MONOREPO MIGRATION HACK
 
 export default defineConfig(({ mode }) => {
   const isLibrary = mode === "library";
   const baseConfig = {
+    // BEGIN MONOREPO MIGRATION HACK — see comment at top of file.
+    resolve: {
+      alias: {
+        "@tsmono/util": resolve(__dirname, "../ts-mono/packages/util/src"),
+        "@tsmono/react": resolve(__dirname, "../ts-mono/packages/react/src"),
+      },
+    },
+    // END MONOREPO MIGRATION HACK
     plugins: [
+      resolveMonorepoDeps(), // MONOREPO MIGRATION HACK
       react({
         jsxRuntime: "automatic",
       }),
     ],
+    // BEGIN MONOREPO MIGRATION HACK — see comment at top of file.
+    esbuild: {
+      tsconfigRaw: "{}",
+    },
+    // END MONOREPO MIGRATION HACK
     define: {
       __DEV_WATCH__: JSON.stringify(process.env.DEV_LOGGING === "true"),
       __LOGGING_FILTER__: JSON.stringify(

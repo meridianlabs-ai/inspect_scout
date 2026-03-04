@@ -6,13 +6,14 @@ import {
 } from "@vscode-elements/react-elements";
 import { FC, useCallback, useEffect, useRef, useState } from "react";
 
+import { STABLE_EMPTY_OBJECT } from "@tsmono/react/hooks";
+
 import {
   BatchConfig,
   CachePolicy,
   GenerateConfigInput,
   ProjectConfigInput,
 } from "../../types/api-types";
-import { STABLE_EMPTY_OBJECT } from "../../utils/react";
 
 import {
   KeyValueField,

@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 
-import { useMapAsyncData } from "../../hooks/useMapAsyncData";
+import { useMapAsyncData } from "@tsmono/react/hooks";
+import { AsyncData } from "@tsmono/util";
+
 import { ActiveScanInfo } from "../../types/api-types";
-import { AsyncData } from "../../utils/asyncData";
 
 import { useActiveScans } from "./useActiveScans";
 

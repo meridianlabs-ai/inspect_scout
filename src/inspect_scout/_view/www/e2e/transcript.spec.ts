@@ -1,11 +1,12 @@
 import { http, HttpResponse } from "msw";
 
+import { encodeBase64Url } from "@tsmono/util";
+
 import type {
   MessagesEventsResponse,
   TranscriptInfo,
   TranscriptsResponse,
 } from "../src/types/api-types";
-import { encodeBase64Url } from "../src/utils/base64url";
 
 import { test, expect } from "./fixtures/app";
 import {

@@ -4,6 +4,9 @@ import { createRoot } from "react-dom/client";
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { defaultRetry } from "@tsmono/react";
+import { getVscodeApi } from "@tsmono/util";
+
 import { ScoutApiV2 } from "./api/api";
 import { apiScoutServer } from "./api/api-scout-server";
 import { apiVscode } from "./api/api-vscode";
@@ -11,8 +14,6 @@ import { App } from "./App";
 import { ExtendedFindProvider } from "./components/ExtendedFindProvider";
 import { getEmbeddedAppMessage } from "./hooks/useWindowMessaging";
 import { ApiProvider, createStore, StoreProvider } from "./state/store";
-import { defaultRetry } from "./utils/react-query";
-import { getVscodeApi } from "./utils/vscode";
 
 declare global {
   interface Window {

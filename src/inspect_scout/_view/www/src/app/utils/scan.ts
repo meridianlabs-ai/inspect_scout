@@ -1,5 +1,6 @@
+import { toRelativePath } from "@tsmono/util";
+
 import { Status } from "../../types/api-types";
-import { toRelativePath } from "../../utils/path";
 
 /**
  * Gets the display name for a scan.

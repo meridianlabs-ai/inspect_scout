@@ -1,14 +1,13 @@
 import clsx from "clsx";
 import { FC, Fragment, ReactNode } from "react";
 
+import { printArray, formatPrettyDecimal, printObject } from "@tsmono/util";
+
 import { RecordTree } from "../../components/content/RecordTree";
 import {
   MarkdownDivWithReferences,
   MarkdownReference,
 } from "../../components/MarkdownDivWithReferences";
-import { printArray } from "../../utils/array";
-import { formatPrettyDecimal } from "../../utils/format";
-import { printObject } from "../../utils/object";
 import {
   ScanResultSummary,
   isStringValue,

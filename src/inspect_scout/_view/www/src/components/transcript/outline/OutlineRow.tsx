@@ -2,8 +2,8 @@ import clsx from "clsx";
 import { FC, ReactNode, useRef } from "react";
 import { Link } from "react-router-dom";
 
-import { formatDateTime, formatTime } from "../../../utils/format";
-import { parsePackageName } from "../../../utils/python";
+import { formatDateTime, formatTime, parsePackageName } from "@tsmono/util";
+
 import { MetaDataGrid } from "../../content/MetaDataGrid";
 import { ApplicationIcons } from "../../icons";
 import { PulsingDots } from "../../PulsingDots";

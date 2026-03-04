@@ -6,7 +6,8 @@ import {
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 
-import { ApiError } from "../../api/request";
+import { ApiError } from "@tsmono/util";
+
 import { Modal } from "../../components/Modal";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { AppConfig, ProjectConfigInput } from "../../types/api-types";

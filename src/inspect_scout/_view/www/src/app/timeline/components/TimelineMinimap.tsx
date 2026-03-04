@@ -1,9 +1,10 @@
 import clsx from "clsx";
 import { FC, useCallback } from "react";
 
+import { formatDuration, formatDurationShort } from "@tsmono/util";
+
 import type { TimelineSpan } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
-import { formatDuration, formatDurationShort } from "../../../utils/format";
 import { computeBarPosition, formatTokenCount } from "../utils/swimlaneLayout";
 
 import styles from "./TimelineMinimap.module.css";

@@ -9,8 +9,9 @@ import {
   useState,
 } from "react";
 
+import { useResizeObserver } from "@tsmono/react/hooks";
+
 import { useCollapsedState } from "../state/hooks/useCollapsedState";
-import { useResizeObserver } from "../utils/dom";
 
 import styles from "./ExpandablePanel.module.css";
 

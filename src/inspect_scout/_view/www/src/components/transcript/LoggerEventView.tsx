@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { parsedJson as maybeParseJson } from "@tsmono/util";
+
 import { LoggerEvent } from "../../types/api-types";
-import { parsedJson as maybeParseJson } from "../../utils/json";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import { ApplicationIcons } from "../icons";
 

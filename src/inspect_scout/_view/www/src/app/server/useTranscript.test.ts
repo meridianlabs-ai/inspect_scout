@@ -5,10 +5,11 @@ import { http, HttpResponse, passthrough } from "msw";
 import { beforeAll, expect, it } from "vitest";
 import { ZstdCodec } from "zstd-codec";
 
+import { encodeBase64Url } from "@tsmono/util";
+
 import { server } from "../../test/setup-msw";
 import { createTestWrapper } from "../../test/test-utils";
 import { MessagesEventsResponse, TranscriptInfo } from "../../types/api-types";
-import { encodeBase64Url } from "../../utils/base64url";
 
 import { useTranscript } from "./useTranscript";
 

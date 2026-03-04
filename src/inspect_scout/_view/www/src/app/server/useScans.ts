@@ -1,7 +1,8 @@
+import { useAsyncDataFromQuery } from "@tsmono/react/hooks";
+import { AsyncData } from "@tsmono/util";
+
 import { useApi } from "../../state/store";
 import { ScanRow } from "../../types/api-types";
-import { AsyncData } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 // Lists the available scans from the server and stores in state
 export const useScans = (scansDir: string): AsyncData<ScanRow[]> => {

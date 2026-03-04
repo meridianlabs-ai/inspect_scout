@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
+import { join } from "@tsmono/util";
+
 import { parseScanParams } from "../../router/url";
 import { useStore } from "../../state/store";
-import { join } from "../../utils/uri";
 import { useAppConfig } from "../server/useAppConfig";
 
 export const useScanRoute = (): {

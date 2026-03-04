@@ -1,7 +1,8 @@
 import { FC } from "react";
 
+import { formatDateTime } from "@tsmono/util";
+
 import { CompactionEvent } from "../../types/api-types";
-import { formatDateTime } from "../../utils/format";
 import { MetaDataGrid } from "../content/MetaDataGrid";
 import { ApplicationIcons } from "../icons";
 

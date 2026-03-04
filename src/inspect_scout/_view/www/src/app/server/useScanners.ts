@@ -1,7 +1,8 @@
+import { useAsyncDataFromQuery } from "@tsmono/react/hooks";
+import { AsyncData } from "@tsmono/util";
+
 import { useApi } from "../../state/store";
 import { ScannerInfo } from "../../types/api-types";
-import { AsyncData } from "../../utils/asyncData";
-import { useAsyncDataFromQuery } from "../../utils/asyncDataFromQuery";
 
 export const useScanners = (): AsyncData<ScannerInfo[]> => {
   const api = useApi();

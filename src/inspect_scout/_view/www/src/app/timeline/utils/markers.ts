@@ -5,13 +5,14 @@
  * content at configurable depth levels (direct, children, recursive).
  */
 
+import { formatDuration, formatPrettyDecimal } from "@tsmono/util";
+
 import type {
   TimelineBranch,
   TimelineEvent,
   TimelineSpan,
 } from "../../../components/transcript/timeline";
 import type { CompactionEvent, Event } from "../../../types/api-types";
-import { formatDuration, formatPrettyDecimal } from "../../../utils/format";
 
 // =============================================================================
 // Types

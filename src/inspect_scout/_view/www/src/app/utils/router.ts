@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 
+import { decodeBase64Url } from "@tsmono/util";
+
 import { useStore } from "../../state/store";
-import { decodeBase64Url } from "../../utils/base64url";
 
 export const useTranscriptDirParams = (): string | undefined => {
   const params = useParams<{ transcriptsDir?: string }>();

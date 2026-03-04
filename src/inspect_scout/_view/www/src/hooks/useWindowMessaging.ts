@@ -1,11 +1,12 @@
 import JSON5 from "json5";
 import { useEffect, useMemo } from "react";
 
+import { basename } from "@tsmono/util";
+
 import { useAppConfig } from "../app/server/useAppConfig";
 import { useLoggingNavigate } from "../debugging/navigationDebugging";
 import { scanRoute } from "../router/url";
 import { useStore } from "../state/store";
-import { basename } from "../utils/path";
 
 export interface UpdateStateMessage {
   type: "updateState";

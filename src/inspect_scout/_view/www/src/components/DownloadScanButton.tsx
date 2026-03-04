@@ -44,11 +44,7 @@ export const DownloadScanButton = ({
   return (
     <button
       type="button"
-      className={clsx(
-        "download-scan-button",
-        styles.downloadButton,
-        className,
-      )}
+      className={clsx("download-scan-button", styles.downloadButton, className)}
       onClick={() => {
         void handleClick();
       }}

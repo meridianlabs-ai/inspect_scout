@@ -1,0 +1,11 @@
+.downloadButton {
+  border: none;
+  background-color: inherit;
+  opacity: 0.5;
+  padding-top: 0;
+  transition: opacity 0.2s;
+}
+
+.downloadButton:hover {
+  opacity: 0.75;
+}

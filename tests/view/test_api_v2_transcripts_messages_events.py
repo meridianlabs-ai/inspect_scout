@@ -7,8 +7,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
+from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_scout._transcript.types import TranscriptInfo, TranscriptMessagesAndEvents
-from inspect_scout._util.zip_common import ZipCompressionMethod
 from inspect_scout._view._api_v2 import v2_api_app
 
 

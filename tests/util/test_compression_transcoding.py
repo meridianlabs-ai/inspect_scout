@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 import zstandard
-from inspect_scout._util.compression_transcoding import CompressedToDeflateStream
-from inspect_scout._util.zip_common import ZipCompressionMethod
+from inspect_ai._util.compression_transcoding import CompressedToDeflateStream
+from inspect_ai._util.zip_common import ZipCompressionMethod
 
 # --- Test Helpers ---
 

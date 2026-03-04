@@ -281,6 +281,40 @@ def test_decorator_without_parentheses_with_union() -> None:
     }
 
 
+def test_infer_timeline_type() -> None:
+    """Scanner with Timeline type should infer timeline filter."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner()
+    def timeline_scanner() -> Scanner[Timeline]:
+        async def scan(timeline: Timeline) -> Result:
+            return Result(value={"name": timeline.name})
+
+        return scan
+
+    instance: Any = timeline_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == "all"
+    assert config.content.events == "all"
+
+
+def test_infer_list_timeline_type() -> None:
+    """Scanner with list[Timeline] type should infer timeline filter."""
+    from inspect_scout._transcript.timeline import Timeline
+
+    @scanner()
+    def timeline_list_scanner() -> Scanner[list[Timeline]]:
+        async def scan(timelines: list[Timeline]) -> Result:
+            return Result(value={"count": len(timelines)})
+
+        return scan
+
+    instance: Any = timeline_list_scanner()
+    config = registry_info(instance).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == "all"
+    assert config.content.events == "all"
+
+
 def test_decorator_without_parentheses_fails_for_base_type() -> None:
     """Scanner decorator without parentheses should fail for base ChatMessage type."""
     with pytest.raises(ValueError, match="requires at least one of"):

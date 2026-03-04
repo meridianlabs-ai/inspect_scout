@@ -1,0 +1,96 @@
+{
+  "description": "Multiple tool calls - some spawn agents, others don't",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "id": "tool-search",
+      "function": "web_search",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "tool",
+      "uuid": "e-003",
+      "id": "tool-delegate",
+      "function": "delegate_to_agent",
+      "agent": "research_agent",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "events": [
+        {
+          "event": "model",
+          "uuid": "e-003a",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:06Z",
+          "completed": "2024-01-01T00:00:07Z",
+          "output": {
+            "usage": {
+              "input_tokens": 80,
+              "output_tokens": 40
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": "tool",
+      "uuid": "e-004",
+      "id": "tool-read",
+      "function": "read_file",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "event_uuids": ["e-001", "e-002", "e-004", "e-005"],
+      "children": [
+        {
+          "id": "tool-agent-tool-delegate",
+          "name": "research_agent",
+          "source": {
+            "source": "tool"
+          },
+          "event_uuids": ["e-003a"],
+          "total_tokens": 120
+        }
+      ],
+      "total_tokens": 495
+    },
+    "scoring": null
+  }
+}

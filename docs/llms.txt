@@ -6,16 +6,21 @@
 
 - [Welcome](https://meridianlabs-ai.github.io/inspect_scout/index.html.md): Installation and tutorial on basic usage.
 - [Examples](https://meridianlabs-ai.github.io/inspect_scout/examples.html.md): Example implementations for various types of scanners.
+- [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Basics of using scanners.
+- [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
 - [Workflow](https://meridianlabs-ai.github.io/inspect_scout/workflow.html.md): End to end workflow for transcript analysis projects.
 - [Projects](https://meridianlabs-ai.github.io/inspect_scout/projects.html.md): Using projects to manage scanning configuration.
-- [Transcripts](https://meridianlabs-ai.github.io/inspect_scout/transcripts.html.md): Reading and filtering transcripts for scanning.
-- [Scanners](https://meridianlabs-ai.github.io/inspect_scout/scanners.html.md): Implementing custom scanners and loaders.
-- [LLM Scanner](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html.md): Customizable LLM scanner for model evaluation of transcripts.
-- [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html.md): Customizable scanner for text-pattern searching of transcripts.
 - [Results](https://meridianlabs-ai.github.io/inspect_scout/results.html.md): Collecting and analyzing scanner results.
 - [Validation](https://meridianlabs-ai.github.io/inspect_scout/validation.html.md): Validation of scanner results against ground truth target values.
 
-## Transcripts Database
+## Scanners
+
+- [LLM Scanner](https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html.md): Customizable LLM scanner for model evaluation of transcripts.
+- [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html.md): Customizable scanner for text-pattern searching of transcripts.
+- [Custom Scanners](https://meridianlabs-ai.github.io/inspect_scout/custom_scanner.html.md): Comprehensive documentation on creating custom scanners.
+- [Scanner Tools](https://meridianlabs-ai.github.io/inspect_scout/scanner_tools.html.md): Create custom scanners with the same tools used under the hood by `llm_scanner()`.
+
+## Transcripts
 
 - [Overview](https://meridianlabs-ai.github.io/inspect_scout/db_overview.html.md): Overview of transcript database concepts and basic usage.
 - [Schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html.md): Details on the required and optional fields for databases and underlying data formats for messages and events.

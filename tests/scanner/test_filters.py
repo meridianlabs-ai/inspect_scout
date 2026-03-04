@@ -221,3 +221,89 @@ def test_mixed_specific_and_all() -> None:
 
     assert norm_messages == ["system", "user"]
     assert norm_events == "all"
+
+
+# Timeline filter tests
+
+
+def test_all_timeline_filter() -> None:
+    """'all' filter should pass through unchanged."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    result = normalize_timeline_filter("all")
+    assert result == "all"
+
+
+def test_timeline_filter_list() -> None:
+    """Event type timeline filter should be accepted."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    result = normalize_timeline_filter(["model"])
+    assert result == ["model"]
+
+
+def test_timeline_filter_multiple_event_types() -> None:
+    """Multiple event types in timeline filter should be accepted."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    result = normalize_timeline_filter(["model", "tool"])
+    assert result == ["model", "tool"]
+
+
+def test_duplicate_timeline_filters() -> None:
+    """Duplicate filters should be deduplicated."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    result = normalize_timeline_filter(["model", "tool", "model"])
+    assert result == ["model", "tool"]
+
+
+def test_empty_timeline_filter() -> None:
+    """Empty filter list should raise ValueError."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    with pytest.raises(ValueError, match="is not allowed"):
+        normalize_timeline_filter([])
+
+
+def test_invalid_timeline_filter() -> None:
+    """Invalid event types in timeline filter should raise ValueError."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    with pytest.raises(ValueError, match="Invalid events filter"):
+        normalize_timeline_filter(["invalid"])  # type: ignore[list-item]
+
+
+def test_timeline_filter_true() -> None:
+    """True should expand to the default event set."""
+    from inspect_scout._scanner.filter import (
+        TIMELINE_DEFAULT_EVENTS,
+        normalize_timeline_filter,
+    )
+
+    result = normalize_timeline_filter(True)
+    assert result == TIMELINE_DEFAULT_EVENTS
+
+
+def test_timeline_filter_true_contains_expected_types() -> None:
+    """Default event set should contain the expected conversation event types."""
+    from inspect_scout._scanner.filter import TIMELINE_DEFAULT_EVENTS
+
+    expected = {
+        "model",
+        "tool",
+        "approval",
+        "compaction",
+        "error",
+        "span_begin",
+        "span_end",
+    }
+    assert set(TIMELINE_DEFAULT_EVENTS) == expected
+
+
+def test_timeline_filter_order_preserved() -> None:
+    """Filter order should be preserved after normalization."""
+    from inspect_scout._scanner.filter import normalize_timeline_filter
+
+    result = normalize_timeline_filter(["tool", "model", "error"])
+    assert result == ["tool", "model", "error"]

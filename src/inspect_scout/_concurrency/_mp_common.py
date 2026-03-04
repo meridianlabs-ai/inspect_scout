@@ -36,6 +36,44 @@ if TYPE_CHECKING:
     from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
 
 
+# ---------------------------------------------------------------------------
+# copyreg reducer: make inspect_ai Model picklable via cloudpickle
+# ---------------------------------------------------------------------------
+# ModelAPI subclasses contain unpicklable state (anyio.Lock, httpx.AsyncClient,
+# SDK async clients).  When a scanner closure captures a Model instance,
+# cloudpickle fails with "cannot pickle '_thread.RLock' object".
+#
+# We register a copyreg reducer that converts Model → ModelConfig for
+# serialization, then reconstructs via get_model() on unpickle.  get_model()
+# uses memoize=True by default, so repeated unpickles in the same worker
+# reuse the cached instance rather than creating duplicate HTTP clients.
+# ---------------------------------------------------------------------------
+
+import copyreg
+
+from inspect_ai.model import get_model
+from inspect_ai.model._model import Model
+from inspect_ai.model._model_config import model_to_model_config
+
+
+def _reconstruct_model(config: ModelConfig) -> Model:
+    """Reconstruct a Model from its picklable ModelConfig."""
+    return get_model(
+        model=config.model,
+        config=config.config,
+        base_url=config.base_url,
+        **config.args,
+    )
+
+
+def _reduce_model(model: Model) -> tuple[Callable[..., Any], tuple[ModelConfig]]:
+    """Reduce a Model to picklable ModelConfig for cloudpickle serialization."""
+    return (_reconstruct_model, (model_to_model_config(model),))
+
+
+copyreg.pickle(Model, _reduce_model)
+
+
 class DillCallable:
     """Wrapper for callables that uses dill for pickling.
 

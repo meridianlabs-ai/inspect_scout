@@ -1,0 +1,9 @@
+{
+  "description": "Edge case: empty event list",
+  "events": [],
+  "expected": {
+    "init": null,
+    "agent": null,
+    "scoring": null
+  }
+}

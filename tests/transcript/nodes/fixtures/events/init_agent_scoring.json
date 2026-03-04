@@ -1,0 +1,141 @@
+{
+  "description": "Full transcript with init, solvers, and scorers phases",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-init",
+      "id": "init",
+      "name": "init",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-001",
+      "span_id": "init",
+      "source": "sample_init",
+      "timestamp": "2024-01-01T00:00:00.1Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-init-end",
+      "span_id": "init",
+      "timestamp": "2024-01-01T00:00:00.2Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent",
+      "id": "main-agent",
+      "name": "main_agent",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01.1Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-003",
+      "span_id": "main-agent",
+      "id": "tool-1",
+      "function": "bash",
+      "timestamp": "2024-01-01T00:00:03.1Z",
+      "completed": "2024-01-01T00:00:03.5Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z",
+      "output": {
+        "usage": {
+          "input_tokens": 150,
+          "output_tokens": 75
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent-end",
+      "span_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:05.1Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:05.2Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-scorers",
+      "id": "scorers",
+      "name": "scorers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-005",
+      "span_id": "scorers",
+      "source": "score",
+      "timestamp": "2024-01-01T00:00:07Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-scorers-end",
+      "span_id": "scorers",
+      "timestamp": "2024-01-01T00:00:07.1Z"
+    }
+  ],
+  "expected": {
+    "init": {
+      "section": "init",
+      "event_uuids": [
+        "e-001"
+      ]
+    },
+    "agent": {
+      "id": "main-agent",
+      "name": "main_agent",
+      "source": {
+        "source": "span",
+        "span_id": "main-agent"
+      },
+      "event_uuids": [
+        "e-002",
+        "e-003",
+        "e-004"
+      ],
+      "total_tokens": 375
+    },
+    "scoring": {
+      "section": "scoring",
+      "event_uuids": [
+        "e-005"
+      ]
+    }
+  }
+}

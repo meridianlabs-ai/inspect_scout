@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Literal, Protocol, Sequence
+from typing import Callable, Literal, Protocol, Sequence, runtime_checkable
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -22,6 +22,7 @@ from .prompt import (
     BOOL_ANSWER_FORMAT,
     BOOL_ANSWER_PROMPT,
     LABELS_ANSWER_FORMAT_MULTI,
+    LABELS_ANSWER_FORMAT_MULTI_NONE_SUFFIX,
     LABELS_ANSWER_FORMAT_SINGLE,
     LABELS_ANSWER_PROMPT,
     NUMBER_ANSWER_FORMAT,
@@ -62,6 +63,7 @@ def _strip_markdown_formatting(text: str) -> str:
     return text
 
 
+@runtime_checkable
 class Answer(Protocol):
     """Protocol for LLM scanner answer types."""
 
@@ -101,11 +103,35 @@ def answer_from_argument(
         case list():
             return _LabelsAnswer(labels=answer)
         case AnswerMultiLabel():
-            return _LabelsAnswer(labels=answer.labels, multi_classification=True)
-        case AnswerStructured():
-            return _StructuredAnswer(answer)
+            return _LabelsAnswer(
+                labels=answer.labels,
+                multi_classification=True,
+                allow_none=answer.allow_none,
+            )
         case _:
-            raise ValueError(f"Invalid answer type: {answer}")
+            return _StructuredAnswer(answer)
+
+
+def answer_type(
+    answer: Literal["boolean", "numeric", "string"]
+    | list[str]
+    | AnswerMultiLabel
+    | AnswerStructured,
+) -> Answer:
+    """Resolve an answer specification into an Answer object.
+
+    The returned object exposes ``.prompt`` and ``.format`` properties
+    containing the prompt text and format instructions for the answer type.
+
+    Args:
+        answer: Answer specification (``"boolean"``, ``"numeric"``,
+            ``"string"``, ``list[str]``, ``AnswerMultiLabel``, or
+            ``AnswerStructured``).
+
+    Returns:
+        An ``Answer`` with ``.prompt`` and ``.format`` properties.
+    """
+    return answer_from_argument(answer)
 
 
 class _BoolAnswer(Answer):
@@ -197,9 +223,15 @@ class _NumberAnswer(Answer):
 class _LabelsAnswer(Answer):
     """Answer implementation for multiple choice questions."""
 
-    def __init__(self, labels: list[str], multi_classification: bool = False) -> None:
+    def __init__(
+        self,
+        labels: list[str],
+        multi_classification: bool = False,
+        allow_none: bool = False,
+    ) -> None:
         self.labels = labels
         self.multi_classification = multi_classification
+        self.allow_none = allow_none
 
     @property
     def prompt(self) -> str:
@@ -212,6 +244,7 @@ class _LabelsAnswer(Answer):
         formatted_choices, letters = _answer_options(self.labels)
         format_template = (
             LABELS_ANSWER_FORMAT_MULTI
+            + (LABELS_ANSWER_FORMAT_MULTI_NONE_SUFFIX if self.allow_none else "")
             if self.multi_classification
             else LABELS_ANSWER_FORMAT_SINGLE
         )
@@ -248,6 +281,15 @@ class _LabelsAnswer(Answer):
             valid_characters = [_answer_character(i) for i in range(len(self.labels))]
 
             if self.multi_classification:
+                # "NONE" means no labels apply (only when allow_none is set)
+                if answer_text.upper() == "NONE" and self.allow_none:
+                    return Result(
+                        value=[],
+                        answer=answer_text,
+                        explanation=explanation,
+                        references=references,
+                    )
+
                 # Parse comma-separated letters
                 answer_letters = [
                     letter.strip().upper() for letter in answer_text.split(",")

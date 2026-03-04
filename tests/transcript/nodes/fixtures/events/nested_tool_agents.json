@@ -1,0 +1,149 @@
+{
+  "description": "Tool-spawned agent that itself spawns another tool agent (nested tool agents)",
+  "events": [
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "id": "tool-outer",
+      "function": "delegate_outer",
+      "agent": "outer_agent",
+      "timestamp": "2024-01-01T00:00:03Z",
+      "completed": "2024-01-01T00:00:20Z",
+      "events": [
+        {
+          "event": "model",
+          "uuid": "e-002a",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:04Z",
+          "completed": "2024-01-01T00:00:05Z",
+          "output": {
+            "usage": {
+              "input_tokens": 80,
+              "output_tokens": 40
+            }
+          }
+        },
+        {
+          "event": "tool",
+          "uuid": "e-002b",
+          "id": "tool-inner",
+          "function": "delegate_inner",
+          "agent": "inner_agent",
+          "timestamp": "2024-01-01T00:00:06Z",
+          "completed": "2024-01-01T00:00:15Z",
+          "events": [
+            {
+              "event": "model",
+              "uuid": "e-002b1",
+              "model": "test-model",
+              "timestamp": "2024-01-01T00:00:07Z",
+              "completed": "2024-01-01T00:00:08Z",
+              "output": {
+                "usage": {
+                  "input_tokens": 60,
+                  "output_tokens": 30
+                }
+              }
+            },
+            {
+              "event": "tool",
+              "uuid": "e-002b2",
+              "id": "tool-work",
+              "function": "do_work",
+              "timestamp": "2024-01-01T00:00:09Z",
+              "completed": "2024-01-01T00:00:10Z"
+            },
+            {
+              "event": "model",
+              "uuid": "e-002b3",
+              "model": "test-model",
+              "timestamp": "2024-01-01T00:00:11Z",
+              "completed": "2024-01-01T00:00:12Z",
+              "output": {
+                "usage": {
+                  "input_tokens": 70,
+                  "output_tokens": 35
+                }
+              }
+            }
+          ]
+        },
+        {
+          "event": "model",
+          "uuid": "e-002c",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:16Z",
+          "completed": "2024-01-01T00:00:17Z",
+          "output": {
+            "usage": {
+              "input_tokens": 90,
+              "output_tokens": 45
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:21Z",
+      "completed": "2024-01-01T00:00:22Z",
+      "output": {
+        "usage": {
+          "input_tokens": 120,
+          "output_tokens": 60
+        }
+      }
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "event_uuids": ["e-001", "e-003"],
+      "children": [
+        {
+          "id": "tool-agent-tool-outer",
+          "name": "outer_agent",
+          "source": {
+            "source": "tool"
+          },
+          "event_uuids": ["e-002a", "e-002c"],
+          "children": [
+            {
+              "id": "tool-agent-tool-inner",
+              "name": "inner_agent",
+              "source": {
+                "source": "tool"
+              },
+              "event_uuids": ["e-002b1", "e-002b2", "e-002b3"],
+              "total_tokens": 195
+            }
+          ],
+          "total_tokens": 450
+        }
+      ],
+      "total_tokens": 780
+    },
+    "scoring": null
+  }
+}

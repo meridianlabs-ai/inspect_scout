@@ -141,6 +141,7 @@ def to_span_begin_event(run: Any) -> SpanBeginEvent:
         id=str(getattr(run, "id", "")),
         name=str(name),
         parent_id=str(getattr(run, "parent_run_id", None) or ""),
+        type="agent",  # Mark chain/agent runs as agent spans for TranscriptNodes detection
         timestamp=_get_timestamp(run, "start_time"),
         working_start=0.0,  # Required field
         metadata=_extract_run_metadata(run),

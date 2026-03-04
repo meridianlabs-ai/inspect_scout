@@ -1,0 +1,48 @@
+{
+  "description": "Agent span with no events inside",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent",
+      "id": "empty-agent",
+      "name": "empty_worker",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent-end",
+      "span_id": "empty-agent",
+      "timestamp": "2024-01-01T00:00:02Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:03Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "empty-agent",
+      "name": "empty_worker",
+      "source": {
+        "source": "span",
+        "span_id": "empty-agent"
+      },
+      "event_uuids": [],
+      "total_tokens": 0
+    },
+    "scoring": null
+  }
+}

@@ -11,6 +11,7 @@ from typing import (
     get_type_hints,
 )
 
+from inspect_ai.event import Timeline
 from inspect_ai.event._approval import ApprovalEvent
 from inspect_ai.event._compaction import CompactionEvent
 from inspect_ai.event._error import ErrorEvent
@@ -70,16 +71,17 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
 def infer_filters_from_type(
     scanner_fn: Callable[..., Any],
     factory_globals: dict[str, Any],
-) -> tuple[list[str] | None, list[str] | None]:
+) -> tuple[list[str] | None, list[str] | None, bool]:
     """
-    Infer message and event filters from scanner function type annotations.
+    Infer message, event, and timeline filters from scanner function type annotations.
 
     Args:
         scanner_fn: The scanner function to analyze
         factory_globals: Global namespace for type resolution
 
     Returns:
-        Tuple of (message_filters, event_filters) or (None, None) if can't infer
+        Tuple of (message_filters, event_filters, timeline_inferred) or
+        (None, None, False) if can't infer
     """
     # Get type hints
     try:
@@ -87,38 +89,46 @@ def infer_filters_from_type(
             scanner_fn, globalns=factory_globals, localns=factory_globals
         )
     except Exception:
-        return None, None
+        return None, None, False
 
     # Get the input parameter type
     param_names = list(inspect.signature(scanner_fn).parameters.keys())
     if not param_names:
-        return None, None
+        return None, None, False
 
     input_param = param_names[0]
     if input_param not in hints:
-        return None, None
+        return None, None, False
 
     input_type = hints[input_param]
 
     # First check if it's ChatMessage, Event, or Transcript (even if they're unions)
     # We don't want to infer for these "base" types
     if input_type == ChatMessage or input_type == Event or input_type == Transcript:
-        return None, None
+        return None, None, False
+
+    # Check for Timeline before unwrapping list
+    if input_type is Timeline:
+        return None, None, True
 
     # Extract the actual type (unwrap list if needed)
     if get_origin(input_type) is list:
         args = get_args(input_type)
         if args:
-            input_type = args[0]
+            element_type = args[0]
+            # Check for list[Timeline]
+            if element_type is Timeline:
+                return None, None, True
+            input_type = element_type
             # Check again for base types after unwrapping
             if (
                 input_type == ChatMessage
                 or input_type == Event
                 or input_type == Transcript
             ):
-                return None, None
+                return None, None, False
         else:
-            return None, None
+            return None, None, False
 
     # Check if it's a specific message type or union
     message_filters = []
@@ -141,22 +151,23 @@ def infer_filters_from_type(
         try:
             if inspect.isclass(input_type) and issubclass(input_type, Transcript):
                 # It's Transcript, we don't have a specific filter for it
-                return None, None
+                return None, None, False
         except TypeError:
             # Not a class type
             pass
-        return None, None
+        return None, None, False
 
     # If we have both message and event filters, can't use inference
     # (should use Transcript instead)
     if message_filters and event_filters:
-        return None, None
+        return None, None, False
 
     # Return inferred filters
     # Type: ignore because mypy can't understand that the lists contain the right string literals
     return (
         message_filters if message_filters else None,
         event_filters if event_filters else None,
+        False,
     )
 
 
@@ -165,6 +176,7 @@ def validate_scanner_signature(
     messages: list[MessageType] | Literal["all"] | None,
     events: list[EventType] | Literal["all"] | None,
     factory_globals: dict[str, Any],
+    timeline: list[EventType] | Literal["all"] | None = None,
 ) -> None:
     """
     Validate that scanner function signature matches its declared filters.
@@ -174,6 +186,7 @@ def validate_scanner_signature(
         messages: Message filter from decorator
         events: Event filter from decorator
         factory_globals: Global namespace from factory function for type resolution
+        timeline: Timeline filter from decorator
 
     Raises:
         TypeError: If scanner signature doesn't match filters
@@ -202,6 +215,11 @@ def validate_scanner_signature(
 
     input_type = hints[input_param]
 
+    # Timeline filter present
+    if timeline is not None:
+        _validate_timeline_type(input_type, messages)
+        return
+
     # Check what the scanner should accept based on filters
     if messages is not None and events is not None:
         # Both filters present - should accept Transcript
@@ -225,6 +243,45 @@ def _validate_transcript_type(
             f"Scanner with both messages and events filters must accept Transcript, "
             f"but scanner accepts {scanner_type}"
         )
+
+
+def _validate_timeline_type(
+    scanner_type: Any,
+    messages: list[MessageType] | Literal["all"] | None,
+) -> None:
+    """Validate that scanner accepts Timeline, list[Timeline], or Transcript.
+
+    Only checks messages to determine if Transcript is required. A scanner
+    with timeline + implied events can accept Timeline directly.
+    """
+    # Transcript is always valid when timeline is requested
+    if _is_compatible_with_type(scanner_type, Transcript):
+        return
+
+    # Check for Timeline directly
+    if _is_compatible_with_type(scanner_type, Timeline):
+        # Timeline with explicit message filters requires Transcript
+        if messages is not None:
+            raise TypeError(
+                f"Scanner with timeline and messages filters must accept Transcript, "
+                f"but scanner accepts {scanner_type}"
+            )
+        return
+
+    # Check for list[Timeline]
+    is_list, core_type = _unwrap_list_type(scanner_type)
+    if is_list and _is_compatible_with_type(core_type, Timeline):
+        if messages is not None:
+            raise TypeError(
+                f"Scanner with timeline and messages filters must accept Transcript, "
+                f"but scanner accepts {scanner_type}"
+            )
+        return
+
+    raise TypeError(
+        f"Scanner with timeline filter must accept Timeline, list[Timeline], or Transcript, "
+        f"but scanner accepts {scanner_type}"
+    )
 
 
 def _validate_message_type(

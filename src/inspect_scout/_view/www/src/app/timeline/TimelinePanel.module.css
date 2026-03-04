@@ -1,0 +1,93 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 1rem 1.25rem 0.75rem 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.scenarioSelect {
+  width: 240px;
+}
+
+.markerDepthSelect {
+  width: 180px;
+}
+
+.scenarioDescription {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.eventsContainer {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 180px 1px 1fr;
+  overflow: hidden;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.eventsContainer.outlineCollapsed {
+  grid-template-columns: 28px 1px 1fr;
+}
+
+.outlinePane {
+  position: relative;
+  overflow: hidden;
+}
+
+.outline {
+  padding-left: 0.5rem;
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.outlineToggle {
+  cursor: pointer;
+  font-size: 0.8em;
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+}
+
+.eventsSeparator {
+  background-color: var(--bs-border-color);
+}
+
+.eventList {
+  overflow-y: auto;
+}
+
+.emptyEvents {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85rem;
+}

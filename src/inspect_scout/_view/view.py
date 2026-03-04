@@ -26,6 +26,7 @@ def view(
     authorization: str | None = None,
     log_level: str | None = None,
     fs_options: dict[str, Any] | None = None,
+    root_path: str = "",
 ) -> None:
     with chdir(project_dir or "."):
         # top level init
@@ -51,4 +52,5 @@ def view(
             mode=mode,
             authorization=authorization,
             fs_options=fs_options,
+            root_path=root_path,
         )

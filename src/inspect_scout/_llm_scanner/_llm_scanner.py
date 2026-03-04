@@ -1,35 +1,37 @@
-from typing import Any, Awaitable, Callable, Literal, overload
+from typing import Any, Awaitable, Callable, Literal, cast, overload
 
 from inspect_ai.model import (
+    ChatMessage,
     Model,
-    ModelConfig,
     get_model,
 )
-from inspect_ai.model._model_config import model_config_to_model, model_to_model_config
 from inspect_ai.scorer import ValueToFloat
 from jinja2 import Environment
 
-from inspect_scout._llm_scanner.structured import structured_generate, structured_schema
 from inspect_scout._util.jinja import StrictOnUseUndefined
-from inspect_scout._util.refusal import generate_retry_refusals
 
-from .._scanner.extract import MessagesPreprocessor, messages_as_str
-from .._scanner.result import Result
-from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
-from .._transcript.types import Transcript
+from .._scanner.extract import MessagesPreprocessor, message_numbering
+from .._scanner.result import Result, as_resultset
+from .._scanner.scanner import (
+    SCANNER_CONTENT_ATTR,
+    SCANNER_NAME_ATTR,
+    Scanner,
+    scanner,
+)
+from .._transcript.messages import transcript_messages
+from .._transcript.types import Transcript, TranscriptContent
+from ._reducer import default_reducer, is_resultset_answer
 from .answer import Answer, answer_from_argument
+from .generate import generate_answer
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .types import AnswerMultiLabel, AnswerStructured
+from .types import AnswerSpec
 
 
 @overload
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]],
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]
@@ -37,8 +39,14 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
+    content: TranscriptContent | None = None,
+    context_window: int | None = None,
+    compaction: Literal["all", "last"] | int = "all",
+    depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -46,10 +54,7 @@ def llm_scanner(
 def llm_scanner(
     *,
     question: None = None,
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str,
     template_variables: dict[str, Any]
@@ -57,8 +62,14 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
+    content: TranscriptContent | None = None,
+    context_window: int | None = None,
+    compaction: Literal["all", "last"] | int = "all",
+    depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -66,10 +77,7 @@ def llm_scanner(
 def llm_scanner(
     *,
     question: str | Callable[[Transcript], Awaitable[str]] | None = None,
-    answer: Literal["boolean", "numeric", "string"]
-    | list[str]
-    | AnswerMultiLabel
-    | AnswerStructured,
+    answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
     template: str | None = None,
     template_variables: dict[str, Any]
@@ -77,12 +85,25 @@ def llm_scanner(
     | None = None,
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
+    model_role: str | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
+    content: TranscriptContent | None = None,
+    context_window: int | None = None,
+    compaction: Literal["all", "last"] | int = "all",
+    depth: int | None = None,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
-    This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.
+    This scanner presents a conversation transcript to an LLM along with a
+    custom prompt and answer specification, enabling automated analysis of
+    conversations for specific patterns, behaviors, or outcomes.
+
+    Messages are extracted via ``transcript_messages()``, which automatically
+    selects the best strategy (timelines → events → raw messages) and respects
+    context window limits. Each segment is scanned independently with globally
+    unique message numbering (``[M1]``, ``[M2]``, ...) across all segments.
 
     Args:
         question: Question for the scanner to answer.
@@ -102,15 +123,43 @@ def llm_scanner(
             Optionally takes a function which receives the current `Transcript` which
             can return variables.
         preprocessor: Transform conversation messages before analysis.
-            Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to removing system messages.
+            Controls exclusion of system messages, reasoning tokens, and tool calls.
+            Defaults to removing system messages. Note: custom ``transform``
+            functions that accept a ``Transcript`` are not supported when
+            ``context_window`` or timeline scanning produces multiple segments,
+            as the transform receives ``list[ChatMessage]`` per segment.
         model: Optional model specification.
-            Can be a model name string or `Mode`l instance. If None, uses the default model
-        retry_refusals: Retry model refusals. Pass an `int` for number of retries (defaults to 3). Pass `False` to not retry refusals. If the limit of refusals is exceeded then a `RuntimeError` is raised.
+            Can be a model name string or ``Model`` instance. If None, uses the default model.
+        model_role: Optional model role for role-based model resolution.
+            When set, the model is resolved via ``get_model(model, role=model_role)``
+            at scan time, allowing deferred role resolution when roles are not yet
+            available at scanner construction time.
+        retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
         name: Scanner name.
-            Use this to assign a name when passing `llm_scanner()` directly to `scan()` rather than delegating to it from another scanner.
+            Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
+        content: Override the transcript content filters for this scanner.
+            For example, ``TranscriptContent(timeline=True)`` requests timeline
+            data so the scanner can process span-level segments.
+        context_window: Override the model's context window size for chunking.
+            When set, transcripts exceeding this limit are split into multiple
+            segments, each scanned independently.
+        compaction: How to handle compaction boundaries when extracting
+            messages from events. ``"all"`` (default) scans all compaction
+            segments; ``"last"`` scans only the most recent.
+        depth: Maximum depth of the span tree to process when timelines
+            are present. ``None`` (default) processes all depths. Ignored
+            for events-only or messages-only transcripts.
+        reducer: Custom reducer for aggregating multi-segment results.
+            Accepts any ``Callable[[list[Result]], Awaitable[Result]]``.
+            If None, uses a default reducer based on the answer type
+            (e.g., ``ResultReducer.any`` for boolean, ``ResultReducer.mean``
+            for numeric). Standard reducers are available on
+            :class:`ResultReducer`. Timeline and resultset answers bypass
+            reduction and return a resultset.
 
     Returns:
-        A `Scanner` function that analyzes Transcript instances and returns `Results` based on the LLM's assessment according to the specified prompt and answer format
+        A ``Scanner`` function that analyzes Transcript instances and returns
+        ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
     if template is None:
         template = DEFAULT_SCANNER_TEMPLATE
@@ -125,78 +174,65 @@ def llm_scanner(
         else 0
     )
 
-    # Convert Model instances to serializable ModelConfig so the closure
-    # can survive cloudpickle roundtrips in multiprocess scanning.
-    serializable_model: str | ModelConfig | None
-    if isinstance(model, Model):
-        serializable_model = model_to_model_config(model)
-    else:
-        serializable_model = model
-
     async def scan(transcript: Transcript) -> Result:
-        resolved_model: str | Model | None = (
-            model_config_to_model(serializable_model)
-            if isinstance(serializable_model, ModelConfig)
-            else serializable_model
+        # Resolve the model once — defers role resolution to scan time
+        resolved_model = get_model(model, role=model_role)
+
+        # Shared numbering scope across all segments
+        messages_as_str_fn, extract_references = message_numbering(
+            preprocessor=cast(
+                MessagesPreprocessor[list[ChatMessage]] | None, preprocessor
+            ),
         )
 
-        messages_str, extract_references = await messages_as_str(
+        results: list[Result] = []
+        async for segment in transcript_messages(
             transcript,
-            preprocessor=preprocessor,
-            include_ids=True,
-        )
-
-        resolved_prompt = await render_scanner_prompt(
-            template=template,
-            template_variables=template_variables,
-            transcript=transcript,
-            messages=messages_str,
-            question=question,
-            answer=resolved_answer,
-        )
-
-        # do a structured generate if this is AnswerStructured
-        if isinstance(answer, AnswerStructured):
-            value, _, model_output = await structured_generate(
-                input=resolved_prompt,
-                schema=structured_schema(answer),
-                answer_tool=answer.answer_tool,
-                model=resolved_model,
-                max_attempts=answer.max_attempts,
-                retry_refusals=retry_refusals,
+            messages_as_str=messages_as_str_fn,
+            model=resolved_model,
+            context_window=context_window,
+            compaction=compaction,
+            depth=depth,
+        ):
+            prompt = await render_scanner_prompt(
+                template=template,
+                template_variables=template_variables,
+                transcript=transcript,
+                messages=segment.messages_str,
+                question=question,
+                answer=resolved_answer,
             )
-            # if we failed to extract then return value=None
-            if value is None:
-                return Result(
-                    value=None,
-                    answer=model_output.completion,
-                    metadata={"stop_reason": model_output.stop_reason},
+            results.append(
+                await generate_answer(
+                    prompt,
+                    answer,
+                    model=resolved_model,
+                    retry_refusals=retry_refusals,
+                    extract_refs=extract_references,
+                    value_to_float=value_to_float,
                 )
-
-        # otherwise do a normal generate
-        else:
-            model_output = await generate_retry_refusals(
-                get_model(resolved_model),
-                resolved_prompt,
-                tools=[],
-                tool_choice=None,
-                config=None,
-                retry_refusals=retry_refusals,
             )
 
-        # resolve answer
-        result = resolved_answer.result_for_answer(
-            model_output, extract_references, value_to_float
-        )
-        result.metadata = {
-            **(result.metadata or {}),
-            "stop_reason": model_output.stop_reason,
-        }
-        return result
+        # single result
+        if len(results) == 1:
+            return results[0]
+
+        # scenarios where resultset is the natural/expected return type
+        elif bool(transcript.timelines) or is_resultset_answer(answer):
+            return as_resultset(results)
+
+        # otherwise reduce
+        else:
+            effective_reducer = reducer or default_reducer(answer)
+            return await effective_reducer(results)
 
     # set name for collection by @scanner if specified
     if name is not None:
         setattr(scan, SCANNER_NAME_ATTR, name)
+
+    # set content override for @scanner to merge into ScannerConfig
+    if content is not None:
+        setattr(scan, SCANNER_CONTENT_ATTR, content)
 
     return scan
 

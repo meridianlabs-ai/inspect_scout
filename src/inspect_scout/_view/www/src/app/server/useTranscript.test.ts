@@ -79,6 +79,7 @@ const mockMessagesEvents: MessagesEventsResponse = {
       working_start: 0,
     },
   ],
+  timelines: [],
 };
 
 function assertZstdAcceptHeader(request: Request): Response | null {
@@ -302,6 +303,7 @@ it("handles attachments in messages-events response", async () => {
       },
     ],
     events: [],
+    timelines: [],
     attachments: {
       image1: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYA",
     },

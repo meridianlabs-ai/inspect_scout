@@ -1,0 +1,110 @@
+/* Self-contained minimap — flex row: mode label + bar area */
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: 1;
+  min-width: 120px;
+  max-width: 50%;
+}
+
+/*
+ * Stable-width label — renders both time/token values in a CSS grid stack.
+ * The cell sizes to the wider value; only the active one is visible.
+ */
+.stableLabel {
+  display: grid;
+  font-size: 0.6rem;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stableLabel > * {
+  grid-area: 1 / 1;
+}
+
+.alignRight {
+  justify-items: end;
+}
+
+.alignLeft {
+  justify-items: start;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.minimap {
+  position: relative;
+  height: 18px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Full-width track — thin rounded rail, vertically centered */
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.25;
+}
+
+/* Selection region fill — highlight between markers on the track */
+.regionFill {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.45;
+}
+
+/* Vertical bar markers at selection boundaries */
+.marker {
+  position: absolute;
+  top: 50%;
+  height: 9px;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--bs-primary);
+  opacity: 0.55;
+  transform: translate(-50%, -50%);
+}
+
+/* Section duration pill centered between the two markers */
+.sectionTime {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sectionTimePill {
+  font-size: 0.6rem;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--bs-primary);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}

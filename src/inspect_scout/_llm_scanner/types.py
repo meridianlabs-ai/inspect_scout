@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Literal, NamedTuple, TypeAlias
 
 from pydantic import BaseModel
 
@@ -11,6 +11,9 @@ class AnswerMultiLabel(NamedTuple):
 
     Label values (e.g. A, B, C) will be provided automatically.
     """
+
+    allow_none: bool = False
+    """Allow the model to respond with NONE when no labels apply."""
 
 
 class AnswerStructured(NamedTuple):
@@ -44,3 +47,17 @@ class AnswerStructured(NamedTuple):
 
     max_attempts: int = 3
     """Maximum number of times to re-prompt the model to generate the correct schema."""
+
+
+# We construct AnswerSpec this way so that we can prohibit AnswerStructured w/parse: False
+_TextualAnswerSpec: TypeAlias = (
+    Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel
+)
+AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
+"""Specification of the answer format for an LLM scanner.
+
+Pass ``"boolean"``, ``"numeric"``, or ``"string"`` for a simple answer;
+pass ``list[str]`` for a set of labels; pass :class:`AnswerMultiLabel`
+for multi-classification; or pass :class:`AnswerStructured` for
+tool-based structured output.
+"""

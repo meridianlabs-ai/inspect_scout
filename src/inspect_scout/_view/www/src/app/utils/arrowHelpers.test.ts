@@ -116,10 +116,30 @@ const expectedData: Partial<ScanResultData> = {
   transcriptModel: "claude-3",
 };
 
+const nullMetadataSummaryRow = {
+  ...typicalSummaryRow,
+  transcript_metadata: null,
+};
+
+const nullMetadataExpectedSummary: Partial<ScanResultSummary> = {
+  identifier: "test-uuid-123",
+  uuid: "test-uuid-123",
+  label: "test-label",
+  transcriptModel: undefined,
+  transcriptTaskSet: undefined,
+  transcriptTaskId: undefined,
+  transcriptTaskRepeat: undefined,
+};
+
 describe("parseScanResultSummaries", () => {
   it.each<[object[], Partial<ScanResultSummary>[], string]>([
     [[], [], "empty array"],
     [[typicalSummaryRow], [expectedSummary], "typical row"],
+    [
+      [nullMetadataSummaryRow],
+      [nullMetadataExpectedSummary],
+      "row with null transcript_metadata",
+    ],
   ])(
     "returns expected output for %s",
     async (input, expected, _desc: string) => {
@@ -132,9 +152,25 @@ describe("parseScanResultSummaries", () => {
   );
 });
 
+const nullMetadataColumnData: Record<string, unknown> = {
+  ...typicalColumnData,
+  transcript_metadata: null,
+};
+
+const nullMetadataExpectedData: Partial<ScanResultData> = {
+  identifier: "data-identifier-456",
+  uuid: "data-uuid-456",
+  transcriptModel: undefined,
+};
+
 describe("parseScanResultData", () => {
   it.each<[Record<string, unknown>, Partial<ScanResultData>, string]>([
     [typicalColumnData, expectedData, "typical data"],
+    [
+      nullMetadataColumnData,
+      nullMetadataExpectedData,
+      "data with null transcript_metadata",
+    ],
   ])(
     "returns expected output for %s",
     async (input, expected, _desc: string) => {

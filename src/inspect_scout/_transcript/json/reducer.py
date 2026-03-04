@@ -12,6 +12,7 @@ ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
+TIMELINES_ITEM_PREFIX = "timelines.item"
 METADATA_PREFIX = "metadata."
 
 
@@ -42,9 +43,12 @@ class ListProcessingConfig:
 class ParseState:
     messages: list[dict[str, Any]] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
+    timelines: list[dict[str, Any]] = field(default_factory=list)
     attachment_refs: set[str] = field(default_factory=set)
     attachments: dict[str, str] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+    target: str | list[str] | None = None
+    scores: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +128,40 @@ def event_item_coroutine(
 
 
 @_ijson_coroutine  # type: ignore
+def _timeline_item_coroutine_impl(
+    target_list: list[dict[str, Any]],
+) -> CoroutineGen:  # pragma: no cover
+    """Collect timeline items from the JSON stream (no filtering)."""
+    builder: ObjectBuilder | None = None
+    item_prefix = TIMELINES_ITEM_PREFIX
+    while True:
+        prefix, event, value = yield
+        if prefix == item_prefix and event == "start_map":
+            builder = ObjectBuilder()
+            builder.event(event, value)
+            continue
+        if builder is None:
+            continue
+        if prefix == item_prefix and event == "end_map":
+            try:
+                builder.event(event, value)
+                target_list.append(builder.value)
+            except Exception:
+                pass
+            builder = None
+            continue
+        try:
+            builder.event(event, value)
+        except Exception:
+            builder = None
+            continue
+
+
+def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
+    return cast(CoroutineGen, _timeline_item_coroutine_impl(state.timelines))
+
+
+@_ijson_coroutine  # type: ignore
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
@@ -172,17 +210,79 @@ def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
             continue
 
 
+SCORES_PREFIX = "scores."
+
+
+@_ijson_coroutine  # type: ignore
+def scores_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Coroutine to build the scores object from streaming JSON events."""
+    builder: ObjectBuilder | None = None
+    while True:
+        prefix, event, value = yield
+        if not (prefix == "scores" or prefix.startswith(SCORES_PREFIX)):
+            continue
+        if prefix == "scores" and event == "start_map":
+            builder = ObjectBuilder()
+            builder.event(event, value)
+            continue
+        if builder is None:
+            continue
+        if prefix == "scores" and event == "end_map":
+            try:
+                builder.event(event, value)
+                state.scores = builder.value
+            except Exception:
+                pass
+            builder = None
+            continue
+        try:
+            builder.event(event, value)
+        except Exception:
+            builder = None
+            continue
+
+
+TARGET_PREFIX = "target."
+
+
+@_ijson_coroutine  # type: ignore
+def target_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Coroutine to capture the target field (scalar string or list of strings)."""
+    while True:
+        prefix, event, value = yield
+        if prefix != "target" and not prefix.startswith(TARGET_PREFIX):
+            continue
+        if prefix == "target" and event == "string":
+            state.target = value
+            return
+        if prefix == "target" and event == "start_array":
+            items: list[str] = []
+            while True:
+                prefix, event, value = yield
+                if prefix == "target" and event == "end_array":
+                    state.target = items
+                    return
+                if prefix == "target.item" and event == "string":
+                    items.append(value)
+
+
 __all__ = [
     "ListProcessingConfig",
     "ParseState",
     "message_item_coroutine",
     "event_item_coroutine",
+    "timeline_item_coroutine",
     "attachments_coroutine",
     "metadata_coroutine",
+    "scores_coroutine",
+    "target_coroutine",
+    "SCORES_PREFIX",
+    "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",
+    "TIMELINES_ITEM_PREFIX",
     "METADATA_PREFIX",
 ]

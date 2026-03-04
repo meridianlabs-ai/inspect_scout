@@ -146,10 +146,11 @@ export const apiScoutServer = (
         fetchMessagesEvents(requestApi, encodedDir, encodedId),
       ]);
 
-      const [info, { messages, events, attachments }] = await Promise.all([
-        asyncJsonParse<TranscriptInfo>(infoResult.raw),
-        asyncJsonParse<MessagesEventsResponse>(messagesEventsJson),
-      ]);
+      const [info, { messages, events, timelines, attachments }] =
+        await Promise.all([
+          asyncJsonParse<TranscriptInfo>(infoResult.raw),
+          asyncJsonParse<MessagesEventsResponse>(messagesEventsJson),
+        ]);
 
       return {
         ...info,
@@ -157,8 +158,9 @@ export const apiScoutServer = (
           ? {
               messages: resolveAttachments(messages, attachments),
               events: resolveAttachments(events, attachments),
+              timelines,
             }
-          : { messages, events }),
+          : { messages, events, timelines }),
       };
     },
     getTranscriptsColumnValues: async (

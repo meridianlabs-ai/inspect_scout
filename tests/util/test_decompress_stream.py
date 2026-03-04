@@ -12,8 +12,8 @@ from typing import Literal, cast
 import pytest
 import zstandard
 from anyio.abc import ByteReceiveStream
-from inspect_scout._util.compression_transcoding import CompressedToUncompressedStream
-from inspect_scout._util.zip_common import ZipCompressionMethod
+from inspect_ai._util.compression_transcoding import CompressedToUncompressedStream
+from inspect_ai._util.zip_common import ZipCompressionMethod
 
 # --- Test Helpers ---
 

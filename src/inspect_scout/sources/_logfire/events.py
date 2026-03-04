@@ -170,11 +170,14 @@ def to_tool_event(span: dict[str, Any]) -> ToolEvent:
     )
 
 
-def to_span_begin_event(span: dict[str, Any]) -> SpanBeginEvent:
+def to_span_begin_event(
+    span: dict[str, Any], *, is_agent: bool = False
+) -> SpanBeginEvent:
     """Convert Logfire span to SpanBeginEvent.
 
     Args:
         span: Logfire span (typically agent or wrapper span)
+        is_agent: Whether this span represents an agent execution
 
     Returns:
         SpanBeginEvent object
@@ -185,6 +188,7 @@ def to_span_begin_event(span: dict[str, Any]) -> SpanBeginEvent:
         id=str(span.get("span_id", "")),
         name=str(name),
         parent_id=str(span.get("parent_span_id") or ""),
+        type="agent" if is_agent else None,
         timestamp=_get_timestamp(span, "start_timestamp"),
         working_start=0.0,  # Required field
         metadata=_extract_span_metadata(span),
@@ -270,7 +274,7 @@ async def spans_to_events(spans: list[dict[str, Any]]) -> list[Event]:
         elif is_tool_span(span):
             events.append(to_tool_event(span))
         elif is_agent_span(span):
-            events.append(to_span_begin_event(span))
+            events.append(to_span_begin_event(span, is_agent=True))
             # Add end event if span has duration
             if span.get("duration") is not None:
                 events.append(to_span_end_event(span))

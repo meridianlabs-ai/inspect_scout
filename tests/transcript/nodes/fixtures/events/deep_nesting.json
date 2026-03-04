@@ -1,0 +1,181 @@
+{
+  "description": "Three levels of nested agents (grandparent -> parent -> child)",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-level1",
+      "id": "level-1",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "level-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 25
+        }
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-level2",
+      "id": "level-2",
+      "name": "planner",
+      "type": "agent",
+      "parent_id": "level-1",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "span_id": "level-2",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "output": {
+        "usage": {
+          "input_tokens": 60,
+          "output_tokens": 30
+        }
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-level3",
+      "id": "level-3",
+      "name": "executor",
+      "type": "agent",
+      "parent_id": "level-2",
+      "timestamp": "2024-01-01T00:00:07Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "level-3",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:08Z",
+      "completed": "2024-01-01T00:00:09Z",
+      "output": {
+        "usage": {
+          "input_tokens": 70,
+          "output_tokens": 35
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-004",
+      "span_id": "level-3",
+      "id": "tool-1",
+      "function": "execute_action",
+      "timestamp": "2024-01-01T00:00:10Z",
+      "completed": "2024-01-01T00:00:11Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-level3-end",
+      "span_id": "level-3",
+      "timestamp": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "span_id": "level-2",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:13Z",
+      "completed": "2024-01-01T00:00:14Z",
+      "output": {
+        "usage": {
+          "input_tokens": 40,
+          "output_tokens": 20
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-level2-end",
+      "span_id": "level-2",
+      "timestamp": "2024-01-01T00:00:15Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-006",
+      "span_id": "level-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:16Z",
+      "completed": "2024-01-01T00:00:17Z",
+      "output": {
+        "usage": {
+          "input_tokens": 30,
+          "output_tokens": 15
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-level1-end",
+      "span_id": "level-1",
+      "timestamp": "2024-01-01T00:00:18Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:19Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "level-1",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "level-1"
+      },
+      "event_uuids": ["e-001", "e-006"],
+      "children": [
+        {
+          "id": "level-2",
+          "name": "planner",
+          "source": {
+            "source": "span",
+            "span_id": "level-2"
+          },
+          "event_uuids": ["e-002", "e-005"],
+          "children": [
+            {
+              "id": "level-3",
+              "name": "executor",
+              "source": {
+                "source": "span",
+                "span_id": "level-3"
+              },
+              "event_uuids": ["e-003", "e-004"],
+              "total_tokens": 105
+            }
+          ],
+          "total_tokens": 255
+        }
+      ],
+      "total_tokens": 375
+    },
+    "scoring": null
+  }
+}

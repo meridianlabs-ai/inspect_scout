@@ -62,7 +62,6 @@ export default defineConfig(({ mode }) => {
     // App build configuration
     return {
       ...baseConfig,
-      mode: "development",
       base: "",
       server: {
         proxy: {
@@ -74,12 +73,22 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: "dist",
-        minify: false,
+        emptyOutDir: true,
+        minify: mode !== "development",
         rollupOptions: {
           output: {
-            entryFileNames: `assets/index.js`,
-            chunkFileNames: `assets/[name].js`,
-            assetFileNames: `assets/[name].[ext]`,
+            manualChunks(id) {
+              // Let mathxyjax3's pre-built chunks stay separate —
+              // they use a global MathJax object set up by their entry
+              // and break if inlined out of order.
+              if (id.includes("mathxyjax3/dist/") && !id.endsWith("index.js")) {
+                return undefined;
+              }
+              // Everything else goes into the main bundle
+            },
+            entryFileNames: `assets/[name]-[hash].js`,
+            chunkFileNames: `assets/[name]-[hash].js`,
+            assetFileNames: `assets/[name]-[hash].[ext]`,
           },
         },
         sourcemap: true,

@@ -1,0 +1,133 @@
+{
+  "description": "Mix of span-based and tool-based agents in the same tree",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-main",
+      "id": "main-agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "tool",
+      "uuid": "e-002",
+      "span_id": "main-agent",
+      "id": "tool-delegate",
+      "function": "delegate_task",
+      "agent": "sub_agent",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "events": [
+        {
+          "event": "model",
+          "uuid": "e-002a",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:05Z",
+          "completed": "2024-01-01T00:00:06Z",
+          "output": {
+            "usage": {
+              "input_tokens": 80,
+              "output_tokens": 40
+            }
+          }
+        },
+        {
+          "event": "tool",
+          "uuid": "e-002b",
+          "id": "tool-inner",
+          "function": "search",
+          "timestamp": "2024-01-01T00:00:07Z",
+          "completed": "2024-01-01T00:00:08Z"
+        },
+        {
+          "event": "model",
+          "uuid": "e-002c",
+          "model": "test-model",
+          "timestamp": "2024-01-01T00:00:09Z",
+          "completed": "2024-01-01T00:00:10Z",
+          "output": {
+            "usage": {
+              "input_tokens": 60,
+              "output_tokens": 30
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "main-agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z",
+      "output": {
+        "usage": {
+          "input_tokens": 120,
+          "output_tokens": 60
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-main-end",
+      "span_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:13Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:14Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main-agent",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "main-agent"
+      },
+      "event_uuids": ["e-001", "e-003"],
+      "children": [
+        {
+          "id": "tool-agent-tool-delegate",
+          "name": "sub_agent",
+          "source": {
+            "source": "tool"
+          },
+          "event_uuids": ["e-002a", "e-002b", "e-002c"],
+          "total_tokens": 210
+        }
+      ],
+      "total_tokens": 540
+    },
+    "scoring": null
+  }
+}

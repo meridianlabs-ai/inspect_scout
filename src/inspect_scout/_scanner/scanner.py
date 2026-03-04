@@ -48,6 +48,7 @@ from ._loaders import create_implicit_loader
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
+    normalize_timeline_filter,
 )
 from .loader import Loader
 from .result import Result
@@ -60,6 +61,7 @@ SCANNER_VERSION = "scanner_version"
 
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
+SCANNER_CONTENT_ATTR = "___scanner_content___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -216,6 +218,7 @@ def scanner(
     loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
@@ -230,6 +233,7 @@ def scanner(
     loader: Loader[TScan] | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
@@ -249,6 +253,7 @@ def scanner(
        loader: Custom data loader for scanner.
        messages: Message types to scan.
        events: Event types to scan.
+       timeline: Event types to include in timelines.
        name: Scanner name (defaults to function name).
        version: Scanner version (defaults to 0).
        metrics: One or more metrics to calculate over the values
@@ -265,6 +270,17 @@ def scanner(
     # Don't raise error here anymore - we'll check after attempting inference
     messages = normalize_messages_filter(messages) if messages is not None else None
     events = normalize_events_filter(events) if events is not None else None
+    timeline = normalize_timeline_filter(timeline) if timeline is not None else None
+
+    # Timeline implies events (needed for UUID resolution and timeline_build fallback)
+    if timeline is not None and events is None:
+        if timeline == "all":
+            events = "all"
+        else:
+            # Timeline event types + structural events needed for tree building
+            events = normalize_events_filter(
+                list(set(timeline) | {"span_begin", "span_end"})
+            )
 
     def decorate(factory_fn: ScannerFactory[P, T]) -> ScannerFactory[P, T]:
         @wraps(factory_fn)
@@ -290,10 +306,16 @@ def scanner(
             # Use explicit filters if provided, otherwise try to infer
             inferred_messages = messages
             inferred_events = events
+            inferred_timeline = timeline
 
             # Only infer if no loader and no explicit filters
-            if loader is None and messages is None and events is None:
-                temp_messages, temp_events = infer_filters_from_type(
+            if (
+                loader is None
+                and messages is None
+                and events is None
+                and timeline is None
+            ):
+                temp_messages, temp_events, temp_timeline = infer_filters_from_type(
                     scanner_fn, factory_fn.__globals__
                 )
                 # Cast to proper types (mypy can't infer the string literals)
@@ -305,21 +327,48 @@ def scanner(
                 inferred_events = (
                     cast(list[EventType] | None, temp_events) if temp_events else None
                 )
+                if temp_timeline:
+                    inferred_timeline = "all"
+                    # Timeline implies events="all"
+                    if inferred_events is None:
+                        inferred_events = "all"
+
                 # If we couldn't infer anything, raise an error
-                if inferred_messages is None and inferred_events is None:
+                if (
+                    inferred_messages is None
+                    and inferred_events is None
+                    and inferred_timeline is None
+                ):
                     raise ValueError(
                         f"scanner '{scanner_name}' requires at least one of: "
-                        "messages=..., events=..., loader=..., or specific type annotations"
+                        "messages=..., events=..., timeline=..., loader=..., "
+                        "or specific type annotations"
                     )
+
+            # Allow scan functions to override content filters at runtime
+            # (e.g. llm_scanner sets this when content= is passed)
+            if hasattr(scanner_fn, SCANNER_CONTENT_ATTR):
+                override = getattr(scanner_fn, SCANNER_CONTENT_ATTR)
+                if override.messages is not None:
+                    inferred_messages = override.messages
+                if override.events is not None:
+                    inferred_events = override.events
+                if override.timeline is not None:
+                    inferred_timeline = override.timeline
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)
-            if inferred_messages is not None or inferred_events is not None:
+            if (
+                inferred_messages is not None
+                or inferred_events is not None
+                or inferred_timeline is not None
+            ):
                 validate_scanner_signature(
                     scanner_fn,
                     inferred_messages,
                     inferred_events,
                     factory_fn.__globals__,
+                    timeline=inferred_timeline,
                 )
 
             # compute scanner config
@@ -328,6 +377,8 @@ def scanner(
                 scanner_config.content.messages = inferred_messages
             if inferred_events is not None:
                 scanner_config.content.events = inferred_events
+            if inferred_timeline is not None:
+                scanner_config.content.timeline = inferred_timeline
             if loader is not None:
                 # TODO: how are we ensuring that the writer of a custom loader sets
                 # the proper content filter? We could do it for them, but I'm not

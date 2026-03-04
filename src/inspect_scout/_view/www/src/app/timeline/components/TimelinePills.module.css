@@ -1,0 +1,27 @@
+.pillRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+.pill {
+  background: none;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 2px 12px;
+  cursor: pointer;
+  font-size: var(--inspect-font-size-small);
+  color: var(--vscode-foreground);
+}
+
+.pill:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+.pillActive {
+  background-color: var(--bs-secondary-bg);
+  font-weight: 600;
+}

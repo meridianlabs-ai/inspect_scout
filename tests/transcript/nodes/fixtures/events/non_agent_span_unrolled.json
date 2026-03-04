@@ -1,0 +1,91 @@
+{
+  "description": "A non-agent span (type=handgrading) should be unrolled — its begin/end and child events appear directly in the parent",
+  "events": [
+    {
+      "event": "span_begin",
+      "id": "solvers",
+      "name": "solvers",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "id": "agent-1",
+      "name": "main-agent",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "agent-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "output": {
+        "usage": { "input_tokens": 100, "output_tokens": 50 }
+      }
+    },
+    {
+      "event": "span_begin",
+      "id": "hg-span",
+      "name": "handgrading",
+      "type": "handgrading",
+      "parent_id": "agent-1",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "info",
+      "uuid": "e-002",
+      "span_id": "hg-span",
+      "source": "grader",
+      "timestamp": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "span_end",
+      "id": "hg-span",
+      "span_id": "hg-span",
+      "timestamp": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "agent-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:07Z",
+      "completed": "2024-01-01T00:00:08Z",
+      "output": {
+        "usage": { "input_tokens": 200, "output_tokens": 100 }
+      }
+    },
+    {
+      "event": "span_end",
+      "id": "agent-1",
+      "span_id": "agent-1",
+      "timestamp": "2024-01-01T00:00:09Z"
+    },
+    {
+      "event": "span_end",
+      "id": "solvers",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:10Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "agent-1",
+      "name": "main-agent",
+      "source": { "source": "span", "span_id": "agent-1" },
+      "content_structure": [
+        { "type": "event", "uuid": "e-001" },
+        { "type": "event" },
+        { "type": "event", "uuid": "e-002" },
+        { "type": "event" },
+        { "type": "event", "uuid": "e-003" }
+      ],
+      "total_tokens": 450
+    },
+    "scoring": null
+  }
+}

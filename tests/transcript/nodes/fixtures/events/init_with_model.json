@@ -1,0 +1,86 @@
+{
+  "description": "Init phase containing model events",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-init",
+      "id": "init",
+      "name": "init",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "span_id": "init",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 50,
+          "output_tokens": 25
+        }
+      }
+    },
+    {
+      "event": "info",
+      "uuid": "e-002",
+      "span_id": "init",
+      "source": "setup",
+      "timestamp": "2024-01-01T00:00:03Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-init-end",
+      "span_id": "init",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:05Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "span_id": "solvers",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:06Z",
+      "completed": "2024-01-01T00:00:07Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:08Z"
+    }
+  ],
+  "expected": {
+    "init": {
+      "section": "init",
+      "event_uuids": ["e-001", "e-002"],
+      "total_tokens": 75
+    },
+    "agent": {
+      "id": "solvers",
+      "name": "solvers",
+      "source": {
+        "source": "span",
+        "span_id": "solvers"
+      },
+      "event_uuids": ["e-003"],
+      "total_tokens": 150
+    },
+    "scoring": null
+  }
+}

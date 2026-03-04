@@ -158,6 +158,170 @@ class TestGenerateLLMScanner:
         assert 'template="Custom: {{ question }}"' in source
 
 
+class TestGenerateLLMScannerNewParams:
+    """Tests for generating llm_scanner with new parameters."""
+
+    def test_generate_with_name(self) -> None:
+        """Generate scanner with name parameter."""
+        scanner = ScannerFile(
+            function_name="named",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                name="custom_name",
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert 'name="custom_name"' in source
+
+    def test_generate_with_context_window(self) -> None:
+        """Generate scanner with context_window parameter."""
+        scanner = ScannerFile(
+            function_name="windowed",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                context_window=4096,
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert "context_window=4096" in source
+
+    def test_generate_with_compaction_string(self) -> None:
+        """Generate scanner with string compaction parameter."""
+        scanner = ScannerFile(
+            function_name="compacted",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                compaction="summarize",
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert 'compaction="summarize"' in source
+
+    def test_generate_with_compaction_int(self) -> None:
+        """Generate scanner with integer compaction parameter."""
+        scanner = ScannerFile(
+            function_name="compacted",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                compaction=2000,
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert "compaction=2000" in source
+
+    def test_generate_with_depth(self) -> None:
+        """Generate scanner with depth parameter."""
+        scanner = ScannerFile(
+            function_name="deep",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                depth=3,
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert "depth=3" in source
+
+    def test_round_trip_new_params(self) -> None:
+        """Round-trip scanner with all new parameters."""
+        scanner = ScannerFile(
+            function_name="full",
+            decorator=ScannerDecoratorSpec(messages="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(
+                question="Q?",
+                answer_type="boolean",
+                name="my_scanner",
+                context_window=8192,
+                compaction="summarize",
+                depth=5,
+            ),
+        )
+
+        source = generate_scanner_file(scanner)
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.llm_scanner is not None
+        assert result.scanner.llm_scanner.name == "my_scanner"
+        assert result.scanner.llm_scanner.context_window == 8192
+        assert result.scanner.llm_scanner.compaction == "summarize"
+        assert result.scanner.llm_scanner.depth == 5
+
+
+class TestGenerateDecoratorTimeline:
+    """Tests for generating @scanner decorator with timeline."""
+
+    def test_generate_timeline_all(self) -> None:
+        """Generate decorator with timeline='all'."""
+        scanner = ScannerFile(
+            function_name="tl",
+            decorator=ScannerDecoratorSpec(messages="all", timeline="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(question="Q?", answer_type="boolean"),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert 'timeline="all"' in source
+
+    def test_generate_timeline_list(self) -> None:
+        """Generate decorator with timeline as list."""
+        scanner = ScannerFile(
+            function_name="tl",
+            decorator=ScannerDecoratorSpec(messages="all", timeline=["model", "tool"]),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(question="Q?", answer_type="boolean"),
+        )
+
+        source = generate_scanner_file(scanner)
+
+        assert "timeline=" in source
+        assert "model" in source
+        assert "tool" in source
+
+    def test_round_trip_timeline(self) -> None:
+        """Round-trip scanner with timeline parameter."""
+        scanner = ScannerFile(
+            function_name="tl",
+            decorator=ScannerDecoratorSpec(messages="all", timeline="all"),
+            scanner_type="llm",
+            llm_scanner=LLMScannerSpec(question="Q?", answer_type="boolean"),
+        )
+
+        source = generate_scanner_file(scanner)
+        result = parse_scanner_file(source)
+
+        assert result.editable is True
+        assert result.scanner is not None
+        assert result.scanner.decorator.timeline == "all"
+
+
 class TestGenerateGrepScanner:
     """Tests for generating grep_scanner code."""
 

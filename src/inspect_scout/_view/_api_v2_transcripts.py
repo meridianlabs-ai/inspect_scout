@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Path
 from fastapi.responses import StreamingResponse
+from inspect_ai._util.compression_transcoding import CompressedToDeflateStream
+from inspect_ai._util.zip_common import ZipCompressionMethod
 from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_413_CONTENT_TOO_LARGE,
@@ -17,8 +19,6 @@ from .._query.condition_sql import condition_from_sql
 from .._query.order_by import OrderBy
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptInfo
-from .._util.compression_transcoding import CompressedToDeflateStream
-from .._util.zip_common import ZipCompressionMethod
 from ._api_v2_types import (
     DistinctRequest,
     MessagesEventsResponse,

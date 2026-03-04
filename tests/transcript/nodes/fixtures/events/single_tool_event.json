@@ -1,0 +1,27 @@
+{
+  "description": "Single tool event only",
+  "events": [
+    {
+      "event": "tool",
+      "uuid": "e-001",
+      "id": "tool-1",
+      "function": "search",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "main",
+      "name": "main",
+      "source": {
+        "source": "span",
+        "span_id": "main"
+      },
+      "event_uuids": ["e-001"],
+      "total_tokens": 0
+    },
+    "scoring": null
+  }
+}

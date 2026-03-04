@@ -68,7 +68,9 @@ const ToolTextOutput: FC<ToolTextOutputProps> = ({ text }) => {
 
   return (
     <pre className={clsx(styles.textOutput, "tool-output")}>
-      <code className={clsx("sourceCode", styles.textCode)}>{text.trim()}</code>
+      <code className={clsx("sourceCode", styles.textCode)}>
+        {text.trimEnd()}
+      </code>
     </pre>
   );
 };

@@ -19,6 +19,7 @@ export interface OutlineRowProps {
   running?: boolean;
   selected?: boolean;
   getEventUrl?: (eventId: string) => string | undefined;
+  onSelect?: (nodeId: string) => void;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -27,6 +28,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   running,
   selected,
   getEventUrl,
+  onSelect,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -50,6 +52,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         )}
         style={{ paddingLeft: `${node.depth * 0.4}em` }}
         data-unsearchable={true}
+        onClick={() => onSelect?.(node.id)}
       >
         <div
           className={clsx(styles.toggle)}

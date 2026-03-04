@@ -613,8 +613,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Determine which columns we need to read
             need_messages = content.messages is not None
             need_events = content.events is not None
+            need_timelines = content.timeline is not None
 
-            if not need_messages and not need_events:
+            if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict
                 return transcript_no_content()
 
@@ -624,6 +625,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 columns.append("messages")
             if need_events:
                 columns.append("events")
+            if need_timelines:
+                columns.append("timelines")
 
             # First, get the filename from the index table (fast indexed lookup)
             filename_result = self._conn.execute(
@@ -679,6 +682,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Extract column values based on which columns were actually read
             messages_json: str | None = None
             events_json: str | None = None
+            timelines_json: str | None = None
 
             col_idx = 0
             if "messages" in columns_read:
@@ -686,6 +690,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 col_idx += 1
             if "events" in columns_read:
                 events_json = result[col_idx]
+                col_idx += 1
+            if "timelines" in columns_read:
+                timelines_json = result[col_idx]
 
             # Stream combined JSON construction
             async def stream_content_bytes() -> AsyncIterator[bytes]:
@@ -708,15 +715,37 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 else:
                     yield b"[]"
 
+                if timelines_json:
+                    yield b', "timelines": '
+                    timelines_bytes = timelines_json.encode("utf-8")
+                    for i in range(0, len(timelines_bytes), chunk_size):
+                        yield timelines_bytes[i : i + chunk_size]
+
                 yield b"}"
 
             # Use existing streaming JSON parser with filtering
-            return await load_filtered_transcript(
+            transcript = await load_filtered_transcript(
                 stream_content_bytes(),
                 t,
                 content.messages,
                 content.events,
             )
+
+            # Fallback: if timelines were requested but not stored, build from events
+            if (
+                content.timeline is not None
+                and not transcript.timelines
+                and transcript.events
+            ):
+                from inspect_ai.event import timeline_build
+
+                from ...util import filter_timelines
+
+                raw_timeline = timeline_build(transcript.events)
+                timelines = filter_timelines([raw_timeline], content.timeline)
+                transcript = transcript.model_copy(update={"timelines": timelines})
+
+            return transcript
 
     @override
     async def read_messages_events(
@@ -867,6 +896,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Dict with Parquet column values.
         """
+        from inspect_ai.event import timeline_dump
+
         # Validate metadata keys don't conflict with reserved names
         _validate_metadata_keys(transcript.metadata)
 
@@ -905,6 +936,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "limit": transcript.limit,
             "messages": json.dumps(messages_array),
             "events": json.dumps(events_array),
+            "timelines": (
+                json.dumps([timeline_dump(tl) for tl in transcript.timelines])
+                if transcript.timelines
+                else None
+            ),
         }
 
         # Flatten metadata: add each key as a column
@@ -1009,8 +1045,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             col_type = schema.field(field.name).type
             expected_type = field.pyarrow_type
 
-            # String columns: allow large_string as equivalent
-            if expected_type == pa.string():
+            # String columns: allow both string and large_string (backward compat)
+            if pa.types.is_string(expected_type) or pa.types.is_large_string(
+                expected_type
+            ):
                 if col_type not in (pa.string(), pa.large_string()):
                     raise ValueError(
                         f"'{field.name}' column must be string type, got {col_type}"
@@ -1217,14 +1255,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         values = [row.get(key) for row in rows if row.get(key) is not None]
 
         if not values:
-            return pa.string()  # All NULL → default to string
+            return pa.large_string()  # All NULL → default to large string
 
         # Determine types present
         types = {type(v) for v in values}
 
         # Infer appropriate PyArrow type
         if types == {str}:
-            return pa.string()
+            return pa.large_string()
         elif types == {bool}:
             return pa.bool_()
         elif types == {int}:
@@ -1238,8 +1276,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Mix of numeric types → use float
             return pa.float64()
         else:
-            # Mixed incompatible types → use string
-            return pa.string()
+            # Mixed incompatible types → use large string
+            return pa.large_string()
 
     async def _write_parquet_batch(
         self, batch: list[dict[str, Any]], session_id: str | None = None
@@ -1260,9 +1298,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Infer schema from actual data
             schema = self._infer_schema(batch)
 
-            # Create DataFrame and convert to PyArrow table
+            # Use inferred schema (which promotes strings to large_string)
+            # so Arrow uses 64-bit string offsets.
             df = pd.DataFrame(batch)
-            table = pa.Table.from_pandas(df, schema=schema)
+            table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
 
             # Generate filename and write to storage
             filename = self._generate_parquet_filename(session_id)
@@ -2161,7 +2200,7 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
 
 def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
     """Convert PyArrow type to DuckDB SQL type string."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "VARCHAR"
     elif pa_type == pa.int64():
         return "BIGINT"
@@ -2179,7 +2218,7 @@ def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:
 
 def _duckdb_default_value(pa_type: pa.DataType) -> str:
     """Get default value literal for a PyArrow type in DuckDB."""
-    if pa_type == pa.string():
+    if pa_type in (pa.string(), pa.large_string()):
         return "''"
     elif pa_type in (pa.int64(), pa.int32()):
         return "0"

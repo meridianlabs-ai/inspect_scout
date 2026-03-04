@@ -6,6 +6,8 @@ reference: "inspect_scout.sources"
 ### phoenix
 ### langsmith
 ### logfire
+### weave
+### claude_code
 
 
 

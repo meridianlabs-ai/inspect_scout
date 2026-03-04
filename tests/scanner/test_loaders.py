@@ -9,6 +9,7 @@ from inspect_ai._util.registry import (
     registry_unqualified_name,
 )
 from inspect_ai.event import Event, ModelEvent, ToolEvent
+from inspect_ai.model import ModelOutput
 from inspect_ai.model._chat_message import (
     ChatMessage,
     ChatMessageAssistant,
@@ -18,6 +19,7 @@ from inspect_ai.model._generate_config import GenerateConfig
 from inspect_scout._scanner._loaders import (
     create_implicit_loader,
 )
+from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
@@ -309,6 +311,112 @@ async def test_loaders_handle_empty_transcript() -> None:
     event_item_loader = create_implicit_loader(_event, all_filter)
     event_item_results = [item async for item in event_item_loader(empty_transcript)]
     assert len(event_item_results) == 0
+
+
+async def _timeline(input: Timeline) -> Any:
+    pass
+
+
+async def _list_timeline(input: list[Timeline]) -> Any:
+    pass
+
+
+timeline_filter = TranscriptContent(None, "all", "all")
+
+
+def test_create_loader_timeline_item_type() -> None:
+    """create_implicit_loader returns TimelineItemLoader for Timeline annotation."""
+    loader = create_implicit_loader(_timeline, timeline_filter)
+    assert registry_unqualified_name(loader) == "TimelineItemLoader"
+
+
+def test_create_loader_timeline_list_type() -> None:
+    """create_implicit_loader returns TimelineListLoader for list[Timeline] annotation."""
+    loader = create_implicit_loader(_list_timeline, timeline_filter)
+    assert registry_unqualified_name(loader) == "TimelineListLoader"
+
+
+@pytest.mark.asyncio
+async def test_timeline_item_loader_yields_first_timeline() -> None:
+    """TimelineItemLoader yields only the first timeline."""
+    from inspect_scout._transcript.timeline import TimelineEvent, TimelineSpan
+
+    loader = create_implicit_loader(_timeline, timeline_filter)
+
+    event = ModelEvent(
+        event="model",
+        timestamp=datetime.now(),
+        model="gpt-4",
+        input=[],
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+        output=ModelOutput(model="gpt-4", choices=[]),
+    )
+    span = TimelineSpan(
+        id="root",
+        name="root",
+        span_type="root",
+        content=[TimelineEvent(event=event)],
+    )
+    timeline1 = Timeline(name="Default", description="Test", root=span)
+    timeline2 = Timeline(name="Other", description="Test2", root=span)
+
+    transcript = create_test_transcript(events=[event])
+    transcript.timelines = [timeline1, timeline2]
+
+    results = [item async for item in loader(transcript)]
+
+    assert len(results) == 1
+    assert isinstance(results[0], Timeline)
+    assert results[0].name == "Default"
+
+
+@pytest.mark.asyncio
+async def test_timeline_list_loader_yields_all_timelines() -> None:
+    """TimelineListLoader yields all timelines as a single list."""
+    from inspect_scout._transcript.timeline import TimelineEvent, TimelineSpan
+
+    loader = create_implicit_loader(_list_timeline, timeline_filter)
+
+    event = ModelEvent(
+        event="model",
+        timestamp=datetime.now(),
+        model="gpt-4",
+        input=[],
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+        output=ModelOutput(model="gpt-4", choices=[]),
+    )
+    span = TimelineSpan(
+        id="root",
+        name="root",
+        span_type="root",
+        content=[TimelineEvent(event=event)],
+    )
+    timeline1 = Timeline(name="Default", description="Test", root=span)
+    timeline2 = Timeline(name="Other", description="Test2", root=span)
+
+    transcript = create_test_transcript(events=[event])
+    transcript.timelines = [timeline1, timeline2]
+
+    results = [item async for item in loader(transcript)]
+
+    assert len(results) == 1
+    assert isinstance(results[0], list)
+    assert len(results[0]) == 2
+
+
+@pytest.mark.asyncio
+async def test_timeline_item_loader_empty_timelines() -> None:
+    """TimelineItemLoader yields nothing when no timelines."""
+    loader = create_implicit_loader(_timeline, timeline_filter)
+    transcript = create_test_transcript()
+
+    results = [item async for item in loader(transcript)]
+
+    assert len(results) == 0
 
 
 def test_bare_list_type_should_raise_error() -> None:

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
+from inspect_ai._util.zip_common import ZipCompressionMethod
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
@@ -14,7 +16,6 @@ from .._recorder.summary import Summary
 from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
-from .._util.zip_common import ZipCompressionMethod
 
 
 @dataclass
@@ -267,6 +268,7 @@ class MessagesEventsResponse(BaseModel):
 
     messages: list[ChatMessage]
     events: list[Event]
+    timelines: list[Timeline]
     attachments: dict[str, str] | None = None
 
     model_config = ConfigDict(extra="allow")

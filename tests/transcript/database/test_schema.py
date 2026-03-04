@@ -57,13 +57,21 @@ class TestTranscriptSchemaFields:
             "limit",
             "messages",
             "events",
+            "timelines",
         }
         assert field_names == expected
 
     def test_json_serialized_fields(self) -> None:
         """Correct fields are marked as JSON-serialized."""
         json_fields = {f.name for f in TRANSCRIPT_SCHEMA_FIELDS if f.json_serialized}
-        expected = {"agent_args", "model_options", "score", "messages", "events"}
+        expected = {
+            "agent_args",
+            "model_options",
+            "score",
+            "messages",
+            "events",
+            "timelines",
+        }
         assert json_fields == expected
 
     def test_all_fields_have_descriptions(self) -> None:
@@ -95,8 +103,8 @@ class TestTranscriptSchemaFields:
             "events",
         ]
         for name in string_fields:
-            assert field_map[name].pyarrow_type == pa.string(), (
-                f"{name} should be string"
+            assert field_map[name].pyarrow_type == pa.large_string(), (
+                f"{name} should be large_string"
             )
 
         # Integer fields
@@ -118,13 +126,13 @@ class TestTranscriptsDbSchema:
         """transcripts_db_schema('pyarrow') returns valid PyArrow Schema."""
         schema = transcripts_db_schema(format="pyarrow")
         assert isinstance(schema, pa.Schema)
-        assert len(schema) == 21
+        assert len(schema) == 22
         assert "transcript_id" in schema.names
 
     def test_pyarrow_field_types(self) -> None:
         """PyArrow schema has correct field types."""
         schema = transcripts_db_schema(format="pyarrow")
-        assert schema.field("transcript_id").type == pa.string()
+        assert schema.field("transcript_id").type == pa.large_string()
         assert schema.field("task_repeat").type == pa.int64()
         assert schema.field("total_time").type == pa.float64()
         assert schema.field("success").type == pa.bool_()
@@ -136,7 +144,7 @@ class TestTranscriptsDbSchema:
         assert schema["type"] == "record"
         assert schema["name"] == "Transcript"
         assert "fields" in schema
-        assert len(schema["fields"]) == 21
+        assert len(schema["fields"]) == 22
 
     def test_avro_field_structure(self) -> None:
         """Avro schema fields have correct structure."""
@@ -190,7 +198,7 @@ class TestTranscriptsDbSchema:
         df = transcripts_db_schema(format="pandas")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
-        assert len(df.columns) == 21
+        assert len(df.columns) == 22
 
     def test_pandas_column_dtypes(self) -> None:
         """Pandas DataFrame has correct column dtypes."""
@@ -226,9 +234,9 @@ class TestReservedColumns:
         assert "filename" in reserved
 
     def test_count(self) -> None:
-        """Should have correct count (21 schema fields + filename)."""
+        """Should have correct count (22 schema fields + filename)."""
         reserved = reserved_columns()
-        assert len(reserved) == 22
+        assert len(reserved) == 23
 
 
 class TestValidateTranscriptSchema:
@@ -399,6 +407,8 @@ class TestGenerateSchemaTableMarkdown:
         """Should include all schema fields."""
         result = generate_schema_table_markdown()
         for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name == "timelines":
+                continue
             assert f"`{field.name}`" in result
 
     def test_transcript_id_marked_required(self) -> None:
@@ -431,12 +441,12 @@ class TestSchemaField:
         """Can create a basic SchemaField."""
         field = SchemaField(
             name="test_field",
-            pyarrow_type=pa.string(),
+            pyarrow_type=pa.large_string(),
             required=True,
             description="A test field",
         )
         assert field.name == "test_field"
-        assert field.pyarrow_type == pa.string()
+        assert field.pyarrow_type == pa.large_string()
         assert field.required is True
         assert field.description == "A test field"
         assert field.json_serialized is False  # default
@@ -445,7 +455,7 @@ class TestSchemaField:
         """Can create SchemaField with json_serialized=True."""
         field = SchemaField(
             name="json_field",
-            pyarrow_type=pa.string(),
+            pyarrow_type=pa.large_string(),
             required=False,
             description="A JSON field",
             json_serialized=True,

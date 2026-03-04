@@ -81,6 +81,27 @@ export const StickyScroll: FC<StickyScrollProps> = ({
     return () => scrollContainer.removeEventListener("scroll", checkSticky);
   }, [scrollRef, offsetTop, preserveHeight]);
 
+  // Track the content's natural height while sticky so that intentional
+  // resizes (e.g. the user collapsing the swimlane) update the preserved
+  // height instead of leaving a whitespace gap.
+  const childMeasureRef = useRef<HTMLDivElement>(null);
+  const isStickyRef = useRef(isSticky);
+  isStickyRef.current = isSticky;
+
+  useEffect(() => {
+    if (!preserveHeight) return;
+    const el = childMeasureRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!isStickyRef.current) return;
+      const h = el.getBoundingClientRect().height;
+      setPreStickHeight(h);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [preserveHeight]);
+
   const stickyStyle: CSSProperties = {
     position: "sticky",
     top: offsetTop,
@@ -97,7 +118,11 @@ export const StickyScroll: FC<StickyScrollProps> = ({
 
   return (
     <div ref={contentRef} className={contentClassName} style={stickyStyle}>
-      {children}
+      {preserveHeight ? (
+        <div ref={childMeasureRef}>{children}</div>
+      ) : (
+        children
+      )}
     </div>
   );
 };

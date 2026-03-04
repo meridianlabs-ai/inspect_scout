@@ -86,7 +86,9 @@ export const StickyScroll: FC<StickyScrollProps> = ({
   // height instead of leaving a whitespace gap.
   const childMeasureRef = useRef<HTMLDivElement>(null);
   const isStickyRef = useRef(isSticky);
-  isStickyRef.current = isSticky;
+  useEffect(() => {
+    isStickyRef.current = isSticky;
+  }, [isSticky]);
 
   useEffect(() => {
     if (!preserveHeight) return;
@@ -118,11 +120,7 @@ export const StickyScroll: FC<StickyScrollProps> = ({
 
   return (
     <div ref={contentRef} className={contentClassName} style={stickyStyle}>
-      {preserveHeight ? (
-        <div ref={childMeasureRef}>{children}</div>
-      ) : (
-        children
-      )}
+      {preserveHeight ? <div ref={childMeasureRef}>{children}</div> : children}
     </div>
   );
 };

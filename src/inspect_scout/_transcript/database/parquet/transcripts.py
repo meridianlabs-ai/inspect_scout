@@ -176,7 +176,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self,
         location: str,
         target_file_size_mb: float = 100,
-        row_group_size_mb: float = 32,
+        row_group_size: int = 25,
         query: Query | None = None,
         snapshot: ScanTranscripts | None = None,
     ) -> None:
@@ -186,7 +186,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             location: Directory path (local or S3) containing Parquet files.
             target_file_size_mb: Target size in MB for each Parquet file. Individual
                 transcripts may cause files to exceed this limit. Can be fractional.
-            row_group_size_mb: Target row group size in MB for Parquet files. Can be fractional.
+            row_group_size: Target row group size as a row count for Parquet files.
+                Each transcript row can be 10-50 MB of JSON, so a small count
+                (default 25) keeps row groups safely under Parquet's 2GB limit.
             query: Optional query to apply during table creation for optimization.
                 If provided, WHERE conditions are pushed down to Parquet scan,
                 and SHUFFLE/LIMIT are applied during table creation.
@@ -196,7 +198,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         self._location = location
         self._target_file_size_mb = target_file_size_mb
-        self._row_group_size_mb = row_group_size_mb
+        self._row_group_size = row_group_size
         self._query = query
         self._snapshot = snapshot
 
@@ -1124,7 +1126,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             path,
             compression="zstd",
             use_dictionary=True,
-            row_group_size=int(self._row_group_size_mb * 1024 * 1024),
+            row_group_size=self._row_group_size,
             write_statistics=True,
         )
 
@@ -1849,7 +1851,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """Compact all parquet files from a session.
 
         Uses existing write logic which respects target_file_size_mb and
-        row_group_size_mb, potentially creating multiple output files for
+        row_group_size, potentially creating multiple output files for
         large sessions.
 
         Safe at every step - if interrupted, data remains queryable.

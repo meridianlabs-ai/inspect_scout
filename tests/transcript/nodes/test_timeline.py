@@ -518,8 +518,10 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
         assert root.id == expected_agent["id"], (
             f"root id mismatch: got {root.id}, expected {expected_agent['id']}"
         )
-        assert root.name == expected_agent["name"], (
-            f"root name mismatch: got {root.name}, expected {expected_agent['name']}"
+        # inspect_ai now always names the root span "main" after unwrapping
+        # solver/agent pairs, regardless of the original span name.
+        assert root.name == "main", (
+            f"root name mismatch: got {root.name}, expected 'main'"
         )
 
         # Check event UUIDs (excluding init and scoring spans)

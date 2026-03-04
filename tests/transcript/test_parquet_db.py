@@ -909,11 +909,11 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
     # Use very small sizes to ensure multiple files and row groups
     # (sizes account for compression-aware estimation in ParquetTranscriptsDB)
     target_file_size_mb = 0.002  # 2KB per file
-    row_group_size_mb = 0.001  # 1KB per row group
+    row_group_size = 5  # 5 rows per row group
     parquet_db = ParquetTranscriptsDB(
         str(test_location),
         target_file_size_mb=target_file_size_mb,
-        row_group_size_mb=row_group_size_mb,
+        row_group_size=row_group_size,
     )
     await parquet_db.connect()
 
@@ -959,21 +959,17 @@ async def test_partitioning_file_and_row_group_levels(test_location: Path) -> No
             assert num_row_groups >= 1, f"File {parquet_file.name} has no row groups"
             total_row_groups += num_row_groups
 
-            # Verify row group sizes are approximately as configured
+            # Verify row group row counts match configured size
             for rg_idx in range(num_row_groups):
                 rg = metadata.row_group(rg_idx)
-                rg_size_bytes = rg.total_byte_size
-                rg_size_mb = rg_size_bytes / (1024 * 1024)
+                rg_num_rows = rg.num_rows
 
-                # Row groups should be roughly the configured size
-                # (allow some overhead/variation, but should be in the ballpark)
+                # Row groups should have at most row_group_size rows
                 # Last row group in file may be smaller
-                is_last_rg_in_file = rg_idx == num_row_groups - 1
-                if not is_last_rg_in_file:
-                    assert rg_size_mb <= row_group_size_mb * 2, (
-                        f"Row group {rg_idx} in {parquet_file.name} is {rg_size_mb:.3f}MB, "
-                        f"expected ~{row_group_size_mb}MB (allowing 2x for overhead)"
-                    )
+                assert rg_num_rows <= row_group_size, (
+                    f"Row group {rg_idx} in {parquet_file.name} has {rg_num_rows} rows, "
+                    f"expected at most {row_group_size}"
+                )
 
         # Should have multiple row groups across all files
         assert total_row_groups >= len(parquet_files), (

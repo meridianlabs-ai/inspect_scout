@@ -115,6 +115,10 @@ interface TimelineSwimLanesProps {
   isSticky?: boolean;
   /** Called when an error or compaction marker is clicked. */
   onMarkerNavigate?: (eventId: string) => void;
+  /** Headroom auto-collapse: true when scrolling down while sticky. */
+  headroomCollapsed?: boolean;
+  /** Called when the user explicitly toggles collapse (locks headroom). */
+  onToggle?: () => void;
 }
 
 // =============================================================================
@@ -140,6 +144,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   header,
   isSticky,
   onMarkerNavigate,
+  headroomCollapsed = false,
+  onToggle,
 }) => {
   const { node, selected, select: onSelect, clearSelection } = timeline;
 
@@ -153,10 +159,13 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     { cleanup: false }
   );
   const isFlat = layouts.length <= 1;
-  const isCollapsed = collapsed ?? isFlat;
+  // User preference OR headroom auto-collapse (overlay).
+  // Headroom collapses on scroll-down; user preference takes over on scroll-up.
+  const isCollapsed = (collapsed ?? isFlat) || headroomCollapsed;
   const toggleCollapsed = useCallback(() => {
+    onToggle?.();
     setCollapsed(!isCollapsed);
-  }, [isCollapsed, setCollapsed]);
+  }, [isCollapsed, setCollapsed, onToggle]);
 
   // Row expand/collapse state — stored in Zustand collapsedBuckets.
   // Keys that are collapsed have `true` in the bucket; default is expanded.

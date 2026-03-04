@@ -1,11 +1,12 @@
 import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
-import { FC, useEffect, useRef, useState } from "react";
+import { FC, useRef } from "react";
 
 import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
 import { LoadingBar } from "../../components/LoadingBar";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { useScrollDirection } from "../../hooks/useScrollDirection";
 import { useStore } from "../../state/store";
 import { useRequiredParams } from "../../utils/router";
 import { TranscriptsNavbar } from "../components/TranscriptsNavbar";
@@ -70,30 +71,10 @@ export const TranscriptPanel: FC = () => {
   const [prevId, nextId] = adjacentIds.data ?? [undefined, undefined];
 
   // Headroom: show title on scroll-up, hide on scroll-down.
-  const [titleHidden, setTitleHidden] = useState(false);
-  const lastScrollTopRef = useRef(0);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    const onScroll = () => {
-      const scrollTop = el.scrollTop;
-      const scrollingDown = scrollTop > lastScrollTopRef.current;
-      lastScrollTopRef.current = scrollTop;
-
-      // Always show when near the top (title's natural position)
-      if (scrollTop <= 10) {
-        setTitleHidden(false);
-      } else {
-        setTitleHidden(scrollingDown);
-      }
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-    // Re-run when transcript loads so scrollRef.current is available
-  }, [scrollRef, transcript]);
+  // Shared with the swimlane headroom in TimelineEventsView so both
+  // collapse/expand in sync from a single scroll-direction signal.
+  const { hidden: headroomHidden, lockOverride: headroomLockOverride } =
+    useScrollDirection(scrollRef);
 
   return (
     <div className={clsx(styles.container)}>
@@ -117,7 +98,7 @@ export const TranscriptPanel: FC = () => {
           <div
             className={clsx(
               styles.titleHeadroom,
-              titleHidden && styles.titleHidden
+              headroomHidden && styles.titleHidden
             )}
           >
             <div className={styles.titleHeadroomInner}>
@@ -125,7 +106,12 @@ export const TranscriptPanel: FC = () => {
             </div>
           </div>
           <div className={styles.transcriptContainer} ref={scrollRef}>
-            <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
+            <TranscriptBody
+              transcript={transcript}
+              scrollRef={scrollRef}
+              headroomHidden={headroomHidden}
+              onHeadroomOverride={headroomLockOverride}
+            />
           </div>
         </>
       )}

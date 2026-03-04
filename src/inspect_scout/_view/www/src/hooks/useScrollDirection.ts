@@ -12,10 +12,11 @@ interface UseScrollDirectionOptions {
 interface UseScrollDirectionResult {
   /** True when scrolling down past threshold while scrollTop > 10px */
   hidden: boolean;
-  /** Call this when a user explicitly overrides headroom (e.g. clicks a
-   *  collapse toggle). Suppresses headroom updates until the next scroll
-   *  direction change. */
-  lockOverride: () => void;
+  /** Call before a layout change (e.g. collapsing a panel) that will shift
+   *  scrollTop without the user actually scrolling. Resets the direction
+   *  anchor to the current scrollTop and engages the transition lock so
+   *  the resulting scroll-position shift is ignored. */
+  resetAnchor: () => void;
 }
 
 /**
@@ -42,16 +43,13 @@ export function useScrollDirection(
   const directionAnchorRef = useRef(0);
   const lastDirectionRef = useRef<"up" | "down">("down");
   const transitionLockedRef = useRef(false);
-  const userOverrideRef = useRef(false);
   const [hidden, setHidden] = useState(false);
 
   // Resolve the actual DOM element from the ref.  The ref's target may be
   // conditionally rendered (null on first mount, populated later). We observe
   // DOM mutations to detect when it appears, then store it in state so the
   // scroll-listener effect re-runs.
-  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(
-    () => scrollRef.current
-  );
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     // Already have it — sync immediately.
@@ -107,33 +105,36 @@ export function useScrollDirection(
 
       if (directionChanged) {
         lastDirectionRef.current = direction;
-        userOverrideRef.current = false;
       }
 
       // Skip updates while a collapse/expand CSS transition is settling
       if (transitionLockedRef.current) return;
 
-      if (!userOverrideRef.current) {
-        const shouldHide = direction === "down" && scrollTop > 10;
-        setHidden((prev) => {
-          if (prev === shouldHide) return prev;
-          // Lock during the CSS transition to prevent jitter
-          transitionLockedRef.current = true;
-          setTimeout(() => {
-            transitionLockedRef.current = false;
-          }, transitionLockMs);
-          return shouldHide;
-        });
-      }
+      const shouldHide = direction === "down" && scrollTop > 10;
+      setHidden((prev) => {
+        if (prev === shouldHide) return prev;
+        // Lock during the CSS transition to prevent jitter
+        transitionLockedRef.current = true;
+        setTimeout(() => {
+          transitionLockedRef.current = false;
+        }, transitionLockMs);
+        return shouldHide;
+      });
     };
 
     scrollEl.addEventListener("scroll", onScroll, { passive: true });
     return () => scrollEl.removeEventListener("scroll", onScroll);
   }, [scrollEl, threshold, transitionLockMs]);
 
-  const lockOverride = useCallback(() => {
-    userOverrideRef.current = true;
-  }, []);
+  const resetAnchor = useCallback(() => {
+    if (scrollEl) {
+      directionAnchorRef.current = scrollEl.scrollTop;
+    }
+    transitionLockedRef.current = true;
+    setTimeout(() => {
+      transitionLockedRef.current = false;
+    }, transitionLockMs);
+  }, [scrollEl, transitionLockMs]);
 
-  return { hidden, lockOverride };
+  return { hidden, resetAnchor };
 }

@@ -117,8 +117,9 @@ interface TimelineSwimLanesProps {
   onMarkerNavigate?: (eventId: string) => void;
   /** Headroom auto-collapse: true when scrolling down while sticky. */
   headroomCollapsed?: boolean;
-  /** Called when the user explicitly toggles collapse (locks headroom). */
-  onToggle?: () => void;
+  /** Called before a layout shift (toggle) so the headroom hook can reset
+   *  its anchor and ignore the resulting scroll-position change. */
+  onLayoutShift?: () => void;
 }
 
 // =============================================================================
@@ -145,7 +146,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   isSticky,
   onMarkerNavigate,
   headroomCollapsed = false,
-  onToggle,
+  onLayoutShift,
 }) => {
   const { node, selected, select: onSelect, clearSelection } = timeline;
 
@@ -159,13 +160,31 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     { cleanup: false }
   );
   const isFlat = layouts.length <= 1;
+
+  // When the user explicitly toggles while headroom is collapsed, suppress
+  // the headroom override until the scroll direction changes. Without this,
+  // `headroomCollapsed` always wins via the `||` below and the toggle has
+  // no visible effect.
+  //
+  // Uses the "adjust state during render" pattern to clear the override
+  // when headroomCollapsed changes (avoiding effects + cascading renders).
+  const [headroomOverride, setHeadroomOverride] = useState(false);
+  const [prevHeadroomCollapsed, setPrevHeadroomCollapsed] =
+    useState(headroomCollapsed);
+  if (prevHeadroomCollapsed !== headroomCollapsed) {
+    setPrevHeadroomCollapsed(headroomCollapsed);
+    setHeadroomOverride(false);
+  }
+
   // User preference OR headroom auto-collapse (overlay).
   // Headroom collapses on scroll-down; user preference takes over on scroll-up.
-  const isCollapsed = (collapsed ?? isFlat) || headroomCollapsed;
+  const effectiveHeadroom = headroomCollapsed && !headroomOverride;
+  const isCollapsed = (collapsed ?? isFlat) || effectiveHeadroom;
   const toggleCollapsed = useCallback(() => {
-    onToggle?.();
+    onLayoutShift?.();
+    setHeadroomOverride(true);
     setCollapsed(!isCollapsed);
-  }, [isCollapsed, setCollapsed, onToggle]);
+  }, [isCollapsed, setCollapsed, onLayoutShift]);
 
   // Row expand/collapse state — stored in Zustand collapsedBuckets.
   // Keys that are collapsed have `true` in the bucket; default is expanded.

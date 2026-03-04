@@ -41,15 +41,15 @@ interface TranscriptBodyProps {
   scrollRef: RefObject<HTMLDivElement | null>;
   /** Headroom direction signal: true = scrolling down (hide). */
   headroomHidden?: boolean;
-  /** Notify the headroom hook that the user explicitly toggled. */
-  onHeadroomOverride?: () => void;
+  /** Reset the headroom anchor before a layout shift (e.g. swimlane toggle). */
+  onHeadroomResetAnchor?: () => void;
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({
   transcript,
   scrollRef,
   headroomHidden,
-  onHeadroomOverride,
+  onHeadroomResetAnchor,
 }) => {
   const navigate = useNavigate();
   // When the validation sidebar is open, a VscodeSplitLayout wraps the content
@@ -309,7 +309,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         collapsed={eventsCollapsed}
         onMarkerNavigate={handleMarkerNavigate}
         headroomHidden={headroomHidden}
-        onHeadroomOverride={onHeadroomOverride}
+        onHeadroomResetAnchor={onHeadroomResetAnchor}
       />
       <TranscriptFilterPopover
         showing={transcriptFilterShowing}

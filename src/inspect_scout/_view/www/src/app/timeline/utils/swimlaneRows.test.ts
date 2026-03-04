@@ -616,15 +616,9 @@ describe("computeFlatSwimlaneRows", () => {
 
     it("merges children from multiple spans in the same lane", () => {
       const parent = makeSpan("Root", 0, 60, 50000, [
-        makeSpan("Explore", 0, 10, 3000, [
-          makeSpan("Search", 2, 8, 1500),
-        ]),
-        makeSpan("Explore", 5, 15, 4000, [
-          makeSpan("Analyze", 7, 13, 2000),
-        ]),
-        makeSpan("Explore", 20, 30, 5000, [
-          makeSpan("Search", 22, 28, 2500),
-        ]),
+        makeSpan("Explore", 0, 10, 3000, [makeSpan("Search", 2, 8, 1500)]),
+        makeSpan("Explore", 5, 15, 4000, [makeSpan("Analyze", 7, 13, 2000)]),
+        makeSpan("Explore", 20, 30, 5000, [makeSpan("Search", 22, 28, 2500)]),
       ]);
       const rows = computeFlatSwimlaneRows(parent);
 

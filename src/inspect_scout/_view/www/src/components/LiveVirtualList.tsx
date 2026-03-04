@@ -151,20 +151,28 @@ export const LiveVirtualList = <T,>({
     [followOutput, live, scrollRef, listHandle]
   );
 
-  const [, forceRender] = useState({});
-  const forceUpdate = useCallback(() => forceRender({}), []);
-
+  // Resolve the scrollRef into state so Virtuoso's customScrollParent can
+  // be set without reading a ref during render. The ref target may be
+  // conditionally rendered, so we watch the DOM for it to appear.
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    // Force a re-render after initial mount
-    // This is here only because in VScode, for some reason,
-    // when this transcript is restored, the height isn't computed
-    // properly on the first render. This basically gives it a second
-    // change to compute the height and lay itself out.
-    const timer = setTimeout(() => {
-      forceUpdate();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [forceUpdate]);
+    if (scrollRef?.current) {
+      setScrollParent((prev) =>
+        prev === scrollRef.current ? prev : scrollRef.current
+      );
+      return;
+    }
+    if (!scrollRef) return;
+    // Not yet rendered — watch the DOM for additions.
+    const observer = new MutationObserver(() => {
+      if (scrollRef.current) {
+        setScrollParent(scrollRef.current);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [scrollRef]);
 
   // Default function to extract searchable text using JSON.stringify
   const defaultItemSearchText = useCallback((item: T): string => {
@@ -344,7 +352,7 @@ export const LiveVirtualList = <T,>({
   return (
     <Virtuoso
       ref={listHandle}
-      customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
+      customScrollParent={scrollParent ?? undefined}
       style={{ height: "100%", width: "100%" }}
       data={data}
       defaultItemHeight={500}

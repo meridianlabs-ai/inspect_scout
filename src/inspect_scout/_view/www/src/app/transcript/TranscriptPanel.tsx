@@ -73,7 +73,7 @@ export const TranscriptPanel: FC = () => {
   // Headroom: show title on scroll-up, hide on scroll-down.
   // Shared with the swimlane headroom in TimelineEventsView so both
   // collapse/expand in sync from a single scroll-direction signal.
-  const { hidden: headroomHidden, lockOverride: headroomLockOverride } =
+  const { hidden: headroomHidden, resetAnchor: headroomResetAnchor } =
     useScrollDirection(scrollRef);
 
   return (
@@ -110,7 +110,7 @@ export const TranscriptPanel: FC = () => {
               transcript={transcript}
               scrollRef={scrollRef}
               headroomHidden={headroomHidden}
-              onHeadroomOverride={headroomLockOverride}
+              onHeadroomResetAnchor={headroomResetAnchor}
             />
           </div>
         </>

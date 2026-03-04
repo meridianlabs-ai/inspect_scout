@@ -67,8 +67,8 @@ interface TimelineEventsViewProps {
   agentConfig?: TimelineOptions;
   /** Headroom direction signal: true = scrolling down (hide). */
   headroomHidden?: boolean;
-  /** Notify the headroom hook that the user explicitly toggled. */
-  onHeadroomOverride?: () => void;
+  /** Reset the headroom anchor before a layout shift (e.g. swimlane toggle). */
+  onHeadroomResetAnchor?: () => void;
   className?: string;
 }
 
@@ -111,7 +111,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   timeline: timelineProp = "auto",
   agentConfig,
   headroomHidden,
-  onHeadroomOverride,
+  onHeadroomResetAnchor,
   className,
 }) => {
   // ---------------------------------------------------------------------------
@@ -354,7 +354,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                 onMarkerNavigate={onMarkerNavigate}
                 isSticky={isSwimLaneSticky}
                 headroomCollapsed={!!headroomHidden && isSwimLaneSticky}
-                onToggle={onHeadroomOverride}
+                onLayoutShift={onHeadroomResetAnchor}
               />
             </div>
           </StickyScroll>

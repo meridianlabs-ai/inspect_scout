@@ -313,6 +313,11 @@ interface FlatEntry {
   totalTokens: number;
   startTime: Date;
   endTime: Date;
+  /** Earliest start time across the entire name group this entry belongs to.
+   *  Used for sorting so that all entries from the same agent name stay
+   *  together (grouped) rather than being interleaved by individual start
+   *  time with entries from other agent names. */
+  groupStartTime: Date;
 }
 
 /**
@@ -354,6 +359,9 @@ function flattenChildren(
     const baseName = displayName.toLowerCase();
     const clusters = partitionIntoClusters(sorted);
     const hasParallel = clusters.some((c) => c.length > 1);
+    // Earliest start across the whole name group — used for sorting so
+    // that all entries from the same agent name stay together.
+    const groupStartTime = sorted[0]!.startTime;
 
     if (!hasParallel) {
       // All non-overlapping (iterative): one row with one bar per cluster
@@ -372,6 +380,7 @@ function flattenChildren(
         totalTokens: sorted.reduce((sum, s) => sum + s.totalTokens, 0),
         startTime: first.startTime,
         endTime,
+        groupStartTime,
       });
     } else {
       // Has overlapping spans: assign to lanes via bin-packing.
@@ -396,6 +405,7 @@ function flattenChildren(
           totalTokens: laneSpans.reduce((sum, s) => sum + s.totalTokens, 0),
           startTime: first.startTime,
           endTime,
+          groupStartTime,
         });
       } else {
         // Multiple lanes needed: one numbered row per lane
@@ -416,14 +426,20 @@ function flattenChildren(
             totalTokens: laneSpans.reduce((sum, s) => sum + s.totalTokens, 0),
             startTime: first.startTime,
             endTime,
+            groupStartTime,
           });
         }
       }
     }
   }
 
-  // Sort all entries by start time for correct visual order
-  entries.sort((a, b) => compareByTime(a, b));
+  // Sort entries by group start time (keeps same-name entries together),
+  // then by individual start time within a group.
+  entries.sort(
+    (a, b) =>
+      a.groupStartTime.getTime() - b.groupStartTime.getTime() ||
+      compareByTime(a, b)
+  );
 
   // Emit rows with recursive descent
   const result: SwimlaneRow[] = [];

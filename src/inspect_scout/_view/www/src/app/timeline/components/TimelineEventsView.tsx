@@ -357,9 +357,12 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
             isOutlineCollapsed && styles.outlineCollapsed
           )}
           style={
-            !isOutlineCollapsed && outlineWidth
-              ? ({ "--outline-width": `${outlineWidth}px` } as CSSProperties)
-              : undefined
+            {
+              ...(!isOutlineCollapsed && outlineWidth
+                ? { "--outline-width": `${outlineWidth}px` }
+                : undefined),
+              "--outline-top": `${offsetTop + stickySwimLaneHeight}px`,
+            } as CSSProperties
           }
         >
           <StickyScroll

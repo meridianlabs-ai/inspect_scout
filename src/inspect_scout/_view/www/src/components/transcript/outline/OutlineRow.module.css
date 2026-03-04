@@ -1,7 +1,7 @@
 .eventRow {
   display: grid;
-  grid-template-columns: 10px 1fr;
-  column-gap: 3px;
+  grid-template-columns: auto 1fr;
+  column-gap: 0px;
   cursor: pointer;
 }
 

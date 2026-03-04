@@ -21,6 +21,17 @@
 .eventsOutline {
   padding-left: 0.5rem;
   padding-top: 0.4rem;
+  /* Prevent stretching to the full grid-row height so that
+     position:sticky has room to travel within the cell. */
+  align-self: start;
+}
+
+/* Cap height to the visible area below the sticky offset and
+   scroll internally when the outline is taller.
+   Only when expanded — overflow clips the toggle button when collapsed. */
+.eventsContainer:not(.outlineCollapsed) > .eventsOutline {
+  max-height: calc(100vh - var(--outline-top, 0px));
+  overflow-y: auto;
 }
 
 .outlineToggle {

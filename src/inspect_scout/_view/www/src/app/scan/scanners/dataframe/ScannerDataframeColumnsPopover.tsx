@@ -1,8 +1,11 @@
 import clsx from "clsx";
-import { FC, useCallback } from "react";
+import { FC, Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { PopOver } from "../../../../components/PopOver";
+import { getColumnsParam, updateColumnsParam } from "../../../../router/url";
 import { useStore } from "../../../../state/store";
+import { ColumnPreset, useUserSettings } from "../../../../state/userSettings";
 
 import { defaultColumns } from "./../types";
 import styles from "./ScannerDataframeColumnsPopover.module.css";
@@ -59,7 +62,7 @@ const columnsGroups = {
     "label",
     "value_type",
     "answer",
-    "scan_tokens_total",
+    "scan_total_tokens",
     "scan_model_usage",
     "scan_events",
     "timestamp",
@@ -175,6 +178,189 @@ const useDataframeColumns = () => {
   };
 };
 
+/**
+ * Hook to sync dataframe column selection with the URL `cols` query param.
+ * On mount, if `cols` is present in the URL, applies those columns.
+ * On column changes, updates the URL param to keep it in sync.
+ */
+const useColumnsUrlSync = (filtered: string[], isDefault: boolean) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const initializedRef = useRef(false);
+  const skipFirstSyncRef = useRef(true);
+
+  // On mount: apply URL columns if present
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const urlColumns = getColumnsParam(searchParams);
+    if (urlColumns) {
+      setFilteredColumns(urlColumns);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On column changes: update URL param (skip first run to avoid overwriting
+  // the URL before the store has re-rendered with the URL-sourced columns)
+  useEffect(() => {
+    if (skipFirstSyncRef.current) {
+      skipFirstSyncRef.current = false;
+      return;
+    }
+
+    setSearchParams(
+      (prev) => updateColumnsParam(prev, isDefault ? undefined : filtered),
+      { replace: true }
+    );
+  }, [filtered, isDefault, setSearchParams]);
+};
+
+const columnsMatch = (a: string[], b: string[]): boolean =>
+  a.length === b.length && [...a].sort().join(",") === [...b].sort().join(",");
+
+const MAX_PRESET_NAME_LENGTH = 20;
+
+const InlinePresets: FC<{ filtered: string[] }> = ({ filtered }) => {
+  const presets = useUserSettings((s) => s.dataframeColumnPresets);
+  const setPresets = useUserSettings((s) => s.setDataframeColumnPresets);
+  const setFilteredColumns = useStore(
+    (state) => state.setDataframeFilterColumns
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSaving && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isSaving]);
+
+  const handleSave = () => {
+    const name = presetName.trim().slice(0, MAX_PRESET_NAME_LENGTH);
+    if (!name) return;
+
+    if (presets.some((p) => p.name === name)) {
+      setSaveError(`"${name}" already exists`);
+      return;
+    }
+
+    const existing = presets.find((p) => columnsMatch(p.columns, filtered));
+    if (existing) {
+      setSaveError(`Already saved as "${existing.name}"`);
+      return;
+    }
+
+    const newPreset: ColumnPreset = { name, columns: [...filtered] };
+    setPresets([...presets, newPreset]);
+    setPresetName("");
+    setSaveError("");
+    setIsSaving(false);
+  };
+
+  const handleDelete = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPresets(presets.filter((_, i) => i !== index));
+  };
+
+  const handleLoad = (preset: ColumnPreset) => {
+    setFilteredColumns(preset.columns);
+  };
+
+  const startSaving = () => {
+    setSaveError("");
+    setIsSaving(true);
+  };
+
+  if (presets.length === 0 && !isSaving) {
+    return (
+      <>
+        {" | "}
+        <button className={styles.saveButton} onClick={startSaving}>
+          Save current...
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {presets.map((preset, index) => (
+        <Fragment key={index}>
+          {" | "}
+          <span className={styles.presetItem}>
+            <a
+              className={styles.link}
+              onClick={() => handleLoad(preset)}
+              title={`Load "${preset.name}" (${preset.columns.length} columns)`}
+            >
+              <span className={styles.presetLabel}>{preset.name}</span>
+            </a>
+            <button
+              className={styles.presetDelete}
+              onClick={(e) => handleDelete(index, e)}
+              title={`Delete "${preset.name}"`}
+            >
+              <i className="bi bi-x-circle" />
+            </button>
+          </span>
+        </Fragment>
+      ))}
+      {" | "}
+      {isSaving ? (
+        <span className={styles.presetSaveRow}>
+          <input
+            ref={inputRef}
+            className={styles.presetInput}
+            type="text"
+            placeholder="Preset name"
+            maxLength={MAX_PRESET_NAME_LENGTH}
+            value={presetName}
+            onChange={(e) => {
+              setPresetName(e.target.value);
+              setSaveError("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") {
+                setIsSaving(false);
+                setPresetName("");
+                setSaveError("");
+              }
+            }}
+          />
+          <button className={styles.saveButton} onClick={handleSave}>
+            Save
+          </button>
+          <a
+            className={styles.link}
+            onClick={() => {
+              setIsSaving(false);
+              setPresetName("");
+              setSaveError("");
+            }}
+          >
+            Cancel
+          </a>
+          {saveError && (
+            <span style={{ color: "var(--bs-danger, #dc3545)" }}>
+              {saveError}
+            </span>
+          )}
+        </span>
+      ) : (
+        <button className={styles.saveButton} onClick={startSaving}>
+          Save current...
+        </button>
+      )}
+    </>
+  );
+};
+
 export const ScannerDataframeColumnsPopover: FC<
   ScannerDataframeColumnsPopoverProps
 > = ({ positionEl }) => {
@@ -192,6 +378,9 @@ export const ScannerDataframeColumnsPopover: FC<
     filtered,
     arrangedColumns,
   } = useDataframeColumns();
+
+  useColumnsUrlSync(filtered, isDefaultFilter);
+
   return (
     <PopOver
       id={`scandata-choose-columns-popover`}
@@ -200,6 +389,7 @@ export const ScannerDataframeColumnsPopover: FC<
       setIsOpen={setShowFilter}
       placement="bottom-end"
       hoverDelay={-1}
+      styles={{ maxWidth: "600px" }}
     >
       <div className={clsx(styles.links, "text-size-smaller")}>
         <a
@@ -221,6 +411,7 @@ export const ScannerDataframeColumnsPopover: FC<
         >
           All
         </a>
+        <InlinePresets filtered={filtered} />
       </div>
 
       <div className={clsx(styles.grid, "text-size-smaller")}>

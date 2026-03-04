@@ -5,7 +5,6 @@ import {
   RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -143,6 +142,69 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   } = useTranscriptTimeline(events, resolvedMarkerConfig, resolvedAgentConfig);
 
   // ---------------------------------------------------------------------------
+  // Scroll-resetting selection wrappers
+  // ---------------------------------------------------------------------------
+  //
+  // Every user-initiated selection change (swimlane click, agent card click,
+  // breadcrumb) flows through these wrappers. They imperatively clear the
+  // saved Virtuoso state and scroll to top *before* the URL update, so the
+  // new Virtuoso instance mounts into a clean scroll position.
+
+  const clearListPosition = useStore((state) => state.clearListPosition);
+  const clearListPositionsWithPrefix = useStore(
+    (state) => state.clearListPositionsWithPrefix
+  );
+
+  const resetScrollForSelection = useCallback(
+    (nextKey: string | null) => {
+      // Clear saved Virtuoso state for the target agent
+      const nextListId = nextKey ? `${id}:${nextKey}` : id;
+      clearListPosition(`live-virtual-list-${nextListId}`);
+
+      // When navigating "up" in breadcrumbs, also discard child positions
+      const currentSelected = timelineState.selected;
+      if (
+        nextKey &&
+        currentSelected &&
+        currentSelected.startsWith(nextKey + "/")
+      ) {
+        clearListPositionsWithPrefix(`live-virtual-list-${id}:${nextKey}/`);
+      }
+
+      scrollRef.current?.scrollTo({ top: 0 });
+    },
+    [
+      id,
+      scrollRef,
+      timelineState.selected,
+      clearListPosition,
+      clearListPositionsWithPrefix,
+    ]
+  );
+
+  const { select: rawSelect, clearSelection: rawClearSelection } =
+    timelineState;
+
+  const select = useCallback(
+    (key: string | null) => {
+      resetScrollForSelection(key);
+      rawSelect(key);
+    },
+    [resetScrollForSelection, rawSelect]
+  );
+
+  const clearSelection = useCallback(() => {
+    resetScrollForSelection(null);
+    rawClearSelection();
+  }, [resetScrollForSelection, rawClearSelection]);
+
+  // TimelineState with scroll-resetting select/clearSelection for swimlanes
+  const patchedTimelineState = useMemo(
+    () => ({ ...timelineState, select, clearSelection }),
+    [timelineState, select, clearSelection]
+  );
+
+  // ---------------------------------------------------------------------------
   // Span selection context (agent card clicks → swimlane selection)
   // ---------------------------------------------------------------------------
 
@@ -150,14 +212,13 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     () => buildSpanSelectKeys(timelineState.rows),
     [timelineState.rows]
   );
-  const { select: timelineSelect } = timelineState;
   const selectBySpanId = useCallback(
     (spanId: string) => {
       const key = spanSelectKeys.get(spanId);
       if (!key) return;
-      timelineSelect(key.key);
+      select(key.key);
     },
-    [spanSelectKeys, timelineSelect]
+    [spanSelectKeys, select]
   );
 
   // ---------------------------------------------------------------------------
@@ -209,48 +270,23 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   // Per-agent scroll position persistence using Virtuoso StateSnapshot.
   // Each agent gets its own Virtuoso instance (via React `key`) so that
   // item measurements and scroll position are preserved independently.
-  // On first visit to an agent, scroll to top since the shared scroll
-  // container may still be at the previous agent's offset.
+  // Scroll reset is handled imperatively by the selection wrappers above.
   const selected = timelineState.selected;
   const eventsListId = selected ? `${id}:${selected}` : id;
-  const listPositions = useStore((state) => state.listPositions);
-  const clearListPosition = useStore((state) => state.clearListPosition);
-
-  // When the selection changes, scroll to top if the new agent has no
-  // saved Virtuoso state (first visit). Returning visits are handled by
-  // Virtuoso's restoreStateFrom on remount.
-  useLayoutEffect(() => {
-    if (initialEventId) return; // deep-link takes priority
-
-    const virtuosoKey = `live-virtual-list-${eventsListId}`;
-    if (!listPositions[virtuosoKey] && scrollRef.current) {
-      scrollRef.current.scrollTo({ top: 0 });
-    }
-  }, [eventsListId, initialEventId, scrollRef, listPositions]);
 
   // Clean up per-agent state when the transcript panel unmounts
   // (e.g. navigating to a different transcript).
   const clearTranscriptOutlineId = useStore(
     (state) => state.clearTranscriptOutlineId
   );
-  const listPositionsRef = useRef(listPositions);
-  useEffect(() => {
-    listPositionsRef.current = listPositions;
-  }, [listPositions]);
 
   useEffect(() => {
     const prefix = `live-virtual-list-${id}:`;
     return () => {
-      // Clear per-agent Virtuoso snapshots
-      for (const key of Object.keys(listPositionsRef.current)) {
-        if (key.startsWith(prefix)) {
-          clearListPosition(key);
-        }
-      }
-      // Clear stale outline highlight
+      clearListPositionsWithPrefix(prefix);
       clearTranscriptOutlineId();
     };
-  }, [id, clearListPosition, clearTranscriptOutlineId]);
+  }, [id, clearListPositionsWithPrefix, clearTranscriptOutlineId]);
 
   // Bulk collapse/expand effect driven by parent's `collapsed` prop
   const setCollapsedEvents = useStore(
@@ -332,7 +368,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
             <div ref={swimLaneStickyContentRef}>
               <TimelineSwimLanes
                 layouts={timelineLayouts}
-                timeline={timelineState}
+                timeline={patchedTimelineState}
                 header={{
                   rootLabel: timelineData.root.name,
                   onScrollToTop: scrollToTop,

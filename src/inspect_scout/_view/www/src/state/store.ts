@@ -191,6 +191,7 @@ interface StoreState {
 
   setListPosition: (name: string, position: StateSnapshot) => void;
   clearListPosition: (name: string) => void;
+  clearListPositionsWithPrefix: (prefix: string) => void;
 
   setGridState: (name: string, state: GridState) => void;
   clearGridState: (name: string) => void;
@@ -494,6 +495,19 @@ export const createStore = (api: ScoutApiV2) =>
               return {
                 listPositions: newListPositions,
               };
+            });
+          },
+          clearListPositionsWithPrefix: (prefix: string) => {
+            set((state) => {
+              const newListPositions = { ...state.listPositions };
+              let changed = false;
+              for (const key of Object.keys(newListPositions)) {
+                if (key.startsWith(prefix)) {
+                  delete newListPositions[key];
+                  changed = true;
+                }
+              }
+              return changed ? { listPositions: newListPositions } : {};
             });
           },
           setGridState: (name: string, gridState: GridState) => {

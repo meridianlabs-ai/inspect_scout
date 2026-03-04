@@ -169,35 +169,29 @@ export function useTimeline(
 
   const select = useCallback(
     (key: string | null) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (key) {
-            next.set(kSelectedParam, key);
-          } else {
-            next.delete(kSelectedParam);
-          }
-          next.delete("event");
-          next.delete("message");
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (key) {
+          next.set(kSelectedParam, key);
+        } else {
+          next.delete(kSelectedParam);
+        }
+        next.delete("event");
+        next.delete("message");
+        return next;
+      });
     },
     [setSearchParams]
   );
 
   const clearSelection = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete(kSelectedParam);
-        next.delete("event");
-        next.delete("message");
-        return next;
-      },
-      { replace: true }
-    );
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete(kSelectedParam);
+      next.delete("event");
+      next.delete("message");
+      return next;
+    });
   }, [setSearchParams]);
 
   return {

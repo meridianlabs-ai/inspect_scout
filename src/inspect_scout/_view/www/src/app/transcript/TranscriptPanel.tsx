@@ -1,6 +1,6 @@
 import { skipToken } from "@tanstack/react-query";
 import clsx from "clsx";
-import { FC, useRef } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../../api/request";
 import { ErrorPanel } from "../../components/ErrorPanel";
@@ -69,6 +69,32 @@ export const TranscriptPanel: FC = () => {
   );
   const [prevId, nextId] = adjacentIds.data ?? [undefined, undefined];
 
+  // Headroom: show title on scroll-up, hide on scroll-down.
+  const [titleHidden, setTitleHidden] = useState(false);
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const scrollTop = el.scrollTop;
+      const scrollingDown = scrollTop > lastScrollTopRef.current;
+      lastScrollTopRef.current = scrollTop;
+
+      // Always show when near the top (title's natural position)
+      if (scrollTop <= 10) {
+        setTitleHidden(false);
+      } else {
+        setTitleHidden(scrollingDown);
+      }
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+    // Re-run when transcript loads so scrollRef.current is available
+  }, [scrollRef, transcript]);
+
   return (
     <div className={clsx(styles.container)}>
       <TranscriptsNavbar
@@ -87,10 +113,21 @@ export const TranscriptPanel: FC = () => {
       <LoadingBar loading={loading} />
 
       {!error && transcript && (
-        <div className={styles.transcriptContainer} ref={scrollRef}>
-          <TranscriptTitle transcript={transcript} />
-          <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
-        </div>
+        <>
+          <div
+            className={clsx(
+              styles.titleHeadroom,
+              titleHidden && styles.titleHidden
+            )}
+          >
+            <div className={styles.titleHeadroomInner}>
+              <TranscriptTitle transcript={transcript} />
+            </div>
+          </div>
+          <div className={styles.transcriptContainer} ref={scrollRef}>
+            <TranscriptBody transcript={transcript} scrollRef={scrollRef} />
+          </div>
+        </>
       )}
       {error && (
         <ErrorPanel

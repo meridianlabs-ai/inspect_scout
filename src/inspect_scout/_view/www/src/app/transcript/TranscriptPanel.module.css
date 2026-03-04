@@ -1,6 +1,6 @@
 .container {
   display: grid;
-  grid-template-rows: max-content max-content 1fr;
+  grid-template-rows: max-content max-content max-content 1fr;
   height: 100vh;
 }
 
@@ -8,4 +8,18 @@
   overflow-y: auto;
   width: 100%;
   min-height: 0;
+}
+
+.titleHeadroom {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.titleHidden {
+  grid-template-rows: 0fr;
+}
+
+.titleHeadroomInner {
+  overflow: hidden;
 }

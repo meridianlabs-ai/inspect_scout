@@ -1106,6 +1106,20 @@ function wrapUtilityEvents(agent: TimelineSpan): void {
   for (const item of agent.content) {
     if (item.type === "event" && item.event.event === "model") {
       const modelEvt = item.event;
+
+      // Warmup/cache-priming call (max_tokens=1)
+      if (isWarmupCall(modelEvt)) {
+        const wrapper = createTimelineSpan(
+          `utility-${item.event.uuid ?? "unknown"}`,
+          "utility",
+          "agent",
+          [item]
+        );
+        wrapper.utility = true;
+        newContent.push(wrapper);
+        continue;
+      }
+
       const evtPrompt = getSystemPromptForEvent(modelEvt);
       if (
         evtPrompt !== null &&
@@ -1142,6 +1156,25 @@ function wrapUtilityEvents(agent: TimelineSpan): void {
       }
     }
   }
+}
+
+function isWarmupCall(event: ModelEvent): boolean {
+  if (event.config?.max_tokens == null || event.config.max_tokens > 1) {
+    return false;
+  }
+  // Check that the last user message is a single word
+  const input = event.input;
+  if (!input) return false;
+  for (let i = input.length - 1; i >= 0; i--) {
+    const msg = input[i];
+    if (msg?.role === "user") {
+      if (typeof msg.content === "string") {
+        return msg.content.trim().split(/\s+/).length <= 1;
+      }
+      return false;
+    }
+  }
+  return false;
 }
 
 // =============================================================================

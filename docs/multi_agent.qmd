@@ -12,11 +12,11 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 
 ## Overview
 
-Traditionally, evaluation and scanning workflows have assumed that single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider:
+Traditionally, evaluation and scanning workflows have assumed that a single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider:
 
 (1) Multiple sub-agents (often running in parallel) are created, producing transcripts with several indepedent message trajectories.
 
-(2) Compaction often further divides trajectories into multiple-phases (wherby the compacted away messages can be lost in updates to the conversation).
+(2) Compaction often further divides trajectories into multiple-phases (wherby the compacted messages can be lost in updates to the conversation).
 
 (3) The total tokens consumed by these agents can often run into the tens of millions, further requiring that scanning be chunked into multiple steps.
 
@@ -30,17 +30,13 @@ Scout View uses the agent spans included in transcript event streams to create a
 
 ## Timelines
 
-A timeline is a hierarchical tree of spans built automatically from transcript events. Each span represents an agent, tool, or scorer invocation, containing events (model calls, tool calls, compaction) with optional child spans. Timelines automatically detect:
-
--   Agent hierarchies (nested agent invocations)
--   Re-rolled attempts (branches where the agent discarded and retried)
--   Utility agents (single-turn helpers like title generators)
+A timeline is a hierarchical tree of spans built automatically from transcript events. Each span represents an agent, tool, or scorer invocation, containing events (model calls, tool calls, compaction) with optional child spans. 
 
 When you enable `timeline=True` on a scanner, the timeline is built from the transcript's events and made available on `Transcript.timelines`.
 
 ## Scanning Timelines
 
-The primary use case for timelines is scanning—analyzing each agent's conversation independently rather than treating the entire transcript as a flat message list.
+The primary use case for timelines is scanning—--analyzing each agent's conversation independently rather than treating the entire transcript as a flat message list.
 
 ### Opting In
 
@@ -57,9 +53,7 @@ def my_scanner():
     )
 ```
 
-When timeline scanning is enabled, each span in the timeline tree is scanned independently. The LLM sees only that span's conversation. Results from multiple spans are combined using a reducer.
-
-See [LLM Scanner: Scanning Timelines](llm_scanner.qmd#scanning-timelines) for `llm_scanner()`-specific features like structured list answers, and [Custom Scanners: Timeline Scanners](custom_scanner.qmd#timelines) for writing custom timeline scanners.
+When timeline scanning is enabled, each span in the timeline tree is scanned independently. The LLM sees only that span's conversation. Results from multiple spans are combined using a [reducer](#result-reduction).
 
 ### Depth Control {#depth}
 
@@ -144,13 +138,13 @@ Structured list answers (`list[MyModel]`) are particularly well-suited for timel
 
 ### Utility Spans
 
-Single-turn helper agents with different system prompts (e.g., a title-generation helper) are automatically classified as utility spans and excluded from scanning. This ensures scanning focuses on substantive agent interactions rather than mechanical helpers.
+Single-turn helper agents with different system prompts (e.g., a bash command checker or title-generation helper) are automatically classified as utility spans and excluded from scanning. This ensures scanning focuses on substantive agent interactions rather than mechanical helpers.
 
 ## Timeline Data Model {#data-model}
 
 ### Building a Timeline
 
-Call `timeline_build(events)` to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when `timeline=True` — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned), conversation threads via message fingerprinting, re-rolled attempts (which become `TimelineBranch` objects), and utility agents (single-turn helpers with different system prompts).
+Call `timeline_build(events)` to convert a flat event list into a hierarchical timeline. In a scanner context, timelines are built automatically when `timeline=True` — you rarely need to call it directly. The builder detects top-level phases (init → solvers → scorers), agent spans (both explicit and tool-spawned) and utility agents (single-turn helpers with different system prompts).
 
 ### Timeline Data Types
 

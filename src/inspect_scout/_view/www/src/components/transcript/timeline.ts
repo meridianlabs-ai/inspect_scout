@@ -1295,6 +1295,26 @@ function classifyUtilityAgents(
  * returns the assistant message text from `output.choices[0].message`.
  * Returns `undefined` if no model event is found or it has no text.
  */
+/**
+ * Derive a display label for a utility agent span.
+ *
+ * Synthetic utility spans created by `wrapUtilityEvents` are named "utility"
+ * which is redundant when paired with a "utility:" prefix. For these, extract
+ * the model name from the inner model event. For classified utility agents
+ * (real spans with meaningful names like "explore"), keep the existing name.
+ */
+export function getUtilityAgentLabel(span: TimelineSpan): string {
+  const name = span.name.toLowerCase();
+  if (name !== "utility") return name;
+
+  for (const item of span.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      return item.event.model;
+    }
+  }
+  return name;
+}
+
 export function getSpanResultOutput(span: TimelineSpan): string | undefined {
   for (let i = span.content.length - 1; i >= 0; i--) {
     const item = span.content[i]!;

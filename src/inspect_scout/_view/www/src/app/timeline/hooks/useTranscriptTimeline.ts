@@ -71,6 +71,7 @@ export function useTranscriptTimeline(
   markerConfig: MarkerConfig = defaultMarkerConfig,
   timelineOptions?: TimelineOptions
 ): TranscriptTimelineResult {
+  const includeUtility = timelineOptions?.includeUtility ?? false;
   const builtTimeline = useMemo(() => buildTimeline(events), [events]);
   const timelines = [builtTimeline];
 
@@ -116,12 +117,12 @@ export function useTranscriptTimeline(
     if (spans.length === 0) {
       return { selectedEvents: events, sourceSpans: emptySourceSpans };
     }
-    const collected = collectRawEvents(spans);
+    const collected = collectRawEvents(spans, { includeUtility });
     return {
       selectedEvents: collected.events,
       sourceSpans: collected.sourceSpans,
     };
-  }, [events, state.rows, state.selected]);
+  }, [events, state.rows, state.selected, includeUtility]);
 
   const minimapSelection = useMemo(
     () => computeMinimapSelection(state.rows, state.selected),

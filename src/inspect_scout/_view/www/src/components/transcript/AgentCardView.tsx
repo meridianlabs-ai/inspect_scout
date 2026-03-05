@@ -9,7 +9,7 @@ import { MarkdownDiv } from "../MarkdownDiv";
 
 import styles from "./AgentCardView.module.css";
 import type { TimelineSpan } from "./timeline";
-import { getSpanResultOutput } from "./timeline";
+import { getSpanResultOutput, getUtilityAgentLabel } from "./timeline";
 import { useTimelineSelect } from "./TimelineSelectContext";
 
 interface AgentCardViewProps {
@@ -30,12 +30,18 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
 
   const resultOutput = useMemo(() => getSpanResultOutput(span), [span]);
 
-  const title = span.name.toLowerCase();
+  const isUtility = span.utility;
+  const title = isUtility
+    ? getUtilityAgentLabel(span)
+    : span.name.toLowerCase();
   const tokens = formatTokenCount(span.totalTokens);
   const duration = formatDurationShort(span.startTime, span.endTime);
 
   return (
-    <div className={clsx(styles.card, className)} onClick={handleClick}>
+    <div
+      className={clsx(styles.card, isUtility && styles.utilityCard, className)}
+      onClick={handleClick}
+    >
       <div className={clsx(styles.header, "text-size-small")}>
         <i
           className={clsx(
@@ -51,7 +57,7 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
             "text-style-label"
           )}
         >
-          sub-agent: {title}
+          {isUtility ? "utility" : "sub-agent"}: {title}
         </div>
         <div />
         <div className={clsx(styles.meta, "text-style-secondary")}>
@@ -65,12 +71,12 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
           )}
         />
       </div>
-      {span.description && (
+      {!isUtility && span.description && (
         <div className={clsx(styles.description, "text-size-small")}>
           {span.description}
         </div>
       )}
-      {resultOutput && (
+      {!isUtility && resultOutput && (
         <div className={styles.resultPanel} onClick={stopPropagation}>
           <ExpandablePanel
             id={`agent-result-${span.id}`}

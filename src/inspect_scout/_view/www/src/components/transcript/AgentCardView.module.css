@@ -10,6 +10,15 @@
   background-color: var(--bs-secondary-bg-subtle);
 }
 
+.utilityCard {
+  background-color: var(--bs-body-bg);
+  border-style: dashed;
+}
+
+.utilityCard:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
 .header {
   display: grid;
   grid-template-columns:

@@ -319,25 +319,37 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     "outlineCollapsed",
     { defaultValue: !defaultOutlineExpanded, cleanup: false }
   );
-  const isOutlineCollapsed = outlineCollapsed ?? !defaultOutlineExpanded;
+  const userOutlineCollapsed = outlineCollapsed ?? !defaultOutlineExpanded;
 
   // Track whether the outline component reports displayable nodes.
   // When the outline is collapsed (unmounted), it can't report, so we
   // optimistically fall back to hasMatchingEvents to keep the toggle enabled.
   const [reportedHasNodes, setReportedHasNodes] = useState(true);
+
+  // Reset to optimistic when eventNodes change (e.g. agent selection changes).
+  // This lets the outline mount, discover its nodes, and report back.
+  // Uses "adjust state during render" pattern to avoid an extra effect cycle.
+  const [prevEventNodes, setPrevEventNodes] = useState(eventNodes);
+  if (prevEventNodes !== eventNodes) {
+    setPrevEventNodes(eventNodes);
+    if (!reportedHasNodes) {
+      setReportedHasNodes(true);
+    }
+  }
+
+  // Auto-hide the outline when content has no nodes (e.g. utility agent)
+  // without touching the user's persistent preference. When the user navigates
+  // back to an agent with outline content, the preference is still intact.
+  const autoHidden = !reportedHasNodes && !userOutlineCollapsed;
+  const isOutlineCollapsed = userOutlineCollapsed || autoHidden;
+
   const outlineHasNodes = isOutlineCollapsed
     ? hasMatchingEvents
     : reportedHasNodes;
   const [outlineWidth, setOutlineWidth] = useState<number | undefined>();
-  const handleOutlineHasNodesChange = useCallback(
-    (hasNodes: boolean) => {
-      setReportedHasNodes(hasNodes);
-      if (!hasNodes && !isOutlineCollapsed) {
-        setOutlineCollapsed(true);
-      }
-    },
-    [isOutlineCollapsed, setOutlineCollapsed]
-  );
+  const handleOutlineHasNodesChange = useCallback((hasNodes: boolean) => {
+    setReportedHasNodes(hasNodes);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Derived values

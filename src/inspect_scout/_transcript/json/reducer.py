@@ -13,6 +13,8 @@ ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
 TIMELINES_ITEM_PREFIX = "timelines.item"
+MESSAGE_POOL_ITEM_PREFIX = "message_pool.item"
+CALL_POOL_ITEM_PREFIX = "call_pool.item"
 METADATA_PREFIX = "metadata."
 
 
@@ -49,6 +51,8 @@ class ParseState:
     metadata: dict[str, Any] = field(default_factory=dict)
     target: str | list[str] | None = None
     scores: dict[str, Any] = field(default_factory=dict)
+    message_pool: list[dict[str, Any]] = field(default_factory=list)
+    call_pool: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -128,12 +132,12 @@ def event_item_coroutine(
 
 
 @_ijson_coroutine  # type: ignore
-def _timeline_item_coroutine_impl(
+def _unfiltered_item_coroutine(
     target_list: list[dict[str, Any]],
+    item_prefix: str,
 ) -> CoroutineGen:  # pragma: no cover
-    """Collect timeline items from the JSON stream (no filtering)."""
+    """Collect items from the JSON stream without filtering."""
     builder: ObjectBuilder | None = None
-    item_prefix = TIMELINES_ITEM_PREFIX
     while True:
         prefix, event, value = yield
         if prefix == item_prefix and event == "start_map":
@@ -158,7 +162,24 @@ def _timeline_item_coroutine_impl(
 
 
 def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
-    return cast(CoroutineGen, _timeline_item_coroutine_impl(state.timelines))
+    return cast(
+        CoroutineGen,
+        _unfiltered_item_coroutine(state.timelines, TIMELINES_ITEM_PREFIX),
+    )
+
+
+def message_pool_item_coroutine(state: ParseState) -> CoroutineGen:
+    return cast(
+        CoroutineGen,
+        _unfiltered_item_coroutine(state.message_pool, MESSAGE_POOL_ITEM_PREFIX),
+    )
+
+
+def call_pool_item_coroutine(state: ParseState) -> CoroutineGen:
+    return cast(
+        CoroutineGen,
+        _unfiltered_item_coroutine(state.call_pool, CALL_POOL_ITEM_PREFIX),
+    )
 
 
 @_ijson_coroutine  # type: ignore
@@ -272,6 +293,8 @@ __all__ = [
     "message_item_coroutine",
     "event_item_coroutine",
     "timeline_item_coroutine",
+    "message_pool_item_coroutine",
+    "call_pool_item_coroutine",
     "attachments_coroutine",
     "metadata_coroutine",
     "scores_coroutine",
@@ -284,5 +307,7 @@ __all__ = [
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",
     "TIMELINES_ITEM_PREFIX",
+    "MESSAGE_POOL_ITEM_PREFIX",
+    "CALL_POOL_ITEM_PREFIX",
     "METADATA_PREFIX",
 ]

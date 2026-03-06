@@ -3,63 +3,127 @@ import { useMemo } from "react";
 import { parsePackageName } from "../../../utils/python";
 import { EventNode } from "../types";
 
+import rowStyles from "./OutlineRow.module.css";
+import outlineStyles from "./TranscriptOutline.module.css";
+
 const kMinWidth = 120;
-const kMaxWidth = 400;
+const kMaxWidth = 600;
 
-// Padding: toggle column (10px) + column gap (3px) + icon (~14px) + icon margin (3px)
-// + container left padding (0.5rem ≈ 8px) + toggle button right (~24px) + buffer
-const kHorizontalPadding = 70;
+// ---------------------------------------------------------------------------
+// Hidden DOM container for natural-width measurement
+// ---------------------------------------------------------------------------
+//
+// We build a hidden replica of the outline structure using the same CSS-module
+// classes and inline styles as the real outline, then read its natural width. This
+// avoids hardcoded padding/font constants — CSS is the single source of truth.
 
-// Approximate em-to-px conversion for depth indent at the outline's font size
-const kDepthIndentPx = 5.5; // 0.4em * ~13.6px per em
+/** Lazily-created off-screen measurement container. Never removed. */
+let measureRoot: HTMLDivElement | null = null;
 
-// Module-level canvas reused across all hook instances for text measurement.
-// This is never attached to the DOM — it exists solely for measureText().
-let measureCanvas: HTMLCanvasElement | null = null;
-
-function getMeasureContext(font: string): CanvasRenderingContext2D | null {
-  if (!measureCanvas) {
-    measureCanvas = document.createElement("canvas");
+function getOrCreateMeasureRoot(): HTMLDivElement {
+  if (!measureRoot) {
+    measureRoot = document.createElement("div");
+    measureRoot.style.position = "fixed";
+    measureRoot.style.top = "-9999px";
+    measureRoot.style.left = "-9999px";
+    measureRoot.style.visibility = "hidden";
+    measureRoot.style.pointerEvents = "none";
+    // Let the container be as wide as its content needs.
+    measureRoot.style.width = "max-content";
+    document.body.appendChild(measureRoot);
   }
-  const ctx = measureCanvas.getContext("2d");
-  if (ctx) ctx.font = font;
-  return ctx;
+  return measureRoot;
 }
 
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 /**
- * Computes the ideal outline column width from the outline node labels.
+ * Computes the ideal outline column width by rendering labels into a hidden
+ * DOM container that mirrors the real outline structure (same CSS-module
+ * classes and inline styles), then reading its natural width.
  *
- * Uses a hidden canvas to measure text widths without triggering layout,
- * then adds padding for icons, depth indentation, and container chrome.
- * Result is clamped to [120, 400] px.
+ * Result is clamped to [kMinWidth, kMaxWidth] px.
  */
 export function useOutlineWidth(
   outlineNodes: EventNode[],
-  font?: string
+  _font?: string,
+  agentName?: string,
+  hasToggles?: boolean,
+  hasIcons?: boolean
 ): number {
   return useMemo(() => {
-    if (outlineNodes.length === 0) return kMinWidth;
+    if (outlineNodes.length === 0 && !agentName) return kMinWidth;
 
-    // Match the outline's font: text-size-smaller class uses
-    // --inspect-font-size-smaller which is typically ~0.8rem.
-    // The default body font is the Bootstrap/system font stack.
-    const resolvedFont =
-      font ??
-      '600 0.8rem -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    const ctx = getMeasureContext(resolvedFont);
-    if (!ctx) return kMinWidth;
+    const root = getOrCreateMeasureRoot();
 
-    let maxWidth = 0;
-    for (const node of outlineNodes) {
-      const label = parsePackageName(labelForOutlineNode(node)).module;
-      const textWidth = ctx.measureText(label).width;
-      const depthPx = node.depth * kDepthIndentPx;
-      const totalWidth = textWidth + depthPx + kHorizontalPadding;
-      if (totalWidth > maxWidth) maxWidth = totalWidth;
+    // Clear previous measurement content.
+    root.innerHTML = "";
+
+    // Mirror `.eventsOutline` padding-left (from TimelineEventsView.module.css).
+    root.style.paddingLeft = "0.5rem";
+
+    // ── Header ──────────────────────────────────────────────────────────
+    if (agentName) {
+      const header = document.createElement("div");
+      header.className = [
+        outlineStyles.rootHeader ?? "",
+        "text-size-smaller",
+        "text-style-label",
+      ].join(" ");
+      // Override clipping styles so scrollWidth reports the natural text width.
+      header.style.overflow = "visible";
+      header.style.textOverflow = "clip";
+      header.textContent = parsePackageName(agentName).module;
+      root.appendChild(header);
     }
 
-    return Math.min(kMaxWidth, Math.max(kMinWidth, Math.ceil(maxWidth)));
-  }, [outlineNodes, font]);
+    // ── Rows ────────────────────────────────────────────────────────────
+    // We measure at font-weight 800 (the selected-row weight) so the column
+    // is wide enough for any row to be selected without clipping.
+    for (const node of outlineNodes) {
+      const row = document.createElement("div");
+
+      const classes = [rowStyles.eventRow ?? "", "text-size-smaller"];
+      if (hasToggles) classes.push(rowStyles.withToggles ?? "");
+      if (hasIcons) classes.push(rowStyles.withIcons ?? "");
+      row.className = classes.join(" ");
+      row.style.paddingLeft = `${node.depth * 0.4}em`;
+      row.style.fontWeight = "800";
+
+      // Toggle column placeholder (empty — just reserves space)
+      if (hasToggles) {
+        const toggle = document.createElement("div");
+        toggle.className = rowStyles.toggle ?? "";
+        row.appendChild(toggle);
+      }
+
+      // Icon column placeholder
+      if (hasIcons) {
+        const icon = document.createElement("div");
+        icon.className = rowStyles.iconSlot ?? "";
+        row.appendChild(icon);
+      }
+
+      // Label column — use `white-space: nowrap; width: max-content` so it
+      // doesn't collapse into the 1fr minimum.
+      const label = document.createElement("div");
+      label.className = rowStyles.label ?? "";
+      label.style.overflow = "visible";
+      label.style.width = "max-content";
+      label.textContent = parsePackageName(labelForOutlineNode(node)).module;
+      row.appendChild(label);
+
+      root.appendChild(row);
+    }
+
+    // Force a layout pass and read the natural width.
+    // Use getBoundingClientRect for sub-pixel precision (scrollWidth rounds down).
+    const width = root.getBoundingClientRect().width;
+
+    return Math.min(kMaxWidth, Math.max(kMinWidth, Math.ceil(width)));
+  }, [outlineNodes, agentName, hasToggles, hasIcons]);
 }
 
 /**

@@ -129,7 +129,7 @@ interface TimelineSwimLanesProps {
 const MARKER_ICONS: Record<string, { icon: string; tooltip: string }> = {
   error: { icon: ApplicationIcons.error, tooltip: "Error event" },
   compaction: {
-    icon: ApplicationIcons.compactionMarker,
+    icon: ApplicationIcons.compaction,
     tooltip: "Context compaction",
   },
   branch: { icon: ApplicationIcons.fork, tooltip: "View branches" },

@@ -60,7 +60,8 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
   // When agent tool results have been filtered from input (shown on AgentCard
   // instead), the trailing assistant message is the previous model call's output
   // — just show it without crawling backward through system/user messages.
-  const agentResultsFiltered = !!(event as Record<string, unknown>).agentResultsFiltered;
+  const agentResultsFiltered = !!(event as Record<string, unknown>)
+    .agentResultsFiltered;
 
   if (!agentResultsFiltered) {
     // if there is an assistant message immediately before then include this

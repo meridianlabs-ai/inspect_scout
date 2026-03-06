@@ -41,8 +41,9 @@ interface TranscriptBodyProps {
   scrollRef: RefObject<HTMLDivElement | null>;
   /** Headroom direction signal: true = scrolling down (hide). */
   headroomHidden?: boolean;
-  /** Reset the headroom anchor before a layout shift (e.g. swimlane toggle). */
-  onHeadroomResetAnchor?: () => void;
+  /** Reset the headroom anchor before a layout shift or programmatic scroll.
+   *  Pass `true` to debounce (keeps lock alive while scrolling continues). */
+  onHeadroomResetAnchor?: (debounce?: boolean) => void;
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({

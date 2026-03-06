@@ -1339,9 +1339,7 @@ export function getSpanToolResult(span: TimelineSpan): string | undefined {
 /**
  * Extract a string result from a ToolEvent result field.
  */
-function extractToolEventResult(
-  result: unknown
-): string | undefined {
+function extractToolEventResult(result: unknown): string | undefined {
   if (typeof result === "string" && result) return result;
   if (Array.isArray(result)) {
     const parts: string[] = [];
@@ -1395,9 +1393,7 @@ function extractAgentResults(parent: TimelineSpan): void {
 
     // Flow 2: next model event's input has tool message with matching tool_call_id
     // The span ID follows the pattern "agent-{tool_call_id}" in bridge flow.
-    const toolCallId = item.id.startsWith("agent-")
-      ? item.id.slice(6)
-      : null;
+    const toolCallId = item.id.startsWith("agent-") ? item.id.slice(6) : null;
 
     if (!item.agentResult && toolCallId) {
       for (let j = i + 1; j < content.length; j++) {
@@ -1406,7 +1402,7 @@ function extractAgentResults(parent: TimelineSpan): void {
         if (nextItem.event.event === "model") {
           const modelEvent = nextItem.event;
           if (modelEvent.input) {
-            for (const msg of modelEvent.input as ChatMessage[]) {
+            for (const msg of modelEvent.input) {
               if (
                 msg.role === "tool" &&
                 "tool_call_id" in msg &&

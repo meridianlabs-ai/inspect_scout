@@ -17,7 +17,7 @@ import { kSandboxSignalName } from "../transform/fixups";
 import { flatTree } from "../transform/flatten";
 import { EventNode, kTranscriptOutlineCollapseScope } from "../types";
 
-import { OutlineRow } from "./OutlineRow";
+import { iconForNode, OutlineRow } from "./OutlineRow";
 import styles from "./TranscriptOutline.module.css";
 import {
   collapseScoring,
@@ -38,6 +38,8 @@ interface TranscriptOutlineProps {
   className?: string | string[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   style?: CSSProperties;
+  /** Name of the agent/subagent currently being displayed. Shown as a static header. */
+  agentName?: string;
   /** Reports whether the outline has displayable nodes after filtering. */
   onHasNodesChange?: (hasNodes: boolean) => void;
   /** Reports the ideal width (in px) for the outline column. */
@@ -75,6 +77,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   className,
   scrollRef,
   style,
+  agentName,
   onHasNodesChange,
   onWidthChange,
   onNavigateToEvent,
@@ -169,13 +172,22 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
     return collapseScoring(collapseTurns(makeTurns(nodeList)));
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
 
+  const hasToggles = outlineNodeList.some((n) => n.children.length > 0);
+  const hasIcons = outlineNodeList.some((n) => iconForNode(n) !== undefined);
+
   const hasOutlineNodes = outlineNodeList.length > 0;
   useEffect(() => {
     onHasNodesChange?.(hasOutlineNodes);
   }, [hasOutlineNodes, onHasNodesChange]);
 
   // Measure the ideal width for the outline column from label text
-  const outlineWidth = useOutlineWidth(outlineNodeList);
+  const outlineWidth = useOutlineWidth(
+    outlineNodeList,
+    undefined,
+    agentName,
+    hasToggles,
+    hasIcons
+  );
   useEffect(() => {
     onWidthChange?.(outlineWidth);
   }, [outlineWidth, onWidthChange]);
@@ -257,6 +269,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
             getEventUrl={getEventUrl}
             onSelect={handleOutlineSelect}
             onNavigateToEvent={onNavigateToEvent}
+            hasToggles={hasToggles}
+            hasIcons={hasIcons}
           />
         );
       }
@@ -268,29 +282,43 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       getEventUrl,
       handleOutlineSelect,
       onNavigateToEvent,
+      hasToggles,
+      hasIcons,
     ]
   );
 
   return (
-    <Virtuoso
-      ref={listHandle}
-      // eslint-disable-next-line react-hooks/refs -- Virtuoso accepts undefined for customScrollParent and handles dynamic ref population
-      customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
-      id={id}
-      style={{ ...style }}
-      data={[...outlineNodeList, EventPaddingNode]}
-      defaultItemHeight={50}
-      itemContent={renderRow}
-      atBottomThreshold={30}
-      increaseViewportBy={{ top: 300, bottom: 300 }}
-      overscan={{
-        main: 10,
-        reverse: 10,
-      }}
-      className={clsx(className, "transcript-outline")}
-      skipAnimationFrameInResizeObserver={true}
-      restoreStateFrom={getRestoreState()}
-      tabIndex={0}
-    />
+    <div style={style}>
+      {agentName && (
+        <div
+          className={clsx(
+            styles.rootHeader,
+            "text-size-smaller",
+            "text-style-label"
+          )}
+        >
+          {agentName}
+        </div>
+      )}
+      <Virtuoso
+        ref={listHandle}
+        // eslint-disable-next-line react-hooks/refs -- Virtuoso accepts undefined for customScrollParent and handles dynamic ref population
+        customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
+        id={id}
+        data={[...outlineNodeList, EventPaddingNode]}
+        defaultItemHeight={50}
+        itemContent={renderRow}
+        atBottomThreshold={30}
+        increaseViewportBy={{ top: 300, bottom: 300 }}
+        overscan={{
+          main: 10,
+          reverse: 10,
+        }}
+        className={clsx(className, "transcript-outline")}
+        skipAnimationFrameInResizeObserver={true}
+        restoreStateFrom={getRestoreState()}
+        tabIndex={0}
+      />
+    </div>
   );
 };

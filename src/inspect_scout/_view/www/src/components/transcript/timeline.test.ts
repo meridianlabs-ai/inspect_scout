@@ -39,7 +39,12 @@ interface JsonEvent {
   agent_span_id?: string;
   result?: string;
   source?: string;
-  input?: Array<{ role: string; content: string; tool_call_id?: string; function?: string }>;
+  input?: Array<{
+    role: string;
+    content: string;
+    tool_call_id?: string;
+    function?: string;
+  }>;
   output?: {
     usage?: {
       input_tokens?: number;

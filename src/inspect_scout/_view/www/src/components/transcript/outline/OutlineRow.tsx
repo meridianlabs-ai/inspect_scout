@@ -22,6 +22,10 @@ export interface OutlineRowProps {
   onSelect?: (nodeId: string) => void;
   /** Called when a URL isn't available but the user clicks to navigate to an event. */
   onNavigateToEvent?: (eventId: string) => void;
+  /** Whether any row in the list has a toggle chevron. Controls column reservation. */
+  hasToggles?: boolean;
+  /** Whether any row in the list has an icon. Controls column reservation. */
+  hasIcons?: boolean;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -32,6 +36,8 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   getEventUrl,
   onSelect,
   onNavigateToEvent,
+  hasToggles = true,
+  hasIcons = true,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -51,31 +57,37 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         className={clsx(
           styles.eventRow,
           "text-size-smaller",
-          selected ? styles.selected : ""
+          selected ? styles.selected : "",
+          hasToggles && styles.withToggles,
+          hasIcons && styles.withIcons
         )}
         style={{ paddingLeft: `${node.depth * 0.4}em` }}
         data-unsearchable={true}
         onClick={() => {
           onSelect?.(node.id);
-          if (!eventUrl) {
-            onNavigateToEvent?.(node.id);
-          }
+          onNavigateToEvent?.(node.id);
         }}
       >
-        <div
-          className={clsx(styles.toggle)}
-          onClick={() => {
-            setCollapsed(!collapsed);
-          }}
-        >
-          {toggle ? <i className={clsx(toggle)} /> : undefined}
-        </div>
+        {hasToggles && (
+          <div
+            className={clsx(styles.toggle)}
+            onClick={() => {
+              setCollapsed(!collapsed);
+            }}
+          >
+            {toggle ? <i className={clsx(toggle)} /> : undefined}
+          </div>
+        )}
+        {hasIcons && (
+          <div className={styles.iconSlot}>
+            {icon ? <i className={clsx(icon)} /> : undefined}
+          </div>
+        )}
         <div
           className={clsx(styles.label)}
           data-depth={node.depth}
           title={tooltipForNode(node)}
         >
-          {icon ? <i className={clsx(icon, styles.icon)} /> : undefined}
           {eventUrl ? (
             <Link to={eventUrl} className={clsx(styles.eventLink)} ref={ref}>
               {parsePackageName(labelForNode(node)).module}
@@ -107,7 +119,11 @@ const toggleIcon = (
   }
 };
 
-const iconForNode = (node: EventNode): string | undefined => {
+export const iconForNode = (node: EventNode): string | undefined => {
+  if (node.sourceSpan?.spanType === "agent") {
+    return ApplicationIcons.subagent;
+  }
+
   switch (node.event.event) {
     case "sample_limit":
       return ApplicationIcons.limits.custom;
@@ -117,6 +133,9 @@ const iconForNode = (node: EventNode): string | undefined => {
 
     case "error":
       return ApplicationIcons.error;
+
+    case "compaction":
+      return ApplicationIcons.compaction;
   }
 };
 

@@ -31,7 +31,7 @@ import type { Event } from "../../../types/api-types";
 import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTimelineConfig } from "../hooks/useTimelineConfig";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
-import { buildSpanSelectKeys } from "../timelineEventNodes";
+import { buildSpanSelectKeys, parseSelection } from "../timelineEventNodes";
 import type { MarkerConfig } from "../utils/markers";
 
 import styles from "./TimelineEventsView.module.css";
@@ -66,8 +66,9 @@ interface TimelineEventsViewProps {
   agentConfig?: TimelineOptions;
   /** Headroom direction signal: true = scrolling down (hide). */
   headroomHidden?: boolean;
-  /** Reset the headroom anchor before a layout shift (e.g. swimlane toggle). */
-  onHeadroomResetAnchor?: () => void;
+  /** Reset the headroom anchor before a layout shift or programmatic scroll.
+   *  Pass `true` to debounce (keeps lock alive while scrolling continues). */
+  onHeadroomResetAnchor?: (debounce?: boolean) => void;
   className?: string;
 }
 
@@ -263,9 +264,15 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
 
   // Ref to the event list for imperative scroll-to-event from outline clicks.
   const eventsListRef = useRef<TranscriptViewNodesHandle>(null);
-  const handleOutlineNavigate = useCallback((eventId: string) => {
-    eventsListRef.current?.scrollToEvent(eventId);
-  }, []);
+  const handleOutlineNavigate = useCallback(
+    (eventId: string) => {
+      // Suppress headroom direction changes during the programmatic scroll
+      // so the swimlane header doesn't collapse/reveal mid-animation.
+      onHeadroomResetAnchor?.(true);
+      eventsListRef.current?.scrollToEvent(eventId);
+    },
+    [onHeadroomResetAnchor]
+  );
 
   // Per-agent scroll position persistence using Virtuoso StateSnapshot.
   // Each agent gets its own Virtuoso instance (via React `key`) so that
@@ -355,6 +362,18 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   // Derived values
   // ---------------------------------------------------------------------------
 
+  // Compute the agent name for the outline header.
+  // When a swimlane row is selected, show its name; otherwise show the root.
+  const outlineAgentName = useMemo(() => {
+    if (!timelineState.selected) return timelineData.root.name;
+    // For iterative rows, selected includes a span index suffix (e.g.
+    // "transcript/explore:0"). Parse it to get the base row key.
+    const parsed = parseSelection(timelineState.selected);
+    const rowKey = parsed?.rowKey ?? timelineState.selected;
+    const row = timelineState.rows.find((r) => r.key === rowKey);
+    return row?.name ?? timelineData.root.name;
+  }, [timelineState.selected, timelineState.rows, timelineData.root.name]);
+
   const showSwimlanes =
     timelineProp === true || (timelineProp === "auto" && hasTimeline);
 
@@ -431,6 +450,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                 eventNodes={eventNodes}
                 defaultCollapsedIds={defaultCollapsedIds}
                 scrollRef={scrollRef}
+                agentName={outlineAgentName}
                 onHasNodesChange={handleOutlineHasNodesChange}
                 onWidthChange={setOutlineWidth}
                 onNavigateToEvent={handleOutlineNavigate}

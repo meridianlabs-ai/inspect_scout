@@ -1,8 +1,21 @@
 .eventRow {
   display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 0px;
+  grid-template-columns: 1fr;
+  column-gap: 0.25em;
   cursor: pointer;
+  padding-left: 0.7em;
+}
+
+.eventRow.withToggles {
+  grid-template-columns: 0.7em 1fr;
+}
+
+.eventRow.withIcons {
+  grid-template-columns: 1em 1fr;
+}
+
+.eventRow.withToggles.withIcons {
+  grid-template-columns: 0.7em 1em 1fr;
 }
 
 .eventRow.selected {
@@ -31,8 +44,15 @@
   text-overflow: ellipsis;
 }
 
-.icon {
-  margin-right: 3px;
+.iconSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+}
+
+.eventRow.selected .iconSlot {
+  opacity: 1;
 }
 
 .progress {

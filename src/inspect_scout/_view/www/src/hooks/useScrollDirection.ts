@@ -7,16 +7,25 @@ interface UseScrollDirectionOptions {
    *  Prevents the height change from the collapse/expand animation from
    *  immediately triggering the opposite direction. Default: 250 */
   transitionLockMs?: number;
+  /** When current value is true, all scroll events are ignored and the
+   *  direction anchor is reset when suppression ends. Useful for
+   *  programmatic scrolls (e.g. outline click → scrollToEvent). */
+  suppressRef?: React.RefObject<boolean>;
 }
 
 interface UseScrollDirectionResult {
   /** True when scrolling down past threshold while scrollTop > 10px */
   hidden: boolean;
-  /** Call before a layout change (e.g. collapsing a panel) that will shift
+  /** Call before a programmatic scroll or layout change that will shift
    *  scrollTop without the user actually scrolling. Resets the direction
    *  anchor to the current scrollTop and engages the transition lock so
-   *  the resulting scroll-position shift is ignored. */
-  resetAnchor: () => void;
+   *  the resulting scroll-position shift is ignored.
+   *
+   *  @param debounce When true, each scroll event that arrives during the
+   *    lock resets the expiry timer so the lock stays active until scrolling
+   *    stops (useful for Virtuoso multi-pass settling). When false (default),
+   *    the lock uses a fixed timeout matching the CSS transition duration. */
+  resetAnchor: (debounce?: boolean) => void;
 }
 
 /**
@@ -39,10 +48,17 @@ export function useScrollDirection(
 ): UseScrollDirectionResult {
   const threshold = options?.threshold ?? 15;
   const transitionLockMs = options?.transitionLockMs ?? 250;
+  const suppressRef = options?.suppressRef;
 
   const directionAnchorRef = useRef(0);
   const lastDirectionRef = useRef<"up" | "down">("down");
   const transitionLockedRef = useRef(false);
+  // True when the lock was set by resetAnchor (programmatic scroll).
+  // Programmatic locks debounce: each scroll event resets the timer so the
+  // lock stays active while Virtuoso settles. Transition locks (from
+  // setHidden) use a fixed timeout so direction reversals aren't delayed.
+  const programmaticLockRef = useRef(false);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hidden, setHidden] = useState(false);
 
   // Resolve the actual DOM element from the ref.  The ref's target may be
@@ -88,7 +104,26 @@ export function useScrollDirection(
 
     if (!scrollEl) return;
 
+    // Track previous suppression state to reset anchor when suppression ends.
+    let wasSuppressed = suppressRef?.current ?? false;
+
     const onScroll = () => {
+      const isSuppressed = suppressRef?.current ?? false;
+
+      // When suppression ends, reset the anchor to the current position
+      // so the first real scroll after the programmatic one starts fresh.
+      if (wasSuppressed && !isSuppressed) {
+        directionAnchorRef.current = scrollEl.scrollTop;
+      }
+      wasSuppressed = isSuppressed;
+
+      if (isSuppressed) {
+        // Keep the anchor tracking during suppression so the threshold
+        // doesn't accumulate a large delta across the programmatic scroll.
+        directionAnchorRef.current = scrollEl.scrollTop;
+        return;
+      }
+
       const scrollTop = scrollEl.scrollTop;
 
       // At the very top — always reveal headroom and reset anchor so the
@@ -119,16 +154,38 @@ export function useScrollDirection(
         lastDirectionRef.current = direction;
       }
 
-      // Skip updates while a collapse/expand CSS transition is settling
-      if (transitionLockedRef.current) return;
+      // Skip updates while locked.
+      if (transitionLockedRef.current) {
+        // Programmatic locks (from resetAnchor) debounce: each scroll event
+        // resets the timer so the lock stays active while Virtuoso settles
+        // across multiple adjustment passes.
+        if (programmaticLockRef.current && lockTimerRef.current !== null) {
+          clearTimeout(lockTimerRef.current);
+          lockTimerRef.current = setTimeout(() => {
+            transitionLockedRef.current = false;
+            programmaticLockRef.current = false;
+            lockTimerRef.current = null;
+            // Reset anchor to final settled position
+            directionAnchorRef.current = scrollEl.scrollTop;
+          }, transitionLockMs);
+        }
+        // Transition locks (from setHidden) use a fixed timeout — no
+        // debouncing, so direction reversals during normal scrolling
+        // are detected promptly after the CSS animation settles.
+        return;
+      }
 
       const shouldHide = direction === "down" && scrollTop > 10;
       setHidden((prev) => {
         if (prev === shouldHide) return prev;
         // Lock during the CSS transition to prevent jitter
         transitionLockedRef.current = true;
-        setTimeout(() => {
+        if (lockTimerRef.current !== null) {
+          clearTimeout(lockTimerRef.current);
+        }
+        lockTimerRef.current = setTimeout(() => {
           transitionLockedRef.current = false;
+          lockTimerRef.current = null;
         }, transitionLockMs);
         return shouldHide;
       });
@@ -136,17 +193,26 @@ export function useScrollDirection(
 
     scrollEl.addEventListener("scroll", onScroll, { passive: true });
     return () => scrollEl.removeEventListener("scroll", onScroll);
-  }, [scrollEl, threshold, transitionLockMs]);
+  }, [scrollEl, threshold, transitionLockMs, suppressRef]);
 
-  const resetAnchor = useCallback(() => {
-    if (scrollEl) {
-      directionAnchorRef.current = scrollEl.scrollTop;
-    }
-    transitionLockedRef.current = true;
-    setTimeout(() => {
-      transitionLockedRef.current = false;
-    }, transitionLockMs);
-  }, [scrollEl, transitionLockMs]);
+  const resetAnchor = useCallback(
+    (debounce?: boolean) => {
+      if (scrollEl) {
+        directionAnchorRef.current = scrollEl.scrollTop;
+      }
+      transitionLockedRef.current = true;
+      programmaticLockRef.current = !!debounce;
+      if (lockTimerRef.current !== null) {
+        clearTimeout(lockTimerRef.current);
+      }
+      lockTimerRef.current = setTimeout(() => {
+        transitionLockedRef.current = false;
+        programmaticLockRef.current = false;
+        lockTimerRef.current = null;
+      }, transitionLockMs);
+    },
+    [scrollEl, transitionLockMs]
+  );
 
   return { hidden, resetAnchor };
 }

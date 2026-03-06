@@ -243,7 +243,9 @@ function collectFromContent(
       if (item.event.event === "model" && pendingToolCallIds.size > 0) {
         const modelEvent = item.event;
         if (modelEvent.input && Array.isArray(modelEvent.input)) {
-          const filteredInput = (modelEvent.input as Array<Record<string, unknown>>).filter(
+          const filteredInput = (
+            modelEvent.input as Array<Record<string, unknown>>
+          ).filter(
             (msg) =>
               !(
                 msg.role === "tool" &&
@@ -254,7 +256,11 @@ function collectFromContent(
           if (filteredInput.length !== modelEvent.input.length) {
             // Mark the event so ModelEventView knows agent tool results were
             // filtered and it should not crawl backward through input messages.
-            const patched = { ...modelEvent, input: filteredInput, agentResultsFiltered: true } as unknown as Event;
+            const patched = {
+              ...modelEvent,
+              input: filteredInput,
+              agentResultsFiltered: true,
+            } as unknown as Event;
             out.push(patched);
             pendingToolCallIds.clear();
             continue;

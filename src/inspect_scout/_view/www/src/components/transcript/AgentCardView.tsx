@@ -9,7 +9,7 @@ import { MarkdownDiv } from "../MarkdownDiv";
 
 import styles from "./AgentCardView.module.css";
 import type { TimelineSpan } from "./timeline";
-import { getSpanResultOutput, getUtilityAgentLabel } from "./timeline";
+import { getSpanToolResult, getUtilityAgentLabel } from "./timeline";
 import { useTimelineSelect } from "./TimelineSelectContext";
 
 interface AgentCardViewProps {
@@ -28,7 +28,7 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
     e.stopPropagation();
   }, []);
 
-  const resultOutput = useMemo(() => getSpanResultOutput(span), [span]);
+  const resultOutput = useMemo(() => getSpanToolResult(span), [span]);
 
   const isUtility = span.utility;
   const title = isUtility
@@ -76,12 +76,12 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
           {span.description}
         </div>
       )}
-      {!isUtility && resultOutput && (
+      {resultOutput && (
         <div className={styles.resultPanel} onClick={stopPropagation}>
           <ExpandablePanel
             id={`agent-result-${span.id}`}
             collapse={true}
-            lines={15}
+            lines={10}
           >
             <MarkdownDiv markdown={resultOutput} />
           </ExpandablePanel>

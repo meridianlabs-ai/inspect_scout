@@ -1322,12 +1322,34 @@ function classifyUtilityAgents(
 // =============================================================================
 
 /**
- * Extract the text output from the last ModelEvent in a span's content.
- *
- * Walks `span.content` in reverse to find the final model event, then
- * returns the assistant message text from `output.choices[0].message`.
- * Returns `undefined` if no model event is found or it has no text.
+ * Find the ToolEvent inside a span whose `agent_span_id` matches the span's
+ * own id, and return its `result` as a string. This ToolEvent is only present
+ * in the static import flow (created by `_create_tool_span_events` in
+ * `events.py`). In the bridge flow this naturally returns `undefined`.
  */
+export function getSpanToolResult(span: TimelineSpan): string | undefined {
+  for (const item of span.content) {
+    if (
+      item.type === "event" &&
+      item.event.event === "tool" &&
+      item.event.agent_span_id === span.id
+    ) {
+      const result = item.event.result;
+      if (typeof result === "string" && result) return result;
+      // Handle array content (ContentText blocks)
+      if (Array.isArray(result)) {
+        const parts: string[] = [];
+        for (const c of result) {
+          if (c && typeof c === "object" && "text" in c) parts.push(c.text);
+        }
+        return parts.length > 0 ? parts.join("\n") : undefined;
+      }
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Derive a display label for a utility agent span.
  *
@@ -1346,31 +1368,6 @@ export function getUtilityAgentLabel(span: TimelineSpan): string {
     }
   }
   return name;
-}
-
-export function getSpanResultOutput(span: TimelineSpan): string | undefined {
-  for (let i = span.content.length - 1; i >= 0; i--) {
-    const item = span.content[i]!;
-    if (item.type === "event" && item.event.event === "model") {
-      const choices = item.event.output.choices;
-      if (choices.length === 0) return undefined;
-      const message = choices[0]!.message;
-      if (typeof message.content === "string") {
-        return message.content || undefined;
-      }
-      if (Array.isArray(message.content)) {
-        const parts: string[] = [];
-        for (const c of message.content) {
-          if ("text" in c && typeof c.text === "string") {
-            parts.push(c.text);
-          }
-        }
-        return parts.length > 0 ? parts.join("\n") : undefined;
-      }
-      return undefined;
-    }
-  }
-  return undefined;
 }
 
 export function buildTimeline(events: Event[]): Timeline {

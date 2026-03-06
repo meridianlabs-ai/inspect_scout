@@ -708,6 +708,10 @@ body {
   padding-top: 10em;
 }
 
+pre > code {
+  color: var(--bs-body-color);
+}
+
 code:not(.sourceCode):not(.source-code):not([class^="language-"]) {
   color: var(--bs-code-color);
 }

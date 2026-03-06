@@ -221,6 +221,10 @@ function collectFromContent(
   skipAgentSpanId?: string,
   includeUtility: boolean = false
 ): void {
+  // Track agent tool_call_ids whose results are shown on the AgentCard,
+  // so we can filter them from the next model event's input.
+  const pendingToolCallIds = new Set<string>();
+
   for (const item of content) {
     if (item.type === "event") {
       // Skip the spawning ToolEvent when viewing a sub-agent's own content.
@@ -233,6 +237,31 @@ function collectFromContent(
       ) {
         continue;
       }
+
+      // Filter agent tool results from model event inputs — these are
+      // already shown on the AgentCard, so don't duplicate them inline.
+      if (item.event.event === "model" && pendingToolCallIds.size > 0) {
+        const modelEvent = item.event;
+        if (modelEvent.input && Array.isArray(modelEvent.input)) {
+          const filteredInput = (modelEvent.input as Array<Record<string, unknown>>).filter(
+            (msg) =>
+              !(
+                msg.role === "tool" &&
+                typeof msg.tool_call_id === "string" &&
+                pendingToolCallIds.has(msg.tool_call_id)
+              )
+          );
+          if (filteredInput.length !== modelEvent.input.length) {
+            // Mark the event so ModelEventView knows agent tool results were
+            // filtered and it should not crawl backward through input messages.
+            const patched = { ...modelEvent, input: filteredInput, agentResultsFiltered: true } as unknown as Event;
+            out.push(patched);
+            pendingToolCallIds.clear();
+            continue;
+          }
+        }
+      }
+
       out.push(item.event);
     } else if (!includeUtility && item.utility) {
       // Skip utility spans — internal model calls (e.g. file path extraction)
@@ -259,6 +288,10 @@ function collectFromContent(
         // Agent spans: emit empty begin/end pair. Content is accessed
         // by selecting the swimlane row, not by expanding in-place.
         sourceSpans.set(item.id, item);
+        // Track agent tool_call_ids with results for filtering from next model event
+        if (item.agentResult && item.id.startsWith("agent-")) {
+          pendingToolCallIds.add(item.id.slice(6));
+        }
       } else {
         // Non-agent spans: recurse into child content
         collectFromContent(

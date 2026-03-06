@@ -74,6 +74,7 @@ export interface TimelineSpan extends TimelineNode {
   branches: TimelineBranch[];
   description?: string;
   utility: boolean;
+  agentResult?: string;
   outline?: Outline;
 }
 
@@ -484,12 +485,18 @@ function eventToNode(event: Event): TimelineEvent | TimelineSpan {
       );
 
       if (nestedContent.length > 0) {
-        return createTimelineSpan(
+        const span = createTimelineSpan(
           `tool-agent-${event.id}`,
           agentName,
           "agent",
           nestedContent
         );
+        // Capture agent result from the spawning ToolEvent
+        const agentResult = extractToolEventResult(event.result);
+        if (agentResult) {
+          span.agentResult = agentResult;
+        }
+        return span;
       }
     }
   }
@@ -1322,32 +1329,104 @@ function classifyUtilityAgents(
 // =============================================================================
 
 /**
- * Find the ToolEvent inside a span whose `agent_span_id` matches the span's
- * own id, and return its `result` as a string. This ToolEvent is only present
- * in the static import flow (created by `_create_tool_span_events` in
- * `events.py`). In the bridge flow this naturally returns `undefined`.
+ * Returns the pre-extracted agent result for a span.
+ * Results are extracted during timeline building by `extractAgentResults()`.
  */
 export function getSpanToolResult(span: TimelineSpan): string | undefined {
-  for (const item of span.content) {
-    if (
-      item.type === "event" &&
-      item.event.event === "tool" &&
-      item.event.agent_span_id === span.id
-    ) {
-      const result = item.event.result;
-      if (typeof result === "string" && result) return result;
-      // Handle array content (ContentText blocks)
-      if (Array.isArray(result)) {
-        const parts: string[] = [];
-        for (const c of result) {
-          if (c && typeof c === "object" && "text" in c) parts.push(c.text);
-        }
-        return parts.length > 0 ? parts.join("\n") : undefined;
-      }
-      return undefined;
+  return span.agentResult;
+}
+
+/**
+ * Extract a string result from a ToolEvent result field.
+ */
+function extractToolEventResult(
+  result: unknown
+): string | undefined {
+  if (typeof result === "string" && result) return result;
+  if (Array.isArray(result)) {
+    const parts: string[] = [];
+    for (const c of result) {
+      if (c && typeof c === "object" && "text" in c)
+        parts.push((c as { text: string }).text);
     }
+    return parts.length > 0 ? parts.join("\n") : undefined;
   }
   return undefined;
+}
+
+/**
+ * Extract agentResult for each agent sub-span.
+ *
+ * Three sources (checked in order):
+ * 1. Tool-spawned agents: result already set during eventToNode
+ * 2. Span-based agents (static flow): sibling ToolEvent with agent_span_id === span.id
+ * 3. Bridge flow: next ModelEvent's input has tool message with function === span.name
+ */
+function extractAgentResults(parent: TimelineSpan): void {
+  const content = parent.content;
+  for (let i = 0; i < content.length; i++) {
+    const item = content[i]!;
+    if (item.type !== "span") continue;
+    if (item.spanType !== "agent") {
+      extractAgentResults(item);
+      continue;
+    }
+
+    // Skip if already set (e.g. from tool-spawned agent construction)
+    if (item.agentResult) {
+      extractAgentResults(item);
+      continue;
+    }
+
+    // Flow 1: sibling ToolEvent with agent_span_id matching this span
+    for (const sibling of content) {
+      if (
+        sibling.type === "event" &&
+        sibling.event.event === "tool" &&
+        sibling.event.agent_span_id === item.id
+      ) {
+        const resultText = extractToolEventResult(sibling.event.result);
+        if (resultText) {
+          item.agentResult = resultText;
+        }
+        break;
+      }
+    }
+
+    // Flow 2: next model event's input has tool message with matching tool_call_id
+    // The span ID follows the pattern "agent-{tool_call_id}" in bridge flow.
+    const toolCallId = item.id.startsWith("agent-")
+      ? item.id.slice(6)
+      : null;
+
+    if (!item.agentResult && toolCallId) {
+      for (let j = i + 1; j < content.length; j++) {
+        const nextItem = content[j]!;
+        if (nextItem.type !== "event") continue;
+        if (nextItem.event.event === "model") {
+          const modelEvent = nextItem.event;
+          if (modelEvent.input) {
+            for (const msg of modelEvent.input as ChatMessage[]) {
+              if (
+                msg.role === "tool" &&
+                "tool_call_id" in msg &&
+                (msg as { tool_call_id?: string }).tool_call_id === toolCallId
+              ) {
+                const text = extractToolEventResult(msg.content);
+                if (text) {
+                  item.agentResult = text;
+                }
+              }
+            }
+          }
+          if (item.agentResult) break;
+        }
+      }
+    }
+
+    // Recurse into child spans
+    extractAgentResults(item);
+  }
 }
 
 /**
@@ -1463,6 +1542,7 @@ export function buildTimeline(events: Event[]): Timeline {
       wrapUtilityEvents(agentNode);
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);
+      extractAgentResults(agentNode);
 
       // Prepend init span to agent content
       if (initSpanObj) {
@@ -1540,6 +1620,7 @@ export function buildTimeline(events: Event[]): Timeline {
       wrapUtilityEvents(agentRoot);
       classifyUtilityAgents(agentRoot);
       classifyBranches(agentRoot, hasExplicitBranches);
+      extractAgentResults(agentRoot);
       root = agentRoot;
     } else {
       // All content was empty — construct an empty root inline

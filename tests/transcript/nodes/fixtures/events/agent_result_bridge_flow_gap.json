@@ -1,0 +1,161 @@
+{
+  "description": "Agent result extracted from model event after intervening non-matching model events (bridge flow with gap)",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers-1",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-parent",
+      "id": "parent-agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers-1",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-001",
+      "model": "test-model",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:01Z",
+      "completed": "2024-01-01T00:00:02Z",
+      "output": {
+        "usage": {
+          "input_tokens": 100,
+          "output_tokens": 50
+        }
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-child",
+      "id": "agent-tc-1",
+      "name": "sub_agent",
+      "type": "agent",
+      "parent_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:03Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-002",
+      "model": "test-model",
+      "span_id": "agent-tc-1",
+      "timestamp": "2024-01-01T00:00:04Z",
+      "completed": "2024-01-01T00:00:05Z",
+      "output": {
+        "usage": {
+          "input_tokens": 75,
+          "output_tokens": 30
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-child-end",
+      "span_id": "agent-tc-1",
+      "timestamp": "2024-01-01T00:00:10Z"
+    },
+    {
+      "event": "model",
+      "uuid": "e-003",
+      "model": "test-model",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:10.000001Z",
+      "completed": "2024-01-01T00:00:10.000002Z",
+      "input": [
+        {
+          "role": "user",
+          "content": "unrelated message"
+        }
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 10,
+          "output_tokens": 5
+        }
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-004",
+      "model": "test-model",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:10.000003Z",
+      "completed": "2024-01-01T00:00:10.000004Z",
+      "input": [
+        {
+          "role": "assistant",
+          "content": "some assistant text"
+        }
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 10,
+          "output_tokens": 5
+        }
+      }
+    },
+    {
+      "event": "model",
+      "uuid": "e-005",
+      "model": "test-model",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:11Z",
+      "completed": "2024-01-01T00:00:12Z",
+      "input": [
+        {
+          "role": "tool",
+          "function": "Task",
+          "content": "Agent result after gap",
+          "tool_call_id": "tc-1"
+        }
+      ],
+      "output": {
+        "usage": {
+          "input_tokens": 120,
+          "output_tokens": 60
+        }
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-parent-end",
+      "span_id": "parent-agent",
+      "timestamp": "2024-01-01T00:00:13Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers-1",
+      "timestamp": "2024-01-01T00:00:14Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "parent-agent",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "parent-agent"
+      },
+      "children": [
+        {
+          "id": "agent-tc-1",
+          "name": "sub_agent",
+          "source": {
+            "source": "span"
+          },
+          "agent_result": "Agent result after gap"
+        }
+      ]
+    },
+    "scoring": null
+  }
+}

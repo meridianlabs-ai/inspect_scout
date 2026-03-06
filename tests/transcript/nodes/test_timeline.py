@@ -90,12 +90,13 @@ def _parse_input_messages(input_data: list[dict[str, Any]]) -> list[ChatMessage]
         elif role == "assistant":
             messages.append(ChatMessageAssistant(content=content))
         elif role == "tool":
-            messages.append(
-                ChatMessageTool(
-                    content=content,
-                    tool_call_id=msg.get("tool_call_id", ""),
-                )
-            )
+            tool_kwargs: dict[str, Any] = {
+                "content": content,
+                "tool_call_id": msg.get("tool_call_id", ""),
+            }
+            if "function" in msg:
+                tool_kwargs["function"] = msg["function"]
+            messages.append(ChatMessageTool(**tool_kwargs))
     return messages
 
 
@@ -181,7 +182,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
                 if nested_event is not None:
                     nested_events.append(nested_event)
 
-        return ToolEvent(
+        tool_event = ToolEvent(
             uuid=uuid,
             span_id=span_id,
             timestamp=timestamp,
@@ -194,7 +195,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             function=data.get("function", "unknown"),
             arguments={},
             view=None,
-            result="",
+            result=data.get("result", ""),
             truncated=None,
             error=None,
             events=nested_events,
@@ -204,6 +205,9 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             failed=None,
             message_id=None,
         )
+        if "agent_span_id" in data:
+            tool_event.agent_span_id = data["agent_span_id"]
+        return tool_event
 
     elif event_type == "info":
         return InfoEvent(
@@ -450,6 +454,13 @@ def assert_span_matches(
         assert actual.utility == expected["utility"], (
             f"{span_name} utility mismatch: "
             f"got {actual.utility}, expected {expected['utility']}"
+        )
+
+    # Check agent_result if specified
+    if "agent_result" in expected:
+        assert actual.agent_result == expected["agent_result"], (
+            f"{span_name} agent_result mismatch: "
+            f"got {actual.agent_result!r}, expected {expected['agent_result']!r}"
         )
 
     # Check branches if specified

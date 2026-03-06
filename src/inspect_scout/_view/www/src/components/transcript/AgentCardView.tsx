@@ -81,7 +81,7 @@ export const AgentCardView: FC<AgentCardViewProps> = ({ span, className }) => {
           <ExpandablePanel
             id={`agent-result-${span.id}`}
             collapse={true}
-            lines={10}
+            lines={15}
           >
             <MarkdownDiv markdown={resultOutput} />
           </ExpandablePanel>

@@ -36,8 +36,10 @@ interface JsonEvent {
   model?: string;
   function?: string;
   agent?: string;
+  agent_span_id?: string;
+  result?: string;
   source?: string;
-  input?: Array<{ role: string; content: string; tool_call_id?: string }>;
+  input?: Array<{ role: string; content: string; tool_call_id?: string; function?: string }>;
   output?: {
     usage?: {
       input_tokens?: number;
@@ -81,6 +83,7 @@ interface ExpectedAgent {
   content_types?: string[];
   total_tokens?: number;
   utility?: boolean;
+  agent_result?: string;
 }
 
 interface ExpectedSection {
@@ -155,6 +158,9 @@ function createEvent(data: JsonEvent): Event | null {
         if (msg.tool_call_id !== undefined) {
           mapped.tool_call_id = msg.tool_call_id;
         }
+        if (msg.function !== undefined) {
+          mapped.function = msg.function;
+        }
         return mapped;
       });
       return {
@@ -189,7 +195,7 @@ function createEvent(data: JsonEvent): Event | null {
       const nestedEvents = data.events
         ?.map((e) => createEvent(e))
         .filter((e): e is Event => e !== null);
-      return {
+      const toolEvent: Record<string, unknown> = {
         ...baseFields,
         event: "tool",
         id: data.id ?? "",
@@ -197,7 +203,14 @@ function createEvent(data: JsonEvent): Event | null {
         completed: data.completed ?? null,
         agent: data.agent ?? null,
         events: nestedEvents ?? [],
-      } as Event;
+      };
+      if (data.result !== undefined) {
+        toolEvent.result = data.result;
+      }
+      if (data.agent_span_id !== undefined) {
+        toolEvent.agent_span_id = data.agent_span_id;
+      }
+      return toolEvent as Event;
     }
 
     case "info": {
@@ -378,6 +391,11 @@ function assertSpanMatches(
   // Check utility if specified
   if (expected.utility !== undefined) {
     expect(actual!.utility).toBe(expected.utility);
+  }
+
+  // Check agent_result if specified
+  if (expected.agent_result !== undefined) {
+    expect(actual!.agentResult).toBe(expected.agent_result);
   }
 
   // Check branches if specified

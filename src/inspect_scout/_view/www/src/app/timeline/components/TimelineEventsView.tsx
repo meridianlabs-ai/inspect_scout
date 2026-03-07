@@ -29,6 +29,7 @@ import {
 import { useProperty } from "../../../state/hooks/useProperty";
 import { useStore } from "../../../state/store";
 import type { Event } from "../../../types/api-types";
+import { useScrubberProgress } from "../hooks/useScrubberPercent";
 import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTimelineConfig } from "../hooks/useTimelineConfig";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
@@ -334,6 +335,11 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   const selected = timelineState.selected;
   const eventsListId = selected ? `${id}:${selected}` : id;
 
+  // Scrubber scroll progress (0–1) for the minimap
+  const scrubberProgress = useScrubberProgress(
+    `live-virtual-list-${eventsListId}`
+  );
+
   // Clean up per-agent state when the transcript panel unmounts
   // (e.g. navigating to a different transcript).
   const clearTranscriptOutlineId = useStore(
@@ -460,6 +466,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                     root: timelineData.root,
                     selection: minimapSelection,
                     mapping: rootTimeMapping,
+                    scrubberProgress,
                   },
                   timelineConfig,
                   timelineSelector:

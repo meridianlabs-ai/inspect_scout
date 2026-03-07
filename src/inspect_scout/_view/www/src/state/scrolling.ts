@@ -201,7 +201,7 @@ export const useVirtuosoState = (
   const setVisibleRangeRaw = useStore((state) => state.setVisibleRange);
 
   const setVisibleRange = useCallback(
-    (value: { startIndex: number; endIndex: number }) => {
+    (value: { startIndex: number; endIndex: number; totalCount: number }) => {
       setVisibleRangeRaw(elementKey, value);
     },
     [setVisibleRangeRaw, elementKey]

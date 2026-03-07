@@ -116,7 +116,7 @@
 .sectionTimePill {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
-  background-color: var(--vscode-editor-background);
+  background-color: color-mix(in srgb, var(--vscode-editor-background) 78%, transparent);
   border: none;
   border-radius: 3px;
   padding: 0 3px;
@@ -124,4 +124,18 @@
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
+}
+
+/* Scroll position scrubber — thin vertical bar inside the minimap track.
+ * Positioned absolutely within .minimap; the .sectionTimePill's opaque
+ * background naturally occludes the scrubber behind the text label. */
+.scrubber {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background-color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+  pointer-events: none;
+  border-radius: 1px;
 }

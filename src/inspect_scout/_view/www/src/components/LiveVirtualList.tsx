@@ -357,7 +357,7 @@ export const LiveVirtualList = <T,>({
       className={clsx("transcript", className)}
       isScrolling={handleScrollingChange}
       rangeChanged={(range) => {
-        setVisibleRange(range);
+        setVisibleRange({ ...range, totalCount: data.length });
       }}
       restoreStateFrom={getRestoreState()}
       totalListHeightChanged={heightChanged}

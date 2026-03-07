@@ -26,6 +26,10 @@ export interface TimelineMinimapProps {
   selection?: MinimapSelection;
   /** Time mapping for the root node (compresses gaps if present). */
   mapping?: TimeMapping;
+  /** Scroll progress within the event list (0–1).
+   *  Positioned as a fraction of the selection bar.
+   *  `null` or `undefined` = no scrubber shown. */
+  scrubberProgress?: number | null;
 }
 
 /**
@@ -38,6 +42,7 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
   selection,
   mapping,
+  scrubberProgress,
 }) => {
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
@@ -141,6 +146,20 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
             }
           >
             <div className={styles.regionFill} />
+
+            {/* Scroll position scrubber — absolutely positioned inside
+                selectionRegion. Interpolates from 0 (left marker) to
+                calc(100% - 2px) (right marker) so the 2px bar stays
+                fully visible at both edges. */}
+            {scrubberProgress != null && (
+              <div
+                className={styles.scrubber}
+                style={{
+                  left: `calc(${scrubberProgress} * (100% - 2px))`,
+                }}
+              />
+            )}
+
             <div className={styles.marker} />
             <div className={styles.sectionTime}>
               <span className={styles.sectionTimePill} onClick={toggle}>

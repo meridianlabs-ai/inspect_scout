@@ -305,6 +305,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         scrollRef={activeScrollRef}
         offsetTop={40}
         initialEventId={eventParam}
+        initialMessageId={messageParam}
         defaultOutlineExpanded={true}
         id="transcript-events-list"
         collapsed={eventsCollapsed}

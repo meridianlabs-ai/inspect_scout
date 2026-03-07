@@ -146,6 +146,7 @@ const InputRenderer: FC<InputRendererProps> = ({
           scrollRef={scrollRef}
           id="scan-input-events"
           initialEventId={initialEventId}
+          initialMessageId={initialMessageId}
         />
       );
     } else {
@@ -184,6 +185,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         scrollRef={scrollRef}
         id="scan-input-events"
         initialEventId={initialEventId}
+        initialMessageId={initialMessageId}
         timeline={false}
       />
     );
@@ -194,6 +196,7 @@ const InputRenderer: FC<InputRendererProps> = ({
         scrollRef={scrollRef}
         id="scan-input-events"
         initialEventId={initialEventId}
+        initialMessageId={initialMessageId}
         timeline={false}
       />
     );

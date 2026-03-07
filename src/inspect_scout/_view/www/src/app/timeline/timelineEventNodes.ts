@@ -285,7 +285,7 @@ function collectFromContent(
         parent_id: null,
         pending: false,
         working_start: 0,
-        uuid: null,
+        uuid: item.id,
         metadata: null,
       };
       out.push(beginEvent);

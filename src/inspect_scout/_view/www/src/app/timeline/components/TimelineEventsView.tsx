@@ -15,6 +15,7 @@ import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { StickyScroll } from "../../../components/StickyScroll";
 import { useEventNodes } from "../../../components/transcript/hooks/useEventNodes";
 import { TranscriptOutline } from "../../../components/transcript/outline/TranscriptOutline";
+import { resolveMessageToEvent } from "../../../components/transcript/resolveMessageToEvent";
 import { TimelineSelectContext } from "../../../components/transcript/TimelineSelectContext";
 import {
   TranscriptViewNodes,
@@ -31,7 +32,11 @@ import type { Event } from "../../../types/api-types";
 import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTimelineConfig } from "../hooks/useTimelineConfig";
 import { useTranscriptTimeline } from "../hooks/useTranscriptTimeline";
-import { buildSpanSelectKeys, parseSelection } from "../timelineEventNodes";
+import {
+  buildSpanSelectKeys,
+  getSelectedSpans,
+  parseSelection,
+} from "../timelineEventNodes";
 import type { MarkerConfig } from "../utils/markers";
 
 import styles from "./TimelineEventsView.module.css";
@@ -50,6 +55,8 @@ interface TimelineEventsViewProps {
   offsetTop?: number;
   /** Deep-link to a specific event on mount. */
   initialEventId?: string | null;
+  /** Deep-link to a message ID, resolved to the best matching event. */
+  initialMessageId?: string | null;
   /** Initial outline state when no persistent preference exists. Default: false (collapsed). */
   defaultOutlineExpanded?: boolean;
   /** Unique ID for the virtual list. */
@@ -103,6 +110,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   scrollRef,
   offsetTop = 0,
   initialEventId,
+  initialMessageId,
   defaultOutlineExpanded = false,
   id,
   collapsed,
@@ -221,6 +229,49 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     },
     [spanSelectKeys, select]
   );
+
+  // ---------------------------------------------------------------------------
+  // Message ID → event resolution
+  // ---------------------------------------------------------------------------
+
+  // Resolve message ID against the selected span first, then fall back to root.
+  const resolvedLocal = useMemo(() => {
+    if (initialEventId || !initialMessageId) return undefined;
+    const selectedSpans = getSelectedSpans(
+      timelineState.rows,
+      timelineState.selected
+    );
+    for (const span of selectedSpans) {
+      const result = resolveMessageToEvent(initialMessageId, span);
+      if (result && !result.agentSpanId) return result;
+    }
+    return undefined;
+  }, [
+    initialEventId,
+    initialMessageId,
+    timelineState.rows,
+    timelineState.selected,
+  ]);
+
+  const resolvedRoot = useMemo(() => {
+    if (initialEventId || !initialMessageId || resolvedLocal) return undefined;
+    const result = resolveMessageToEvent(initialMessageId, timelineData.root);
+    return result;
+  }, [initialEventId, initialMessageId, resolvedLocal, timelineData.root]);
+
+  const resolved = resolvedLocal ?? resolvedRoot;
+
+  // Side-effect: navigate to the correct swimlane when resolution came from root
+  useEffect(() => {
+    if (!resolvedRoot) return;
+    if (resolvedRoot.agentSpanId) {
+      selectBySpanId(resolvedRoot.agentSpanId);
+    } else if (timelineState.selected) {
+      clearSelection();
+    }
+  }, [resolvedRoot, selectBySpanId, clearSelection, timelineState.selected]);
+
+  const effectiveInitialEventId = initialEventId ?? resolved?.eventId ?? null;
 
   // ---------------------------------------------------------------------------
   // Sticky swimlane state
@@ -484,7 +535,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
               id={eventsListId}
               eventNodes={eventNodes}
               defaultCollapsedIds={defaultCollapsedIds}
-              initialEventId={initialEventId}
+              initialEventId={effectiveInitialEventId}
               offsetTop={offsetTop + stickySwimLaneHeight}
               className={styles.eventsList}
               scrollRef={scrollRef}

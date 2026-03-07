@@ -61,8 +61,10 @@ export function useOutlineWidth(
     // Clear previous measurement content.
     root.innerHTML = "";
 
-    // Mirror `.eventsOutline` padding-left (from TimelineEventsView.module.css).
+    // Mirror `.eventsOutline` padding-left (from TimelineEventsView.module.css)
+    // and add right padding so text doesn't butt against the separator.
     root.style.paddingLeft = "0.5rem";
+    root.style.paddingRight = "0.5rem";
 
     // ── Header ──────────────────────────────────────────────────────────
     if (agentName) {

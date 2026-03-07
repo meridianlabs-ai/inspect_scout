@@ -169,13 +169,7 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       ]
     );
 
-    const result = collapseScoring(collapseTurns(makeTurns(nodeList)));
-
-    // HACK: Simulate depth for visual testing — remove when done
-    return result.map((node, i) => ({
-      ...node,
-      depth: i % 5, // cycle through depths 0-4
-    }));
+    return collapseScoring(collapseTurns(makeTurns(nodeList)));
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
 
   const depthsWithToggles = useMemo(() => {

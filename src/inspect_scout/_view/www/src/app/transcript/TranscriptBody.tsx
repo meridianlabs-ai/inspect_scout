@@ -98,9 +98,12 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   );
 
   // Navigate to a specific event when a marker is clicked on the timeline.
+  // When selectedKey is provided (compaction markers), the bar is selected
+  // atomically in the same URL update to avoid a race between setSearchParams
+  // and navigate.
   const handleMarkerNavigate = useCallback(
-    (eventId: string) => {
-      const url = getEventUrl(eventId);
+    (eventId: string, selectedKey?: string) => {
+      const url = getEventUrl(eventId, selectedKey);
       if (!url) return;
       void navigate(url);
     },

@@ -31,41 +31,68 @@ import {
 // =============================================================================
 
 /**
- * Parsed selection: a row key with an optional span index.
+ * Parsed selection: a row key with optional span index and region index.
  *
  * Format: `"rowKey"` selects the whole row, `"rowKey:N"` selects
- * span index N (0-based) within an iterative row.
+ * span index N (0-based) within an iterative row, `"rowKey@R"` selects
+ * compaction region R, and `"rowKey:N@R"` selects region R of span N.
  */
 export interface ParsedSelection {
   rowKey: string;
   spanIndex: number | null;
+  regionIndex: number | null;
 }
 
 /**
- * Parses a selection string into row key + optional span index.
+ * Parses a selection string into row key + optional span index + optional region index.
  * Returns null for null/empty input.
+ *
+ * Parse order: extract `@R` from end first, then `:N` from what remains.
  */
 export function parseSelection(
   selected: string | null
 ): ParsedSelection | null {
   if (!selected) return null;
-  const colonIdx = selected.lastIndexOf(":");
-  if (colonIdx === -1) return { rowKey: selected, spanIndex: null };
-  const suffix = selected.slice(colonIdx + 1);
+
+  // Extract @R region suffix first
+  let regionIndex: number | null = null;
+  let rest = selected;
+  const atIdx = rest.lastIndexOf("@");
+  if (atIdx !== -1) {
+    const regionSuffix = rest.slice(atIdx + 1);
+    const r = Number(regionSuffix);
+    if (Number.isInteger(r) && r >= 0) {
+      regionIndex = r;
+      rest = rest.slice(0, atIdx);
+    }
+  }
+
+  // Extract :N span index from the remainder
+  const colonIdx = rest.lastIndexOf(":");
+  if (colonIdx === -1) {
+    return { rowKey: rest, spanIndex: null, regionIndex };
+  }
+  const suffix = rest.slice(colonIdx + 1);
   const idx = Number(suffix);
   if (!Number.isInteger(idx) || idx < 0) {
-    // Not a valid span index — treat the whole string as the row key
-    return { rowKey: selected, spanIndex: null };
+    // Not a valid span index — treat the whole remaining string as the row key
+    return { rowKey: rest, spanIndex: null, regionIndex };
   }
-  return { rowKey: selected.slice(0, colonIdx), spanIndex: idx };
+  return { rowKey: rest.slice(0, colonIdx), spanIndex: idx, regionIndex };
 }
 
 /**
- * Builds a selection string from row key + optional span index.
+ * Builds a selection string from row key + optional span index + optional region index.
  */
-export function buildSelectionKey(rowKey: string, spanIndex?: number): string {
-  if (spanIndex !== undefined) return `${rowKey}:${spanIndex}`;
-  return rowKey;
+export function buildSelectionKey(
+  rowKey: string,
+  spanIndex?: number,
+  regionIndex?: number
+): string {
+  let key = rowKey;
+  if (spanIndex !== undefined) key = `${key}:${spanIndex}`;
+  if (regionIndex !== undefined) key = `${key}@${regionIndex}`;
+  return key;
 }
 
 // =============================================================================
@@ -127,6 +154,7 @@ export function getSelectedSpans(
  * Computes the minimap selection for the currently selected swimlane row.
  *
  * When a span index is present, shows just that span's range.
+ * When a region index is present, narrows to the region's time range.
  * Otherwise shows the full row's range.
  */
 export function computeMinimapSelection(
@@ -149,6 +177,24 @@ export function computeMinimapSelection(
   const allAgents = spans.flatMap(getAgents);
   if (allAgents.length === 0) return undefined;
 
+  // Region-scoped minimap: narrow to the region's time range
+  if (parsed.regionIndex !== null && allAgents.length === 1) {
+    const agent = allAgents[0]!;
+    const regions = computeCompactionRegions(agent.content);
+    const region = regions[parsed.regionIndex];
+    if (region && region.length > 0) {
+      const times = region.flatMap((item) =>
+        item.type === "event"
+          ? [item.startTime, item.endTime]
+          : [item.startTime, item.endTime]
+      );
+      const startTime = new Date(Math.min(...times.map((t) => t.getTime())));
+      const endTime = new Date(Math.max(...times.map((t) => t.getTime())));
+      const tokens = region.reduce((sum, item) => sum + item.totalTokens, 0);
+      return { startTime, endTime, totalTokens: tokens };
+    }
+  }
+
   if (allAgents.length === 1) {
     const agent = allAgents[0]!;
     return {
@@ -161,6 +207,34 @@ export function computeMinimapSelection(
   const envelope = computeTimeEnvelope(allAgents);
   const tokens = allAgents.reduce((sum, a) => sum + a.totalTokens, 0);
   return { ...envelope, totalTokens: tokens };
+}
+
+// =============================================================================
+// Compaction region computation
+// =============================================================================
+
+/**
+ * Partitions a content array into regions separated by compaction events.
+ *
+ * Returns an array of content slices. If no compaction events exist, returns
+ * a single-element array containing the full content.
+ */
+export function computeCompactionRegions(
+  content: ReadonlyArray<TimelineEvent | TimelineSpan>
+): ReadonlyArray<TimelineEvent | TimelineSpan>[] {
+  const regions: (TimelineEvent | TimelineSpan)[][] = [];
+  let current: (TimelineEvent | TimelineSpan)[] = [];
+
+  for (const item of content) {
+    if (item.type === "event" && item.event.event === "compaction") {
+      regions.push(current);
+      current = [];
+    } else {
+      current.push(item);
+    }
+  }
+  regions.push(current);
+  return regions;
 }
 
 // =============================================================================
@@ -185,12 +259,15 @@ export interface CollectedEvents {
  * pairs with no child events — their content is accessed by selecting the
  * swimlane row. The returned sourceSpans map allows attaching the original
  * TimelineSpan to the resulting EventNodes for rich rendering.
+ *
+ * When `regionIndex` is set, only events from that compaction region are emitted.
  */
 export function collectRawEvents(
   spans: TimelineSpan[],
-  options?: { includeUtility?: boolean }
+  options?: { includeUtility?: boolean; regionIndex?: number | null }
 ): CollectedEvents {
   const includeUtility = options?.includeUtility ?? false;
+  const regionIndex = options?.regionIndex ?? null;
   const events: Event[] = [];
   const sourceSpans = new Map<string, TimelineSpan>();
   if (spans.length === 1) {
@@ -199,8 +276,18 @@ export function collectRawEvents(
     // the last ASSISTANT response. Detect and skip it at the top level only.
     const span = spans[0]!;
     const agentSpanId = span.spanType === "agent" ? span.id : undefined;
+
+    // If a region is selected, window the content to that region
+    let content: ReadonlyArray<TimelineEvent | TimelineSpan> = span.content;
+    if (regionIndex !== null) {
+      const regions = computeCompactionRegions(span.content);
+      if (regionIndex >= 0 && regionIndex < regions.length) {
+        content = regions[regionIndex]!;
+      }
+    }
+
     collectFromContent(
-      span.content,
+      content,
       events,
       sourceSpans,
       agentSpanId,
@@ -209,6 +296,7 @@ export function collectRawEvents(
   } else {
     // Multiple spans: wrap each in span_begin/span_end so the event tree
     // groups them, matching the drilled-in container behavior.
+    // Region selection does not apply to multi-span views.
     collectFromContent(spans, events, sourceSpans, undefined, includeUtility);
   }
   return { events, sourceSpans };

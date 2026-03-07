@@ -21,6 +21,7 @@ import {
   collectRawEvents,
   computeMinimapSelection,
   getSelectedSpans,
+  parseSelection,
 } from "../timelineEventNodes";
 import { type MarkerConfig, defaultMarkerConfig } from "../utils/markers";
 import {
@@ -28,6 +29,7 @@ import {
   rowHasEvents,
   type RowLayout,
 } from "../utils/swimlaneLayout";
+import { isSingleSpan } from "../utils/swimlaneRows";
 import { computeTimeMapping, type TimeMapping } from "../utils/timeMapping";
 
 import { useActiveTimeline } from "./useActiveTimeline";
@@ -64,6 +66,8 @@ interface TranscriptTimelineResult {
   activeTimelineIndex: number;
   /** Switch the active timeline by index. Resets selection. */
   setActiveTimeline: (index: number) => void;
+  /** Map from row key → number of compaction regions (only for rows with compactions). */
+  regionCounts: ReadonlyMap<string, number>;
 }
 
 export function useTranscriptTimeline(
@@ -113,11 +117,15 @@ export function useTranscriptTimeline(
   );
 
   const { selectedEvents, sourceSpans } = useMemo(() => {
+    const parsed = parseSelection(state.selected);
     const spans = getSelectedSpans(state.rows, state.selected);
     if (spans.length === 0) {
       return { selectedEvents: events, sourceSpans: emptySourceSpans };
     }
-    const collected = collectRawEvents(spans, { includeUtility });
+    const collected = collectRawEvents(spans, {
+      includeUtility,
+      regionIndex: parsed?.regionIndex ?? null,
+    });
     return {
       selectedEvents: collected.events,
       sourceSpans: collected.sourceSpans,
@@ -128,6 +136,28 @@ export function useTranscriptTimeline(
     () => computeMinimapSelection(state.rows, state.selected),
     [state.rows, state.selected]
   );
+
+  // Compute region counts: for each single-span row, count compaction events + 1.
+  // Only includes rows with at least one compaction event.
+  const regionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of state.rows) {
+      const firstSpan = row.spans[0];
+      if (row.spans.length === 1 && firstSpan && isSingleSpan(firstSpan)) {
+        const agent = firstSpan.agent;
+        let compactionCount = 0;
+        for (const item of agent.content) {
+          if (item.type === "event" && item.event.event === "compaction") {
+            compactionCount++;
+          }
+        }
+        if (compactionCount > 0) {
+          counts.set(row.key, compactionCount + 1);
+        }
+      }
+    }
+    return counts;
+  }, [state.rows]);
 
   const hasTimeline =
     timeline.root.content.length > 0 &&
@@ -146,5 +176,6 @@ export function useTranscriptTimeline(
     timelines,
     activeTimelineIndex,
     setActiveTimeline,
+    regionCounts,
   };
 }

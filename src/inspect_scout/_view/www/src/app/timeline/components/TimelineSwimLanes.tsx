@@ -114,12 +114,14 @@ interface TimelineSwimLanesProps {
   /** Whether the swimlane is currently in sticky mode (opaque background). */
   isSticky?: boolean;
   /** Called when an error or compaction marker is clicked. */
-  onMarkerNavigate?: (eventId: string) => void;
+  onMarkerNavigate?: (eventId: string, selectedKey?: string) => void;
   /** Headroom auto-collapse: true when scrolling down while sticky. */
   headroomCollapsed?: boolean;
   /** Called before a layout shift (toggle) so the headroom hook can reset
    *  its anchor and ignore the resulting scroll-position change. */
   onLayoutShift?: () => void;
+  /** Map from row key → number of compaction regions (only for rows with compactions). */
+  regionCounts?: ReadonlyMap<string, number>;
 }
 
 // =============================================================================
@@ -147,6 +149,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   onMarkerNavigate,
   headroomCollapsed = false,
   onLayoutShift,
+  regionCounts,
 }) => {
   const { node, selected, select: onSelect, clearSelection } = timeline;
 
@@ -330,6 +333,9 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
     const selectedSpanIndex = isRowSelected
       ? (parsedSelection?.spanIndex ?? null)
       : null;
+    const selectedRegionIndex = isRowSelected
+      ? (parsedSelection?.regionIndex ?? null)
+      : null;
     const hasChildren = parentKeys.has(layout.key);
     const isRowExpanded = hasChildren ? !isRowCollapsed(layout.key) : undefined;
 
@@ -340,6 +346,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         displayName={displayName}
         isRowSelected={isRowSelected}
         selectedSpanIndex={selectedSpanIndex}
+        selectedRegionIndex={selectedRegionIndex}
+        regionCount={regionCounts?.get(layout.key)}
         isExpanded={isRowExpanded}
         onToggleExpand={
           hasChildren ? () => handleToggleRowCollapse(layout.key) : undefined
@@ -347,6 +355,9 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
         onSelectRow={() => onSelect(layout.key)}
         onSelectSpan={(spanIndex) =>
           onSelect(buildSelectionKey(layout.key, spanIndex))
+        }
+        onSelectRegion={(spanIndex, regionIndex) =>
+          onSelect(buildSelectionKey(layout.key, spanIndex, regionIndex))
         }
         onBranchHover={handleBranchHover}
         onBranchLeave={handleBranchLeave}
@@ -432,6 +443,10 @@ interface SwimlaneRowProps {
   isRowSelected: boolean;
   /** The span index that is sub-selected, or null if the whole row is selected. */
   selectedSpanIndex: number | null;
+  /** The region index that is sub-selected, or null if no region is selected. */
+  selectedRegionIndex: number | null;
+  /** Number of compaction regions for this row (undefined = no compaction regions). */
+  regionCount?: number;
   /** Whether the row's children are expanded. undefined = no children (leaf). */
   isExpanded?: boolean;
   /** Toggle expand/collapse for this row. Only provided for rows with children. */
@@ -440,9 +455,11 @@ interface SwimlaneRowProps {
   onSelectRow: () => void;
   /** Select a specific span within the row (bar click). */
   onSelectSpan: (spanIndex: number) => void;
+  /** Select a specific region within a span. */
+  onSelectRegion: (spanIndex: number | undefined, regionIndex: number) => void;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
-  onMarkerNavigate?: (eventId: string) => void;
+  onMarkerNavigate?: (eventId: string, selectedKey?: string) => void;
 }
 
 const SwimlaneRow: FC<SwimlaneRowProps> = ({
@@ -450,16 +467,32 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
   displayName,
   isRowSelected,
   selectedSpanIndex,
+  selectedRegionIndex,
+  regionCount,
   isExpanded,
   onToggleExpand,
   onSelectRow,
   onSelectSpan,
+  onSelectRegion,
   onBranchHover,
   onBranchLeave,
   onMarkerNavigate,
 }) => {
   const hasMultipleSpans = layout.spans.length > 1;
   const hasChildren = isExpanded !== undefined;
+
+  // Collect compaction marker positions for region segmentation.
+  // Only applicable for single-span rows with compaction markers.
+  const compactionMarkerPositions = useMemo(() => {
+    if (!regionCount || regionCount <= 1) return null;
+    const positions: number[] = [];
+    for (const marker of layout.markers) {
+      if (marker.compactionIndex !== undefined) {
+        positions.push(marker.left);
+      }
+    }
+    return positions.length > 0 ? positions : null;
+  }, [regionCount, layout.markers]);
 
   const handleChevronClick = useCallback(
     (e: React.MouseEvent) => {
@@ -468,6 +501,13 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
     },
     [onToggleExpand]
   );
+
+  // Wrap onMarkerNavigate to include the row key for compaction markers,
+  // so the bar gets selected atomically with the event navigation.
+  const handleMarkerNavigate = useMemo(() => {
+    if (!onMarkerNavigate) return undefined;
+    return (eventId: string) => onMarkerNavigate(eventId, layout.key);
+  }, [onMarkerNavigate, layout.key]);
 
   return (
     <div className={styles.row} role="row">
@@ -518,6 +558,36 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
               selectedSpanIndex !== null &&
               selectedSpanIndex !== spanIndex;
 
+            // Use region-segmented rendering when this bar has compaction markers
+            // and is the selected span (or only span).
+            const useRegions =
+              compactionMarkerPositions !== null &&
+              (!hasMultipleSpans || selectedSpanIndex === spanIndex);
+
+            if (useRegions) {
+              return (
+                <RegionBarFill
+                  key={spanIndex}
+                  span={span}
+                  isParent={layout.isParent}
+                  isBarSelected={isBarSelected}
+                  isBarDimmed={isBarDimmed}
+                  selectedRegionIndex={selectedRegionIndex}
+                  compactionPositions={compactionMarkerPositions}
+                  onSelectBar={() =>
+                    hasMultipleSpans ? onSelectSpan(spanIndex) : onSelectRow()
+                  }
+                  onSelectRegion={(regionIndex) =>
+                    onSelectRegion(
+                      hasMultipleSpans ? spanIndex : undefined,
+                      regionIndex
+                    )
+                  }
+                  onDoubleClick={onToggleExpand}
+                />
+              );
+            }
+
             return (
               <BarFill
                 key={spanIndex}
@@ -540,7 +610,7 @@ const SwimlaneRow: FC<SwimlaneRowProps> = ({
               marker={marker}
               onBranchHover={onBranchHover}
               onBranchLeave={onBranchLeave}
-              onMarkerNavigate={onMarkerNavigate}
+              onMarkerNavigate={handleMarkerNavigate}
             />
           ))}
         </div>
@@ -694,6 +764,194 @@ const BarFill: FC<BarFillProps> = ({
 };
 
 // =============================================================================
+// RegionBarFill (internal) — segmented bar for compaction regions
+// =============================================================================
+
+interface RegionBarFillProps {
+  span: PositionedSpan;
+  isParent: boolean;
+  /** Whether the whole bar is selected (row or span level). */
+  isBarSelected: boolean;
+  /** Whether the bar is dimmed (a sibling span is focused). */
+  isBarDimmed: boolean;
+  /** Currently selected region index, or null if no region is selected. */
+  selectedRegionIndex: number | null;
+  /** Left positions (%) of compaction markers within the bar area. */
+  compactionPositions: number[];
+  /** Select the whole bar (no region). */
+  onSelectBar: () => void;
+  /** Select a specific region within the bar. */
+  onSelectRegion: (regionIndex: number) => void;
+  onDoubleClick?: () => void;
+}
+
+/**
+ * Renders a bar fill split into clickable region segments at compaction marker
+ * positions. Each segment spans from one compaction marker to the next (or
+ * bar start/end). When no region is selected, all segments look like one
+ * continuous bar. When a region is selected, the selected segment is
+ * highlighted and others are dimmed.
+ */
+const RegionBarFill: FC<RegionBarFillProps> = ({
+  span,
+  isParent,
+  isBarSelected,
+  isBarDimmed,
+  selectedRegionIndex,
+  compactionPositions,
+  onSelectBar,
+  onSelectRegion,
+  onDoubleClick,
+}) => {
+  const barLeft = span.bar.left;
+  const barRight = span.bar.left + span.bar.width;
+
+  // Build region boundaries: [barLeft, marker1, marker2, ..., barRight]
+  const boundaries = [barLeft, ...compactionPositions, barRight];
+  const regionCount = boundaries.length - 1;
+
+  // Track hover via React state so we can coordinate highlighting across segments.
+  // When no region is selected, hovering any segment highlights all of them.
+  // When a region is selected, only the hovered segment highlights.
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Suppress hover highlighting immediately after a click so that the segment
+  // under the cursor doesn't instantly highlight when selection state changes.
+  // Cleared on the next mouseLeave, so fresh mouseEnter events work normally.
+  const suppressHoverRef = useRef(false);
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDoubleClick?.();
+    },
+    [onDoubleClick]
+  );
+
+  // If the bar is dimmed (sibling span focused), render a single dimmed bar
+  if (isBarDimmed) {
+    return (
+      <div
+        className={clsx(
+          styles.fill,
+          isParent && styles.fillParent,
+          styles.fillDimmed
+        )}
+        style={{
+          left: `${barLeft}%`,
+          width: `${span.bar.width}%`,
+        }}
+        title={span.description ?? undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectBar();
+        }}
+      />
+    );
+  }
+
+  const hasRegionSelection = isBarSelected && selectedRegionIndex !== null;
+
+  return (
+    <>
+      {boundaries.map((start, i) => {
+        if (i >= regionCount) return null;
+        const end = boundaries[i + 1];
+        if (end === undefined || end <= start) return null;
+
+        const segmentLeft = start;
+        const segmentWidth = end - start;
+
+        const isSegmentSelected =
+          hasRegionSelection && selectedRegionIndex === i;
+
+        // Visual state for each segment depends on three levels:
+        // 1. Bar not selected → base opacity; hover highlights all segments
+        // 2. Bar selected, no region → selected opacity; hover dims non-hovered segments
+        // 3. Region selected → selected segment bright, others dimmed; hover per-segment
+
+        const isFirst = i === 0;
+        const isLast = i === regionCount - 1;
+
+        // Determine the opacity class. Exactly one should apply:
+        let opacityClass: string | undefined;
+        if (hasRegionSelection) {
+          // State 3: a specific region is selected
+          if (isSegmentSelected) {
+            opacityClass = styles.fillSelected;
+          } else if (hoveredIndex === i) {
+            opacityClass = styles.regionHover;
+          } else {
+            opacityClass = styles.fillDimmed;
+          }
+        } else if (isBarSelected) {
+          // State 2: bar selected, no region — hover previews region boundaries
+          if (hoveredIndex !== null && hoveredIndex !== i) {
+            // Non-hovered segments dim to show which region would be selected
+            opacityClass = isParent ? styles.fillParent : styles.regionDefault;
+          } else {
+            opacityClass = styles.fillSelected;
+          }
+        } else {
+          // State 1: bar not selected
+          if (hoveredIndex !== null) {
+            opacityClass = styles.regionHover;
+          } else {
+            opacityClass = isParent ? styles.fillParent : styles.regionDefault;
+          }
+        }
+
+        return (
+          <div
+            key={i}
+            className={clsx(
+              styles.regionSegment,
+              opacityClass,
+              isFirst && styles.regionFirst,
+              isLast && styles.regionLast,
+              !isFirst && !isLast && styles.regionMiddle
+            )}
+            style={{
+              left: `${segmentLeft}%`,
+              width: `${segmentWidth}%`,
+            }}
+            title={span.description ?? undefined}
+            onMouseEnter={() => {
+              if (!suppressHoverRef.current) setHoveredIndex(i);
+            }}
+            onMouseLeave={() => {
+              suppressHoverRef.current = false;
+              setHoveredIndex(null);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Suppress hover so the segment under the cursor doesn't
+              // instantly highlight after selection state changes.
+              suppressHoverRef.current = true;
+              setHoveredIndex(null);
+              if (isBarSelected && selectedRegionIndex === null) {
+                // Bar is already selected at whole level — drill into region
+                onSelectRegion(i);
+              } else if (hasRegionSelection && selectedRegionIndex === i) {
+                // Clicking the already-selected region — back to whole bar
+                onSelectBar();
+              } else if (hasRegionSelection) {
+                // A different region is selected — switch to this one
+                onSelectRegion(i);
+              } else {
+                // Not selected at all — select the whole bar first
+                onSelectBar();
+              }
+            }}
+            onDoubleClick={onDoubleClick ? handleDoubleClick : undefined}
+          />
+        );
+      })}
+    </>
+  );
+};
+
+// =============================================================================
 // MarkerGlyph (internal)
 // =============================================================================
 
@@ -701,7 +959,7 @@ interface MarkerGlyphProps {
   marker: PositionedMarker;
   onBranchHover: (forkedAt: string, element: HTMLElement) => void;
   onBranchLeave: () => void;
-  onMarkerNavigate?: (eventId: string) => void;
+  onMarkerNavigate?: (eventId: string, selectedKey?: string) => void;
 }
 
 const MarkerGlyph: FC<MarkerGlyphProps> = ({

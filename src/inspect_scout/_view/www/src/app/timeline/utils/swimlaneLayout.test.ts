@@ -279,6 +279,34 @@ describe("computeRowLayouts", () => {
         );
       }
     });
+
+    it("assigns compactionIndex to compaction markers", () => {
+      const root = getScenarioRoot(S5_MARKERS);
+      const rows = computeSwimlaneRows(root);
+      const layouts = computeRowLayouts(
+        rows,
+        createIdentityMapping(root.startTime, root.endTime),
+        "children"
+      );
+
+      const parentLayout = layouts[0]!;
+      const compactionMarkers = parentLayout.markers.filter(
+        (m) => m.kind === "compaction"
+      );
+
+      // Each compaction marker should have a sequential 0-based compactionIndex
+      for (let i = 0; i < compactionMarkers.length; i++) {
+        expect(compactionMarkers[i]!.compactionIndex).toBe(i);
+      }
+
+      // Non-compaction markers should not have compactionIndex
+      const nonCompactionMarkers = parentLayout.markers.filter(
+        (m) => m.kind !== "compaction"
+      );
+      for (const m of nonCompactionMarkers) {
+        expect(m.compactionIndex).toBeUndefined();
+      }
+    });
   });
 
   describe("S7 flat transcript", () => {

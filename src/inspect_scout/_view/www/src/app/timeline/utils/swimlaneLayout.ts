@@ -54,6 +54,8 @@ export interface PositionedMarker {
   reference: string;
   /** Human-readable detail for tooltip display. */
   tooltip: string;
+  /** For compaction markers: 0-based index among compaction markers in this row. */
+  compactionIndex?: number;
 }
 
 /** Complete layout data for a single swimlane row. */
@@ -300,6 +302,15 @@ function collectRowMarkers(
 
   // Sort by position
   allMarkers.sort((a, b) => a.left - b.left);
+
+  // Assign compactionIndex to compaction markers (0-based sequential)
+  let compactionIdx = 0;
+  for (const m of allMarkers) {
+    if (m.kind === "compaction") {
+      m.compactionIndex = compactionIdx++;
+    }
+  }
+
   return allMarkers;
 }
 

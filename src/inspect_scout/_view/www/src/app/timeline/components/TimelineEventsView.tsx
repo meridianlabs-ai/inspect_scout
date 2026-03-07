@@ -63,8 +63,9 @@ interface TimelineEventsViewProps {
   id: string;
   /** Bulk collapse/expand of all collapsible events. undefined = no-op. */
   collapsed?: boolean;
-  /** Called when a marker (error, compaction) is clicked on the swimlane. */
-  onMarkerNavigate?: (eventId: string) => void;
+  /** Called when a marker (error, compaction) is clicked on the swimlane.
+   *  Optional `selectedKey` requests the bar be selected atomically with navigation. */
+  onMarkerNavigate?: (eventId: string, selectedKey?: string) => void;
   /** Controls which marker kinds are shown and at what depth. */
   markerConfig?: MarkerConfig;
   /** Controls swimlane visibility. `"auto"` shows when data has child spans. Default: `"auto"`. */
@@ -148,6 +149,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     timelines,
     activeTimelineIndex,
     setActiveTimeline,
+    regionCounts,
   } = useTranscriptTimeline(events, resolvedMarkerConfig, resolvedAgentConfig);
 
   // ---------------------------------------------------------------------------
@@ -473,6 +475,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                 isSticky={isSwimLaneSticky}
                 headroomCollapsed={!!headroomHidden && isSwimLaneSticky}
                 onLayoutShift={onHeadroomResetAnchor}
+                regionCounts={regionCounts}
               />
             </div>
           </StickyScroll>

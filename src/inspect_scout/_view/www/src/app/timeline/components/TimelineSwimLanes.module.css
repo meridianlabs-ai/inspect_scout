@@ -194,6 +194,40 @@
   opacity: 0.15;
 }
 
+/* Region segment — same as .fill but without :hover (hover is managed via JS).
+   Does NOT set opacity here — opacity comes from .fill-style state classes
+   (.fillParent, .fillSelected, .fillDimmed) or from .regionHover/.regionDefault. */
+.regionSegment {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  background-color: var(--bs-primary);
+  cursor: pointer;
+}
+
+/* Default opacity for region segments (matching .fill's base opacity) */
+.regionDefault {
+  opacity: 0.3;
+}
+
+/* Applied via React state when the segment (or whole bar) should show hover */
+.regionHover {
+  opacity: 0.5;
+}
+
+/* Region segments — partial border-radius for segmented bars */
+.regionFirst {
+  border-radius: 2px 0 0 2px;
+}
+
+.regionLast {
+  border-radius: 0 2px 2px 0;
+}
+
+.regionMiddle {
+  border-radius: 0;
+}
+
 .parallelBadge {
   font-size: var(--inspect-font-size-smallest);
   color: var(--vscode-descriptionForeground);
@@ -249,6 +283,8 @@
   top: 0;
   bottom: 0;
   height: auto;
+  width: 10px;
+  overflow: visible;
   transform: translateX(-50%);
   filter: none;
   cursor: pointer;

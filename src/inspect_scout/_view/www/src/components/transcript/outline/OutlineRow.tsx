@@ -22,10 +22,10 @@ export interface OutlineRowProps {
   onSelect?: (nodeId: string) => void;
   /** Called when a URL isn't available but the user clicks to navigate to an event. */
   onNavigateToEvent?: (eventId: string) => void;
-  /** Whether any row in the list has a toggle chevron. Controls column reservation. */
-  hasToggles?: boolean;
-  /** Whether any row in the list has an icon. Controls column reservation. */
-  hasIcons?: boolean;
+  /** Depths that have at least one toggle chevron. Controls column reservation per-depth. */
+  depthsWithToggles?: ReadonlySet<number>;
+  /** Depths that have at least one icon. Controls column reservation per-depth. */
+  depthsWithIcons?: ReadonlySet<number>;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -36,8 +36,8 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   getEventUrl,
   onSelect,
   onNavigateToEvent,
-  hasToggles = true,
-  hasIcons = true,
+  depthsWithToggles,
+  depthsWithIcons,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -47,6 +47,9 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   const toggle = toggleIcon(node, collapsed);
 
   const ref = useRef(null);
+
+  const hasToggle = depthsWithToggles?.has(node.depth) ?? false;
+  const hasIcon = depthsWithIcons?.has(node.depth) ?? false;
 
   // Generate URL for deep linking to this event
   const eventUrl = getEventUrl?.(node.id);
@@ -58,8 +61,8 @@ export const OutlineRow: FC<OutlineRowProps> = ({
           styles.eventRow,
           "text-size-smaller",
           selected ? styles.selected : "",
-          hasToggles && styles.withToggles,
-          hasIcons && styles.withIcons
+          hasToggle && styles.withToggles,
+          hasIcon && styles.withIcons
         )}
         style={{ paddingLeft: `${node.depth * 0.4}em` }}
         data-unsearchable={true}
@@ -68,7 +71,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
           onNavigateToEvent?.(node.id);
         }}
       >
-        {hasToggles && (
+        {hasToggle && (
           <div
             className={clsx(styles.toggle)}
             onClick={() => {
@@ -78,7 +81,7 @@ export const OutlineRow: FC<OutlineRowProps> = ({
             {toggle ? <i className={clsx(toggle)} /> : undefined}
           </div>
         )}
-        {hasIcons && (
+        {hasIcon && (
           <div className={styles.iconSlot}>
             {icon ? <i className={clsx(icon)} /> : undefined}
           </div>

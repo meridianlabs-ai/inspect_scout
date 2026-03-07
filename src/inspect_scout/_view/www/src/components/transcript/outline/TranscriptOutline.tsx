@@ -169,11 +169,30 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       ]
     );
 
-    return collapseScoring(collapseTurns(makeTurns(nodeList)));
+    const result = collapseScoring(collapseTurns(makeTurns(nodeList)));
+
+    // HACK: Simulate depth for visual testing — remove when done
+    return result.map((node, i) => ({
+      ...node,
+      depth: i % 5, // cycle through depths 0-4
+    }));
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
 
-  const hasToggles = outlineNodeList.some((n) => n.children.length > 0);
-  const hasIcons = outlineNodeList.some((n) => iconForNode(n) !== undefined);
+  const depthsWithToggles = useMemo(() => {
+    const s = new Set<number>();
+    for (const n of outlineNodeList) {
+      if (n.children.length > 0) s.add(n.depth);
+    }
+    return s;
+  }, [outlineNodeList]);
+
+  const depthsWithIcons = useMemo(() => {
+    const s = new Set<number>();
+    for (const n of outlineNodeList) {
+      if (iconForNode(n) !== undefined) s.add(n.depth);
+    }
+    return s;
+  }, [outlineNodeList]);
 
   const hasOutlineNodes = outlineNodeList.length > 0;
   useEffect(() => {
@@ -185,8 +204,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
     outlineNodeList,
     undefined,
     agentName,
-    hasToggles,
-    hasIcons
+    depthsWithToggles,
+    depthsWithIcons
   );
   useEffect(() => {
     onWidthChange?.(outlineWidth);
@@ -269,8 +288,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
             getEventUrl={getEventUrl}
             onSelect={handleOutlineSelect}
             onNavigateToEvent={onNavigateToEvent}
-            hasToggles={hasToggles}
-            hasIcons={hasIcons}
+            depthsWithToggles={depthsWithToggles}
+            depthsWithIcons={depthsWithIcons}
           />
         );
       }
@@ -282,8 +301,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       getEventUrl,
       handleOutlineSelect,
       onNavigateToEvent,
-      hasToggles,
-      hasIcons,
+      depthsWithToggles,
+      depthsWithIcons,
     ]
   );
 

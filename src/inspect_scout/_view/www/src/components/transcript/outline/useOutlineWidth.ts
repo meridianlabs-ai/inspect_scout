@@ -50,8 +50,8 @@ export function useOutlineWidth(
   outlineNodes: EventNode[],
   _font?: string,
   agentName?: string,
-  hasToggles?: boolean,
-  hasIcons?: boolean
+  depthsWithToggles?: ReadonlySet<number>,
+  depthsWithIcons?: ReadonlySet<number>
 ): number {
   return useMemo(() => {
     if (outlineNodes.length === 0 && !agentName) return kMinWidth;
@@ -87,22 +87,25 @@ export function useOutlineWidth(
     for (const node of outlineNodes) {
       const row = document.createElement("div");
 
+      const hasToggle = depthsWithToggles?.has(node.depth) ?? false;
+      const hasIcon = depthsWithIcons?.has(node.depth) ?? false;
+
       const classes = [rowStyles.eventRow ?? "", "text-size-smaller"];
-      if (hasToggles) classes.push(rowStyles.withToggles ?? "");
-      if (hasIcons) classes.push(rowStyles.withIcons ?? "");
+      if (hasToggle) classes.push(rowStyles.withToggles ?? "");
+      if (hasIcon) classes.push(rowStyles.withIcons ?? "");
       row.className = classes.join(" ");
       row.style.paddingLeft = `${node.depth * 0.4}em`;
       row.style.fontWeight = "800";
 
       // Toggle column placeholder (empty — just reserves space)
-      if (hasToggles) {
+      if (hasToggle) {
         const toggle = document.createElement("div");
         toggle.className = rowStyles.toggle ?? "";
         row.appendChild(toggle);
       }
 
       // Icon column placeholder
-      if (hasIcons) {
+      if (hasIcon) {
         const icon = document.createElement("div");
         icon.className = rowStyles.iconSlot ?? "";
         row.appendChild(icon);
@@ -125,7 +128,7 @@ export function useOutlineWidth(
     const width = root.getBoundingClientRect().width;
 
     return Math.min(kMaxWidth, Math.max(kMinWidth, Math.ceil(width)));
-  }, [outlineNodes, agentName, hasToggles, hasIcons]);
+  }, [outlineNodes, agentName, depthsWithToggles, depthsWithIcons]);
 }
 
 /**

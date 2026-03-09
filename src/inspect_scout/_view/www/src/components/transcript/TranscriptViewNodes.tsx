@@ -30,6 +30,8 @@ interface TranscriptViewNodesProps {
 export interface TranscriptViewNodesHandle {
   /** Scroll to an event by its ID. */
   scrollToEvent: (eventId: string) => void;
+  /** Scroll to a flattened-list index. */
+  scrollToIndex: (index: number) => void;
 }
 
 export const TranscriptViewNodes = forwardRef<
@@ -80,7 +82,22 @@ export const TranscriptViewNodes = forwardRef<
     [flattenedNodes, offsetTop]
   );
 
-  useImperativeHandle(ref, () => ({ scrollToEvent }), [scrollToEvent]);
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      listHandle.current?.scrollToIndex({
+        index,
+        align: "start",
+        behavior: "auto",
+        offset: offsetTop ? -offsetTop : undefined,
+      });
+    },
+    [offsetTop]
+  );
+
+  useImperativeHandle(ref, () => ({ scrollToEvent, scrollToIndex }), [
+    scrollToEvent,
+    scrollToIndex,
+  ]);
 
   // Cmd/Ctrl+Arrow keyboard shortcuts to jump to top/bottom of the event list.
   // Uses a two-stage scroll for ArrowDown: first jump near the end so Virtuoso

@@ -336,8 +336,24 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   const eventsListId = selected ? `${id}:${selected}` : id;
 
   // Scrubber scroll progress (0–1) for the minimap
-  const scrubberProgress = useScrubberProgress(
-    `live-virtual-list-${eventsListId}`
+  const listKey = `live-virtual-list-${eventsListId}`;
+  const scrubberProgress = useScrubberProgress(listKey);
+
+  const getVisibleRange = useStore((state) => state.getVisibleRange);
+  const handleScrub = useCallback(
+    (progress: number) => {
+      const { totalCount } = getVisibleRange(listKey);
+      if (totalCount <= 1) return;
+      // Map progress (0–1) directly to a list index. scrollToIndex with
+      // align:"start" naturally clamps at the bottom of the list, so we
+      // don't need to subtract viewport size (which varies with item height).
+      const targetIndex = Math.round(progress * (totalCount - 1));
+      // Suppress headroom direction changes during programmatic scroll
+      // so the swimlane header doesn't collapse/reveal while scrubbing.
+      onHeadroomResetAnchor?.(true);
+      eventsListRef.current?.scrollToIndex(targetIndex);
+    },
+    [getVisibleRange, listKey, onHeadroomResetAnchor]
   );
 
   // Clean up per-agent state when the transcript panel unmounts
@@ -467,6 +483,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                     selection: minimapSelection,
                     mapping: rootTimeMapping,
                     scrubberProgress,
+                    onScrub: handleScrub,
                   },
                   timelineConfig,
                   timelineSelector:

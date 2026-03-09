@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useRef } from "react";
 
 import type { TimelineSpan } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
@@ -30,6 +30,9 @@ export interface TimelineMinimapProps {
    *  Positioned as a fraction of the selection bar.
    *  `null` or `undefined` = no scrubber shown. */
   scrubberProgress?: number | null;
+  /** Called when the user clicks or drags on the selection region.
+   *  `progress` is 0–1 representing the target scroll position. */
+  onScrub?: (progress: number) => void;
 }
 
 /**
@@ -43,7 +46,40 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   selection,
   mapping,
   scrubberProgress,
+  onScrub,
 }) => {
+  const regionRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const progressFromPointer = useCallback((clientX: number): number => {
+    const rect = regionRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return 0;
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!onScrub) return;
+      e.preventDefault();
+      draggingRef.current = true;
+      regionRef.current?.setPointerCapture(e.pointerId);
+      onScrub(progressFromPointer(e.clientX));
+    },
+    [onScrub, progressFromPointer]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingRef.current || !onScrub) return;
+      onScrub(progressFromPointer(e.clientX));
+    },
+    [onScrub, progressFromPointer]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
+
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
     "minimapShowTokens",
@@ -135,6 +171,7 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
             toward the center and never clips at the near edge. */}
         {showRegion && (
           <div
+            ref={regionRef}
             className={styles.selectionRegion}
             style={
               bar.left + bar.width / 2 < 50
@@ -144,6 +181,10 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
                     minWidth: `${bar.width}%`,
                   }
             }
+            onPointerDown={onScrub ? handlePointerDown : undefined}
+            onPointerMove={onScrub ? handlePointerMove : undefined}
+            onPointerUp={onScrub ? handlePointerUp : undefined}
+            onLostPointerCapture={onScrub ? handlePointerUp : undefined}
           >
             <div className={styles.regionFill} />
 

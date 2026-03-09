@@ -100,6 +100,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 3px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.selectionRegion:active {
+  cursor: grabbing;
 }
 
 /* Section duration pill — normal flow child that sizes the label region */
@@ -116,7 +122,11 @@
 .sectionTimePill {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
-  background-color: color-mix(in srgb, var(--vscode-editor-background) 78%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 78%,
+    transparent
+  );
   border: none;
   border-radius: 3px;
   padding: 0 3px;

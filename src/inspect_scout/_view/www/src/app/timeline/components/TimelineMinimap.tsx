@@ -188,17 +188,19 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
           >
             <div className={styles.regionFill} />
 
-            {/* Scroll position scrubber — absolutely positioned inside
-                selectionRegion. Interpolates from 0 (left marker) to
-                calc(100% - 2px) (right marker) so the 2px bar stays
-                fully visible at both edges. */}
+            {/* Scroll position scrubber — vertical line + caret below,
+                absolutely positioned inside selectionRegion.
+                translateX(-50%) in CSS centers on the left %. */}
             {scrubberProgress != null && (
               <div
                 className={styles.scrubber}
                 style={{
-                  left: `calc(${scrubberProgress} * (100% - 2px))`,
+                  left: `${scrubberProgress * 100}%`,
                 }}
-              />
+              >
+                <div className={styles.scrubberCaretDown} />
+                <div className={styles.scrubberLine} />
+              </div>
             )}
 
             <div className={styles.marker} />

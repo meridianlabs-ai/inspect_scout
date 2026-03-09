@@ -46,7 +46,7 @@ def my_scanner():
     )
 ```
 
-When timeline scanning is enabled, each span in the timeline tree is scanned independently. In terms of the example above, there would be 5 distinct spans scanned: the "main" trajectory as well as the two "explore" and "code-reviewer" sub-agents. 
+When timeline scanning is enabled, each span in the timeline tree is scanned independently. In terms of the example above, there would be 5 distinct spans scanned: the "main" trajectory as well as the two "explore" and "code-reviewer" sub-agents. Each distinct span (main thread or sub-agent) then yields its own scanning result. 
 
 ### Depth Control {#depth}
 
@@ -94,11 +94,11 @@ def recent_behavior():
     )
 ```
 
-### Result Reduction {#reducers}
+### Context Chunking {#context-chunking}
 
-When scanning produces multiple results from multiple spans (depth \> 1) or from context-window segmentation within a single span, results are combined using a reducer.
+When a span's messages (after compaction processing) exceed the scanning model's context window, they are automatically split into segments sized to fit within 80% of the model's available context. Each segment is scanned independently with the same prompt. Use the `context_window` parameter to override the model's detected context window size.
 
-Default reducers by answer type:
+Because context-window segmentation can produce multiple results from a single span, those per-segment results are combined using a **reducer**. The default reducer is selected based on the answer type:
 
 | Answer Type        | Default Reducer       |
 |--------------------|-----------------------|
@@ -119,15 +119,13 @@ def synthesized_analysis():
     return llm_scanner(
         question="Summarize the agent's key decisions.",
         answer="string",
-        reducer=ResultReducer.llm(),  # LLM-based synthesis
+        reducer=ResultReducer.llm(model="openai/gpt-5"),
     )
 ```
 
 Built-in reducers include `ResultReducer.any`, `.mean`, `.median`, `.mode`, `.max`, `.min`, `.union`, `.majority`, `.last`.
 
-::: callout-tip
-Structured list answers (`list[MyModel]`) are particularly well-suited for timeline scanning. Per-span findings naturally roll up into a combined result set without needing reduction — each span produces its own list, and the lists are concatenated. See [LLM Scanner: Structured Lists](llm_scanner.qmd#structured-lists) for details.
-:::
+Note that reduction applies only within a single span when context-window segmentation is needed. When scanning multiple spans (depth \> 1), each span produces its own result independently, and these are collected into a `ResultSet` — no reduction occurs across spans.
 
 ### Utility Spans
 
@@ -166,6 +164,8 @@ An execution span representing an agent, tool, scorer, or other invocation.
 | `branches` | `list[TimelineBranch]` | Discarded alternative paths |
 | `utility` | `bool` | Whether this is a utility span (excluded from scanning) |
 | `description` | `str | None` | Optional description |
+| `agent_result` | `str | None` | The agent's result, if this span represents an agent |
+| `outline`      | `Outline | None` | Hierarchical outline of events within the span |
 
 Properties: `start_time`, `end_time`, `total_tokens`.
 

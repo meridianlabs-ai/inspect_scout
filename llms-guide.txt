@@ -2012,6 +2012,7 @@ Here are the available `Transcript` fields:
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
+| `timelines` | list\[Timeline\] | Optional list of custom timelines for this transcript. |
 
 ## Scanning Transcripts
 
@@ -3625,6 +3626,76 @@ the scanner model’s context. The two work together sequentially:
 compaction selects the region of interest, then context window
 segmentation ensures each piece fits within the scanning model’s limits.
 
+## Scanning Timelines
+
+A timeline is a tree of **spans** representing the structure of an
+agent’s execution. Each span corresponds to an agent, tool, or scorer
+invocation, and contains **events** (model calls, tool calls,
+compaction) with optional child spans. Timelines are built automatically
+from transcript events—they detect agent hierarchies, conversation
+threads, re-rolled attempts (branches), and utility agents.
+
+Utility spans (single-turn helper agents with different system prompts)
+are excluded from scanning by default, so the scanner focuses on the
+substantive agent interactions.
+
+### Opting In
+
+To scan timelines instead of raw messages, decorate your scanner with
+`@scanner(timeline=True)`:
+
+``` python
+from inspect_scout import llm_scanner, scanner
+
+@scanner(timeline=True)
+def my_scanner():
+    return llm_scanner(
+        question="...",
+        answer="boolean",
+    )
+```
+
+When timeline scanning is enabled, each span in the timeline tree is
+scanned independently—the LLM sees only that span’s conversation. This
+is particularly powerful with structured list answers, where each span
+produces its own list of findings that naturally roll up into a combined
+result set across all spans.
+
+### Structured Lists
+
+Structured list answers (`list[MyModel]`) are ideal for timeline
+scanning because they preserve per-span detail without needing a reducer
+to collapse results:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import (
+    AnswerStructured, llm_scanner, scanner,
+)
+
+class Finding(BaseModel):
+    category: str = Field(alias="label", description="Category of the finding.")
+    detail: str = Field(alias="explanation", description="Explain the finding, citing message numbers.")
+
+@scanner(timeline=True)
+def timeline_findings():
+    return llm_scanner(
+        question="Report any notable behaviors in the conversation.",
+        answer=AnswerStructured(type=list[Finding])
+    )
+```
+
+For simple answer types (boolean, numeric), the result from each span is
+reduced using the default reducer for that type.
+
+### Depth Control
+
+Use the `depth` parameter to limit how deep into the span tree to scan:
+
+- `depth=1` — scan only the root span
+- `depth=2` — scan the root and its immediate children
+- `depth=None` (default) — scan all levels
+
 # Grep Scanner
 
 
@@ -3885,9 +3956,9 @@ def comprehensive_error_check() -> Scanner[Transcript]:
 Scanners are the main unit of processing in Inspect Scout and can target
 a wide variety of content types. In this article we’ll cover the basic
 scanning concepts, and then drill into creating scanners that target
-various types (`Transcript`, `ChatMessage`, or `Event`) as well as
-creating custom loaders which enable scanning of lists of events or
-messages.
+various types (`Transcript`, `ChatMessage`, `Event`, or `Timeline`) as
+well as creating custom loaders which enable scanning of lists of events
+or messages.
 
 This article goes in depth on custom scanner development. If you are
 looking for a straightforward high-level way to create an LLM-based
@@ -3899,8 +3970,8 @@ Note that you can also use scanners directly as Inspect scorers (see
 ## Scanner Basics
 
 A `Scanner` is a function that takes a `ScannerInput` (typically a
-`Transcript`, but possibly an `Event`, `ChatMessage`, or list of events
-or messages) and returns a `Result`.
+`Transcript`, but possibly an `Event`, `ChatMessage`, `Timeline`, or
+list of events or messages) and returns a `Result`.
 
 The result includes a `value` which can be of any type—this might be
 `True` to indicate that something was found but might equally be a
@@ -3986,13 +4057,17 @@ types are possible:
 - `ChatMessage` — Single chat message from the transcript message
   history.
 
+- `Timeline` — Hierarchical span tree representing the structure of
+  agent execution. See [Timeline Scanners](#timelines) below for
+  details.
+
 - `list[Event]` or `list[ChatMessage]` — Arbitrary sets of events or
   messages extracted from the `Transcript` (see [Loaders](#loaders)
   below for details).
 
 See the sections on [Transcripts](#transcripts), [Events](#events),
-[Messages](#messages), and [Loaders](#loaders) below for additional
-details on handling various input types.
+[Messages](#messages), [Timelines](#timelines), and [Loaders](#loaders)
+below for additional details on handling various input types.
 
 ### Input Filtering
 
@@ -4030,7 +4105,8 @@ With this filter, only assistant messages (and no events at all) will be
 loaded from transcripts during scanning.
 
 Note that by default, no filters are active, so if you don’t specify
-values for `messages` and/or `events`, your scanner will not be called!
+values for `messages`, `events`, and/or `timeline` your scanner will not
+be called!
 
 The available filter parameters are:
 
@@ -4038,6 +4114,8 @@ The available filter parameters are:
   `["user", "assistant"]`.
 - `events` — Filter for event types: `"all"` or a list like
   `["model", "tool"]`.
+- `timeline` — Enable timeline loading: `True` for all event types,
+  `"all"`, or a list like `["model", "tool"]`.
 
 You can also provide a `version` parameter to track scanner versions.
 When the version is incremented, previously scanned transcripts will be
@@ -4078,6 +4156,7 @@ Here are the available `Transcript` fields:
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
+| `timelines` | list\[Timeline\] | Optional list of custom timelines for this transcript. |
 
 ### Content Filtering
 
@@ -4107,27 +4186,47 @@ def my_scanner() -> Scanner[Transcript]: ...
 ### Presenting Messages
 
 When processing transcripts, you will often want to present an entire
-message history to model for analysis. Above, we used the
-`messages_as_str()` function to do this:
+message history to a model for analysis. The `message_numbering()`
+function provides numbered message formatting and reference extraction:
 
 ``` python
+# setup message numbering
+messages_as_str, extract_refs = message_numbering()
+
 # call model
-result = await get_model().generate(
+output = await get_model().generate(
     "Here is a transcript of an LLM agent " +
     "solving a puzzle:\n\n" +
     "===================================" +
-    await messages_as_str(transcript) +
+    await messages_as_str(transcript.messages) +
     "===================================\n\n" +
     "In the transcript above do you see the agent " +
     "becoming confused? Respond beginning with 'Yes' " +
     "or 'No', followed by an explanation."
 )
+
+# extract references from the model's explanation
+explanation = output.completion
+references = extract_refs(explanation)
 ```
 
-The `messages_as_str()` function takes a
-`Transcript | list[ChatMessage]` and will by default remove system
-messages from the message list. See `MessagesPreprocessor` for other
-available options.
+The `message_numbering()` function returns a
+`(messages_as_str, extract_refs)` pair:
+
+- `messages_as_str()` converts a list of messages into a numbered string
+  representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.).
+  If called multiple times within the same numbering scope, numbering
+  continues where it left off (e.g. the second call starts at `[M6]` if
+  the first call rendered five messages).
+
+- `extract_refs()` resolves citations like `[M3]` in model output back
+  to message IDs, producing `Reference` objects suitable for
+  `Result.references`.
+
+You can optionally pass a `MessagesPreprocessor` to
+`message_numbering()` to control which messages are included. Available
+options include `exclude_system`, `exclude_reasoning`, and
+`exclude_tool_usage`.
 
 ## Event Scanners
 
@@ -4182,6 +4281,35 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
     return scan
 ```
+
+## Timeline Scanners
+
+Timelines provide a hierarchical view of agent execution, organizing
+flat events into a tree of spans that represent agent invocations, tool
+calls, and other structured activities. While flat message and event
+lists work well for simple transcripts, timelines are essential for
+understanding multi-agent or deeply nested agent workflows.
+
+To create a timeline scanner, use the `timeline` filter on the
+`@scanner` decorator or annotate your scanner with the `Timeline` type.
+You can also filter which event types are included in the timeline:
+
+``` python
+@scanner(timeline=True)
+def my_scanner() -> Scanner[Timeline]: ...
+
+@scanner(timeline=["model", "tool"])
+def my_scanner() -> Scanner[Timeline]: ...
+```
+
+Timeline scanning differs from transcript scanning in that each span in
+the timeline tree is scanned independently, allowing you to analyze
+individual agent invocations and their relationships.
+
+Note that timeline scanners are available only in the development
+version of Inspect Scout. See the [Multi Agent](multi_agent.qmd) article
+for a full description of the timeline data model and examples of
+timeline scanners.
 
 ## Multiple Results
 
@@ -4509,7 +4637,7 @@ def environment_scanner() -> Scanner[Transcript]:
                 )
             )
 
-        # reduce results (as multiple scanner passes may have run)
+        # reduce per-segment results into a single result
         return await ResultReducer.any(results)
 
     return scan
@@ -4534,9 +4662,9 @@ Call the model to generate an answer, extracting references from its
 explanation using the `extract_refs` function.
 
 Line 44  
-Multiple scanned segments require reduction. In this case we use the
-`.any()` reducer which will return `True` if any of the segment results
-were `True`.
+When context-window segmentation produces multiple segments, reduce them
+into a single result. Here we use the `.any()` reducer which returns
+`True` if any segment result was `True`.
 
 ## Presenting Messages
 
@@ -4764,6 +4892,8 @@ The `transcript_messages()` function is the primary API for extracting
 pre-rendered message segments from a transcript. It automatically
 selects the best extraction strategy based on what data is available:
 
+- If timelines are present, it walks the span tree and yields per-span
+  segments.
 - If only events are present, it extracts messages from events with
   compaction handling.
 - If only messages are present, it segments them by context window.
@@ -4790,15 +4920,40 @@ async for segment in transcript_messages(
 | `model` | Model used for token counting and context window lookup. |
 | `context_window` | Override the model’s detected context window size (in tokens). |
 | `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final segment. |
+| `depth` | Maximum depth of the span tree to process (timelines only). `None` recurses without limit. |
 | `include_scorers` | Whether to include scorer events in extraction (default `False`). |
 
-## Result Reduction
+### Lower-Level Alternatives
 
-When a transcript is split into multiple segments, each segment produces
-its own `Result`. The `ResultReducer` class provides static async
-reducers to combine these into a single result.
+For cases where you have a source other than a full transcript, two
+lower-level functions are available:
 
-### Static Reducers
+- `segment_messages(source, messages_as_str=...)` — Takes a
+  `list[ChatMessage]`, `list[Event]`, or `TimelineSpan` and yields
+  `MessagesSegment` objects segmented by context window.
+- `timeline_messages(timeline, messages_as_str=...)` — Takes a
+  `Timeline` or `TimelineSpan` and yields `TimelineMessages` for each
+  non-utility span with model events.
+
+These accept the same `model`, `context_window`, and `compaction`
+parameters as `transcript_messages()`.
+
+## Context Chunking
+
+When a transcript’s messages exceed the scanning model’s context window,
+`transcript_messages()` and `segment_messages()` automatically split
+them into segments sized to fit within 80% of the model’s available
+context. Each segment is scanned independently with the same prompt. Use
+the `context_window` parameter on `transcript_messages()` or
+`segment_messages()` to override the model’s detected context window
+size.
+
+### Result Reduction
+
+Because context-window segmentation can produce multiple results from a
+single source, those per-segment results need to be combined using a
+reducer. The `ResultReducer` class provides static async reducers for
+this purpose.
 
 | Reducer | Behaviour |
 |----|----|
@@ -4819,37 +4974,338 @@ All reducers are async functions with signature
 
 For cases where statistical reduction isn’t sufficient,
 `ResultReducer.llm()` returns a reducer that uses an LLM to synthesize
-multiple segment results into a coherent answer:
+segment results. It automatically formats each segment’s answer, value,
+and explanation into a prompt, asks the model to synthesize them, and
+returns a single combined result. It is the default reducer for
+`"string"` answer types.
 
 ``` python
-from inspect_scout import ResultReducer
+from inspect_scout import ResultReducer, llm_scanner, scanner
 
-# default LLM reducer
-reducer = ResultReducer.llm()
-
-# with custom model and prompt
-reducer = ResultReducer.llm(
-    model="openai/gpt-4o",
-    prompt="Synthesize these scan results into a single answer...",
-)
-
-# use the reducer
-final_result = await reducer(results)
+@scanner()
+def synthesized_analysis():
+    return llm_scanner(
+        question="Summarize the agent's key decisions.",
+        answer="string",
+        reducer=ResultReducer.llm(model="openai/gpt-5"),
+    )
 ```
 
-### Usage Examples
+You can pass a custom `prompt` to guide how the model combines segment
+results. The per-segment answers, values, and explanations are
+automatically appended after your prompt:
 
 ``` python
-# boolean: True if any segment found the issue
-result = await ResultReducer.any(results)
-
-# numeric: average score across segments
-result = await ResultReducer.mean(results)
-
-# LLM synthesis: model combines segment findings
-reducer = ResultReducer.llm()
-result = await reducer(results)
+@scanner()
+def security_summary():
+    return llm_scanner(
+        question="Identify any security concerns in the agent's actions.",
+        answer="string",
+        reducer=ResultReducer.llm(
+            prompt=(
+                "You are reviewing security findings from different "
+                "segments of a long agent conversation. Prioritize the "
+                "most severe issues, deduplicate overlapping findings, "
+                "and produce a concise summary ordered by severity."
+            ),
+        ),
+    )
 ```
+
+### Custom Reducers
+
+You can also write a custom reducer — any async function with the
+signature `(list[Result]) -> Result`. Each `Result` in the list has
+`.value`, `.answer`, `.explanation`, and `.references` from its segment:
+
+``` python
+from inspect_scout import Result, llm_scanner, scanner
+
+async def worst_score(results: list[Result]) -> Result:
+    """Keep the result with the lowest numeric value."""
+    return min(results, key=lambda r: r.value)
+
+@scanner()
+def strictest_scan():
+    return llm_scanner(
+        question="Rate the quality of the agent's output (1-10).",
+        answer="numeric",
+        reducer=worst_score,
+    )
+```
+
+Note that result reduction applies only to context-window segments
+within a single source. When scanning timelines with multiple spans,
+each span produces its own result independently — these are collected
+into a `ResultSet` without reduction.
+
+# Multi Agent
+
+
+> [!NOTE]
+>
+> The multi agent scanning features described below are available only
+> in the development version of Inspect Scout. Install the development
+> version from GitHub with:
+>
+> ``` python
+> pip install git+https://github.com/meridianlabs-ai/inspect_scout
+> ```
+
+## Overview
+
+Traditionally, evaluation and scanning workflows have assumed that a
+single conversation trajectory (message list) represents an agent’s
+activity. However, modern coding agents like Claude Code and Codex CLI
+create many additional dimensions to consider. Consider this transcript
+from a Claude Code agent session:
+
+![](images/event-timeline.png)
+
+As you can see, multiple sub-agents are created each of which feeds
+context back into the main agent trajectory. In many cases multiple
+agents are run in parallel, and compaction will often further divide
+trajectories into multiple-phases. Further, the total tokens consumed by
+these agents can often run into the tens of millions, requiring that
+scanning be chunked into multiple steps.
+
+Below we’ll describe the tools available in Scout to handle multi-agent
+transcripts.
+
+## Timelines
+
+A timeline is a hierarchical tree of spans built automatically from
+transcript events. Each span represents an agent, tool, or scorer
+invocation, containing events (model calls, tool calls, compaction) with
+optional child spans.
+
+When you enable `timeline=True` on a scanner, the timeline is built from
+the transcript’s events and made available on `Transcript.timelines`.
+
+## Scanning Timelines
+
+The primary use case for timelines is scanning—analyzing each agent’s
+conversation independently rather than treating the entire transcript as
+a flat message list.
+
+### Opting In
+
+To scan timelines instead of raw messages, set `timeline=True` on the
+`@scanner` decorator:
+
+``` python
+from inspect_scout import llm_scanner, scanner
+
+@scanner(timeline=True)
+def my_scanner():
+    return llm_scanner(
+        question="Did the agent exhibit any harmful behavior?",
+        answer="boolean",
+    )
+```
+
+When timeline scanning is enabled, each span in the timeline tree is
+scanned independently. In terms of the example above, there would be 5
+distinct spans scanned: the “main” trajectory as well as the two
+“explore” and “code-reviewer” sub-agents. Each distinct span (main
+thread or sub-agent) then yields its own scanning result.
+
+### Depth Control
+
+The `depth` parameter controls how deep into the span tree to scan:
+
+| `depth` | Behavior |
+|----|----|
+| `1` | Scan only the root span — the top-level agent’s full conversation thread. Treats the timeline like a flat transcript. |
+| `2` | Scan the root span and its immediate children. Covers the main agent plus its direct sub-agents. |
+| `None` (default) | Scan all levels recursively. Every non-utility span with model events is scanned independently. |
+
+With `depth=1` you get a single scan of the entire main conversation
+thread. With deeper values, each sub-agent’s conversation is scanned
+separately and results are combined. For example, `depth=2` on an agent
+that delegates to three sub-agents produces up to four independent scans
+(the root plus each child).
+
+``` python
+@scanner(timeline=True)
+def shallow_scan():
+    return llm_scanner(
+        question="Was the overall task completed successfully?",
+        answer="boolean",
+        depth=1,  # scan only the root agent's conversation
+    )
+```
+
+### Compaction
+
+Long-running agents may have their context window compressed
+mid-conversation (via summarization or trimming), creating compaction
+boundaries that divide the conversation into regions. The `compaction`
+parameter controls how these boundaries are handled:
+
+| `compaction` | Behavior |
+|----|----|
+| `"all"` (default) | Merge messages across compaction boundaries, reconstructing the full conversation. The scanner sees everything. |
+| `"last"` | Scan only the final region after the last compaction. Useful when you only care about recent behavior or when earlier context is too noisy. |
+| `N` (int) | Keep the last *N* compaction regions. `1` is equivalent to `"last"`. |
+
+``` python
+@scanner(timeline=True)
+def recent_behavior():
+    return llm_scanner(
+        question="Did the agent make any errors in its recent actions?",
+        answer="boolean",
+        compaction="last",  # scan only the most recent region
+    )
+```
+
+### Context Chunking
+
+When a span’s messages (after compaction processing) exceed the scanning
+model’s context window, they are automatically split into segments sized
+to fit within 80% of the model’s available context. Each segment is
+scanned independently with the same prompt. Use the `context_window`
+parameter to override the model’s detected context window size.
+
+Because context-window segmentation can produce multiple results from a
+single span, those per-segment results are combined using a **reducer**.
+The default reducer is selected based on the answer type:
+
+| Answer Type        | Default Reducer          |
+|--------------------|--------------------------|
+| `"boolean"`        | `ResultReducer.any`      |
+| `"numeric"`        | `ResultReducer.mean`     |
+| `"string"`         | `ResultReducer.llm()`    |
+| labels             | `ResultReducer.majority` |
+| `AnswerMultiLabel` | `ResultReducer.union`    |
+| `AnswerStructured` | `ResultReducer.last`     |
+
+Override with the `reducer` parameter:
+
+``` python
+from inspect_scout import ResultReducer, llm_scanner, scanner
+
+@scanner(timeline=True)
+def synthesized_analysis():
+    return llm_scanner(
+        question="Summarize the agent's key decisions.",
+        answer="string",
+        reducer=ResultReducer.llm(model="openai/gpt-5"),
+    )
+```
+
+Built-in reducers include `ResultReducer.any`, `.mean`, `.median`,
+`.mode`, `.max`, `.min`, `.union`, `.majority`, `.last`.
+
+Note that reduction applies only within a single span when
+context-window segmentation is needed. When scanning multiple spans
+(depth \> 1), each span produces its own result independently, and these
+are collected into a `ResultSet` — no reduction occurs across spans.
+
+### Utility Spans
+
+Single-turn helper agents with different system prompts (e.g., a bash
+command checker or title-generation helper) are automatically classified
+as utility spans and excluded from scanning. This ensures scanning
+focuses on substantive agent interactions rather than mechanical
+helpers.
+
+## Timeline Data Model
+
+### Building a Timeline
+
+Call `timeline_build(events)` to convert a flat event list into a
+hierarchical timeline. In a scanner context, timelines are built
+automatically when `timeline=True` — you rarely need to call it
+directly. The builder detects top-level phases (init → solvers →
+scorers), agent spans (both explicit and tool-spawned) and utility
+agents (single-turn helpers with different system prompts).
+
+### Timeline Data Types
+
+The timeline is composed of four types that form a recursive tree:
+
+#### `Timeline`
+
+The root container for a timeline view.
+
+| Field         | Type           | Description                      |
+|---------------|----------------|----------------------------------|
+| `name`        | `str`          | Name of the timeline view        |
+| `description` | `str`          | Description of the timeline      |
+| `root`        | `TimelineSpan` | Root span containing all content |
+
+#### `TimelineSpan`
+
+An execution span representing an agent, tool, scorer, or other
+invocation.
+
+| Field | Type | Description |
+|----|----|----|
+| `id` | `str` | Unique identifier |
+| `name` | `str` | Display name of the span |
+| `span_type` | `str | None` | `"agent"`, `"tool"`, `"scorers"`, or `None` |
+| `content` | `list[TimelineEvent | TimelineSpan]` | Child events and spans |
+| `branches` | `list[TimelineBranch]` | Discarded alternative paths |
+| `utility` | `bool` | Whether this is a utility span (excluded from scanning) |
+| `description` | `str | None` | Optional description |
+| `agent_result` | `str | None` | The agent’s result, if this span represents an agent |
+| `outline` | `Outline | None` | Hierarchical outline of events within the span |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+#### `TimelineEvent`
+
+Wraps a single `Event` from the transcript.
+
+| Field   | Type    | Description                                         |
+|---------|---------|-----------------------------------------------------|
+| `event` | `Event` | The wrapped event (e.g., `ModelEvent`, `ToolEvent`) |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+#### `TimelineBranch`
+
+A discarded alternative path from a branch point (re-rolled attempt).
+
+| Field | Type | Description |
+|----|----|----|
+| `forked_at` | `str` | ID of the event where the branch diverged |
+| `content` | `list[TimelineEvent | TimelineSpan]` | Events and spans in the discarded path |
+
+Properties: `start_time`, `end_time`, `total_tokens`.
+
+#### Nesting Structure
+
+The tree nests as: `Timeline` → root `TimelineSpan` → `content` (a mix
+of `TimelineEvent` and child `TimelineSpan` nodes). Each span can also
+have `branches` containing `TimelineBranch` objects that capture
+discarded retries.
+
+## Filtering Timelines
+
+Use `timeline_filter()` to create a new timeline containing only spans
+that match a predicate:
+
+``` python
+from inspect_ai.event import timeline_build, timeline_filter
+
+timeline = timeline_build(events)
+
+# Keep only agent spans
+agents_only = timeline_filter(timeline, lambda s: s.span_type == "agent")
+
+# Exclude scorer spans
+no_scorers = timeline_filter(timeline, lambda s: s.span_type != "scorers")
+
+# Exclude utility agents (single-turn helpers)
+no_utility = timeline_filter(timeline, lambda s: not s.utility)
+```
+
+The filter recursively walks the span tree, pruning non-matching spans
+and their subtrees. `TimelineEvent` items are always kept (they belong
+to the parent span). This is useful for pre-filtering a timeline before
+programmatic analysis.
 
 # Transcripts Database
 

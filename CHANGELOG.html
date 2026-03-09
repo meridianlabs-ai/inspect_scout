@@ -153,6 +153,10 @@ ul.task-list li input[type="checkbox"] {
     <a class="dropdown-item" href="./scanner_tools.html">
  <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./multi_agent.html">
+ <span class="dropdown-text">Multi Agent</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item dropdown ">
@@ -247,14 +251,21 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
 <ul>
 <li>LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.</li>
+<li>LLM Scanner: <code>AnswerMultiLabel(allow_none=True)</code> lets the model respond with <code>ANSWER: NONE</code> when no labels apply.</li>
+<li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span> automatically retries with format feedback when the model’s response can’t be parsed.</li>
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner_prompt">scanner_prompt()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#parse_answer">parse_answer()</a></span> functions for building custom scanners with fine-grained control.</li>
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#resultreducer">ResultReducer</a></span> for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.</li>
 <li>Scanner Tools: <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span>, <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span>, and <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> functions for extracting and segmenting transcript messages.</li>
 <li>Transcript DB: <span class="element-type-name ref-interlink"><a href="./reference/sources.html#claude_code">claude_code()</a></span> source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.</li>
 <li>CLI: <code>scout import</code> command for importing transcripts from registered sources into Scout projects.</li>
+<li>Serialization: Use <code>pa.large_string</code> for string types to support larger column/file sizes.</li>
 <li>Multiprocessing: Improve handling of model instances with multiprocessing serialization.</li>
 <li>Transcripts: unthin <code>target</code> and and add <code>scores</code> from sample JSON.</li>
+<li>Transcripts: Set row group size to 25 (specify as rows not bytes).</li>
 <li>Scout View: Properly sort scanner results using the value type.</li>
+<li>Scout View: Enable minification and caching of view static assets.</li>
+<li>Scout View: Fix issue rendering transcript events when showing the validation panel.</li>
+<li>Transcripts: Switch over to async ZIP modules (<code>async_zip</code>, <code>zip_common</code>, <code>compression</code>, <code>compression_transcoding</code>, <code>async_bytes_reader</code>) that have migrated to <code>inspect_ai</code>.</li>
 <li>Bugfix: Fix early-exit bug the failed to unthin <code>sample_metadata</code></li>
 </ul>
 </section>

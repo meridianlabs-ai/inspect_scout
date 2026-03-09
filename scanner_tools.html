@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./db_overview.html" rel="next">
+<link href="./multi_agent.html" rel="next">
 <link href="./custom_scanner.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -189,6 +189,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li>
     <a class="dropdown-item" href="./scanner_tools.html">
  <span class="dropdown-text">Scanner Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./multi_agent.html">
+ <span class="dropdown-text">Multi Agent</span></a>
   </li>  
     </ul>
   </li>
@@ -370,6 +374,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Scanner Tools</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multi_agent.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multi Agent</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -439,12 +449,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#multi-label-classification" id="toc-multi-label-classification" class="nav-link" data-scroll-target="#multi-label-classification">Multi-Label Classification</a></li>
   <li><a href="#structured-answers" id="toc-structured-answers" class="nav-link" data-scroll-target="#structured-answers">Structured Answers</a></li>
   </ul></li>
-  <li><a href="#message-extraction" id="toc-message-extraction" class="nav-link" data-scroll-target="#message-extraction">Message Extraction</a></li>
-  <li><a href="#result-reduction" id="toc-result-reduction" class="nav-link" data-scroll-target="#result-reduction">Result Reduction</a>
+  <li><a href="#message-extraction" id="toc-message-extraction" class="nav-link" data-scroll-target="#message-extraction">Message Extraction</a>
   <ul class="collapse">
-  <li><a href="#static-reducers" id="toc-static-reducers" class="nav-link" data-scroll-target="#static-reducers">Static Reducers</a></li>
+  <li><a href="#lower-level-alternatives" id="toc-lower-level-alternatives" class="nav-link" data-scroll-target="#lower-level-alternatives">Lower-Level Alternatives</a></li>
+  </ul></li>
+  <li><a href="#context-chunking" id="toc-context-chunking" class="nav-link" data-scroll-target="#context-chunking">Context Chunking</a>
+  <ul class="collapse">
+  <li><a href="#result-reduction" id="toc-result-reduction" class="nav-link" data-scroll-target="#result-reduction">Result Reduction</a></li>
   <li><a href="#llm-based-reduction" id="toc-llm-based-reduction" class="nav-link" data-scroll-target="#llm-based-reduction">LLM-Based Reduction</a></li>
-  <li><a href="#usage-examples" id="toc-usage-examples" class="nav-link" data-scroll-target="#usage-examples">Usage Examples</a></li>
+  <li><a href="#custom-reducers" id="toc-custom-reducers" class="nav-link" data-scroll-target="#custom-reducers">Custom Reducers</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -532,7 +545,7 @@ Note
 <span id="annotated-cell-1-40"><a href="#annotated-cell-1-40" aria-hidden="true" tabindex="-1"></a>                )</span>
 <span id="annotated-cell-1-41"><a href="#annotated-cell-1-41" aria-hidden="true" tabindex="-1"></a>            )</span>
 <span id="annotated-cell-1-42"><a href="#annotated-cell-1-42" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-1-43"><a href="#annotated-cell-1-43" aria-hidden="true" tabindex="-1"></a>        <span class="co"># reduce results (as multiple scanner passes may have run)</span></span>
+<span id="annotated-cell-1-43"><a href="#annotated-cell-1-43" aria-hidden="true" tabindex="-1"></a>        <span class="co"># reduce per-segment results into a single result</span></span>
 <button class="code-annotation-anchor" data-target-cell="annotated-cell-1" data-target-annotation="5">5</button><span id="annotated-cell-1-44" class="code-annotation-target"><a href="#annotated-cell-1-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="cf">await</span> ResultReducer.<span class="bu">any</span>(results)</span>
 <span id="annotated-cell-1-45"><a href="#annotated-cell-1-45" aria-hidden="true" tabindex="-1"></a></span>
 <span id="annotated-cell-1-46"><a href="#annotated-cell-1-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> scan</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -555,7 +568,7 @@ Note
 </dd>
 <dt data-target-cell="annotated-cell-1" data-target-annotation="5">5</dt>
 <dd>
-<span data-code-cell="annotated-cell-1" data-code-lines="44" data-code-annotation="5">Multiple scanned segments require reduction. In this case we use the <code>.any()</code> reducer which will return <code>True</code> if any of the segment results were <code>True</code>.</span>
+<span data-code-cell="annotated-cell-1" data-code-lines="44" data-code-annotation="5">When context-window segmentation produces multiple segments, reduce them into a single result. Here we use the <code>.any()</code> reducer which returns <code>True</code> if any segment result was <code>True</code>.</span>
 </dd>
 </dl>
 </section>
@@ -836,6 +849,7 @@ Note
 <h2 class="anchored" data-anchor-id="message-extraction">Message Extraction</h2>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span> function is the primary API for extracting pre-rendered message segments from a transcript. It automatically selects the best extraction strategy based on what data is available:</p>
 <ul>
+<li>If timelines are present, it walks the span tree and yields per-span segments.</li>
 <li>If only events are present, it extracts messages from events with compaction handling.</li>
 <li>If only messages are present, it segments them by context window.</li>
 </ul>
@@ -878,17 +892,31 @@ Note
 <td>How to handle compaction boundaries: <code>"all"</code> (default) merges across boundaries; <code>"last"</code> uses only the final segment.</td>
 </tr>
 <tr class="even">
+<td><code>depth</code></td>
+<td>Maximum depth of the span tree to process (timelines only). <code>None</code> recurses without limit.</td>
+</tr>
+<tr class="odd">
 <td><code>include_scorers</code></td>
 <td>Whether to include scorer events in extraction (default <code>False</code>).</td>
 </tr>
 </tbody>
 </table>
+<section id="lower-level-alternatives" class="level3">
+<h3 class="anchored" data-anchor-id="lower-level-alternatives">Lower-Level Alternatives</h3>
+<p>For cases where you have a source other than a full transcript, two lower-level functions are available:</p>
+<ul>
+<li><code>segment_messages(source, messages_as_str=...)</code> — Takes a <code>list[ChatMessage]</code>, <code>list[Event]</code>, or <code>TimelineSpan</code> and yields <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#messagessegment">MessagesSegment</a></span> objects segmented by context window.</li>
+<li><code>timeline_messages(timeline, messages_as_str=...)</code> — Takes a <code>Timeline</code> or <code>TimelineSpan</code> and yields <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinemessages">TimelineMessages</a></span> for each non-utility span with model events.</li>
+</ul>
+<p>These accept the same <code>model</code>, <code>context_window</code>, and <code>compaction</code> parameters as <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span>.</p>
 </section>
-<section id="result-reduction" class="level2">
-<h2 class="anchored" data-anchor-id="result-reduction">Result Reduction</h2>
-<p>When a transcript is split into multiple segments, each segment produces its own <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span>. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#resultreducer">ResultReducer</a></span> class provides static async reducers to combine these into a single result.</p>
-<section id="static-reducers" class="level3">
-<h3 class="anchored" data-anchor-id="static-reducers">Static Reducers</h3>
+</section>
+<section id="context-chunking" class="level2">
+<h2 class="anchored" data-anchor-id="context-chunking">Context Chunking</h2>
+<p>When a transcript’s messages exceed the scanning model’s context window, <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span> and <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span> automatically split them into segments sized to fit within 80% of the model’s available context. Each segment is scanned independently with the same prompt. Use the <code>context_window</code> parameter on <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span> or <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span> to override the model’s detected context window size.</p>
+<section id="result-reduction" class="level3">
+<h3 class="anchored" data-anchor-id="result-reduction">Result Reduction</h3>
+<p>Because context-window segmentation can produce multiple results from a single source, those per-segment results need to be combined using a reducer. The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#resultreducer">ResultReducer</a></span> class provides static async reducers for this purpose.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 44%">
@@ -943,32 +971,49 @@ Note
 </section>
 <section id="llm-based-reduction" class="level3">
 <h3 class="anchored" data-anchor-id="llm-based-reduction">LLM-Based Reduction</h3>
-<p>For cases where statistical reduction isn’t sufficient, <code>ResultReducer.llm()</code> returns a reducer that uses an LLM to synthesize multiple segment results into a coherent answer:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ResultReducer</span>
+<p>For cases where statistical reduction isn’t sufficient, <code>ResultReducer.llm()</code> returns a reducer that uses an LLM to synthesize segment results. It automatically formats each segment’s answer, value, and explanation into a prompt, asks the model to synthesize them, and returns a single combined result. It is the default reducer for <code>"string"</code> answer types.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ResultReducer, llm_scanner, scanner</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># default LLM reducer</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>reducer <span class="op">=</span> ResultReducer.llm()</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># with custom model and prompt</span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>reducer <span class="op">=</span> ResultReducer.llm(</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    model<span class="op">=</span><span class="st">"openai/gpt-4o"</span>,</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    prompt<span class="op">=</span><span class="st">"Synthesize these scan results into a single answer..."</span>,</span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="co"># use the reducer</span></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>final_result <span class="op">=</span> <span class="cf">await</span> reducer(results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> synthesized_analysis():</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Summarize the agent's key decisions."</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(model<span class="op">=</span><span class="st">"openai/gpt-5"</span>),</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can pass a custom <code>prompt</code> to guide how the model combines segment results. The per-segment answers, values, and explanations are automatically appended after your prompt:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> security_summary():</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Identify any security concerns in the agent's actions."</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>            prompt<span class="op">=</span>(</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">"You are reviewing security findings from different "</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">"segments of a long agent conversation. Prioritize the "</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">"most severe issues, deduplicate overlapping findings, "</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"and produce a concise summary ordered by severity."</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>            ),</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>        ),</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="usage-examples" class="level3">
-<h3 class="anchored" data-anchor-id="usage-examples">Usage Examples</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># boolean: True if any segment found the issue</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> <span class="cf">await</span> ResultReducer.<span class="bu">any</span>(results)</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># numeric: average score across segments</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> <span class="cf">await</span> ResultReducer.mean(results)</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># LLM synthesis: model combines segment findings</span></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>reducer <span class="op">=</span> ResultReducer.llm()</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> <span class="cf">await</span> reducer(results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="custom-reducers" class="level3">
+<h3 class="anchored" data-anchor-id="custom-reducers">Custom Reducers</h3>
+<p>You can also write a custom reducer — any async function with the signature <code>(list[Result]) -&gt; Result</code>. Each <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> in the list has <code>.value</code>, <code>.answer</code>, <code>.explanation</code>, and <code>.references</code> from its segment:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Result, llm_scanner, scanner</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> worst_score(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result:</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Keep the result with the lowest numeric value."""</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">min</span>(results, key<span class="op">=</span><span class="kw">lambda</span> r: r.value)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> strictest_scan():</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Rate the quality of the agent's output (1-10)."</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"numeric"</span>,</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>worst_score,</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Note that result reduction applies only to context-window segments within a single source. When scanning timelines with multiple spans, each span produces its own result independently — these are collected into a <code>ResultSet</code> without reduction.</p>
 
 
 </section>
@@ -1423,8 +1468,8 @@ Note
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./db_overview.html" class="pagination-link" aria-label="Transcripts">
-        <span class="nav-page-text">Transcripts</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./multi_agent.html" class="pagination-link" aria-label="Multi Agent">
+        <span class="nav-page-text">Multi Agent</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

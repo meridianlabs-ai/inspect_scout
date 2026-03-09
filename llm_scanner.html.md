@@ -507,3 +507,73 @@ window](#context-window) segmentation then splits those messages to fit
 the scanner model’s context. The two work together sequentially:
 compaction selects the region of interest, then context window
 segmentation ensures each piece fits within the scanning model’s limits.
+
+## Scanning Timelines
+
+A timeline is a tree of **spans** representing the structure of an
+agent’s execution. Each span corresponds to an agent, tool, or scorer
+invocation, and contains **events** (model calls, tool calls,
+compaction) with optional child spans. Timelines are built automatically
+from transcript events—they detect agent hierarchies, conversation
+threads, re-rolled attempts (branches), and utility agents.
+
+Utility spans (single-turn helper agents with different system prompts)
+are excluded from scanning by default, so the scanner focuses on the
+substantive agent interactions.
+
+### Opting In
+
+To scan timelines instead of raw messages, decorate your scanner with
+`@scanner(timeline=True)`:
+
+``` python
+from inspect_scout import llm_scanner, scanner
+
+@scanner(timeline=True)
+def my_scanner():
+    return llm_scanner(
+        question="...",
+        answer="boolean",
+    )
+```
+
+When timeline scanning is enabled, each span in the timeline tree is
+scanned independently—the LLM sees only that span’s conversation. This
+is particularly powerful with structured list answers, where each span
+produces its own list of findings that naturally roll up into a combined
+result set across all spans.
+
+### Structured Lists
+
+Structured list answers (`list[MyModel]`) are ideal for timeline
+scanning because they preserve per-span detail without needing a reducer
+to collapse results:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import (
+    AnswerStructured, llm_scanner, scanner,
+)
+
+class Finding(BaseModel):
+    category: str = Field(alias="label", description="Category of the finding.")
+    detail: str = Field(alias="explanation", description="Explain the finding, citing message numbers.")
+
+@scanner(timeline=True)
+def timeline_findings():
+    return llm_scanner(
+        question="Report any notable behaviors in the conversation.",
+        answer=AnswerStructured(type=list[Finding])
+    )
+```
+
+For simple answer types (boolean, numeric), the result from each span is
+reduced using the default reducer for that type.
+
+### Depth Control
+
+Use the `depth` parameter to limit how deep into the span tree to scan:
+
+- `depth=1` — scan only the root span
+- `depth=2` — scan the root and its immediate children
+- `depth=None` (default) — scan all levels

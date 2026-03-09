@@ -190,6 +190,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="dropdown-item" href="./scanner_tools.html">
  <span class="dropdown-text">Scanner Tools</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./multi_agent.html">
+ <span class="dropdown-text">Multi Agent</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item dropdown ">
@@ -370,6 +374,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Scanner Tools</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multi_agent.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multi Agent</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -441,6 +451,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#context-window" id="toc-context-window" class="nav-link" data-scroll-target="#context-window">Context Window</a></li>
   <li><a href="#compaction" id="toc-compaction" class="nav-link" data-scroll-target="#compaction">Compaction</a></li>
+  </ul></li>
+  <li><a href="#scanning-timelines" id="toc-scanning-timelines" class="nav-link" data-scroll-target="#scanning-timelines">Scanning Timelines</a>
+  <ul class="collapse">
+  <li><a href="#opting-in" id="toc-opting-in" class="nav-link" data-scroll-target="#opting-in">Opting In</a></li>
+  <li><a href="#structured-lists" id="toc-structured-lists" class="nav-link" data-scroll-target="#structured-lists">Structured Lists</a></li>
+  <li><a href="#depth-control" id="toc-depth-control" class="nav-link" data-scroll-target="#depth-control">Depth Control</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -1085,6 +1101,53 @@ Note
 </tbody>
 </table>
 <p>Compaction determines <em>which</em> messages to extract; <a href="#context-window">context window</a> segmentation then splits those messages to fit the scanner model’s context. The two work together sequentially: compaction selects the region of interest, then context window segmentation ensures each piece fits within the scanning model’s limits.</p>
+</section>
+</section>
+<section id="scanning-timelines" class="level2">
+<h2 class="anchored" data-anchor-id="scanning-timelines">Scanning Timelines</h2>
+<p>A timeline is a tree of <strong>spans</strong> representing the structure of an agent’s execution. Each span corresponds to an agent, tool, or scorer invocation, and contains <strong>events</strong> (model calls, tool calls, compaction) with optional child spans. Timelines are built automatically from transcript events—they detect agent hierarchies, conversation threads, re-rolled attempts (branches), and utility agents.</p>
+<p>Utility spans (single-turn helper agents with different system prompts) are excluded from scanning by default, so the scanner focuses on the substantive agent interactions.</p>
+<section id="opting-in" class="level3">
+<h3 class="anchored" data-anchor-id="opting-in">Opting In</h3>
+<p>To scan timelines instead of raw messages, decorate your scanner with <code>@scanner(timeline=True)</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> llm_scanner, scanner</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> my_scanner():</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"..."</span>,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"boolean"</span>,</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When timeline scanning is enabled, each span in the timeline tree is scanned independently—the LLM sees only that span’s conversation. This is particularly powerful with structured list answers, where each span produces its own list of findings that naturally roll up into a combined result set across all spans.</p>
+</section>
+<section id="structured-lists" class="level3">
+<h3 class="anchored" data-anchor-id="structured-lists">Structured Lists</h3>
+<p>Structured list answers (<code>list[MyModel]</code>) are ideal for timeline scanning because they preserve per-span detail without needing a reducer to collapse results:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pydantic <span class="im">import</span> BaseModel, Field</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> (</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    AnswerStructured, llm_scanner, scanner,</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Finding(BaseModel):</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    category: <span class="bu">str</span> <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"label"</span>, description<span class="op">=</span><span class="st">"Category of the finding."</span>)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    detail: <span class="bu">str</span> <span class="op">=</span> Field(alias<span class="op">=</span><span class="st">"explanation"</span>, description<span class="op">=</span><span class="st">"Explain the finding, citing message numbers."</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(timeline<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> timeline_findings():</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Report any notable behaviors in the conversation."</span>,</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span>AnswerStructured(<span class="bu">type</span><span class="op">=</span><span class="bu">list</span>[Finding])</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For simple answer types (boolean, numeric), the result from each span is reduced using the default reducer for that type.</p>
+</section>
+<section id="depth-control" class="level3">
+<h3 class="anchored" data-anchor-id="depth-control">Depth Control</h3>
+<p>Use the <code>depth</code> parameter to limit how deep into the span tree to scan:</p>
+<ul>
+<li><code>depth=1</code> — scan only the root span</li>
+<li><code>depth=2</code> — scan the root and its immediate children</li>
+<li><code>depth=None</code> (default) — scan all levels</li>
+</ul>
 
 
 </section>

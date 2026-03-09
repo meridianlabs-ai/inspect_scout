@@ -70,7 +70,7 @@ def environment_scanner() -> Scanner[Transcript]:
                 )
             )
 
-        # reduce results (as multiple scanner passes may have run)
+        # reduce per-segment results into a single result
         return await ResultReducer.any(results)
 
     return scan
@@ -95,9 +95,9 @@ Call the model to generate an answer, extracting references from its
 explanation using the `extract_refs` function.
 
 Line 44  
-Multiple scanned segments require reduction. In this case we use the
-`.any()` reducer which will return `True` if any of the segment results
-were `True`.
+When context-window segmentation produces multiple segments, reduce them
+into a single result. Here we use the `.any()` reducer which returns
+`True` if any segment result was `True`.
 
 ## Presenting Messages
 
@@ -325,6 +325,8 @@ The `transcript_messages()` function is the primary API for extracting
 pre-rendered message segments from a transcript. It automatically
 selects the best extraction strategy based on what data is available:
 
+- If timelines are present, it walks the span tree and yields per-span
+  segments.
 - If only events are present, it extracts messages from events with
   compaction handling.
 - If only messages are present, it segments them by context window.
@@ -351,15 +353,40 @@ async for segment in transcript_messages(
 | `model` | Model used for token counting and context window lookup. |
 | `context_window` | Override the model’s detected context window size (in tokens). |
 | `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final segment. |
+| `depth` | Maximum depth of the span tree to process (timelines only). `None` recurses without limit. |
 | `include_scorers` | Whether to include scorer events in extraction (default `False`). |
 
-## Result Reduction
+### Lower-Level Alternatives
 
-When a transcript is split into multiple segments, each segment produces
-its own `Result`. The `ResultReducer` class provides static async
-reducers to combine these into a single result.
+For cases where you have a source other than a full transcript, two
+lower-level functions are available:
 
-### Static Reducers
+- `segment_messages(source, messages_as_str=...)` — Takes a
+  `list[ChatMessage]`, `list[Event]`, or `TimelineSpan` and yields
+  `MessagesSegment` objects segmented by context window.
+- `timeline_messages(timeline, messages_as_str=...)` — Takes a
+  `Timeline` or `TimelineSpan` and yields `TimelineMessages` for each
+  non-utility span with model events.
+
+These accept the same `model`, `context_window`, and `compaction`
+parameters as `transcript_messages()`.
+
+## Context Chunking
+
+When a transcript’s messages exceed the scanning model’s context window,
+`transcript_messages()` and `segment_messages()` automatically split
+them into segments sized to fit within 80% of the model’s available
+context. Each segment is scanned independently with the same prompt. Use
+the `context_window` parameter on `transcript_messages()` or
+`segment_messages()` to override the model’s detected context window
+size.
+
+### Result Reduction
+
+Because context-window segmentation can produce multiple results from a
+single source, those per-segment results need to be combined using a
+reducer. The `ResultReducer` class provides static async reducers for
+this purpose.
 
 | Reducer | Behaviour |
 |----|----|
@@ -380,34 +407,67 @@ All reducers are async functions with signature
 
 For cases where statistical reduction isn’t sufficient,
 `ResultReducer.llm()` returns a reducer that uses an LLM to synthesize
-multiple segment results into a coherent answer:
+segment results. It automatically formats each segment’s answer, value,
+and explanation into a prompt, asks the model to synthesize them, and
+returns a single combined result. It is the default reducer for
+`"string"` answer types.
 
 ``` python
-from inspect_scout import ResultReducer
+from inspect_scout import ResultReducer, llm_scanner, scanner
 
-# default LLM reducer
-reducer = ResultReducer.llm()
-
-# with custom model and prompt
-reducer = ResultReducer.llm(
-    model="openai/gpt-4o",
-    prompt="Synthesize these scan results into a single answer...",
-)
-
-# use the reducer
-final_result = await reducer(results)
+@scanner()
+def synthesized_analysis():
+    return llm_scanner(
+        question="Summarize the agent's key decisions.",
+        answer="string",
+        reducer=ResultReducer.llm(model="openai/gpt-5"),
+    )
 ```
 
-### Usage Examples
+You can pass a custom `prompt` to guide how the model combines segment
+results. The per-segment answers, values, and explanations are
+automatically appended after your prompt:
 
 ``` python
-# boolean: True if any segment found the issue
-result = await ResultReducer.any(results)
-
-# numeric: average score across segments
-result = await ResultReducer.mean(results)
-
-# LLM synthesis: model combines segment findings
-reducer = ResultReducer.llm()
-result = await reducer(results)
+@scanner()
+def security_summary():
+    return llm_scanner(
+        question="Identify any security concerns in the agent's actions.",
+        answer="string",
+        reducer=ResultReducer.llm(
+            prompt=(
+                "You are reviewing security findings from different "
+                "segments of a long agent conversation. Prioritize the "
+                "most severe issues, deduplicate overlapping findings, "
+                "and produce a concise summary ordered by severity."
+            ),
+        ),
+    )
 ```
+
+### Custom Reducers
+
+You can also write a custom reducer — any async function with the
+signature `(list[Result]) -> Result`. Each `Result` in the list has
+`.value`, `.answer`, `.explanation`, and `.references` from its segment:
+
+``` python
+from inspect_scout import Result, llm_scanner, scanner
+
+async def worst_score(results: list[Result]) -> Result:
+    """Keep the result with the lowest numeric value."""
+    return min(results, key=lambda r: r.value)
+
+@scanner()
+def strictest_scan():
+    return llm_scanner(
+        question="Rate the quality of the agent's output (1-10).",
+        answer="numeric",
+        reducer=worst_score,
+    )
+```
+
+Note that result reduction applies only to context-window segments
+within a single source. When scanning timelines with multiple spans,
+each span produces its own result independently — these are collected
+into a `ResultSet` without reduction.

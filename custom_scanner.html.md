@@ -6,9 +6,9 @@
 Scanners are the main unit of processing in Inspect Scout and can target
 a wide variety of content types. In this article we’ll cover the basic
 scanning concepts, and then drill into creating scanners that target
-various types (`Transcript`, `ChatMessage`, or `Event`) as well as
-creating custom loaders which enable scanning of lists of events or
-messages.
+various types (`Transcript`, `ChatMessage`, `Event`, or `Timeline`) as
+well as creating custom loaders which enable scanning of lists of events
+or messages.
 
 This article goes in depth on custom scanner development. If you are
 looking for a straightforward high-level way to create an LLM-based
@@ -20,8 +20,8 @@ Note that you can also use scanners directly as Inspect scorers (see
 ## Scanner Basics
 
 A `Scanner` is a function that takes a `ScannerInput` (typically a
-`Transcript`, but possibly an `Event`, `ChatMessage`, or list of events
-or messages) and returns a `Result`.
+`Transcript`, but possibly an `Event`, `ChatMessage`, `Timeline`, or
+list of events or messages) and returns a `Result`.
 
 The result includes a `value` which can be of any type—this might be
 `True` to indicate that something was found but might equally be a
@@ -107,13 +107,17 @@ types are possible:
 - `ChatMessage` — Single chat message from the transcript message
   history.
 
+- `Timeline` — Hierarchical span tree representing the structure of
+  agent execution. See [Timeline Scanners](#timelines) below for
+  details.
+
 - `list[Event]` or `list[ChatMessage]` — Arbitrary sets of events or
   messages extracted from the `Transcript` (see [Loaders](#loaders)
   below for details).
 
 See the sections on [Transcripts](#transcripts), [Events](#events),
-[Messages](#messages), and [Loaders](#loaders) below for additional
-details on handling various input types.
+[Messages](#messages), [Timelines](#timelines), and [Loaders](#loaders)
+below for additional details on handling various input types.
 
 ### Input Filtering
 
@@ -151,7 +155,8 @@ With this filter, only assistant messages (and no events at all) will be
 loaded from transcripts during scanning.
 
 Note that by default, no filters are active, so if you don’t specify
-values for `messages` and/or `events`, your scanner will not be called!
+values for `messages`, `events`, and/or `timeline` your scanner will not
+be called!
 
 The available filter parameters are:
 
@@ -159,6 +164,8 @@ The available filter parameters are:
   `["user", "assistant"]`.
 - `events` — Filter for event types: `"all"` or a list like
   `["model", "tool"]`.
+- `timeline` — Enable timeline loading: `True` for all event types,
+  `"all"`, or a list like `["model", "tool"]`.
 
 You can also provide a `version` parameter to track scanner versions.
 When the version is incremented, previously scanned transcripts will be
@@ -199,6 +206,7 @@ Here are the available `Transcript` fields:
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
+| `timelines` | list\[Timeline\] | Optional list of custom timelines for this transcript. |
 
 ### Content Filtering
 
@@ -228,27 +236,47 @@ def my_scanner() -> Scanner[Transcript]: ...
 ### Presenting Messages
 
 When processing transcripts, you will often want to present an entire
-message history to model for analysis. Above, we used the
-`messages_as_str()` function to do this:
+message history to a model for analysis. The `message_numbering()`
+function provides numbered message formatting and reference extraction:
 
 ``` python
+# setup message numbering
+messages_as_str, extract_refs = message_numbering()
+
 # call model
-result = await get_model().generate(
+output = await get_model().generate(
     "Here is a transcript of an LLM agent " +
     "solving a puzzle:\n\n" +
     "===================================" +
-    await messages_as_str(transcript) +
+    await messages_as_str(transcript.messages) +
     "===================================\n\n" +
     "In the transcript above do you see the agent " +
     "becoming confused? Respond beginning with 'Yes' " +
     "or 'No', followed by an explanation."
 )
+
+# extract references from the model's explanation
+explanation = output.completion
+references = extract_refs(explanation)
 ```
 
-The `messages_as_str()` function takes a
-`Transcript | list[ChatMessage]` and will by default remove system
-messages from the message list. See `MessagesPreprocessor` for other
-available options.
+The `message_numbering()` function returns a
+`(messages_as_str, extract_refs)` pair:
+
+- `messages_as_str()` converts a list of messages into a numbered string
+  representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.).
+  If called multiple times within the same numbering scope, numbering
+  continues where it left off (e.g. the second call starts at `[M6]` if
+  the first call rendered five messages).
+
+- `extract_refs()` resolves citations like `[M3]` in model output back
+  to message IDs, producing `Reference` objects suitable for
+  `Result.references`.
+
+You can optionally pass a `MessagesPreprocessor` to
+`message_numbering()` to control which messages are included. Available
+options include `exclude_system`, `exclude_reasoning`, and
+`exclude_tool_usage`.
 
 ## Event Scanners
 
@@ -303,6 +331,35 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
     return scan
 ```
+
+## Timeline Scanners
+
+Timelines provide a hierarchical view of agent execution, organizing
+flat events into a tree of spans that represent agent invocations, tool
+calls, and other structured activities. While flat message and event
+lists work well for simple transcripts, timelines are essential for
+understanding multi-agent or deeply nested agent workflows.
+
+To create a timeline scanner, use the `timeline` filter on the
+`@scanner` decorator or annotate your scanner with the `Timeline` type.
+You can also filter which event types are included in the timeline:
+
+``` python
+@scanner(timeline=True)
+def my_scanner() -> Scanner[Timeline]: ...
+
+@scanner(timeline=["model", "tool"])
+def my_scanner() -> Scanner[Timeline]: ...
+```
+
+Timeline scanning differs from transcript scanning in that each span in
+the timeline tree is scanned independently, allowing you to analyze
+individual agent invocations and their relationships.
+
+Note that timeline scanners are available only in the development
+version of Inspect Scout. See the [Multi Agent](multi_agent.qmd) article
+for a full description of the timeline data model and examples of
+timeline scanners.
 
 ## Multiple Results
 

@@ -1661,7 +1661,8 @@
             "enum": [
               "auto",
               "low",
-              "high"
+              "high",
+              "original"
             ],
             "title": "Detail",
             "type": "string"
@@ -3800,7 +3801,8 @@
       "InvalidationTopic": {
         "enum": [
           "project-config",
-          "scans"
+          "scans",
+          "transcripts"
         ],
         "type": "string"
       },
@@ -9050,6 +9052,18 @@
       "TimelineSpan": {
         "description": "A span of execution \u2014 agent, scorer, tool, or root.",
         "properties": {
+          "agent_result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Result"
+          },
           "branches": {
             "items": {
               "$ref": "#/components/schemas/TimelineBranch"
@@ -11481,7 +11495,8 @@
                   "propertyNames": {
                     "enum": [
                       "project-config",
-                      "scans"
+                      "scans",
+                      "transcripts"
                     ]
                   },
                   "title": "Response Get Topics Topics Get",

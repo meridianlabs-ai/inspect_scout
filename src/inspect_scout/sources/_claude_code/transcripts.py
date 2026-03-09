@@ -301,9 +301,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
         wall_clock = (root.end_time - root.start_time).total_seconds()
         total_time = wall_clock - root.idle_time
     else:
-        total_time = sum(
-            t.total_time for t in transcripts if t.total_time
-        )
+        total_time = sum(t.total_time for t in transcripts if t.total_time)
 
     # Build merged metadata
     metadata = dict(first.metadata)

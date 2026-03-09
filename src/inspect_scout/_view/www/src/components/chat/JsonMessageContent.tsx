@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { FC } from "react";
 
+import { useStore } from "../../state/store";
 import { RecordTree } from "../content/RecordTree";
 
 import styles from "./JsonMessageContent.module.css";
@@ -16,12 +17,21 @@ export const JsonMessageContent: FC<JsonMessageContentProps> = ({
   json,
   className,
 }) => {
-  return (
-    <RecordTree
-      id={id}
-      record={json}
-      className={clsx(styles.jsonMessage, className)}
-      useBorders={false}
-    />
-  );
+  const displayMode = useStore((state) => state.transcriptState.displayMode);
+  if (displayMode === "rendered") {
+    return (
+      <RecordTree
+        id={id}
+        record={json}
+        className={clsx(styles.jsonMessage, className)}
+        useBorders={false}
+      />
+    );
+  } else {
+    return (
+      <pre className={clsx(styles.jsonMessage, className)}>
+        {JSON.stringify(json, null, 2)}
+      </pre>
+    );
+  }
 };

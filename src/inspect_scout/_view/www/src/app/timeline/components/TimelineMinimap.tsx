@@ -188,7 +188,7 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
           >
             <div className={styles.regionFill} />
 
-            {/* Scroll position scrubber — vertical line + caret below,
+            {/* Scroll position scrubber — vertical line + caret below track,
                 absolutely positioned inside selectionRegion.
                 translateX(-50%) in CSS centers on the left %. */}
             {scrubberProgress != null && (
@@ -198,8 +198,8 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
                   left: `${scrubberProgress * 100}%`,
                 }}
               >
-                <div className={styles.scrubberCaretDown} />
                 <div className={styles.scrubberLine} />
+                <div className={styles.scrubberCaretUp} />
               </div>
             )}
 

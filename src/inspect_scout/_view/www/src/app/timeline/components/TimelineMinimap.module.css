@@ -109,16 +109,17 @@
 }
 
 /* Section duration pill — normal flow child that sizes the label region.
- * Shifted down so the pill sits just below the track line. */
+ * Shifted up so the pill sits just above the track line. */
 .sectionTime {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: center;
   pointer-events: none;
   user-select: none;
   position: relative;
   z-index: 1;
-  margin-top: 20px;
+  margin-bottom: 20px;
+  padding-top: 4px;
 }
 
 .sectionTimePill {
@@ -134,13 +135,13 @@
   cursor: pointer;
 }
 
-/* Scroll position scrubber — downward caret on top with vertical line below.
+/* Scroll position scrubber — vertical line on top with upward caret below.
  * Wrapper is positioned absolutely within .selectionRegion; translateX(-50%)
  * centers the assembly on the computed left percentage. */
 .scrubber {
   position: absolute;
-  top: 1px;
-  height: 16px;
+  bottom: 1px;
+  height: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -148,19 +149,19 @@
   transform: translateX(-50%);
 }
 
-.scrubberCaretDown {
+.scrubberLine {
+  width: 1px;
+  flex: 1;
+  margin-bottom: 1px;
+  background-color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+
+.scrubberCaretUp {
   width: 0;
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 5px solid var(--vscode-descriptionForeground);
-  opacity: 0.7;
-}
-
-.scrubberLine {
-  width: 1px;
-  flex: 1;
-  margin-top: 1px;
-  background-color: var(--vscode-descriptionForeground);
+  border-bottom: 5px solid var(--vscode-descriptionForeground);
   opacity: 0.7;
 }

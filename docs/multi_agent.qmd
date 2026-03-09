@@ -1,5 +1,6 @@
 ---
 title: "Multi Agent"
+lightbox: true
 ---
 
 ::: {.callout-note}
@@ -12,21 +13,13 @@ pip install git+https://github.com/meridianlabs-ai/inspect_scout
 
 ## Overview
 
-Traditionally, evaluation and scanning workflows have assumed that a single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider:
+Traditionally, evaluation and scanning workflows have assumed that a single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider. Consider this transcript from a Claude Code agent session:
 
-(1) Multiple sub-agents (often running in parallel) are created, producing transcripts with several indepedent message trajectories.
+![](images/event-timeline.png){.border}
 
-(2) Compaction often further divides trajectories into multiple-phases (wherby the compacted messages can be lost in updates to the conversation).
-
-(3) The total tokens consumed by these agents can often run into the tens of millions, further requiring that scanning be chunked into multiple steps.
+As you can see, multiple sub-agents are created each of which feeds context back into the main agent trajectory. In many cases multiple agents are run in parallel, and compaction will often further divide trajectories into multiple-phases. Further, the total tokens consumed by these agents can often run into the tens of millions, requiring that scanning be chunked into multiple steps.
 
 Below we'll describe the tools available in Scout to handle multi-agent transcripts. 
-
-## Scout View
-
-Scout View uses the agent spans included in transcript event streams to create a multi agent timeline (note that this relies on the transcript making use of agent spans, which varies depending on the source of transcript data). 
-
-
 
 ## Timelines
 
@@ -36,7 +29,7 @@ When you enable `timeline=True` on a scanner, the timeline is built from the tra
 
 ## Scanning Timelines
 
-The primary use case for timelines is scanning—--analyzing each agent's conversation independently rather than treating the entire transcript as a flat message list.
+The primary use case for timelines is scanning---analyzing each agent's conversation independently rather than treating the entire transcript as a flat message list.
 
 ### Opting In
 
@@ -53,7 +46,7 @@ def my_scanner():
     )
 ```
 
-When timeline scanning is enabled, each span in the timeline tree is scanned independently. The LLM sees only that span's conversation. Results from multiple spans are combined using a [reducer](#result-reduction).
+When timeline scanning is enabled, each span in the timeline tree is scanned independently. In terms of the example above, there would be 5 distinct spans scanned: the "main" trajectory as well as the two "explore" and "code-reviewer" sub-agents. 
 
 ### Depth Control {#depth}
 

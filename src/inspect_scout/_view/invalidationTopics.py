@@ -6,7 +6,7 @@ from typing import Literal, TypeAlias
 
 import anyio
 
-InvalidationTopic: TypeAlias = Literal["project-config", "scans"]
+InvalidationTopic: TypeAlias = Literal["project-config", "scans", "transcripts"]
 
 _startup_timestamp = datetime.now(timezone.utc).isoformat()
 _versions: dict[InvalidationTopic, str] = {

@@ -20,6 +20,7 @@ from inspect_scout._util.constants import (
     DEFAULT_SERVER_HOST,
     DEFAULT_VIEW_PORT,
 )
+from inspect_scout._view.notify import notify_lifespan
 from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
@@ -120,7 +121,7 @@ def view_server(
     if authorization:
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
-    app = FastAPI()
+    app = FastAPI(lifespan=notify_lifespan)
     app.mount("/api/v2", v2_api)
 
     app.mount(

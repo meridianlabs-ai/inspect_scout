@@ -232,6 +232,10 @@ class EvalLogTranscriptsView(TranscriptsView):
     connections to the same logs reuse the existing database.
     """
 
+    @staticmethod
+    def clear_cache() -> None:
+        _sqlite_cache.clear()
+
     def __init__(
         self,
         logs: Logs | pd.DataFrame,

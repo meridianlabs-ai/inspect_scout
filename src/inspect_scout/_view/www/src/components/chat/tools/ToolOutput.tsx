@@ -56,6 +56,7 @@ interface ToolTextOutputProps {
  * Renders the ToolTextOutput component.
  */
 const ToolTextOutput: FC<ToolTextOutputProps> = ({ text }) => {
+  console.log({ text, t: isJson(text) });
   if (isJson(text)) {
     const obj = JSON.parse(text);
     return <JsonMessageContent id={`1-json`} json={obj} />;

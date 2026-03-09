@@ -14,12 +14,12 @@
 }
 
 .toolView p > code {
-  font-size: 0.8rem !important;
+  font-size: var(--inspect-text-size-small) !important;
   color: var(--bs-body-color) !important;
 }
 
 .outputCode {
-  font-size: 0.8rem !important;
+  font-size: var(--inspect-text-size-small) !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
 }

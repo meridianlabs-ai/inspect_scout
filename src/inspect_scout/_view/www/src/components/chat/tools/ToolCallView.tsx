@@ -164,7 +164,7 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
         <ExpandablePanel
           id={`${id}-tool-content`}
           collapse={collapse}
-          border={true}
+          border={false}
           lines={15}
           className={clsx("text-size-small")}
         >
@@ -174,7 +174,7 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
         <ExpandablePanel
           id={`${id}-tool-content`}
           collapse={collapse}
-          border={true}
+          border={false}
           lines={15}
           className={clsx("text-size-small")}
         >

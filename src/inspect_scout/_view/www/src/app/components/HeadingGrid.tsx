@@ -4,7 +4,7 @@ import { FC, ReactNode } from "react";
 import styles from "./HeadingGrid.module.css";
 
 export interface HeadingValue {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   labelPosition?: "left" | "right" | "above" | "below";
 }

@@ -29,7 +29,6 @@ export const SandboxEventView: FC<SandboxEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       className={className}
       title={`Sandbox: ${event.action}`}
       icon={ApplicationIcons.sandbox}

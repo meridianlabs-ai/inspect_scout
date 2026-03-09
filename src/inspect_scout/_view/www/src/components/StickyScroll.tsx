@@ -16,6 +16,12 @@ interface StickyScrollProps {
   className?: string;
   stickyClassName?: string;
   onStickyChange?: (isSticky: boolean) => void;
+  /**
+   * When true, the placeholder height is locked to the content's height
+   * measured just before entering sticky mode. This prevents layout jumps
+   * when the content shrinks while sticky (e.g. a collapsed swimlane).
+   */
+  preserveHeight?: boolean;
 }
 
 export const StickyScroll: FC<StickyScrollProps> = ({
@@ -26,147 +32,86 @@ export const StickyScroll: FC<StickyScrollProps> = ({
   className = "",
   stickyClassName = "is-sticky",
   onStickyChange,
+  preserveHeight = false,
 }) => {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isSticky, setIsSticky] = useState(false);
-  const [dimensions, setDimensions] = useState({
-    width: 0,
-    height: 0,
-    left: 0,
-    stickyTop: 0, // Store the position where the element should stick
-  });
+  // Height captured just before entering sticky mode, used with preserveHeight
+  // to keep the content area from collapsing when the sticky content shrinks.
+  const [preStickHeight, setPreStickHeight] = useState(0);
 
+  // Stable ref for the callback to avoid re-running the effect on identity changes.
+  const onStickyChangeRef = useRef(onStickyChange);
   useEffect(() => {
-    const wrapper = wrapperRef.current;
+    onStickyChangeRef.current = onStickyChange;
+  }, [onStickyChange]);
+
+  // Detect sticky state by comparing the element's position to the scroll
+  // container on each scroll event. When the element is "stuck," its top
+  // edge aligns with the container's top edge + offsetTop (within 1px).
+  // This avoids a sentinel element that would break grid/flex layouts.
+  useEffect(() => {
     const content = contentRef.current;
     const scrollContainer = scrollRef.current;
+    if (!content || !scrollContainer) return;
 
-    if (!wrapper || !content || !scrollContainer) {
-      return;
-    }
+    const checkSticky = () => {
+      const containerTop = scrollContainer.getBoundingClientRect().top;
+      const contentTop = content.getBoundingClientRect().top;
+      // The element is sticky when it's at (or within 1px of) its sticky offset
+      const nowSticky = contentTop <= containerTop + offsetTop + 1;
 
-    // Create a sentinel element that will be positioned at the desired sticky point
-    const sentinel = document.createElement("div");
-    sentinel.style.position = "absolute";
-    sentinel.style.top = "0px"; // Position at the top of the wrapper
-    sentinel.style.left = "0";
-    sentinel.style.width = "1px";
-    sentinel.style.height = "1px";
-    sentinel.style.pointerEvents = "none";
-    wrapper.prepend(sentinel);
+      setIsSticky((prev) => {
+        if (prev === nowSticky) return prev;
 
-    // Create a width tracker element that always has the same width as the wrapper
-    // This helps us know what width to apply to the fixed element
-    const widthTracker = document.createElement("div");
-    widthTracker.style.position = "absolute";
-    widthTracker.style.top = "0";
-    widthTracker.style.left = "0";
-    widthTracker.style.width = "100%";
-    widthTracker.style.height = "0";
-    widthTracker.style.pointerEvents = "none";
-    widthTracker.style.visibility = "hidden";
-    wrapper.prepend(widthTracker);
-
-    // Measure element dimensions and calculate sticky position
-    const updateDimensions = () => {
-      if (wrapper && scrollContainer) {
-        const contentRect = content.getBoundingClientRect();
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const trackerRect = widthTracker.getBoundingClientRect();
-
-        // Calculate where the top of the content should be when sticky
-        // This is the distance from the top of the scroll container
-        // plus any additional offsetTop
-        const stickyTop = containerRect.top + offsetTop;
-
-        setDimensions({
-          // Use the width tracker to get the right width that respects
-          // the parent container's current width, rather than the content's width
-          width: trackerRect.width,
-          height: contentRect.height,
-          left: trackerRect.left,
-          stickyTop,
-        });
-      }
-    };
-
-    // Initial measurement
-    updateDimensions();
-
-    // Monitor size changes
-    const resizeObserver = new ResizeObserver(() => {
-      // Use animationFrame to ensure dimensions are updated after DOM has settled
-      requestAnimationFrame(() => {
-        updateDimensions();
-        // If sticky, force a re-measurement of position to update layout
-        if (isSticky) {
-          handleScroll();
+        // Capture height before entering sticky mode
+        if (nowSticky && preserveHeight && content) {
+          setPreStickHeight(content.getBoundingClientRect().height);
         }
+
+        onStickyChangeRef.current?.(nowSticky);
+        return nowSticky;
       });
+    };
+
+    // Check immediately in case we're already scrolled past the threshold
+    checkSticky();
+
+    scrollContainer.addEventListener("scroll", checkSticky, { passive: true });
+    return () => scrollContainer.removeEventListener("scroll", checkSticky);
+  }, [scrollRef, offsetTop, preserveHeight]);
+
+  // Track the content's natural height while sticky so that intentional
+  // resizes (e.g. the user collapsing the swimlane) update the preserved
+  // height instead of leaving a whitespace gap.
+  const childMeasureRef = useRef<HTMLDivElement>(null);
+  const isStickyRef = useRef(isSticky);
+  useEffect(() => {
+    isStickyRef.current = isSticky;
+  }, [isSticky]);
+
+  useEffect(() => {
+    if (!preserveHeight) return;
+    const el = childMeasureRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!isStickyRef.current) return;
+      const h = el.getBoundingClientRect().height;
+      setPreStickHeight(h);
     });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [preserveHeight]);
 
-    resizeObserver.observe(wrapper);
-    resizeObserver.observe(scrollContainer);
-    resizeObserver.observe(content);
-
-    // Add scroll event listener for more precise control
-    const handleScroll = () => {
-      const sentinelRect = sentinel.getBoundingClientRect();
-      const containerRect = scrollContainer.getBoundingClientRect();
-
-      // Check if sentinel is above the top of the viewport + offset
-      const shouldBeSticky = sentinelRect.top < containerRect.top + offsetTop;
-
-      if (shouldBeSticky !== isSticky) {
-        updateDimensions();
-        setIsSticky(shouldBeSticky);
-
-        if (onStickyChange) {
-          onStickyChange(shouldBeSticky);
-        }
-      }
-    };
-
-    scrollContainer.addEventListener("scroll", handleScroll);
-
-    // Trigger initial check
-    handleScroll();
-
-    // Clean up
-    return () => {
-      resizeObserver.disconnect();
-      scrollContainer.removeEventListener("scroll", handleScroll);
-      if (sentinel.parentNode) {
-        sentinel.parentNode.removeChild(sentinel);
-      }
-      if (widthTracker.parentNode) {
-        widthTracker.parentNode.removeChild(widthTracker);
-      }
-    };
-  }, [scrollRef, offsetTop, onStickyChange, isSticky]);
-
-  // Wrapper styles - this div serves as the placeholder
-  // When sticky, we need to ensure the wrapper has the right dimensions
-  // to prevent content jumping when the element is detached from normal flow
-  const wrapperStyle: CSSProperties = {
-    position: "relative",
-    height: isSticky ? `${dimensions.height}px` : "auto",
-    // Don't constrain width - let it flow naturally with the content
+  const stickyStyle: CSSProperties = {
+    position: "sticky",
+    top: offsetTop,
+    zIndex,
+    // When preserveHeight is active and we're sticky, set a minimum height
+    // so the sticky area doesn't shrink when the content collapses.
+    minHeight: isSticky && preserveHeight ? preStickHeight : undefined,
   };
-
-  // Content styles - position at the calculated stickyTop when sticky
-  // For sticky mode, use fixed positioning but maintain the original width
-  const contentStyle: CSSProperties = isSticky
-    ? {
-        position: "fixed",
-        top: `${dimensions.stickyTop}px`,
-        left: `${dimensions.left}px`,
-        width: `${dimensions.width}px`, // Keep explicit width to prevent expanding to 100%
-        maxHeight: `calc(100vh - ${dimensions.stickyTop}px)`,
-        zIndex,
-      }
-    : {};
 
   const contentClassName =
     isSticky && stickyClassName
@@ -174,10 +119,8 @@ export const StickyScroll: FC<StickyScrollProps> = ({
       : className;
 
   return (
-    <div ref={wrapperRef} style={wrapperStyle}>
-      <div ref={contentRef} className={contentClassName} style={contentStyle}>
-        {children}
-      </div>
+    <div ref={contentRef} className={contentClassName} style={stickyStyle}>
+      {preserveHeight ? <div ref={childMeasureRef}>{children}</div> : children}
     </div>
   );
 };

@@ -1017,7 +1017,7 @@ export interface components {
              * @default auto
              * @enum {string}
              */
-            detail: "auto" | "low" | "high";
+            detail: "auto" | "low" | "high" | "original";
             /** Image */
             image: string;
             /** @default null */
@@ -1701,7 +1701,7 @@ export interface components {
             working_start: number;
         };
         /** @enum {string} */
-        InvalidationTopic: "project-config" | "scans";
+        InvalidationTopic: "project-config" | "scans" | "transcripts";
         /**
          * JSONSchema
          * @description JSON Schema for type.
@@ -3639,6 +3639,11 @@ export interface components {
          * @description A span of execution — agent, scorer, tool, or root.
          */
         TimelineSpan: {
+            /**
+             * Agent Result
+             * @default null
+             */
+            agent_result: string | null;
             /** Branches */
             branches: components["schemas"]["TimelineBranch"][];
             /** Content */

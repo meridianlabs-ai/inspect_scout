@@ -1,10 +1,15 @@
 import clsx from "clsx";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useRef } from "react";
 
 import type { TimelineSpan } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
-import { formatDuration, formatDurationShort } from "../../../utils/format";
+import {
+  formatDuration,
+  formatDurationShort,
+  formatTime,
+} from "../../../utils/format";
 import { computeBarPosition, formatTokenCount } from "../utils/swimlaneLayout";
+import { computeActiveTime, type TimeMapping } from "../utils/timeMapping";
 
 import styles from "./TimelineMinimap.module.css";
 
@@ -19,6 +24,15 @@ export interface TimelineMinimapProps {
   root: TimelineSpan;
   /** Currently selected swimlane row, if any. */
   selection?: MinimapSelection;
+  /** Time mapping for the root node (compresses gaps if present). */
+  mapping?: TimeMapping;
+  /** Scroll progress within the event list (0–1).
+   *  Positioned as a fraction of the selection bar.
+   *  `null` or `undefined` = no scrubber shown. */
+  scrubberProgress?: number | null;
+  /** Called when the user clicks or drags on the selection region.
+   *  `progress` is 0–1 representing the target scroll position. */
+  onScrub?: (progress: number) => void;
 }
 
 /**
@@ -30,7 +44,42 @@ export interface TimelineMinimapProps {
 export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   root,
   selection,
+  mapping,
+  scrubberProgress,
+  onScrub,
 }) => {
+  const regionRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const progressFromPointer = useCallback((clientX: number): number => {
+    const rect = regionRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return 0;
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!onScrub) return;
+      e.preventDefault();
+      draggingRef.current = true;
+      regionRef.current?.setPointerCapture(e.pointerId);
+      onScrub(progressFromPointer(e.clientX));
+    },
+    [onScrub, progressFromPointer]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingRef.current || !onScrub) return;
+      onScrub(progressFromPointer(e.clientX));
+    },
+    [onScrub, progressFromPointer]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
+
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
     "minimapShowTokens",
@@ -46,28 +95,60 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
   );
 
   const bar = selection
-    ? computeBarPosition(
-        selection.startTime,
-        selection.endTime,
-        root.startTime,
-        root.endTime
-      )
+    ? mapping
+      ? {
+          left: mapping.toPercent(selection.startTime),
+          width: Math.max(
+            0,
+            mapping.toPercent(selection.endTime) -
+              mapping.toPercent(selection.startTime)
+          ),
+        }
+      : computeBarPosition(
+          selection.startTime,
+          selection.endTime,
+          root.startTime,
+          root.endTime
+        )
     : null;
 
   const showRegion = bar !== null;
   const useShortFormat = bar !== null && bar.width <= 15;
 
+  // When compression is active, show active time (wall-clock minus idle)
+  // instead of raw wall-clock duration.
+  const hasCompression = mapping?.hasCompression ?? false;
+
   // Compute both labels so the container can size to the wider one
-  const timeRightLabel = formatDuration(root.startTime, root.endTime);
+  const timeRightLabel =
+    hasCompression && mapping
+      ? formatTime(
+          computeActiveTime(
+            mapping,
+            root.startTime.getTime(),
+            root.endTime.getTime()
+          )
+        )
+      : formatDuration(root.startTime, root.endTime);
   const tokenRightLabel = formatTokenCount(root.totalTokens);
-  const sectionLabel =
-    selection && isTokenMode
-      ? formatTokenCount(selection.totalTokens)
-      : selection
-        ? useShortFormat
-          ? formatDurationShort(selection.startTime, selection.endTime)
-          : formatDuration(selection.startTime, selection.endTime)
-        : "";
+
+  const computeSectionLabel = (): string => {
+    if (!selection) return "";
+    if (isTokenMode) return formatTokenCount(selection.totalTokens);
+    if (hasCompression && mapping) {
+      return formatTime(
+        computeActiveTime(
+          mapping,
+          selection.startTime.getTime(),
+          selection.endTime.getTime()
+        )
+      );
+    }
+    return useShortFormat
+      ? formatDurationShort(selection.startTime, selection.endTime)
+      : formatDuration(selection.startTime, selection.endTime);
+  };
+  const sectionLabel = computeSectionLabel();
 
   return (
     <div className={styles.container}>
@@ -85,34 +166,50 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
       <div className={styles.minimap}>
         <div className={styles.track} />
 
-        {/* Selection region fill between markers */}
+        {/* Selection region: anchored at bar start or end depending on
+            which half of the timeline the bar sits in, so text expands
+            toward the center and never clips at the near edge. */}
         {showRegion && (
           <div
-            className={styles.regionFill}
-            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
-          />
-        )}
-
-        {/* Vertical tick markers at selection boundaries */}
-        {showRegion && (
-          <>
-            <div className={styles.marker} style={{ left: `${bar.left}%` }} />
-            <div
-              className={styles.marker}
-              style={{ left: `${bar.left + bar.width}%` }}
-            />
-          </>
-        )}
-
-        {/* Section label pill between markers */}
-        {showRegion && (
-          <div
-            className={styles.sectionTime}
-            style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
+            ref={regionRef}
+            className={styles.selectionRegion}
+            style={
+              bar.left + bar.width / 2 < 50
+                ? { left: `${bar.left}%`, minWidth: `${bar.width}%` }
+                : {
+                    right: `${100 - bar.left - bar.width}%`,
+                    minWidth: `${bar.width}%`,
+                  }
+            }
+            onPointerDown={onScrub ? handlePointerDown : undefined}
+            onPointerMove={onScrub ? handlePointerMove : undefined}
+            onPointerUp={onScrub ? handlePointerUp : undefined}
+            onLostPointerCapture={onScrub ? handlePointerUp : undefined}
           >
-            <span className={styles.sectionTimePill} onClick={toggle}>
-              {sectionLabel}
-            </span>
+            <div className={styles.regionFill} />
+
+            {/* Scroll position scrubber — vertical line + caret below track,
+                absolutely positioned inside selectionRegion.
+                translateX(-50%) in CSS centers on the left %. */}
+            {scrubberProgress != null && (
+              <div
+                className={styles.scrubber}
+                style={{
+                  left: `${scrubberProgress * 100}%`,
+                }}
+              >
+                <div className={styles.scrubberLine} />
+                <div className={styles.scrubberCaretUp} />
+              </div>
+            )}
+
+            <div className={styles.marker} />
+            <div className={styles.sectionTime}>
+              <span className={styles.sectionTimePill} onClick={toggle}>
+                {sectionLabel}
+              </span>
+            </div>
+            <div className={styles.marker} />
           </div>
         )}
       </div>

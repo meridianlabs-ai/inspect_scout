@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useLoggingNavigate } from "../../debugging/navigationDebugging";
@@ -23,15 +23,25 @@ export const TranscriptNav: FC<TranscriptNavProps> = ({
   const navigate = useLoggingNavigate("TranscriptNav");
   const [searchParams] = useSearchParams();
 
+  // Strip transcript-specific params when navigating to a different transcript.
+  // The selected agent and deep-link targets don't carry over.
+  const cleanParams = useMemo(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("selected");
+    next.delete("event");
+    next.delete("message");
+    return next;
+  }, [searchParams]);
+
   const handlePrevious = () => {
     if (prevId) {
-      void navigate(transcriptRoute(transcriptsDir, prevId, searchParams));
+      void navigate(transcriptRoute(transcriptsDir, prevId, cleanParams));
     }
   };
 
   const handleNext = () => {
     if (nextId) {
-      void navigate(transcriptRoute(transcriptsDir, nextId, searchParams));
+      void navigate(transcriptRoute(transcriptsDir, nextId, cleanParams));
     }
   };
 

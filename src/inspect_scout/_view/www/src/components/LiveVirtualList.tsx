@@ -151,20 +151,23 @@ export const LiveVirtualList = <T,>({
     [followOutput, live, scrollRef, listHandle]
   );
 
-  const [, forceRender] = useState({});
-  const forceUpdate = useCallback(() => forceRender({}), []);
-
+  // Resolve the scrollRef into state so Virtuoso's customScrollParent can
+  // be set without reading a ref during render. The ref target may be
+  // conditionally rendered, so we watch the DOM for it to appear.
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    // Force a re-render after initial mount
-    // This is here only because in VScode, for some reason,
-    // when this transcript is restored, the height isn't computed
-    // properly on the first render. This basically gives it a second
-    // change to compute the height and lay itself out.
-    const timer = setTimeout(() => {
-      forceUpdate();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [forceUpdate]);
+    if (!scrollRef) return;
+    const sync = () => {
+      setScrollParent((prev) =>
+        prev === scrollRef.current ? prev : (scrollRef.current ?? null)
+      );
+    };
+    sync();
+    // The ref target may unmount and remount, so keep watching.
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [scrollRef]);
 
   // Default function to extract searchable text using JSON.stringify
   const defaultItemSearchText = useCallback((item: T): string => {
@@ -291,8 +294,14 @@ export const LiveVirtualList = <T,>({
     }
   }, [scrollRef, handleScroll]);
 
-  // Scroll to index when component mounts or targetIndex changes
+  // Scroll to index when component mounts or targetIndex changes.
+  // offsetTop is read via ref so that changes to it (e.g. swimlane height
+  // changing during headroom collapse) don't re-trigger the scroll.
   const hasScrolled = useRef(false);
+  const offsetTopRef = useRef(offsetTop);
+  useEffect(() => {
+    offsetTopRef.current = offsetTop;
+  }, [offsetTop]);
   useEffect(() => {
     if (initialTopMostItemIndex !== undefined && listHandle.current) {
       // If there is an initial index, scroll to it after a short delay
@@ -305,15 +314,13 @@ export const LiveVirtualList = <T,>({
             : !hasScrolled.current
               ? "auto"
               : "smooth",
-          offset: offsetTop ? -offsetTop : undefined,
+          offset: offsetTopRef.current ? -offsetTopRef.current : undefined,
         });
         hasScrolled.current = true;
       }, 50);
       return () => clearTimeout(timer);
     }
-    // TODO: lint react-hooks/exhaustive-deps Fix this
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialTopMostItemIndex, listHandle, offsetTop]);
+  }, [initialTopMostItemIndex, listHandle, animation]);
 
   // Watch for scrolling to stop and trigger pending search callback
   useEffect(() => {
@@ -340,7 +347,7 @@ export const LiveVirtualList = <T,>({
   return (
     <Virtuoso
       ref={listHandle}
-      customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
+      customScrollParent={scrollParent ?? undefined}
       style={{ height: "100%", width: "100%" }}
       data={data}
       defaultItemHeight={500}
@@ -350,7 +357,7 @@ export const LiveVirtualList = <T,>({
       className={clsx("transcript", className)}
       isScrolling={handleScrollingChange}
       rangeChanged={(range) => {
-        setVisibleRange(range);
+        setVisibleRange({ ...range, totalCount: data.length });
       }}
       restoreStateFrom={getRestoreState()}
       totalListHeightChanged={heightChanged}

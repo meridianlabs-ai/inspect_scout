@@ -57,27 +57,35 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
   // are already shown in the tool call above)
   const userMessages: ChatMessage[] = [];
 
-  // if there is an assistant message immediately before then include this
-  // (as it could be an assistant compaction message)
-  let offset: number | undefined = undefined;
-  const lastMessage = event.input.at(-1);
-  if (lastMessage?.role === "assistant") {
-    userMessages.push(lastMessage);
-    offset = -1;
-  }
+  // When agent tool results have been filtered from input (shown on AgentCard
+  // instead), the trailing assistant message is the previous model call's output
+  // — just show it without crawling backward through system/user messages.
+  const agentResultsFiltered = !!(event as Record<string, unknown>)
+    .agentResultsFiltered;
 
-  for (const msg of event.input.slice(offset).reverse()) {
-    if (
-      (msg.role === "user" && !msg.tool_call_id) ||
-      msg.role === "system" ||
-      // If the client doesn't support tool events, then tools messages are allowed to be displayed
-      // in this view, since no tool events will be shown. This pretty much happens for bridged agents
-      // where tool events aren't captured.
-      (context?.hasToolEvents === false && msg.role === "tool")
-    ) {
-      userMessages.unshift(msg);
-    } else {
-      break;
+  if (!agentResultsFiltered) {
+    // if there is an assistant message immediately before then include this
+    // (as it could be an assistant compaction message)
+    let offset: number | undefined = undefined;
+    const lastMessage = event.input.at(-1);
+    if (lastMessage?.role === "assistant") {
+      userMessages.push(lastMessage);
+      offset = -1;
+    }
+
+    for (const msg of event.input.slice(offset).reverse()) {
+      if (
+        (msg.role === "user" && !msg.tool_call_id) ||
+        msg.role === "system" ||
+        // If the client doesn't support tool events, then tools messages are allowed to be displayed
+        // in this view, since no tool events will be shown. This pretty much happens for bridged agents
+        // where tool events aren't captured.
+        (context?.hasToolEvents === false && msg.role === "tool")
+      ) {
+        userMessages.unshift(msg);
+      } else {
+        break;
+      }
     }
   }
 
@@ -88,7 +96,6 @@ export const ModelEventView: FC<ModelEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       className={className}
       title={formatTitle(panelTitle, totalUsage, callTime)}
       subTitle={

@@ -11,6 +11,8 @@ from starlette.status import (
 )
 from upath import UPath
 
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
 from .._project._project import (
     EtagMismatchError,
     read_project,
@@ -48,6 +50,7 @@ def create_config_router(
     )
     async def config(request: Request) -> AppConfig:
         """Return application configuration."""
+        EvalLogTranscriptsView.clear_cache()
         project = read_project()
         transcripts_path = view_config.transcripts_cli or project.transcripts
         scans_path = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR

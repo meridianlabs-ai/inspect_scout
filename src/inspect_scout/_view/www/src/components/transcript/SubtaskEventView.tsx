@@ -50,7 +50,6 @@ export const SubtaskEventView: FC<SubtaskEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       className={className}
       title={formatTitle(
         `${type}: ${event.name}`,

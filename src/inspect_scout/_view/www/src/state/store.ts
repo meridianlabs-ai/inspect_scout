@@ -98,7 +98,10 @@ interface StoreState {
   properties: Record<string, Record<string, unknown> | undefined>;
   scrollPositions: Record<string, number>;
   listPositions: Record<string, StateSnapshot>;
-  visibleRanges: Record<string, { startIndex: number; endIndex: number }>;
+  visibleRanges: Record<
+    string,
+    { startIndex: number; endIndex: number; totalCount: number }
+  >;
   gridStates: Record<string, GridState>;
 
   // Scan specific properties (clear when switching scans)
@@ -191,14 +194,19 @@ interface StoreState {
 
   setListPosition: (name: string, position: StateSnapshot) => void;
   clearListPosition: (name: string) => void;
+  clearListPositionsWithPrefix: (prefix: string) => void;
 
   setGridState: (name: string, state: GridState) => void;
   clearGridState: (name: string) => void;
 
-  getVisibleRange: (name: string) => { startIndex: number; endIndex: number };
+  getVisibleRange: (name: string) => {
+    startIndex: number;
+    endIndex: number;
+    totalCount: number;
+  };
   setVisibleRange: (
     name: string,
-    value: { startIndex: number; endIndex: number }
+    value: { startIndex: number; endIndex: number; totalCount: number }
   ) => void;
   clearVisibleRange: (name: string) => void;
 
@@ -496,6 +504,19 @@ export const createStore = (api: ScoutApiV2) =>
               };
             });
           },
+          clearListPositionsWithPrefix: (prefix: string) => {
+            set((state) => {
+              const newListPositions = { ...state.listPositions };
+              let changed = false;
+              for (const key of Object.keys(newListPositions)) {
+                if (key.startsWith(prefix)) {
+                  delete newListPositions[key];
+                  changed = true;
+                }
+              }
+              return changed ? { listPositions: newListPositions } : {};
+            });
+          },
           setGridState: (name: string, gridState: GridState) => {
             set((state) => {
               state.gridStates[name] = gridState;
@@ -515,11 +536,21 @@ export const createStore = (api: ScoutApiV2) =>
             });
           },
           getVisibleRange: (name: string) => {
-            return get().visibleRanges[name] ?? { startIndex: 0, endIndex: 0 };
+            return (
+              get().visibleRanges[name] ?? {
+                startIndex: 0,
+                endIndex: 0,
+                totalCount: 0,
+              }
+            );
           },
           setVisibleRange: (
             name: string,
-            value: { startIndex: number; endIndex: number }
+            value: {
+              startIndex: number;
+              endIndex: number;
+              totalCount: number;
+            }
           ) => {
             set((state) => {
               state.visibleRanges[name] = value;

@@ -58,9 +58,9 @@ export const useMarkdownRefs = (
         summary,
         (refId: string, type: "message" | "event") => {
           if (type === "message") {
-            return buildUrl(`tab=Result&message=${encodeURIComponent(refId)}`);
+            return buildUrl(`message=${encodeURIComponent(refId)}`);
           } else {
-            return buildUrl(`tab=Result&event=${encodeURIComponent(refId)}`);
+            return buildUrl(`event=${encodeURIComponent(refId)}`);
           }
         },
         inputData

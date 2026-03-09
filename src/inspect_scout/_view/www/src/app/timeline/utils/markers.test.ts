@@ -77,6 +77,7 @@ function makeModelEventNode(
     startTime: ts(startSec),
     endTime: ts(startSec + 1),
     totalTokens: 100,
+    idleTime: 0,
   };
 }
 
@@ -126,6 +127,7 @@ function makeToolEventNode(
     startTime: ts(startSec),
     endTime: ts(startSec + 1),
     totalTokens: 0,
+    idleTime: 0,
   };
 }
 
@@ -152,6 +154,7 @@ function makeCompactionEventNode(
     startTime: ts(startSec),
     endTime: ts(startSec + 1),
     totalTokens: 0,
+    idleTime: 0,
   };
 }
 
@@ -353,6 +356,7 @@ describe("collectMarkers", () => {
         startTime: ts(2),
         endTime: ts(4),
         totalTokens: 100,
+        idleTime: 0,
       };
 
       const parent = makeSpan("Root", 0, 20, 1000, [event1, event2], {
@@ -375,6 +379,7 @@ describe("collectMarkers", () => {
         startTime: ts(2),
         endTime: ts(4),
         totalTokens: 100,
+        idleTime: 0,
       };
 
       const parent = makeSpan("Root", 0, 20, 1000, [makeModelEventNode(0)], {
@@ -394,6 +399,7 @@ describe("collectMarkers", () => {
         startTime: ts(2),
         endTime: ts(4),
         totalTokens: 100,
+        idleTime: 0,
       };
 
       const parent = makeSpan("Root", 0, 20, 1000, [makeModelEventNode(0)], {
@@ -458,6 +464,7 @@ describe("collectMarkers", () => {
         startTime: ts(6),
         endTime: ts(8),
         totalTokens: 100,
+        idleTime: 0,
       };
 
       const parent = makeSpan("Root", 0, 30, 1000, [event1, event2, event3], {

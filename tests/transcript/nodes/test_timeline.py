@@ -90,12 +90,13 @@ def _parse_input_messages(input_data: list[dict[str, Any]]) -> list[ChatMessage]
         elif role == "assistant":
             messages.append(ChatMessageAssistant(content=content))
         elif role == "tool":
-            messages.append(
-                ChatMessageTool(
-                    content=content,
-                    tool_call_id=msg.get("tool_call_id", ""),
-                )
-            )
+            tool_kwargs: dict[str, Any] = {
+                "content": content,
+                "tool_call_id": msg.get("tool_call_id", ""),
+            }
+            if "function" in msg:
+                tool_kwargs["function"] = msg["function"]
+            messages.append(ChatMessageTool(**tool_kwargs))
     return messages
 
 
@@ -181,7 +182,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
                 if nested_event is not None:
                     nested_events.append(nested_event)
 
-        return ToolEvent(
+        tool_event = ToolEvent(
             uuid=uuid,
             span_id=span_id,
             timestamp=timestamp,
@@ -194,7 +195,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             function=data.get("function", "unknown"),
             arguments={},
             view=None,
-            result="",
+            result=data.get("result", ""),
             truncated=None,
             error=None,
             events=nested_events,
@@ -204,6 +205,9 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             failed=None,
             message_id=None,
         )
+        if "agent_span_id" in data:
+            tool_event.agent_span_id = data["agent_span_id"]
+        return tool_event
 
     elif event_type == "info":
         return InfoEvent(
@@ -452,6 +456,13 @@ def assert_span_matches(
             f"got {actual.utility}, expected {expected['utility']}"
         )
 
+    # Check agent_result if specified
+    if "agent_result" in expected:
+        assert actual.agent_result == expected["agent_result"], (
+            f"{span_name} agent_result mismatch: "
+            f"got {actual.agent_result!r}, expected {expected['agent_result']!r}"
+        )
+
     # Check branches if specified
     if "branches" in expected:
         expected_branches = expected["branches"]
@@ -690,6 +701,146 @@ def test_timeline_event_returns_zero_tokens_for_non_model_event() -> None:
     assert node.total_tokens == 0
 
 
+def test_timeline_event_idle_time_is_zero() -> None:
+    """TimelineEvent idle_time is always 0."""
+    ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    completed = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    event = create_model_event(timestamp=ts, completed=completed)
+    node = TimelineEvent(event=event)
+    assert node.idle_time == 0.0
+
+
+def test_idle_time_single_event_in_span() -> None:
+    """Span with one event and small gap: no idle (below 5-min threshold)."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 2, tzinfo=timezone.utc)
+    completed2 = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    # Span starts at ts1 (from a span_begin event), event runs ts2..completed2
+    span_begin_event = InfoEvent(
+        uuid="sb",
+        span_id=None,
+        timestamp=ts1,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    model_event = create_model_event(uuid="m1", timestamp=ts2, completed=completed2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[
+            TimelineEvent(event=span_begin_event),
+            TimelineEvent(event=model_event),
+        ],
+    )
+    # Gap of 2s is below 5-min threshold → idle = 0
+    assert span.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_no_gaps() -> None:
+    """Events fully cover span duration → idle_time ≈ 0."""
+    ts = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    mid = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    end = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts, completed=mid)
+    e2 = create_model_event(uuid="e2", timestamp=mid, completed=end)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    assert span.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_gap_between_events() -> None:
+    """Two events with a small gap → idle = 0 (below 5-min threshold)."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+    e2 = create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    # Gap of 4s is below 5-min threshold → idle = 0
+    assert span.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_nested_spans() -> None:
+    """Nested spans with small gaps → idle = 0 (below 5-min threshold)."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 8, tzinfo=timezone.utc)
+
+    # Child span: gaps are 2s (below threshold) → idle = 0
+    child = TimelineSpan(
+        id="child",
+        name="child",
+        span_type="agent",
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+            ),
+        ],
+    )
+    assert child.idle_time == pytest.approx(0.0)
+
+    # Parent span: gap from child end to info is 2s (below threshold) → idle = 0
+    end_parent = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    info_event = InfoEvent(
+        uuid="info",
+        span_id=None,
+        timestamp=end_parent,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    parent = TimelineSpan(
+        id="parent",
+        name="parent",
+        span_type="agent",
+        content=[child, TimelineEvent(event=info_event)],
+    )
+    assert parent.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_branch() -> None:
+    """Branch with small gap → idle = 0 (below 5-min threshold)."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
+    end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    branch = TimelineBranch(
+        forked_at="",
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="b1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="b2", timestamp=ts2, completed=end2)
+            ),
+        ],
+    )
+    # Gap of 4s is below 5-min threshold → idle = 0
+    assert branch.idle_time == pytest.approx(0.0)
+
+
 def test_timeline_span_aggregates_tokens_from_content() -> None:
     """TimelineSpan should sum tokens from all content."""
     usage1 = ModelUsage(input_tokens=100, output_tokens=50)
@@ -706,3 +857,136 @@ def test_timeline_span_aggregates_tokens_from_content() -> None:
     )
 
     assert span.total_tokens == 450  # 150 + 300
+
+
+def test_idle_time_large_gap_between_events() -> None:
+    """Two events with a 6-min gap → idle = 360s."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 6, 3, tzinfo=timezone.utc)  # 6 min after end1
+    end2 = datetime(2024, 1, 1, 12, 6, 6, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+    e2 = create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    # Gap of 360s (6 min) exceeds 5-min threshold → idle = 360
+    assert span.idle_time == pytest.approx(360.0)
+
+
+def test_idle_time_small_gap_not_counted() -> None:
+    """Two events with a 4-min gap → idle = 0 (below threshold)."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 4, 3, tzinfo=timezone.utc)  # 4 min after end1
+    end2 = datetime(2024, 1, 1, 12, 4, 6, tzinfo=timezone.utc)
+    e1 = create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+    e2 = create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
+    )
+    # Gap of 240s (4 min) is below 5-min threshold → idle = 0
+    assert span.idle_time == pytest.approx(0.0)
+
+
+def test_idle_time_span_boundary_gaps() -> None:
+    """Gaps from span start/end to first/last child > threshold are counted."""
+    # Span starts 6 min before first event, ends 6 min after last event
+    span_start = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ts1 = datetime(2024, 1, 1, 12, 6, 0, tzinfo=timezone.utc)  # 6 min after span start
+    end1 = datetime(2024, 1, 1, 12, 6, 3, tzinfo=timezone.utc)
+    span_end = datetime(2024, 1, 1, 12, 12, 3, tzinfo=timezone.utc)  # 6 min after end1
+
+    e1 = create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+    # Use a marker event at span_start to anchor the span boundaries
+    info_start = InfoEvent(
+        uuid="info_start",
+        span_id=None,
+        timestamp=span_start,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    info_end = InfoEvent(
+        uuid="info_end",
+        span_id=None,
+        timestamp=span_end,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    span = TimelineSpan(
+        id="s1",
+        name="test",
+        span_type="agent",
+        content=[
+            TimelineEvent(event=info_start),
+            TimelineEvent(event=e1),
+            TimelineEvent(event=info_end),
+        ],
+    )
+    # Gap: span_start→info_start = 0s (same time)
+    # Gap: info_start→e1 = 360s (> threshold, counted)
+    # Gap: e1→info_end = 360s (> threshold, counted)
+    # Gap: info_end→span_end = 0s (same time)
+    assert span.idle_time == pytest.approx(720.0)
+
+
+def test_idle_time_nested_with_large_gaps() -> None:
+    """Nested spans with large gaps propagate correctly."""
+    ts1 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    ts2 = datetime(2024, 1, 1, 12, 6, 3, tzinfo=timezone.utc)  # 6 min gap
+    end2 = datetime(2024, 1, 1, 12, 6, 6, tzinfo=timezone.utc)
+
+    # Child span: gap of 360s between events → child idle = 360
+    child = TimelineSpan(
+        id="child",
+        name="child",
+        span_type="agent",
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="e1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="e2", timestamp=ts2, completed=end2)
+            ),
+        ],
+    )
+    assert child.idle_time == pytest.approx(360.0)
+
+    # Parent span ends 7 min after child (> threshold)
+    end_parent = datetime(2024, 1, 1, 12, 13, 6, tzinfo=timezone.utc)
+    info_event = InfoEvent(
+        uuid="info",
+        span_id=None,
+        timestamp=end_parent,
+        working_start=0.0,
+        pending=False,
+        metadata=None,
+        event="info",
+        source="test",
+        data=None,
+    )
+    parent = TimelineSpan(
+        id="parent",
+        name="parent",
+        span_type="agent",
+        content=[child, TimelineEvent(event=info_event)],
+    )
+    # Child idle = 360s (propagated)
+    # Gap: child end (12:06:06) → info (12:13:06) = 420s (> threshold, counted)
+    # Total parent idle = 360 + 420 = 780
+    assert parent.idle_time == pytest.approx(780.0)

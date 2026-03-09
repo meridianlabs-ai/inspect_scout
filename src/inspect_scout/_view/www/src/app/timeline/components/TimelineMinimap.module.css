@@ -43,9 +43,9 @@
 
 .minimap {
   position: relative;
-  height: 18px;
+  height: 24px;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Full-width track — thin rounded rail, vertically centered */
@@ -61,9 +61,11 @@
   opacity: 0.25;
 }
 
-/* Selection region fill — highlight between markers on the track */
+/* Fill line — spans the full selection region (absolute inside it) */
 .regionFill {
   position: absolute;
+  left: 0;
+  right: 0;
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
@@ -72,39 +74,94 @@
   opacity: 0.45;
 }
 
-/* Vertical bar markers at selection boundaries */
+/* Vertical bar markers — flex items inside selectionRegion */
 .marker {
-  position: absolute;
-  top: 50%;
+  width: 1px;
   height: 9px;
-  width: 2px;
-  border-radius: 1px;
+  flex-shrink: 0;
   background-color: var(--bs-primary);
-  opacity: 0.55;
-  transform: translate(-50%, -50%);
+  opacity: 0.7;
+  position: relative;
+  z-index: 1;
 }
 
-/* Section duration pill centered between the two markers */
-.sectionTime {
+/*
+ * Selection region — anchored at bar.left (the span's start time).
+ * min-width (set inline as bar.width%) ensures markers span the proportional
+ * range; flex content sizing expands beyond that when the text is wider.
+ * Gap keeps the fill line visible between the markers and text pill.
+ * Contains: regionFill (absolute), marker, text pill, marker (flex items).
+ */
+.selectionRegion {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  height: 100%;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.selectionRegion:active {
+  cursor: grabbing;
+}
+
+/* Section duration pill — normal flow child that sizes the label region.
+ * Shifted up so the pill sits just above the track line. */
+.sectionTime {
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
   pointer-events: none;
   user-select: none;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
+  padding-top: 4px;
 }
 
 .sectionTimePill {
   font-size: 0.6rem;
   color: var(--vscode-descriptionForeground);
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--bs-primary);
+  background-color: transparent;
+  border: none;
   border-radius: 3px;
-  padding: 0 4px;
+  padding: 0 3px;
   line-height: 1.4;
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
+}
+
+/* Scroll position scrubber — vertical line on top with upward caret below.
+ * Wrapper is positioned absolutely within .selectionRegion; translateX(-50%)
+ * centers the assembly on the computed left percentage. */
+.scrubber {
+  position: absolute;
+  bottom: 1px;
+  height: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.scrubberLine {
+  width: 1px;
+  flex: 1;
+  margin-bottom: 1px;
+  background-color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+
+.scrubberCaretUp {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid var(--vscode-descriptionForeground);
+  opacity: 0.7;
 }

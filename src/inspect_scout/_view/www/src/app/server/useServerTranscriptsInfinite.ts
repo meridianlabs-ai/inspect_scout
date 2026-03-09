@@ -51,7 +51,8 @@ export const useServerTranscriptsInfinite = (
       params === skipToken
         ? [skipToken]
         : [
-            "transcripts-infinite",
+            "transcripts-inv",
+            "infinite",
             params.location,
             params.filter,
             orderBy,

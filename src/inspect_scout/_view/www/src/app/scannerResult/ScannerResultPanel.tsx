@@ -126,30 +126,46 @@ export const ScannerResultPanel: FC = () => {
         : { id: selectedResult.transcriptId, location: resolvedTranscriptsDir }
     );
 
-  // Sync URL tab parameter with store on mount and URL changes
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam) {
-      // Valid tab IDs
-      const validTabs = [
-        kTabIdResult,
-        kTabIdInput,
-        kTabIdInfo,
-        kTabIdJson,
-        kTabIdTranscript,
-      ];
-      if (validTabs.includes(tabParam)) {
-        setSelectedResultTab(tabParam);
-      }
-    }
-  }, [searchParams, setSelectedResultTab]);
+  // Deep-link params for message/event navigation
+  const messageParam = searchParams.get("message");
+  const eventParam = searchParams.get("event");
 
-  const handleTabChange = (tabId: string) => {
-    setSelectedResultTab(tabId);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("tab", tabId);
-    setSearchParams(newParams);
-  };
+  // Resolve the effective tab from URL params. Deep-link params (message/event)
+  // imply the Result tab, overriding an explicit ?tab param. An explicit ?tab
+  // param overrides the store. This single derivation replaces two competing
+  // effects that could fight each other across async URL updates.
+  const validTabs = useMemo(
+    () => [kTabIdResult, kTabIdInput, kTabIdInfo, kTabIdJson, kTabIdTranscript],
+    []
+  );
+  useEffect(() => {
+    // Deep-link params take priority — they imply the Result tab
+    if (messageParam || eventParam) {
+      setSelectedResultTab(kTabIdResult);
+      return;
+    }
+    // Otherwise, sync from explicit ?tab param
+    const tabParam = searchParams.get("tab");
+    if (tabParam && validTabs.includes(tabParam)) {
+      setSelectedResultTab(tabParam);
+    }
+  }, [searchParams, messageParam, eventParam, validTabs, setSelectedResultTab]);
+
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setSelectedResultTab(tabId);
+      setSearchParams((prevParams) => {
+        const newParams = new URLSearchParams(prevParams);
+        newParams.set("tab", tabId);
+        // Clear deep-link params so the URL-sync effect doesn't
+        // override the user's explicit tab choice on the next render
+        newParams.delete("message");
+        newParams.delete("event");
+        return newParams;
+      });
+    },
+    [setSelectedResultTab, setSearchParams]
+  );
 
   // TODO: lint react-hooks/preserve-manual-memoization - the lint seems to be a bug in the rule that doesn't account for the ?
   // However, this useMemo feels like a premature optimization. I think it should go

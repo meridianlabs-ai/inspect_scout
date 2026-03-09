@@ -39,7 +39,6 @@ export const InfoEventView: FC<InfoEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={"Info" + (event.source ? ": " + event.source : "")}
       className={className}
       subTitle={

@@ -1,4 +1,3 @@
-// import { TimelinePanel } from "../app/timeline/TimelinePanel";
 import { ApplicationIcons } from "../components/icons";
 
 declare const __SCOUT_RUN_SCAN__: boolean;
@@ -51,13 +50,6 @@ const allActivities: ActivityConfig[] = [
     routePatterns: ["/validation"],
     description: "Manage validation sets",
   },
-  // {
-  //   id: "timeline",
-  //   label: "Timeline",
-  //   icon: ApplicationIcons.timeline,
-  //   route: "/timeline",
-  //   description: "Timeline prototype",
-  // },
 ];
 
 export const activities = allActivities.filter(

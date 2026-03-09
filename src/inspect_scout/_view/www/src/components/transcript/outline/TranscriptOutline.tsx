@@ -17,7 +17,7 @@ import { kSandboxSignalName } from "../transform/fixups";
 import { flatTree } from "../transform/flatten";
 import { EventNode, kTranscriptOutlineCollapseScope } from "../types";
 
-import { OutlineRow } from "./OutlineRow";
+import { iconForNode, OutlineRow } from "./OutlineRow";
 import styles from "./TranscriptOutline.module.css";
 import {
   collapseScoring,
@@ -27,6 +27,7 @@ import {
   removeNodeVisitor,
   removeStepSpanNameVisitor,
 } from "./tree-visitors";
+import { useOutlineWidth } from "./useOutlineWidth";
 
 const kFramesToStabilize = 10;
 
@@ -37,6 +38,16 @@ interface TranscriptOutlineProps {
   className?: string | string[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   style?: CSSProperties;
+  /** Name of the agent/subagent currently being displayed. Shown as a static header. */
+  agentName?: string;
+  /** Reports whether the outline has displayable nodes after filtering. */
+  onHasNodesChange?: (hasNodes: boolean) => void;
+  /** Reports the ideal width (in px) for the outline column. */
+  onWidthChange?: (width: number) => void;
+  /** Called when user clicks an outline item but URL-based navigation is unavailable. */
+  onNavigateToEvent?: (eventId: string) => void;
+  /** Offset from the top of the scroll container where visible content begins (e.g. sticky header height). */
+  scrollTrackOffset?: number;
 }
 
 // hack: add a padding node to the end of the list so
@@ -66,6 +77,11 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   className,
   scrollRef,
   style,
+  agentName,
+  onHasNodesChange,
+  onWidthChange,
+  onNavigateToEvent,
+  scrollTrackOffset,
 }) => {
   const id = "transcript-tree";
   // The virtual list handle and state
@@ -86,52 +102,47 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
   const setSelectedOutlineId = useStore(
     (state) => state.setTranscriptOutlineId
   );
-  const sampleDetailNavigation = { event: undefined }; // useSampleDetailNavigation();
-
-  // Flag to indicate programmatic scrolling is in progress
+  // Flag to indicate programmatic scrolling is in progress.
+  // While true, useScrollTrack updates are suppressed so the
+  // click-based selection isn't overwritten mid-scroll.
   const isProgrammaticScrolling = useRef(false);
-  // Last position to check for scroll stabilization
   const lastScrollPosition = useRef<number | null>(null);
-  // Frame count for detecting scroll stabilization
   const stableFrameCount = useRef(0);
 
-  useEffect(() => {
-    if (sampleDetailNavigation.event) {
-      // Set the flag to indicate we're in programmatic scrolling
-      isProgrammaticScrolling.current = true;
-      lastScrollPosition.current = null;
-      stableFrameCount.current = 0;
+  const beginProgrammaticScroll = useCallback(() => {
+    isProgrammaticScrolling.current = true;
+    lastScrollPosition.current = null;
+    stableFrameCount.current = 0;
 
-      setSelectedOutlineId(sampleDetailNavigation.event);
+    const checkScrollStabilized = () => {
+      if (!isProgrammaticScrolling.current) return;
 
-      // Start monitoring to detect when scrolling has stabilized
-      const checkScrollStabilized = () => {
-        if (!isProgrammaticScrolling.current) return;
+      const currentPosition = scrollRef?.current?.scrollTop ?? null;
 
-        const currentPosition = scrollRef?.current?.scrollTop ?? null;
-
-        if (currentPosition === lastScrollPosition.current) {
-          stableFrameCount.current++;
-
-          // If position has been stable for a few frames, consider scrolling complete
-          if (stableFrameCount.current >= kFramesToStabilize) {
-            isProgrammaticScrolling.current = false;
-            return;
-          }
-        } else {
-          // Reset stability counter if position changed
-          stableFrameCount.current = 0;
-          lastScrollPosition.current = currentPosition;
+      if (currentPosition === lastScrollPosition.current) {
+        stableFrameCount.current++;
+        if (stableFrameCount.current >= kFramesToStabilize) {
+          isProgrammaticScrolling.current = false;
+          return;
         }
+      } else {
+        stableFrameCount.current = 0;
+        lastScrollPosition.current = currentPosition;
+      }
 
-        // Continue checking until scrolling stabilizes
-        requestAnimationFrame(checkScrollStabilized);
-      };
-
-      // Start the RAF loop to detect scroll stabilization
       requestAnimationFrame(checkScrollStabilized);
-    }
-  }, [sampleDetailNavigation.event, setSelectedOutlineId, scrollRef]);
+    };
+
+    requestAnimationFrame(checkScrollStabilized);
+  }, [scrollRef]);
+
+  const handleOutlineSelect = useCallback(
+    (nodeId: string) => {
+      setSelectedOutlineId(nodeId);
+      beginProgrammaticScroll();
+    },
+    [setSelectedOutlineId, beginProgrammaticScroll]
+  );
 
   const outlineNodeList = useMemo(() => {
     // flattten the event tree
@@ -160,6 +171,39 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
 
     return collapseScoring(collapseTurns(makeTurns(nodeList)));
   }, [eventNodes, collapsedEvents, defaultCollapsedIds]);
+
+  const depthsWithToggles = useMemo(() => {
+    const s = new Set<number>();
+    for (const n of outlineNodeList) {
+      if (n.children.length > 0) s.add(n.depth);
+    }
+    return s;
+  }, [outlineNodeList]);
+
+  const depthsWithIcons = useMemo(() => {
+    const s = new Set<number>();
+    for (const n of outlineNodeList) {
+      if (iconForNode(n) !== undefined) s.add(n.depth);
+    }
+    return s;
+  }, [outlineNodeList]);
+
+  const hasOutlineNodes = outlineNodeList.length > 0;
+  useEffect(() => {
+    onHasNodesChange?.(hasOutlineNodes);
+  }, [hasOutlineNodes, onHasNodesChange]);
+
+  // Measure the ideal width for the outline column from label text
+  const outlineWidth = useOutlineWidth(
+    outlineNodeList,
+    undefined,
+    agentName,
+    depthsWithToggles,
+    depthsWithIcons
+  );
+  useEffect(() => {
+    onWidthChange?.(outlineWidth);
+  }, [outlineWidth, onWidthChange]);
 
   // Event node, for scroll tracking
   const allNodesList = useMemo(() => {
@@ -202,7 +246,8 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
         }
       }
     },
-    scrollRef
+    scrollRef,
+    { topOffset: scrollTrackOffset }
   );
 
   // Update the collapsed events when the default collapsed IDs change
@@ -235,7 +280,10 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
               selectedOutlineId ? selectedOutlineId === node.id : index === 0
             }
             getEventUrl={getEventUrl}
-            onSelect={setSelectedOutlineId}
+            onSelect={handleOutlineSelect}
+            onNavigateToEvent={onNavigateToEvent}
+            depthsWithToggles={depthsWithToggles}
+            depthsWithIcons={depthsWithIcons}
           />
         );
       }
@@ -245,30 +293,45 @@ export const TranscriptOutline: FC<TranscriptOutlineProps> = ({
       running,
       selectedOutlineId,
       getEventUrl,
-      setSelectedOutlineId,
+      handleOutlineSelect,
+      onNavigateToEvent,
+      depthsWithToggles,
+      depthsWithIcons,
     ]
   );
 
   return (
-    <Virtuoso
-      ref={listHandle}
-      // eslint-disable-next-line react-hooks/refs -- Virtuoso accepts undefined for customScrollParent and handles dynamic ref population
-      customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
-      id={id}
-      style={{ ...style }}
-      data={[...outlineNodeList, EventPaddingNode]}
-      defaultItemHeight={50}
-      itemContent={renderRow}
-      atBottomThreshold={30}
-      increaseViewportBy={{ top: 300, bottom: 300 }}
-      overscan={{
-        main: 10,
-        reverse: 10,
-      }}
-      className={clsx(className, "transcript-outline")}
-      skipAnimationFrameInResizeObserver={true}
-      restoreStateFrom={getRestoreState()}
-      tabIndex={0}
-    />
+    <div style={style}>
+      {agentName && (
+        <div
+          className={clsx(
+            styles.rootHeader,
+            "text-size-smaller",
+            "text-style-label"
+          )}
+        >
+          {agentName}
+        </div>
+      )}
+      <Virtuoso
+        ref={listHandle}
+        // eslint-disable-next-line react-hooks/refs -- Virtuoso accepts undefined for customScrollParent and handles dynamic ref population
+        customScrollParent={scrollRef?.current ? scrollRef.current : undefined}
+        id={id}
+        data={[...outlineNodeList, EventPaddingNode]}
+        defaultItemHeight={50}
+        itemContent={renderRow}
+        atBottomThreshold={30}
+        increaseViewportBy={{ top: 300, bottom: 300 }}
+        overscan={{
+          main: 10,
+          reverse: 10,
+        }}
+        className={clsx(className, "transcript-outline")}
+        skipAnimationFrameInResizeObserver={true}
+        restoreStateFrom={getRestoreState()}
+        tabIndex={0}
+      />
+    </div>
   );
 };

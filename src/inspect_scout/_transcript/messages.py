@@ -198,12 +198,19 @@ async def transcript_messages(
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
     """
-    if transcript.timelines:
-        from inspect_ai.event import timeline_filter
+    if transcript.timelines or transcript.events:
+        from inspect_ai.event import timeline_build, timeline_filter
 
         from inspect_scout._transcript.timeline import timeline_messages
 
-        timeline = transcript.timelines[0]
+        # must deal with a timeline for sane message extraction
+        if transcript.timelines:
+            timeline = transcript.timelines[0]
+        else:
+            timeline = timeline_build(
+                transcript.events
+            )  # build a synthetic timeline from events
+
         if not include_scorers:
             timeline = timeline_filter(timeline, lambda s: s.span_type != "scorers")
 
@@ -216,19 +223,6 @@ async def transcript_messages(
             depth=depth,
         ):
             yield timeline_seg  # type: ignore[misc]
-    elif transcript.events:
-        events = transcript.events
-        if not include_scorers:
-            events = _exclude_scorers(events)
-
-        async for seg in segment_messages(
-            events,
-            messages_as_str=messages_as_str,
-            model=model,
-            context_window=context_window,
-            compaction=compaction,
-        ):
-            yield seg
     else:
         async for seg in segment_messages(
             transcript.messages,

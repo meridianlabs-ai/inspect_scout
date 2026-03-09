@@ -71,6 +71,11 @@ def _extract_agent_id_from_result(tool_result: dict[str, Any]) -> str | None:
                 match = re.search(r"agentId:\s*([a-f0-9]+)", text)
                 if match:
                     return match.group(1)
+                # Team agent format (snake_case, non-hex IDs):
+                #   "agent_id: ux-researcher@todo-cli-design"
+                match = re.search(r"agent_id:\s*([\w@.-]+)", text)
+                if match:
+                    return match.group(1)
 
     logger.debug("Could not extract agentId from tool result")
     return None
@@ -103,7 +108,7 @@ async def _load_agent_events(
     Returns:
         List of Scout events from the agent session
     """
-    from .client import find_agent_file, read_jsonl_events
+    from .client import find_agent_file, find_team_agent_file, read_jsonl_events
 
     # Try to extract agent ID from the tool result content, fall back to provided
     agent_id = _extract_agent_id_from_result(tool_result) or agent_id
@@ -122,6 +127,11 @@ async def _load_agent_events(
     # Fall back to file loading if we have an agent_id and project_dir
     if not raw_events and agent_id and project_dir:
         agent_file = find_agent_file(project_dir, agent_id, session_file=session_file)
+
+        # For team agents (IDs containing @), try prompt-based matching
+        if not agent_file and "@" in agent_id and prompt and session_file:
+            agent_file = find_team_agent_file(session_file, prompt)
+
         if not agent_file:
             logger.debug(f"Agent file not found for ID: {agent_id}")
             return []

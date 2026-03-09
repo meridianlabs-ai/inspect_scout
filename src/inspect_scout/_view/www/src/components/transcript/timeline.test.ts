@@ -36,8 +36,15 @@ interface JsonEvent {
   model?: string;
   function?: string;
   agent?: string;
+  agent_span_id?: string;
+  result?: string;
   source?: string;
-  input?: Array<{ role: string; content: string; tool_call_id?: string }>;
+  input?: Array<{
+    role: string;
+    content: string;
+    tool_call_id?: string;
+    function?: string;
+  }>;
   output?: {
     usage?: {
       input_tokens?: number;
@@ -81,6 +88,7 @@ interface ExpectedAgent {
   content_types?: string[];
   total_tokens?: number;
   utility?: boolean;
+  agent_result?: string;
 }
 
 interface ExpectedSection {
@@ -155,6 +163,9 @@ function createEvent(data: JsonEvent): Event | null {
         if (msg.tool_call_id !== undefined) {
           mapped.tool_call_id = msg.tool_call_id;
         }
+        if (msg.function !== undefined) {
+          mapped.function = msg.function;
+        }
         return mapped;
       });
       return {
@@ -189,7 +200,7 @@ function createEvent(data: JsonEvent): Event | null {
       const nestedEvents = data.events
         ?.map((e) => createEvent(e))
         .filter((e): e is Event => e !== null);
-      return {
+      const toolEvent: Record<string, unknown> = {
         ...baseFields,
         event: "tool",
         id: data.id ?? "",
@@ -197,7 +208,14 @@ function createEvent(data: JsonEvent): Event | null {
         completed: data.completed ?? null,
         agent: data.agent ?? null,
         events: nestedEvents ?? [],
-      } as Event;
+      };
+      if (data.result !== undefined) {
+        toolEvent.result = data.result;
+      }
+      if (data.agent_span_id !== undefined) {
+        toolEvent.agent_span_id = data.agent_span_id;
+      }
+      return toolEvent as Event;
     }
 
     case "info": {
@@ -380,6 +398,11 @@ function assertSpanMatches(
     expect(actual!.utility).toBe(expected.utility);
   }
 
+  // Check agent_result if specified
+  if (expected.agent_result !== undefined) {
+    expect(actual!.agentResult).toBe(expected.agent_result);
+  }
+
   // Check branches if specified
   if (expected.branches !== undefined) {
     expect(actual!.branches.length).toBe(expected.branches.length);
@@ -485,7 +508,8 @@ function assertTimelineMatches(
   // Check agent (now root)
   if (expected.agent !== null) {
     expect(root.id).toBe(expected.agent.id);
-    expect(root.name).toBe(expected.agent.name);
+    // The root agent node is always named "main" (matching Python upstream).
+    expect(root.name).toBe("main");
 
     // Check event UUIDs (excluding init and scoring spans)
     if (expected.agent.event_uuids !== undefined) {
@@ -780,6 +804,319 @@ describe("buildTimeline", () => {
         expect(item.content.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("idleTime is 0 for a TimelineEvent", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:05Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // The root span's content should contain the model event with idleTime 0
+    const modelItem = result.root.content.find(
+      (c) => c.type === "event" && c.event.event === "model"
+    );
+    expect(modelItem).toBeDefined();
+    expect(modelItem!.idleTime).toBe(0);
+  });
+
+  it("idleTime is 0 for small gap between events (below threshold)", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "my-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:07Z",
+        completed: "2024-01-01T12:00:10Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // Gap of 4s is below 5-min threshold → idle = 0
+    expect(result.root.idleTime).toBeCloseTo(0.0, 1);
+  });
+
+  it("idleTime detects large gap between events", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "my-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:06:03Z",
+        completed: "2024-01-01T12:06:06Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // Gap of 360s (6 min) exceeds 5-min threshold → idle = 360
+    expect(result.root.idleTime).toBeCloseTo(360.0, 1);
+  });
+
+  it("idleTime is 0 when events fully cover span", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "my-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:05Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "agent-1",
+        timestamp: "2024-01-01T12:00:05Z",
+        completed: "2024-01-01T12:00:10Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    expect(result.root.idleTime).toBeCloseTo(0.0, 1);
+  });
+
+  it("idleTime propagates through nested spans with small gaps", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "parent-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      // Child agent with a small gap (below threshold)
+      createEvent({
+        event: "span_begin",
+        id: "child-agent",
+        name: "child",
+        type: "agent",
+        parent_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:00:05Z",
+        completed: "2024-01-01T12:00:08Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "child-agent",
+        timestamp: "2024-01-01T12:00:08Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:00:10Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // All gaps are small (2s) → below threshold → idle = 0
+    const childSpan = result.root.content.find(
+      (c) => c.type === "span" && c.name === "child"
+    );
+    expect(childSpan).toBeDefined();
+    expect(childSpan!.idleTime).toBeCloseTo(0.0, 1);
+    expect(result.root.idleTime).toBeCloseTo(0.0, 1);
+  });
+
+  it("idleTime propagates through nested spans with large gaps", () => {
+    const events: Event[] = [
+      createEvent({
+        event: "span_begin",
+        id: "solvers-1",
+        name: "solvers",
+        type: "solver",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "agent-1",
+        name: "parent-agent",
+        type: "agent",
+        parent_id: "solvers-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "span_begin",
+        id: "child-agent",
+        name: "child",
+        type: "agent",
+        parent_id: "agent-1",
+        timestamp: "2024-01-01T12:00:00Z",
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m1",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:00:00Z",
+        completed: "2024-01-01T12:00:03Z",
+        input: [{ role: "user", content: "hello" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "model",
+        uuid: "m2",
+        span_id: "child-agent",
+        timestamp: "2024-01-01T12:06:03Z",
+        completed: "2024-01-01T12:06:06Z",
+        input: [{ role: "user", content: "world" }],
+        output: { usage: { input_tokens: 10, output_tokens: 5 } },
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "child-agent",
+        timestamp: "2024-01-01T12:06:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "agent-1",
+        timestamp: "2024-01-01T12:13:06Z",
+      })!,
+      createEvent({
+        event: "span_end",
+        id: "solvers-1",
+        timestamp: "2024-01-01T12:13:06Z",
+      })!,
+    ];
+    const result = buildTimeline(events);
+    // Child: 6-min gap → child idle = 360
+    const childSpan = result.root.content.find(
+      (c) => c.type === "span" && c.name === "child"
+    );
+    expect(childSpan).toBeDefined();
+    expect(childSpan!.idleTime).toBeCloseTo(360.0, 1);
+    // Parent: child idle (360) + gap from child end to parent end (7 min = 420s > threshold)
+    // Total parent idle = 360 + 420 = 780
+    expect(result.root.idleTime).toBeGreaterThanOrEqual(360.0);
   });
 
   it("computes startTime and endTime correctly", () => {

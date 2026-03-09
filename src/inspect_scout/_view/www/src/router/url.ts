@@ -9,7 +9,6 @@ export const kScanResultRouteUrlPattern = "/scan/:scansDir/*/*";
 export const kTranscriptsRouteUrlPattern = "/transcripts";
 export const kProjectRouteUrlPattern = "/project";
 export const kValidationRouteUrlPattern = "/validation";
-export const kTimelineRouteUrlPattern = "/timeline";
 export const kTranscriptDetailRoute =
   "/transcripts/:transcriptsDir/:transcriptId";
 export const kTranscriptDetailRouteUrlPattern =

@@ -58,7 +58,6 @@ export const SampleInitEventView: FC<SampleInitEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       className={className}
       title="Sample"
       icon={ApplicationIcons.sample}

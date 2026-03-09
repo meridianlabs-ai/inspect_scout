@@ -22,12 +22,15 @@ export const useTranscriptNavigation = () => {
   const [searchParams] = useSearchParams();
 
   const getEventUrl = useCallback(
-    (eventId: string): string | undefined => {
+    (eventId: string, selectedKey?: string): string | undefined => {
       if (!transcriptsDir || !transcriptId) return undefined;
       const newParams = new URLSearchParams(searchParams);
       newParams.set("tab", "transcript-events");
       newParams.set("event", eventId);
       newParams.delete("message");
+      if (selectedKey !== undefined) {
+        newParams.set("selected", selectedKey);
+      }
       return transcriptRoute(transcriptsDir, transcriptId, newParams);
     },
     [transcriptsDir, transcriptId, searchParams]

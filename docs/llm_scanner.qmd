@@ -448,7 +448,6 @@ scanner = llm_scanner(
 Compaction determines _which_ messages to extract; [context window](#context-window) segmentation then splits those messages to fit the scanner model's context. The two work together sequentially: compaction selects the region of interest, then context window segmentation ensures each piece fits within the scanning model's limits.
 
 
-::: {.content-visible when-profile="timelines"}
 ## Scanning Timelines
 
 A timeline is a tree of **spans** representing the structure of an agent's execution. Each span corresponds to an agent, tool, or scorer invocation, and contains **events** (model calls, tool calls, compaction) with optional child spans. Timelines are built automatically from transcript events—they detect agent hierarchies, conversation threads, re-rolled attempts (branches), and utility agents.
@@ -503,5 +502,3 @@ Use the `depth` parameter to limit how deep into the span tree to scan:
 - `depth=1` — scan only the root span
 - `depth=2` — scan the root and its immediate children
 - `depth=None` (default) — scan all levels
-
-:::

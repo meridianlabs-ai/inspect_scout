@@ -1,8 +1,6 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { RecordTree } from "../content/RecordTree";
-
 import styles from "./JsonMessageContent.module.css";
 
 export interface JsonMessageContentProps {
@@ -16,12 +14,16 @@ export const JsonMessageContent: FC<JsonMessageContentProps> = ({
   json,
   className,
 }) => {
-  return (
-    <RecordTree
-      id={id}
-      record={json}
-      className={clsx(styles.jsonMessage, className)}
-      useBorders={false}
-    />
-  );
+  {
+    return (
+      <pre
+        id={id}
+        className={clsx(styles.jsonMessage, className, "language-bash")}
+      >
+        <code className="sourceCode language-bash">
+          {JSON.stringify(json, null, 2)}
+        </code>
+      </pre>
+    );
+  }
 };

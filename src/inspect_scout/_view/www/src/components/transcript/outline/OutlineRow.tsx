@@ -20,6 +20,12 @@ export interface OutlineRowProps {
   selected?: boolean;
   getEventUrl?: (eventId: string) => string | undefined;
   onSelect?: (nodeId: string) => void;
+  /** Called when a URL isn't available but the user clicks to navigate to an event. */
+  onNavigateToEvent?: (eventId: string) => void;
+  /** Depths that have at least one toggle chevron. Controls column reservation per-depth. */
+  depthsWithToggles?: ReadonlySet<number>;
+  /** Depths that have at least one icon. Controls column reservation per-depth. */
+  depthsWithIcons?: ReadonlySet<number>;
 }
 
 export const OutlineRow: FC<OutlineRowProps> = ({
@@ -29,6 +35,9 @@ export const OutlineRow: FC<OutlineRowProps> = ({
   selected,
   getEventUrl,
   onSelect,
+  onNavigateToEvent,
+  depthsWithToggles,
+  depthsWithIcons,
 }) => {
   const [collapsed, setCollapsed] = useCollapseTranscriptEvent(
     collapseScope,
@@ -39,6 +48,9 @@ export const OutlineRow: FC<OutlineRowProps> = ({
 
   const ref = useRef(null);
 
+  const hasToggle = depthsWithToggles?.has(node.depth) ?? false;
+  const hasIcon = depthsWithIcons?.has(node.depth) ?? false;
+
   // Generate URL for deep linking to this event
   const eventUrl = getEventUrl?.(node.id);
 
@@ -48,22 +60,37 @@ export const OutlineRow: FC<OutlineRowProps> = ({
         className={clsx(
           styles.eventRow,
           "text-size-smaller",
-          selected ? styles.selected : ""
+          selected ? styles.selected : "",
+          hasToggle && styles.withToggles,
+          hasIcon && styles.withIcons
         )}
         style={{ paddingLeft: `${node.depth * 0.4}em` }}
         data-unsearchable={true}
-        onClick={() => onSelect?.(node.id)}
+        onClick={() => {
+          onSelect?.(node.id);
+          onNavigateToEvent?.(node.id);
+        }}
       >
+        {hasToggle && (
+          <div
+            className={clsx(styles.toggle)}
+            onClick={() => {
+              setCollapsed(!collapsed);
+            }}
+          >
+            {toggle ? <i className={clsx(toggle)} /> : undefined}
+          </div>
+        )}
+        {hasIcon && (
+          <div className={styles.iconSlot}>
+            {icon ? <i className={clsx(icon)} /> : undefined}
+          </div>
+        )}
         <div
-          className={clsx(styles.toggle)}
-          onClick={() => {
-            setCollapsed(!collapsed);
-          }}
+          className={clsx(styles.label)}
+          data-depth={node.depth}
+          title={tooltipForNode(node)}
         >
-          {toggle ? <i className={clsx(toggle)} /> : undefined}
-        </div>
-        <div className={clsx(styles.label)} data-depth={node.depth}>
-          {icon ? <i className={clsx(icon, styles.icon)} /> : undefined}
           {eventUrl ? (
             <Link to={eventUrl} className={clsx(styles.eventLink)} ref={ref}>
               {parsePackageName(labelForNode(node)).module}
@@ -95,7 +122,11 @@ const toggleIcon = (
   }
 };
 
-const iconForNode = (node: EventNode): string | undefined => {
+export const iconForNode = (node: EventNode): string | undefined => {
+  if (node.sourceSpan?.spanType === "agent") {
+    return ApplicationIcons.subagent;
+  }
+
   switch (node.event.event) {
     case "sample_limit":
       return ApplicationIcons.limits.custom;
@@ -105,10 +136,25 @@ const iconForNode = (node: EventNode): string | undefined => {
 
     case "error":
       return ApplicationIcons.error;
+
+    case "compaction":
+      return ApplicationIcons.compaction;
+  }
+};
+
+/** Tooltip for the outline row (description for agent nodes, undefined otherwise). */
+const tooltipForNode = (node: EventNode): string | undefined => {
+  if (node.sourceSpan?.spanType === "agent" && node.sourceSpan.description) {
+    return node.sourceSpan.description;
   }
 };
 
 const labelForNode = (node: EventNode): string => {
+  // Agent card nodes: use the lowercase span name
+  if (node.sourceSpan?.spanType === "agent") {
+    return node.sourceSpan.name.toLowerCase();
+  }
+
   if (node.event.event === "span_begin") {
     switch (node.event.type) {
       case "solver":

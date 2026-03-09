@@ -5,16 +5,21 @@
 }
 
 .toolView {
-  margin-top: 0.25em;
   padding: 0.5em !important;
+  padding-top: 0 !important;
 }
 
 .toolView pre {
   margin-bottom: 0;
 }
 
+.toolView p > code {
+  font-size: var(--inspect-text-size-small) !important;
+  color: var(--bs-body-color) !important;
+}
+
 .outputCode {
-  font-size: 0.8rem !important;
+  font-size: var(--inspect-text-size-small) !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
 }

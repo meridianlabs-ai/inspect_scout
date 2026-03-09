@@ -1,0 +1,62 @@
+.card {
+  position: relative;
+  background-color: var(--bs-secondary-bg);
+  padding: 0.625rem;
+  border: solid 1px var(--bs-border-color);
+  cursor: pointer;
+}
+
+.card:hover {
+  background-color: var(--bs-secondary-bg-subtle);
+}
+
+.utilityCard {
+  background-color: var(--bs-body-bg);
+  border-style: dashed;
+}
+
+.utilityCard:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+.header {
+  display: grid;
+  grid-template-columns:
+    max-content minmax(0, max-content) auto minmax(0, max-content)
+    max-content;
+  column-gap: 0.3em;
+  align-items: baseline;
+}
+
+.icon {
+  font-size: 0.9em;
+}
+
+.title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.disclosure {
+  font-size: 0.8em;
+  margin-left: 0.3em;
+}
+
+.description {
+  margin-top: 0.25em;
+  font-size: 0.85em;
+}
+
+.resultPanel {
+  margin: 0.5em -0.625rem -0.625rem;
+  padding: 0.5em 0.625rem 0.625rem;
+  border-top: solid 1px var(--bs-border-color);
+  background-color: var(--bs-body-bg);
+  font-size: var(--inspect-font-size-base);
+}

@@ -8,7 +8,6 @@ import {
   S7_FLAT,
   S8_MANY,
   getScenarioRoot,
-  makeSpan,
   ts,
 } from "../testHelpers";
 
@@ -16,10 +15,10 @@ import {
   computeBarPosition,
   computeRowLayouts,
   formatTokenCount,
-  isDrillable,
   timestampToPercent,
 } from "./swimlaneLayout";
 import { computeSwimlaneRows } from "./swimlaneRows";
+import { createIdentityMapping } from "./timeMapping";
 
 // =============================================================================
 // timestampToPercent
@@ -100,41 +99,6 @@ describe("computeBarPosition", () => {
 });
 
 // =============================================================================
-// isDrillable
-// =============================================================================
-
-describe("isDrillable", () => {
-  it("returns true for a SingleSpan with child spans", () => {
-    const child = makeSpan("Child", 5, 10, 100);
-    const agent = makeSpan("Parent", 0, 20, 500, [child]);
-    expect(isDrillable({ agent })).toBe(true);
-  });
-
-  it("returns false for a SingleSpan with only events (no child spans)", () => {
-    const agent = makeSpan("Leaf", 0, 10, 100);
-    expect(isDrillable({ agent })).toBe(false);
-  });
-
-  it("returns false for a SingleSpan with only utility children", () => {
-    const utilChild = makeSpan("util", 5, 10, 50, [], { utility: true });
-    const agent = makeSpan("Parent", 0, 20, 500, [utilChild]);
-    expect(isDrillable({ agent })).toBe(false);
-  });
-
-  it("returns true for a ParallelSpan", () => {
-    const agents = [makeSpan("A", 0, 10, 100), makeSpan("B", 2, 12, 100)];
-    expect(isDrillable({ agents })).toBe(true);
-  });
-
-  it("returns false for a scoring span (leaf with no children)", () => {
-    const agent = makeSpan("Scoring", 40, 50, 3200, [], {
-      spanType: "scorers",
-    });
-    expect(isDrillable({ agent })).toBe(false);
-  });
-});
-
-// =============================================================================
 // formatTokenCount
 // =============================================================================
 
@@ -167,8 +131,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -183,8 +146,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -198,8 +160,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -216,8 +177,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -229,8 +189,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -247,8 +206,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -266,8 +224,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -287,8 +244,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -296,7 +252,7 @@ describe("computeRowLayouts", () => {
       expect(exploreLayout).toBeDefined();
       expect(exploreLayout!.spans).toHaveLength(1);
       expect(exploreLayout!.spans[0]!.parallelCount).toBe(3);
-      expect(exploreLayout!.spans[0]!.drillable).toBe(true);
+      expect(exploreLayout!.spans[0]!.drillable).toBe(false);
     });
   });
 
@@ -306,8 +262,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -324,6 +279,34 @@ describe("computeRowLayouts", () => {
         );
       }
     });
+
+    it("assigns compactionIndex to compaction markers", () => {
+      const root = getScenarioRoot(S5_MARKERS);
+      const rows = computeSwimlaneRows(root);
+      const layouts = computeRowLayouts(
+        rows,
+        createIdentityMapping(root.startTime, root.endTime),
+        "children"
+      );
+
+      const parentLayout = layouts[0]!;
+      const compactionMarkers = parentLayout.markers.filter(
+        (m) => m.kind === "compaction"
+      );
+
+      // Each compaction marker should have a sequential 0-based compactionIndex
+      for (let i = 0; i < compactionMarkers.length; i++) {
+        expect(compactionMarkers[i]!.compactionIndex).toBe(i);
+      }
+
+      // Non-compaction markers should not have compactionIndex
+      const nonCompactionMarkers = parentLayout.markers.filter(
+        (m) => m.kind !== "compaction"
+      );
+      for (const m of nonCompactionMarkers) {
+        expect(m.compactionIndex).toBeUndefined();
+      }
+    });
   });
 
   describe("S7 flat transcript", () => {
@@ -332,8 +315,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -349,8 +331,7 @@ describe("computeRowLayouts", () => {
       const rows = computeSwimlaneRows(root);
       const layouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 
@@ -369,14 +350,12 @@ describe("computeRowLayouts", () => {
 
       const directLayouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "direct"
       );
       const childrenLayouts = computeRowLayouts(
         rows,
-        root.startTime,
-        root.endTime,
+        createIdentityMapping(root.startTime, root.endTime),
         "children"
       );
 

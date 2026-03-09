@@ -7,7 +7,7 @@
  * since we don't have access to inspect_ai's event_tree().
  */
 
-import type { ChatMessage, Event } from "../../types/api-types";
+import type { ChatMessage, Event, ModelEvent } from "../../types/api-types";
 
 // =============================================================================
 // Span Tree Types (internal)
@@ -51,6 +51,7 @@ interface TimelineNode {
   startTime: Date;
   endTime: Date;
   totalTokens: number;
+  idleTime: number;
 }
 
 /**
@@ -73,6 +74,7 @@ export interface TimelineSpan extends TimelineNode {
   branches: TimelineBranch[];
   description?: string;
   utility: boolean;
+  agentResult?: string;
   outline?: Outline;
 }
 
@@ -205,6 +207,50 @@ function sumTokens(nodes: TimelineNode[]): number {
   return nodes.reduce((sum, n) => sum + n.totalTokens, 0);
 }
 
+const IDLE_THRESHOLD_MS = 300_000; // 5 minutes
+
+/**
+ * Compute idle time using gap-based detection between children.
+ *
+ * Any gap > 5 min between consecutive children (sorted by startTime)
+ * is counted as idle. Children's own idleTime is summed recursively.
+ */
+export function computeIdleTime(
+  content: TimelineNode[],
+  startTime: Date,
+  endTime: Date
+): number {
+  if (content.length === 0) return 0;
+
+  const sorted = [...content].sort(
+    (a, b) => a.startTime.getTime() - b.startTime.getTime()
+  );
+  let idleMs = 0;
+
+  // Sum children's own idle time
+  for (const child of sorted) {
+    idleMs += child.idleTime * 1000;
+  }
+
+  // Gap: span start → first child
+  const firstGap = sorted[0]!.startTime.getTime() - startTime.getTime();
+  if (firstGap > IDLE_THRESHOLD_MS) idleMs += firstGap;
+
+  // Gaps between consecutive children
+  for (let i = 1; i < sorted.length; i++) {
+    const gap =
+      sorted[i]!.startTime.getTime() - sorted[i - 1]!.endTime.getTime();
+    if (gap > IDLE_THRESHOLD_MS) idleMs += gap;
+  }
+
+  // Gap: last child → span end
+  const lastGap =
+    endTime.getTime() - sorted[sorted.length - 1]!.endTime.getTime();
+  if (lastGap > IDLE_THRESHOLD_MS) idleMs += lastGap;
+
+  return Math.max(0, idleMs / 1000);
+}
+
 // =============================================================================
 // Node Creation
 // =============================================================================
@@ -219,6 +265,7 @@ function createTimelineEvent(event: Event): TimelineEvent {
     startTime: getEventStartTime(event),
     endTime: getEventEndTime(event),
     totalTokens: getEventTokens(event),
+    idleTime: 0,
   };
 }
 
@@ -240,6 +287,9 @@ function createTimelineSpan(
         "Callers must guard against empty content before calling the factory."
     );
   }
+  const allNodes = [...content, ...branches];
+  const startTime = minStartTime(allNodes);
+  const endTime = maxEndTime(allNodes);
   return {
     type: "span",
     id,
@@ -249,9 +299,10 @@ function createTimelineSpan(
     branches,
     description,
     utility,
-    startTime: minStartTime([...content, ...branches]),
-    endTime: maxEndTime([...content, ...branches]),
-    totalTokens: sumTokens([...content, ...branches]),
+    startTime,
+    endTime,
+    totalTokens: sumTokens(allNodes),
+    idleTime: computeIdleTime(allNodes, startTime, endTime),
   };
 }
 
@@ -268,13 +319,16 @@ function createBranch(
         "Callers must guard against empty content before calling the factory."
     );
   }
+  const startTime = minStartTime(content);
+  const endTime = maxEndTime(content);
   return {
     type: "branch",
     forkedAt,
     content,
-    startTime: minStartTime(content),
-    endTime: maxEndTime(content),
+    startTime,
+    endTime,
     totalTokens: sumTokens(content),
+    idleTime: computeIdleTime(content, startTime, endTime),
   };
 }
 
@@ -293,6 +347,10 @@ function buildSpanTree(events: Event[]): TreeItem[] {
   const spansById = new Map<string, SpanNode>();
   const spanStack: SpanNode[] = [];
 
+  // Pre-register all spans so events referencing later spans can find them.
+  // This handles the case where span_begin events appear after the events
+  // they contain (e.g. agent spans appended to the transcript after their
+  // child events).
   for (const event of events) {
     if (event.event === "span_begin") {
       const span: SpanNode = {
@@ -305,6 +363,13 @@ function buildSpanTree(events: Event[]): TreeItem[] {
         beginEvent: event,
       };
       spansById.set(span.id, span);
+    }
+  }
+
+  // Main loop: build hierarchy and assign events to spans
+  for (const event of events) {
+    if (event.event === "span_begin") {
+      const span = spansById.get(event.id)!;
 
       // Determine where to place this span
       if (span.parentId && spansById.has(span.parentId)) {
@@ -347,6 +412,21 @@ function buildSpanTree(events: Event[]): TreeItem[] {
         root.push(event);
       }
     }
+  }
+
+  // Sort each span's children by timestamp to ensure chronological order,
+  // since events with a matching span_id may appear before the span_begin
+  // in the array.
+  const getTimestamp = (item: TreeItem): string => {
+    if (isSpanNode(item)) {
+      return item.beginEvent.timestamp;
+    }
+    return item.timestamp;
+  };
+  for (const span of spansById.values()) {
+    span.children.sort((a, b) =>
+      getTimestamp(a).localeCompare(getTimestamp(b))
+    );
   }
 
   return root;
@@ -405,12 +485,18 @@ function eventToNode(event: Event): TimelineEvent | TimelineSpan {
       );
 
       if (nestedContent.length > 0) {
-        return createTimelineSpan(
+        const span = createTimelineSpan(
           `tool-agent-${event.id}`,
           agentName,
           "agent",
           nestedContent
         );
+        // Capture agent result from the spawning ToolEvent
+        const agentResult = extractToolEventResult(event.result);
+        if (agentResult) {
+          span.agentResult = agentResult;
+        }
+        return span;
       }
     }
   }
@@ -542,6 +628,25 @@ function buildSpanFromGenericSpan(
 }
 
 /**
+ * Recursively unwrap solver-type spans that contain exactly one agent child.
+ *
+ * This flattens unnecessary nesting (e.g. a "react" solver wrapping a single
+ * agent) so the timeline shows the agent directly.
+ */
+function unwrapSolverSpan(span: SpanNode): SpanNode {
+  while (span.type === "solver") {
+    const agentChildren = span.children.filter(
+      (child): child is SpanNode => isSpanNode(child) && child.type === "agent"
+    );
+    if (agentChildren.length !== 1) {
+      break;
+    }
+    span = agentChildren[0]!;
+  }
+  return span;
+}
+
+/**
  * Build agent hierarchy from the solvers span.
  *
  * Looks for explicit agent spans (type='agent') within the solvers span.
@@ -572,8 +677,9 @@ function buildAgentFromSolversSpan(
     // Build from explicit agent spans
     const firstAgentSpan = agentSpans[0];
     if (agentSpans.length === 1 && firstAgentSpan) {
+      const target = unwrapSolverSpan(firstAgentSpan);
       const result = buildSpanFromAgentSpan(
-        firstAgentSpan,
+        target,
         hasExplicitBranches,
         otherItems
       );
@@ -583,8 +689,8 @@ function buildAgentFromSolversSpan(
       // Agent span had no content — return an empty span preserving identity
       return {
         type: "span",
-        id: firstAgentSpan.id,
-        name: firstAgentSpan.name.toLowerCase(),
+        id: target.id,
+        name: target.name.toLowerCase(),
         spanType: "agent",
         content: [],
         branches: [],
@@ -592,6 +698,7 @@ function buildAgentFromSolversSpan(
         startTime: new Date(0),
         endTime: new Date(0),
         totalTokens: 0,
+        idleTime: 0,
       };
     } else {
       // Multiple agent spans - create root containing all
@@ -679,9 +786,9 @@ function unrollSpan(
     if (isSpanNode(child)) {
       if (isAgentSpan(child)) {
         const node = treeItemToNode(child, hasExplicitBranches);
-        if (node !== null) {
-          into.push(node);
-        }
+        if (node === null) continue;
+        if (node.type === "span" && node.content.length === 0) continue;
+        into.push(node);
       } else {
         unrollSpan(child, into, hasExplicitBranches);
       }
@@ -721,6 +828,7 @@ function processChildren(
       } else {
         const node = treeItemToNode(item, hasExplicitBranches);
         if (node === null) continue;
+        if (node.type === "span" && node.content.length === 0) continue;
         content.push(node);
       }
     }
@@ -859,164 +967,19 @@ function getBranchInput(
   return null;
 }
 
-// =============================================================================
-// TimelineBranch Auto-Detection
-// =============================================================================
-
 /**
- * Compute a fingerprint for a single ChatMessage.
+ * Recursively classify branches in the agent tree.
  *
- * Serializes role + content, ignoring auto-generated fields.
- * Uses full string as fingerprint (no crypto hash needed in TS).
- */
-function messageFingerprint(
-  msg: ChatMessage,
-  cache?: WeakMap<ChatMessage, string>
-): string {
-  if (cache) {
-    const cached = cache.get(msg);
-    if (cached !== undefined) return cached;
-  }
-
-  const role = msg.role;
-  let serialized: string;
-  if (typeof msg.content === "string") {
-    serialized = msg.content;
-  } else {
-    serialized = JSON.stringify(msg.content);
-  }
-  const result = `${role}:${serialized}`;
-
-  if (cache) {
-    cache.set(msg, result);
-  }
-  return result;
-}
-
-/**
- * Compute a fingerprint for a sequence of input messages.
- */
-function inputFingerprint(
-  messages: ChatMessage[],
-  cache?: WeakMap<ChatMessage, string>
-): string {
-  return messages.map((m) => messageFingerprint(m, cache)).join("|");
-}
-
-/**
- * Detect re-rolled ModelEvents with identical inputs and create branches.
- *
- * CompactionEvents act as hard boundaries: fingerprint grouping is done
- * independently within each region separated by compaction events, so
- * re-rolls are never matched across a compaction boundary.
- *
- * Mutates span in-place.
- */
-function detectAutoBranches(span: TimelineSpan): void {
-  // Cache message fingerprints by object identity to avoid re-serializing
-  const fpCache = new WeakMap<ChatMessage, string>();
-
-  // Split content into regions at compaction boundaries
-  const regions: [number, number][] = [];
-  let regionStart = 0;
-  for (let i = 0; i < span.content.length; i++) {
-    const item = span.content[i];
-    if (item && item.type === "event" && item.event.event === "compaction") {
-      regions.push([regionStart, i]);
-      regionStart = i + 1;
-    }
-  }
-  regions.push([regionStart, span.content.length]);
-
-  // Collect branch ranges across all regions
-  const branchRanges: [number, number, ChatMessage[]][] = [];
-
-  for (const [rStart, rEnd] of regions) {
-    // Find ModelEvent indices and their fingerprints within this region
-    const modelIndices: [number, string][] = [];
-    for (let i = rStart; i < rEnd; i++) {
-      const item = span.content[i];
-      if (item && item.type === "event" && item.event.event === "model") {
-        const inputMsgs = item.event.input;
-        if (!inputMsgs || inputMsgs.length === 0) continue;
-        const fp = inputFingerprint(inputMsgs, fpCache);
-        modelIndices.push([i, fp]);
-      }
-    }
-
-    // Group by fingerprint within this region
-    const fingerprintGroups = new Map<string, number[]>();
-    for (const [idx, fp] of modelIndices) {
-      const group = fingerprintGroups.get(fp);
-      if (group) {
-        group.push(idx);
-      } else {
-        fingerprintGroups.set(fp, [idx]);
-      }
-    }
-
-    // Only process groups with duplicates
-    for (const [, indices] of fingerprintGroups) {
-      if (indices.length <= 1) continue;
-
-      const firstItem = span.content[indices[0]!];
-      if (
-        !firstItem ||
-        firstItem.type !== "event" ||
-        firstItem.event.event !== "model"
-      ) {
-        continue;
-      }
-      const sharedInput = firstItem.event.input ?? [];
-
-      for (let i = 0; i < indices.length - 1; i++) {
-        const branchStart = indices[i]!;
-        const nextReroll = indices[i + 1]!;
-        branchRanges.push([branchStart, nextReroll, sharedInput]);
-      }
-    }
-  }
-
-  if (branchRanges.length === 0) return;
-
-  // Sort by start index descending so we can remove from the end first
-  branchRanges.sort((a, b) => b[0] - a[0]);
-
-  for (const [start, end, sharedInput] of branchRanges) {
-    const branchContent = span.content.slice(start, end);
-    if (branchContent.length > 0) {
-      const forkedAt = findForkedAt(span.content, sharedInput);
-      span.branches.push(createBranch(forkedAt, branchContent));
-    }
-    span.content.splice(start, end - start);
-  }
-
-  // Reverse branches so they're in original order
-  span.branches.reverse();
-
-  // Recompute totalTokens since content was modified
-  span.totalTokens = sumTokens([...span.content, ...span.branches]);
-}
-
-/**
- * Recursively detect branches in the span tree.
- *
- * Skips root since _classify_spans already ran detectAutoBranches on it
- * before branch classification.
+ * Recurses into child spans in both content and branches.
  */
 function classifyBranches(
   span: TimelineSpan,
-  hasExplicitBranches: boolean,
-  isRoot: boolean = true
+  hasExplicitBranches: boolean
 ): void {
-  if (!hasExplicitBranches && !isRoot) {
-    detectAutoBranches(span);
-  }
-
   // Recurse into child spans in content
   for (const item of span.content) {
     if (item.type === "span") {
-      classifyBranches(item, hasExplicitBranches, false);
+      classifyBranches(item, hasExplicitBranches);
     }
   }
 
@@ -1024,13 +987,201 @@ function classifyBranches(
   for (const branch of span.branches) {
     for (const item of branch.content) {
       if (item.type === "span") {
-        classifyBranches(item, hasExplicitBranches, false);
+        classifyBranches(item, hasExplicitBranches);
+      }
+    }
+  }
+}
+
+// =============================================================================
+// Utility Event Wrapping (bridge-based agents)
+// =============================================================================
+
+/**
+ * Strip the per-call billing header from a system prompt.
+ *
+ * Claude Code prepends a line like `x-anthropic-billing-header: ...`
+ * with a varying `cch=` hash. Removing it lets us compare prompts
+ * across calls.
+ */
+function normalizeSystemPrompt(prompt: string): string {
+  if (prompt.startsWith("x-anthropic-billing-header:")) {
+    const idx = prompt.indexOf("\n");
+    if (idx !== -1) {
+      return prompt.substring(idx + 1);
+    }
+    return ""; // prompt was only the header line
+  }
+  return prompt;
+}
+
+/**
+ * Extract and normalize the system prompt from a single ModelEvent.
+ */
+function getSystemPromptForEvent(event: ModelEvent): string | null {
+  const input = event.input;
+  if (!input) return null;
+  for (const msg of input) {
+    if (msg.role === "system") {
+      if (typeof msg.content === "string") {
+        return normalizeSystemPrompt(msg.content);
+      }
+      if (Array.isArray(msg.content)) {
+        const parts: string[] = [];
+        for (const c of msg.content) {
+          if ("text" in c && typeof c.text === "string") {
+            parts.push(c.text);
+          }
+        }
+        const raw = parts.length > 0 ? parts.join("\n") : null;
+        return raw ? normalizeSystemPrompt(raw) : null;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Check whether a ModelEvent's output contains tool calls.
+ */
+function hasToolCalls(event: ModelEvent): boolean {
+  const choices = event.output?.choices;
+  if (choices && choices.length > 0) {
+    const msg = choices[0]!.message;
+    if (msg.tool_calls && msg.tool_calls.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Wrap foreign-prompt model calls as synthetic utility spans.
+ *
+ * Within bridge-based agent spans (e.g. Claude Code), short extraction
+ * model calls use a different system prompt and produce no tool calls.
+ * This function detects them and wraps each one in a TimelineSpan
+ * with utility=true so downstream code treats them as utility agents.
+ *
+ * Operates recursively on the entire span tree.
+ */
+function wrapUtilityEvents(agent: TimelineSpan): void {
+  // --- Determine the primary system prompt for this span ---
+  let primaryPrompt: string | null = null;
+
+  // Prefer the prompt of the first ModelEvent that has tool calls
+  for (const item of agent.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const modelEvt = item.event;
+      if (hasToolCalls(modelEvt)) {
+        primaryPrompt = getSystemPromptForEvent(modelEvt);
+        break;
       }
     }
   }
 
-  // Recompute totalTokens since child spans may have changed
-  span.totalTokens = sumTokens([...span.content, ...span.branches]);
+  // Fall back to the first ModelEvent's prompt
+  if (primaryPrompt === null) {
+    for (const item of agent.content) {
+      if (item.type === "event" && item.event.event === "model") {
+        primaryPrompt = getSystemPromptForEvent(item.event);
+        break;
+      }
+    }
+  }
+
+  // No ModelEvents at all → nothing to wrap
+  if (primaryPrompt === null) {
+    // Still recurse into child spans
+    for (const item of agent.content) {
+      if (item.type === "span") {
+        wrapUtilityEvents(item);
+      }
+    }
+    for (const branch of agent.branches) {
+      for (const item of branch.content) {
+        if (item.type === "span") {
+          wrapUtilityEvents(item);
+        }
+      }
+    }
+    return;
+  }
+
+  // --- Scan and wrap utility candidates ---
+  const newContent: (TimelineEvent | TimelineSpan)[] = [];
+  for (const item of agent.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      const modelEvt = item.event;
+
+      // Warmup/cache-priming call (max_tokens=1)
+      if (isWarmupCall(modelEvt)) {
+        const wrapper = createTimelineSpan(
+          `utility-${item.event.uuid ?? "unknown"}`,
+          "utility",
+          "agent",
+          [item]
+        );
+        wrapper.utility = true;
+        newContent.push(wrapper);
+        continue;
+      }
+
+      const evtPrompt = getSystemPromptForEvent(modelEvt);
+      if (
+        evtPrompt !== null &&
+        evtPrompt !== primaryPrompt &&
+        !hasToolCalls(modelEvt)
+      ) {
+        // Wrap in a synthetic utility span
+        const wrapper = createTimelineSpan(
+          `utility-${item.event.uuid ?? "unknown"}`,
+          "utility",
+          "agent",
+          [item]
+        );
+        wrapper.utility = true;
+        newContent.push(wrapper);
+        continue;
+      }
+    }
+    newContent.push(item);
+  }
+
+  agent.content = newContent;
+
+  // --- Recurse into child spans and branches ---
+  for (const item of agent.content) {
+    if (item.type === "span") {
+      wrapUtilityEvents(item);
+    }
+  }
+  for (const branch of agent.branches) {
+    for (const item of branch.content) {
+      if (item.type === "span") {
+        wrapUtilityEvents(item);
+      }
+    }
+  }
+}
+
+function isWarmupCall(event: ModelEvent): boolean {
+  if (event.config?.max_tokens == null || event.config.max_tokens > 1) {
+    return false;
+  }
+  // Check that the last user message is a single word
+  const input = event.input;
+  if (!input) return false;
+  for (let i = input.length - 1; i >= 0; i--) {
+    const msg = input[i];
+    if (msg?.role === "user") {
+      if (typeof msg.content === "string") {
+        return msg.content.trim().split(/\s+/).length <= 1;
+      }
+      return false;
+    }
+  }
+  return false;
 }
 
 // =============================================================================
@@ -1048,7 +1199,7 @@ function getSystemPrompt(span: TimelineSpan): string | null {
         for (const msg of input) {
           if (msg.role === "system") {
             if (typeof msg.content === "string") {
-              return msg.content;
+              return normalizeSystemPrompt(msg.content);
             }
             if (Array.isArray(msg.content)) {
               const parts: string[] = [];
@@ -1057,7 +1208,10 @@ function getSystemPrompt(span: TimelineSpan): string | null {
                   parts.push(c.text);
                 }
               }
-              return parts.length > 0 ? parts.join("\n") : null;
+              if (parts.length > 0) {
+                return normalizeSystemPrompt(parts.join("\n"));
+              }
+              return null;
             }
           }
         }
@@ -1166,10 +1320,131 @@ function classifyUtilityAgents(
  * dissolve into the parent's content list.
  *
  * **Phase 3 — Post-processing passes:**
- * - Auto-branch detection (re-rolled ModelEvents with identical inputs)
+ * - Utility event wrapping (bridge-based agents with foreign prompts)
  * - Utility agent classification (single-turn, different system prompt)
  * - Recursive branch classification
  */
+// =============================================================================
+// Span Result Extraction
+// =============================================================================
+
+/**
+ * Returns the pre-extracted agent result for a span.
+ * Results are extracted during timeline building by `extractAgentResults()`.
+ */
+export function getSpanToolResult(span: TimelineSpan): string | undefined {
+  return span.agentResult;
+}
+
+/**
+ * Extract a string result from a ToolEvent result field.
+ */
+function extractToolEventResult(result: unknown): string | undefined {
+  if (typeof result === "string" && result) return result;
+  if (Array.isArray(result)) {
+    const parts: string[] = [];
+    for (const c of result) {
+      if (c && typeof c === "object" && "text" in c)
+        parts.push((c as { text: string }).text);
+    }
+    return parts.length > 0 ? parts.join("\n") : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Extract agentResult for each agent sub-span.
+ *
+ * Three sources (checked in order):
+ * 1. Tool-spawned agents: result already set during eventToNode
+ * 2. Span-based agents (static flow): sibling ToolEvent with agent_span_id === span.id
+ * 3. Bridge flow: next ModelEvent's input has tool message with function === span.name
+ */
+function extractAgentResults(parent: TimelineSpan): void {
+  const content = parent.content;
+  for (let i = 0; i < content.length; i++) {
+    const item = content[i]!;
+    if (item.type !== "span") continue;
+    if (item.spanType !== "agent") {
+      extractAgentResults(item);
+      continue;
+    }
+
+    // Skip if already set (e.g. from tool-spawned agent construction)
+    if (item.agentResult) {
+      extractAgentResults(item);
+      continue;
+    }
+
+    // Flow 1: sibling ToolEvent with agent_span_id matching this span
+    for (const sibling of content) {
+      if (
+        sibling.type === "event" &&
+        sibling.event.event === "tool" &&
+        sibling.event.agent_span_id === item.id
+      ) {
+        const resultText = extractToolEventResult(sibling.event.result);
+        if (resultText) {
+          item.agentResult = resultText;
+        }
+        break;
+      }
+    }
+
+    // Flow 2: next model event's input has tool message with matching tool_call_id
+    // The span ID follows the pattern "agent-{tool_call_id}" in bridge flow.
+    const toolCallId = item.id.startsWith("agent-") ? item.id.slice(6) : null;
+
+    if (!item.agentResult && toolCallId) {
+      for (let j = i + 1; j < content.length; j++) {
+        const nextItem = content[j]!;
+        if (nextItem.type !== "event") continue;
+        if (nextItem.event.event === "model") {
+          const modelEvent = nextItem.event;
+          if (modelEvent.input) {
+            for (const msg of modelEvent.input) {
+              if (
+                msg.role === "tool" &&
+                "tool_call_id" in msg &&
+                (msg as { tool_call_id?: string }).tool_call_id === toolCallId
+              ) {
+                const text = extractToolEventResult(msg.content);
+                if (text) {
+                  item.agentResult = text;
+                }
+              }
+            }
+          }
+          if (item.agentResult) break;
+        }
+      }
+    }
+
+    // Recurse into child spans
+    extractAgentResults(item);
+  }
+}
+
+/**
+ * Derive a display label for a utility agent span.
+ *
+ * Synthetic utility spans created by `wrapUtilityEvents` are named "utility"
+ * which is redundant when paired with a "utility:" prefix. For these, extract
+ * the model name from the inner model event. For classified utility agents
+ * (real spans with meaningful names like "explore"), keep the existing name.
+ */
+export function getUtilityAgentLabel(span: TimelineSpan): string {
+  const name = span.name.toLowerCase();
+  if (name !== "utility") return name;
+
+  for (const item of span.content) {
+    if (item.type === "event" && item.event.event === "model") {
+      return item.event.model;
+    }
+  }
+  return name;
+}
+
 export function buildTimeline(events: Event[]): Timeline {
   if (events.length === 0) {
     const emptyRoot: TimelineSpan = {
@@ -1183,6 +1458,7 @@ export function buildTimeline(events: Event[]): Timeline {
       startTime: new Date(0),
       endTime: new Date(0),
       totalTokens: 0,
+      idleTime: 0,
     };
     return { name: "Default", description: "", root: emptyRoot };
   }
@@ -1258,9 +1534,11 @@ export function buildTimeline(events: Event[]): Timeline {
     }
 
     if (agentNode) {
-      if (!hasExplicitBranches) detectAutoBranches(agentNode);
+      agentNode.name = "main";
+      wrapUtilityEvents(agentNode);
       classifyUtilityAgents(agentNode);
       classifyBranches(agentNode, hasExplicitBranches);
+      extractAgentResults(agentNode);
 
       // Prepend init span to agent content
       if (initSpanObj) {
@@ -1278,6 +1556,11 @@ export function buildTimeline(events: Event[]): Timeline {
           ...agentNode.content,
           ...agentNode.branches,
         ]);
+        agentNode.idleTime = computeIdleTime(
+          [...agentNode.content, ...agentNode.branches],
+          agentNode.startTime,
+          agentNode.endTime
+        );
       }
 
       // Append scoring as a child span
@@ -1291,6 +1574,11 @@ export function buildTimeline(events: Event[]): Timeline {
           ...agentNode.content,
           ...agentNode.branches,
         ]);
+        agentNode.idleTime = computeIdleTime(
+          [...agentNode.content, ...agentNode.branches],
+          agentNode.startTime,
+          agentNode.endTime
+        );
       }
 
       root = agentNode;
@@ -1317,6 +1605,7 @@ export function buildTimeline(events: Event[]): Timeline {
           startTime: new Date(0),
           endTime: new Date(0),
           totalTokens: 0,
+          idleTime: 0,
         };
       }
     }
@@ -1324,9 +1613,10 @@ export function buildTimeline(events: Event[]): Timeline {
     // No phase spans - treat entire tree as agent
     const agentRoot = buildAgentFromTree(tree, hasExplicitBranches);
     if (agentRoot) {
-      if (!hasExplicitBranches) detectAutoBranches(agentRoot);
+      wrapUtilityEvents(agentRoot);
       classifyUtilityAgents(agentRoot);
       classifyBranches(agentRoot, hasExplicitBranches);
+      extractAgentResults(agentRoot);
       root = agentRoot;
     } else {
       // All content was empty — construct an empty root inline
@@ -1341,6 +1631,7 @@ export function buildTimeline(events: Event[]): Timeline {
         startTime: new Date(0),
         endTime: new Date(0),
         totalTokens: 0,
+        idleTime: 0,
       };
     }
   }

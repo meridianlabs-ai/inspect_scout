@@ -10,31 +10,24 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ChatViewVirtualList } from "../../components/chat/ChatViewVirtualList";
 import { DisplayModeContext } from "../../components/content/DisplayModeContext";
 import { MetaDataGrid } from "../../components/content/MetaDataGrid";
 import { ApplicationIcons } from "../../components/icons";
-import { StickyScroll } from "../../components/StickyScroll";
 import { TabPanel, TabSet } from "../../components/TabSet";
 import { ToolButton } from "../../components/ToolButton";
 import { ToolDropdownButton } from "../../components/ToolDropdownButton";
-import { useEventNodes } from "../../components/transcript/hooks/useEventNodes";
-import { TranscriptOutline } from "../../components/transcript/outline/TranscriptOutline";
-import { TranscriptViewNodes } from "../../components/transcript/TranscriptViewNodes";
-import {
-  EventNode,
-  kCollapsibleEventTypes,
-  kTranscriptCollapseScope,
-} from "../../components/transcript/types";
 import { getValidationParam, updateValidationParam } from "../../router/url";
 import { useStore } from "../../state/store";
 import { Transcript } from "../../types/api-types";
+import { TimelineEventsView } from "../timeline/components/TimelineEventsView";
 import { messagesToStr } from "../utils/messages";
 import { ValidationCaseEditor } from "../validation/components/ValidationCaseEditor";
 
 import { useTranscriptColumnFilter } from "./hooks/useTranscriptColumnFilter";
+import { useTranscriptNavigation } from "./hooks/useTranscriptNavigation";
 import styles from "./TranscriptBody.module.css";
 import { TranscriptFilterPopover } from "./TranscriptFilterPopover";
 
@@ -43,49 +36,41 @@ export const kTranscriptEventsTabId = "transcript-events";
 export const kTranscriptMetadataTabId = "transcript-metadata";
 export const kTranscriptInfoTabId = "transcript-info";
 
-/**
- * Recursively collects all collapsible event IDs from the event tree.
- */
-const collectAllCollapsibleIds = (
-  nodes: EventNode[]
-): Record<string, boolean> => {
-  const result: Record<string, boolean> = {};
-  const traverse = (nodeList: EventNode[]) => {
-    for (const node of nodeList) {
-      if (kCollapsibleEventTypes.includes(node.event.event)) {
-        result[node.id] = true;
-      }
-      if (node.children.length > 0) {
-        traverse(node.children);
-      }
-    }
-  };
-  traverse(nodes);
-  return result;
-};
-
 interface TranscriptBodyProps {
   transcript: Transcript;
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** Headroom direction signal: true = scrolling down (hide). */
+  headroomHidden?: boolean;
+  /** Reset the headroom anchor before a layout shift or programmatic scroll.
+   *  Pass `true` to debounce (keeps lock alive while scrolling continues). */
+  onHeadroomResetAnchor?: (debounce?: boolean) => void;
 }
 
 export const TranscriptBody: FC<TranscriptBodyProps> = ({
   transcript,
   scrollRef,
+  headroomHidden,
+  onHeadroomResetAnchor,
 }) => {
+  const navigate = useNavigate();
   // When the validation sidebar is open, a VscodeSplitLayout wraps the content
   // in a separate scrollable div (splitStart). The virtualizer and other scroll
   // listeners need the *actual* scroll container, not the outer transcriptContainer.
   const splitStartRef = useRef<HTMLDivElement | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getEventUrl } = useTranscriptNavigation();
   const tabParam = searchParams.get("tab");
 
   // Get event or message ID from query params for deep linking
   const eventParam = searchParams.get("event");
   const messageParam = searchParams.get("message");
 
-  // Selected tab
+  // Selected tab — default to Events when the transcript has events
+  const hasEvents = transcript.events && transcript.events.length > 0;
+  const defaultTab = hasEvents
+    ? kTranscriptEventsTabId
+    : kTranscriptMessagesTabId;
   const selectedTranscriptTab = useStore(
     (state) => state.selectedTranscriptTab
   );
@@ -93,7 +78,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     (state) => state.setSelectedTranscriptTab
   );
   const resolvedSelectedTranscriptTab =
-    tabParam || selectedTranscriptTab || kTranscriptMessagesTabId;
+    tabParam || selectedTranscriptTab || defaultTab;
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -102,10 +87,27 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       setSearchParams((prevParams) => {
         const newParams = new URLSearchParams(prevParams);
         newParams.set("tab", tabId);
+        // Clear deep link params so the auto-switch effect doesn't
+        // fight the user's explicit tab choice
+        newParams.delete("event");
+        newParams.delete("message");
         return newParams;
       });
     },
     [setSelectedTranscriptTab, setSearchParams]
+  );
+
+  // Navigate to a specific event when a marker is clicked on the timeline.
+  // When selectedKey is provided (compaction markers), the bar is selected
+  // atomically in the same URL update to avoid a race between setSearchParams
+  // and navigate.
+  const handleMarkerNavigate = useCallback(
+    (eventId: string, selectedKey?: string) => {
+      const url = getEventUrl(eventId, selectedKey);
+      if (!url) return;
+      void navigate(url);
+    },
+    [getEventUrl, navigate]
   );
 
   // Auto-switch tab based on deep link params
@@ -137,22 +139,15 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
   const { excludedEventTypes, isDebugFilter, isDefaultFilter } =
     useTranscriptColumnFilter();
 
+  // Pre-filter events by excluded types before feeding into the timeline pipeline
   const filteredEvents = useMemo(() => {
-    if (excludedEventTypes.length === 0) {
-      return transcript.events;
-    }
-    return transcript.events.filter((event) => {
-      return !excludedEventTypes.includes(event.event);
-    });
+    if (excludedEventTypes.length === 0) return transcript.events;
+    return transcript.events.filter(
+      (event) => !excludedEventTypes.includes(event.event)
+    );
   }, [transcript.events, excludedEventTypes]);
 
-  // Transcript event data
-  const { eventNodes, defaultCollapsedIds } = useEventNodes(
-    filteredEvents,
-    false
-  );
-
-  // Transcript collapse
+  // Transcript collapse (toolbar button state)
   const eventsCollapsed = useStore((state) => state.transcriptState.collapsed);
   const setTranscriptState = useStore((state) => state.setTranscriptState);
   const collapseEvents = useCallback(
@@ -160,24 +155,6 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
       setTranscriptState((prev) => ({
         ...prev,
         collapsed,
-      }));
-    },
-    [setTranscriptState]
-  );
-
-  const setCollapsedEvents = useStore(
-    (state) => state.setTranscriptCollapsedEvents
-  );
-
-  // Outline toggle
-  const outlineCollapsed = useStore(
-    (state) => state.transcriptState.outlineCollapsed
-  );
-  const toggleOutline = useCallback(
-    (collapsed: boolean) => {
-      setTranscriptState((prev) => ({
-        ...prev,
-        outlineCollapsed: collapsed,
       }));
     },
     [setTranscriptState]
@@ -214,25 +191,6 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     () => ({ displayMode }),
     [displayMode]
   );
-
-  useEffect(() => {
-    if (transcript.events.length <= 0 || eventsCollapsed === undefined) {
-      return;
-    }
-
-    if (!eventsCollapsed && Object.keys(defaultCollapsedIds).length > 0) {
-      setCollapsedEvents(kTranscriptCollapseScope, defaultCollapsedIds);
-    } else if (eventsCollapsed) {
-      const allCollapsibleIds = collectAllCollapsibleIds(eventNodes);
-      setCollapsedEvents(kTranscriptCollapseScope, allCollapsibleIds);
-    }
-  }, [
-    defaultCollapsedIds,
-    eventNodes,
-    eventsCollapsed,
-    setCollapsedEvents,
-    transcript.events.length,
-  ]);
 
   const tabTools: ReactNode[] = [];
 
@@ -308,7 +266,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
     />
   );
 
-  const tabPanels = [
+  const messagesPanel = (
     <TabPanel
       key={kTranscriptMessagesTabId}
       id={kTranscriptMessagesTabId}
@@ -330,66 +288,45 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         scrollRef={activeScrollRef}
         showLabels={true}
       />
-    </TabPanel>,
-  ];
+    </TabPanel>
+  );
 
-  if (transcript.events && transcript.events.length > 0) {
-    tabPanels.push(
-      <TabPanel
-        key="transcript-events"
-        id={kTranscriptEventsTabId}
-        className={clsx(styles.eventsTab)}
-        title="Events"
-        onSelected={() => {
-          handleTabChange(kTranscriptEventsTabId);
-        }}
-        selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
-        scrollable={false}
-      >
-        <div
-          className={clsx(
-            styles.eventsContainer,
-            outlineCollapsed ? styles.outlineCollapsed : undefined
-          )}
-        >
-          <StickyScroll
-            scrollRef={activeScrollRef}
-            className={styles.eventsOutline}
-            offsetTop={40}
-          >
-            {!outlineCollapsed && (
-              <TranscriptOutline
-                eventNodes={eventNodes}
-                defaultCollapsedIds={defaultCollapsedIds}
-                scrollRef={activeScrollRef}
-              />
-            )}
-            <div
-              className={styles.outlineToggle}
-              onClick={() => toggleOutline(!outlineCollapsed)}
-            >
-              <i className={ApplicationIcons.sidebar} />
-            </div>
-          </StickyScroll>
-          <div className={styles.eventsSeparator} />
-          <TranscriptViewNodes
-            id={"transcript-events-list"}
-            eventNodes={eventNodes}
-            defaultCollapsedIds={defaultCollapsedIds}
-            initialEventId={eventParam}
-            className={styles.eventsList}
-            scrollRef={activeScrollRef}
-          />
-        </div>
-        <TranscriptFilterPopover
-          showing={transcriptFilterShowing}
-          setShowing={setTranscriptFilterShowing}
-          // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
-          positionEl={transcriptFilterButtonRef.current}
-        />
-      </TabPanel>
-    );
-  }
+  const eventsPanel = hasEvents ? (
+    <TabPanel
+      key="transcript-events"
+      id={kTranscriptEventsTabId}
+      className={clsx(styles.eventsTab)}
+      title="Events"
+      onSelected={() => {
+        handleTabChange(kTranscriptEventsTabId);
+      }}
+      selected={resolvedSelectedTranscriptTab === kTranscriptEventsTabId}
+      scrollable={false}
+    >
+      <TimelineEventsView
+        events={filteredEvents}
+        scrollRef={activeScrollRef}
+        offsetTop={40}
+        initialEventId={eventParam}
+        initialMessageId={messageParam}
+        defaultOutlineExpanded={true}
+        id="transcript-events-list"
+        collapsed={eventsCollapsed}
+        onMarkerNavigate={handleMarkerNavigate}
+        headroomHidden={headroomHidden}
+        onHeadroomResetAnchor={onHeadroomResetAnchor}
+      />
+      <TranscriptFilterPopover
+        showing={transcriptFilterShowing}
+        setShowing={setTranscriptFilterShowing}
+        // eslint-disable-next-line react-hooks/refs -- positionEl accepts null; PopOver/Popper handles this in effects and updates when ref is populated
+        positionEl={transcriptFilterButtonRef.current}
+      />
+    </TabPanel>
+  ) : null;
+
+  // Events tab first when available, then Messages
+  const tabPanels = [...(eventsPanel ? [eventsPanel] : []), messagesPanel];
 
   if (transcript.metadata && Object.keys(transcript.metadata).length > 0) {
     tabPanels.push(

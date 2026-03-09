@@ -5,7 +5,10 @@
  * rendering. All functions are pure with no DOM or React dependencies.
  */
 
-import type { TimelineSpan } from "../../../components/transcript/timeline";
+import type {
+  TimelineEvent,
+  TimelineSpan,
+} from "../../../components/transcript/timeline";
 import { formatPrettyDecimal } from "../../../utils/format";
 
 import { type MarkerDepth, type MarkerKind, collectMarkers } from "./markers";
@@ -13,9 +16,9 @@ import {
   type RowSpan,
   type SwimlaneRow,
   getAgents,
-  isParallelSpan,
   isSingleSpan,
 } from "./swimlaneRows";
+import type { TimeMapping } from "./timeMapping";
 
 // =============================================================================
 // Types
@@ -33,6 +36,8 @@ export interface PositionedSpan {
   bar: BarPosition;
   /** Whether this span can be drilled into. */
   drillable: boolean;
+  /** Number of child spans (for drill-down label). 0 if not drillable. */
+  childCount: number;
   /** For ParallelSpan, the number of agents. Null for SingleSpan. */
   parallelCount: number | null;
   /** Task description for tooltip, if available. */
@@ -49,15 +54,21 @@ export interface PositionedMarker {
   reference: string;
   /** Human-readable detail for tooltip display. */
   tooltip: string;
+  /** For compaction markers: 0-based index among compaction markers in this row. */
+  compactionIndex?: number;
 }
 
 /** Complete layout data for a single swimlane row. */
 export interface RowLayout {
+  /** Unique key for the row (tree-path based). */
+  key: string;
   /** Row name (for label column). */
   name: string;
-  /** Whether this is the parent row (index 0). */
+  /** Whether this is the parent row (depth 0). */
   isParent: boolean;
-  /** Positioned spans (fills + chevrons). */
+  /** Depth in the span tree (0 = root). */
+  depth: number;
+  /** Positioned spans (fills). */
   spans: PositionedSpan[];
   /** Positioned markers. */
   markers: PositionedMarker[];
@@ -103,25 +114,30 @@ export function computeBarPosition(
 }
 
 // =============================================================================
-// Drillability
+// Time Envelope
 // =============================================================================
 
+interface HasTimeRange {
+  startTime: Date;
+  endTime: Date;
+}
+
 /**
- * Determines whether a RowSpan is drillable.
- *
- * A SingleSpan is drillable if its agent has non-utility child spans.
- * A ParallelSpan is always drillable (drill reveals individual instances).
+ * Computes the time envelope (earliest start, latest end) of a non-empty array.
+ * Useful for computing the bounding range of parallel agents or branches.
  */
-export function isDrillable(span: RowSpan): boolean {
-  if (isParallelSpan(span)) return true;
-
-  if (isSingleSpan(span)) {
-    return span.agent.content.some(
-      (item): item is TimelineSpan => item.type === "span" && !item.utility
-    );
+export function computeTimeEnvelope<T extends HasTimeRange>(
+  items: T[]
+): { startTime: Date; endTime: Date } {
+  const first = items[0]!;
+  let startTime = first.startTime;
+  let endTime = first.endTime;
+  for (let i = 1; i < items.length; i++) {
+    const item = items[i]!;
+    if (item.startTime < startTime) startTime = item.startTime;
+    if (item.endTime > endTime) endTime = item.endTime;
   }
-
-  return false;
+  return { startTime, endTime };
 }
 
 // =============================================================================
@@ -130,13 +146,14 @@ export function isDrillable(span: RowSpan): boolean {
 
 /**
  * Formats a token count for compact display: "48.5k", "1.2M", etc.
+ * Uses rounding thresholds so values like 999,950 display as "1.0M" not "1000.0k".
  */
 export function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${formatPrettyDecimal(tokens / 1_000_000)}M`;
+  if (tokens >= 999_950) {
+    return `${formatPrettyDecimal(tokens / 1_000_000, 1)}M`;
   }
   if (tokens >= 1_000) {
-    return `${formatPrettyDecimal(tokens / 1_000)}k`;
+    return `${formatPrettyDecimal(tokens / 1_000, 1)}k`;
   }
   return String(tokens);
 }
@@ -148,31 +165,31 @@ export function formatTokenCount(tokens: number): string {
 /**
  * Computes the full layout for all swimlane rows.
  *
- * viewStart and viewEnd define the visible time range (from the current
- * drill-down node's startTime/endTime). Markers are collected at the
- * specified depth for each row's spans.
+ * The TimeMapping defines how timestamps map to percentage positions. When
+ * gap compression is active, idle gaps are compressed into narrow regions.
+ * Markers are collected at the specified depth for each row's spans.
  */
 export function computeRowLayouts(
   rows: SwimlaneRow[],
-  viewStart: Date,
-  viewEnd: Date,
-  markerDepth: MarkerDepth
+  mapping: TimeMapping,
+  markerDepth: MarkerDepth,
+  markerKinds?: MarkerKind[]
 ): RowLayout[] {
-  return rows.map((row, index) => {
-    const isParent = index === 0;
+  return rows.map((row) => {
+    const isParent = row.depth === 0;
 
     // Position each RowSpan
     const spans = row.spans.map((rowSpan): PositionedSpan => {
       if (isSingleSpan(rowSpan)) {
-        const bar = computeBarPosition(
+        const bar = computeBarFromMapping(
           rowSpan.agent.startTime,
           rowSpan.agent.endTime,
-          viewStart,
-          viewEnd
+          mapping
         );
         return {
           bar,
-          drillable: !isParent && isDrillable(rowSpan),
+          drillable: false,
+          childCount: 0,
           parallelCount: null,
           description: rowSpan.agent.description ?? null,
         };
@@ -180,31 +197,26 @@ export function computeRowLayouts(
 
       // ParallelSpan: envelope from earliest start to latest end
       const agents = rowSpan.agents;
-      const earliest = agents.reduce(
-        (min, a) => (a.startTime.getTime() < min.getTime() ? a.startTime : min),
-        agents[0]!.startTime
+      const envelope = computeTimeEnvelope(agents);
+      const bar = computeBarFromMapping(
+        envelope.startTime,
+        envelope.endTime,
+        mapping
       );
-      const latest = agents.reduce(
-        (max, a) => (a.endTime.getTime() > max.getTime() ? a.endTime : max),
-        agents[0]!.endTime
-      );
-      const bar = computeBarPosition(earliest, latest, viewStart, viewEnd);
       return {
         bar,
-        drillable: !isParent,
+        drillable: false,
+        childCount: 0,
         parallelCount: agents.length,
         description: null,
       };
     });
 
-    // Collect markers for this row
-    const markers = collectRowMarkers(
-      row,
-      isParent,
-      markerDepth,
-      viewStart,
-      viewEnd
-    );
+    // Collect markers for this row, optionally filtering by kind
+    const allMarkers = collectRowMarkers(row, markerDepth, mapping);
+    const markers = markerKinds
+      ? allMarkers.filter((m) => markerKinds.includes(m.kind))
+      : allMarkers;
 
     // Derive row-level parallel count from spans
     const rowParallelCount =
@@ -213,8 +225,10 @@ export function computeRowLayouts(
         : null;
 
     return {
+      key: row.key,
       name: row.name,
       isParent,
+      depth: row.depth,
       spans,
       markers,
       totalTokens: row.totalTokens,
@@ -224,8 +238,37 @@ export function computeRowLayouts(
 }
 
 // =============================================================================
+// Mapping-based bar position
+// =============================================================================
+
+/** Computes bar position using a TimeMapping (which may compress gaps). */
+function computeBarFromMapping(
+  spanStart: Date,
+  spanEnd: Date,
+  mapping: TimeMapping
+): BarPosition {
+  const left = mapping.toPercent(spanStart);
+  const right = mapping.toPercent(spanEnd);
+  return { left, width: Math.max(0, right - left) };
+}
+
+// =============================================================================
 // Internal Helpers
 // =============================================================================
+
+/** Returns true if a TimelineSpan has any TimelineEvent items in its content tree. */
+export function spanHasEvents(span: TimelineSpan): boolean {
+  for (const item of span.content) {
+    if (item.type === "event") return true;
+    if (item.type === "span" && spanHasEvents(item)) return true;
+  }
+  return false;
+}
+
+/** Returns true if any agent across all spans in a row has events. */
+export function rowHasEvents(row: SwimlaneRow): boolean {
+  return row.spans.some((rowSpan) => getAgents(rowSpan).some(spanHasEvents));
+}
 
 /**
  * Collects and positions markers for a single row.
@@ -235,10 +278,8 @@ export function computeRowLayouts(
  */
 function collectRowMarkers(
   row: SwimlaneRow,
-  isParent: boolean,
   depth: MarkerDepth,
-  viewStart: Date,
-  viewEnd: Date
+  mapping: TimeMapping
 ): PositionedMarker[] {
   const allMarkers: PositionedMarker[] = [];
 
@@ -246,15 +287,11 @@ function collectRowMarkers(
     const agents = getAgents(rowSpan);
 
     for (const agent of agents) {
-      // For parent row, use the depth as-is.
-      // For child rows, use "direct" to avoid double-counting from grandchildren
-      // (the parent row already aggregates via depth).
-      const effectiveDepth = isParent ? depth : "direct";
-      const markers = collectMarkers(agent, effectiveDepth);
+      const markers = collectMarkers(agent, depth);
 
       for (const m of markers) {
         allMarkers.push({
-          left: timestampToPercent(m.timestamp, viewStart, viewEnd),
+          left: mapping.toPercent(m.timestamp),
           kind: m.kind,
           reference: m.reference,
           tooltip: m.tooltip,
@@ -265,5 +302,62 @@ function collectRowMarkers(
 
   // Sort by position
   allMarkers.sort((a, b) => a.left - b.left);
+
+  // Assign compactionIndex to compaction markers (0-based sequential)
+  let compactionIdx = 0;
+  for (const m of allMarkers) {
+    if (m.kind === "compaction") {
+      m.compactionIndex = compactionIdx++;
+    }
+  }
+
   return allMarkers;
+}
+
+// =============================================================================
+// Debug
+// =============================================================================
+
+/** Pretty-print a RowSpan tree for debugging. Paste output to share context. */
+export function debugRowSpan(span: RowSpan): string {
+  const lines: string[] = [];
+  const agents = getAgents(span);
+  const kind = isSingleSpan(span) ? "Single" : `Parallel(${agents.length})`;
+  lines.push(`[${kind}]`);
+  for (const agent of agents) {
+    printSpan(agent, 1, lines);
+  }
+  return lines.join("\n");
+}
+
+function printSpan(span: TimelineSpan, depth: number, lines: string[]): void {
+  const indent = "  ".repeat(depth);
+  const flags = [
+    span.utility && "utility",
+    span.spanType && `type=${span.spanType}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const flagStr = flags ? ` (${flags})` : "";
+  const childSpans = span.content.filter(
+    (c): c is TimelineSpan => c.type === "span"
+  );
+  const childEvents = span.content.filter(
+    (c): c is TimelineEvent => c.type === "event"
+  );
+  const eventTypes = childEvents
+    .map((e) => e.event.event)
+    .reduce<Record<string, number>>((acc, t) => {
+      acc[t] = (acc[t] ?? 0) + 1;
+      return acc;
+    }, {});
+  const eventSummary = Object.entries(eventTypes)
+    .map(([t, n]) => (n > 1 ? `${t}×${n}` : t))
+    .join(", ");
+  lines.push(
+    `${indent}span "${span.name}" [${childEvents.length} events (${eventSummary}), ${childSpans.length} child spans, ${span.totalTokens} tokens]${flagStr}`
+  );
+  for (const child of childSpans) {
+    printSpan(child, depth + 1, lines);
+  }
 }

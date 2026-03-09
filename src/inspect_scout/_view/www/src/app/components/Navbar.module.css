@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: max-content 1fr max-content max-content;
   justify-content: space-between;
-  padding: 0.2em 0.5em;
+  padding: 0.2rem 0.5rem;
   overflow: hidden;
 }
 

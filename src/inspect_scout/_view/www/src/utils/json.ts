@@ -4,7 +4,8 @@ export const isJson = (text: string): boolean => {
     try {
       JSON.parse(text);
       return true;
-    } catch {
+    } catch (e) {
+      console.error("Error parsing JSON:", e);
       return false;
     }
   }

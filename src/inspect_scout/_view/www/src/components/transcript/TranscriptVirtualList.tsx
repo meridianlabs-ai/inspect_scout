@@ -22,6 +22,7 @@ import {
   ToolEvent,
 } from "../../types/api-types";
 
+import { AgentCardView } from "./AgentCardView";
 import { ApprovalEventView } from "./ApprovalEventView";
 import { CompactionEventView } from "./CompactionEventView";
 import { ErrorEventView } from "./ErrorEventView";
@@ -174,7 +175,10 @@ export const RenderedEventNode: FC<RenderedEventNodeProps> = memo(
           />
         );
 
-      case "span_begin":
+      case "span_begin": {
+        if (node.sourceSpan?.spanType === "agent") {
+          return <AgentCardView span={node.sourceSpan} className={className} />;
+        }
         return (
           <SpanEventView
             eventNode={node as EventNode<SpanBeginEvent>}
@@ -182,6 +186,7 @@ export const RenderedEventNode: FC<RenderedEventNodeProps> = memo(
             className={className}
           />
         );
+      }
 
       case "step":
         return (

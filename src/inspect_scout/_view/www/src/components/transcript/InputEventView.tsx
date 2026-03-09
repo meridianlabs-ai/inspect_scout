@@ -24,7 +24,6 @@ export const InputEventView: FC<InputEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title="Input"
       className={className}
       subTitle={

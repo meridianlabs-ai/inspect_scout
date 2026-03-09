@@ -285,6 +285,75 @@ def find_agent_file(
     return None
 
 
+def find_team_agent_file(session_file: Path, prompt: str) -> Path | None:
+    """Find a team agent's session file by matching the spawn prompt.
+
+    Team agents use human-readable IDs (e.g., ``ux-researcher@todo-cli-design``)
+    but their session files use hex hash names (e.g., ``agent-a8e6899e9870c1c5f.jsonl``).
+    This function scans subagent files and matches by comparing the prompt text
+    against the first user message content.
+
+    Args:
+        session_file: Path to the parent session JSONL file.
+        prompt: The prompt text from the Agent tool call.
+
+    Returns:
+        Path to the matching agent file, or None if not found.
+    """
+    subagents_dir = session_file.parent / session_file.stem / "subagents"
+    if not subagents_dir.is_dir():
+        return None
+
+    # Use a prefix of the prompt for matching (handles minor formatting diffs)
+    match_text = prompt[:200].strip()
+    if not match_text:
+        return None
+
+    for agent_file in sorted(subagents_dir.glob("agent-*.jsonl")):
+        first_content = _peek_first_user_content(agent_file)
+        if first_content and match_text in first_content:
+            return agent_file
+
+    logger.debug(f"No team agent file matched prompt prefix in {subagents_dir}")
+    return None
+
+
+def _peek_first_user_content(agent_file: Path, max_lines: int = 5) -> str | None:
+    """Read the content of the first user message in an agent file.
+
+    Args:
+        agent_file: Path to an agent JSONL file.
+        max_lines: Maximum lines to scan.
+
+    Returns:
+        The message content string, or None.
+    """
+    try:
+        with open(agent_file, encoding="utf-8") as f:
+            for _, line in zip(range(max_lines), f, strict=False):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                    if event.get("type") == "user":
+                        content = event.get("message", {}).get("content", "")
+                        if isinstance(content, str):
+                            return content
+                        # Content is a list of blocks
+                        if isinstance(content, list):
+                            texts = []
+                            for block in content:
+                                if isinstance(block, dict):
+                                    texts.append(str(block.get("text", "")))
+                            return " ".join(texts)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        raise
+    return None
+
+
 def _peek_field(session_file: Path, field: str, max_lines: int = 10) -> str | None:
     """Read a field value from the first few lines of a JSONL session file.
 

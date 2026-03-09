@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { attachSourceSpans } from "../../../app/timeline/timelineEventNodes";
+import type { TimelineSpan } from "../../../components/transcript/timeline";
 import {
   Event,
   SpanBeginEvent,
@@ -11,7 +13,11 @@ import { fixupEventStream, kSandboxSignalName } from "../transform/fixups";
 import { treeifyEvents } from "../transform/treeify";
 import { EventNode, EventType, kCollapsibleEventTypes } from "../types";
 
-export const useEventNodes = (events: Event[], running: boolean) => {
+export const useEventNodes = (
+  events: Event[],
+  running: boolean,
+  sourceSpans?: ReadonlyMap<string, TimelineSpan>
+) => {
   // Normalize Events in a flattened filtered list
   const { eventTree, defaultCollapsedIds } = useMemo((): {
     eventTree: EventNode[];
@@ -23,6 +29,12 @@ export const useEventNodes = (events: Event[], running: boolean) => {
     // Build the event tree
     const rawEventTree = treeifyEvents(resolvedEvents, 0);
 
+    // Attach source span references before filtering so filterEmpty
+    // can preserve agent card nodes (which have no children by design).
+    if (sourceSpans && sourceSpans.size > 0) {
+      attachSourceSpans(rawEventTree, sourceSpans);
+    }
+
     // Now filter the tree to remove empty spans
     const filterEmpty = (
       eventNodes: EventNode<EventType>[]
@@ -31,6 +43,8 @@ export const useEventNodes = (events: Event[], running: boolean) => {
         if (node.children && node.children.length > 0) {
           node.children = filterEmpty(node.children);
         }
+        // Preserve nodes with a sourceSpan (e.g. agent cards)
+        if (node.sourceSpan) return true;
         return (
           (node.event.event !== "span_begin" && node.event.event !== "step") ||
           (node.children && node.children.length > 0)
@@ -65,7 +79,7 @@ export const useEventNodes = (events: Event[], running: boolean) => {
     findCollapsibleEvents(eventTree);
 
     return { eventTree, defaultCollapsedIds };
-  }, [events, running]);
+  }, [events, running, sourceSpans]);
 
   return { eventNodes: eventTree, defaultCollapsedIds };
 };

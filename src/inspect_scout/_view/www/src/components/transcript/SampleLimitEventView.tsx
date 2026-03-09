@@ -63,7 +63,6 @@ export const SampleLimitEventView: FC<SampleLimitEventViewProps> = ({
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={title}
       icon={icon}
       className={className}

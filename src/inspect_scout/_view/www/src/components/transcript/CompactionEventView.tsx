@@ -32,12 +32,12 @@ export const CompactionEventView: FC<CompactionEventViewProps> = ({
   }
   data = { ...data, ...(event.metadata || {}) };
 
-  const source = event.source && event.source !== "inspect" ? event.source : "";
+  const source =
+    event.source && event.source !== "inspect" ? ": " + event.source : "";
 
   return (
     <EventPanel
       eventNodeId={eventNode.id}
-      depth={eventNode.depth}
       title={formatTitle("Compaction" + source, undefined, event.working_start)}
       className={className}
       subTitle={formatDateTime(new Date(event.timestamp))}

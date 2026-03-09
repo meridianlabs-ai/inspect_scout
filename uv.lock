@@ -1624,7 +1624,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.3,!=8.2.0,<8.2.2" },
     { name = "cloudpickle", specifier = ">=3.0.0" },
     { name = "dill", specifier = ">=0.4.0" },
-    { name = "duckdb", specifier = ">=1.4.0" },
+    { name = "duckdb", specifier = ">=1.4.0,<1.5" },
     { name = "fastapi", specifier = ">=0.128.1" },
     { name = "google-genai", marker = "extra == 'dev'", specifier = ">=1.56.0" },
     { name = "griffe", marker = "extra == 'doc'" },

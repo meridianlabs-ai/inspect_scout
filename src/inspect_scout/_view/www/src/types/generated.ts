@@ -2001,6 +2001,19 @@ export interface components {
          */
         ModelCall: {
             /**
+             * Call Key
+             * @default null
+             */
+            call_key: string | null;
+            /**
+             * Call Refs
+             * @default null
+             */
+            call_refs: [
+                number,
+                number
+            ][] | null;
+            /**
              * Error
              * @default null
              */
@@ -2083,6 +2096,14 @@ export interface components {
             event: "model";
             /** Input */
             input: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+            /**
+             * Input Refs
+             * @default null
+             */
+            input_refs: [
+                number,
+                number
+            ][] | null;
             /**
              * Metadata
              * @default null

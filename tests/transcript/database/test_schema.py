@@ -608,13 +608,13 @@ def _stamp_table(table: pa.Table, version: int | None) -> pa.Table:
 @pytest.mark.parametrize(
     ("version_written", "expected"),
     [
-        pytest.param(None, None, id="no-stamp"),
+        pytest.param(None, 1, id="no-stamp-defaults-to-1"),
         pytest.param(SCHEMA_VERSION, SCHEMA_VERSION, id="current-version"),
         pytest.param(999, 999, id="future-version"),
     ],
 )
 def test_read_schema_version(
-    tmp_path: Path, version_written: int | None, expected: int | None
+    tmp_path: Path, version_written: int | None, expected: int
 ) -> None:
     path = tmp_path / "test.parquet"
     pq.write_table(_stamp_table(pa.table({"x": [1]}), version_written), str(path))

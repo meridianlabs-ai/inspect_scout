@@ -35,18 +35,21 @@ def with_schema_version(table: pa.Table) -> pa.Table:
     return table.replace_schema_metadata(metadata)
 
 
-def read_schema_version(path: str | Path) -> int | None:
+def read_schema_version(path: str | Path) -> int:
     """Read the schema version from a parquet file's metadata.
+
+    Files without a version stamp are treated as version 1 (the first
+    version, written before stamping was introduced).
 
     Args:
         path: Path to a parquet file.
 
     Returns:
-        Schema version as int, or None if the file has no version stamp.
+        Schema version as int (defaults to 1 for unstamped files).
     """
     schema = pq.read_schema(path)
     raw = schema.metadata.get(METADATA_KEY) if schema.metadata else None
-    return int(raw) if raw is not None else None
+    return int(raw) if raw is not None else 1
 
 
 @dataclass

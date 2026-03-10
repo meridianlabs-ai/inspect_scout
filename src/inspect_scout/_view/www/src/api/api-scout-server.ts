@@ -391,6 +391,33 @@ export const apiScoutServer = (
       return asyncJsonParse<string>(result.raw);
     },
 
+    download_scan: async (location: string): Promise<void> => {
+      const response = await (customFetch ?? fetch)(
+        `${apiBaseUrl}/scans/download/${encodeBase64Url(location)}`,
+        {
+          headers: headerProvider ? await headerProvider() : {},
+          credentials: "same-origin",
+        }
+      );
+      if (!response.ok) {
+        const message = (await response.text()) || response.statusText;
+        throw new Error(`Download failed: ${message}`);
+      }
+      const blob = await response.blob();
+      const filename =
+        response.headers
+          .get("Content-Disposition")
+          ?.match(/filename="?([^"]+)"?/)?.[1] ?? "scan.zip";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+
     connectTopicUpdates: (
       onUpdate: (topVersions: TopicVersions) => void
     ): (() => void) =>

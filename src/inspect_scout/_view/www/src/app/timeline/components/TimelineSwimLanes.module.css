@@ -119,6 +119,11 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  cursor: pointer;
+}
+
+.label:hover {
+  color: var(--vscode-textLink-foreground);
 }
 
 .labelSelected {
@@ -205,14 +210,15 @@
   cursor: pointer;
 }
 
-/* Default opacity for region segments (matching .fill's base opacity) */
+/* Default opacity for region segments — slightly dimmed vs hover
+   to give a subtle highlight without making unhovered segments look faded. */
 .regionDefault {
-  opacity: 0.3;
+  opacity: 0.25;
 }
 
 /* Applied via React state when the segment (or whole bar) should show hover */
 .regionHover {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 /* Region segments — partial border-radius for segmented bars */

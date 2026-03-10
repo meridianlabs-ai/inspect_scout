@@ -47,7 +47,6 @@ from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
 from ..schema import (
     TRANSCRIPT_SCHEMA_FIELDS,
-    check_schema_version,
     reserved_columns,
     with_schema_version,
 )
@@ -1332,8 +1331,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
 
             if idx_files:
-                # Fail fast if index was written by a newer version
-                check_schema_version(idx_files)
                 await self._init_from_index(check_coverage=not has_snapshot)
             else:
                 # Initialize from parquet files (warning is issued inside if files exist)
@@ -1413,9 +1410,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if not file_paths:
             self._create_empty_structures()
             return
-
-        # Fail fast if data was written by a newer version
-        check_schema_version(file_paths)
 
         # Warn about missing index only if there are parquet files
         # (empty databases don't need an index yet)

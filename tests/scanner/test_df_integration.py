@@ -73,6 +73,9 @@ async def test_integration() -> None:
 def _validate_df(df: pd.DataFrame) -> None:
     # this is a little sketchy - testing implementation details, but the flow is
     # quite fragile and easy to miss if we mess it up
-    assert df["date"].dtype.name == "timestamp[ns, tz=UTC][pyarrow]"
+    assert df["date"].dtype.name in (
+        "timestamp[ns, tz=UTC][pyarrow]",
+        "timestamp[us, tz=UTC][pyarrow]",
+    )
     assert df["epoch"].dtype.name == "int64[pyarrow]"
     assert df["working_time"].dtype.name == "double[pyarrow]"

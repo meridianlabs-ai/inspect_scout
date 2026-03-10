@@ -35,6 +35,7 @@ function makeModelEventNode(
     event: "model",
     model: "test",
     input: [],
+    input_refs: null,
     tools: [],
     tool_choice: "auto",
     config: NULL_CONFIG,

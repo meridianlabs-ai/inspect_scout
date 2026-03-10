@@ -32,6 +32,7 @@ function makeEventNode(uuid: string | null, startSec: number): TimelineEvent {
     event: "model",
     model: "test",
     input: [],
+    input_refs: null,
     tools: [],
     tool_choice: "auto",
     config: {} as ModelEvent["config"],

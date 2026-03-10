@@ -498,7 +498,7 @@ def _create_expanded_view_sql(
     1. Passes through non-resultset rows as-is
     2. Unnests resultset rows using json_extract and UNNEST
     3. Extracts Result fields into columns
-    4. Applies type casting to the value column
+    4. Extracts value as string (typed conversion handled downstream)
 
     Args:
         conn: DuckDB connection to query schema
@@ -558,19 +558,10 @@ def _create_expanded_view_sql(
         if col not in result_fields and col not in scan_execution_fields
     ]
 
-    # Type casting expression for the extracted value
-    # elem will be a JSON string from UNNEST, need to cast it first
-    cast_value_expr = """CASE
-            WHEN COALESCE(json_extract_string(CAST(elem AS JSON), '$.type'), 'null') = 'boolean'
-            THEN CASE
-                WHEN json_extract_string(CAST(elem AS JSON), '$.value') IN ('true', 'True') THEN TRUE
-                WHEN json_extract_string(CAST(elem AS JSON), '$.value') IN ('false', 'False') THEN FALSE
-                ELSE NULL
-            END
-            WHEN COALESCE(json_extract_string(CAST(elem AS JSON), '$.type'), 'null') = 'number'
-            THEN TRY_CAST(json_extract_string(CAST(elem AS JSON), '$.value') AS DOUBLE)
-            ELSE json_extract(CAST(elem AS JSON), '$.value')
-        END"""
+    # Extract value as string — downstream _cast_value_column() (Python) and
+    # castValue() (TypeScript) handle typed conversion. Kept as string to avoid
+    # DuckDB 1.5 mixed-type CASE expression errors.
+    cast_value_expr = "json_extract_string(CAST(elem AS JSON), '$.value')"
 
     # Build column selects for expanded query in the same order as all_columns
     expanded_col_selects = []

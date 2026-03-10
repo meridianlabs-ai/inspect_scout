@@ -340,8 +340,8 @@ def test_duckdb_resultset_type_casting() -> None:
         deception_rows = df[df["label"] == "deception"]
         for _, row in deception_rows.iterrows():
             if row["value_type"] == "boolean":
-                # Value should be boolean type
-                assert isinstance(row["value"], (bool, type(None)))
+                # Value should be a boolean string
+                assert row["value"] in ("true", "false", "True", "False", None)
 
         # String rows should have string value_type
         misc_rows = df[df["label"] == "misconfiguration"]
@@ -508,7 +508,7 @@ def test_duckdb_query_expanded_results() -> None:
 
         # Query for true deception values
         true_deception = results_db.conn.execute(
-            "SELECT * FROM resultset_scanner WHERE label = 'deception' AND value = TRUE"
+            "SELECT * FROM resultset_scanner WHERE label = 'deception' AND value = 'true'"
         ).fetchdf()
         assert len(true_deception) == 1
 

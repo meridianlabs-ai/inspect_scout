@@ -340,6 +340,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   const scrubberProgress = useScrubberProgress(listKey);
 
   const getVisibleRange = useStore((state) => state.getVisibleRange);
+
   const handleScrub = useCallback(
     (progress: number) => {
       const { totalCount } = getVisibleRange(listKey);

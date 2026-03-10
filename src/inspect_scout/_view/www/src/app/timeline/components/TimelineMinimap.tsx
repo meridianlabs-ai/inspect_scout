@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { FC, useCallback, useRef } from "react";
+import { FC, useCallback, useRef, useState } from "react";
 
 import type { TimelineSpan } from "../../../components/transcript/timeline";
 import { useProperty } from "../../../state/hooks/useProperty";
@@ -50,6 +50,9 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
 }) => {
   const regionRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const localProgressRef = useRef<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [localProgress, setLocalProgress] = useState<number | null>(null);
 
   const progressFromPointer = useCallback((clientX: number): number => {
     const rect = regionRef.current?.getBoundingClientRect();
@@ -62,23 +65,61 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
       if (!onScrub) return;
       e.preventDefault();
       draggingRef.current = true;
+      const p = progressFromPointer(e.clientX);
+      localProgressRef.current = p;
+      setDragging(true);
+      setLocalProgress(p);
       regionRef.current?.setPointerCapture(e.pointerId);
-      onScrub(progressFromPointer(e.clientX));
     },
     [onScrub, progressFromPointer]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!draggingRef.current || !onScrub) return;
-      onScrub(progressFromPointer(e.clientX));
+      if (!draggingRef.current) return;
+      const p = progressFromPointer(e.clientX);
+      localProgressRef.current = p;
+      setLocalProgress(p);
+    },
+    [progressFromPointer]
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      setDragging(false);
+      const progress = progressFromPointer(e.clientX);
+      // Keep localProgress visible so the scrubber doesn't jump —
+      // it will be cleared once scrubberProgress catches up (see below).
+      localProgressRef.current = progress;
+      setLocalProgress(progress);
+      onScrub?.(progress);
     },
     [onScrub, progressFromPointer]
   );
 
-  const handlePointerUp = useCallback(() => {
+  // Lost pointer capture (e.g. window blur) — commit the last known position.
+  const handleLostCapture = useCallback(() => {
+    if (!draggingRef.current) return;
     draggingRef.current = false;
-  }, []);
+    setDragging(false);
+    const progress = localProgressRef.current;
+    if (progress !== null) onScrub?.(progress);
+    // Keep localProgress set — cleared by the effect below.
+  }, [onScrub]);
+
+  // Once the scroll-driven scrubberProgress updates after a drag release,
+  // clear localProgress so the prop takes over seamlessly (no jump).
+  // Uses "adjust state during render" pattern to avoid an effect + setState.
+  const [prevScrubberProgress, setPrevScrubberProgress] =
+    useState(scrubberProgress);
+  if (prevScrubberProgress !== scrubberProgress) {
+    setPrevScrubberProgress(scrubberProgress);
+    if (!dragging && localProgress !== null) {
+      setLocalProgress(null);
+    }
+  }
 
   const [showTokens, setShowTokens] = useProperty<boolean>(
     "timeline",
@@ -93,6 +134,11 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
     },
     [isTokenMode, setShowTokens]
   );
+
+  // During drag (and briefly after release, until scrubberProgress catches up),
+  // show the scrubber at the local position; otherwise use the prop.
+  const displayProgress =
+    localProgress !== null ? localProgress : scrubberProgress;
 
   const bar = selection
     ? mapping
@@ -184,18 +230,20 @@ export const TimelineMinimap: FC<TimelineMinimapProps> = ({
             onPointerDown={onScrub ? handlePointerDown : undefined}
             onPointerMove={onScrub ? handlePointerMove : undefined}
             onPointerUp={onScrub ? handlePointerUp : undefined}
-            onLostPointerCapture={onScrub ? handlePointerUp : undefined}
+            onLostPointerCapture={onScrub ? handleLostCapture : undefined}
           >
             <div className={styles.regionFill} />
 
             {/* Scroll position scrubber — vertical line + caret below track,
                 absolutely positioned inside selectionRegion.
-                translateX(-50%) in CSS centers on the left %. */}
-            {scrubberProgress != null && (
+                translateX(-50%) in CSS centers on the left %.
+                During drag, uses localProgress for smooth visual feedback;
+                onScrub (list scroll) is deferred to pointer release. */}
+            {displayProgress != null && (
               <div
                 className={styles.scrubber}
                 style={{
-                  left: `${scrubberProgress * 100}%`,
+                  left: `${displayProgress * 100}%`,
                 }}
               >
                 <div className={styles.scrubberLine} />

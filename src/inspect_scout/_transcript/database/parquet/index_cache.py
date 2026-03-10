@@ -8,7 +8,7 @@ Cache structure:
     ~/.cache/inspect_scout/index_cache/
     └── v{VERSION}/                # Version directory (bump to invalidate all caches)
         ├── <location_hash>/       # One directory per remote database
-        │   └── <filenames_hash>.parquet  # Cache file (or .enc.parquet)
+        │   └── <filenames_hash>.parquet  # Cache file
         └── ...
 
 Cache invalidation:
@@ -16,7 +16,6 @@ Cache invalidation:
 - Each remote location gets its own subdirectory (hash of URL)
 - Cache key is a hash of sorted index filenames
 - When index files change (added, removed, compacted), the hash changes
-- Encrypted databases get encrypted caches (.enc.parquet)
 """
 
 import hashlib
@@ -27,7 +26,6 @@ import duckdb
 
 from inspect_scout._util.appdirs import scout_cache_dir
 
-from .encryption import ENCRYPTION_KEY_NAME, setup_encryption
 from .types import IndexStorage
 
 # Cache version - bump this to invalidate all existing caches
@@ -86,15 +84,13 @@ def get_index_cache_path(storage: IndexStorage, index_files: list[str]) -> Path:
     cache_dir = _location_cache_dir(storage)
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_key = _index_cache_key(index_files)
-    ext = ".enc.parquet" if storage.is_encrypted else ".parquet"
-    return cache_dir / f"{cache_key}{ext}"
+    return cache_dir / f"{cache_key}.parquet"
 
 
 def load_cached_index(
     conn: duckdb.DuckDBPyConnection,
     cache_path: Path,
     table_name: str,
-    storage: IndexStorage,
 ) -> int | None:
     """Load index from local cache if it exists.
 
@@ -102,7 +98,6 @@ def load_cached_index(
         conn: DuckDB connection.
         cache_path: Path to the cache file.
         table_name: Name for the table to create.
-        storage: Storage configuration (for encryption).
 
     Returns:
         Row count if cache was loaded, None if cache doesn't exist or is invalid.
@@ -111,10 +106,9 @@ def load_cached_index(
         return None
 
     try:
-        enc_config = setup_encryption(conn, storage)
         conn.execute(f"""
             CREATE TABLE {table_name} AS
-            SELECT * FROM read_parquet('{cache_path}'{enc_config})
+            SELECT * FROM read_parquet('{cache_path}')
         """)
         result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
         return result[0] if result else 0
@@ -128,7 +122,6 @@ def save_index_cache(
     conn: duckdb.DuckDBPyConnection,
     cache_path: Path,
     table_name: str,
-    storage: IndexStorage,
 ) -> None:
     """Save index table to local cache.
 
@@ -139,7 +132,6 @@ def save_index_cache(
         conn: DuckDB connection with the table loaded.
         cache_path: Path to write the cache file.
         table_name: Name of the table to save.
-        storage: Storage configuration (for encryption).
     """
     # Skip if another process already wrote the cache while we were loading
     if cache_path.exists():
@@ -149,19 +141,10 @@ def save_index_cache(
     tmp_path = cache_path.with_suffix(".tmp")
 
     try:
-        if storage.is_encrypted:
-            # Use DuckDB COPY with encryption
-            conn.execute(f"""
-                COPY {table_name} TO '{tmp_path}'
-                (FORMAT PARQUET, COMPRESSION 'zstd',
-                 ENCRYPTION_CONFIG {{footer_key: '{ENCRYPTION_KEY_NAME}'}})
-            """)
-        else:
-            # Write unencrypted
-            conn.execute(f"""
-                COPY {table_name} TO '{tmp_path}'
-                (FORMAT PARQUET, COMPRESSION 'zstd')
-            """)
+        conn.execute(f"""
+            COPY {table_name} TO '{tmp_path}'
+            (FORMAT PARQUET, COMPRESSION 'zstd')
+        """)
 
         # Atomic rename - on POSIX this atomically replaces any existing file
         os.rename(tmp_path, cache_path)

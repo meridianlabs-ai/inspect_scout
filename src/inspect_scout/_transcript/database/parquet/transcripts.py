@@ -15,7 +15,6 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
 from inspect_ai.util import trace_action, trace_message
@@ -47,12 +46,6 @@ from ...types import (
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
 from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
-from .encryption import (
-    ENCRYPTION_KEY_ENV,
-    ENCRYPTION_KEY_NAME,
-    get_encryption_key_from_env,
-    validate_encryption_key,
-)
 from .index import (
     _discover_index_files,
     append_index,
@@ -61,7 +54,7 @@ from .index import (
     init_index_table,
 )
 from .migration import migrate_view
-from .types import IndexStorage
+from .types import INDEX_EXTENSION, IndexStorage
 
 logger = getLogger(__name__)
 
@@ -81,23 +74,14 @@ class _ParquetStreamContextManager:
         self,
         parquet_path: str,
         transcript_id: str,
-        enc_config: str,
     ) -> None:
         self._parquet_path = parquet_path
         self._transcript_id = transcript_id
-        self._enc_config = enc_config
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     async def __aenter__(self) -> "_ParquetStreamContextManager":
         # Create fresh connection for streaming
         self._conn = duckdb.connect(":memory:")
-        # Re-acquire encryption key from environment (same as connect() does)
-        if self._enc_config:  # enc_config is non-empty only for encrypted dbs
-            key = get_encryption_key_from_env()
-            if key:
-                self._conn.execute(
-                    f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
-                )
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -129,7 +113,7 @@ class _ParquetStreamContextManager:
         assert self._conn is not None
 
         try:
-            sql = f"SELECT messages, events FROM read_parquet(?, union_by_name=true{self._enc_config}) WHERE transcript_id = ?"
+            sql = "SELECT messages, events FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
             result = self._conn.execute(
                 sql, [self._parquet_path, self._transcript_id]
             ).fetchone()
@@ -218,7 +202,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
         self._exclude_clause: str = ""
-        self._is_encrypted: bool = False
 
     @override
     async def connect(self) -> None:
@@ -263,10 +246,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     self._init_hf_auth()
 
         # Initialize index storage for index operations
-        self._index_storage = await IndexStorage.create(
+        self._index_storage = IndexStorage.create(
             location=self._location,
             fs=self._fs,
-            key=get_encryption_key_from_env(),
         )
 
         # Discover and register Parquet files
@@ -556,11 +538,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
         """Get decompressed size of messages+events columns for a transcript."""
         assert self._conn is not None
-        enc_config = self._read_parquet_encryption_config()
         result = self._conn.execute(
-            f"""
+            """
             SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-            FROM read_parquet(?{enc_config}) WHERE transcript_id = ?
+            FROM read_parquet(?) WHERE transcript_id = ?
             """,
             [full_path, transcript_id],
         ).fetchone()
@@ -655,9 +636,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     )
 
             # Try optimistic read first (fast path for files with all columns)
-            enc_config = self._read_parquet_encryption_config()
             try:
-                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
                 result = self._conn.execute(
                     sql, [full_path, t.transcript_id]
                 ).fetchone()
@@ -672,7 +652,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     return transcript_no_content()
 
                 # Retry with only available columns
-                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true{enc_config}) WHERE transcript_id = ?"
+                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
                 result = self._conn.execute(
                     sql, [full_path, t.transcript_id]
                 ).fetchone()
@@ -775,11 +755,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Get size upfront for API limit checks (must happen now)
         content_size = self._get_content_size(full_path, t.transcript_id)
 
-        # Capture encryption config now (view may close before streaming)
-        enc_config = self._read_parquet_encryption_config()
-
         return TranscriptMessagesAndEvents(
-            data=_ParquetStreamContextManager(full_path, t.transcript_id, enc_config),
+            data=_ParquetStreamContextManager(full_path, t.transcript_id),
             compression_method=None,
             uncompressed_size=content_size,
         )
@@ -1106,9 +1083,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         if filename not in self._file_columns_cache:
             assert self._conn is not None
-            enc_config = self._read_parquet_encryption_config()
             schema_result = self._conn.execute(
-                f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?{enc_config}))",
+                "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
                 [filename],
             ).fetchall()
             self._file_columns_cache[filename] = {row[0] for row in schema_result}
@@ -1439,9 +1415,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
             )
 
-        # Setup encryption if needed
-        self._setup_encryption(file_paths)
-
         # Build pattern for read_parquet
         pattern = self._build_parquet_pattern(file_paths)
         self._parquet_pattern = pattern
@@ -1531,28 +1504,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             WHERE FALSE
         """)
 
-    def _setup_encryption(self, file_paths: list[str]) -> None:
-        """Detect and configure encryption if needed."""
-        assert self._conn is not None
-
-        # Check encryption status (validates no mixed encrypted/unencrypted)
-        self._is_encrypted = self._check_encryption_status(file_paths)
-
-        if self._is_encrypted:
-            key = get_encryption_key_from_env()
-            if not key:
-                raise PrerequisiteError(
-                    f"Encrypted database detected but no encryption key provided. "
-                    f"Set the {ENCRYPTION_KEY_ENV} environment variable."
-                )
-            try:
-                validate_encryption_key(key)
-            except ValueError as e:
-                raise PrerequisiteError(str(e)) from e
-            self._conn.execute(
-                f"PRAGMA add_parquet_key('{ENCRYPTION_KEY_NAME}', '{key}')"
-            )
-
     def _build_parquet_pattern(self, file_paths: list[str]) -> str:
         """Build DuckDB pattern string for read_parquet."""
         if len(file_paths) == 1:
@@ -1579,10 +1530,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """Create transcript_index table by querying parquet files."""
         assert self._conn is not None
 
-        enc_config = self._read_parquet_encryption_config()
         base_sql = f"""
             SELECT transcript_id, filename
-            FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
+            FROM read_parquet({pattern}, union_by_name=true, filename=true)
         """
 
         # Apply pre-filter query if provided
@@ -1612,9 +1562,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
-        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'{enc_config}))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1639,9 +1588,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
-        enc_config = self._read_parquet_encryption_config()
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true{enc_config}))"
+            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
@@ -1663,8 +1611,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         assert self._conn is not None
 
-        enc_config = self._read_parquet_encryption_config()
-
         # Build VIEW SQL based on whether pre-filter was applied
         def build_view_sql(exclude_clause: str) -> str:
             if self._snapshot or (
@@ -1675,7 +1621,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT p.*{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config}) p
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true) p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
             else:
@@ -1683,7 +1629,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT *{exclude_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true{enc_config})
+                    FROM read_parquet({pattern}, union_by_name=true, filename=true)
                 """
 
         # Try with exclude clause from first file (fast path)
@@ -1728,40 +1674,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 str(p) for p in location_path.glob(f"**/{PARQUET_TRANSCRIPTS_GLOB}")
             ]
 
-    def _check_encryption_status(self, file_paths: list[str]) -> bool:
-        """Check if database files are encrypted and validate consistency.
-
-        Args:
-            file_paths: List of parquet file paths.
-
-        Returns:
-            True if all files are encrypted, False if all unencrypted.
-
-        Raises:
-            ValueError: If database contains a mix of encrypted and unencrypted files.
-        """
-        encrypted_count = sum(1 for f in file_paths if f.endswith(".enc.parquet"))
-        unencrypted_count = len(file_paths) - encrypted_count
-
-        if encrypted_count > 0 and unencrypted_count > 0:
-            raise ValueError(
-                f"Database contains mixed encrypted ({encrypted_count}) and "
-                f"unencrypted ({unencrypted_count}) parquet files. "
-                "All files must be either encrypted or unencrypted."
-            )
-
-        return encrypted_count > 0
-
-    def _read_parquet_encryption_config(self) -> str:
-        """Get encryption config string for read_parquet calls.
-
-        Returns:
-            Empty string if not encrypted, or encryption config parameter.
-        """
-        if self._is_encrypted:
-            return f", encryption_config={{footer_key: '{ENCRYPTION_KEY_NAME}'}}"
-        return ""
-
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
 
@@ -1772,18 +1684,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             parquet_filename: Name of the parquet file (e.g., transcripts_20250101T120000_abc123.parquet)
 
         Returns:
-            Index filename (e.g., index_20250101T120000_abc123.idx or .enc.idx if encrypted)
+            Index filename (e.g., index_20250101T120000_abc123.idx)
         """
-        assert self._index_storage is not None
         # Extract timestamp_uuid from: transcripts_20250101T120000_abc123.parquet
-        # or transcripts_20250101T120000_abc123.enc.parquet
         base = Path(parquet_filename).stem  # transcripts_20250101T120000_abc123
-        if base.endswith(".enc"):
-            base = base[:-4]  # Remove .enc suffix
         # Remove "transcripts_" prefix, keep timestamp_uuid
         timestamp_uuid = base.replace("transcripts_", "", 1)
-        ext = self._index_storage.index_extension()
-        return f"index_{timestamp_uuid}{ext}"
+        return f"index_{timestamp_uuid}{INDEX_EXTENSION}"
 
     def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
         """Build index table from data table (excludes messages/events, adds filename).
@@ -1894,11 +1801,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ):
             # 2. Read all session data via DuckDB
             pattern = self._build_parquet_pattern(session_files)
-            enc_config = self._read_parquet_encryption_config()
 
             # Query and get a RecordBatchReader for streaming
             result = self._conn.execute(f"""
-                SELECT * FROM read_parquet({pattern}, union_by_name=true{enc_config})
+                SELECT * FROM read_parquet({pattern}, union_by_name=true)
             """)
 
             # 3. Write to new file(s) WITHOUT session_id using existing logic

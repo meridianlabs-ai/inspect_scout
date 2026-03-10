@@ -7,11 +7,6 @@ from typing import Any
 import duckdb
 import pyarrow as pa
 import pytest
-from inspect_ai._util.error import PrerequisiteError
-from inspect_scout._transcript.database.parquet.encryption import (
-    _check_data_encryption_status,
-    _check_index_encryption_status,
-)
 from inspect_scout._transcript.database.parquet.index import (
     _discover_data_files,
     _discover_index_files,
@@ -23,7 +18,6 @@ from inspect_scout._transcript.database.parquet.index import (
     init_index_table,
 )
 from inspect_scout._transcript.database.parquet.types import (
-    ENCRYPTED_INDEX_EXTENSION,
     INDEX_DIR,
     INDEX_EXTENSION,
     MANIFEST_PREFIX,
@@ -110,145 +104,6 @@ class TestHelperFunctions:
         filename = _generate_manifest_filename()
         assert filename.startswith(MANIFEST_PREFIX)
         assert filename.endswith(INDEX_EXTENSION)
-
-    def test_generate_manifest_filename_encrypted(self) -> None:
-        """Test generating encrypted manifest filename."""
-        filename = _generate_manifest_filename(encrypted=True)
-        assert filename.startswith(MANIFEST_PREFIX)
-        assert filename.endswith(ENCRYPTED_INDEX_EXTENSION)
-
-    def test_extract_timestamp_encrypted_incremental(self) -> None:
-        """Test extracting timestamp from encrypted incremental filename."""
-        ts = _extract_timestamp("index_20250101T120000_abc12345.enc.idx")
-        assert ts == "20250101T120000"
-
-    def test_extract_timestamp_encrypted_manifest(self) -> None:
-        """Test extracting timestamp from encrypted manifest filename."""
-        ts = _extract_timestamp("_manifest_20250103T100000_abc12345.enc.idx")
-        assert ts == "20250103T100000"
-
-
-# --- Encryption Status Tests ---
-
-
-class TestEncryptionStatus:
-    """Tests for encryption status detection and validation."""
-
-    def test_check_index_encryption_status_all_encrypted(self) -> None:
-        """All encrypted files returns True."""
-        files = [
-            "index_20250101T100000_abc.enc.idx",
-            "index_20250101T110000_def.enc.idx",
-        ]
-        assert _check_index_encryption_status(files) is True
-
-    def test_check_index_encryption_status_all_unencrypted(self) -> None:
-        """All unencrypted files returns False."""
-        files = [
-            "index_20250101T100000_abc.idx",
-            "index_20250101T110000_def.idx",
-        ]
-        assert _check_index_encryption_status(files) is False
-
-    def test_check_index_encryption_status_empty(self) -> None:
-        """Empty list returns None."""
-        assert _check_index_encryption_status([]) is None
-
-    def test_check_index_encryption_status_mixed_raises(self) -> None:
-        """Mixed encrypted and unencrypted raises ValueError."""
-        files = [
-            "index_20250101T100000_abc.idx",
-            "index_20250101T110000_def.enc.idx",
-        ]
-        with pytest.raises(ValueError, match="mixed encrypted"):
-            _check_index_encryption_status(files)
-
-    def test_check_data_encryption_status_all_encrypted(self) -> None:
-        """All encrypted data files returns True."""
-        files = [
-            "data1.enc.parquet",
-            "data2.enc.parquet",
-        ]
-        assert _check_data_encryption_status(files) is True
-
-    def test_check_data_encryption_status_all_unencrypted(self) -> None:
-        """All unencrypted data files returns False."""
-        files = [
-            "data1.parquet",
-            "data2.parquet",
-        ]
-        assert _check_data_encryption_status(files) is False
-
-    def test_check_data_encryption_status_empty(self) -> None:
-        """Empty list returns None."""
-        assert _check_data_encryption_status([]) is None
-
-    def test_check_data_encryption_status_mixed_raises(self) -> None:
-        """Mixed encrypted and unencrypted raises ValueError."""
-        files = [
-            "data1.parquet",
-            "data2.enc.parquet",
-        ]
-        with pytest.raises(ValueError, match="mixed encrypted"):
-            _check_data_encryption_status(files)
-
-    @pytest.mark.asyncio
-    async def test_create_detects_encryption_from_index_files(
-        self, tmp_path: Path
-    ) -> None:
-        """IndexStorage.create() detects encryption from existing files."""
-        # Create encrypted index files
-        index_dir = tmp_path / INDEX_DIR
-        index_dir.mkdir(parents=True)
-        (index_dir / "index_20250101T100000_abc.enc.idx").touch()
-        (index_dir / "index_20250101T110000_def.enc.idx").touch()
-
-        # Set encryption key in environment for the test
-        import os
-
-        os.environ["SCOUT_DB_ENCRYPTION_KEY"] = "0123456789abcdef"
-        try:
-            # create() should detect encryption
-            storage = await IndexStorage.create(location=str(tmp_path))
-            assert storage.is_encrypted is True
-        finally:
-            del os.environ["SCOUT_DB_ENCRYPTION_KEY"]
-
-    @pytest.mark.asyncio
-    async def test_create_raises_without_encryption_key(self, tmp_path: Path) -> None:
-        """IndexStorage.create() raises if encrypted files but no key."""
-        # Create encrypted index files
-        index_dir = tmp_path / INDEX_DIR
-        index_dir.mkdir(parents=True)
-        (index_dir / "index_20250101T100000_abc.enc.idx").touch()
-
-        # Ensure no encryption key in environment
-        import os
-
-        os.environ.pop("SCOUT_DB_ENCRYPTION_KEY", None)
-
-        with pytest.raises(PrerequisiteError, match="no encryption key"):
-            await IndexStorage.create(location=str(tmp_path))
-
-    @pytest.mark.asyncio
-    async def test_discover_index_files_mixed_raises(
-        self, storage: IndexStorage
-    ) -> None:
-        """discover_index_files raises ValueError for mixed encryption."""
-        index_dir = Path(storage.location) / INDEX_DIR
-        index_dir.mkdir(parents=True)
-
-        # Create mixed index files
-        (index_dir / "index_20250101T100000_abc.idx").touch()
-        (index_dir / "index_20250101T110000_def.enc.idx").touch()
-
-        with pytest.raises(ValueError, match="mixed encrypted"):
-            await _discover_index_files(storage)
-
-    @pytest.fixture
-    def storage(self, tmp_path: Path) -> IndexStorage:
-        """Create IndexStorage for a temporary directory."""
-        return IndexStorage(location=str(tmp_path))
 
 
 # --- Discovery Tests ---

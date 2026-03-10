@@ -262,10 +262,12 @@ ul.task-list li input[type="checkbox"] {
 <li>Multiprocessing: Improve handling of model instances with multiprocessing serialization.</li>
 <li>Transcripts: unthin <code>target</code> and and add <code>scores</code> from sample JSON.</li>
 <li>Transcripts: Set row group size to 25 (specify as rows not bytes).</li>
+<li>Transcripts: Address DuckDB 1.5 compatibility issue w/ mixed type CASE expressions.</li>
+<li>Transcripts: Switch over to async ZIP modules (<code>async_zip</code>, <code>zip_common</code>, <code>compression</code>, <code>compression_transcoding</code>, <code>async_bytes_reader</code>) that have migrated to <code>inspect_ai</code>.</li>
+<li>Transcripts: Remove parquet encryption (not used + issues w/ DuckDB 1.5).</li>
 <li>Scout View: Properly sort scanner results using the value type.</li>
 <li>Scout View: Enable minification and caching of view static assets.</li>
 <li>Scout View: Fix issue rendering transcript events when showing the validation panel.</li>
-<li>Transcripts: Switch over to async ZIP modules (<code>async_zip</code>, <code>zip_common</code>, <code>compression</code>, <code>compression_transcoding</code>, <code>async_bytes_reader</code>) that have migrated to <code>inspect_ai</code>.</li>
 <li>Bugfix: Fix early-exit bug the failed to unthin <code>sample_metadata</code></li>
 </ul>
 </section>

@@ -108,35 +108,11 @@
     ]
   },
   {
-    "objectID": "reference/scout_db.html#scout-db-encrypt",
-    "href": "reference/scout_db.html#scout-db-encrypt",
-    "title": "scout db",
-    "section": "scout db encrypt",
-    "text": "scout db encrypt\nEncrypt a transcript database.\n\nUsage\nscout db encrypt [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--output-dir\ntext\nDirectory to write encrypted database files to.\n_required\n\n\n--key\ntext\nEncryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).\n\n\n\n--overwrite\nboolean\nOverwrite files in the output directory.\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
-    "crumbs": [
-      "Reference",
-      "Scout CLI",
-      "scout db"
-    ]
-  },
-  {
-    "objectID": "reference/scout_db.html#scout-db-decrypt",
-    "href": "reference/scout_db.html#scout-db-decrypt",
-    "title": "scout db",
-    "section": "scout db decrypt",
-    "text": "scout db decrypt\nDecrypt a transcript database.\n\nUsage\nscout db decrypt [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--output-dir\ntext\nDirectory to write decrypted database files to.\n_required\n\n\n--key\ntext\nEncryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).\n\n\n\n--overwrite\nboolean\nOverwrite files in the output directory.\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
-    "crumbs": [
-      "Reference",
-      "Scout CLI",
-      "scout db"
-    ]
-  },
-  {
     "objectID": "reference/scout_db.html#scout-db-index",
     "href": "reference/scout_db.html#scout-db-index",
     "title": "scout db",
     "section": "scout db index",
-    "text": "scout db index\nCreate or rebuild the index for a transcript database.\nThis scans all parquet data files and creates a manifest index containing metadata for fast queries. Any existing index files are replaced.\nFor encrypted databases, provide –key or set SCOUT_DB_ENCRYPTION_KEY.\n\nUsage\nscout db index [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--key\ntext\nEncryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
+    "text": "scout db index\nCreate or rebuild the index for a transcript database.\nThis scans all parquet data files and creates a manifest index containing metadata for fast queries. Any existing index files are replaced.\n\nUsage\nscout db index [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
     "crumbs": [
       "Reference",
       "Scout CLI",
@@ -160,7 +136,7 @@
     "href": "reference/scout_db.html#scout-db-validate",
     "title": "scout db",
     "section": "scout db validate",
-    "text": "scout db validate\nValidate a transcript database schema.\nChecks that the database has the required fields and correct types.\nExamples: scout db validate ./my_transcript_db\nscout db validate ./encrypted_db --key $KEY\n\nUsage\nscout db validate [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--key\ntext\nEncryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
+    "text": "scout db validate\nValidate a transcript database schema.\nChecks that the database has the required fields and correct types.\nExamples: scout db validate ./my_transcript_db\n\nUsage\nscout db validate [OPTIONS] DATABASE_LOCATION\n\n\nOptions\n\n\n\n\n\n\n\n\n\nName\nType\nDescription\nDefault\n\n\n\n\n--help\nboolean\nShow this message and exit.\n\n\n\n\n\n\nSubcommands",
     "crumbs": [
       "Reference",
       "Scout CLI",
@@ -1351,14 +1327,14 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.\nLLM Scanner: AnswerMultiLabel(allow_none=True) lets the model respond with ANSWER: NONE when no labels apply.\nScanner Tools: generate_answer() automatically retries with format feedback when the model’s response can’t be parsed.\nScanner Tools: message_numbering(), scanner_prompt(), generate_answer(), and parse_answer() functions for building custom scanners with fine-grained control.\nScanner Tools: ResultReducer for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.\nScanner Tools: transcript_messages(), segment_messages(), and span_messages() functions for extracting and segmenting transcript messages.\nTranscript DB: claude_code() source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.\nCLI: scout import command for importing transcripts from registered sources into Scout projects.\nSerialization: Use pa.large_string for string types to support larger column/file sizes.\nMultiprocessing: Improve handling of model instances with multiprocessing serialization.\nTranscripts: unthin target and and add scores from sample JSON.\nTranscripts: Set row group size to 25 (specify as rows not bytes).\nScout View: Properly sort scanner results using the value type.\nScout View: Enable minification and caching of view static assets.\nScout View: Fix issue rendering transcript events when showing the validation panel.\nTranscripts: Switch over to async ZIP modules (async_zip, zip_common, compression, compression_transcoding, async_bytes_reader) that have migrated to inspect_ai.\nBugfix: Fix early-exit bug the failed to unthin sample_metadata"
+    "text": "LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.\nLLM Scanner: AnswerMultiLabel(allow_none=True) lets the model respond with ANSWER: NONE when no labels apply.\nScanner Tools: generate_answer() automatically retries with format feedback when the model’s response can’t be parsed.\nScanner Tools: message_numbering(), scanner_prompt(), generate_answer(), and parse_answer() functions for building custom scanners with fine-grained control.\nScanner Tools: ResultReducer for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.\nScanner Tools: transcript_messages(), segment_messages(), and span_messages() functions for extracting and segmenting transcript messages.\nTranscript DB: claude_code() source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.\nCLI: scout import command for importing transcripts from registered sources into Scout projects.\nSerialization: Use pa.large_string for string types to support larger column/file sizes.\nMultiprocessing: Improve handling of model instances with multiprocessing serialization.\nTranscripts: unthin target and and add scores from sample JSON.\nTranscripts: Set row group size to 25 (specify as rows not bytes).\nTranscripts: Address DuckDB 1.5 compatibility issue w/ mixed type CASE expressions.\nTranscripts: Switch over to async ZIP modules (async_zip, zip_common, compression, compression_transcoding, async_bytes_reader) that have migrated to inspect_ai.\nTranscripts: Remove parquet encryption (not used + issues w/ DuckDB 1.5).\nScout View: Properly sort scanner results using the value type.\nScout View: Enable minification and caching of view static assets.\nScout View: Fix issue rendering transcript events when showing the validation panel.\nBugfix: Fix early-exit bug the failed to unthin sample_metadata"
   },
   {
     "objectID": "CHANGELOG.html#unreleased",
     "href": "CHANGELOG.html#unreleased",
     "title": "Inspect Scout",
     "section": "",
-    "text": "LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.\nLLM Scanner: AnswerMultiLabel(allow_none=True) lets the model respond with ANSWER: NONE when no labels apply.\nScanner Tools: generate_answer() automatically retries with format feedback when the model’s response can’t be parsed.\nScanner Tools: message_numbering(), scanner_prompt(), generate_answer(), and parse_answer() functions for building custom scanners with fine-grained control.\nScanner Tools: ResultReducer for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.\nScanner Tools: transcript_messages(), segment_messages(), and span_messages() functions for extracting and segmenting transcript messages.\nTranscript DB: claude_code() source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.\nCLI: scout import command for importing transcripts from registered sources into Scout projects.\nSerialization: Use pa.large_string for string types to support larger column/file sizes.\nMultiprocessing: Improve handling of model instances with multiprocessing serialization.\nTranscripts: unthin target and and add scores from sample JSON.\nTranscripts: Set row group size to 25 (specify as rows not bytes).\nScout View: Properly sort scanner results using the value type.\nScout View: Enable minification and caching of view static assets.\nScout View: Fix issue rendering transcript events when showing the validation panel.\nTranscripts: Switch over to async ZIP modules (async_zip, zip_common, compression, compression_transcoding, async_bytes_reader) that have migrated to inspect_ai.\nBugfix: Fix early-exit bug the failed to unthin sample_metadata"
+    "text": "LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.\nLLM Scanner: AnswerMultiLabel(allow_none=True) lets the model respond with ANSWER: NONE when no labels apply.\nScanner Tools: generate_answer() automatically retries with format feedback when the model’s response can’t be parsed.\nScanner Tools: message_numbering(), scanner_prompt(), generate_answer(), and parse_answer() functions for building custom scanners with fine-grained control.\nScanner Tools: ResultReducer for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.\nScanner Tools: transcript_messages(), segment_messages(), and span_messages() functions for extracting and segmenting transcript messages.\nTranscript DB: claude_code() source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.\nCLI: scout import command for importing transcripts from registered sources into Scout projects.\nSerialization: Use pa.large_string for string types to support larger column/file sizes.\nMultiprocessing: Improve handling of model instances with multiprocessing serialization.\nTranscripts: unthin target and and add scores from sample JSON.\nTranscripts: Set row group size to 25 (specify as rows not bytes).\nTranscripts: Address DuckDB 1.5 compatibility issue w/ mixed type CASE expressions.\nTranscripts: Switch over to async ZIP modules (async_zip, zip_common, compression, compression_transcoding, async_bytes_reader) that have migrated to inspect_ai.\nTranscripts: Remove parquet encryption (not used + issues w/ DuckDB 1.5).\nScout View: Properly sort scanner results using the value type.\nScout View: Enable minification and caching of view static assets.\nScout View: Fix issue rendering transcript events when showing the validation panel.\nBugfix: Fix early-exit bug the failed to unthin sample_metadata"
   },
   {
     "objectID": "CHANGELOG.html#february-2026",
@@ -1928,7 +1904,7 @@
     "href": "db_publishing.html",
     "title": "Publishing Transcripts",
     "section": "",
-    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:\n\nMaking access to the transcripts authenticated (e.g. S3 or Hugging Face); and\nEncrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.\n\nWe’ll cover both of these scenarios in detail below.",
+    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigation available for this is making access to the transcripts authenticated (e.g. S3 or Hugging Face).\nWe’ll cover both of these scenarios in detail below.",
     "crumbs": [
       "Getting Started",
       "Transcripts",
@@ -1940,7 +1916,7 @@
     "href": "db_publishing.html#overview",
     "title": "Publishing Transcripts",
     "section": "",
-    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:\n\nMaking access to the transcripts authenticated (e.g. S3 or Hugging Face); and\nEncrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.\n\nWe’ll cover both of these scenarios in detail below.",
+    "text": "In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigation available for this is making access to the transcripts authenticated (e.g. S3 or Hugging Face).\nWe’ll cover both of these scenarios in detail below.",
     "crumbs": [
       "Getting Started",
       "Transcripts",
@@ -1952,7 +1928,7 @@
     "href": "db_publishing.html#hugging-face",
     "title": "Publishing Transcripts",
     "section": "Hugging Face",
-    "text": "Hugging Face\nPublishing transcript databases as a Hugging Face Dataset is useful when you want to share with a broader audience. Benefits of using Hugging Face include:\n\nYou can make access private to only your account or organization.\nYou can create a Gated Dataset that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.\n\nSee the Hugging Face documentation on uploading datasets for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.\nTo access a dataset on Hugging Face:\n\nInstall the huggingface_hub Python package:\npip install huggingface_hub\nConfigure credentials either by setting the HF_TOKEN environment variable or via login:\nhf auth login\nRefer to your dataset in a scout scan using the hf:// protocol. For example:\nscout scan scanner.py -T hf://datasets/account-name/dataset-name\n\nSee Encryption below for details on adding encryption to database files as an additional measure of protection from crawlers.",
+    "text": "Hugging Face\nPublishing transcript databases as a Hugging Face Dataset is useful when you want to share with a broader audience. Benefits of using Hugging Face include:\n\nYou can make access private to only your account or organization.\nYou can create a Gated Dataset that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.\n\nSee the Hugging Face documentation on uploading datasets for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.\nTo access a dataset on Hugging Face:\n\nInstall the huggingface_hub Python package:\npip install huggingface_hub\nConfigure credentials either by setting the HF_TOKEN environment variable or via login:\nhf auth login\nRefer to your dataset in a scout scan using the hf:// protocol. For example:\nscout scan scanner.py -T hf://datasets/account-name/dataset-name",
     "crumbs": [
       "Getting Started",
       "Transcripts",
@@ -1964,19 +1940,7 @@
     "href": "db_publishing.html#s3",
     "title": "Publishing Transcripts",
     "section": "S3",
-    "text": "S3\nPublishing transcripst databases to AWS S3 enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the documentation for further details).\nAfter you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the s3:// protocol. For example:\nscout scan scanner.py -T s3://my-transcript-databases/database-name\nSee Encryption below for details on adding encryption to database files as an additional measure of protection from crawlers.",
-    "crumbs": [
-      "Getting Started",
-      "Transcripts",
-      "Publishing"
-    ]
-  },
-  {
-    "objectID": "db_publishing.html#encryption",
-    "href": "db_publishing.html#encryption",
-    "title": "Publishing Transcripts",
-    "section": "Encryption",
-    "text": "Encryption\nYou can optionally use encryption to provide further protection for transcript databases. To encrypt a database, use the scout db encrypt command, passing it a valid AES encryption key (16, 24, or 32 bytes). For example:\nscout db encrypt /path/to/my/database \\\n   --output-dir /path/to/my/database-enc \\\n   --key 0123456789abcdef\nIf you don’t want to include the key in a script, you can also pass it via stdin (--key -) or pass it via the SCOUT_DB_ENCRYPTION_KEY environment variable.\n\nReading Encrypted Databases\nWhen using an encrypted database during a scan, you should set the SCOUT_DB_ENCRYPTION_KEY environment variable to the appropriate key. For example:\nexport SCOUT_DB_ENCRYPTION_KEY=0123456789abcdef\nscout scan scanner.py -T /path/to/my/database-enc\nYou can also decrypt the database using the scout db decrypt command:\nscout db decrypt /path/to/my/database-enc \\\n    --output-dir /path/to/my/database \\\n    --key 0123456789abcdef\n\n\nLimitations\nScout uses DuckDB Parquet Encryption to implement encryption. While this will provide additional protection for data, there are some drawbacks:\n\nIt is not currently compatible with the encryption of, e.g., PyArrow, so encrypted Parquet files will currently only be readable with DuckDB.\nCompression ratios for encrypted Parquet are much lower than for unencrypted (e.g. database files might be 5-8 times larger).\nRead performance may be a bit slower due to decryption (but it’s unlikely this will matter as most time in scanning is spent on inference not reading).",
+    "text": "S3\nPublishing transcripst databases to AWS S3 enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the documentation for further details).\nAfter you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the s3:// protocol. For example:\nscout scan scanner.py -T s3://my-transcript-databases/database-name",
     "crumbs": [
       "Getting Started",
       "Transcripts",

@@ -934,9 +934,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#scout-db-encrypt" id="toc-scout-db-encrypt" class="nav-link active" data-scroll-target="#scout-db-encrypt">scout db encrypt</a></li>
-  <li><a href="#scout-db-decrypt" id="toc-scout-db-decrypt" class="nav-link" data-scroll-target="#scout-db-decrypt">scout db decrypt</a></li>
-  <li><a href="#scout-db-index" id="toc-scout-db-index" class="nav-link" data-scroll-target="#scout-db-index">scout db index</a></li>
+  <li><a href="#scout-db-index" id="toc-scout-db-index" class="nav-link active" data-scroll-target="#scout-db-index">scout db index</a></li>
   <li><a href="#scout-db-schema" id="toc-scout-db-schema" class="nav-link" data-scroll-target="#scout-db-schema">scout db schema</a></li>
   <li><a href="#scout-db-validate" id="toc-scout-db-validate" class="nav-link" data-scroll-target="#scout-db-validate">scout db validate</a></li>
   </ul>
@@ -1007,14 +1005,6 @@ ul.task-list li input[type="checkbox"] {
 </colgroup>
 <tbody>
 <tr class="odd">
-<td><a href="#scout-db-encrypt">encrypt</a></td>
-<td>Encrypt a transcript database.</td>
-</tr>
-<tr class="even">
-<td><a href="#scout-db-decrypt">decrypt</a></td>
-<td>Decrypt a transcript database.</td>
-</tr>
-<tr class="odd">
 <td><a href="#scout-db-index">index</a></td>
 <td>Create or rebuild the index for a transcript database.</td>
 </tr>
@@ -1029,12 +1019,13 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 </section>
-<section id="scout-db-encrypt" class="level2" data-toc-label="encrypt">
-<h2 data-toc-label="encrypt" class="anchored" data-anchor-id="scout-db-encrypt">scout db encrypt</h2>
-<p>Encrypt a transcript database.</p>
+<section id="scout-db-index" class="level2" data-toc-label="index">
+<h2 data-toc-label="index" class="anchored" data-anchor-id="scout-db-index">scout db index</h2>
+<p>Create or rebuild the index for a transcript database.</p>
+<p>This scans all parquet data files and creates a manifest index containing metadata for fast queries. Any existing index files are replaced.</p>
 <section id="usage-1" class="level4">
 <h4 class="anchored" data-anchor-id="usage-1">Usage</h4>
-<pre class="text"><code>scout db encrypt [OPTIONS] DATABASE_LOCATION</code></pre>
+<pre class="text"><code>scout db index [OPTIONS] DATABASE_LOCATION</code></pre>
 </section>
 <section id="options-1" class="level4">
 <h4 class="anchored" data-anchor-id="options-1">Options</h4>
@@ -1055,24 +1046,6 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>--output-dir</code></td>
-<td>text</td>
-<td>Directory to write encrypted database files to.</td>
-<td>_required</td>
-</tr>
-<tr class="even">
-<td><code>--key</code></td>
-<td>text</td>
-<td>Encryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td><code>--overwrite</code></td>
-<td>boolean</td>
-<td>Overwrite files in the output directory.</td>
-<td></td>
-</tr>
-<tr class="even">
 <td><code>--help</code></td>
 <td>boolean</td>
 <td>Show this message and exit.</td>
@@ -1092,122 +1065,6 @@ ul.task-list li input[type="checkbox"] {
 </table>
 </section>
 </section>
-<section id="scout-db-decrypt" class="level2" data-toc-label="decrypt">
-<h2 data-toc-label="decrypt" class="anchored" data-anchor-id="scout-db-decrypt">scout db decrypt</h2>
-<p>Decrypt a transcript database.</p>
-<section id="usage-2" class="level4">
-<h4 class="anchored" data-anchor-id="usage-2">Usage</h4>
-<pre class="text"><code>scout db decrypt [OPTIONS] DATABASE_LOCATION</code></pre>
-</section>
-<section id="options-2" class="level4">
-<h4 class="anchored" data-anchor-id="options-2">Options</h4>
-<table class="table-sm table-borderless small caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 15%">
-<col style="width: 50%">
-<col style="width: 10%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>--output-dir</code></td>
-<td>text</td>
-<td>Directory to write decrypted database files to.</td>
-<td>_required</td>
-</tr>
-<tr class="even">
-<td><code>--key</code></td>
-<td>text</td>
-<td>Encryption key (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td><code>--overwrite</code></td>
-<td>boolean</td>
-<td>Overwrite files in the output directory.</td>
-<td></td>
-</tr>
-<tr class="even">
-<td><code>--help</code></td>
-<td>boolean</td>
-<td>Show this message and exit.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="subcommands-2" class="level4">
-<h4 class="anchored" data-anchor-id="subcommands-2">Subcommands</h4>
-<table class="table-borderless caption-top">
-<colgroup>
-<col style="width: 35%">
-<col style="width: 65%">
-</colgroup>
-
-</table>
-</section>
-</section>
-<section id="scout-db-index" class="level2" data-toc-label="index">
-<h2 data-toc-label="index" class="anchored" data-anchor-id="scout-db-index">scout db index</h2>
-<p>Create or rebuild the index for a transcript database.</p>
-<p>This scans all parquet data files and creates a manifest index containing metadata for fast queries. Any existing index files are replaced.</p>
-<p>For encrypted databases, provide –key or set SCOUT_DB_ENCRYPTION_KEY.</p>
-<section id="usage-3" class="level4">
-<h4 class="anchored" data-anchor-id="usage-3">Usage</h4>
-<pre class="text"><code>scout db index [OPTIONS] DATABASE_LOCATION</code></pre>
-</section>
-<section id="options-3" class="level4">
-<h4 class="anchored" data-anchor-id="options-3">Options</h4>
-<table class="table-sm table-borderless small caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 15%">
-<col style="width: 50%">
-<col style="width: 10%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>--key</code></td>
-<td>text</td>
-<td>Encryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
-<td></td>
-</tr>
-<tr class="even">
-<td><code>--help</code></td>
-<td>boolean</td>
-<td>Show this message and exit.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="subcommands-3" class="level4">
-<h4 class="anchored" data-anchor-id="subcommands-3">Subcommands</h4>
-<table class="table-borderless caption-top">
-<colgroup>
-<col style="width: 35%">
-<col style="width: 65%">
-</colgroup>
-
-</table>
-</section>
-</section>
 <section id="scout-db-schema" class="level2" data-toc-label="schema">
 <h2 data-toc-label="schema" class="anchored" data-anchor-id="scout-db-schema">scout db schema</h2>
 <p>Print the transcript database schema.</p>
@@ -1216,12 +1073,12 @@ ul.task-list li input[type="checkbox"] {
 <pre><code>scout db schema --format pyarrow    # PyArrow schema
 
 scout db schema -o transcript.avsc  # Save to file</code></pre>
-<section id="usage-4" class="level4">
-<h4 class="anchored" data-anchor-id="usage-4">Usage</h4>
+<section id="usage-2" class="level4">
+<h4 class="anchored" data-anchor-id="usage-2">Usage</h4>
 <pre class="text"><code>scout db schema [OPTIONS]</code></pre>
 </section>
-<section id="options-4" class="level4">
-<h4 class="anchored" data-anchor-id="options-4">Options</h4>
+<section id="options-2" class="level4">
+<h4 class="anchored" data-anchor-id="options-2">Options</h4>
 <table class="table-sm table-borderless small caption-top table">
 <colgroup>
 <col style="width: 25%">
@@ -1259,8 +1116,8 @@ scout db schema -o transcript.avsc  # Save to file</code></pre>
 </tbody>
 </table>
 </section>
-<section id="subcommands-4" class="level4">
-<h4 class="anchored" data-anchor-id="subcommands-4">Subcommands</h4>
+<section id="subcommands-2" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-2">Subcommands</h4>
 <table class="table-borderless caption-top">
 <colgroup>
 <col style="width: 35%">
@@ -1275,13 +1132,12 @@ scout db schema -o transcript.avsc  # Save to file</code></pre>
 <p>Validate a transcript database schema.</p>
 <p>Checks that the database has the required fields and correct types.</p>
 <p>Examples: scout db validate ./my_transcript_db</p>
-<pre><code>scout db validate ./encrypted_db --key $KEY</code></pre>
-<section id="usage-5" class="level4">
-<h4 class="anchored" data-anchor-id="usage-5">Usage</h4>
+<section id="usage-3" class="level4">
+<h4 class="anchored" data-anchor-id="usage-3">Usage</h4>
 <pre class="text"><code>scout db validate [OPTIONS] DATABASE_LOCATION</code></pre>
 </section>
-<section id="options-5" class="level4">
-<h4 class="anchored" data-anchor-id="options-5">Options</h4>
+<section id="options-3" class="level4">
+<h4 class="anchored" data-anchor-id="options-3">Options</h4>
 <table class="table-sm table-borderless small caption-top table">
 <colgroup>
 <col style="width: 25%">
@@ -1299,12 +1155,6 @@ scout db schema -o transcript.avsc  # Save to file</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>--key</code></td>
-<td>text</td>
-<td>Encryption key for encrypted databases (use ‘-’ for stdin, or set SCOUT_DB_ENCRYPTION_KEY).</td>
-<td></td>
-</tr>
-<tr class="even">
 <td><code>--help</code></td>
 <td>boolean</td>
 <td>Show this message and exit.</td>
@@ -1313,8 +1163,8 @@ scout db schema -o transcript.avsc  # Save to file</code></pre>
 </tbody>
 </table>
 </section>
-<section id="subcommands-5" class="level4">
-<h4 class="anchored" data-anchor-id="subcommands-5">Subcommands</h4>
+<section id="subcommands-3" class="level4">
+<h4 class="anchored" data-anchor-id="subcommands-3">Subcommands</h4>
 <table class="table-borderless caption-top">
 <colgroup>
 <col style="width: 35%">

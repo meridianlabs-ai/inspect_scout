@@ -435,11 +435,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
   <li><a href="#hugging-face" id="toc-hugging-face" class="nav-link" data-scroll-target="#hugging-face">Hugging Face</a></li>
   <li><a href="#s3" id="toc-s3" class="nav-link" data-scroll-target="#s3">S3</a></li>
-  <li><a href="#encryption" id="toc-encryption" class="nav-link" data-scroll-target="#encryption">Encryption</a>
-  <ul class="collapse">
-  <li><a href="#reading-encrypted-databases" id="toc-reading-encrypted-databases" class="nav-link" data-scroll-target="#reading-encrypted-databases">Reading Encrypted Databases</a></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
-  </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -467,11 +462,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigations available for this are:</p>
-<ol type="1">
-<li><p>Making access to the transcripts authenticated (e.g.&nbsp;S3 or Hugging Face); and</p></li>
-<li><p>Encrypting the transcript database files so that if they are republished in an unauthenticated context that crawlers won’t be able to read them.</p></li>
-</ol>
+<p>In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigation available for this is making access to the transcripts authenticated (e.g.&nbsp;S3 or Hugging Face).</p>
 <p>We’ll cover both of these scenarios in detail below.</p>
 </section>
 <section id="hugging-face" class="level2">
@@ -491,43 +482,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p>Refer to your dataset in a scout scan using the <code>hf://</code> protocol. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> hf://datasets/account-name/dataset-name</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 </ol>
-<p>See <a href="#encryption">Encryption</a> below for details on adding encryption to database files as an additional measure of protection from crawlers.</p>
 </section>
 <section id="s3" class="level2">
 <h2 class="anchored" data-anchor-id="s3">S3</h2>
 <p>Publishing transcripst databases to AWS <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html">S3</a> enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html">documentation</a> for further details).</p>
 <p>After you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the <code>s3://</code> protocol. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> s3://my-transcript-databases/database-name</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="#encryption">Encryption</a> below for details on adding encryption to database files as an additional measure of protection from crawlers.</p>
-</section>
-<section id="encryption" class="level2">
-<h2 class="anchored" data-anchor-id="encryption">Encryption</h2>
-<p>You can optionally use encryption to provide further protection for transcript databases. To encrypt a database, use the <code>scout db encrypt</code> command, passing it a valid AES encryption key (16, 24, or 32 bytes). For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db encrypt /path/to/my/database <span class="dt">\</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>   <span class="at">--output-dir</span> /path/to/my/database-enc <span class="dt">\</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>   <span class="at">--key</span> 0123456789abcdef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you don’t want to include the key in a script, you can also pass it via stdin (<code>--key -</code>) or pass it via the <code>SCOUT_DB_ENCRYPTION_KEY</code> environment variable.</p>
-<section id="reading-encrypted-databases" class="level3">
-<h3 class="anchored" data-anchor-id="reading-encrypted-databases">Reading Encrypted Databases</h3>
-<p>When using an encrypted database during a scan, you should set the <code>SCOUT_DB_ENCRYPTION_KEY</code> environment variable to the appropriate key. For example:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">SCOUT_DB_ENCRYPTION_KEY</span><span class="op">=</span>0123456789abcdef</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> /path/to/my/database-enc</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>You can also decrypt the database using the <code>scout db decrypt</code> command:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> db decrypt /path/to/my/database-enc <span class="dt">\</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--output-dir</span> /path/to/my/database <span class="dt">\</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--key</span> 0123456789abcdef</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="limitations" class="level3">
-<h3 class="anchored" data-anchor-id="limitations">Limitations</h3>
-<p>Scout uses DuckDB <a href="https://duckdb.org/docs/stable/data/parquet/encryption">Parquet Encryption</a> to implement encryption. While this will provide additional protection for data, there are some drawbacks:</p>
-<ol type="1">
-<li><p>It is not currently compatible with the encryption of, e.g., PyArrow, so encrypted Parquet files will currently only be readable with DuckDB.</p></li>
-<li><p>Compression ratios for encrypted Parquet are much lower than for unencrypted (e.g.&nbsp;database files might be 5-8 times larger).</p></li>
-<li><p>Read performance may be a bit slower due to decryption (but it’s unlikely this will matter as most time in scanning is spent on inference not reading).</p></li>
-</ol>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->

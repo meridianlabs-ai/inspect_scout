@@ -178,9 +178,9 @@ class TestCachePathGeneration:
 
         assert key1 == key2
 
-    def test_get_index_cache_path_unencrypted(self, tmp_path: Path) -> None:
-        """Unencrypted storage gets .parquet extension."""
-        storage = IndexStorage(location="s3://bucket/path", is_encrypted=False)
+    def test_get_index_cache_path_extension(self, tmp_path: Path) -> None:
+        """Cache path gets .parquet extension."""
+        storage = IndexStorage(location="s3://bucket/path")
         index_files = ["index_abc.idx"]
 
         with patch(
@@ -191,23 +191,6 @@ class TestCachePathGeneration:
 
         assert path.suffix == ".parquet"
 
-    def test_get_index_cache_path_encrypted(self, tmp_path: Path) -> None:
-        """Encrypted storage gets .enc.parquet extension."""
-        storage = IndexStorage(
-            location="s3://bucket/path",
-            is_encrypted=True,
-            encryption_key="0" * 32,
-        )
-        index_files = ["index_abc.idx"]
-
-        with patch(
-            "inspect_scout._transcript.database.parquet.index_cache.scout_cache_dir",
-            return_value=tmp_path,
-        ):
-            path = get_index_cache_path(storage, index_files)
-
-        assert str(path).endswith(".enc.parquet")
-
 
 # --- Cache Save/Load Tests ---
 
@@ -216,7 +199,7 @@ class TestCacheSaveLoad:
     """Tests for cache save and load operations."""
 
     def test_save_and_load_cached_index(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """Round-trip save/load works correctly."""
         # Create a table in the connection
@@ -229,13 +212,13 @@ class TestCacheSaveLoad:
 
         # Save to cache
         cache_path = tmp_path / "cache.parquet"
-        save_index_cache(conn, cache_path, "test_index", storage)
+        save_index_cache(conn, cache_path, "test_index")
 
         assert cache_path.exists()
 
         # Load from cache in new connection
         conn2 = duckdb.connect(":memory:")
-        count = load_cached_index(conn2, cache_path, "loaded_index", storage)
+        count = load_cached_index(conn2, cache_path, "loaded_index")
 
         assert count == 2
         result = conn2.execute(
@@ -246,23 +229,23 @@ class TestCacheSaveLoad:
         assert result[1][0] == "id2"
 
     def test_load_cached_index_returns_none_if_missing(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """Returns None when cache file doesn't exist."""
         cache_path = tmp_path / "nonexistent.parquet"
 
-        result = load_cached_index(conn, cache_path, "test_index", storage)
+        result = load_cached_index(conn, cache_path, "test_index")
 
         assert result is None
 
     def test_load_cached_index_deletes_corrupted_cache(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """Corrupted cache file is deleted and None is returned."""
         cache_path = tmp_path / "corrupted.parquet"
         cache_path.write_text("not a valid parquet file")
 
-        result = load_cached_index(conn, cache_path, "test_index", storage)
+        result = load_cached_index(conn, cache_path, "test_index")
 
         assert result is None
         assert not cache_path.exists()
@@ -403,73 +386,6 @@ class TestInitIndexTableCaching:
             assert count == 2
 
 
-# --- Encryption Tests ---
-
-
-class TestEncryptedCache:
-    """Tests for encrypted cache functionality."""
-
-    def test_save_encrypted_cache(
-        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
-    ) -> None:
-        """Encrypted storage saves encrypted cache."""
-        key = "0" * 32  # 32 bytes = AES-256
-        storage = IndexStorage(
-            location=str(tmp_path),
-            is_encrypted=True,
-            encryption_key=key,
-        )
-
-        # Setup encryption in connection
-        conn.execute(f"PRAGMA add_parquet_key('scout_key', '{key}')")
-
-        conn.execute("""
-            CREATE TABLE test_index AS
-            SELECT 'id1' AS transcript_id, 'file1.parquet' AS filename
-        """)
-
-        cache_path = tmp_path / "cache.enc.parquet"
-        save_index_cache(conn, cache_path, "test_index", storage)
-
-        assert cache_path.exists()
-
-        # Verify file is encrypted (can't read without key)
-        conn2 = duckdb.connect(":memory:")
-        with pytest.raises(
-            duckdb.Error
-        ):  # DuckDB raises error for encrypted file without key
-            conn2.execute(f"SELECT * FROM read_parquet('{cache_path}')")
-
-    def test_load_encrypted_cache(self, tmp_path: Path) -> None:
-        """Encrypted cache can be loaded with correct key."""
-        key = "0" * 32
-        storage = IndexStorage(
-            location=str(tmp_path),
-            is_encrypted=True,
-            encryption_key=key,
-        )
-
-        # Save encrypted cache
-        conn1 = duckdb.connect(":memory:")
-        conn1.execute(f"PRAGMA add_parquet_key('scout_key', '{key}')")
-        conn1.execute("""
-            CREATE TABLE test_index AS
-            SELECT 'id1' AS transcript_id, 'file1.parquet' AS filename
-        """)
-
-        cache_path = tmp_path / "cache.enc.parquet"
-        save_index_cache(conn1, cache_path, "test_index", storage)
-
-        # Load with key
-        conn2 = duckdb.connect(":memory:")
-        conn2.execute(f"PRAGMA add_parquet_key('scout_key', '{key}')")
-        count = load_cached_index(conn2, cache_path, "loaded_index", storage)
-
-        assert count == 1
-        result = conn2.execute("SELECT * FROM loaded_index").fetchall()
-        assert result[0][0] == "id1"
-
-
 # --- Concurrency Protection Tests ---
 
 
@@ -477,7 +393,7 @@ class TestConcurrencyProtection:
     """Tests for atomic write and concurrent process handling."""
 
     def test_save_index_cache_no_temp_files_on_success(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """No temp files remain after successful save."""
         conn.execute("""
@@ -486,7 +402,7 @@ class TestConcurrencyProtection:
         """)
 
         cache_path = tmp_path / "cache.parquet"
-        save_index_cache(conn, cache_path, "test_index", storage)
+        save_index_cache(conn, cache_path, "test_index")
 
         # Verify no temp files remain
         tmp_files = list(tmp_path.glob("*.tmp"))
@@ -496,7 +412,7 @@ class TestConcurrencyProtection:
         assert cache_path.exists()
 
     def test_save_index_cache_skips_if_exists(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """Skips write if cache already exists (another process wrote it)."""
         conn.execute("""
@@ -510,20 +426,20 @@ class TestConcurrencyProtection:
         original_content = cache_path.read_text()
 
         # Try to save - should skip since file exists
-        save_index_cache(conn, cache_path, "test_index", storage)
+        save_index_cache(conn, cache_path, "test_index")
 
         # Content should be unchanged (was not overwritten)
         assert cache_path.read_text() == original_content
 
     def test_save_index_cache_cleans_temp_on_error(
-        self, conn: duckdb.DuckDBPyConnection, storage: IndexStorage, tmp_path: Path
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
     ) -> None:
         """Temp file is cleaned up on write error."""
         # Don't create a table - this will cause DuckDB to error
         cache_path = tmp_path / "cache.parquet"
 
         with pytest.raises(duckdb.CatalogException):
-            save_index_cache(conn, cache_path, "nonexistent_table", storage)
+            save_index_cache(conn, cache_path, "nonexistent_table")
 
         # Verify no temp files remain
         tmp_files = list(tmp_path.glob("*.tmp"))

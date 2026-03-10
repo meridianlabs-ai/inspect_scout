@@ -45,7 +45,11 @@ from ...types import (
 )
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
-from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
+from ..schema import (
+    TRANSCRIPT_SCHEMA_FIELDS,
+    reserved_columns,
+    with_schema_version,
+)
 from .index import (
     _discover_index_files,
     append_index,
@@ -1098,7 +1102,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             path: Destination file path.
         """
         pq.write_table(
-            table,
+            with_schema_version(table),
             path,
             compression="zstd",
             use_dictionary=True,

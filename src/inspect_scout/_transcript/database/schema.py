@@ -12,6 +12,45 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+# --- Schema Versioning ---
+
+SCHEMA_VERSION = 1
+"""Current schema version stamped into parquet file metadata."""
+
+METADATA_KEY = b"inspect_scout:schema_version"
+"""Parquet metadata key for the schema version."""
+
+
+def with_schema_version(table: pa.Table) -> pa.Table:
+    """Stamp schema version into table metadata for writing to parquet.
+
+    Args:
+        table: PyArrow table to stamp.
+
+    Returns:
+        New table with schema version in metadata.
+    """
+    metadata = dict(table.schema.metadata) if table.schema.metadata else {}
+    metadata[METADATA_KEY] = str(SCHEMA_VERSION).encode()
+    return table.replace_schema_metadata(metadata)
+
+
+def read_schema_version(path: str | Path) -> int:
+    """Read the schema version from a parquet file's metadata.
+
+    Files without a version stamp are treated as version 1 (the first
+    version, written before stamping was introduced).
+
+    Args:
+        path: Path to a parquet file.
+
+    Returns:
+        Schema version as int (defaults to 1 for unstamped files).
+    """
+    schema = pq.read_schema(path)
+    raw = schema.metadata.get(METADATA_KEY) if schema.metadata else None
+    return int(raw) if raw is not None else 1
+
 
 @dataclass
 class SchemaField:

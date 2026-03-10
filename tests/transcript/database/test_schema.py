@@ -9,13 +9,17 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from inspect_scout._transcript.database.schema import (
+    METADATA_KEY,
+    SCHEMA_VERSION,
     TRANSCRIPT_SCHEMA_FIELDS,
     SchemaField,
     TranscriptSchemaError,
     generate_schema_table_markdown,
+    read_schema_version,
     reserved_columns,
     transcripts_db_schema,
     validate_transcript_schema,
+    with_schema_version,
 )
 
 
@@ -590,3 +594,34 @@ class TestSchemaRoundTrip:
             assert count == 2
         finally:
             await db.disconnect()
+
+
+# --- Schema version reading ---
+
+
+def _stamp_table(table: pa.Table, version: int | None) -> pa.Table:
+    if version is None:
+        return table
+    return table.replace_schema_metadata({METADATA_KEY: str(version).encode()})
+
+
+@pytest.mark.parametrize(
+    ("version_written", "expected"),
+    [
+        pytest.param(None, 1, id="no-stamp-defaults-to-1"),
+        pytest.param(SCHEMA_VERSION, SCHEMA_VERSION, id="current-version"),
+        pytest.param(999, 999, id="future-version"),
+    ],
+)
+def test_read_schema_version(
+    tmp_path: Path, version_written: int | None, expected: int
+) -> None:
+    path = tmp_path / "test.parquet"
+    pq.write_table(_stamp_table(pa.table({"x": [1]}), version_written), str(path))
+    assert read_schema_version(path) == expected
+
+
+def test_with_schema_version_roundtrips(tmp_path: Path) -> None:
+    path = tmp_path / "test.parquet"
+    pq.write_table(with_schema_version(pa.table({"x": [1]})), str(path))
+    assert read_schema_version(path) == SCHEMA_VERSION

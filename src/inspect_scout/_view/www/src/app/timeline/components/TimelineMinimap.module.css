@@ -43,6 +43,7 @@
 
 .minimap {
   position: relative;
+  z-index: 3;
   height: 24px;
   flex: 1;
   overflow: visible;

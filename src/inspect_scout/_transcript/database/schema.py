@@ -4,6 +4,7 @@ This module provides a single source of truth for the transcript database schema
 with functions to export the schema in various formats.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, overload
@@ -11,6 +12,59 @@ from typing import Any, Literal, overload
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from inspect_ai._util.error import PrerequisiteError
+
+# --- Schema Versioning ---
+
+SCHEMA_VERSION = 1
+"""Current schema version stamped into parquet file metadata."""
+
+METADATA_KEY = b"inspect_scout:schema_version"
+"""Parquet metadata key for the schema version."""
+
+
+class SchemaVersionError(PrerequisiteError):
+    """Raised when a file has a newer schema version than supported."""
+
+
+def with_schema_version(table: pa.Table) -> pa.Table:
+    """Stamp schema version into table metadata for writing to parquet.
+
+    Args:
+        table: PyArrow table to stamp.
+
+    Returns:
+        New table with schema version in metadata.
+    """
+    metadata = dict(table.schema.metadata) if table.schema.metadata else {}
+    metadata[METADATA_KEY] = str(SCHEMA_VERSION).encode()
+    return table.replace_schema_metadata(metadata)
+
+
+def check_schema_version(paths: str | Path | Sequence[str | Path]) -> None:
+    """Validate that parquet file(s) schema version is supported.
+
+    Files without the metadata key are treated as valid (pre-versioning
+    or encrypted files written via DuckDB COPY).
+
+    Args:
+        paths: Path or sequence of paths to parquet files.
+
+    Raises:
+        SchemaVersionError: If any file has a newer schema version than supported.
+    """
+    for path in [paths] if isinstance(paths, (str, Path)) else paths:
+        schema = pq.read_schema(path)
+        raw = schema.metadata.get(METADATA_KEY) if schema.metadata else None
+        if raw is None:
+            continue
+        version = int(raw)
+        if version > SCHEMA_VERSION:
+            raise SchemaVersionError(
+                f"File {path} has schema version {version}, "
+                f"but this version of inspect_scout only supports up to {SCHEMA_VERSION}. "
+                f"Please upgrade inspect_scout."
+            )
 
 
 @dataclass

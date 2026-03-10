@@ -9,13 +9,18 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from inspect_scout._transcript.database.schema import (
+    METADATA_KEY,
+    SCHEMA_VERSION,
     TRANSCRIPT_SCHEMA_FIELDS,
     SchemaField,
+    SchemaVersionError,
     TranscriptSchemaError,
+    check_schema_version,
     generate_schema_table_markdown,
     reserved_columns,
     transcripts_db_schema,
     validate_transcript_schema,
+    with_schema_version,
 )
 
 
@@ -590,3 +595,80 @@ class TestSchemaRoundTrip:
             assert count == 2
         finally:
             await db.disconnect()
+
+
+def _write_future_versioned_parquet(path: Path, pa_schema: pa.Schema) -> None:
+    """Write a parquet file stamped with a future schema version."""
+    data: dict[str, Any] = {"transcript_id": ["t1"], "messages": ["[]"]}
+    for field in pa_schema:
+        if field.name not in data:
+            data[field.name] = pa.nulls(1, type=field.type)
+    table = pa.table(data, schema=pa_schema)
+    future = {METADATA_KEY: str(SCHEMA_VERSION + 1).encode()}
+    table = table.replace_schema_metadata(future)
+    pq.write_table(table, str(path))
+
+
+def _stamp_table(table: pa.Table, version: int | None) -> pa.Table:
+    if version is None:
+        return table
+    return table.replace_schema_metadata({METADATA_KEY: str(version).encode()})
+
+
+# --- Schema version checking ---
+
+
+@pytest.mark.parametrize(
+    ("version", "should_raise"),
+    [
+        pytest.param(None, False, id="missing-key-pre-versioning"),
+        pytest.param(SCHEMA_VERSION, False, id="current-version"),
+        pytest.param(SCHEMA_VERSION + 1, True, id="future-version"),
+    ],
+)
+def test_check_schema_version(
+    tmp_path: Path, version: int | None, should_raise: bool
+) -> None:
+    path = tmp_path / "test.parquet"
+    pq.write_table(_stamp_table(pa.table({"x": [1]}), version), str(path))
+
+    if should_raise:
+        with pytest.raises(SchemaVersionError):
+            check_schema_version(path)
+    else:
+        check_schema_version(path)  # should not raise
+
+
+def test_check_schema_version_sequence(tmp_path: Path) -> None:
+    ok = tmp_path / "ok.parquet"
+    pq.write_table(with_schema_version(pa.table({"x": [1]})), str(ok))
+
+    bad = tmp_path / "bad.parquet"
+    pq.write_table(_stamp_table(pa.table({"x": [1]}), SCHEMA_VERSION + 1), str(bad))
+
+    check_schema_version([ok])  # should not raise
+    with pytest.raises(SchemaVersionError):
+        check_schema_version([ok, bad])
+
+
+def test_schema_version_error_is_prerequisite_error() -> None:
+    from inspect_ai._util.error import PrerequisiteError
+
+    assert issubclass(SchemaVersionError, PrerequisiteError)
+
+
+@pytest.mark.asyncio
+async def test_connect_rejects_future_versioned_data(tmp_path: Path) -> None:
+    from inspect_scout._transcript.database.parquet.transcripts import (
+        ParquetTranscriptsDB,
+    )
+
+    db_path = tmp_path / "db"
+    db_path.mkdir()
+    _write_future_versioned_parquet(
+        db_path / "data.parquet", transcripts_db_schema(format="pyarrow")
+    )
+
+    db = ParquetTranscriptsDB(str(db_path))
+    with pytest.raises(SchemaVersionError):
+        await db.connect()

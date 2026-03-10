@@ -33,7 +33,6 @@ from inspect_ai.util import trace_message
 from shortuuid import uuid
 from upath import UPath
 
-from ..schema import with_schema_version
 from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
 from .migration import migrate_table
 from .types import (
@@ -495,7 +494,7 @@ def _write_parquet_table(
         path: Destination file path.
     """
     pq.write_table(
-        with_schema_version(table),
+        table,
         path,
         compression="zstd",
         use_dictionary=True,

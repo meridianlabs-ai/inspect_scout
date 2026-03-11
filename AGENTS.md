@@ -2,7 +2,7 @@
 
 ## Repository Structure
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
-- **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md).
+- **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
 ## Principles
 
@@ -49,11 +49,6 @@ Architecture and design decisions in `/design/`.
 - [Validation data structures](design/validation.md)
 - [React Query patterns](src/inspect_scout/_view/ts-mono/apps/scout/design/react-query.md)
 - [Frontend specific testing](src/inspect_scout/_view/ts-mono/apps/scout/design/front-end-testing.md)
-
-### Guides
-Developer workflow guides in `/guides/`.
-
-- [Frontend submodule guide](guides/frontend-submodule.md)
 
 ## Python
 

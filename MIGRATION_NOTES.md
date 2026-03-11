@@ -142,7 +142,7 @@ Verify it works:
    configured. If not, flag for setup.
 2. Do a dry-run publish to confirm the workflow works end-to-end.
 
-## 5. Clean up temporary files
+## 5. ~~Clean up temporary files~~ DONE
 
 Before merging `mono` → `main`:
 

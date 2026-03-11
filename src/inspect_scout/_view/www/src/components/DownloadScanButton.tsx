@@ -7,13 +7,15 @@ import { ApplicationIcons } from "./icons";
 type DownloadState = "idle" | "downloading" | "success" | "error";
 
 interface DownloadScanButtonProps {
-  location: string;
-  download: (location: string) => Promise<void>;
+  scansDir: string;
+  scanPath: string;
+  download: (scansDir: string, scanPath: string) => Promise<void>;
   className?: string;
 }
 
 export const DownloadScanButton = ({
-  location,
+  scansDir,
+  scanPath,
   download,
   className = "",
 }: DownloadScanButtonProps): JSX.Element => {
@@ -22,7 +24,7 @@ export const DownloadScanButton = ({
   const handleClick = async (): Promise<void> => {
     setState("downloading");
     try {
-      await download(location);
+      await download(scansDir, scanPath);
       setState("success");
     } catch {
       setState("error");
@@ -33,18 +35,21 @@ export const DownloadScanButton = ({
   };
 
   const icon =
-    state === "downloading"
-      ? ApplicationIcons.running
-      : state === "success"
-        ? `${ApplicationIcons.confirm} primary`
-        : state === "error"
-          ? ApplicationIcons.error
-          : ApplicationIcons.download;
+    state === "success"
+      ? `${ApplicationIcons.confirm} primary`
+      : state === "error"
+        ? ApplicationIcons.error
+        : ApplicationIcons.download;
 
   return (
     <button
       type="button"
-      className={clsx("download-scan-button", styles.downloadButton, className)}
+      className={clsx(
+        "download-scan-button",
+        styles.downloadButton,
+        state === "downloading" && styles.spinning,
+        className
+      )}
       onClick={() => {
         void handleClick();
       }}

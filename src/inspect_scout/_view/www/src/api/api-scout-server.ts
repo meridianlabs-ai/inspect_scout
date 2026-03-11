@@ -391,9 +391,12 @@ export const apiScoutServer = (
       return asyncJsonParse<string>(result.raw);
     },
 
-    download_scan: async (location: string): Promise<void> => {
+    download_scan: async (
+      scansDir: string,
+      scanPath: string
+    ): Promise<void> => {
       const response = await (customFetch ?? fetch)(
-        `${apiBaseUrl}/scans/download/${encodeBase64Url(location)}`,
+        `${apiBaseUrl}/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/download`,
         {
           headers: headerProvider ? await headerProvider() : {},
           credentials: "same-origin",

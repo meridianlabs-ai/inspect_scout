@@ -137,21 +137,23 @@ def create_scans_router(
             return ActiveScansResponse(items=store.read_all())
 
     @router.get(
-        "/scans/download/{location}",
+        "/scans/{dir}/{scan}/download",
         summary="Download scan as zip",
         description="Streams a zip archive of the scan directory contents.",
     )
     async def download_scan(
-        location: str = Path(description="Scan location (base64url-encoded)"),
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> Response:
         """Stream scan directory as a zip archive."""
-        scan_location = decode_base64url(location)
-        scan_dir = UPath(scan_location)
+        scans_dir = decode_base64url(dir)
+        scan_path = decode_base64url(scan)
+        scan_dir = UPath(scans_dir) / scan_path
 
         if not scan_dir.exists():
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scan not found: {scan_location}",
+                detail=f"Scan not found: {scan_dir}",
             )
 
         scan_id = scan_dir.name

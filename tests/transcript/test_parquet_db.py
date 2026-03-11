@@ -21,6 +21,7 @@ from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptMessagesAndEvents,
 )
 from pydantic import JsonValue
 
@@ -1789,3 +1790,308 @@ async def test_exclude_clause_first_file_has_content(test_location: Path) -> Non
             assert len(transcript.messages) == 1
     finally:
         await db.disconnect()
+
+
+# --- Pool dedup tests ---
+
+
+def _make_model_event(
+    input: list[ChatMessage],
+    output_content: str = "response",
+    call_messages: JsonValue | None = None,
+) -> Event:
+    """Create a ModelEvent with the given input messages and optional raw call."""
+    from datetime import datetime
+
+    from inspect_ai.event import ModelEvent
+    from inspect_ai.model import ChatMessageAssistant, ModelOutput
+    from inspect_ai.model._generate_config import GenerateConfig
+    from inspect_ai.model._model_call import ModelCall
+    from inspect_ai.model._model_output import ChatCompletionChoice
+
+    call = (
+        ModelCall(
+            request={"messages": call_messages, "model": "test-model"},
+            response={"choices": []},
+        )
+        if call_messages is not None
+        else None
+    )
+
+    return ModelEvent(
+        event="model",
+        timestamp=datetime(2024, 1, 1),
+        model="test-model",
+        input=input,
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+        output=ModelOutput(
+            model="test-model",
+            choices=[
+                ChatCompletionChoice(
+                    message=ChatMessageAssistant(content=output_content),
+                    stop_reason="stop",
+                )
+            ],
+        ),
+        call=call,
+    )
+
+
+def _transcript_with_repeated_inputs() -> Transcript:
+    """Create transcript with multi-turn ModelEvents sharing input/call prefixes."""
+    msg_a = ChatMessageUser(content="Hello")
+    msg_b = ChatMessageUser(content="Follow-up")
+    msg_c = ChatMessageUser(content="Third turn")
+
+    raw_a: dict[str, JsonValue] = {"role": "user", "content": "Hello"}
+    raw_b: dict[str, JsonValue] = {"role": "user", "content": "Follow-up"}
+    raw_c: dict[str, JsonValue] = {"role": "user", "content": "Third turn"}
+
+    # Each successive event carries the full conversation history
+    events: list[Event] = [
+        _make_model_event([msg_a], "resp1", [raw_a]),
+        _make_model_event([msg_a, msg_b], "resp2", [raw_a, raw_b]),
+        _make_model_event([msg_a, msg_b, msg_c], "resp3", [raw_a, raw_b, raw_c]),
+    ]
+    return create_sample_transcript(id="pool-test", events=events)
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_read_roundtrip(test_location: Path) -> None:
+    """Insert with pool_dedup → read() → inputs and calls fully resolved."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    try:
+        await db.insert([_transcript_with_repeated_inputs()])
+
+        infos = [info async for info in db.select(Query(limit=1))]
+        assert len(infos) == 1
+
+        content = TranscriptContent(messages="all", events="all")
+        transcript = await db.read(infos[0], content)
+
+        from inspect_ai.event import ModelEvent
+
+        model_events = [e for e in transcript.events if isinstance(e, ModelEvent)]
+        assert len(model_events) == 3
+
+        # Message pool resolved: 1, 2, 3 messages per event
+        assert len(model_events[0].input) == 1
+        assert len(model_events[1].input) == 2
+        assert len(model_events[2].input) == 3
+        for me in model_events:
+            assert me.input_refs is None
+
+        # Verify message content
+        assert model_events[0].input[0].content == "Hello"
+        assert model_events[2].input[1].content == "Follow-up"
+        assert model_events[2].input[2].content == "Third turn"
+
+        # Call pool resolved: request["messages"] restored
+        for i, me in enumerate(model_events):
+            assert me.call is not None
+            assert me.call.call_refs is None
+            call_msgs = me.call.request["messages"]
+            assert isinstance(call_msgs, list)
+            assert len(call_msgs) == i + 1
+        last_call = model_events[2].call
+        assert last_call is not None
+        last_msgs = last_call.request["messages"]
+        assert isinstance(last_msgs, list)
+        assert isinstance(last_msgs[0], dict)
+        assert last_msgs[0]["content"] == "Hello"
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_read_content_equality(test_location: Path) -> None:
+    """Pool-dedup round-trip produces identical event content as non-dedup round-trip."""
+    original = _transcript_with_repeated_inputs()
+
+    # Insert without pools
+    no_pool_dir = test_location / "no_pool"
+    no_pool_dir.mkdir()
+    db_no_pool = ParquetTranscriptsDB(str(no_pool_dir), pool_dedup=False)
+    await db_no_pool.connect()
+    try:
+        await db_no_pool.insert([original])
+        infos = [info async for info in db_no_pool.select(Query(limit=1))]
+        content = TranscriptContent(messages="all", events="all")
+        transcript_no_pool = await db_no_pool.read(infos[0], content)
+    finally:
+        await db_no_pool.disconnect()
+
+    # Insert with pools
+    pool_dir = test_location / "pool"
+    pool_dir.mkdir()
+    db_pool = ParquetTranscriptsDB(str(pool_dir))
+    await db_pool.connect()
+    try:
+        await db_pool.insert([original])
+        infos = [info async for info in db_pool.select(Query(limit=1))]
+        transcript_pool = await db_pool.read(infos[0], content)
+    finally:
+        await db_pool.disconnect()
+
+    from inspect_ai.event import ModelEvent
+
+    events_no_pool = [e for e in transcript_no_pool.events if isinstance(e, ModelEvent)]
+    events_pool = [e for e in transcript_pool.events if isinstance(e, ModelEvent)]
+
+    for e_np, e_p in zip(events_no_pool, events_pool, strict=True):
+        # Message inputs match
+        assert len(e_np.input) == len(e_p.input)
+        for m_np, m_p in zip(e_np.input, e_p.input, strict=True):
+            assert m_np.content == m_p.content
+            assert m_np.role == m_p.role
+        # Raw call messages match
+        assert e_np.call is not None
+        assert e_p.call is not None
+        assert e_np.call.request["messages"] == e_p.call.request["messages"]
+
+
+# --- Phase 3: read_messages_events() pool resolution tests ---
+
+
+async def _consume_messages_events(
+    result: TranscriptMessagesAndEvents,
+) -> dict[str, Any]:
+    """Consume streaming TranscriptMessagesAndEvents into parsed JSON dict."""
+    import json
+
+    chunks: list[bytes] = []
+    async with result.data as stream:
+        async for chunk in stream:
+            chunks.append(chunk)
+    parsed: dict[str, Any] = json.loads(b"".join(chunks))
+    return parsed
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_read_messages_events_resolves(
+    test_location: Path,
+) -> None:
+    """read_messages_events on pool-dedup file streams resolved events."""
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    try:
+        await db.insert([_transcript_with_repeated_inputs()])
+        infos = [info async for info in db.select(Query(limit=1))]
+
+        result = await db.read_messages_events(infos[0])
+        data = await _consume_messages_events(result)
+
+        model_events = [e for e in data["events"] if e.get("event") == "model"]
+        assert len(model_events) == 3
+
+        # Inputs resolved: 1, 2, 3 messages
+        assert len(model_events[0]["input"]) == 1
+        assert len(model_events[1]["input"]) == 2
+        assert len(model_events[2]["input"]) == 3
+
+        # input_refs cleared
+        for me in model_events:
+            assert me.get("input_refs") is None
+
+        # Call messages restored
+        for i, me in enumerate(model_events):
+            assert len(me["call"]["request"]["messages"]) == i + 1
+
+        # Content correct
+        assert model_events[0]["input"][0]["content"] == "Hello"
+        assert model_events[2]["input"][2]["content"] == "Third turn"
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_read_messages_events_content_equality(
+    test_location: Path,
+) -> None:
+    """read_messages_events on pool-dedup file matches non-dedup read_messages_events."""
+    original = _transcript_with_repeated_inputs()
+
+    # Insert without pools
+    no_pool_dir = test_location / "no_pool"
+    no_pool_dir.mkdir()
+    db_no = ParquetTranscriptsDB(str(no_pool_dir), pool_dedup=False)
+    await db_no.connect()
+    try:
+        await db_no.insert([original])
+        infos = [info async for info in db_no.select(Query(limit=1))]
+        data_no = await _consume_messages_events(
+            await db_no.read_messages_events(infos[0])
+        )
+    finally:
+        await db_no.disconnect()
+
+    # Insert with pools
+    pool_dir = test_location / "pool"
+    pool_dir.mkdir()
+    db_pool = ParquetTranscriptsDB(str(pool_dir))
+    await db_pool.connect()
+    try:
+        await db_pool.insert([original])
+        infos = [info async for info in db_pool.select(Query(limit=1))]
+        data_pool = await _consume_messages_events(
+            await db_pool.read_messages_events(infos[0])
+        )
+    finally:
+        await db_pool.disconnect()
+
+    events_no = [e for e in data_no["events"] if e.get("event") == "model"]
+    events_pool = [e for e in data_pool["events"] if e.get("event") == "model"]
+
+    for e_n, e_p in zip(events_no, events_pool, strict=True):
+        assert e_n["input"] == e_p["input"]
+        assert e_n["call"]["request"]["messages"] == e_p["call"]["request"]["messages"]
+
+
+# --- Phase 4: content size includes pool columns ---
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_content_size_includes_pools(
+    test_location: Path,
+) -> None:
+    """Content size from pool-dedup file accounts for pool columns, not just shrunken events."""
+    original = _transcript_with_repeated_inputs()
+
+    # Insert without pools — baseline size
+    no_pool_dir = test_location / "no_pool"
+    no_pool_dir.mkdir()
+    db_no = ParquetTranscriptsDB(str(no_pool_dir), pool_dedup=False)
+    await db_no.connect()
+    try:
+        await db_no.insert([original])
+        infos = [info async for info in db_no.select(Query(limit=1))]
+        result_no = await db_no.read_messages_events(infos[0])
+        size_no_pool = result_no.uncompressed_size
+    finally:
+        await db_no.disconnect()
+
+    # Insert with pools — size should include pool data
+    pool_dir = test_location / "pool"
+    pool_dir.mkdir()
+    db_pool = ParquetTranscriptsDB(str(pool_dir))
+    await db_pool.connect()
+    try:
+        await db_pool.insert([original])
+        infos = [info async for info in db_pool.select(Query(limit=1))]
+        result_pool = await db_pool.read_messages_events(infos[0])
+        size_pool = result_pool.uncompressed_size
+    finally:
+        await db_pool.disconnect()
+
+    # Pool size should be in the same ballpark as non-pool — not drastically smaller.
+    # Without Phase 4 fix, events shrink to just refs and pools aren't counted,
+    # so size_pool would be much less than size_no_pool.
+    assert size_no_pool is not None
+    assert size_pool is not None
+    assert size_pool > 0
+    assert size_pool >= size_no_pool * 0.5, (
+        f"Pool content size {size_pool} is suspiciously small vs non-pool {size_no_pool}"
+    )

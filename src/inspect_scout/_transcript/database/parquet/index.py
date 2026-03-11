@@ -115,9 +115,14 @@ async def compact_index(
     """Compact multiple index files into one.
 
     Steps:
-    1. Read all index files into merged manifest
+    1. Read all discovered index files into merged manifest
     2. Write single compacted manifest file
-    3. (Only after success) Delete ALL old index files
+    3. (Only after success) Delete the merged index files
+
+    Only files discovered at the start of compaction are deleted. Files
+    written concurrently by other sessions survive for the next compaction,
+    preventing a race condition where parallel writers' index entries could
+    be permanently lost.
 
     Args:
         conn: DuckDB connection.
@@ -128,10 +133,10 @@ async def compact_index(
         CompactionResult with stats about files merged/deleted.
     """
     MAX_RETRIES = 3
-    # Use discovery for reading (gets the right files to merge)
+    # Use discovery for reading (gets the right files to merge).
+    # Only these files will be deleted after compaction — files written
+    # concurrently by other sessions will survive for the next compaction.
     idx_files = await _discover_index_files(storage)
-    # List ALL files for cleanup (includes orphaned older files)
-    all_idx_files = await _list_all_index_files(storage)
 
     if not idx_files:
         # No index files at all
@@ -164,9 +169,9 @@ async def compact_index(
     new_filename = _generate_manifest_filename()
     new_path = await append_index(merged_table, storage, new_filename)
 
-    # Delete ALL old index files (only after successful write)
+    # Delete merged index files (only after successful write)
     deleted_idx_count = 0
-    for old_file in all_idx_files:
+    for old_file in idx_files:
         try:
             await _delete_file(storage, old_file)
             deleted_idx_count += 1
@@ -414,15 +419,11 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
         # Shouldn't happen, but fall back to just using manifest
         return [newest_manifest]
 
-    # Include incremental files at or after the manifest timestamp
-    # Using >= handles the case where insert happens in the same second as compaction
-    newer_incrementals = []
-    for f in incremental_files:
-        inc_ts = _extract_timestamp(f)
-        if inc_ts and inc_ts >= manifest_ts:
-            newer_incrementals.append(f)
-
-    return [newest_manifest] + sorted(newer_incrementals)
+    # Include ALL remaining incremental files alongside the manifest.
+    # With the compact_index fix that only deletes merged files, any
+    # remaining incrementals are exactly the un-merged ones. The dedup
+    # logic in _read_and_deduplicate_index_files handles any overlaps.
+    return [newest_manifest] + sorted(incremental_files)
 
 
 async def _list_all_index_files(storage: IndexStorage) -> list[str]:

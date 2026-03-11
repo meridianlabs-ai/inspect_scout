@@ -349,8 +349,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         except Exception as e:
             logger.warning(f"Index compaction failed (data is consistent): {e}")
 
-        # Refresh the view AFTER compaction to reflect the final state
-        await self._create_transcripts_table()
+        # Refresh the view AFTER compaction to reflect the final state.
+        # Skip coverage check — transient staleness from parallel writers is expected.
+        await self._create_transcripts_table(check_coverage=False)
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -1288,7 +1289,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Write index file for this batch
             await self._write_index_for_batch(table, parquet_path, filename)
 
-    async def _create_transcripts_table(self) -> None:
+    async def _create_transcripts_table(self, check_coverage: bool = True) -> None:
         """Create DuckDB structures for querying transcripts.
 
         Creates:
@@ -1323,14 +1324,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 idx_files = await _discover_index_files(self._index_storage)
 
             # Skip index warnings when snapshot is provided - workers already have
-            # efficient access via the transcript_id->filename mapping from parent
+            # efficient access via the transcript_id->filename mapping from parent.
+            # Also skip during commit (check_coverage=False) since transient
+            # staleness from parallel writers is expected.
             has_snapshot = bool(self._snapshot and self._snapshot.transcript_ids)
+            should_check = check_coverage and not has_snapshot
 
             if idx_files:
-                await self._init_from_index(check_coverage=not has_snapshot)
+                await self._init_from_index(check_coverage=should_check)
             else:
                 # Initialize from parquet files (warning is issued inside if files exist)
-                await self._init_from_parquet(warn_missing_index=not has_snapshot)
+                await self._init_from_parquet(warn_missing_index=should_check)
 
     async def _init_from_index(self, check_coverage: bool = False) -> None:
         """Initialize from index files (fast path).
@@ -1680,17 +1684,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _index_filename_for_parquet(self, parquet_filename: str) -> str:
         """Generate index filename matching parquet file's timestamp/uuid.
 
+        Strips any session ID prefix so the index filename always follows
+        ``index_{timestamp}_{uuid}.idx`` format. The session ID is only needed
+        in parquet filenames (for ``_list_session_files``); the index filename
+        must use just the timestamp+uuid portion so that alphabetical ordering
+        gives compacted (session-free) entries higher ``_file_order`` than
+        their session-scoped predecessors during deduplication.
+
         Args:
-            parquet_filename: Name of the parquet file (e.g., transcripts_20250101T120000_abc123.parquet)
+            parquet_filename: Name of the parquet file.
+                With session: ``transcripts_{session_id}_{timestamp}_{uuid}.parquet``
+                Without session: ``transcripts_{timestamp}_{uuid}.parquet``
 
         Returns:
-            Index filename (e.g., index_20250101T120000_abc123.idx)
+            Index filename (e.g., ``index_20250101T120000_abc123.idx``)
         """
-        # Extract timestamp_uuid from: transcripts_20250101T120000_abc123.parquet
-        base = Path(parquet_filename).stem  # transcripts_20250101T120000_abc123
-        # Remove "transcripts_" prefix, keep timestamp_uuid
-        timestamp_uuid = base.replace("transcripts_", "", 1)
-        return f"index_{timestamp_uuid}{INDEX_EXTENSION}"
+        base = Path(parquet_filename).stem
+        # Remove "transcripts_" prefix
+        remainder = base.replace("transcripts_", "", 1)
+        # Strip optional session_id prefix: if remainder doesn't start with a
+        # digit (timestamp format YYYYMMDDThhmmss), it has a session_id to remove
+        parts = remainder.split("_")
+        for i, part in enumerate(parts):
+            if part[0:1].isdigit() and "T" in part:
+                remainder = "_".join(parts[i:])
+                break
+        return f"index_{remainder}{INDEX_EXTENSION}"
 
     def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
         """Build index table from data table (excludes messages/events, adds filename).

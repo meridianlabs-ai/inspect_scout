@@ -84,11 +84,15 @@ const useDataframeColumns = () => {
     filteredColumns?.length === defaultColumns.length &&
     filteredColumns.every((col) => defaultColumns.includes(col));
   const isAllFilter = filteredColumns?.length === allColumns.length;
+  const isNoneFilter = filteredColumns?.length === 0;
   const setDefaultFilter = () => {
     setFilteredColumns(defaultColumns);
   };
   const setAllFilter = () => {
     setFilteredColumns(allColumns);
+  };
+  const setNoneFilter = () => {
+    setFilteredColumns([]);
   };
   const filterColumn = useCallback(
     (column: string, show: boolean) => {
@@ -170,8 +174,10 @@ const useDataframeColumns = () => {
     defaultFilter: defaultColumns,
     isDefaultFilter,
     isAllFilter,
+    isNoneFilter,
     setDefaultFilter,
     setAllFilter,
+    setNoneFilter,
     filterColumn,
     filtered: filteredColumns || [],
     arrangedColumns,
@@ -247,7 +253,9 @@ const InlinePresets: FC<{
   );
   const isDefault = columnsMatch(filtered, defaultColumns);
   const isAll = columnsMatch(filtered, Object.values(columnsGroups).flat());
-  const isExistingPreset = !!matchingColumnPreset || isDefault || isAll;
+  const isNone = filtered.length === 0;
+  const isExistingPreset =
+    !!matchingColumnPreset || isDefault || isAll || isNone;
 
   const handleSave = () => {
     const name = presetName.trim().slice(0, MAX_PRESET_NAME_LENGTH);
@@ -385,8 +393,10 @@ export const ScannerDataframeColumnsPopover: FC<
   const {
     isDefaultFilter,
     isAllFilter,
+    isNoneFilter,
     setDefaultFilter,
     setAllFilter,
+    setNoneFilter,
     filterColumn,
     filtered,
     arrangedColumns,
@@ -426,6 +436,16 @@ export const ScannerDataframeColumnsPopover: FC<
           onClick={() => setAllFilter()}
         >
           All
+        </a>
+        |
+        <a
+          className={clsx(
+            styles.link,
+            isNoneFilter ? styles.selected : undefined
+          )}
+          onClick={() => setNoneFilter()}
+        >
+          None
         </a>
         <InlinePresets
           filtered={filtered}

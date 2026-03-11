@@ -394,11 +394,14 @@ export const apiScoutServer = (
     download_scan: async (
       scansDir: string,
       scanPath: string
-    ): Promise<void> => {
+    ): Promise<Blob> => {
       const response = await (customFetch ?? fetch)(
-        `${apiBaseUrl}/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}/download`,
+        `${apiBaseUrl}/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`,
         {
-          headers: headerProvider ? await headerProvider() : {},
+          headers: {
+            ...(headerProvider ? await headerProvider() : {}),
+            Accept: "application/zip",
+          },
           credentials: "same-origin",
         }
       );
@@ -406,19 +409,7 @@ export const apiScoutServer = (
         const message = (await response.text()) || response.statusText;
         throw new Error(`Download failed: ${message}`);
       }
-      const blob = await response.blob();
-      const filename =
-        response.headers
-          .get("Content-Disposition")
-          ?.match(/filename="?([^"]+)"?/)?.[1] ?? "scan.zip";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      return response.blob();
     },
 
     connectTopicUpdates: (

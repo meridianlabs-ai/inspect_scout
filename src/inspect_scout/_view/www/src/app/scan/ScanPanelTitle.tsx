@@ -48,7 +48,7 @@ export const ScanPanelTitle: FC<{
                 className={clsx("text-size-small")}
                 value={prettyDirUri(selectedScan.location)}
               />
-              {api.download_scan && resultsDir && (
+              {resultsDir && (
                 <DownloadScanButton
                   scansDir={resultsDir}
                   scanPath={toRelativePath(

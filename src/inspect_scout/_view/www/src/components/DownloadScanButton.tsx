@@ -9,7 +9,7 @@ type DownloadState = "idle" | "downloading" | "success" | "error";
 interface DownloadScanButtonProps {
   scansDir: string;
   scanPath: string;
-  download: (scansDir: string, scanPath: string) => Promise<void>;
+  download: (scansDir: string, scanPath: string) => Promise<Blob>;
   className?: string;
 }
 
@@ -24,14 +24,14 @@ export const DownloadScanButton = ({
   const handleClick = async (): Promise<void> => {
     setState("downloading");
     try {
-      await download(scansDir, scanPath);
+      const blob = await download(scansDir, scanPath);
+      triggerBrowserDownload(blob, `${scanPath}.zip`);
       setState("success");
     } catch {
       setState("error");
     }
-    setTimeout(() => {
-      setState("idle");
-    }, 1250);
+    // Brief visual feedback before resetting to idle
+    setTimeout(() => setState("idle"), 1250);
   };
 
   const icon =
@@ -61,3 +61,14 @@ export const DownloadScanButton = ({
     </button>
   );
 };
+
+function triggerBrowserDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

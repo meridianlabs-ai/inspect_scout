@@ -173,6 +173,13 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         description="List of Timeline views over the transcript.",
         json_serialized=True,
     ),
+    SchemaField(
+        name="events_data",
+        pyarrow_type=pa.large_string(),
+        required=False,
+        description="Auxiliary event data: deduplicated message/call pools referenced by ModelEvent refs.",
+        json_serialized=True,
+    ),
 ]
 
 

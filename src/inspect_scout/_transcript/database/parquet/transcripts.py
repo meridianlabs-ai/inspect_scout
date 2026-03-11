@@ -17,7 +17,16 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
+from inspect_ai.event._event import Event
+from inspect_ai.log._pool import (
+    condense_model_event_calls,
+    condense_model_event_inputs,
+    resolve_model_event_calls,
+    resolve_model_event_inputs,
+)
+from inspect_ai.model import ChatMessage
 from inspect_ai.util import trace_action, trace_message
+from pydantic import JsonValue, TypeAdapter
 from typing_extensions import override
 from upath import UPath
 
@@ -61,6 +70,53 @@ logger = getLogger(__name__)
 
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
+
+
+def _parse_pools(
+    events_data_json: str,
+) -> tuple[list[ChatMessage] | None, list[JsonValue] | None]:
+    """Parse pool data JSON into typed message and call pools."""
+    events_data: dict[str, Any] = json.loads(events_data_json)
+    msg_pool = (
+        TypeAdapter(list[ChatMessage]).validate_python(events_data["messages"])
+        if "messages" in events_data
+        else None
+    )
+    call_pool = events_data.get("calls")
+    return msg_pool, call_pool
+
+
+def _resolve_events(
+    events: list[Event],
+    msg_pool: list[ChatMessage] | None,
+    call_pool: list[JsonValue] | None,
+) -> list[Event]:
+    """Resolve pool refs in events, returning events with full messages/calls."""
+    if msg_pool is not None:
+        events = resolve_model_event_inputs(events, msg_pool)
+    if call_pool is not None:
+        events = resolve_model_event_calls(events, call_pool)
+    return events
+
+
+def _resolve_events_json(
+    events_json: str,
+    events_data_json: str | None,
+) -> str:
+    """Resolve pool refs in events JSON, returning re-serialized JSON string.
+
+    The JSON→Pydantic→JSON round-trip here is tortured: we deserialize to models
+    only because the resolve functions need typed Events, then immediately
+    re-serialize. See #334 for a broader discussion of unnecessary JSON
+    round-trips in the parquet read path.
+    """
+    if not events_data_json:
+        return events_json
+
+    msg_pool, call_pool = _parse_pools(events_data_json)
+    events = TypeAdapter(list[Event]).validate_python(json.loads(events_json))
+    events = _resolve_events(events, msg_pool, call_pool)
+    return json.dumps([e.model_dump() for e in events])
 
 
 class _ParquetStreamContextManager:
@@ -113,15 +169,41 @@ class _ParquetStreamContextManager:
         assert self._conn is not None
 
         try:
-            sql = "SELECT messages, events FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+            sql = (
+                "SELECT messages, events, events_data"
+                " FROM read_parquet(?, union_by_name=true)"
+                " WHERE transcript_id = ?"
+            )
             result = self._conn.execute(
                 sql, [self._parquet_path, self._transcript_id]
             ).fetchone()
         except duckdb.BinderException:
-            result = None
+            # Old file missing events_data column — retry without it
+            try:
+                sql = (
+                    "SELECT messages, events"
+                    " FROM read_parquet(?, union_by_name=true)"
+                    " WHERE transcript_id = ?"
+                )
+                result = self._conn.execute(
+                    sql, [self._parquet_path, self._transcript_id]
+                ).fetchone()
+            except duckdb.BinderException:
+                result = None
 
-        messages_json: str | None = result[0] if result else None
-        events_json: str | None = result[1] if result else None
+        messages_json: str | None = None
+        events_json: str | None = None
+        events_data_json: str | None = None
+
+        if result:
+            messages_json = result[0]
+            events_json = result[1]
+            if len(result) > 2:
+                events_data_json = result[2]
+
+        # Resolve pool references into events JSON before streaming
+        if events_json and events_data_json:
+            events_json = _resolve_events_json(events_json, events_data_json)
 
         yield b'{"messages": '
         if messages_json:
@@ -163,6 +245,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         row_group_size: int = 25,
         query: Query | None = None,
         snapshot: ScanTranscripts | None = None,
+        pool_dedup: bool = True,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -179,12 +262,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 Query-time filters are additive (AND combination).
             snapshot: Snapshot info. This is a mapping of transcript_id => filename
                 which we can use to avoid crawling.
+            pool_dedup: Condense repeated messages/calls into pools on write.
+                Exposed for testing; production callers should leave as True.
         """
         self._location = location
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size = row_group_size
         self._query = query
         self._snapshot = snapshot
+        self._pool_dedup = pool_dedup
 
         # could be called in a spawed worker where there are no fs deps yet
         ensure_filesystem_dependencies(location)
@@ -537,15 +623,25 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return transcript_ids
 
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
-        """Get decompressed size of messages+events columns for a transcript."""
+        """Get decompressed size of messages+events+events_data columns for a transcript."""
         assert self._conn is not None
-        result = self._conn.execute(
-            """
-            SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-            FROM read_parquet(?) WHERE transcript_id = ?
-            """,
-            [full_path, transcript_id],
-        ).fetchone()
+        try:
+            result = self._conn.execute(
+                """
+                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                     + COALESCE(LENGTH(events_data), 0)
+                FROM read_parquet(?) WHERE transcript_id = ?
+                """,
+                [full_path, transcript_id],
+            ).fetchone()
+        except duckdb.BinderException:
+            result = self._conn.execute(
+                """
+                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                FROM read_parquet(?) WHERE transcript_id = ?
+                """,
+                [full_path, transcript_id],
+            ).fetchone()
         return result[0] if result else 0
 
     @override
@@ -611,6 +707,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 columns.append("events")
             if need_timelines:
                 columns.append("timelines")
+            # events_data piggybacks on events — needed for pool resolution
+            if need_events:
+                columns.append("events_data")
 
             # First, get the filename from the index table (fast indexed lookup)
             filename_result = self._conn.execute(
@@ -666,6 +765,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             messages_json: str | None = None
             events_json: str | None = None
             timelines_json: str | None = None
+            events_data_json: str | None = None
 
             col_idx = 0
             if "messages" in columns_read:
@@ -676,6 +776,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 col_idx += 1
             if "timelines" in columns_read:
                 timelines_json = result[col_idx]
+                col_idx += 1
+            if "events_data" in columns_read:
+                events_data_json = result[col_idx]
+                col_idx += 1
 
             # Stream combined JSON construction
             async def stream_content_bytes() -> AsyncIterator[bytes]:
@@ -713,6 +817,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 content.messages,
                 content.events,
             )
+
+            # Resolve pool references back to full messages/calls
+            if events_data_json:
+                msg_pool, call_pool = _parse_pools(events_data_json)
+                resolved_events = _resolve_events(
+                    transcript.events, msg_pool, call_pool
+                )
+                transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
             if (
@@ -776,7 +888,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 progress.update(text=transcript.transcript_id)
 
                 # Serialize once for both size calculation and writing
-                row = self._transcript_to_row(transcript)
+                row = self._transcript_to_row(transcript, pool_dedup=self._pool_dedup)
                 row_size = self._estimate_row_size(row)
 
                 # Add transcript ID for duplicate tracking
@@ -867,11 +979,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if accumulated_batches:
                 await self._write_arrow_batch(accumulated_batches, session_id)
 
-    def _transcript_to_row(self, transcript: Transcript) -> dict[str, Any]:
+    def _transcript_to_row(
+        self, transcript: Transcript, *, pool_dedup: bool = True
+    ) -> dict[str, Any]:
         """Convert Transcript to Parquet row dict with flattened metadata.
 
         Args:
             transcript: Transcript to convert.
+            pool_dedup: Condense repeated messages/calls into pools.
 
         Returns:
             Dict with Parquet column values.
@@ -881,9 +996,25 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Validate metadata keys don't conflict with reserved names
         _validate_metadata_keys(transcript.metadata)
 
-        # Serialize messages and events as JSON arrays
+        # Serialize messages as JSON array
         messages_array = [msg.model_dump() for msg in transcript.messages]
-        events_array = [event.model_dump() for event in transcript.events]
+
+        if pool_dedup:
+            condensed, msg_pool = condense_model_event_inputs(transcript.events, [], {})
+            condensed, c_pool = condense_model_event_calls(condensed, [], {})
+
+            events_json = json.dumps([e.model_dump() for e in condensed])
+            events_data: dict[str, Any] = {}
+            if msg_pool:
+                events_data["messages"] = [m.model_dump() for m in msg_pool]
+            if c_pool:
+                events_data["calls"] = c_pool
+            events_data_json = json.dumps(events_data) if events_data else None
+        else:
+            events_json = json.dumps(
+                [event.model_dump() for event in transcript.events]
+            )
+            events_data_json = None
 
         # Start with reserved fields
         row: dict[str, Any] = {
@@ -915,12 +1046,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "error": transcript.error,
             "limit": transcript.limit,
             "messages": json.dumps(messages_array),
-            "events": json.dumps(events_array),
+            "events": events_json,
             "timelines": (
                 json.dumps([timeline_dump(tl) for tl in transcript.timelines])
                 if transcript.timelines
                 else None
             ),
+            "events_data": events_data_json,
         }
 
         # Flatten metadata: add each key as a column
@@ -958,7 +1090,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                if key in ("messages", "events"):
+                if key in ("messages", "events", "events_data"):
                     json_array_size += len(value)
                 else:
                     other_size += len(value)
@@ -988,7 +1120,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         for i, name in enumerate(batch.schema.names):
             col_size = batch.column(i).nbytes
-            if name in ("messages", "events"):
+            if name in ("messages", "events", "events_data"):
                 json_array_size += col_size
             else:
                 other_size += col_size
@@ -1571,7 +1703,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
-            col for col in ["messages", "events"] if col in existing_columns
+            col
+            for col in ["messages", "events", "events_data"]
+            if col in existing_columns
         ]
 
         if exclude_columns:
@@ -1597,7 +1731,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [
-            col for col in ["messages", "events"] if col in existing_columns
+            col
+            for col in ["messages", "events", "events_data"]
+            if col in existing_columns
         ]
 
         if exclude_columns:
@@ -1721,9 +1857,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         Returns:
             Index table with metadata columns and filename.
         """
-        # Get columns to keep (exclude messages and events)
+        # Get columns to keep (exclude large content columns)
         columns_to_keep = [
-            name for name in table.column_names if name not in ("messages", "events")
+            name
+            for name in table.column_names
+            if name not in ("messages", "events", "events_data")
         ]
 
         # Select only metadata columns

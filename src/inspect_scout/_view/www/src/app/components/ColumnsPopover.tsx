@@ -52,6 +52,15 @@ export const ColumnsPopover: FC<ColumnsPopoverProps> = ({
     [visibleColumns, columns]
   );
 
+  const isNoneSelection = useMemo(
+    () => visibleColumns.length === 0,
+    [visibleColumns]
+  );
+
+  const setNoneSelection = useCallback(() => {
+    onVisibleColumnsChange([]);
+  }, [onVisibleColumnsChange]);
+
   const setDefaultSelection = useCallback(() => {
     onVisibleColumnsChange(defaultVisibleColumns);
   }, [onVisibleColumnsChange, defaultVisibleColumns]);
@@ -99,6 +108,16 @@ export const ColumnsPopover: FC<ColumnsPopoverProps> = ({
           onClick={() => setAllSelection()}
         >
           All
+        </a>
+        |
+        <a
+          className={clsx(
+            styles.link,
+            isNoneSelection ? styles.selected : undefined
+          )}
+          onClick={() => setNoneSelection()}
+        >
+          None
         </a>
       </div>
 

@@ -18,6 +18,7 @@
 - Scout View: Properly sort scanner results using the value type.
 - Scout View: Enable minification and caching of view static assets.
 - Scout View: Fix issue rendering transcript events when showing the validation panel.
+- Scout View: Add 'None' option to column chooser to unselect all columns.
 - Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
 
 ## 0.4.19 (17 February 2026)

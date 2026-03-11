@@ -184,6 +184,17 @@ export const apiScoutServer = (
 
       return asyncJsonParse<Status>(result.raw);
     },
+    downloadScan: async (
+      scansDir: string,
+      scanPath: string
+    ): Promise<Blob> => {
+      const result = await requestApi.fetchBytes(
+        "GET",
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`,
+        { Accept: "application/zip" }
+      );
+      return new Blob([result.data], { type: "application/zip" });
+    },
 
     getScans: async (
       scansDir: string,
@@ -389,27 +400,6 @@ export const apiScoutServer = (
         JSON.stringify({ name: newName })
       );
       return asyncJsonParse<string>(result.raw);
-    },
-
-    download_scan: async (
-      scansDir: string,
-      scanPath: string
-    ): Promise<Blob> => {
-      const response = await (customFetch ?? fetch)(
-        `${apiBaseUrl}/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`,
-        {
-          headers: {
-            ...(headerProvider ? await headerProvider() : {}),
-            Accept: "application/zip",
-          },
-          credentials: "same-origin",
-        }
-      );
-      if (!response.ok) {
-        const message = (await response.text()) || response.statusText;
-        throw new Error(`Download failed: ${message}`);
-      }
-      return response.blob();
     },
 
     connectTopicUpdates: (

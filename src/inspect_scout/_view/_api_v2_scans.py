@@ -1,5 +1,6 @@
 """Scans REST API endpoints."""
 
+import anyio
 import asyncio
 import io
 import os
@@ -232,7 +233,9 @@ def create_scans_router(
 
         accept = request.headers.get("accept", "")
         if "application/zip" in accept:
-            return _build_scan_zip(scan_path)
+            return await anyio.to_thread.run_sync(
+                lambda: _build_scan_zip(scan_path)
+            )
 
         try:
             recorder_status_with_df = await scan_results_df_async(

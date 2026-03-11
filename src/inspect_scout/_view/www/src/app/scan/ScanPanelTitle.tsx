@@ -55,7 +55,7 @@ export const ScanPanelTitle: FC<{
                     selectedScan.location,
                     resultsDir
                   )}
-                  download={api.download_scan}
+                  download={api.downloadScan}
                   className={clsx("text-size-small")}
                 />
               )}

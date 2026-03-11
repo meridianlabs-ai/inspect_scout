@@ -26,7 +26,7 @@ from inspect_ai.log._pool import (
 )
 from inspect_ai.model import ChatMessage
 from inspect_ai.util import trace_action, trace_message
-from pydantic import TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 from typing_extensions import override
 from upath import UPath
 
@@ -74,7 +74,7 @@ CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 def _parse_pools(
     events_data_json: str,
-) -> tuple[list[ChatMessage] | None, list[Any] | None]:
+) -> tuple[list[ChatMessage] | None, list[JsonValue] | None]:
     """Parse pool data JSON into typed message and call pools."""
     events_data: dict[str, Any] = json.loads(events_data_json)
     msg_pool = (
@@ -89,7 +89,7 @@ def _parse_pools(
 def _resolve_events(
     events: list[Event],
     msg_pool: list[ChatMessage] | None,
-    call_pool: list[Any] | None,
+    call_pool: list[JsonValue] | None,
 ) -> list[Event]:
     """Resolve pool refs in events, returning events with full messages/calls."""
     if msg_pool is not None:

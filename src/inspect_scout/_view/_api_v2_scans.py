@@ -136,6 +136,45 @@ def create_scans_router(
         with active_scans_store() as store:
             return ActiveScansResponse(items=store.read_all())
 
+    @router.get(
+        "/scans/download/{location}",
+        summary="Download scan as zip",
+        description="Streams a zip archive of the scan directory contents.",
+    )
+    async def download_scan(
+        location: str = Path(description="Scan location (base64url-encoded)"),
+    ) -> Response:
+        """Stream scan directory as a zip archive."""
+        scan_location = decode_base64url(location)
+        scan_dir = UPath(scan_location)
+
+        if not scan_dir.exists():
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scan not found: {scan_location}",
+            )
+
+        scan_id = scan_dir.name
+
+        def stream_zip() -> Iterable[bytes]:
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                for child in scan_dir.iterdir():
+                    if child.is_file():
+                        with file(child.as_posix(), "rb") as f:
+                            zf.writestr(child.name, f.read())
+
+            buf.seek(0)
+            yield buf.read()
+
+        return StreamingResponse(
+            content=stream_zip(),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{scan_id}.zip"',
+            },
+        )
+
     @router.post(
         "/startscan",
         response_model=ScanStatus,
@@ -329,45 +368,6 @@ def create_scans_router(
 
         # Notify clients to invalidate scan caches
         await notify_topics(["scans"])
-
-    @router.get(
-        "/scans/download/{location}",
-        summary="Download scan as zip",
-        description="Streams a zip archive of the scan directory contents.",
-    )
-    async def download_scan(
-        location: str = Path(description="Scan location (base64url-encoded)"),
-    ) -> Response:
-        """Stream scan directory as a zip archive."""
-        scan_location = decode_base64url(location)
-        scan_dir = UPath(scan_location)
-
-        if not scan_dir.exists():
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scan not found: {scan_location}",
-            )
-
-        scan_id = scan_dir.name
-
-        def stream_zip() -> Iterable[bytes]:
-            buf = io.BytesIO()
-            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                for child in scan_dir.iterdir():
-                    if child.is_file():
-                        with file(child.as_posix(), "rb") as f:
-                            zf.writestr(child.name, f.read())
-
-            buf.seek(0)
-            yield buf.read()
-
-        return StreamingResponse(
-            content=stream_zip(),
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": f'attachment; filename="{scan_id}.zip"',
-            },
-        )
 
     return router
 

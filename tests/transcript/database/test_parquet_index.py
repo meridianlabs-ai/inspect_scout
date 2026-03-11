@@ -136,14 +136,14 @@ class TestDiscoverIndexFiles:
         assert all("index_" in str(f) for f in result)
 
     @pytest.mark.asyncio
-    async def test_discover_index_files_manifest_priority(
+    async def test_discover_index_files_manifest_with_incrementals(
         self, storage: IndexStorage
     ) -> None:
-        """Uses _manifest_*.idx over old index_*.idx files."""
+        """Returns manifest plus all remaining incrementals."""
         index_dir = Path(storage.location) / INDEX_DIR
         index_dir.mkdir(parents=True)
 
-        # Create old incremental files
+        # Create incremental files (older than manifest)
         (index_dir / "index_20250101T100000_abc12345.idx").touch()
         (index_dir / "index_20250101T110000_def67890.idx").touch()
 
@@ -152,9 +152,12 @@ class TestDiscoverIndexFiles:
 
         result = await _discover_index_files(storage)
 
-        # Should only return the manifest (incremental files are older)
-        assert len(result) == 1
-        assert "_manifest_" in str(result[0])
+        # Should return manifest + all incrementals (they may be un-merged)
+        assert len(result) == 3
+        filenames = [Path(f).name for f in result]
+        assert "_manifest_20250102T100000_abc12345.idx" in filenames
+        assert "index_20250101T100000_abc12345.idx" in filenames
+        assert "index_20250101T110000_def67890.idx" in filenames
 
     @pytest.mark.asyncio
     async def test_discover_index_files_newest_manifest(
@@ -175,17 +178,23 @@ class TestDiscoverIndexFiles:
         assert "20250103T100000" in str(result[0])
 
     @pytest.mark.asyncio
-    async def test_discover_index_files_includes_newer_incrementals(
+    async def test_discover_index_files_includes_all_incrementals(
         self, storage: IndexStorage
     ) -> None:
-        """Includes index_*.idx files newer than manifest."""
+        """Includes ALL remaining index_*.idx files, even older than manifest.
+
+        Un-merged incrementals can have timestamps older than the manifest
+        when they were written concurrently. Since compact_index only deletes
+        merged files, any remaining incrementals are un-merged and must be
+        discovered.
+        """
         index_dir = Path(storage.location) / INDEX_DIR
         index_dir.mkdir(parents=True)
 
         # Create manifest at T=100
         (index_dir / "_manifest_20250101T100000_abc12345.idx").touch()
 
-        # Create older incremental (should be ignored)
+        # Create older incremental (should still be included — may be un-merged)
         (index_dir / "index_20250101T090000_old12345.idx").touch()
 
         # Create newer incremental (should be included)
@@ -193,13 +202,12 @@ class TestDiscoverIndexFiles:
 
         result = await _discover_index_files(storage)
 
-        # Should return manifest + newer incremental
-        assert len(result) == 2
+        # Should return manifest + both incrementals
+        assert len(result) == 3
         filenames = [Path(f).name for f in result]
         assert "_manifest_20250101T100000_abc12345.idx" in filenames
         assert "index_20250101T110000_new12345.idx" in filenames
-        # Older incremental should NOT be included
-        assert "index_20250101T090000_old12345.idx" not in filenames
+        assert "index_20250101T090000_old12345.idx" in filenames
 
 
 class TestDiscoverDataFiles:
@@ -600,10 +608,86 @@ class TestCompactIndex:
         assert filenames == ["data2.parquet"]
 
     @pytest.mark.asyncio
-    async def test_compact_index_cleans_up_all_old_index_files(
+    async def test_compact_index_recovers_concurrent_write_across_two_compactions(
         self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
     ) -> None:
-        """Cleans up ALL old index files, including orphaned ones."""
+        """End-to-end race: concurrent write survives first compaction, merged in second.
+
+        Scenario:
+        1. Session A discovers index_1..index_8 (index_9 not yet written)
+        2. Session B writes index_9 (timestamp T3)
+        3. Session A compacts index_1..index_8 into manifest (timestamp T4 > T3)
+        4. Session A deletes only index_1..index_8 (fix #1) — index_9 survives
+        5. Next compaction discovers manifest + index_9 and merges both — no data loss
+        """
+        import pyarrow.parquet as pq
+
+        index_dir = Path(storage.location) / INDEX_DIR
+        index_dir.mkdir(parents=True)
+
+        # Step 1: Create 8 incremental index files (sessions 1-8)
+        for i in range(1, 9):
+            table = create_sample_index_table([f"t{i}"], [f"data{i}.parquet"])
+            ts = f"20250101T{100000 + i * 10000}"
+            await append_index(table, storage, f"index_{ts}_{i:08x}.idx")
+
+        # Step 2: Session B writes index_9 concurrently (timestamp BEFORE compaction)
+        table9 = create_sample_index_table(["t9"], ["data9.parquet"])
+        await append_index(table9, storage, "index_20250101T185000_00000009.idx")
+
+        # Step 3: Simulate Session A's compaction — it only discovered index_1..8
+        # We do this by running compact, which now discovers all 9.
+        # To properly simulate, first compact without index_9, then add it back.
+        # Instead, we directly create the state after step 4:
+        # - Compact index_1..8 into a manifest, delete them, leave index_9
+
+        # Discover the 9 files, then manually do what Session A would have done:
+        # read only index_1..8, write manifest, delete only index_1..8
+        idx_files = sorted(index_dir.glob("index_*.idx"))
+        assert len(idx_files) == 9
+
+        # Read index_1..8 (what Session A discovered before index_9 existed)
+        session_a_files = idx_files[:8]
+        tables = [pq.read_table(str(f)) for f in session_a_files]
+        merged = pa.concat_tables(tables)
+
+        # Write manifest with timestamp AFTER index_9's timestamp
+        manifest_name = "_manifest_20250101T190000_compacted.idx"
+        await append_index(merged, storage, manifest_name)
+
+        # Delete only the 8 files Session A merged (fix #1 behavior)
+        for f in session_a_files:
+            f.unlink()
+
+        # State after step 4: manifest (T=190000) + index_9 (T=185000)
+        remaining = list(index_dir.glob("*.idx"))
+        assert len(remaining) == 2
+        names = {f.name for f in remaining}
+        assert manifest_name in names
+        assert "index_20250101T185000_00000009.idx" in names
+
+        # Step 5: Second compaction — must discover and merge index_9
+        result = await compact_index(conn, storage)
+
+        assert result.index_files_merged == 2
+        assert result.index_files_deleted == 2
+
+        # Verify all 9 transcripts are in the final manifest
+        final_table = pq.read_table(result.new_index_path)
+        transcript_ids = set(final_table.column("transcript_id").to_pylist())
+        assert transcript_ids == {f"t{i}" for i in range(1, 10)}, (
+            "All 9 transcripts must be present — index_9 must not be orphaned"
+        )
+
+    @pytest.mark.asyncio
+    async def test_compact_index_only_deletes_merged_files(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Only deletes files that were discovered and merged, not orphaned ones.
+
+        This prevents a race condition where files written concurrently by
+        other sessions could be deleted before their data is merged.
+        """
         location = Path(storage.location)
         index_dir = location / INDEX_DIR
         index_dir.mkdir(parents=True)
@@ -616,26 +700,38 @@ class TestCompactIndex:
         table2 = create_sample_index_table(["t2"], ["data2.parquet"])
         await append_index(table2, storage, "index_20250101T110000_b.idx")
 
-        # Create orphaned files (older than newest manifest, won't be discovered)
-        # These are empty files - they would cause errors if read, proving they're skipped
-        (index_dir / "_manifest_20250101T050000_def67890.idx").touch()  # Old manifest
-        (index_dir / "index_20250101T060000_old.idx").touch()  # Old incremental
+        # Create an older incremental with valid data that was NOT in the manifest
+        # (simulating a concurrent write that was missed during compaction)
+        table3 = create_sample_index_table(["t3"], ["data3.parquet"])
+        await append_index(table3, storage, "index_20250101T060000_old.idx")
 
-        # Verify we have 4 index files before
+        # Verify we have 3 index files before
         idx_files_before = list(index_dir.glob("*.idx"))
-        assert len(idx_files_before) == 4
+        assert len(idx_files_before) == 3
 
-        # Run compact_index - should succeed (only reads valid files)
+        # Run compact_index — discovers manifest + all incrementals (including older one)
         result = await compact_index(conn, storage)
 
-        # Verify only the new manifest remains
+        # All 3 discovered files should have been merged and deleted
+        assert result.index_files_merged == 3
+        assert result.index_files_deleted == 3
+
+        # Only the new manifest remains
         idx_files_after = list(index_dir.glob("*.idx"))
         assert len(idx_files_after) == 1
-        assert idx_files_after[0].name.startswith("_manifest_")
-        assert str(idx_files_after[0]) == result.new_index_path
 
-        # All 4 old files should have been deleted
-        assert result.index_files_deleted == 4
+        # The new manifest should exist and contain all 3 transcripts
+        manifest_files = [f for f in idx_files_after if f.name.startswith("_manifest_")]
+        assert len(manifest_files) == 1
+        assert str(manifest_files[0]) == result.new_index_path
+
+        import pyarrow.parquet as pq
+
+        merged_table = pq.read_table(result.new_index_path)
+        transcript_ids = set(merged_table.column("transcript_id").to_pylist())
+        assert transcript_ids == {"t1", "t2", "t3"}, (
+            "Orphaned incremental t3 must be merged, not permanently lost"
+        )
 
 
 # --- Concurrency Protection Tests ---

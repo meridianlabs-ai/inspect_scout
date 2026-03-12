@@ -1661,8 +1661,7 @@
             "enum": [
               "auto",
               "low",
-              "high",
-              "original"
+              "high"
             ],
             "title": "Detail",
             "type": "string"
@@ -4738,43 +4737,6 @@
       "ModelCall": {
         "description": "Model call (raw request/response data).",
         "properties": {
-          "call_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Call Key"
-          },
-          "call_refs": {
-            "anyOf": [
-              {
-                "items": {
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "prefixItems": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ],
-                  "type": "array"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Call Refs"
-          },
           "error": {
             "anyOf": [
               {
@@ -4981,31 +4943,6 @@
             },
             "title": "Input",
             "type": "array"
-          },
-          "input_refs": {
-            "anyOf": [
-              {
-                "items": {
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "prefixItems": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ],
-                  "type": "array"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Input Refs"
           },
           "metadata": {
             "anyOf": [
@@ -9114,18 +9051,6 @@
       "TimelineSpan": {
         "description": "A span of execution \u2014 agent, scorer, tool, or root.",
         "properties": {
-          "agent_result": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Agent Result"
-          },
           "branches": {
             "items": {
               "$ref": "#/components/schemas/TimelineBranch"

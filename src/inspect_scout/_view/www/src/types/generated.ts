@@ -1017,7 +1017,7 @@ export interface components {
              * @default auto
              * @enum {string}
              */
-            detail: "auto" | "low" | "high" | "original";
+            detail: "auto" | "low" | "high";
             /** Image */
             image: string;
             /** @default null */
@@ -2001,19 +2001,6 @@ export interface components {
          */
         ModelCall: {
             /**
-             * Call Key
-             * @default null
-             */
-            call_key: string | null;
-            /**
-             * Call Refs
-             * @default null
-             */
-            call_refs: [
-                number,
-                number
-            ][] | null;
-            /**
              * Error
              * @default null
              */
@@ -2096,14 +2083,6 @@ export interface components {
             event: "model";
             /** Input */
             input: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
-            /**
-             * Input Refs
-             * @default null
-             */
-            input_refs: [
-                number,
-                number
-            ][] | null;
             /**
              * Metadata
              * @default null
@@ -3660,11 +3639,6 @@ export interface components {
          * @description A span of execution — agent, scorer, tool, or root.
          */
         TimelineSpan: {
-            /**
-             * Agent Result
-             * @default null
-             */
-            agent_result: string | null;
             /** Branches */
             branches: components["schemas"]["TimelineBranch"][];
             /** Content */

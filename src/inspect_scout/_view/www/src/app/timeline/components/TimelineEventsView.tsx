@@ -452,7 +452,9 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
 
   const showSwimlanes = timelineProp !== false;
   const swimlanesDefaultCollapsed =
-    timelineProp === "auto" && !hasTimeline ? true : undefined;
+    timelineProp === "auto" && !hasTimeline && regionCounts.size === 0
+      ? true
+      : undefined;
 
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });

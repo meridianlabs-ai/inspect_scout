@@ -54,7 +54,7 @@ from ...types import (
 )
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
-from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
+from ..schema import CONTENT_COLUMNS, TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
 from .index import (
     _discover_index_files,
     append_index,
@@ -288,6 +288,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
         self._exclude_clause: str = ""
+        self._parquet_columns: set[str] = set()
 
     @override
     async def connect(self) -> None:
@@ -1090,7 +1091,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                if key in ("messages", "events", "events_data"):
+                if key in CONTENT_COLUMNS:
                     json_array_size += len(value)
                 else:
                     other_size += len(value)
@@ -1120,7 +1121,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         for i, name in enumerate(batch.schema.names):
             col_size = batch.column(i).nbytes
-            if name in ("messages", "events", "events_data"):
+            if name in CONTENT_COLUMNS:
                 json_array_size += col_size
             else:
                 other_size += col_size
@@ -1491,6 +1492,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._create_empty_structures()
             return
 
+        # Synthesize missing schema columns as NULL
+        self._ensure_index_schema()
+
         # Create index for fast lookups
         self._conn.execute(
             "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
@@ -1512,6 +1516,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._query.where or self._query.shuffle or self._query.limit
         ):
             self._apply_query_filter_to_tables()
+
+    def _ensure_index_schema(self) -> None:
+        """Add missing schema columns to transcript_index table."""
+        assert self._conn is not None
+        _ensure_index_schema(self._conn)
 
     async def _init_from_parquet(self, warn_missing_index: bool = True) -> None:
         """Initialize from parquet files (legacy/slow path).
@@ -1556,7 +1565,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._parquet_pattern = pattern
 
         # Infer exclude clause from first file
-        self._exclude_clause = self._infer_exclude_clause(file_paths[0])
+        self._exclude_clause, self._parquet_columns = self._infer_exclude_clause(
+            file_paths[0]
+        )
 
         # Create transcript_index table (id + filename only)
         if self._snapshot and self._snapshot.transcript_ids:
@@ -1628,7 +1639,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         for field in TRANSCRIPT_SCHEMA_FIELDS:
             duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
             default_value = _duckdb_default_value(field.pyarrow_type)
-            column_defs.append(f"{default_value}::{duckdb_type} AS {field.name}")
+            column_defs.append(f'{default_value}::{duckdb_type} AS "{field.name}"')
         # Add filename column (internal)
         column_defs.append("''::VARCHAR AS filename")
 
@@ -1684,7 +1695,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         index_sql = f"CREATE TABLE transcript_index AS {base_sql}"
         self._conn.execute(index_sql, params)
 
-    def _infer_exclude_clause(self, file_path: str) -> str:
+    def _infer_exclude_clause(self, file_path: str) -> tuple[str, set[str]]:
         """Infer EXCLUDE clause from a single file's schema.
 
         Reads schema from one file (fast - only reads Parquet footer metadata)
@@ -1694,7 +1705,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             file_path: Path to a Parquet file to sample.
 
         Returns:
-            EXCLUDE clause string (e.g., " EXCLUDE (messages, events)") or empty string.
+            Tuple of (EXCLUDE clause string, set of existing column names).
         """
         assert self._conn is not None
 
@@ -1702,17 +1713,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
             f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
-        exclude_columns = [
-            col
-            for col in ["messages", "events", "events_data"]
-            if col in existing_columns
-        ]
+        exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        if exclude_columns:
-            return f" EXCLUDE ({', '.join(exclude_columns)})"
-        return ""
+        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        return clause, existing_columns
 
-    def _infer_exclude_clause_full(self, pattern: str) -> str:
+    def _infer_exclude_clause_full(self, pattern: str) -> tuple[str, set[str]]:
         """Infer EXCLUDE clause by scanning all files' schemas.
 
         Slower fallback that unions schemas from all files to handle
@@ -1722,7 +1728,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             pattern: DuckDB file pattern for read_parquet.
 
         Returns:
-            EXCLUDE clause string or empty string.
+            Tuple of (EXCLUDE clause string, set of existing column names).
         """
         assert self._conn is not None
 
@@ -1730,14 +1736,27 @@ class ParquetTranscriptsDB(TranscriptsDB):
             f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
-        exclude_columns = [
-            col
-            for col in ["messages", "events", "events_data"]
-            if col in existing_columns
-        ]
+        exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        if exclude_columns:
-            return f" EXCLUDE ({', '.join(exclude_columns)})"
+        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        return clause, existing_columns
+
+    def _missing_columns_clause(self) -> str:
+        """Generate SQL for schema columns missing from parquet files.
+
+        Produces NULL-typed expressions for optional schema fields not present
+        in the parquet data, ensuring the VIEW always has a complete schema.
+        """
+        missing_exprs: list[str] = []
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if (
+                field.name not in self._parquet_columns
+                and field.name not in CONTENT_COLUMNS
+            ):
+                duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+                missing_exprs.append(f'NULL::{duckdb_type} AS "{field.name}"')
+        if missing_exprs:
+            return ", " + ", ".join(missing_exprs)
         return ""
 
     def _create_transcripts_view(self, pattern: str) -> None:
@@ -1752,7 +1771,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
 
         # Build VIEW SQL based on whether pre-filter was applied
-        def build_view_sql(exclude_clause: str) -> str:
+        def build_view_sql(exclude_clause: str, missing_clause: str) -> str:
             if self._snapshot or (
                 self._query
                 and (self._query.where or self._query.shuffle or self._query.limit)
@@ -1760,7 +1779,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # VIEW joins with pre-filtered index table
                 return f"""
                     CREATE VIEW transcripts AS
-                    SELECT p.*{exclude_clause}
+                    SELECT p.*{exclude_clause}{missing_clause}
                     FROM read_parquet({pattern}, union_by_name=true, filename=true) p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
@@ -1768,17 +1787,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # No pre-filter - VIEW directly queries Parquet
                 return f"""
                     CREATE VIEW transcripts AS
-                    SELECT *{exclude_clause}
+                    SELECT *{exclude_clause}{missing_clause}
                     FROM read_parquet({pattern}, union_by_name=true, filename=true)
                 """
 
+        missing_clause = self._missing_columns_clause()
+
         # Try with exclude clause from first file (fast path)
         try:
-            self._conn.execute(build_view_sql(self._exclude_clause))
+            self._conn.execute(build_view_sql(self._exclude_clause, missing_clause))
         except duckdb.BinderException:
             # Schema differs across files - fall back to full scan
-            self._exclude_clause = self._infer_exclude_clause_full(pattern)
-            self._conn.execute(build_view_sql(self._exclude_clause))
+            self._conn.execute("DROP VIEW IF EXISTS transcripts")
+            self._exclude_clause, self._parquet_columns = (
+                self._infer_exclude_clause_full(pattern)
+            )
+            missing_clause = self._missing_columns_clause()
+            self._conn.execute(build_view_sql(self._exclude_clause, missing_clause))
 
         # migrate view for databases imported from eval_log
         migrate_view(self._conn, "transcripts")
@@ -1848,7 +1873,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         return f"index_{remainder}{INDEX_EXTENSION}"
 
     def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
-        """Build index table from data table (excludes messages/events, adds filename).
+        """Build index table from data table (excludes large content columns, adds filename).
 
         Args:
             table: PyArrow table with full transcript data.
@@ -1859,9 +1884,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         # Get columns to keep (exclude large content columns)
         columns_to_keep = [
-            name
-            for name in table.column_names
-            if name not in ("messages", "events", "events_data")
+            name for name in table.column_names if name not in CONTENT_COLUMNS
         ]
 
         # Select only metadata columns
@@ -2261,6 +2284,29 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
         raise ValueError(
             f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
         )
+
+
+def _ensure_index_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Add missing schema columns to a transcript_index table.
+
+    Ensures the table has all non-content schema columns, even when loaded
+    from older index files that predate newer columns.
+
+    Args:
+        conn: DuckDB connection with a transcript_index table.
+    """
+    existing = {
+        row[0]
+        for row in conn.execute(
+            "SELECT column_name FROM (DESCRIBE transcript_index)"
+        ).fetchall()
+    }
+    for field in TRANSCRIPT_SCHEMA_FIELDS:
+        if field.name not in existing and field.name not in CONTENT_COLUMNS:
+            duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+            conn.execute(
+                f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
+            )
 
 
 def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:

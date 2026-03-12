@@ -5,6 +5,22 @@
   margin-bottom: 1rem;
 }
 
+.titleWithScore {
+  display: grid;
+  grid-template-columns: 1fr minmax(10rem, 45%);
+  gap: 1rem;
+}
+
+.metadataRegion {
+  min-width: 0;
+}
+
+.scoreRegion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .transcriptId {
   text-transform: none !important;
 }

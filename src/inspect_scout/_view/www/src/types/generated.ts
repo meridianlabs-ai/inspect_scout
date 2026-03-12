@@ -1367,6 +1367,11 @@ export interface components {
              */
             max_tool_output: number | null;
             /**
+             * Modalities
+             * @default null
+             */
+            modalities: ("image" | components["schemas"]["ImageOutput"])[] | null;
+            /**
              * Num Choices
              * @default null
              */
@@ -1492,6 +1497,8 @@ export interface components {
             max_tokens?: number | null;
             /** Max Tool Output */
             max_tool_output?: number | null;
+            /** Modalities */
+            modalities?: ("image" | components["schemas"]["ImageOutput"])[] | null;
             /** Num Choices */
             num_choices?: number | null;
             /** Parallel Tool Calls */
@@ -1569,6 +1576,8 @@ export interface components {
             max_tokens?: number | null;
             /** Max Tool Output */
             max_tool_output?: number | null;
+            /** Modalities */
+            modalities?: ("image" | components["schemas"]["ImageOutput"])[] | null;
             /** Num Choices */
             num_choices?: number | null;
             /** Parallel Tool Calls */
@@ -1607,6 +1616,24 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * ImageOutput
+         * @description Image output configuration.
+         *
+         *     Use the `options` field to pass provider-specific options directly
+         *     to the underlying API (e.g. OpenAI image_generation tool parameters).
+         */
+        ImageOutput: {
+            /**
+             * Options
+             * @default null
+             */
+            options: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            } | null;
         };
         /**
          * InfoEvent

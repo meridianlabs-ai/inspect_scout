@@ -1,10 +1,13 @@
 .headingGrid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 1rem;
 }
 
 .headingCell {
   display: flex;
+  flex: 1 1 auto;
   align-items: flex-start;
   min-width: 0; /* Allow flex items to shrink below their content size */
 }
@@ -24,7 +27,6 @@
 
 .label {
   font-weight: 500;
-  white-space: nowrap;
   flex-shrink: 0; /* Prevent labels from shrinking */
 }
 

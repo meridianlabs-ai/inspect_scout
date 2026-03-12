@@ -41,6 +41,7 @@ const NULL_CONFIG: ModelEvent["config"] = {
   logit_bias: null,
   logprobs: null,
   max_connections: null,
+  modalities: null,
   max_retries: null,
   max_tokens: null,
   max_tool_output: null,

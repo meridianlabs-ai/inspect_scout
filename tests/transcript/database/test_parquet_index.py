@@ -339,9 +339,10 @@ class TestEnsureIndexSchema:
         in ALTER TABLE statements.
         """
         from inspect_scout._transcript.database.parquet.transcripts import (
-            _pyarrow_to_duckdb_type,
+            _ensure_index_schema,
         )
         from inspect_scout._transcript.database.schema import (
+            CONTENT_COLUMNS,
             TRANSCRIPT_SCHEMA_FIELDS,
         )
 
@@ -359,20 +360,8 @@ class TestEnsureIndexSchema:
         row_count = await init_index_table(conn, storage)
         assert row_count == 2
 
-        # Run the same backfill logic as _ensure_index_schema
-        content_columns = {"messages", "events", "events_data", "timelines"}
-        existing = {
-            row[0]
-            for row in conn.execute(
-                "SELECT column_name FROM (DESCRIBE transcript_index)"
-            ).fetchall()
-        }
-        for field in TRANSCRIPT_SCHEMA_FIELDS:
-            if field.name not in existing and field.name not in content_columns:
-                duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
-                conn.execute(
-                    f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
-                )
+        # Run the actual backfill function
+        _ensure_index_schema(conn)
 
         # Verify all non-content schema columns now exist
         final_columns = {
@@ -382,7 +371,7 @@ class TestEnsureIndexSchema:
             ).fetchall()
         }
         for field in TRANSCRIPT_SCHEMA_FIELDS:
-            if field.name not in content_columns:
+            if field.name not in CONTENT_COLUMNS:
                 assert field.name in final_columns, (
                     f"Expected column '{field.name}' to be present after backfill"
                 )

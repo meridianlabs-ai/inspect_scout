@@ -182,6 +182,11 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
     ),
 ]
 
+# Large content columns excluded from indexes and lightweight views.
+CONTENT_COLUMNS: frozenset[str] = frozenset(
+    {"messages", "events", "events_data", "timelines"}
+)
+
 
 # --- Public API ---
 

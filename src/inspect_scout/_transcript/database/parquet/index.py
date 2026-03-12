@@ -33,6 +33,7 @@ from inspect_ai.util import trace_message
 from shortuuid import uuid
 from upath import UPath
 
+from ..schema import CONTENT_COLUMNS
 from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
 from .migration import migrate_table
 from .types import (
@@ -229,11 +230,7 @@ async def create_index(
     all_columns = {row[0] for row in schema_result}
 
     # Build exclude clause for large content columns if they exist
-    exclude_columns = [
-        c
-        for c in ["messages", "events", "events_data", "timelines"]
-        if c in all_columns
-    ]
+    exclude_columns = [c for c in CONTENT_COLUMNS if c in all_columns]
     exclude_clause = (
         f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
     )

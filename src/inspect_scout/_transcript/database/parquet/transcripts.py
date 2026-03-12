@@ -19,7 +19,6 @@ from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
 from inspect_ai.event._event import Event
 from inspect_ai.log import EventsData, condense_events, expand_events
-from inspect_ai.model import ChatMessage
 from inspect_ai.util import trace_action, trace_message
 from pydantic import TypeAdapter
 from typing_extensions import override
@@ -67,15 +66,8 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-def _parse_events_data(events_data_json: str) -> EventsData:
-    """Parse pool data JSON into an EventsData dict."""
-    raw: dict[str, Any] = json.loads(events_data_json)
-    return EventsData(
-        messages=TypeAdapter(list[ChatMessage]).validate_python(
-            raw.get("messages", [])
-        ),
-        calls=raw.get("calls", []),
-    )
+_EVENTS_DATA_TA = TypeAdapter(EventsData)
+_EVENTS_TA = TypeAdapter(list[Event])
 
 
 def _resolve_events_json(
@@ -92,8 +84,8 @@ def _resolve_events_json(
     if not events_data_json:
         return events_json
 
-    data = _parse_events_data(events_data_json)
-    events = TypeAdapter(list[Event]).validate_python(json.loads(events_json))
+    data = _EVENTS_DATA_TA.validate_json(events_data_json)
+    events = _EVENTS_TA.validate_json(events_json)
     events = expand_events(events, data)
     return json.dumps([e.model_dump() for e in events])
 
@@ -799,7 +791,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Resolve pool references back to full messages/calls
             if events_data_json:
-                data = _parse_events_data(events_data_json)
+                data = _EVENTS_DATA_TA.validate_json(events_data_json)
                 resolved_events = expand_events(transcript.events, data)
                 transcript = transcript.model_copy(update={"events": resolved_events})
 

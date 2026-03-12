@@ -228,8 +228,12 @@ async def create_index(
     ).fetchall()
     all_columns = {row[0] for row in schema_result}
 
-    # Build exclude clause for messages/events if they exist
-    exclude_columns = [c for c in ["messages", "events"] if c in all_columns]
+    # Build exclude clause for large content columns if they exist
+    exclude_columns = [
+        c
+        for c in ["messages", "events", "events_data", "timelines"]
+        if c in all_columns
+    ]
     exclude_clause = (
         f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
     )

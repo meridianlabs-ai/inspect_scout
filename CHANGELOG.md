@@ -15,6 +15,7 @@
 - Transcripts: Address DuckDB 1.5 compatibility issue w/ mixed type CASE expressions.
 - Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
 - Transcripts: Remove parquet encryption (not used + issues w/ DuckDB 1.5).
+- Transcripts: Ensure that all documented schema columns exist when running transcript queries.
 - Observe: Prevent transcript index staleness/warning from occurring when running parallel observe contexts.
 - Scout View: Properly sort scanner results using the value type.
 - Scout View: Enable minification and caching of view static assets.

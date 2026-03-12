@@ -35,11 +35,13 @@ export const DownloadScanButton = ({
   };
 
   const icon =
-    state === "success"
-      ? `${ApplicationIcons.confirm} primary`
-      : state === "error"
-        ? ApplicationIcons.error
-        : ApplicationIcons.download;
+    state === "downloading"
+      ? ApplicationIcons.refresh
+      : state === "success"
+        ? `${ApplicationIcons.confirm} primary`
+        : state === "error"
+          ? ApplicationIcons.error
+          : ApplicationIcons.download;
 
   return (
     <button

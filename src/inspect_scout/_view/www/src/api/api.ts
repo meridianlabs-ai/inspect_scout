@@ -92,7 +92,7 @@ export interface ScoutApiV2 {
   deleteValidationSet(uri: string): Promise<void>;
   renameValidationSet(uri: string, newName: string): Promise<string>;
 
-  downloadScan(scansDir: string, scanPath: string): Promise<Blob>;
+  downloadScan?(scansDir: string, scanPath: string): Promise<Blob>;
 
   storage: ClientStorage;
   capability: "scans" | "workbench";

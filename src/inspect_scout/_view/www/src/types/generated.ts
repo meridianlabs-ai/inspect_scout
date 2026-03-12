@@ -200,8 +200,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get scanner input for a specific transcript
-         * @description Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.
+         * Get scanner input for a specific result
+         * @description Returns a JSON envelope with input, input_type, and input_data (EventsData pools for condensed events, or null).
          */
         get: operations["scanner_input_scans__dir___scan___scanner___uuid__input_get"];
         put?: never;
@@ -1275,6 +1275,16 @@ export interface components {
             traceback_ansi: string;
         };
         Event: components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"];
+        /**
+         * EventsData
+         * @description Pooled data extracted by :func:`condense_events`.
+         */
+        EventsData: {
+            /** Calls */
+            calls: components["schemas"]["JsonValue"][];
+            /** Messages */
+            messages: (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[];
+        };
         /**
          * GenerateConfig
          * @description Model generation options.
@@ -3037,6 +3047,24 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * ScannerInputResponse
+         * @description Response body for GET /scans/{dir}/{scan}/scanners/{scanner}/input/{uuid}.
+         *
+         *     Used only for OpenAPI schema generation — the endpoint returns a
+         *     pre-serialized JSON string via ``Response`` to avoid parsing/re-encoding
+         *     the raw parquet payloads.
+         */
+        ScannerInputResponse: {
+            /** Input */
+            input: components["schemas"]["Transcript"] | components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"] | (components["schemas"]["ChatMessageSystem"] | components["schemas"]["ChatMessageUser"] | components["schemas"]["ChatMessageAssistant"] | components["schemas"]["ChatMessageTool"])[] | components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"] | (components["schemas"]["SampleInitEvent"] | components["schemas"]["SampleLimitEvent"] | components["schemas"]["SandboxEvent"] | components["schemas"]["StateEvent"] | components["schemas"]["StoreEvent"] | components["schemas"]["ModelEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["ApprovalEvent"] | components["schemas"]["CompactionEvent"] | components["schemas"]["InputEvent"] | components["schemas"]["ScoreEvent"] | components["schemas"]["ScoreEditEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["LoggerEvent"] | components["schemas"]["InfoEvent"] | components["schemas"]["SpanBeginEvent"] | components["schemas"]["SpanEndEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["SubtaskEvent"])[] | components["schemas"]["Timeline"] | components["schemas"]["Timeline"][];
+            input_data?: components["schemas"]["EventsData"] | null;
+            /**
+             * Input Type
+             * @enum {string}
+             */
+            input_type: "transcript" | "event" | "events" | "message" | "messages" | "timeline" | "timelines";
+        };
         /** ScannerParam */
         ScannerParam: {
             /** Default */
@@ -4601,7 +4629,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ScannerInputResponse"];
                 };
             };
         };

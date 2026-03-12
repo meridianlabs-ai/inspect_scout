@@ -1,6 +1,5 @@
 import { StateStorage } from "zustand/middleware";
 
-import { ScanResultInputData } from "../app/types";
 import type { Condition, OrderByModel } from "../query";
 import {
   ActiveScansResponse,
@@ -18,6 +17,7 @@ import {
   TranscriptsResponse,
   ValidationCase,
   ValidationCaseRequest,
+  ScannerInput,
 } from "../types/api-types";
 
 export type ClientStorage = StateStorage;
@@ -64,7 +64,7 @@ export interface ScoutApiV2 {
     scanPath: string,
     scanner: string,
     uuid: string
-  ): Promise<ScanResultInputData>;
+  ): Promise<ScannerInput>;
   getActiveScans(): Promise<ActiveScansResponse>;
   postCode(condition: Condition): Promise<Record<string, string>>;
   getProjectConfig(): Promise<{ config: ProjectConfig; etag: string }>;

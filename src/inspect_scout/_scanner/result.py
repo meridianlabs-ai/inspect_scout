@@ -1,13 +1,16 @@
 import json
 from logging import getLogger
-from typing import Any, Literal, Sequence
+from typing import Any, Literal, Sequence, cast
 
 from inspect_ai._util.json import jsonable_python, to_json_str_safe
+from inspect_ai.event._event import Event
+from inspect_ai.log import condense_events
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
+from inspect_scout._transcript.types import Transcript
 
 logger = getLogger(__name__)
 
@@ -107,13 +110,17 @@ class ResultReport(BaseModel):
 
     model_usage: dict[str, ModelUsage]
 
-    def to_df_columns(self) -> dict[str, str | bool | int | float | None]:
+    def to_df_columns(
+        self, *, pool_dedup: bool = True
+    ) -> dict[str, str | bool | int | float | None]:
         columns: dict[str, str | bool | int | float | None] = {}
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_ids"] = json.dumps(self.input_ids)
-        columns["input"] = to_json_str_safe(self.input)
+        columns["input"], columns["input_data"] = _serialize_input(
+            self.input, self.input_type, pool_dedup=pool_dedup
+        )
 
         if self.result is not None:
             # result
@@ -200,3 +207,30 @@ class ResultReport(BaseModel):
         columns["scan_events"] = to_json_str_safe(self.events)
 
         return columns
+
+
+def _serialize_input(
+    input: ScannerInput,
+    input_type: ScannerInputNames,
+    *,
+    pool_dedup: bool,
+) -> tuple[str, str | None]:
+    """Serialize scanner input, optionally condensing events.
+
+    Returns:
+        (input_json, input_data_json | None)
+    """
+    if not pool_dedup or input_type not in ("transcript", "events"):
+        return to_json_str_safe(input), None
+
+    if input_type == "transcript":
+        assert isinstance(input, Transcript)
+        condensed_events, events_data = condense_events(input.events)
+        condensed = input.model_copy(update={"events": condensed_events})
+        return to_json_str_safe(condensed), to_json_str_safe(events_data)
+
+    # input_type == "events"
+    assert isinstance(input, Sequence)
+    events = cast(Sequence[Event], input)
+    condensed_events, events_data = condense_events(events)
+    return to_json_str_safe(condensed_events), to_json_str_safe(events_data)

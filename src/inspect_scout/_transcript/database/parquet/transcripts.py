@@ -979,13 +979,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if pool_dedup:
             condensed, data = condense_events(transcript.events)
 
-            events_json = json.dumps([e.model_dump() for e in condensed])
-            events_data: dict[str, Any] = {}
-            if data["messages"]:
-                events_data["messages"] = [m.model_dump() for m in data["messages"]]
-            if data["calls"]:
-                events_data["calls"] = data["calls"]
-            events_data_json = json.dumps(events_data) if events_data else None
+            events_json = TypeAdapter(list[Event]).dump_json(condensed).decode()
+            events_data_json = TypeAdapter(EventsData).dump_json(data).decode()
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]

@@ -4,6 +4,7 @@ from typing import Any, Literal
 import pandas as pd
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.json import to_json_str_safe
+from inspect_ai.log import expand_events
 from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -124,23 +125,25 @@ async def scan_results_df_async(
         scan_location, scanner=scanner, exclude_columns=exclude_columns
     )
 
-    # Apply expansion lazily when in "results" mode
+    # Always expand condensed event refs (storage optimization, not consumer-visible)
     if rows == "results":
-        scanners = LazyScannerMapping(
-            scanner_names=list(results.scanners.keys()),
-            loader=lambda name: results.scanners[name],
-            transformer=_expand_resultset_rows,
-        )
-        return ScanResultsDF(
-            complete=results.complete,
-            spec=results.spec,
-            location=results.location,
-            summary=results.summary,
-            errors=results.errors,
-            scanners=scanners,
-        )
+        transformer = lambda df: _expand_resultset_rows(_expand_events_in_df(df))  # noqa: E731
+    else:
+        transformer = _expand_events_in_df
 
-    return results
+    scanners = LazyScannerMapping(
+        scanner_names=list(results.scanners.keys()),
+        loader=lambda name: results.scanners[name],
+        transformer=transformer,
+    )
+    return ScanResultsDF(
+        complete=results.complete,
+        spec=results.spec,
+        location=results.location,
+        summary=results.summary,
+        errors=results.errors,
+        scanners=scanners,
+    )
 
 
 def scan_results_db(
@@ -330,6 +333,32 @@ def _handle_label_validation(
     )
 
     return expanded, synthetic_rows
+
+
+def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Expand condensed event refs in the input column, then drop input_data."""
+    if "input_data" not in df.columns or df["input_data"].isna().all():
+        return df.drop(columns=["input_data"], errors="ignore")
+
+    df = df.copy()
+    mask = df["input_data"].notna()
+
+    for idx in df.index[mask]:
+        input_json = str(df.at[idx, "input"])
+        input_data_json = str(df.at[idx, "input_data"])
+        input_type = str(df.at[idx, "input_type"])
+
+        if input_type == "transcript":
+            transcript = json.loads(input_json)
+            events_json = json.dumps(transcript.get("events", []))
+            expanded = expand_events(events_json, input_data_json)
+            transcript["events"] = [e.model_dump() for e in expanded]
+            df.at[idx, "input"] = json.dumps(transcript)
+        elif input_type == "events":
+            expanded = expand_events(input_json, input_data_json)
+            df.at[idx, "input"] = json.dumps([e.model_dump() for e in expanded])
+
+    return df.drop(columns=["input_data"])
 
 
 def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:

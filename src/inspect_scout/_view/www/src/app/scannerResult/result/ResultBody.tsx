@@ -7,13 +7,13 @@ import { ApplicationIcons } from "../../../components/icons";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
 import { transcriptRoute } from "../../../router/url";
 import { useStore } from "../../../state/store";
+import { ScannerInput } from "../../../types/api-types";
 import {
   ColumnHeader,
   ColumnHeaderButton,
 } from "../../components/ColumnHeader";
 import { TimelineEventsView } from "../../timeline/components/TimelineEventsView";
 import {
-  ScanResultInputData,
   isEventInput,
   isEventsInput,
   isMessageInput,
@@ -26,7 +26,7 @@ import styles from "./ResultBody.module.css";
 
 export interface ResultBodyProps {
   resultData: ScanResultData;
-  inputData: ScanResultInputData;
+  inputData: ScannerInput;
   transcriptDir: string;
   hasTranscript: boolean;
 }
@@ -84,7 +84,7 @@ export const ResultBody: FC<ResultBodyProps> = ({
 interface InputRendererProps {
   className?: string | string[];
   resultData?: ScanResultData;
-  inputData: ScanResultInputData;
+  inputData: ScannerInput;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   initialMessageId?: string | null;
   initialEventId?: string | null;
@@ -92,7 +92,7 @@ interface InputRendererProps {
 }
 
 const containerClass = (
-  inputData: ScanResultInputData
+  inputData: ScannerInput
 ): string | string[] | undefined => {
   if (isTranscriptInput(inputData)) {
     return styles.transcriptInputContainer;

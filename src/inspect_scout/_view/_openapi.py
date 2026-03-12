@@ -1,8 +1,9 @@
 """OpenAPI schema generation helpers."""
 
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin, is_typeddict
 
 from fastapi import FastAPI
+from pydantic import TypeAdapter
 
 from ._server_common import CustomJsonSchemaGenerator
 
@@ -64,6 +65,16 @@ def build_openapi_schema(
         elif get_origin(t) is Literal:
             # Literal type: create enum schema
             schemas[name] = {"type": "string", "enum": list(get_args(t))}
+        elif is_typeddict(t):
+            # TypedDict: generate schema via TypeAdapter (no CustomJsonSchemaGenerator).
+            # Only merge $defs that don't already exist to avoid clobbering schemas
+            # generated with CustomJsonSchemaGenerator (which treats defaults-with-
+            # required differently).
+            ta = TypeAdapter(t)
+            schema = ta.json_schema(ref_template=ref_template)
+            for def_name, def_schema in schema.get("$defs", {}).items():
+                schemas.setdefault(def_name, def_schema)
+            schemas[name] = _strip_defaults_from_nullable(_schema_without_defs(schema))
         elif hasattr(t, "model_json_schema"):
             # Pydantic model: add directly
             schema = t.model_json_schema(

@@ -184,10 +184,7 @@ export const apiScoutServer = (
 
       return asyncJsonParse<Status>(result.raw);
     },
-    downloadScan: async (
-      scansDir: string,
-      scanPath: string
-    ): Promise<Blob> => {
+    downloadScan: async (scansDir: string, scanPath: string): Promise<Blob> => {
       const result = await requestApi.fetchBytes(
         "GET",
         `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`,

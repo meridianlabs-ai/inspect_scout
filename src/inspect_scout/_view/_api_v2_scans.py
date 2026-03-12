@@ -1,6 +1,5 @@
 """Scans REST API endpoints."""
 
-import anyio
 import asyncio
 import io
 import os
@@ -12,6 +11,7 @@ import time
 import zipfile
 from typing import Any, Iterable
 
+import anyio
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Request, Response
@@ -233,9 +233,7 @@ def create_scans_router(
 
         accept = request.headers.get("accept", "")
         if "application/zip" in accept:
-            return await anyio.to_thread.run_sync(
-                lambda: _build_scan_zip(scan_path)
-            )
+            return await anyio.to_thread.run_sync(lambda: _build_scan_zip(scan_path))
 
         try:
             recorder_status_with_df = await scan_results_df_async(

@@ -53,7 +53,6 @@ const NULL_CONFIG: ModelEvent["config"] = {
   reasoning_summary: null,
   reasoning_tokens: null,
   response_schema: null,
-  modalities: null,
   seed: null,
   stop_seqs: null,
   system_message: null,

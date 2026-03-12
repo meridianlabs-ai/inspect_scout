@@ -1541,7 +1541,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if field.name not in existing and field.name not in content_columns:
                 duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
                 self._conn.execute(
-                    f"ALTER TABLE transcript_index ADD COLUMN {field.name} {duckdb_type}"
+                    f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
                 )
 
     async def _init_from_parquet(self, warn_missing_index: bool = True) -> None:

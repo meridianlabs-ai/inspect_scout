@@ -326,6 +326,74 @@ class TestRegisterIndexTable:
         assert len(result) == 1
 
 
+class TestEnsureIndexSchema:
+    """Tests for _ensure_index_schema backfill of missing columns."""
+
+    @pytest.mark.asyncio
+    async def test_backfills_missing_columns_including_reserved_words(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Old index with only transcript_id+filename gets all schema columns added.
+
+        Verifies that reserved SQL keywords like 'limit' are properly quoted
+        in ALTER TABLE statements.
+        """
+        from inspect_scout._transcript.database.parquet.transcripts import (
+            _pyarrow_to_duckdb_type,
+        )
+        from inspect_scout._transcript.database.schema import (
+            TRANSCRIPT_SCHEMA_FIELDS,
+        )
+
+        # Create a minimal index with only transcript_id and filename
+        # (simulating an old index format)
+        minimal_table = pa.table(
+            {
+                "transcript_id": ["t1", "t2"],
+                "filename": ["data1.parquet", "data2.parquet"],
+            }
+        )
+        await append_index(minimal_table, storage, "index_20250101T100000_old.idx")
+
+        # Load into DuckDB
+        row_count = await init_index_table(conn, storage)
+        assert row_count == 2
+
+        # Run the same backfill logic as _ensure_index_schema
+        content_columns = {"messages", "events", "events_data", "timelines"}
+        existing = {
+            row[0]
+            for row in conn.execute(
+                "SELECT column_name FROM (DESCRIBE transcript_index)"
+            ).fetchall()
+        }
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in existing and field.name not in content_columns:
+                duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+                conn.execute(
+                    f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
+                )
+
+        # Verify all non-content schema columns now exist
+        final_columns = {
+            row[0]
+            for row in conn.execute(
+                "SELECT column_name FROM (DESCRIBE transcript_index)"
+            ).fetchall()
+        }
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if field.name not in content_columns:
+                assert field.name in final_columns, (
+                    f"Expected column '{field.name}' to be present after backfill"
+                )
+
+        # Verify reserved keyword column 'limit' is queryable
+        result = conn.execute('SELECT "limit" FROM transcript_index').fetchall()
+        assert len(result) == 2
+        # All values should be NULL since the column was just added
+        assert all(row[0] is None for row in result)
+
+
 # --- Write Operations Tests ---
 
 

@@ -18,15 +18,10 @@ from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
 from inspect_ai.event._event import Event
-from inspect_ai.log._pool import (
-    condense_model_event_calls,
-    condense_model_event_inputs,
-    resolve_model_event_calls,
-    resolve_model_event_inputs,
-)
+from inspect_ai.log import EventsData, condense_events, expand_events
 from inspect_ai.model import ChatMessage
 from inspect_ai.util import trace_action, trace_message
-from pydantic import JsonValue, TypeAdapter
+from pydantic import TypeAdapter
 from typing_extensions import override
 from upath import UPath
 
@@ -72,31 +67,15 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-def _parse_pools(
-    events_data_json: str,
-) -> tuple[list[ChatMessage] | None, list[JsonValue] | None]:
-    """Parse pool data JSON into typed message and call pools."""
-    events_data: dict[str, Any] = json.loads(events_data_json)
-    msg_pool = (
-        TypeAdapter(list[ChatMessage]).validate_python(events_data["messages"])
-        if "messages" in events_data
-        else None
+def _parse_events_data(events_data_json: str) -> EventsData:
+    """Parse pool data JSON into an EventsData dict."""
+    raw: dict[str, Any] = json.loads(events_data_json)
+    return EventsData(
+        messages=TypeAdapter(list[ChatMessage]).validate_python(
+            raw.get("messages", [])
+        ),
+        calls=raw.get("calls", []),
     )
-    call_pool = events_data.get("calls")
-    return msg_pool, call_pool
-
-
-def _resolve_events(
-    events: list[Event],
-    msg_pool: list[ChatMessage] | None,
-    call_pool: list[JsonValue] | None,
-) -> list[Event]:
-    """Resolve pool refs in events, returning events with full messages/calls."""
-    if msg_pool is not None:
-        events = resolve_model_event_inputs(events, msg_pool)
-    if call_pool is not None:
-        events = resolve_model_event_calls(events, call_pool)
-    return events
 
 
 def _resolve_events_json(
@@ -113,9 +92,9 @@ def _resolve_events_json(
     if not events_data_json:
         return events_json
 
-    msg_pool, call_pool = _parse_pools(events_data_json)
+    data = _parse_events_data(events_data_json)
     events = TypeAdapter(list[Event]).validate_python(json.loads(events_json))
-    events = _resolve_events(events, msg_pool, call_pool)
+    events = expand_events(events, data)
     return json.dumps([e.model_dump() for e in events])
 
 
@@ -820,10 +799,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Resolve pool references back to full messages/calls
             if events_data_json:
-                msg_pool, call_pool = _parse_pools(events_data_json)
-                resolved_events = _resolve_events(
-                    transcript.events, msg_pool, call_pool
-                )
+                data = _parse_events_data(events_data_json)
+                resolved_events = expand_events(transcript.events, data)
                 transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
@@ -1000,15 +977,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         messages_array = [msg.model_dump() for msg in transcript.messages]
 
         if pool_dedup:
-            condensed, msg_pool = condense_model_event_inputs(transcript.events, [], {})
-            condensed, c_pool = condense_model_event_calls(condensed, [], {})
+            condensed, data = condense_events(transcript.events)
 
             events_json = json.dumps([e.model_dump() for e in condensed])
             events_data: dict[str, Any] = {}
-            if msg_pool:
-                events_data["messages"] = [m.model_dump() for m in msg_pool]
-            if c_pool:
-                events_data["calls"] = c_pool
+            if data["messages"]:
+                events_data["messages"] = [m.model_dump() for m in data["messages"]]
+            if data["calls"]:
+                events_data["calls"] = data["calls"]
             events_data_json = json.dumps(events_data) if events_data else None
         else:
             events_json = json.dumps(

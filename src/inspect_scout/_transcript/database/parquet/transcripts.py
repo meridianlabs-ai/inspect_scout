@@ -19,6 +19,7 @@ from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
 from inspect_ai.event._event import Event
 from inspect_ai.log import EventsData, condense_events, expand_events
+from inspect_ai.model import ChatMessage
 from inspect_ai.util import trace_action, trace_message
 from pydantic import TypeAdapter
 from typing_extensions import override
@@ -66,8 +67,8 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-_EVENTS_DATA_TA = TypeAdapter(EventsData)
 _EVENTS_TA = TypeAdapter(list[Event])
+_MESSAGES_TA = TypeAdapter(list[ChatMessage])
 
 
 def _resolve_events_json(
@@ -84,7 +85,11 @@ def _resolve_events_json(
     if not events_data_json:
         return events_json
 
-    data = _EVENTS_DATA_TA.validate_json(events_data_json)
+    raw: dict[str, Any] = json.loads(events_data_json)
+    data = EventsData(
+        messages=_MESSAGES_TA.validate_python(raw.get("messages", [])),
+        calls=raw.get("calls", []),
+    )
     events = _EVENTS_TA.validate_json(events_json)
     events = expand_events(events, data)
     return json.dumps([e.model_dump() for e in events])
@@ -792,7 +797,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Resolve pool references back to full messages/calls
             if events_data_json:
-                data = _EVENTS_DATA_TA.validate_json(events_data_json)
+                raw: dict[str, Any] = json.loads(events_data_json)
+                data = EventsData(
+                    messages=_MESSAGES_TA.validate_python(raw.get("messages", [])),
+                    calls=raw.get("calls", []),
+                )
                 resolved_events = expand_events(transcript.events, data)
                 transcript = transcript.model_copy(update={"events": resolved_events})
 
@@ -972,8 +981,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if pool_dedup:
             condensed, data = condense_events(transcript.events)
 
-            events_json = TypeAdapter(list[Event]).dump_json(condensed).decode()
-            events_data_json = TypeAdapter(EventsData).dump_json(data).decode()
+            events_json = _EVENTS_TA.dump_json(condensed).decode()
+            events_data_json = json.dumps(
+                {
+                    "messages": _MESSAGES_TA.dump_python(data["messages"], mode="json"),
+                    "calls": data["calls"],
+                }
+            )
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]

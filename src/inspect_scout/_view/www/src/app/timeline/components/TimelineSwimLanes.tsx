@@ -122,6 +122,9 @@ interface TimelineSwimLanesProps {
   onLayoutShift?: () => void;
   /** Map from row key → number of compaction regions (only for rows with compactions). */
   regionCounts?: ReadonlyMap<string, number>;
+  /** Default collapsed state when user has no stored preference.
+   *  Falls back to `isFlat` (layouts.length <= 1) when undefined. */
+  defaultCollapsed?: boolean;
 }
 
 // =============================================================================
@@ -150,6 +153,7 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   headroomCollapsed = false,
   onLayoutShift,
   regionCounts,
+  defaultCollapsed: defaultCollapsedProp,
 }) => {
   const { node, selected, select: onSelect, clearSelection } = timeline;
 
@@ -182,7 +186,8 @@ export const TimelineSwimLanes: FC<TimelineSwimLanesProps> = ({
   // User preference OR headroom auto-collapse (overlay).
   // Headroom collapses on scroll-down; user preference takes over on scroll-up.
   const effectiveHeadroom = headroomCollapsed && !headroomOverride;
-  const isCollapsed = (collapsed ?? isFlat) || effectiveHeadroom;
+  const isCollapsed =
+    (collapsed ?? defaultCollapsedProp ?? isFlat) || effectiveHeadroom;
   const toggleCollapsed = useCallback(() => {
     onLayoutShift?.();
     setHeadroomOverride(true);

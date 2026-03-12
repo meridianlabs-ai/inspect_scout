@@ -450,8 +450,9 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     return row?.name ?? timelineData.root.name;
   }, [timelineState.selected, timelineState.rows, timelineData.root.name]);
 
-  const showSwimlanes =
-    timelineProp === true || (timelineProp === "auto" && hasTimeline);
+  const showSwimlanes = timelineProp !== false;
+  const swimlanesDefaultCollapsed =
+    timelineProp === "auto" && !hasTimeline ? true : undefined;
 
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ top: 0 });
@@ -501,6 +502,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
                 headroomCollapsed={!!headroomHidden && isSwimLaneSticky}
                 onLayoutShift={onHeadroomResetAnchor}
                 regionCounts={regionCounts}
+                defaultCollapsed={swimlanesDefaultCollapsed}
               />
             </div>
           </StickyScroll>

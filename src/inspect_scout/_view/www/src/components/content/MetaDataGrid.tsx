@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { CSSProperties, FC, Fragment } from "react";
+import { CSSProperties, FC, Fragment, useState } from "react";
 
 import { MarkdownReference } from "../MarkdownDivWithReferences";
 
@@ -12,6 +12,7 @@ interface MetadataGridProps {
   references?: MarkdownReference[];
   style?: CSSProperties;
   entries: Record<string, unknown>;
+  maxRows?: number;
   options?: {
     size?: "mini" | "small";
     plain?: boolean;
@@ -28,13 +29,20 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
   className,
   references,
   style,
+  maxRows,
   options,
 }) => {
   const baseId = "metadata-grid";
   const fontStyle =
     options?.size === "mini" ? "text-size-smallest" : "text-size-smaller";
 
-  const entryEls = entryRecords(entries).map((entry, index) => {
+  const [expanded, setExpanded] = useState(false);
+  const allEntries = entryRecords(entries);
+  const isCollapsible = maxRows != null && allEntries.length > maxRows;
+  const visibleEntries =
+    isCollapsible && !expanded ? allEntries.slice(0, maxRows) : allEntries;
+
+  const entryEls = visibleEntries.map((entry, index) => {
     const id = `${baseId}-value-${index}`;
     return (
       <Fragment key={`${baseId}-record-${index}`}>
@@ -88,6 +96,19 @@ export const MetaDataGrid: FC<MetadataGridProps> = ({
   return (
     <div id={id} className={clsx(className, styles.grid)} style={style}>
       {entryEls}
+      {isCollapsible && (
+        <div className={styles.toggleContainer}>
+          <button
+            className={clsx(styles.toggleButton, "text-size-smallest")}
+            onClick={() => setExpanded((prev) => !prev)}
+          >
+            {expanded
+              ? "less"
+              : `${allEntries.length - visibleEntries.length} more`}
+            ...
+          </button>
+        </div>
+      )}
     </div>
   );
 };

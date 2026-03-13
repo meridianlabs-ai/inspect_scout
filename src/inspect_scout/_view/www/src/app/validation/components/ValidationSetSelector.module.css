@@ -69,7 +69,9 @@
 }
 
 .triggerPlaceholder {
+  font-size: var(--vscode-font-size, 13px);
   color: var(--vscode-input-placeholderForeground);
+  white-space: nowrap;
 }
 
 /* Dropdown panel - rendered via portal */

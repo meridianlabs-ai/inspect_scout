@@ -75,15 +75,23 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     error: setsError,
   } = useValidationSets();
 
+  // Only issue case/cases queries for URIs that exist in the current project.
+  // The store may hold a stale URI from a previous project/session; gating on
+  // setsData prevents wasted requests and errors before the init effect clears it.
+  const validatedSetUri =
+    editorValidationSetUri && setsData?.includes(editorValidationSetUri)
+      ? editorValidationSetUri
+      : undefined;
+
   const {
     data: caseData,
     loading: caseLoading,
     error: caseError,
   } = useValidationCase(
-    !editorValidationSetUri
+    !validatedSetUri
       ? skipToken
       : {
-          url: editorValidationSetUri,
+          url: validatedSetUri,
           caseId: transcriptId,
         }
   );
@@ -92,14 +100,13 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
     data: casesData,
     loading: casesLoading,
     error: casesError,
-  } = useValidationCases(
-    editorValidationSetUri ? editorValidationSetUri : skipToken
-  );
+  } = useValidationCases(validatedSetUri ? validatedSetUri : skipToken);
 
-  // Initialize from URL param or fall back to first available set
-  // URL param always takes precedence when present and valid
+  // Initialize from URL param or fall back to first available set.
+  // URL param always takes precedence when present and valid.
+  // Also clears stale store values that don't exist in the current project.
   useEffect(() => {
-    if (!setsData || setsData.length === 0) return;
+    if (!setsData) return;
 
     const validationSetParam = getValidationSetParam(searchParams);
     if (validationSetParam && setsData.includes(validationSetParam)) {
@@ -107,9 +114,14 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
       if (editorValidationSetUri !== validationSetParam) {
         setEditorSelectedValidationSetUri(validationSetParam);
       }
-    } else if (!editorValidationSetUri) {
-      // No URL param and no store value - fall back to first set
-      setEditorSelectedValidationSetUri(setsData[0]);
+    } else if (
+      !editorValidationSetUri ||
+      !setsData.includes(editorValidationSetUri)
+    ) {
+      // No store value, or store value is stale (not in current project's sets).
+      // Fall back to first set, or clear if no sets exist.
+      const fallback = setsData.length > 0 ? setsData[0] : undefined;
+      setEditorSelectedValidationSetUri(fallback);
     }
   }, [
     setsData,
@@ -120,7 +132,7 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
 
   const error = setsError || casesError || caseError;
   const loading =
-    setsLoading || casesLoading || (!!editorValidationSetUri && caseLoading);
+    setsLoading || (!!validatedSetUri && (casesLoading || caseLoading));
   const showPanel = !setsLoading;
 
   return (
@@ -136,9 +148,10 @@ export const ValidationCaseEditor: FC<ValidationCaseEditorProps> = ({
           <LoadingBar loading={loading} />
           {showPanel && setsData && (
             <ValidationCaseEditorComponent
+              key={validatedSetUri}
               transcriptId={transcriptId}
               validationSets={setsData}
-              editorValidationSetUri={editorValidationSetUri}
+              editorValidationSetUri={validatedSetUri}
               validationCase={caseData}
               validationCases={casesData}
               className={className}

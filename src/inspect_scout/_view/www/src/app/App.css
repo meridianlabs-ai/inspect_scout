@@ -439,6 +439,7 @@ body[class^="vscode-"] .accordion-button::after {
 }
 
 .copy-button i.bi,
+.download-scan-button i.bi,
 body[class^="vscode-"] .navbar-text i.bi {
   color: var(--vscode-editor-foreground);
 }

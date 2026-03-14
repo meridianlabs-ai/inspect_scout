@@ -157,7 +157,7 @@ export interface paths {
         };
         /**
          * Get scan status
-         * @description Returns detailed status and metadata for a single scan.
+         * @description Returns detailed status and metadata for a single scan. Send Accept: application/zip to download the scan directory as a zip archive.
          */
         get: operations["scan_scans__dir___scan__get"];
         put?: never;
@@ -4521,6 +4521,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                    /** @description Zip archive of the scan directory when Accept: application/zip is sent. */
+                    "application/zip": unknown;
                 };
             };
         };

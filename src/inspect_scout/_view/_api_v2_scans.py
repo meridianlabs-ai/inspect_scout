@@ -8,12 +8,15 @@ import sys
 import tempfile
 import threading
 import time
+import zipfile
 from typing import Any, Iterable
 
+import anyio
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
-from fastapi import APIRouter, HTTPException, Path, Response
+from fastapi import APIRouter, HTTPException, Path, Request, Response
 from fastapi.responses import StreamingResponse
+from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
     HTTP_404_NOT_FOUND,
@@ -43,6 +46,31 @@ from .invalidationTopics import notify_topics
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
+
+
+def _build_scan_zip(scan_path: UPath) -> Response:
+    """Build a zip archive of all files in a scan directory."""
+    if not scan_path.exists():
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Scan not found: {scan_path}",
+        )
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for child in scan_path.iterdir():
+            if child.is_file():
+                with file(child.as_posix(), "rb") as f:
+                    zf.writestr(child.name, f.read())
+
+    scan_id = scan_path.name
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{scan_id}.zip"',
+        },
+    )
 
 
 def create_scans_router(
@@ -177,15 +205,35 @@ def create_scans_router(
         response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
-        description="Returns detailed status and metadata for a single scan.",
+        description="Returns detailed status and metadata for a single scan. "
+        "Send Accept: application/zip to download the scan directory as a zip archive.",
+        responses={
+            200: {
+                "content": {
+                    "application/zip": {
+                        "description": "Zip archive of the scan directory "
+                        "when Accept: application/zip is sent.",
+                    },
+                },
+            }
+        },
     )
     async def scan(
+        request: Request,
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> ScanStatus:
-        """Get detailed status for a single scan."""
+    ) -> ScanStatus | Response:
+        """Get detailed status for a single scan.
+
+        Content negotiation: returns JSON by default, or a zip archive
+        when the client sends Accept: application/zip.
+        """
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
+
+        accept = request.headers.get("accept", "")
+        if "application/zip" in accept:
+            return await anyio.to_thread.run_sync(lambda: _build_scan_zip(scan_path))
 
         try:
             recorder_status_with_df = await scan_results_df_async(

@@ -1,0 +1,25 @@
+.downloadButton {
+  border: none;
+  background-color: inherit;
+  opacity: 0.5;
+  padding-top: 0;
+  transition: opacity 0.2s;
+}
+
+.downloadButton:hover {
+  opacity: 0.75;
+}
+
+.spinning i {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

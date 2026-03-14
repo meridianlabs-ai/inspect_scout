@@ -11438,7 +11438,7 @@
         ]
       },
       "get": {
-        "description": "Returns detailed status and metadata for a single scan.",
+        "description": "Returns detailed status and metadata for a single scan. Send Accept: application/zip to download the scan directory as a zip archive.",
         "operationId": "scan_scans__dir___scan__get",
         "parameters": [
           {
@@ -11471,6 +11471,9 @@
                 "schema": {
                   "$ref": "#/components/schemas/Status"
                 }
+              },
+              "application/zip": {
+                "description": "Zip archive of the scan directory when Accept: application/zip is sent."
               }
             },
             "description": "Successful Response"

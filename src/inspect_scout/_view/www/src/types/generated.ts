@@ -3875,7 +3875,7 @@ export interface components {
              */
             pending: boolean | null;
             /** Result */
-            result: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"])[];
+            result: string | number | boolean | components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentDocument"] | (components["schemas"]["ContentText"] | components["schemas"]["ContentImage"] | components["schemas"]["ContentAudio"] | components["schemas"]["ContentVideo"] | components["schemas"]["ContentDocument"])[];
             /**
              * Span Id
              * @default null

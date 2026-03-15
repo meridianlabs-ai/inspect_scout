@@ -8,11 +8,11 @@ import {
   Status,
   Transcript,
   AppConfig,
+  ScannerInput,
 } from "../../types/api-types";
 import { TaskName } from "../components/TaskName";
 import { projectOrAppAliasedPath } from "../server/useAppConfig";
 import {
-  ScanResultInputData,
   isEventInput,
   isEventsInput,
   isMessageInput,
@@ -25,7 +25,7 @@ import styles from "./ScannerResultHeader.module.css";
 
 interface ScannerResultHeaderProps {
   scan?: Status;
-  inputData?: ScanResultInputData;
+  inputData?: ScannerInput;
   appConfig: AppConfig;
 }
 
@@ -93,7 +93,7 @@ const classForCols = (numCols: number) => {
 
 const colsForResult: (
   appConfig: AppConfig,
-  inputData?: ScanResultInputData,
+  inputData?: ScannerInput,
   status?: Status
 ) => Column[] | undefined = (appConfig, inputData, status) => {
   if (!inputData) {

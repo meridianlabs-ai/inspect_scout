@@ -73,6 +73,15 @@ class ScanResultsArrow(Status):
         self, scanner: str, id_column: str, id_value: Any, target_column: str
     ) -> "Scalar[Any]": ...
 
+    @abc.abstractmethod
+    def get_fields(
+        self,
+        scanner: str,
+        id_column: str,
+        id_value: Any,
+        target_columns: list[str],
+    ) -> dict[str, Any]: ...
+
 
 @dataclass
 class ScanResultsDF(Status):

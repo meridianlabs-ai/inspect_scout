@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+import json
 import os
 import subprocess
 import sys
@@ -35,6 +36,7 @@ from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
     DistinctRequest,
+    ScannerInputResponse,
     ScanRow,
     ScansRequest,
     ScansResponse,
@@ -309,9 +311,10 @@ def create_scans_router(
 
     @router.get(
         "/scans/{dir}/{scan}/{scanner}/{uuid}/input",
-        summary="Get scanner input for a specific transcript",
-        description="Returns the original input text for a specific scanner result. "
-        "The input type is returned in the X-Input-Type response header.",
+        response_model=ScannerInputResponse,
+        summary="Get scanner input for a specific result",
+        description="Returns a JSON envelope with input, input_type, and input_data "
+        "(EventsData pools for condensed events, or null).",
     )
     async def scanner_input(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
@@ -319,7 +322,12 @@ def create_scans_router(
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
-        """Retrieve original input text for a scanner result."""
+        """Retrieve scanner input as a JSON envelope.
+
+        Returns ``{"input_type": ..., "input": ..., "input_data": ...}``
+        where ``input`` and ``input_data`` are raw JSON from parquet —
+        no server-side parsing or re-encoding.
+        """
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
@@ -330,13 +338,29 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
-        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
+        fields = result.get_fields(
+            scanner, "uuid", uuid, ["input", "input_type", "input_data"]
+        )
+
+        # `input` and `input_data` are pre-serialized JSON strings in the parquet
+        # columns. The call to `.get_fields()` does `.as_py()` which returns a Python
+        # `str` from Arrow's `large_string`. This means that `fields["input"]` is
+        # a python `str`. They both pass straight through as raw JSON fragments
+        # — no parsing, no re-encoding, no extra copies beyond Arrow → Python str.
+        # Obviously, there's no type safety here — `response_model`` is for OpenAPI
+        # schema only.
 
         return Response(
-            content=input_value,
-            media_type="text/plain",
-            headers={"X-Input-Type": input_type or ""},
+            content=(
+                '{"input_type":'
+                + json.dumps(fields["input_type"])
+                + ',"input":'
+                + (fields["input"] or "null")
+                + ',"input_data":'
+                + (fields["input_data"] or "null")
+                + "}"
+            ),
+            media_type="application/json",
         )
 
     @router.delete(

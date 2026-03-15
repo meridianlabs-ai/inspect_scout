@@ -9,26 +9,10 @@ import {
   Event,
   ChatMessage,
   Transcript,
+  ScannerInputResponse,
 } from "../types/api-types";
 
-export interface ScanResultInputData {
-  input: Input;
-  inputType: InputType;
-}
-
-export type Input =
-  | Transcript
-  | ChatMessage[]
-  | Event[]
-  | MessageType
-  | EventType;
-
-export type InputType =
-  | "transcript"
-  | "message"
-  | "messages"
-  | "event"
-  | "events";
+export type InputType = ScannerInputResponse["input_type"];
 
 export interface ScanResultSummary {
   // Basic Info
@@ -181,37 +165,40 @@ export function isObjectValue(
 
 // Type guard functions for DataFrameInput
 export function isTranscriptInput(
-  input: ScanResultInputData
-): input is ScanResultInputData & {
+  input: ScannerInputResponse
+): input is ScannerInputResponse & {
   inputType: "transcript";
   input: Transcript;
 } {
-  return input.inputType === "transcript";
+  return input.input_type === "transcript";
 }
 
 export function isMessageInput(
-  input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "message"; input: MessageType } {
-  return input.inputType === "message";
+  input: ScannerInputResponse
+): input is ScannerInputResponse & {
+  inputType: "message";
+  input: MessageType;
+} {
+  return input.input_type === "message";
 }
 
 export function isMessagesInput(
-  input: ScanResultInputData
-): input is ScanResultInputData & {
+  input: ScannerInputResponse
+): input is ScannerInputResponse & {
   inputType: "messages";
   input: ChatMessage[];
 } {
-  return input.inputType === "messages";
+  return input.input_type === "messages";
 }
 
 export function isEventInput(
-  input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "event"; input: EventType } {
-  return input.inputType === "event";
+  input: ScannerInputResponse
+): input is ScannerInputResponse & { inputType: "event"; input: EventType } {
+  return input.input_type === "event";
 }
 
 export function isEventsInput(
-  input: ScanResultInputData
-): input is ScanResultInputData & { inputType: "events"; input: Event[] } {
-  return input.inputType === "events";
+  input: ScannerInputResponse
+): input is ScannerInputResponse & { inputType: "events"; input: Event[] } {
+  return input.input_type === "events";
 }

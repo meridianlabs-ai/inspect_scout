@@ -51,6 +51,9 @@ export type CompactionEvent = components["schemas"]["CompactionEvent"];
 export type Event = components["schemas"]["Event"];
 export type InvalidationTopic = components["schemas"]["InvalidationTopic"];
 export type RawEncoding = components["schemas"]["RawEncoding"];
+export type ScannerInputResponse =
+  components["schemas"]["ScannerInputResponse"];
+export type EventsData = components["schemas"]["EventsData"];
 
 export type JsonChange = components["schemas"]["JsonChange"];
 
@@ -134,3 +137,5 @@ export type ToolChoice = ("auto" | "any" | "none") | ToolFunction;
 export interface ToolFunction {
   name: string;
 }
+
+export type ScannerInput = Omit<ScannerInputResponse, "input_data">;

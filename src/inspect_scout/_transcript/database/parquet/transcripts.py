@@ -16,12 +16,10 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.path import pretty_path
-from inspect_ai.event._event import Event
-from inspect_ai.log import EventsData, condense_events, expand_events
-from inspect_ai.model import ChatMessage
+from inspect_ai.log import condense_events, expand_events
 from inspect_ai.util import trace_action, trace_message
-from pydantic import TypeAdapter
 from typing_extensions import override
 from upath import UPath
 
@@ -67,10 +65,6 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-_EVENTS_TA = TypeAdapter(list[Event])
-_MESSAGES_TA = TypeAdapter(list[ChatMessage])
-
-
 def _resolve_events_json(
     events_json: str,
     events_data_json: str | None,
@@ -85,13 +79,7 @@ def _resolve_events_json(
     if not events_data_json:
         return events_json
 
-    raw: dict[str, Any] = json.loads(events_data_json)
-    data = EventsData(
-        messages=_MESSAGES_TA.validate_python(raw.get("messages", [])),
-        calls=raw.get("calls", []),
-    )
-    events = _EVENTS_TA.validate_json(events_json)
-    events = expand_events(events, data)
+    events = expand_events(events_json, events_data_json)
     return json.dumps([e.model_dump() for e in events])
 
 
@@ -797,12 +785,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Resolve pool references back to full messages/calls
             if events_data_json:
-                raw: dict[str, Any] = json.loads(events_data_json)
-                data = EventsData(
-                    messages=_MESSAGES_TA.validate_python(raw.get("messages", [])),
-                    calls=raw.get("calls", []),
-                )
-                resolved_events = expand_events(transcript.events, data)
+                resolved_events = expand_events(transcript.events, events_data_json)
                 transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
@@ -979,15 +962,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         messages_array = [msg.model_dump() for msg in transcript.messages]
 
         if pool_dedup:
-            condensed, data = condense_events(transcript.events)
-
-            events_json = _EVENTS_TA.dump_json(condensed).decode()
-            events_data_json = json.dumps(
-                {
-                    "messages": _MESSAGES_TA.dump_python(data["messages"], mode="json"),
-                    "calls": data["calls"],
-                }
-            )
+            condensed_events, events_data = condense_events(transcript.events)
+            events_json = to_json_str_safe(condensed_events)
+            events_data_json = to_json_str_safe(events_data)
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]

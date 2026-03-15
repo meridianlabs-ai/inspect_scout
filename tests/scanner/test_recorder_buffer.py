@@ -47,7 +47,7 @@ def sample_results() -> list[ResultReport]:
     """Create sample Results for testing."""
     return [
         ResultReport(
-            input_type="transcript",
+            input_type="message",
             input_ids=[],
             input=ChatMessageUser(content=""),
             result=Result(
@@ -62,7 +62,7 @@ def sample_results() -> list[ResultReport]:
             model_usage={},
         ),
         ResultReport(
-            input_type="transcript",
+            input_type="message",
             input_ids=[],
             input=ChatMessageUser(content=""),
             result=Result(
@@ -77,7 +77,7 @@ def sample_results() -> list[ResultReport]:
             model_usage={},
         ),
         ResultReport(
-            input_type="transcript",
+            input_type="message",
             input_ids=[],
             input=ChatMessageUser(content=""),
             result=Result(

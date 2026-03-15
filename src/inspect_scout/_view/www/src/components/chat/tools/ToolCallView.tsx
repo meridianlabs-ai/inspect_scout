@@ -4,6 +4,7 @@ import { FC, useMemo } from "react";
 import {
   ContentAudio,
   ContentData,
+  ContentDocument,
   ContentImage,
   ContentReasoning,
   ContentText,
@@ -40,6 +41,7 @@ export interface ToolCallViewProps {
     | ContentTool
     | ContentReasoning
     | ContentData
+    | ContentDocument
     | (
         | ContentText
         | ContentAudio
@@ -48,6 +50,7 @@ export interface ToolCallViewProps {
         | ContentTool
         | ContentReasoning
         | ContentData
+        | ContentDocument
       )[];
   mode?: "compact";
   collapsible?: boolean;
@@ -81,6 +84,7 @@ export const ToolCallView: FC<ToolCallViewProps> = ({
       | ContentTool
       | ContentReasoning
       | ContentData
+      | ContentDocument
   ) {
     if (value && typeof value === "object") {
       if (value.type === "image") {
@@ -197,7 +201,8 @@ type NormalizedContentItem =
   | ContentVideo
   | ContentTool
   | ContentReasoning
-  | ContentData;
+  | ContentData
+  | ContentDocument;
 
 /**
  * Renders tool output with text as markdown, passing non-text content
@@ -240,6 +245,7 @@ const normalizeContent = (
     | ContentTool
     | ContentReasoning
     | ContentData
+    | ContentDocument
     | (
         | ContentText
         | ContentImage
@@ -248,6 +254,7 @@ const normalizeContent = (
         | ContentTool
         | ContentReasoning
         | ContentData
+        | ContentDocument
       )[]
 ): (
   | ContentText
@@ -257,6 +264,7 @@ const normalizeContent = (
   | ContentTool
   | ContentReasoning
   | ContentData
+  | ContentDocument
 )[] => {
   if (Array.isArray(output)) {
     return output;

@@ -7,7 +7,15 @@
  * since we don't have access to inspect_ai's event_tree().
  */
 
-import type { ChatMessage, Event, ModelEvent } from "../../types/api-types";
+import type {
+  ChatMessage,
+  Event,
+  ModelEvent,
+  ServerTimeline,
+  ServerTimelineBranch,
+  ServerTimelineEvent,
+  ServerTimelineSpan,
+} from "../../types/api-types";
 
 // =============================================================================
 // Span Tree Types (internal)
@@ -113,6 +121,157 @@ export interface Timeline {
   name: string;
   description: string;
   root: TimelineSpan;
+}
+
+// =============================================================================
+// Server Timeline Conversion
+// =============================================================================
+
+/**
+ * Build an event lookup map from a flat event array, keyed by UUID.
+ */
+function buildEventLookup(events: Event[]): Map<string, Event> {
+  const map = new Map<string, Event>();
+  for (const event of events) {
+    const uuid = (event as { uuid?: string | null }).uuid;
+    if (uuid) {
+      map.set(uuid, event);
+    }
+  }
+  return map;
+}
+
+/**
+ * Convert a server-provided Timeline (snake_case) to the client-side Timeline
+ * (camelCase with computed Date/token/idle properties).
+ *
+ * Server timelines store event references as UUID strings. The `events` array
+ * is used to resolve these references to full Event objects.
+ */
+export function convertServerTimeline(
+  server: ServerTimeline,
+  events: Event[]
+): Timeline {
+  const lookup = buildEventLookup(events);
+  return {
+    name: server.name,
+    description: server.description,
+    root: convertServerSpan(server.root, lookup),
+  };
+}
+
+function convertServerContentItem(
+  item: ServerTimelineEvent | ServerTimelineSpan,
+  lookup: Map<string, Event>
+): TimelineEvent | TimelineSpan | null {
+  if (item.type === "event") {
+    return convertServerEvent(item, lookup);
+  }
+  return convertServerSpan(item, lookup);
+}
+
+function convertServerEvent(
+  server: ServerTimelineEvent,
+  lookup: Map<string, Event>
+): TimelineEvent | null {
+  // server.event is a UUID string referencing an event in the events array
+  const eventRef = server.event as unknown as string;
+  const event = lookup.get(eventRef);
+  if (!event) {
+    return null;
+  }
+  const startTime = new Date((event as { timestamp?: string }).timestamp ?? 0);
+  const completed = (event as { completed?: string }).completed;
+  const endTime = completed ? new Date(completed) : startTime;
+  return {
+    type: "event",
+    event,
+    startTime,
+    endTime,
+    totalTokens: getEventTokens(event),
+    idleTime: 0,
+  };
+}
+
+function convertServerSpan(
+  server: ServerTimelineSpan,
+  lookup: Map<string, Event>
+): TimelineSpan {
+  const content = server.content
+    .map((item) => convertServerContentItem(item, lookup))
+    .filter((item): item is TimelineEvent | TimelineSpan => item !== null);
+  const branches = server.branches.map((b) => convertServerBranch(b, lookup));
+  const allNodes = [...content, ...branches];
+
+  let startTime: Date;
+  let endTime: Date;
+  if (allNodes.length > 0) {
+    startTime = allNodes.reduce(
+      (min, n) => (n.startTime < min ? n.startTime : min),
+      allNodes[0]!.startTime
+    );
+    endTime = allNodes.reduce(
+      (max, n) => (n.endTime > max ? n.endTime : max),
+      allNodes[0]!.endTime
+    );
+  } else {
+    startTime = new Date(0);
+    endTime = new Date(0);
+  }
+
+  return {
+    type: "span",
+    id: server.id,
+    name: server.name,
+    spanType: server.span_type ?? null,
+    content,
+    branches,
+    description: server.description ?? undefined,
+    utility: server.utility,
+    agentResult: server.agent_result ?? undefined,
+    outline: server.outline ?? undefined,
+    startTime,
+    endTime,
+    totalTokens: sumTokens(allNodes),
+    idleTime: computeIdleTime(allNodes, startTime, endTime),
+  };
+}
+
+function convertServerBranch(
+  server: ServerTimelineBranch,
+  lookup: Map<string, Event>
+): TimelineBranch {
+  const content = server.content
+    .map((item) => convertServerContentItem(item, lookup))
+    .filter((item): item is TimelineEvent | TimelineSpan => item !== null);
+  if (content.length === 0) {
+    return {
+      type: "branch",
+      forkedAt: server.forked_at,
+      content,
+      startTime: new Date(0),
+      endTime: new Date(0),
+      totalTokens: 0,
+      idleTime: 0,
+    };
+  }
+  const startTime = content.reduce(
+    (min, n) => (n.startTime < min ? n.startTime : min),
+    content[0]!.startTime
+  );
+  const endTime = content.reduce(
+    (max, n) => (n.endTime > max ? n.endTime : max),
+    content[0]!.endTime
+  );
+  return {
+    type: "branch",
+    forkedAt: server.forked_at,
+    content,
+    startTime,
+    endTime,
+    totalTokens: sumTokens(content),
+    idleTime: computeIdleTime(content, startTime, endTime),
+  };
 }
 
 // =============================================================================

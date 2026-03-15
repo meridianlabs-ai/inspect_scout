@@ -313,6 +313,7 @@ export const TranscriptBody: FC<TranscriptBodyProps> = ({
         id="transcript-events-list"
         collapsed={eventsCollapsed}
         onMarkerNavigate={handleMarkerNavigate}
+        timelines={transcript.timelines}
         headroomHidden={headroomHidden}
         onHeadroomResetAnchor={onHeadroomResetAnchor}
       />

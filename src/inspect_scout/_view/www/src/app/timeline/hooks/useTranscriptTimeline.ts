@@ -12,10 +12,11 @@ import { useMemo } from "react";
 
 import {
   buildTimeline,
+  convertServerTimeline,
   type Timeline,
   type TimelineSpan,
 } from "../../../components/transcript/timeline";
-import type { Event } from "../../../types/api-types";
+import type { Event, ServerTimeline } from "../../../types/api-types";
 import type { MinimapSelection } from "../components/TimelineMinimap";
 import {
   collectRawEvents,
@@ -73,13 +74,20 @@ interface TranscriptTimelineResult {
 export function useTranscriptTimeline(
   events: Event[],
   markerConfig: MarkerConfig = defaultMarkerConfig,
-  timelineOptions?: TimelineOptions
+  timelineOptions?: TimelineOptions,
+  serverTimelines?: ServerTimeline[]
 ): TranscriptTimelineResult {
   const includeUtility = timelineOptions?.includeUtility ?? false;
   const builtTimeline = useMemo(() => buildTimeline(events), [events]);
-  const timelines = [builtTimeline];
+  const convertedTimelines = useMemo(
+    () =>
+      serverTimelines && serverTimelines.length > 0
+        ? serverTimelines.map((tl) => convertServerTimeline(tl, events))
+        : null,
+    [serverTimelines, events]
+  );
+  const timelines = convertedTimelines ?? [builtTimeline];
 
-  // Simulate multiple timelines (temporary — replace when real ones arrive)
   const {
     active: timeline,
     activeIndex: activeTimelineIndex,

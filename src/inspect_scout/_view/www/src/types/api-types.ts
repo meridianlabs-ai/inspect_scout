@@ -80,6 +80,12 @@ export type ContentText = components["schemas"]["ContentText"];
 export type ContentToolUse = components["schemas"]["ContentToolUse"];
 export type ContentVideo = components["schemas"]["ContentVideo"];
 
+// Timeline types (server-provided, snake_case)
+export type ServerTimeline = components["schemas"]["Timeline"];
+export type ServerTimelineSpan = components["schemas"]["TimelineSpan"];
+export type ServerTimelineEvent = components["schemas"]["TimelineEvent"];
+export type ServerTimelineBranch = components["schemas"]["TimelineBranch"];
+
 export type Score = components["schemas"]["Score"];
 
 // Validation types

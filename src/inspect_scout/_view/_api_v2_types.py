@@ -4,6 +4,7 @@ from typing import Any, Literal, TypeAlias
 from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
+from inspect_ai.log import EventsData
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -14,6 +15,7 @@ from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error
+from .._scanner.types import ScannerInput, ScannerInputNames
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -261,6 +263,19 @@ class ScannersResponse:
     """Response body for GET /scanners endpoint."""
 
     items: list[ScannerInfo]
+
+
+class ScannerInputResponse(BaseModel):
+    """Response body for GET /scans/{dir}/{scan}/scanners/{scanner}/input/{uuid}.
+
+    Used only for OpenAPI schema generation — the endpoint returns a
+    pre-serialized JSON string via ``Response`` to avoid parsing/re-encoding
+    the raw parquet payloads.
+    """
+
+    input_type: ScannerInputNames
+    input: ScannerInput
+    input_data: EventsData | None = None
 
 
 class MessagesEventsResponse(BaseModel):

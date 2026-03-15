@@ -4,16 +4,17 @@ import { FC } from "react";
 import { MetaDataGrid } from "../../../components/content/MetaDataGrid";
 import { MarkdownReference } from "../../../components/MarkdownDivWithReferences";
 import { NoContentsPanel } from "../../../components/NoContentsPanel";
+import { ScannerInput } from "../../../types/api-types";
 import { Explanation } from "../../components/Explanation";
 import { ValidationResult } from "../../components/ValidationResult";
 import { Value } from "../../components/Value";
-import { ScanResultData, ScanResultInputData } from "../../types";
+import { ScanResultData } from "../../types";
 import { useMarkdownRefs } from "../../utils/refs";
 
 import styles from "./ResultSidebar.module.css";
 
 interface ResultSidebarProps {
-  inputData?: ScanResultInputData;
+  inputData?: ScannerInput;
   resultData?: ScanResultData;
 }
 

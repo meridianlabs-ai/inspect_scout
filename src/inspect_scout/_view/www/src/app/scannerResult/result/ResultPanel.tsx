@@ -1,7 +1,8 @@
 import clsx from "clsx";
 import { FC } from "react";
 
-import { ScanResultData, ScanResultInputData } from "../../types";
+import { ScannerInput } from "../../../types/api-types";
+import { ScanResultData } from "../../types";
 
 import { ResultBody } from "./ResultBody";
 import styles from "./ResultPanel.module.css";
@@ -9,7 +10,7 @@ import { ResultSidebar } from "./ResultSidebar";
 
 interface ResultPanelProps {
   resultData: ScanResultData;
-  inputData: ScanResultInputData | undefined;
+  inputData: ScannerInput | undefined;
   transcriptDir: string;
   hasTranscript: boolean;
 }

@@ -2,18 +2,22 @@
 
 import asyncio
 import io
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+import zipfile
 from typing import Any, Iterable
 
+import anyio
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
-from fastapi import APIRouter, HTTPException, Path, Response
+from fastapi import APIRouter, HTTPException, Path, Request, Response
 from fastapi.responses import StreamingResponse
+from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
     HTTP_404_NOT_FOUND,
@@ -32,6 +36,7 @@ from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from ._api_v2_types import (
     ActiveScansResponse,
     DistinctRequest,
+    ScannerInputResponse,
     ScanRow,
     ScansRequest,
     ScansResponse,
@@ -43,6 +48,31 @@ from .invalidationTopics import notify_topics
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
+
+
+def _build_scan_zip(scan_path: UPath) -> Response:
+    """Build a zip archive of all files in a scan directory."""
+    if not scan_path.exists():
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Scan not found: {scan_path}",
+        )
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for child in scan_path.iterdir():
+            if child.is_file():
+                with file(child.as_posix(), "rb") as f:
+                    zf.writestr(child.name, f.read())
+
+    scan_id = scan_path.name
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{scan_id}.zip"',
+        },
+    )
 
 
 def create_scans_router(
@@ -177,15 +207,35 @@ def create_scans_router(
         response_model=ScanStatus,
         response_class=InspectPydanticJSONResponse,
         summary="Get scan status",
-        description="Returns detailed status and metadata for a single scan.",
+        description="Returns detailed status and metadata for a single scan. "
+        "Send Accept: application/zip to download the scan directory as a zip archive.",
+        responses={
+            200: {
+                "content": {
+                    "application/zip": {
+                        "description": "Zip archive of the scan directory "
+                        "when Accept: application/zip is sent.",
+                    },
+                },
+            }
+        },
     )
     async def scan(
+        request: Request,
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
-    ) -> ScanStatus:
-        """Get detailed status for a single scan."""
+    ) -> ScanStatus | Response:
+        """Get detailed status for a single scan.
+
+        Content negotiation: returns JSON by default, or a zip archive
+        when the client sends Accept: application/zip.
+        """
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
+
+        accept = request.headers.get("accept", "")
+        if "application/zip" in accept:
+            return await anyio.to_thread.run_sync(lambda: _build_scan_zip(scan_path))
 
         try:
             recorder_status_with_df = await scan_results_df_async(
@@ -261,9 +311,10 @@ def create_scans_router(
 
     @router.get(
         "/scans/{dir}/{scan}/{scanner}/{uuid}/input",
-        summary="Get scanner input for a specific transcript",
-        description="Returns the original input text for a specific scanner result. "
-        "The input type is returned in the X-Input-Type response header.",
+        response_model=ScannerInputResponse,
+        summary="Get scanner input for a specific result",
+        description="Returns a JSON envelope with input, input_type, and input_data "
+        "(EventsData pools for condensed events, or null).",
     )
     async def scanner_input(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
@@ -271,7 +322,12 @@ def create_scans_router(
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
     ) -> Response:
-        """Retrieve original input text for a scanner result."""
+        """Retrieve scanner input as a JSON envelope.
+
+        Returns ``{"input_type": ..., "input": ..., "input_data": ...}``
+        where ``input`` and ``input_data`` are raw JSON from parquet —
+        no server-side parsing or re-encoding.
+        """
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
@@ -282,13 +338,29 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        input_value = result.get_field(scanner, "uuid", uuid, "input").as_py()
-        input_type = result.get_field(scanner, "uuid", uuid, "input_type").as_py()
+        fields = result.get_fields(
+            scanner, "uuid", uuid, ["input", "input_type", "input_data"]
+        )
+
+        # `input` and `input_data` are pre-serialized JSON strings in the parquet
+        # columns. The call to `.get_fields()` does `.as_py()` which returns a Python
+        # `str` from Arrow's `large_string`. This means that `fields["input"]` is
+        # a python `str`. They both pass straight through as raw JSON fragments
+        # — no parsing, no re-encoding, no extra copies beyond Arrow → Python str.
+        # Obviously, there's no type safety here — `response_model`` is for OpenAPI
+        # schema only.
 
         return Response(
-            content=input_value,
-            media_type="text/plain",
-            headers={"X-Input-Type": input_type or ""},
+            content=(
+                '{"input_type":'
+                + json.dumps(fields["input_type"])
+                + ',"input":'
+                + (fields["input"] or "null")
+                + ',"input_data":'
+                + (fields["input_data"] or "null")
+                + "}"
+            ),
+            media_type="application/json",
         )
 
     @router.delete(

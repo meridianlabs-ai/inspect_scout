@@ -2305,6 +2305,44 @@
           }
         ]
       },
+      "EventsData": {
+        "description": "Pooled data extracted by :func:`condense_events`.",
+        "properties": {
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChatMessageSystem"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageUser"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageTool"
+                }
+              ]
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages",
+          "calls"
+        ],
+        "title": "EventsData",
+        "type": "object"
+      },
       "GenerateConfig": {
         "description": "Model generation options.",
         "properties": {
@@ -2525,6 +2563,29 @@
             ],
             "default": null,
             "title": "Max Tool Output"
+          },
+          "modalities": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageOutput"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Modalities"
           },
           "num_choices": {
             "anyOf": [
@@ -2966,6 +3027,28 @@
             ],
             "title": "Max Tool Output"
           },
+          "modalities": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageOutput"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modalities"
+          },
           "num_choices": {
             "anyOf": [
               {
@@ -3389,6 +3472,28 @@
             ],
             "title": "Max Tool Output"
           },
+          "modalities": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageOutput"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modalities"
+          },
           "num_choices": {
             "anyOf": [
               {
@@ -3618,6 +3723,32 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImageOutput": {
+        "description": "Image output configuration.\n\nUse the `options` field to pass provider-specific options directly\nto the underlying API (e.g. OpenAI image_generation tool parameters).",
+        "properties": {
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "propertyNames": {
+                  "const": "openai"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Options"
+          }
+        },
+        "title": "ImageOutput",
         "type": "object"
       },
       "InfoEvent": {
@@ -7615,6 +7746,209 @@
         "title": "ScannerInfo",
         "type": "object"
       },
+      "ScannerInputResponse": {
+        "description": "Response body for GET /scans/{dir}/{scan}/scanners/{scanner}/input/{uuid}.\n\nUsed only for OpenAPI schema generation \u2014 the endpoint returns a\npre-serialized JSON string via ``Response`` to avoid parsing/re-encoding\nthe raw parquet payloads.",
+        "properties": {
+          "input": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transcript"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageSystem"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageUser"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageAssistant"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageTool"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChatMessageSystem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageUser"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageAssistant"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChatMessageTool"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/SampleInitEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SampleLimitEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SandboxEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StateEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StoreEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ModelEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ToolEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ApprovalEvent"
+              },
+              {
+                "$ref": "#/components/schemas/CompactionEvent"
+              },
+              {
+                "$ref": "#/components/schemas/InputEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ScoreEditEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ErrorEvent"
+              },
+              {
+                "$ref": "#/components/schemas/LoggerEvent"
+              },
+              {
+                "$ref": "#/components/schemas/InfoEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SpanBeginEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SpanEndEvent"
+              },
+              {
+                "$ref": "#/components/schemas/StepEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SubtaskEvent"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SampleInitEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SampleLimitEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SandboxEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/StateEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/StoreEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ModelEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ToolEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApprovalEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CompactionEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InputEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ScoreEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ScoreEditEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LoggerEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InfoEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SpanBeginEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SpanEndEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/StepEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SubtaskEvent"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/Timeline"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Timeline"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Input"
+          },
+          "input_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventsData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_type": {
+            "enum": [
+              "transcript",
+              "event",
+              "events",
+              "message",
+              "messages",
+              "timeline",
+              "timelines"
+            ],
+            "title": "Input Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "input_type",
+          "input"
+        ],
+        "title": "ScannerInputResponse",
+        "type": "object"
+      },
       "ScannerParam": {
         "properties": {
           "default": {
@@ -11345,7 +11679,7 @@
         ]
       },
       "get": {
-        "description": "Returns detailed status and metadata for a single scan.",
+        "description": "Returns detailed status and metadata for a single scan. Send Accept: application/zip to download the scan directory as a zip archive.",
         "operationId": "scan_scans__dir___scan__get",
         "parameters": [
           {
@@ -11378,6 +11712,9 @@
                 "schema": {
                   "$ref": "#/components/schemas/Status"
                 }
+              },
+              "application/zip": {
+                "description": "Zip archive of the scan directory when Accept: application/zip is sent."
               }
             },
             "description": "Successful Response"
@@ -11446,7 +11783,7 @@
     },
     "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
       "get": {
-        "description": "Returns the original input text for a specific scanner result. The input type is returned in the X-Input-Type response header.",
+        "description": "Returns a JSON envelope with input, input_type, and input_data (EventsData pools for condensed events, or null).",
         "operationId": "scanner_input_scans__dir___scan___scanner___uuid__input_get",
         "parameters": [
           {
@@ -11498,13 +11835,15 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ScannerInputResponse"
+                }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get scanner input for a specific transcript",
+        "summary": "Get scanner input for a specific result",
         "tags": [
           "scans"
         ]

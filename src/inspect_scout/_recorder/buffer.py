@@ -50,10 +50,11 @@ class RecorderBuffer:
         normalized = normalize_for_hashing(scan_location)
         return scan_buffer_dir / f"{mm3_hash(normalized)}"
 
-    def __init__(self, scan_location: str, spec: ScanSpec):
+    def __init__(self, scan_location: str, spec: ScanSpec, *, pool_dedup: bool = True):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
+        self._pool_dedup = pool_dedup
 
         # establish scan summary if required
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
@@ -158,7 +159,7 @@ class RecorderBuffer:
                     "scanner_params": self._spec.scanners[scanner].params,
                 },
             )
-            | result.to_df_columns()
+            | result.to_df_columns(pool_dedup=self._pool_dedup)
             | {"timestamp": datetime.now().astimezone().isoformat()}
             for result in results
         ]

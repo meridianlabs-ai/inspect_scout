@@ -16,17 +16,10 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.path import pretty_path
-from inspect_ai.event._event import Event
-from inspect_ai.log._pool import (
-    condense_model_event_calls,
-    condense_model_event_inputs,
-    resolve_model_event_calls,
-    resolve_model_event_inputs,
-)
-from inspect_ai.model import ChatMessage
+from inspect_ai.log import condense_events, expand_events
 from inspect_ai.util import trace_action, trace_message
-from pydantic import JsonValue, TypeAdapter
 from typing_extensions import override
 from upath import UPath
 
@@ -54,7 +47,7 @@ from ...types import (
 )
 from ..database import TranscriptsDB
 from ..reader import TranscriptsViewReader
-from ..schema import TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
+from ..schema import CONTENT_COLUMNS, TRANSCRIPT_SCHEMA_FIELDS, reserved_columns
 from .index import (
     _discover_index_files,
     append_index,
@@ -72,33 +65,6 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-def _parse_pools(
-    events_data_json: str,
-) -> tuple[list[ChatMessage] | None, list[JsonValue] | None]:
-    """Parse pool data JSON into typed message and call pools."""
-    events_data: dict[str, Any] = json.loads(events_data_json)
-    msg_pool = (
-        TypeAdapter(list[ChatMessage]).validate_python(events_data["messages"])
-        if "messages" in events_data
-        else None
-    )
-    call_pool = events_data.get("calls")
-    return msg_pool, call_pool
-
-
-def _resolve_events(
-    events: list[Event],
-    msg_pool: list[ChatMessage] | None,
-    call_pool: list[JsonValue] | None,
-) -> list[Event]:
-    """Resolve pool refs in events, returning events with full messages/calls."""
-    if msg_pool is not None:
-        events = resolve_model_event_inputs(events, msg_pool)
-    if call_pool is not None:
-        events = resolve_model_event_calls(events, call_pool)
-    return events
-
-
 def _resolve_events_json(
     events_json: str,
     events_data_json: str | None,
@@ -113,9 +79,7 @@ def _resolve_events_json(
     if not events_data_json:
         return events_json
 
-    msg_pool, call_pool = _parse_pools(events_data_json)
-    events = TypeAdapter(list[Event]).validate_python(json.loads(events_json))
-    events = _resolve_events(events, msg_pool, call_pool)
+    events = expand_events(events_json, events_data_json)
     return json.dumps([e.model_dump() for e in events])
 
 
@@ -288,6 +252,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._file_columns_cache: dict[str, set[str]] = {}
         self._parquet_pattern: str | None = None
         self._exclude_clause: str = ""
+        self._parquet_columns: set[str] = set()
 
     @override
     async def connect(self) -> None:
@@ -820,10 +785,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Resolve pool references back to full messages/calls
             if events_data_json:
-                msg_pool, call_pool = _parse_pools(events_data_json)
-                resolved_events = _resolve_events(
-                    transcript.events, msg_pool, call_pool
-                )
+                resolved_events = expand_events(transcript.events, events_data_json)
                 transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
@@ -1000,16 +962,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         messages_array = [msg.model_dump() for msg in transcript.messages]
 
         if pool_dedup:
-            condensed, msg_pool = condense_model_event_inputs(transcript.events, [], {})
-            condensed, c_pool = condense_model_event_calls(condensed, [], {})
-
-            events_json = json.dumps([e.model_dump() for e in condensed])
-            events_data: dict[str, Any] = {}
-            if msg_pool:
-                events_data["messages"] = [m.model_dump() for m in msg_pool]
-            if c_pool:
-                events_data["calls"] = c_pool
-            events_data_json = json.dumps(events_data) if events_data else None
+            condensed_events, events_data = condense_events(transcript.events)
+            events_json = to_json_str_safe(condensed_events)
+            events_data_json = to_json_str_safe(events_data)
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]
@@ -1090,7 +1045,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if value is None:
                 continue  # NULL values have minimal overhead
             elif isinstance(value, str):
-                if key in ("messages", "events", "events_data"):
+                if key in CONTENT_COLUMNS:
                     json_array_size += len(value)
                 else:
                     other_size += len(value)
@@ -1120,7 +1075,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         for i, name in enumerate(batch.schema.names):
             col_size = batch.column(i).nbytes
-            if name in ("messages", "events", "events_data"):
+            if name in CONTENT_COLUMNS:
                 json_array_size += col_size
             else:
                 other_size += col_size
@@ -1491,6 +1446,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._create_empty_structures()
             return
 
+        # Synthesize missing schema columns as NULL
+        self._ensure_index_schema()
+
         # Create index for fast lookups
         self._conn.execute(
             "CREATE INDEX idx_transcript_id ON transcript_index(transcript_id)"
@@ -1512,6 +1470,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._query.where or self._query.shuffle or self._query.limit
         ):
             self._apply_query_filter_to_tables()
+
+    def _ensure_index_schema(self) -> None:
+        """Add missing schema columns to transcript_index table."""
+        assert self._conn is not None
+        _ensure_index_schema(self._conn)
 
     async def _init_from_parquet(self, warn_missing_index: bool = True) -> None:
         """Initialize from parquet files (legacy/slow path).
@@ -1556,7 +1519,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._parquet_pattern = pattern
 
         # Infer exclude clause from first file
-        self._exclude_clause = self._infer_exclude_clause(file_paths[0])
+        self._exclude_clause, self._parquet_columns = self._infer_exclude_clause(
+            file_paths[0]
+        )
 
         # Create transcript_index table (id + filename only)
         if self._snapshot and self._snapshot.transcript_ids:
@@ -1628,7 +1593,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         for field in TRANSCRIPT_SCHEMA_FIELDS:
             duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
             default_value = _duckdb_default_value(field.pyarrow_type)
-            column_defs.append(f"{default_value}::{duckdb_type} AS {field.name}")
+            column_defs.append(f'{default_value}::{duckdb_type} AS "{field.name}"')
         # Add filename column (internal)
         column_defs.append("''::VARCHAR AS filename")
 
@@ -1684,7 +1649,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         index_sql = f"CREATE TABLE transcript_index AS {base_sql}"
         self._conn.execute(index_sql, params)
 
-    def _infer_exclude_clause(self, file_path: str) -> str:
+    def _infer_exclude_clause(self, file_path: str) -> tuple[str, set[str]]:
         """Infer EXCLUDE clause from a single file's schema.
 
         Reads schema from one file (fast - only reads Parquet footer metadata)
@@ -1694,7 +1659,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             file_path: Path to a Parquet file to sample.
 
         Returns:
-            EXCLUDE clause string (e.g., " EXCLUDE (messages, events)") or empty string.
+            Tuple of (EXCLUDE clause string, set of existing column names).
         """
         assert self._conn is not None
 
@@ -1702,17 +1667,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
             f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
-        exclude_columns = [
-            col
-            for col in ["messages", "events", "events_data"]
-            if col in existing_columns
-        ]
+        exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        if exclude_columns:
-            return f" EXCLUDE ({', '.join(exclude_columns)})"
-        return ""
+        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        return clause, existing_columns
 
-    def _infer_exclude_clause_full(self, pattern: str) -> str:
+    def _infer_exclude_clause_full(self, pattern: str) -> tuple[str, set[str]]:
         """Infer EXCLUDE clause by scanning all files' schemas.
 
         Slower fallback that unions schemas from all files to handle
@@ -1722,7 +1682,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             pattern: DuckDB file pattern for read_parquet.
 
         Returns:
-            EXCLUDE clause string or empty string.
+            Tuple of (EXCLUDE clause string, set of existing column names).
         """
         assert self._conn is not None
 
@@ -1730,14 +1690,27 @@ class ParquetTranscriptsDB(TranscriptsDB):
             f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
-        exclude_columns = [
-            col
-            for col in ["messages", "events", "events_data"]
-            if col in existing_columns
-        ]
+        exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        if exclude_columns:
-            return f" EXCLUDE ({', '.join(exclude_columns)})"
+        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        return clause, existing_columns
+
+    def _missing_columns_clause(self) -> str:
+        """Generate SQL for schema columns missing from parquet files.
+
+        Produces NULL-typed expressions for optional schema fields not present
+        in the parquet data, ensuring the VIEW always has a complete schema.
+        """
+        missing_exprs: list[str] = []
+        for field in TRANSCRIPT_SCHEMA_FIELDS:
+            if (
+                field.name not in self._parquet_columns
+                and field.name not in CONTENT_COLUMNS
+            ):
+                duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+                missing_exprs.append(f'NULL::{duckdb_type} AS "{field.name}"')
+        if missing_exprs:
+            return ", " + ", ".join(missing_exprs)
         return ""
 
     def _create_transcripts_view(self, pattern: str) -> None:
@@ -1752,7 +1725,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
 
         # Build VIEW SQL based on whether pre-filter was applied
-        def build_view_sql(exclude_clause: str) -> str:
+        def build_view_sql(exclude_clause: str, missing_clause: str) -> str:
             if self._snapshot or (
                 self._query
                 and (self._query.where or self._query.shuffle or self._query.limit)
@@ -1760,7 +1733,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # VIEW joins with pre-filtered index table
                 return f"""
                     CREATE VIEW transcripts AS
-                    SELECT p.*{exclude_clause}
+                    SELECT p.*{exclude_clause}{missing_clause}
                     FROM read_parquet({pattern}, union_by_name=true, filename=true) p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
@@ -1768,17 +1741,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 # No pre-filter - VIEW directly queries Parquet
                 return f"""
                     CREATE VIEW transcripts AS
-                    SELECT *{exclude_clause}
+                    SELECT *{exclude_clause}{missing_clause}
                     FROM read_parquet({pattern}, union_by_name=true, filename=true)
                 """
 
+        missing_clause = self._missing_columns_clause()
+
         # Try with exclude clause from first file (fast path)
         try:
-            self._conn.execute(build_view_sql(self._exclude_clause))
+            self._conn.execute(build_view_sql(self._exclude_clause, missing_clause))
         except duckdb.BinderException:
             # Schema differs across files - fall back to full scan
-            self._exclude_clause = self._infer_exclude_clause_full(pattern)
-            self._conn.execute(build_view_sql(self._exclude_clause))
+            self._conn.execute("DROP VIEW IF EXISTS transcripts")
+            self._exclude_clause, self._parquet_columns = (
+                self._infer_exclude_clause_full(pattern)
+            )
+            missing_clause = self._missing_columns_clause()
+            self._conn.execute(build_view_sql(self._exclude_clause, missing_clause))
 
         # migrate view for databases imported from eval_log
         migrate_view(self._conn, "transcripts")
@@ -1848,7 +1827,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         return f"index_{remainder}{INDEX_EXTENSION}"
 
     def _build_index_table(self, table: pa.Table, parquet_filename: str) -> pa.Table:
-        """Build index table from data table (excludes messages/events, adds filename).
+        """Build index table from data table (excludes large content columns, adds filename).
 
         Args:
             table: PyArrow table with full transcript data.
@@ -1859,9 +1838,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         """
         # Get columns to keep (exclude large content columns)
         columns_to_keep = [
-            name
-            for name in table.column_names
-            if name not in ("messages", "events", "events_data")
+            name for name in table.column_names if name not in CONTENT_COLUMNS
         ]
 
         # Select only metadata columns
@@ -2261,6 +2238,29 @@ def _validate_metadata_keys(metadata: dict[str, Any]) -> None:
         raise ValueError(
             f"Metadata keys conflict with reserved column names: {sorted(conflicts)}"
         )
+
+
+def _ensure_index_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Add missing schema columns to a transcript_index table.
+
+    Ensures the table has all non-content schema columns, even when loaded
+    from older index files that predate newer columns.
+
+    Args:
+        conn: DuckDB connection with a transcript_index table.
+    """
+    existing = {
+        row[0]
+        for row in conn.execute(
+            "SELECT column_name FROM (DESCRIBE transcript_index)"
+        ).fetchall()
+    }
+    for field in TRANSCRIPT_SCHEMA_FIELDS:
+        if field.name not in existing and field.name not in CONTENT_COLUMNS:
+            duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
+            conn.execute(
+                f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
+            )
 
 
 def _pyarrow_to_duckdb_type(pa_type: pa.DataType) -> str:

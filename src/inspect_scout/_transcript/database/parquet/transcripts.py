@@ -134,7 +134,7 @@ class _ParquetStreamContextManager:
 
         try:
             sql = (
-                "SELECT messages, events, events_data"
+                "SELECT messages, events, events_data, timelines"
                 " FROM read_parquet(?, union_by_name=true)"
                 " WHERE transcript_id = ?"
             )
@@ -142,10 +142,10 @@ class _ParquetStreamContextManager:
                 sql, [self._parquet_path, self._transcript_id]
             ).fetchone()
         except duckdb.BinderException:
-            # Old file missing events_data column — retry without it
+            # Old file missing events_data/timelines columns — retry without
             try:
                 sql = (
-                    "SELECT messages, events"
+                    "SELECT messages, events, events_data"
                     " FROM read_parquet(?, union_by_name=true)"
                     " WHERE transcript_id = ?"
                 )
@@ -153,17 +153,30 @@ class _ParquetStreamContextManager:
                     sql, [self._parquet_path, self._transcript_id]
                 ).fetchone()
             except duckdb.BinderException:
-                result = None
+                try:
+                    sql = (
+                        "SELECT messages, events"
+                        " FROM read_parquet(?, union_by_name=true)"
+                        " WHERE transcript_id = ?"
+                    )
+                    result = self._conn.execute(
+                        sql, [self._parquet_path, self._transcript_id]
+                    ).fetchone()
+                except duckdb.BinderException:
+                    result = None
 
         messages_json: str | None = None
         events_json: str | None = None
         events_data_json: str | None = None
+        timelines_json: str | None = None
 
         if result:
             messages_json = result[0]
             events_json = result[1]
             if len(result) > 2:
                 events_data_json = result[2]
+            if len(result) > 3:
+                timelines_json = result[3]
 
         # Resolve pool references into events JSON before streaming
         if events_json and events_data_json:
@@ -184,6 +197,14 @@ class _ParquetStreamContextManager:
                 yield events_bytes[i : i + CHUNK_SIZE]
         else:
             yield b"[]"
+
+        if timelines_json:
+            yield b', "timelines": '
+            timelines_bytes = timelines_json.encode("utf-8")
+            for i in range(0, len(timelines_bytes), CHUNK_SIZE):
+                yield timelines_bytes[i : i + CHUNK_SIZE]
+        else:
+            yield b', "timelines": []'
 
         yield b"}"
 

@@ -7940,17 +7940,6 @@
             ],
             "title": "Input Type",
             "type": "string"
-          },
-          "test_field": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Test Field"
           }
         },
         "required": [

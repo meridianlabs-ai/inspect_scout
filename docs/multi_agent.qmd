@@ -9,9 +9,22 @@ Traditionally, evaluation and scanning workflows have assumed that a single conv
 
 ![](images/event-timeline.png){.border}
 
-As you can see, multiple sub-agents are created each of which feeds context back into the main agent trajectory. In many cases multiple agents are run in parallel, and compaction will often further divide trajectories into multiple-phases. Further, the total tokens consumed by these agents can often run into the tens of millions, requiring that scanning be chunked into multiple steps.
+As you can see, multiple sub-agents are created each of which feeds context back into the main agent trajectory. In many cases multiple agents are run in parallel, and compaction will often further divide trajectories into multiple-phases. Further, the total tokens consumed by these agents can often run into the tens of millions, requiring that scanning be chunked into multiple steps. 
 
-Below we'll describe the tools available in Scout to handle multi-agent transcripts. 
+### Example: Claude Code
+
+Below we describe the tools available in Scout to handle multi-agent transcripts. Before reading on, you might find it useful to explore some real multi-agent transcripts to gain intuition about their shape and behavior. 
+
+You can import and view your own local Claude Code session transcripts as follows:
+
+```bash
+mkdir cc-sessions
+cd cc-sessions
+scout import claude_code --limit 50
+scout view
+```
+
+As you'll see when browsing the transcripts, most Claude Code sessions make use of several sub-agents (often in parallel). You might also see one or more compactions. Below, we'll describe how you can create scanners that target transcripts like these.
 
 ## Timelines
 
@@ -123,7 +136,25 @@ Note that reduction applies only within a single span when context-window segmen
 
 Single-turn helper agents with different system prompts (e.g., a bash command checker or title-generation helper) are automatically classified as utility spans and excluded from scanning. This ensures scanning focuses on substantive agent interactions rather than mechanical helpers.
 
+## Custom Scanners
+
+The examples above all use the high-level `llm_scanner()`, customizing its behavior with the `depth`, `compaction`, and `reducer` options. 
+
+You might however want to build a fully custom scanner for multi-agent transcripts---you can do this by using the lower level [Scanner Tools](scanner_tools.qmd) employed by `llm_scanner()`. These tools include:
+
+1. [Message Extraction](scanner_tools.qmd#message-extraction)---Extracting message lists for scanning from timelines.
+
+2. [Message Presentation](scanner_tools.qmd#message-presentation)---Number messages for presentation to the model and then automatically create message citations from model output. 
+
+3. [Prompt Construction](scanner_tools.qmd#prompt-construction)---Create prompts that include numbered messages and formatting  various types of answers (boolean, multi-lable, structured, etc.)
+
+4. [Answer Generation and Parsing](scanner_tools.qmd#answer-generation)---Executing LLM generations and parsing the answer into a `Result` including citations for messages.
+
+See the article on [Scanner Tools](scanner_tools.qmd) for details on using these tools in custom scanners.
+
 ## Timeline Data Model {#data-model}
+
+Typically you can rely on automatic timeline construction from transcripts as most agent frameworks and coding agents annotate their event streams with agent spans that enable automatic detection. However, you may also wish to manually construct timelines from custom data sources---this section provides details on how to do this.
 
 ### Building a Timeline
 

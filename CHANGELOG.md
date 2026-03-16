@@ -1,7 +1,8 @@
 ## Unreleased
 
 - Scanner as scorer: Forward timelines from eval sample to scanner if requested.
-- Scout view: Correctly display timelines in results view.
+- Scout View: Correctly display timelines in results view.
+- Scout View: Show dictionary-based metriecs in scanner sidebar.
 
 ## 0.4.20 (16 March 2026)
 

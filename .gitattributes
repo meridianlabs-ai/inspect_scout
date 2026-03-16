@@ -1,2 +1,1 @@
-src/inspect_scout/_view/www/dist/** filter=lfs diff=lfs merge=lfs -text
 src/inspect_scout/_view/dist/** filter=lfs diff=lfs merge=lfs -text

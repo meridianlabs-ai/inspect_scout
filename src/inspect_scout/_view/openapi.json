@@ -9850,6 +9850,9 @@
                 "$ref": "#/components/schemas/ContentVideo"
               },
               {
+                "$ref": "#/components/schemas/ContentDocument"
+              },
+              {
                 "items": {
                   "anyOf": [
                     {
@@ -9863,6 +9866,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
                     }
                   ]
                 },

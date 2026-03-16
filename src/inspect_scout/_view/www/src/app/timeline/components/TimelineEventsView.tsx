@@ -28,7 +28,7 @@ import {
 } from "../../../components/transcript/types";
 import { useProperty } from "../../../state/hooks/useProperty";
 import { useStore } from "../../../state/store";
-import type { Event } from "../../../types/api-types";
+import type { Event, ServerTimeline } from "../../../types/api-types";
 import { useScrubberProgress } from "../hooks/useScrubberPercent";
 import type { TimelineOptions } from "../hooks/useTimeline";
 import { useTimelineConfig } from "../hooks/useTimelineConfig";
@@ -73,6 +73,8 @@ interface TimelineEventsViewProps {
   timeline?: true | false | "auto";
   /** Controls which agents are included in the timeline. */
   agentConfig?: TimelineOptions;
+  /** Server-provided timelines (used when available instead of building from events). */
+  timelines?: ServerTimeline[];
   /** Headroom direction signal: true = scrolling down (hide). */
   headroomHidden?: boolean;
   /** Reset the headroom anchor before a layout shift or programmatic scroll.
@@ -120,6 +122,7 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
   markerConfig,
   timeline: timelineProp = "auto",
   agentConfig,
+  timelines: serverTimelines,
   headroomHidden,
   onHeadroomResetAnchor,
   className,
@@ -151,7 +154,12 @@ export const TimelineEventsView: FC<TimelineEventsViewProps> = ({
     activeTimelineIndex,
     setActiveTimeline,
     regionCounts,
-  } = useTranscriptTimeline(events, resolvedMarkerConfig, resolvedAgentConfig);
+  } = useTranscriptTimeline(
+    events,
+    resolvedMarkerConfig,
+    resolvedAgentConfig,
+    serverTimelines
+  );
 
   // ---------------------------------------------------------------------------
   // Scroll-resetting selection wrappers

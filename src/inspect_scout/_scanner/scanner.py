@@ -273,13 +273,19 @@ def scanner(
     timeline = normalize_timeline_filter(timeline) if timeline is not None else None
 
     # Timeline implies events (needed for UUID resolution and timeline_build fallback)
-    if timeline is not None and events is None:
-        if timeline == "all":
-            events = "all"
-        else:
-            # Timeline event types + structural events needed for tree building
+    if timeline is not None:
+        if events is None:
+            if timeline == "all":
+                events = "all"
+            else:
+                # Timeline event types + structural events needed for tree building
+                events = normalize_events_filter(
+                    list(set(timeline) | {"span_begin", "span_end"})
+                )
+        elif events != "all":
+            # Ensure span events are included (needed for tree building)
             events = normalize_events_filter(
-                list(set(timeline) | {"span_begin", "span_end"})
+                list(set(events) | {"span_begin", "span_end"})
             )
 
     def decorate(factory_fn: ScannerFactory[P, T]) -> ScannerFactory[P, T]:

@@ -1,3 +1,7 @@
+## Unreleased
+
+- Scanner as scorer: Forward timelines from eval sample to scanner if requested.
+
 ## 0.4.20 (16 March 2026)
 
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.

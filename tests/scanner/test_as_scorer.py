@@ -1,7 +1,15 @@
 from datetime import datetime
 
 from inspect_ai import Task, eval
-from inspect_ai.event import Event, ModelEvent, ToolEvent
+from inspect_ai.event import (
+    Event,
+    ModelEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    Timeline,
+    TimelineSpan,
+    ToolEvent,
+)
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
@@ -14,7 +22,7 @@ from inspect_ai.model import (
 from inspect_ai.scorer import mean
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
-from inspect_scout._scanner.scorer import _scanner_messages_and_events, as_scorer
+from inspect_scout._scanner.scorer import _scanner_content, as_scorer
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
@@ -253,6 +261,27 @@ def _make_tool_event(uuid: str) -> ToolEvent:
     )
 
 
+def _make_span_begin_event(uuid: str, span_id: str) -> SpanBeginEvent:
+    """Create a span_begin event for testing."""
+    return SpanBeginEvent(
+        event="span_begin",
+        timestamp=datetime.now(),
+        id=span_id,
+        name="test-span",
+        uuid=uuid,
+    )
+
+
+def _make_span_end_event(uuid: str, span_id: str) -> SpanEndEvent:
+    """Create a span_end event for testing."""
+    return SpanEndEvent(
+        event="span_end",
+        timestamp=datetime.now(),
+        id=span_id,
+        uuid=uuid,
+    )
+
+
 def _make_events() -> list[Event]:
     """Create a sample list of events for testing."""
     return [
@@ -260,6 +289,29 @@ def _make_events() -> list[Event]:
         _make_tool_event("tool-1"),
         _make_model_event("model-2"),
         _make_tool_event("tool-2"),
+    ]
+
+
+def _make_events_with_spans() -> list[Event]:
+    """Create events including span_begin and span_end for timeline tests."""
+    return [
+        _make_model_event("model-1"),
+        _make_span_begin_event("span-begin-1", "span-1"),
+        _make_tool_event("tool-1"),
+        _make_span_end_event("span-end-1", "span-1"),
+        _make_model_event("model-2"),
+        _make_tool_event("tool-2"),
+    ]
+
+
+def _make_timelines() -> list[Timeline]:
+    """Create a dummy timeline list for testing."""
+    return [
+        Timeline(
+            name="default",
+            description="Default timeline",
+            root=TimelineSpan(type="span", id="root", name="root", span_type="solver"),
+        )
     ]
 
 
@@ -272,8 +324,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert len(result_messages) == 6
@@ -286,8 +338,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == []
@@ -302,8 +354,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         # Should have 2 user + 2 assistant = 4 messages
@@ -319,8 +371,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         # Should have 2 assistant messages
@@ -335,8 +387,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == []
@@ -352,8 +404,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         # Should have 2 model events
@@ -366,8 +418,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == []
@@ -381,8 +433,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         # Should have 2 assistant messages and 2 tool events
@@ -397,8 +449,8 @@ class TestScannerMessagesAndEvents:
         messages = _make_messages()
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == messages
@@ -410,8 +462,8 @@ class TestScannerMessagesAndEvents:
         messages: list[ChatMessage] = []
         events: list[Event] = []
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == []
@@ -429,11 +481,90 @@ class TestScannerMessagesAndEvents:
         ]
         events = _make_events()
 
-        result_messages, result_events = _scanner_messages_and_events(
-            config, messages, events
+        result_messages, result_events, _ = _scanner_content(
+            config, messages, events, []
         )
 
         assert result_messages == []
+
+    def test_timeline_all_events_none_promotes_events_to_all(self) -> None:
+        """timeline='all' with events=None promotes events to 'all'."""
+        config = ScannerConfig(
+            content=TranscriptContent(messages=None, events=None, timeline="all")
+        )
+        events = _make_events_with_spans()
+        timelines = _make_timelines()
+
+        _, result_events, result_timelines = _scanner_content(
+            config, [], events, timelines
+        )
+
+        assert result_events == events
+        assert result_timelines == timelines
+
+    def test_timeline_list_events_none_adds_span_events(self) -> None:
+        """timeline=['model'] with events=None sets events to model + span types."""
+        config = ScannerConfig(
+            content=TranscriptContent(messages=None, events=None, timeline=["model"])
+        )
+        events = _make_events_with_spans()
+        timelines = _make_timelines()
+
+        _, result_events, result_timelines = _scanner_content(
+            config, [], events, timelines
+        )
+
+        result_types = {e.event for e in result_events}
+        assert result_types == {"model", "span_begin", "span_end"}
+        # tool events should be excluded
+        assert all(e.event != "tool" for e in result_events)
+        assert result_timelines == timelines
+
+    def test_timeline_all_explicit_events_merges_span_events(self) -> None:
+        """timeline='all' with explicit events=['model'] merges in span events."""
+        config = ScannerConfig(
+            content=TranscriptContent(messages=None, events=["model"], timeline="all")
+        )
+        events = _make_events_with_spans()
+        timelines = _make_timelines()
+
+        _, result_events, result_timelines = _scanner_content(
+            config, [], events, timelines
+        )
+
+        result_types = {e.event for e in result_events}
+        assert result_types == {"model", "span_begin", "span_end"}
+        assert result_timelines == timelines
+
+    def test_timeline_all_events_all_stays_all(self) -> None:
+        """timeline='all' with events='all' keeps events as 'all'."""
+        config = ScannerConfig(
+            content=TranscriptContent(messages=None, events="all", timeline="all")
+        )
+        events = _make_events_with_spans()
+        timelines = _make_timelines()
+
+        _, result_events, result_timelines = _scanner_content(
+            config, [], events, timelines
+        )
+
+        assert result_events == events
+        assert result_timelines == timelines
+
+    def test_timeline_none_returns_empty_timelines(self) -> None:
+        """timeline=None returns empty timelines list."""
+        config = ScannerConfig(
+            content=TranscriptContent(messages=None, events=None, timeline=None)
+        )
+        events = _make_events_with_spans()
+        timelines = _make_timelines()
+
+        _, result_events, result_timelines = _scanner_content(
+            config, [], events, timelines
+        )
+
+        assert result_events == []
+        assert result_timelines == []
 
 
 # Full pipeline tests for message/event filtering

@@ -1,8 +1,9 @@
+from copy import deepcopy
 from typing import Any, Mapping, Sequence, cast
 
 from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.registry import is_registry_object, registry_unqualified_name
-from inspect_ai.event import Event
+from inspect_ai.event import Event, Timeline
 from inspect_ai.log import transcript as sample_transcript
 from inspect_ai.model import ChatMessage
 from inspect_ai.scorer import (
@@ -54,8 +55,11 @@ def as_scorer(
         async def score(state: TaskState, target: Target) -> Score | None:
             # filter transcript messages and events
             config = config_for_scanner(scanner)
-            messages, events = _scanner_messages_and_events(
-                config, state.messages, list(sample_transcript().events)
+            messages, events, timelines = _scanner_content(
+                config,
+                state.messages,
+                list(sample_transcript().events),
+                list(sample_transcript().timelines),
             )
 
             # prepare transcript from state
@@ -71,6 +75,7 @@ def as_scorer(
                 },
                 messages=messages,
                 events=events,
+                timelines=timelines,
             )
 
             # call scanner
@@ -137,9 +142,12 @@ def _metadata_from_result(result: Result) -> dict[str, Any] | None:
         return None
 
 
-def _scanner_messages_and_events(
-    config: ScannerConfig, messages: list[ChatMessage], events: list[Event]
-) -> tuple[list[ChatMessage], list[Event]]:
+def _scanner_content(
+    config: ScannerConfig,
+    messages: list[ChatMessage],
+    events: list[Event],
+    timelines: list[Timeline],
+) -> tuple[list[ChatMessage], list[Event], list[Timeline]]:
     if config.content.messages == "all":
         scanner_messages = list(messages)
     elif isinstance(config.content.messages, list):
@@ -151,6 +159,25 @@ def _scanner_messages_and_events(
             f"Unexpected type for messages: {type(config.content.messages)}"
         )
 
+    if config.content.timeline is not None:
+        scanner_timelines = timelines
+
+        # ensure we have the events we need
+        config = deepcopy(config)
+        timeline = config.content.timeline
+        if config.content.events is None:
+            if timeline == "all" or timeline is True:
+                config.content.events = "all"
+            elif isinstance(timeline, list):
+                config.content.events = list(set(timeline) | {"span_begin", "span_end"})
+        elif config.content.events != "all":
+            config.content.events = list(
+                set(config.content.events) | {"span_begin", "span_end"}
+            )
+
+    else:
+        scanner_timelines = []
+
     if config.content.events == "all":
         scanner_events = list(events)
     elif isinstance(config.content.events, list):
@@ -160,4 +187,4 @@ def _scanner_messages_and_events(
     else:
         raise TypeError(f"Unexpected type for events: {type(config.content.events)}")
 
-    return scanner_messages, scanner_events
+    return scanner_messages, scanner_events, scanner_timelines

@@ -260,8 +260,12 @@ def test_scanner_timeline_with_explicit_events() -> None:
     instance: Any = test_scanner()
     config = registry_info(instance).metadata[SCANNER_CONFIG]
     assert config.content.timeline == "all"
-    # Explicit events are preserved (implication only fires when events is None)
-    assert config.content.events == ["model"]
+    # Explicit events are preserved, but span events are added for tree building
+    events = config.content.events
+    assert isinstance(events, list)
+    assert "model" in events
+    assert "span_begin" in events
+    assert "span_end" in events
 
 
 def test_multiple_scanners_different_names() -> None:

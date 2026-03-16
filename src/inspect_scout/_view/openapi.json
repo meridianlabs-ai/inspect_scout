@@ -7940,6 +7940,17 @@
             ],
             "title": "Input Type",
             "type": "string"
+          },
+          "test_field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Field"
           }
         },
         "required": [
@@ -9850,9 +9861,6 @@
                 "$ref": "#/components/schemas/ContentVideo"
               },
               {
-                "$ref": "#/components/schemas/ContentDocument"
-              },
-              {
                 "items": {
                   "anyOf": [
                     {
@@ -9866,9 +9874,6 @@
                     },
                     {
                       "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
                     }
                   ]
                 },

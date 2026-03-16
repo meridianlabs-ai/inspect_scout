@@ -434,11 +434,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
-  <li><a href="#presenting-messages" id="toc-presenting-messages" class="nav-link" data-scroll-target="#presenting-messages">Presenting Messages</a>
+  <li><a href="#message-presentation" id="toc-message-presentation" class="nav-link" data-scroll-target="#message-presentation">Message Presentation</a>
   <ul class="collapse">
   <li><a href="#preprocessing" id="toc-preprocessing" class="nav-link" data-scroll-target="#preprocessing">Preprocessing</a></li>
   </ul></li>
-  <li><a href="#building-prompts" id="toc-building-prompts" class="nav-link" data-scroll-target="#building-prompts">Building Prompts</a>
+  <li><a href="#prompt-construction" id="toc-prompt-construction" class="nav-link" data-scroll-target="#prompt-construction">Prompt Construction</a>
   <ul class="collapse">
   <li><a href="#custom-prompts" id="toc-custom-prompts" class="nav-link" data-scroll-target="#custom-prompts">Custom Prompts</a></li>
   </ul></li>
@@ -451,7 +451,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#message-extraction" id="toc-message-extraction" class="nav-link" data-scroll-target="#message-extraction">Message Extraction</a>
   <ul class="collapse">
-  <li><a href="#lower-level-alternatives" id="toc-lower-level-alternatives" class="nav-link" data-scroll-target="#lower-level-alternatives">Lower-Level Alternatives</a></li>
+  <li><a href="#segment_messages" id="toc-segment_messages" class="nav-link" data-scroll-target="#segment_messages"><span class="element-type-name ref-interlink">segment_messages()</span></a></li>
+  <li><a href="#span_messages" id="toc-span_messages" class="nav-link" data-scroll-target="#span_messages"><span class="element-type-name ref-interlink">span_messages()</span></a></li>
   </ul></li>
   <li><a href="#context-chunking" id="toc-context-chunking" class="nav-link" data-scroll-target="#context-chunking">Context Chunking</a>
   <ul class="collapse">
@@ -558,8 +559,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 </dl>
 </section>
-<section id="presenting-messages" class="level2">
-<h2 class="anchored" data-anchor-id="presenting-messages">Presenting Messages</h2>
+<section id="message-presentation" class="level2">
+<h2 class="anchored" data-anchor-id="message-presentation">Message Presentation</h2>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span> function creates a pair of functions that share a closure-captured counter and message ID map. This enables consistent message numbering across multiple calls (e.g., across segments) and lets you extract <code>[M1]</code>-style references from model output back to the original messages.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> message_numbering</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -608,8 +609,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>When no preprocessor is provided, the default behaviour is to exclude system messages only.</p>
 </section>
 </section>
-<section id="building-prompts" class="level2">
-<h2 class="anchored" data-anchor-id="building-prompts">Building Prompts</h2>
+<section id="prompt-construction" class="level2">
+<h2 class="anchored" data-anchor-id="prompt-construction">Prompt Construction</h2>
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner_prompt">scanner_prompt()</a></span> function renders the default scanner template—the same template used internally by <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span>. It combines the transcript messages, question, and answer type into a complete prompt:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> scanner_prompt</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -887,14 +888,85 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<section id="lower-level-alternatives" class="level3">
-<h3 class="anchored" data-anchor-id="lower-level-alternatives">Lower-Level Alternatives</h3>
-<p>For cases where you have a source other than a full transcript, two lower-level functions are available:</p>
-<ul>
-<li><code>segment_messages(source, messages_as_str=...)</code> — Takes a <code>list[ChatMessage]</code>, <code>list[Event]</code>, or <code>TimelineSpan</code> and yields <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#messagessegment">MessagesSegment</a></span> objects segmented by context window.</li>
-<li><code>timeline_messages(timeline, messages_as_str=...)</code> — Takes a <code>Timeline</code> or <code>TimelineSpan</code> and yields <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#timelinemessages">TimelineMessages</a></span> for each non-utility span with model events.</li>
-</ul>
-<p>These accept the same <code>model</code>, <code>context_window</code>, and <code>compaction</code> parameters as <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span>.</p>
+<section id="segment_messages" class="level3">
+<h3 class="anchored" data-anchor-id="segment_messages"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span></h3>
+<p>When you have a source other than a full <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span>—a list of messages, a list of events, or a <code>TimelineSpan</code>—use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#segment_messages">segment_messages()</a></span> to render and split them into context-window-sized segments:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> message_numbering, segment_messages</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>messages_as_str, extract_refs <span class="op">=</span> message_numbering()</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="cf">for</span> segment <span class="kw">in</span> segment_messages(</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    source,                            <span class="co"># list[ChatMessage], list[Event], or TimelineSpan</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    messages_as_str<span class="op">=</span>messages_as_str,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>):</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># segment.messages     -&gt; list[ChatMessage]</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># segment.messages_str -&gt; pre-rendered numbered string</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># segment.segment      -&gt; 0-based segment index</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When given events or a <code>TimelineSpan</code>, it delegates to <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> internally to extract and merge messages (handling compaction boundaries), then segments the result by token count.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 75%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><code>source</code></td>
+<td>A <code>list[ChatMessage]</code>, <code>list[Event]</code>, or <code>TimelineSpan</code>.</td>
+</tr>
+<tr class="even">
+<td><code>messages_as_str</code></td>
+<td>Rendering function from <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span>.</td>
+</tr>
+<tr class="odd">
+<td><code>model</code></td>
+<td>Model used for token counting and context window lookup.</td>
+</tr>
+<tr class="even">
+<td><code>context_window</code></td>
+<td>Override the model’s detected context window size (in tokens).</td>
+</tr>
+<tr class="odd">
+<td><code>compaction</code></td>
+<td>How to handle compaction boundaries (passed to <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span>).</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="span_messages" class="level3">
+<h3 class="anchored" data-anchor-id="span_messages"><span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span></h3>
+<p>The lowest-level extraction function. It takes a <code>Timeline</code>, <code>TimelineSpan</code>, or raw <code>list[Event]</code>, extracts <code>ChatMessage</code> objects from <code>ModelEvent</code>s, and handles compaction boundaries—all synchronously, without rendering or segmentation:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> span_messages</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co"># From a TimelineSpan</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>messages <span class="op">=</span> span_messages(span)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co"># From a list of events</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>messages <span class="op">=</span> span_messages(events, compaction<span class="op">=</span><span class="st">"last"</span>)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Split into per-compaction-region lists</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>regions <span class="op">=</span> span_messages(span, split_compactions<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 75%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><code>source</code></td>
+<td>A <code>Timeline</code>, <code>TimelineSpan</code>, or <code>list[Event]</code>.</td>
+</tr>
+<tr class="even">
+<td><code>compaction</code></td>
+<td>How to handle compaction boundaries: <code>"all"</code> (default) merges across boundaries; <code>"last"</code> uses only the final <code>ModelEvent</code>’s messages; an <code>int</code> keeps the last <em>N</em> compaction regions.</td>
+</tr>
+<tr class="odd">
+<td><code>split_compactions</code></td>
+<td>When <code>True</code>, returns <code>list[list[ChatMessage]]</code> with one inner list per compaction region instead of a flat merged list.</td>
+</tr>
+</tbody>
+</table>
+<p>Use <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> when you need raw messages without rendering or token-based segmentation—for example, to inspect message content directly, apply your own formatting, or count messages before deciding how to process them.</p>
 </section>
 </section>
 <section id="context-chunking" class="level2">
@@ -958,47 +1030,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="llm-based-reduction" class="level3">
 <h3 class="anchored" data-anchor-id="llm-based-reduction">LLM-Based Reduction</h3>
 <p>For cases where statistical reduction isn’t sufficient, <code>ResultReducer.llm()</code> returns a reducer that uses an LLM to synthesize segment results. It automatically formats each segment’s answer, value, and explanation into a prompt, asks the model to synthesize them, and returns a single combined result. It is the default reducer for <code>"string"</code> answer types.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ResultReducer, llm_scanner, scanner</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> synthesized_analysis():</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Summarize the agent's key decisions."</span>,</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(model<span class="op">=</span><span class="st">"openai/gpt-5"</span>),</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> ResultReducer, llm_scanner, scanner</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> synthesized_analysis():</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Summarize the agent's key decisions."</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(model<span class="op">=</span><span class="st">"openai/gpt-5"</span>),</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You can pass a custom <code>prompt</code> to guide how the model combines segment results. The per-segment answers, values, and explanations are automatically appended after your prompt:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> security_summary():</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Identify any security concerns in the agent's actions."</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>            prompt<span class="op">=</span>(</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">"You are reviewing security findings from different "</span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">"segments of a long agent conversation. Prioritize the "</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">"most severe issues, deduplicate overlapping findings, "</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"and produce a concise summary ordered by severity."</span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>            ),</span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>        ),</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> security_summary():</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Identify any security concerns in the agent's actions."</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"string"</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>ResultReducer.llm(</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>            prompt<span class="op">=</span>(</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>                <span class="st">"You are reviewing security findings from different "</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                <span class="st">"segments of a long agent conversation. Prioritize the "</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">"most severe issues, deduplicate overlapping findings, "</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"and produce a concise summary ordered by severity."</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>            ),</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>        ),</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="custom-reducers" class="level3">
 <h3 class="anchored" data-anchor-id="custom-reducers">Custom Reducers</h3>
 <p>You can also write a custom reducer — any async function with the signature <code>(list[Result]) -&gt; Result</code>. Each <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#result">Result</a></span> in the list has <code>.value</code>, <code>.answer</code>, <code>.explanation</code>, and <code>.references</code> from its segment:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Result, llm_scanner, scanner</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> worst_score(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result:</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Keep the result with the lowest numeric value."""</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">min</span>(results, key<span class="op">=</span><span class="kw">lambda</span> r: r.value)</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> strictest_scan():</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Rate the quality of the agent's output (1-10)."</span>,</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"numeric"</span>,</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>worst_score,</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> inspect_scout <span class="im">import</span> Result, llm_scanner, scanner</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> worst_score(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result:</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Keep the result with the lowest numeric value."""</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">min</span>(results, key<span class="op">=</span><span class="kw">lambda</span> r: r.value)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>()</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> strictest_scan():</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> llm_scanner(</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        question<span class="op">=</span><span class="st">"Rate the quality of the agent's output (1-10)."</span>,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>        answer<span class="op">=</span><span class="st">"numeric"</span>,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>        reducer<span class="op">=</span>worst_score,</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that result reduction applies only to context-window segments within a single source. When scanning timelines with multiple spans, each span produces its own result independently — these are collected into a <code>ResultSet</code> without reduction.</p>
 
 

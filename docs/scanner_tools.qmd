@@ -3,14 +3,6 @@ title: "Scanner Tools"
 code-annotations: select
 ---
 
-::: {.callout-note}
-The scanner tools described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 ## Overview
 
 The [LLM Scanner](llm_scanner.qmd) provides a high-level, batteries-included interface for building LLM-based scanners. Under the hood, it is composed of several lower-level tools: message numbering, prompt construction, answer generation, message extraction, and result reduction. You can use these tools directly when you need more control.

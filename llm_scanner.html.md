@@ -423,16 +423,6 @@ Dynamic questions are useful when:
 
 ## Segmentation
 
-> [!NOTE]
->
-> The transcript segmentation features described below are available
-> only in the development version of Inspect Scout. Install the
-> development version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ### Context Window
 
 When a transcript’s message history exceeds the scanning model’s context

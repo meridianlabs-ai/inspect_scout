@@ -1,16 +1,6 @@
 # Multi Agent
 
 
-> [!NOTE]
->
-> The multi agent scanning features described below are available only
-> in the development version of Inspect Scout. Install the development
-> version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ## Overview
 
 Traditionally, evaluation and scanning workflows have assumed that a

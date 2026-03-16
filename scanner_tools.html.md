@@ -1,16 +1,6 @@
 # Scanner Tools
 
 
-> [!NOTE]
->
-> The scanner tools described below are available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 ## Overview
 
 The [LLM Scanner](llm_scanner.qmd) provides a high-level,

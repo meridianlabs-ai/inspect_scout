@@ -187,16 +187,6 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
 ## W&B Weave
 
-> [!NOTE]
->
-> The W&B Weave import source described below is available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
-
 [W&B Weave](https://wandb.ai/site/weave) is Weights & Biases’ tracing
 and evaluation framework for LLM applications. Scout can import
 transcripts from Weave traces, supporting:
@@ -254,16 +244,6 @@ await db.insert(weave(
 > Settings](https://wandb.ai/settings).
 
 ## Claude Code
-
-> [!NOTE]
->
-> The Claude Code transcript source described below is available only in
-> the development version of Inspect Scout. Install the development
-> version from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) is
 Anthropic’s agentic coding tool. Scout can import transcripts directly
@@ -528,16 +508,6 @@ index is updated). While building an index is not required, it is highly
 reccommend if you want optimal query performance.
 
 ## CLI Import
-
-> [!NOTE]
->
-> The `scout import` command described below is available only in the
-> development version of Inspect Scout. Install the development version
-> from GitHub with:
->
-> ``` python
-> pip install git+https://github.com/meridianlabs-ai/inspect_scout
-> ```
 
 The `scout import` command provides a CLI alternative to the Python API
 for importing transcripts from any registered source. For example:

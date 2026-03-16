@@ -598,6 +598,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string (JSON)</td>
 <td>Optional. List of Timeline views over the transcript.</td>
 </tr>
+<tr class="odd">
+<td><code>events_data</code></td>
+<td>string (JSON)</td>
+<td>Optional. Auxiliary event data: deduplicated message/call pools referenced by ModelEvent refs.</td>
+</tr>
 </tbody>
 </table>
 <p>Field types marked with (JSON) are stored in the database as serialized JSON strings and then converted to richer types when accessed via the <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript">Transcript</a></span> interface.</p>

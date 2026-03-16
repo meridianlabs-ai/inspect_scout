@@ -276,6 +276,7 @@ class ScannerInputResponse(BaseModel):
     input_type: ScannerInputNames
     input: ScannerInput
     input_data: EventsData | None = None
+    test_field: str | None = None
 
 
 class MessagesEventsResponse(BaseModel):

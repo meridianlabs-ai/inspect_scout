@@ -27,7 +27,7 @@ from .._display._display import display
 from ._api_v2 import v2_api_app
 
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
-_DIST_DIR = Path(__file__).parent / "www" / "dist"
+_DIST_DIR = Path(__file__).parent / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
 
 
@@ -186,12 +186,12 @@ def _resolve_dist_directory() -> Path:
 
         # Enter test state — discard LFS content, leave pointer stubs
         git lfs uninstall
-        GIT_LFS_SKIP_SMUDGE=1 git rm --cached -r src/inspect_scout/_view/www/dist
+        GIT_LFS_SKIP_SMUDGE=1 git rm --cached -r src/inspect_scout/_view/dist
         GIT_LFS_SKIP_SMUDGE=1 git reset --hard
         # WARNING: git reset --hard discards uncommitted changes
 
         # Verify — LFS files should be ~130-byte pointer stubs
-        head -1 src/inspect_scout/_view/www/dist/index.html
+        head -1 src/inspect_scout/_view/dist/index.html
         # Expected: "version https://git-lfs.github.com/spec/v1"
 
         # Restore
@@ -223,7 +223,7 @@ def _resolve_dist_directory() -> Path:
             f"{e}\n"
             "To fix this, either:\n"
             "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
-            "  2. Build locally: cd src/inspect_scout/_view/www && pnpm build"
+            "  2. Build locally: cd src/inspect_scout/_view/ts-mono && pnpm build"
         ) from e
     finally:
         lfs_logger.removeHandler(handler)

@@ -86,20 +86,9 @@ const ScanResultsRow: FC<{ index: number; entry: ScanResultsOutlineEntry }> = ({
         {entry.results}
       </LabeledValue>
 
-      {Object.keys(entry.metrics).map((key) => {
-        return (
-          <LabeledValue
-            key={key}
-            label={key}
-            layout="row"
-            className={clsx("text-size-smallest", styles.contents)}
-          >
-            {entry.metrics[key] !== undefined
-              ? formatPrettyDecimal(entry.metrics[key])
-              : "n/a"}
-          </LabeledValue>
-        );
-      })}
+      {Object.keys(entry.metrics).length > 0 && (
+        <MetricsDisplay metrics={entry.metrics} scannerName={entry.title} />
+      )}
 
       {!!entry.errors && (
         <LabeledValue
@@ -136,7 +125,7 @@ interface ScanResultsOutlineEntry {
   validations?: Record<string, number>;
   errors?: number;
   params?: string[];
-  metrics: Record<string, number>;
+  metrics: Record<string, Record<string, number>>;
 }
 
 const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
@@ -162,12 +151,18 @@ const toEntries = (status?: Status): ScanResultsOutlineEntry[] => {
 
     const validations = resolveValidations(summary?.validation);
 
-    const metrics =
-      summary &&
-      summary.metrics &&
-      Object.keys(summary.metrics).includes(scanner)
-        ? summary.metrics[scanner]!
-        : {};
+    const metrics: Record<string, Record<string, number>> = {};
+    if (summary?.metrics) {
+      if (Object.keys(summary.metrics).includes(scanner)) {
+        // Pattern 1: global — { scanner_name: { metric: value, ... } }
+        metrics[scanner] = summary.metrics[scanner] ?? {};
+      } else {
+        // Pattern 2: label-based — { label: { metric: value, ... }, ... }
+        for (const [key, value] of Object.entries(summary.metrics)) {
+          metrics[key] = value;
+        }
+      }
+    }
 
     entries.push({
       icon: ApplicationIcons.scorer,
@@ -217,6 +212,50 @@ const resolveValidations = (
   }
 
   return result;
+};
+
+const MetricsDisplay: FC<{
+  metrics: Record<string, Record<string, number>>;
+  scannerName: string;
+}> = ({ metrics, scannerName }) => {
+  const keys = Object.keys(metrics);
+  if (keys.length === 1 && keys[0] === scannerName) {
+    // Pattern 1: global metrics — show inner values directly
+    return (
+      <LabeledValue
+        label="Metrics"
+        layout="column"
+        className={clsx("text-size-smallest", styles.validations)}
+      >
+        <NumericResultsTable
+          results={metrics[scannerName] ?? {}}
+          formatter={(value) => formatPrettyDecimal(value)}
+        />
+      </LabeledValue>
+    );
+  }
+  // Pattern 2: label-based metrics — show each label with its values
+  return (
+    <LabeledValue
+      label="Metrics"
+      layout="column"
+      className={clsx("text-size-smallest", styles.validations)}
+    >
+      {keys.map((label) => (
+        <LabeledValue
+          key={label}
+          label={label}
+          layout="column"
+          className={clsx("text-size-smallest", styles.validations)}
+        >
+          <NumericResultsTable
+            results={metrics[label] ?? {}}
+            formatter={(value) => formatPrettyDecimal(value)}
+          />
+        </LabeledValue>
+      ))}
+    </LabeledValue>
+  );
 };
 
 const NumericResultsTable: FC<{

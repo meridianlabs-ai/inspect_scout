@@ -38,8 +38,11 @@
 }
 
 .entry:hover {
-  color: var(--bs-link-hover-color);
   cursor: pointer;
+}
+
+.entry:hover .title {
+  color: var(--bs-link-hover-color);
 }
 
 .numericResultTable {

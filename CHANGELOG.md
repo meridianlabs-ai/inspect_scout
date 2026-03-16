@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.20 (16 March 2026)
 
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
 - LLM Scanner: `AnswerMultiLabel(allow_none=True)` lets the model respond with `ANSWER: NONE` when no labels apply.

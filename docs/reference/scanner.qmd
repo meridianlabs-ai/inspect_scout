@@ -19,14 +19,6 @@ reference: "inspect_scout"
 
 ## Scanner Tools
 
-::: {.callout-note}
-The scanner tools functions described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 ### message_numbering
 ### scanner_prompt
 ### generate_answer

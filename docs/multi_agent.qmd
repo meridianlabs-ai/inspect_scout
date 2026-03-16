@@ -3,14 +3,6 @@ title: "Multi Agent"
 lightbox: true
 ---
 
-::: {.callout-note}
-The multi agent scanning features described below are available only in the development version of Inspect Scout. Install the development version from GitHub with:
-
-```python
-pip install git+https://github.com/meridianlabs-ai/inspect_scout
-```
-:::
-
 ## Overview
 
 Traditionally, evaluation and scanning workflows have assumed that a single conversation trajectory (message list) represents an agent's activity. However, modern coding agents like Claude Code and Codex CLI create many additional dimensions to consider. Consider this transcript from a Claude Code agent session:

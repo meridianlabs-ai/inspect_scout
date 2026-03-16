@@ -143,6 +143,7 @@ const InputRenderer: FC<InputRendererProps> = ({
       return (
         <TimelineEventsView
           events={inputData.input.events}
+          timelines={inputData.input.timelines}
           scrollRef={scrollRef}
           id="scan-input-events"
           initialEventId={initialEventId}

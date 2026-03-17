@@ -29,8 +29,8 @@ def main() -> None:
     app = v2_api_app()
     schema = app.openapi()
 
-    # Write to www/openapi.json
-    output_path = repo_root / "src/inspect_scout/_view/www/openapi.json"
+    # Write to _view/openapi.json (read by the TS monorepo's generate-types script)
+    output_path = repo_root / "src/inspect_scout/_view/openapi.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w") as f:

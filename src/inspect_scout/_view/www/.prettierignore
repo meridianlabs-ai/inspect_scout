@@ -1,6 +1,0 @@
-dist
-node_modules
-build
-coverage
-*.min.js
-src/types/generated.ts

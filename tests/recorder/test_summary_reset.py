@@ -3,9 +3,8 @@
 from pathlib import Path
 
 import pytest
-
 from inspect_scout._recorder.buffer import RecorderBuffer
-from inspect_scout._scanspec import ScanSpec, ScannerSpec
+from inspect_scout._scanspec import ScannerSpec, ScanSpec
 
 
 def _make_spec(scanners: list[str]) -> ScanSpec:

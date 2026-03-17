@@ -1,7 +1,7 @@
 """Tests for summary module with ValidationEntry and precision/recall metrics."""
 
 import pytest
-from inspect_scout._recorder.summary import Summary, ScannerSummary
+from inspect_scout._recorder.summary import ScannerSummary, Summary
 from inspect_scout._recorder.validation import (
     ValidationEntry,
     ValidationMetrics,

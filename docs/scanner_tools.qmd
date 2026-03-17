@@ -70,7 +70,7 @@ def environment_scanner() -> Scanner[Transcript]:
 
 5. When context-window segmentation produces multiple segments, reduce them into a single result. Here we use the `.any()` reducer which returns `True` if any segment result was `True`.
 
-## Presenting Messages
+## Message Presentation
 
 The `message_numbering()` function creates a pair of functions that share a closure-captured counter and message ID map. This enables consistent message numbering across multiple calls (e.g., across segments) and lets you extract `[M1]`-style references from model output back to the original messages.
 
@@ -112,7 +112,7 @@ messages_as_str, extract_refs = message_numbering(
 
 When no preprocessor is provided, the default behaviour is to exclude system messages only.
 
-## Building Prompts {#building-prompts}
+## Prompt Construction
 
 The `scanner_prompt()` function renders the default scanner template---the same template used internally by `llm_scanner()`. It combines the transcript messages, question, and answer type into a complete prompt:
 
@@ -304,14 +304,63 @@ async for segment in transcript_messages(
 : {tbl-colwidths=\[25,75\]}
 
 
-### Lower-Level Alternatives
+### `segment_messages()`
 
-For cases where you have a source other than a full transcript, two lower-level functions are available:
+When you have a source other than a full `Transcript`---a list of messages, a list of events, or a `TimelineSpan`---use `segment_messages()` to render and split them into context-window-sized segments:
 
--   `segment_messages(source, messages_as_str=...)` --- Takes a `list[ChatMessage]`, `list[Event]`, or `TimelineSpan` and yields `MessagesSegment` objects segmented by context window.
--   `timeline_messages(timeline, messages_as_str=...)` --- Takes a `Timeline` or `TimelineSpan` and yields `TimelineMessages` for each non-utility span with model events.
+``` python
+from inspect_scout import message_numbering, segment_messages
 
-These accept the same `model`, `context_window`, and `compaction` parameters as `transcript_messages()`.
+messages_as_str, extract_refs = message_numbering()
+
+async for segment in segment_messages(
+    source,                            # list[ChatMessage], list[Event], or TimelineSpan
+    messages_as_str=messages_as_str,
+):
+    # segment.messages     -> list[ChatMessage]
+    # segment.messages_str -> pre-rendered numbered string
+    # segment.segment      -> 0-based segment index
+    ...
+```
+
+When given events or a `TimelineSpan`, it delegates to `span_messages()` internally to extract and merge messages (handling compaction boundaries), then segments the result by token count.
+
+|  |  |
+|------------------------------------|------------------------------------|
+| `source` | A `list[ChatMessage]`, `list[Event]`, or `TimelineSpan`. |
+| `messages_as_str` | Rendering function from `message_numbering()`. |
+| `model` | Model used for token counting and context window lookup. |
+| `context_window` | Override the model's detected context window size (in tokens). |
+| `compaction` | How to handle compaction boundaries (passed to `span_messages()`). |
+
+: {tbl-colwidths=\[25,75\]}
+
+### `span_messages()`
+
+The lowest-level extraction function. It takes a `Timeline`, `TimelineSpan`, or raw `list[Event]`, extracts `ChatMessage` objects from `ModelEvent`s, and handles compaction boundaries---all synchronously, without rendering or segmentation:
+
+``` python
+from inspect_scout import span_messages
+
+# From a TimelineSpan
+messages = span_messages(span)
+
+# From a list of events
+messages = span_messages(events, compaction="last")
+
+# Split into per-compaction-region lists
+regions = span_messages(span, split_compactions=True)
+```
+
+|  |  |
+|------------------------------------|------------------------------------|
+| `source` | A `Timeline`, `TimelineSpan`, or `list[Event]`. |
+| `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final `ModelEvent`'s messages; an `int` keeps the last *N* compaction regions. |
+| `split_compactions` | When `True`, returns `list[list[ChatMessage]]` with one inner list per compaction region instead of a flat merged list. |
+
+: {tbl-colwidths=\[25,75\]}
+
+Use `span_messages()` when you need raw messages without rendering or token-based segmentation---for example, to inspect message content directly, apply your own formatting, or count messages before deciding how to process them.
 
 ## Context Chunking {#context-chunking}
 

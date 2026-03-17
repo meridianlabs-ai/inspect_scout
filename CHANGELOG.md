@@ -1,8 +1,9 @@
-## Unreleased
+## 0.4.21 (16 March 2026)
 
 - Scanner as scorer: Forward timelines from eval sample to scanner if requested.
 - Scout View: Correctly display timelines in results view.
 - Scout View: Show dictionary-based metriecs in scanner sidebar.
+- Scout View: Bundle `dist/` assets during packaging.
 
 ## 0.4.20 (16 March 2026)
 

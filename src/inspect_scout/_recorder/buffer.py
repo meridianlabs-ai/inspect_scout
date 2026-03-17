@@ -74,10 +74,11 @@ class RecorderBuffer:
         else:
             self._scan_summary = read_scan_summary(self._buffer_dir, spec)
 
-        # truncate errors
+        # truncate errors on reset, preserve on resume
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
-        with self._error_file.open("w"):
-            pass  # truncates existing file
+        if reset or not self._error_file.exists():
+            with self._error_file.open("w"):
+                pass
 
     async def record(
         self,

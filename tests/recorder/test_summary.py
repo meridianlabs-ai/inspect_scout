@@ -248,26 +248,20 @@ class TestSummaryResultsetCounting:
             model_usage={},
         )
 
-    def test_counts_only_positive_values(self) -> None:
-        """Resultset items with value=0 should not be counted as positive."""
+    @pytest.mark.parametrize(
+        "values, expected",
+        [
+            ([3, 0, 0, 1, 0], 2),
+            ([0, 0, 0], 0),
+            ([5, 3, 1], 3),
+        ],
+        ids=["mixed", "all_zero", "all_positive"],
+    )
+    def test_counts_positive_values(self, values: list[int], expected: int) -> None:
         summary = Summary(scanners=["scanner"])
-        report = self._make_resultset_report([3, 0, 0, 1, 0])
+        report = self._make_resultset_report(values)
         summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
-        assert summary.scanners["scanner"].results == 2  # only value=3 and value=1
-
-    def test_all_zero_values(self) -> None:
-        """A resultset where all items have value=0 should count 0 results."""
-        summary = Summary(scanners=["scanner"])
-        report = self._make_resultset_report([0, 0, 0])
-        summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
-        assert summary.scanners["scanner"].results == 0
-
-    def test_all_positive_values(self) -> None:
-        """A resultset where all items are positive should count all."""
-        summary = Summary(scanners=["scanner"])
-        report = self._make_resultset_report([5, 3, 1])
-        summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
-        assert summary.scanners["scanner"].results == 3
+        assert summary.scanners["scanner"].results == expected
 
     def test_accumulates_across_reports(self) -> None:
         """Multiple _report calls should accumulate correctly."""

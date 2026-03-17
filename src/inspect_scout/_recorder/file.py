@@ -104,7 +104,9 @@ class FileRecorder(ScanRecorder):
         self._write_scan_spec()
 
         # create the scan buffer
-        self._scan_buffer = RecorderBuffer(self._scan_dir.as_posix(), self._scan_spec)
+        self._scan_buffer = RecorderBuffer(
+            self._scan_dir.as_posix(), self._scan_spec, reset=True
+        )
 
     async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None:
         assert self._scan_spec

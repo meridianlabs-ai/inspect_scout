@@ -2306,7 +2306,7 @@
         ]
       },
       "EventsData": {
-        "description": "Pooled data extracted by :func:`condense_events`.",
+        "description": "Pooled data extracted by condense_events / condense_sample.",
         "properties": {
           "calls": {
             "items": {

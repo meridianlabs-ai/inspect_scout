@@ -214,6 +214,7 @@ src/inspect_scout/_version.py
 
 # Inspect logs and scans
 /logs/
+/logs-*/
 /scans/
 
 # Scout local configuration (developer-only, not checked in)

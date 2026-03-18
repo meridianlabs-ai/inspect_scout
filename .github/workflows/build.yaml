@@ -136,6 +136,28 @@ jobs:
             exit 1
           fi
 
+  submodule-on-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify submodule commit is on ts-mono main
+        run: |
+          SUBMODULE_SHA=$(git ls-tree HEAD src/inspect_scout/_view/ts-mono | awk '{print $3}')
+          echo "Submodule points to: $SUBMODULE_SHA"
+
+          git fetch https://github.com/meridianlabs-ai/ts-mono.git main
+          MAIN_SHA=$(git rev-parse FETCH_HEAD)
+          echo "ts-mono main is at: $MAIN_SHA"
+
+          if git merge-base --is-ancestor "$SUBMODULE_SHA" "$MAIN_SHA"; then
+            echo "✓ Submodule commit is on ts-mono main"
+          else
+            echo "✗ Submodule commit $SUBMODULE_SHA is not on ts-mono main."
+            echo "  Merge the submodule PR first, then update the pointer (see docs/submodule-guide.md step 6)."
+            exit 1
+          fi
+
   js-dist-validation:
     runs-on: ubuntu-latest
     steps:

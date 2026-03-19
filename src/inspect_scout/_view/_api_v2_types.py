@@ -285,6 +285,7 @@ class MessagesEventsResponse(BaseModel):
     events: list[Event]
     timelines: list[Timeline]
     attachments: dict[str, str] | None = None
+    events_data: EventsData | None = None
 
     model_config = ConfigDict(extra="allow")
 

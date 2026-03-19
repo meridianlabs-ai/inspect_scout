@@ -1,5 +1,6 @@
 """Tests for ParquetTranscriptDB implementation."""
 
+import json
 from pathlib import Path
 from typing import Any, AsyncIterator, Literal
 
@@ -1971,10 +1972,10 @@ async def _consume_messages_events(
 
 
 @pytest.mark.asyncio
-async def test_pool_dedup_read_messages_events_resolves(
+async def test_pool_dedup_read_messages_events_streams_condensed(
     test_location: Path,
 ) -> None:
-    """read_messages_events on pool-dedup file streams resolved events."""
+    """read_messages_events streams condensed events + events_data for client expansion."""
     db = ParquetTranscriptsDB(str(test_location))
     await db.connect()
     try:
@@ -1984,25 +1985,31 @@ async def test_pool_dedup_read_messages_events_resolves(
         result = await db.read_messages_events(infos[0])
         data = await _consume_messages_events(result)
 
+        # events_data present with pool content
+        assert data["events_data"] is not None
+        assert len(data["events_data"]["messages"]) > 0
+        assert len(data["events_data"]["calls"]) > 0
+
         model_events = [e for e in data["events"] if e.get("event") == "model"]
         assert len(model_events) == 3
 
-        # Inputs resolved: 1, 2, 3 messages
-        assert len(model_events[0]["input"]) == 1
-        assert len(model_events[1]["input"]) == 2
-        assert len(model_events[2]["input"]) == 3
-
-        # input_refs cleared
+        # Events are condensed — input_refs present, input empty
         for me in model_events:
-            assert me.get("input_refs") is None
+            assert me.get("input_refs") is not None
+            assert me["input"] == []
 
-        # Call messages restored
-        for i, me in enumerate(model_events):
-            assert len(me["call"]["request"]["messages"]) == i + 1
+        # Expanding via pool restores correct content
+        from inspect_ai.log import expand_events as expand_events_from_json
 
-        # Content correct
-        assert model_events[0]["input"][0]["content"] == "Hello"
-        assert model_events[2]["input"][2]["content"] == "Third turn"
+        resolved = expand_events_from_json(
+            json.dumps(data["events"]), json.dumps(data["events_data"])
+        )
+        model_resolved = [e for e in resolved if e.event == "model"]
+        assert len(model_resolved[0].input) == 1
+        assert len(model_resolved[1].input) == 2
+        assert len(model_resolved[2].input) == 3
+        assert model_resolved[0].input[0].content == "Hello"
+        assert model_resolved[2].input[2].content == "Third turn"
     finally:
         await db.disconnect()
 
@@ -2011,7 +2018,7 @@ async def test_pool_dedup_read_messages_events_resolves(
 async def test_pool_dedup_read_messages_events_content_equality(
     test_location: Path,
 ) -> None:
-    """read_messages_events on pool-dedup file matches non-dedup read_messages_events."""
+    """Expanding pool-dedup stream matches non-dedup stream content."""
     original = _transcript_with_repeated_inputs()
 
     # Insert without pools
@@ -2042,8 +2049,17 @@ async def test_pool_dedup_read_messages_events_content_equality(
     finally:
         await db_pool.disconnect()
 
+    # Expand the condensed pool stream before comparing
+    from inspect_ai.log import expand_events as expand_events_from_json
+
+    resolved = expand_events_from_json(
+        json.dumps(data_pool["events"]), json.dumps(data_pool["events_data"])
+    )
+    events_pool = [
+        json.loads(e.model_dump_json()) for e in resolved if e.event == "model"
+    ]
+
     events_no = [e for e in data_no["events"] if e.get("event") == "model"]
-    events_pool = [e for e in data_pool["events"] if e.get("event") == "model"]
 
     for e_n, e_p in zip(events_no, events_pool, strict=True):
         assert e_n["input"] == e_p["input"]

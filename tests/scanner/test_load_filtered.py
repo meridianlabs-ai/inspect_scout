@@ -849,10 +849,10 @@ async def test_s3_eval_assistant_tool_filter() -> None:
 
 
 @pytest.mark.asyncio
-async def test_v3_pool_resolution() -> None:
-    """v3 eval files with message/call pools are resolved correctly."""
+async def test_pool_resolution() -> None:
+    """Eval files with message/call pools are resolved correctly."""
     sample_data = {
-        "id": "test-v3",
+        "id": "test-pool",
         "target": "expected",
         "messages": [
             {"id": "m1", "role": "user", "content": "Hello"},
@@ -883,10 +883,10 @@ async def test_v3_pool_resolution() -> None:
     result = await load_filtered_transcript(
         create_json_stream(sample_data),
         TranscriptInfo(
-            transcript_id="test-v3",
+            transcript_id="test-pool",
             source_type="test",
-            source_id="source-v3",
-            source_uri="/test-v3.json",
+            source_id="source-pool",
+            source_uri="/test-pool.json",
             metadata={},
         ),
         "all",
@@ -949,12 +949,12 @@ async def test_v2_backwards_compatible() -> None:
 
 
 @pytest.mark.asyncio
-async def test_v3_pool_resolution_json5_fallback() -> None:
-    """v3 pool resolution works through the json5 fallback path."""
+async def test_pool_resolution_json5_fallback() -> None:
+    """Pool resolution works through the json5 fallback path."""
     # Use NaN in metadata to trigger json5 fallback
     sample_json = json.dumps(
         {
-            "id": "test-v3-j5",
+            "id": "test-pool-j5",
             "target": "expected",
             "messages": [],
             "scores": {},
@@ -983,7 +983,7 @@ async def test_v3_pool_resolution_json5_fallback() -> None:
     result = await load_filtered_transcript(
         io.BytesIO(sample_json.encode()),
         TranscriptInfo(
-            transcript_id="test-v3-j5",
+            transcript_id="test-pool-j5",
             source_type="test",
             source_id="s",
             source_uri="/test.json",
@@ -999,10 +999,10 @@ async def test_v3_pool_resolution_json5_fallback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_v3_call_pool_resolution() -> None:
-    """v3 call_pool refs are resolved through the full streaming pipeline."""
+async def test_call_pool_resolution() -> None:
+    """call_pool refs are resolved through the full streaming pipeline."""
     sample_data = {
-        "id": "test-v3-call",
+        "id": "test-pool-call",
         "target": "expected",
         "messages": [],
         "scores": {},
@@ -1035,10 +1035,10 @@ async def test_v3_call_pool_resolution() -> None:
     result = await load_filtered_transcript(
         create_json_stream(sample_data),
         TranscriptInfo(
-            transcript_id="test-v3-call",
+            transcript_id="test-pool-call",
             source_type="test",
-            source_id="source-v3-call",
-            source_uri="/test-v3-call.json",
+            source_id="source-pool-call",
+            source_uri="/test-pool-call.json",
             metadata={},
         ),
         "all",

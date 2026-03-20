@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent
+from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
 from inspect_scout._transcript.types import EventFilter, MessageFilter
@@ -845,3 +846,208 @@ async def test_s3_eval_assistant_tool_filter() -> None:
     assert role_counts["assistant"] == 40
     assert role_counts["tool"] == 38
     assert not result.events
+
+
+@pytest.mark.asyncio
+async def test_pool_resolution() -> None:
+    """Eval files with message/call pools are resolved correctly."""
+    sample_data = {
+        "id": "test-pool",
+        "target": "expected",
+        "messages": [
+            {"id": "m1", "role": "user", "content": "Hello"},
+        ],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "input_refs": [[0, 2]],
+                "output": {"model": "test-model", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+        "message_pool": [
+            {"role": "system", "content": "You are helpful"},
+            {"role": "user", "content": "Solve this"},
+        ],
+        "call_pool": [],
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample_data),
+        TranscriptInfo(
+            transcript_id="test-pool",
+            source_type="test",
+            source_id="source-pool",
+            source_uri="/test-pool.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    # Verify pool was resolved: event should have input populated
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert len(model_event.input) == 2
+    assert model_event.input[0].role == "system"
+    assert model_event.input[1].content == "Solve this"
+
+
+@pytest.mark.asyncio
+async def test_v2_backwards_compatible() -> None:
+    """v2 files without pools still work correctly."""
+    sample_data = {
+        "id": "test-v2",
+        "target": "expected",
+        "messages": [
+            {"id": "m1", "role": "user", "content": "Hello"},
+        ],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [
+                    {"role": "user", "content": "Inline input"},
+                ],
+                "output": {"model": "test-model", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample_data),
+        TranscriptInfo(
+            transcript_id="test-v2",
+            source_type="test",
+            source_id="source-v2",
+            source_uri="/test-v2.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert len(model_event.input) == 1
+    assert model_event.input[0].content == "Inline input"
+
+
+@pytest.mark.asyncio
+async def test_pool_resolution_json5_fallback() -> None:
+    """Pool resolution works through the json5 fallback path."""
+    # Use NaN in metadata to trigger json5 fallback
+    sample_json = json.dumps(
+        {
+            "id": "test-pool-j5",
+            "target": "expected",
+            "messages": [],
+            "scores": {},
+            "metadata": {"nan_value": 0.0},
+            "events": [
+                {
+                    "span_id": "s1",
+                    "timestamp": "2022-01-01T00:00:00+00:00",
+                    "event": "model",
+                    "model": "test-model",
+                    "input": [],
+                    "input_refs": [[0, 1]],
+                    "output": {"model": "test-model", "choices": []},
+                    "tools": [],
+                    "tool_choice": "auto",
+                    "config": {},
+                },
+            ],
+            "attachments": {},
+            "message_pool": [
+                {"id": "p1", "role": "user", "content": "From pool"},
+            ],
+            "call_pool": [],
+        }
+    ).replace('"nan_value": 0.0', '"nan_value": NaN')
+    result = await load_filtered_transcript(
+        io.BytesIO(sample_json.encode()),
+        TranscriptInfo(
+            transcript_id="test-pool-j5",
+            source_type="test",
+            source_id="s",
+            source_uri="/test.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert len(model_event.input) == 1
+    assert model_event.input[0].content == "From pool"
+
+
+@pytest.mark.asyncio
+async def test_call_pool_resolution() -> None:
+    """call_pool refs are resolved through the full streaming pipeline."""
+    sample_data = {
+        "id": "test-pool-call",
+        "target": "expected",
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [{"role": "user", "content": "hi"}],
+                "output": {"model": "test-model", "choices": []},
+                "call": {
+                    "request": {"model": "test-model"},
+                    "response": {},
+                    "call_refs": [[0, 1]],
+                    "call_key": "messages",
+                },
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+        "message_pool": [],
+        "call_pool": [
+            {"role": "user", "content": "pooled call msg"},
+        ],
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample_data),
+        TranscriptInfo(
+            transcript_id="test-pool-call",
+            source_type="test",
+            source_id="source-pool-call",
+            source_uri="/test-pool-call.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert model_event.call is not None
+    assert model_event.call.request["messages"] == [
+        {"role": "user", "content": "pooled call msg"}
+    ]

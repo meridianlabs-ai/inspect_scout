@@ -65,24 +65,6 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
-def _resolve_events_json(
-    events_json: str,
-    events_data_json: str | None,
-) -> str:
-    """Resolve pool refs in events JSON, returning re-serialized JSON string.
-
-    The JSON→Pydantic→JSON round-trip here is tortured: we deserialize to models
-    only because the resolve functions need typed Events, then immediately
-    re-serialize. See #334 for a broader discussion of unnecessary JSON
-    round-trips in the parquet read path.
-    """
-    if not events_data_json:
-        return events_json
-
-    events = expand_events(events_json, events_data_json)
-    return json.dumps([e.model_dump() for e in events])
-
-
 class _ParquetStreamContextManager:
     """Streams messages/events JSON from parquet using its own DuckDB connection.
 
@@ -178,10 +160,6 @@ class _ParquetStreamContextManager:
             if len(result) > 3:
                 timelines_json = result[3]
 
-        # Resolve pool references into events JSON before streaming
-        if events_json and events_data_json:
-            events_json = _resolve_events_json(events_json, events_data_json)
-
         yield b'{"messages": '
         if messages_json:
             messages_bytes = messages_json.encode("utf-8")
@@ -197,6 +175,14 @@ class _ParquetStreamContextManager:
                 yield events_bytes[i : i + CHUNK_SIZE]
         else:
             yield b"[]"
+
+        yield b', "events_data": '
+        if events_data_json:
+            ed_bytes = events_data_json.encode("utf-8")
+            for i in range(0, len(ed_bytes), CHUNK_SIZE):
+                yield ed_bytes[i : i + CHUNK_SIZE]
+        else:
+            yield b"null"
 
         if timelines_json:
             yield b', "timelines": '

@@ -19,11 +19,12 @@ METADATA_PREFIX = "metadata."
 
 
 def _should_skip(
-    filter_field_value: str, filter_list: None | Literal["all"] | list[str]
+    filter_field_value: str,
+    filter_list: None | bool | Literal["all"] | list[str],
 ) -> bool:
-    if filter_list is None:
+    if filter_list is None or filter_list is False:
         return True
-    if filter_list == "all":
+    if filter_list is True or filter_list == "all":
         return False
     return filter_field_value not in filter_list
 
@@ -32,7 +33,7 @@ def _should_skip(
 class ListProcessingConfig:
     array_item_prefix: str
     filter_field: str
-    filter_list: None | Literal["all"] | list[str]
+    filter_list: None | bool | Literal["all"] | list[str]
     filter_prefix: str = field(init=False)
 
     def __post_init__(self) -> None:

@@ -282,15 +282,11 @@ def filter_list(
     items: list[TMessageOrEvent],
     filter_value: MessageFilter | EventFilter,
 ) -> list[TMessageOrEvent]:
-    return (
-        []
-        if filter_value is None
-        else (
-            items
-            if filter_value == "all"
-            else [item for item in items if _matches_filter(item, filter_value)]
-        )
-    )
+    if filter_value is None or filter_value is False:
+        return []
+    if filter_value is True or filter_value == "all":
+        return items
+    return [item for item in items if _matches_filter(item, filter_value)]
 
 
 def filter_timelines(
@@ -306,7 +302,7 @@ def filter_timelines(
     Returns:
         Filtered list of Timeline objects.
     """
-    if filter_value is None:
+    if filter_value is None or filter_value is False:
         return []
     if filter_value is True or filter_value == "all":
         return timelines

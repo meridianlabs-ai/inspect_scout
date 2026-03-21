@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Transcripts: Use `events_data` to reduce memory and storage requirements of `events`.
 - Summary: Count only positive values in resultset aggregation.
 - Summary: Reset summary state on new scan init to prevent accumulation across scans.
 - Recorder: Preserve error file on scan resume instead of truncating.

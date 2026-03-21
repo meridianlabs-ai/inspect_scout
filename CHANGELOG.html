@@ -217,8 +217,9 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#unreleased" id="toc-unreleased" class="nav-link active" data-scroll-target="#unreleased">Unreleased</a></li>
-  <li><a href="#march-2026" id="toc-march-2026" class="nav-link" data-scroll-target="#march-2026">0.4.20 (16 March 2026)</a></li>
+  <li><a href="#march-2026" id="toc-march-2026" class="nav-link active" data-scroll-target="#march-2026">0.4.22 (20 March 2026)</a></li>
+  <li><a href="#march-2026-1" id="toc-march-2026-1" class="nav-link" data-scroll-target="#march-2026-1">0.4.21 (16 March 2026)</a></li>
+  <li><a href="#march-2026-2" id="toc-march-2026-2" class="nav-link" data-scroll-target="#march-2026-2">0.4.20 (16 March 2026)</a></li>
   <li><a href="#february-2026" id="toc-february-2026" class="nav-link" data-scroll-target="#february-2026">0.4.19 (17 February 2026)</a></li>
   <li><a href="#february-2026-1" id="toc-february-2026-1" class="nav-link" data-scroll-target="#february-2026-1">0.4.18 (14 February 2026)</a></li>
   <li><a href="#february-2026-2" id="toc-february-2026-2" class="nav-link" data-scroll-target="#february-2026-2">0.4.17 (13 February 2026)</a></li>
@@ -248,16 +249,26 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="unreleased" class="level2">
-<h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
+<section id="march-2026" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026">0.4.22 (20 March 2026)</h2>
+<ul>
+<li>Transcripts: Use <code>events_data</code> to reduce memory and storage requirements of <code>events</code>.</li>
+<li>Summary: Count only positive values in resultset aggregation.</li>
+<li>Summary: Reset summary state on new scan init to prevent accumulation across scans.</li>
+<li>Recorder: Preserve error file on scan resume instead of truncating.</li>
+</ul>
+</section>
+<section id="march-2026-1" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026-1">0.4.21 (16 March 2026)</h2>
 <ul>
 <li>Scanner as scorer: Forward timelines from eval sample to scanner if requested.</li>
 <li>Scout View: Correctly display timelines in results view.</li>
 <li>Scout View: Show dictionary-based metriecs in scanner sidebar.</li>
+<li>Scout View: Bundle <code>dist/</code> assets during packaging.</li>
 </ul>
 </section>
-<section id="march-2026" class="level2">
-<h2 class="anchored" data-anchor-id="march-2026">0.4.20 (16 March 2026)</h2>
+<section id="march-2026-2" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026-2">0.4.20 (16 March 2026)</h2>
 <ul>
 <li>LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.</li>
 <li>LLM Scanner: <code>AnswerMultiLabel(allow_none=True)</code> lets the model respond with <code>ANSWER: NONE</code> when no labels apply.</li>

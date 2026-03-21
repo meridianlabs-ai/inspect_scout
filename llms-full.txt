@@ -9,8 +9,8 @@ transcripts. With Scout, you can easily:
 1.  Detect issues like misconfigured environments, refusals, and
     evaluation awareness using LLM-based or pattern-based scanners.
 2.  Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire,
-    W&B Weave, Claude Code, or custom sources via the capture and import
-    APIs.
+    MLFLow, W&B Weave, Claude Code, or custom sources via the capture
+    and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan
     results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.
@@ -5509,13 +5509,20 @@ their traces. When reconstructing model events you will also likely want
 to use the helper functions mentioned above in [Messages](#messages) for
 converting raw model API payloads to `ChatMessage`.
 
-> [!NOTE]
+> [!IMPORTANT]
 >
-> ### Not Required
+> ### events_data
 >
-> The `events` field is only important if you have scanners that will be
-> doing event analysis. Note that the default `llm_scanner()` provided
-> within Scout looks only at `messages` not `events`.
+> If you are including `events` you should also include an `events_data`
+> field to reduce the size of your transcripts. Note that model events
+> include the entire `input` so for long trajectories the storage
+> requirements are O(n²).
+>
+> Use the Inspect AI
+> [condense_events()](https://inspect.aisi.org.uk/reference/inspect_ai.log.html#condense_events)
+> function to take `events` and split them into `events` and
+> `events_data`. The events will be automatically reconstructed when
+> being scanned or viewed.
 
 ## Schema in Code
 
@@ -5866,8 +5873,8 @@ where your transcript data lives and how it is managed:
     eval log files.
 
 2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith),
-    [Logfire](#logfire), and [W&B Weave](#wb-weave): Read transcript
-    data from LLM observability platforms.
+    [Logfire](#logfire), [MLFlow](#mlflow), and [W&B Weave](#wb-weave):
+    Read transcript data from LLM observability platforms.
 
 3.  [Claude Code](#claude-code): Read transcript data from local Claude
     Code sessions.
@@ -6040,6 +6047,36 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 > Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
 > Logfire. You can create a read token from [Logfire Settings \> Read
 > Tokens](https://logfire.pydantic.dev/).
+
+## MLFlow
+
+[MLFlow](https://mlflow.org/genai/observability) is an LLM and Agent
+Observability and Evaluations platform. Scout can import traces from
+MLFlow, with filtering by experiment name and/or tracking URI.
+
+To import transcripts from MLFlow, first install the `inspect-mlflow`
+package:
+
+``` bash
+pip install inspect-mlflow
+```
+
+Then, use the `import_mlflow_traces()` function to import traces. For
+example:
+
+``` python
+from inspect_mlflow.scout import import_mlflow_traces
+from inspect_scout import transcripts_db
+
+async with transcripts_db("./my-transcripts") as db:
+    await db.insert(import_mlflow_traces(
+        experiment_name="inspect-mlflow-demo",
+        tracking_uri="http://localhost:5000",
+    ))
+```
+
+Be sure to also specify required credentials using environment variables
+or other means before conducing an import.
 
 ## W&B Weave
 
@@ -6466,7 +6503,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L90)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L90)
 
 ``` python
 def scan(
@@ -6582,7 +6619,7 @@ Deprecated arguments.
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L343)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L343)
 
 ``` python
 def scan_resume(
@@ -6613,7 +6650,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L413)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L413)
 
 ``` python
 def scan_complete(
@@ -6639,7 +6676,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Decorator for registering scan jobs.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanjob.py#L299)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanjob.py#L299)
 
 ``` python
 def scanjob(
@@ -6657,7 +6694,7 @@ Optional name for scanjob (defaults to function name).
 
 Scan job definition.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanjob.py#L57)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanjob.py#L57)
 
 ``` python
 class ScanJob
@@ -6734,7 +6771,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scan job configuration.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanjob_config.py#L11)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanjob_config.py#L11)
 
 ``` python
 class ScanJobConfig(BaseModel)
@@ -6823,7 +6860,7 @@ Scout project configuration from scout.yaml.
 Extends ScanJobConfig to represent project-level defaults. All fields
 from ScanJobConfig are available as project defaults.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_project/types.py#L8)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_project/types.py#L8)
 
 ``` python
 class ProjectConfig(ScanJobConfig)
@@ -6909,7 +6946,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scanner used by scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L22)
 
 ``` python
 class ScannerSpec(BaseModel)
@@ -6940,7 +6977,7 @@ By default scanners process all transcripts passed to `scan()`. You can
 alternately pass a list of `ScannerWork` to specify that only particular
 scanners and transcripts should be processed.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L227)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L227)
 
 ``` python
 class ScannerWork
@@ -6958,7 +6995,7 @@ Transcripts.
 
 List of transcript ids to process for a scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L139)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L139)
 
 ``` python
 class Worklist(BaseModel)
@@ -6978,7 +7015,7 @@ List of transcript ids.
 
 Scan specification (scanners, transcripts, config).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L149)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L149)
 
 ``` python
 class ScanSpec(BaseModel)
@@ -7039,7 +7076,7 @@ Validation cases to apply for scanners.
 
 Options used for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L60)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L60)
 
 ``` python
 class ScanOptions(BaseModel)
@@ -7063,7 +7100,7 @@ Shuffle order of transcripts.
 
 Git revision for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L44)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L44)
 
 ``` python
 class ScanRevision(BaseModel)
@@ -7087,7 +7124,7 @@ Revision commit.
 
 Transcripts targeted by a scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L89)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L89)
 
 ``` python
 class ScanTranscripts(BaseModel)
@@ -7119,7 +7156,7 @@ logs: the log file path containing the transcript - For other stores
 
 Field in transcript data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanspec.py#L76)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanspec.py#L76)
 
 ``` python
 class TranscriptField(TypedDict, total=False)
@@ -7148,7 +7185,7 @@ Read transcripts for scanning.
 Transcripts may be stored in a `TranscriptDB` or may be Inspect eval
 logs.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/factory.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/factory.py#L19)
 
 ``` python
 def transcripts_from(location: str | Logs) -> Transcripts
@@ -7162,7 +7199,7 @@ to Inspect eval logs.
 
 Transcript info and transcript content (messages and events).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/types.py#L211)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L211)
 
 ``` python
 class Transcript(TranscriptInfo)
@@ -7243,7 +7280,7 @@ Timeline views over the transcript.
 
 Transcript identifier, location, and metadata.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/types.py#L145)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L145)
 
 ``` python
 class TranscriptInfo(BaseModel)
@@ -7327,7 +7364,7 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts.where(c.task_set == "cybench")
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L56)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L56)
 
 ``` python
 class Transcripts(abc.ABC)
@@ -7338,7 +7375,7 @@ class Transcripts(abc.ABC)
 where  
 Filter the transcript collection by a SQL WHERE clause or `Condition`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L75)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L75)
 
 ``` python
 def where(self, condition: str | Condition) -> "Transcripts"
@@ -7350,7 +7387,7 @@ Filter condition.
 for_validation  
 Filter transcripts to only those with IDs matching validation cases.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L91)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L91)
 
 ``` python
 def for_validation(
@@ -7366,7 +7403,7 @@ ValidationSets.
 limit  
 Limit the number of transcripts processed.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L164)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L164)
 
 ``` python
 def limit(self, n: int) -> "Transcripts"
@@ -7378,7 +7415,7 @@ Limit on transcripts.
 shuffle  
 Shuffle the order of transcripts.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L177)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L177)
 
 ``` python
 def shuffle(self, seed: int | None = None) -> "Transcripts"
@@ -7393,7 +7430,7 @@ Order transcripts by column.
 Can be chained multiple times for tie-breaking. If shuffle() is also
 used, shuffle takes precedence.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L190)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L190)
 
 ``` python
 def order_by(
@@ -7410,7 +7447,7 @@ Sort direction (“ASC” or “DESC”).
 reader  
 Read the selected transcripts.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L209)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L209)
 
 ``` python
 @abc.abstractmethod
@@ -7425,7 +7462,7 @@ filename mappings)
 from_snapshot  
 Restore transcripts from a snapshot.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L220)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L220)
 
 ``` python
 @staticmethod
@@ -7439,7 +7476,7 @@ def from_snapshot(snapshot: ScanTranscripts) -> "Transcripts"
 
 Read transcripts based on a `TranscriptsQuery`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L16)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L16)
 
 ``` python
 class TranscriptsReader(abc.ABC)
@@ -7450,7 +7487,7 @@ class TranscriptsReader(abc.ABC)
 index  
 Index of `TranscriptInfo` for the collection.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L32)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L32)
 
 ``` python
 @abc.abstractmethod
@@ -7460,7 +7497,7 @@ def index(self) -> AsyncIterator[TranscriptInfo]
 read  
 Read transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/transcripts.py#L37)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/transcripts.py#L37)
 
 ``` python
 @abc.abstractmethod
@@ -7483,7 +7520,7 @@ Provides typed properties for accessing metadata fields specific to
 Inspect eval logs, while preserving the lazy JSON parsing optimization.
 Raises an error if the transcript is not from an Inspect eval log.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/sample_metadata.py#L17)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/sample_metadata.py#L17)
 
 ``` python
 class SampleMetadata
@@ -7548,7 +7585,7 @@ Score objects (answer, explanation, metadata are not available).
 \_\_init\_\_  
 Initialize SampleMetadata wrapper.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/sample_metadata.py#L34)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/sample_metadata.py#L34)
 
 ``` python
 def __init__(self, transcript: Transcript) -> None
@@ -7563,7 +7600,7 @@ A Transcript from an Inspect eval log.
 
 Read/write interface to transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/factory.py#L36)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/factory.py#L36)
 
 ``` python
 def transcripts_db(location: str) -> TranscriptsDB
@@ -7576,7 +7613,7 @@ Database location (e.g. directory or S3 bucket).
 
 Get transcript database schema in various formats.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/schema.py#L210)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/schema.py#L210)
 
 ``` python
 def transcripts_db_schema(
@@ -7593,7 +7630,7 @@ dict - “pandas”: Empty DataFrame with correct dtypes
 
 Database of transcripts with write capability.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L139)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L139)
 
 ``` python
 class TranscriptsDB(TranscriptsView)
@@ -7604,7 +7641,7 @@ class TranscriptsDB(TranscriptsView)
 connect  
 Connect to transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L23)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L23)
 
 ``` python
 @abc.abstractmethod
@@ -7614,7 +7651,7 @@ async def connect(self) -> None
 disconnect  
 Disconnect from transcripts database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L28)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L28)
 
 ``` python
 @abc.abstractmethod
@@ -7627,7 +7664,7 @@ Get transcript IDs matching query.
 Optimized method that returns only transcript IDs without loading full
 metadata.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L48)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L48)
 
 ``` python
 @abc.abstractmethod
@@ -7640,7 +7677,7 @@ Query with where/limit/shuffle/order_by criteria.
 select  
 Select transcripts matching query.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L63)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L63)
 
 ``` python
 @abc.abstractmethod
@@ -7653,7 +7690,7 @@ Query with where/limit/shuffle/order_by criteria.
 count  
 Count transcripts matching query.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L72)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L72)
 
 ``` python
 @abc.abstractmethod
@@ -7666,7 +7703,7 @@ Query with where criteria (limit/shuffle/order_by ignored).
 read  
 Read transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L84)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L84)
 
 ``` python
 @abc.abstractmethod
@@ -7699,7 +7736,7 @@ Strings within ‘messages’ and ‘events’ may contain references like
 ‘<attachment://>\<32-char-hex-id\>’ that must be resolved by looking up
 the ID in the ‘attachments’ dict.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L100)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L100)
 
 ``` python
 @abc.abstractmethod
@@ -7714,7 +7751,7 @@ Transcript to read messages/events for.
 distinct  
 Get distinct values of a column, sorted ascending.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L123)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L123)
 
 ``` python
 @abc.abstractmethod
@@ -7732,7 +7769,7 @@ Filter condition, or None for no filter.
 insert  
 Insert transcripts into database.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L142)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L142)
 
 ``` python
 @abc.abstractmethod
@@ -7769,7 +7806,7 @@ This is called automatically when insert() is called with commit=True
 (the default). Only call this manually when using commit=False with
 insert() for batch operations.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/database/database.py#L164)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/database/database.py#L164)
 
 ``` python
 @abc.abstractmethod
@@ -7791,7 +7828,7 @@ Supports various predicate functions including `like()`, `not_like()`,
 `between()`, etc. Additionally supports standard python equality and
 comparison operators (e.g. `==`, `>`, etc.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L32)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L32)
 
 ``` python
 class Column
@@ -7802,7 +7839,7 @@ class Column
 in\_  
 Check if value is in a list.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L74)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L74)
 
 ``` python
 def in_(self, values: list[Any]) -> Condition
@@ -7813,7 +7850,7 @@ def in_(self, values: list[Any]) -> Condition
 not_in  
 Check if value is not in a list.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L78)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L78)
 
 ``` python
 def not_in(self, values: list[Any]) -> Condition
@@ -7824,7 +7861,7 @@ def not_in(self, values: list[Any]) -> Condition
 like  
 SQL LIKE pattern matching (case-sensitive).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L82)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L82)
 
 ``` python
 def like(self, pattern: str) -> Condition
@@ -7835,7 +7872,7 @@ def like(self, pattern: str) -> Condition
 not_like  
 SQL NOT LIKE pattern matching (case-sensitive).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L86)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L86)
 
 ``` python
 def not_like(self, pattern: str) -> Condition
@@ -7849,7 +7886,7 @@ PostgreSQL ILIKE pattern matching (case-insensitive).
 Note: For SQLite and DuckDB, this will use LIKE with LOWER() for
 case-insensitivity.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L90)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L90)
 
 ``` python
 def ilike(self, pattern: str) -> Condition
@@ -7863,7 +7900,7 @@ PostgreSQL NOT ILIKE pattern matching (case-insensitive).
 Note: For SQLite and DuckDB, this will use NOT LIKE with LOWER() for
 case-insensitivity.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L97)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L97)
 
 ``` python
 def not_ilike(self, pattern: str) -> Condition
@@ -7874,7 +7911,7 @@ def not_ilike(self, pattern: str) -> Condition
 is_null  
 Check if value is NULL.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L104)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L104)
 
 ``` python
 def is_null(self) -> Condition
@@ -7883,7 +7920,7 @@ def is_null(self) -> Condition
 is_not_null  
 Check if value is not NULL.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L108)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L108)
 
 ``` python
 def is_not_null(self) -> Condition
@@ -7892,7 +7929,7 @@ def is_not_null(self) -> Condition
 between  
 Check if value is between two values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L112)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L112)
 
 ``` python
 def between(self, low: Any, high: Any) -> Condition
@@ -7907,7 +7944,7 @@ Upper bound (inclusive). If None, raises ValueError.
 not_between  
 Check if value is not between two values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/column.py#L126)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/column.py#L126)
 
 ``` python
 def not_between(self, low: Any, high: Any) -> Condition
@@ -7923,7 +7960,7 @@ Upper bound (inclusive). If None, raises ValueError.
 
 WHERE clause condition that can be combined with others.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_query/condition.py#L42)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_query/condition.py#L42)
 
 ``` python
 class Condition(BaseModel)
@@ -7960,7 +7997,7 @@ c["column_name"]
 c["nested.json.path"]
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/columns.py#L44)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/columns.py#L44)
 
 ``` python
 class Columns
@@ -8037,7 +8074,7 @@ filter = c.model == "gpt-4"
 filter = (c.task_set == "math") & (c.epochs > 1)
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/columns.py#L161)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/columns.py#L161)
 
 ``` python
 columns = Columns()
@@ -8051,7 +8088,7 @@ Provides typed properties for standard Inspect log columns while
 preserving the ability to access custom fields through the base Metadata
 class methods.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/log.py#L16)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/log.py#L16)
 
 ``` python
 class LogColumns(Columns)
@@ -8178,7 +8215,7 @@ filter = (c.task_set == "math") & (c.epochs > 1)
 filter = c["custom_field"] > 100
 ```
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/log.py#L146)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/log.py#L146)
 
 ``` python
 log_columns = LogColumns()
@@ -8207,7 +8244,7 @@ Since `TimelineMessages` is structurally compatible with
 `MessagesSegment`, callers get a uniform interface. Those needing span
 context can isinstance-check for `TimelineMessages`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/messages.py#L157)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/messages.py#L157)
 
 ``` python
 async def transcript_messages(
@@ -8258,7 +8295,7 @@ alongside the pre-rendered text.
 To filter which spans are processed, use `filter_timeline()` before
 calling this function.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/timeline.py#L158)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/timeline.py#L158)
 
 ``` python
 async def timeline_messages(
@@ -8311,7 +8348,7 @@ When given events or a `TimelineSpan`, delegates to `span_messages()` to
 extract and merge messages (handling compaction boundaries), then
 segments the result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/messages.py#L49)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/messages.py#L49)
 
 ``` python
 async def segment_messages(
@@ -8350,7 +8387,7 @@ Extract messages from a span or event list, handling compaction.
 Filters for `ModelEvent` and `CompactionEvent`, then merges messages
 into a single list based on the `compaction` strategy.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/messages.py#L271)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/messages.py#L271)
 
 ``` python
 def span_messages(
@@ -8383,7 +8420,7 @@ many regions to keep before splitting.
 
 A segment of rendered messages that fits within a token budget.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/messages.py#L34)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/messages.py#L34)
 
 ``` python
 @dataclass(frozen=True)
@@ -8398,7 +8435,7 @@ Structurally compatible with `MessagesSegment` (shares `messages`,
 `messages_str`, `segment` fields) with additional span context. Can be
 used anywhere a `MessagesSegment` is expected via duck typing.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/timeline.py#L136)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/timeline.py#L136)
 
 ``` python
 @dataclass(frozen=True)
@@ -8419,7 +8456,7 @@ children) triggers transcript write to the database. This allows nesting
 observe contexts where the outer context sets shared parameters and
 inner contexts represent individual transcript entries.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/_observe.py#L109)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/_observe.py#L109)
 
 ``` python
 def observe(
@@ -8509,7 +8546,7 @@ Call this from within an @observe decorated function or observe()
 context to set transcript fields after execution (e.g., score, success,
 limit).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/_observe.py#L331)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/_observe.py#L331)
 
 ``` python
 def observe_update(
@@ -8577,7 +8614,7 @@ Transcript source specific metadata (merged, not replaced).
 
 Protocol for LLM capture providers.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/providers/provider.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/providers/provider.py#L22)
 
 ``` python
 @runtime_checkable
@@ -8591,7 +8628,7 @@ Install hooks/patches for capturing LLM calls.
 
 Called once per provider class. Implementations should be idempotent.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/providers/provider.py#L26)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/providers/provider.py#L26)
 
 ``` python
 def install(self, emit: ObserveEmit) -> None
@@ -8609,7 +8646,7 @@ Convert raw captured data to an Inspect Event.
 Called by the framework at observe exit for each captured item. This is
 where async conversion (using Inspect AI converters) happens.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/providers/provider.py#L39)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/providers/provider.py#L39)
 
 ``` python
 async def build_event(self, data: dict[str, Any]) -> Event
@@ -8622,7 +8659,7 @@ The dict passed to emit() during capture.
 
 Sync function to emit raw captured data. Called by provider wrappers.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_observe/providers/provider.py#L18)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_observe/providers/provider.py#L18)
 
 ``` python
 ObserveEmit = Callable[[dict[str, Any]], None]
@@ -8637,7 +8674,7 @@ ObserveEmit = Callable[[dict[str, Any]], None]
 
 Scan transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/scanner.py#L81)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scanner.py#L81)
 
 ``` python
 class Scanner(Protocol[T]):
@@ -8651,7 +8688,7 @@ Input to scan.
 
 Union of all valid scanner input types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/types.py#L12)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/types.py#L12)
 
 ``` python
 ScannerInput = Union[
@@ -8669,7 +8706,7 @@ ScannerInput = Union[
 
 Scan result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/result.py#L34)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L34)
 
 ``` python
 class Result(BaseModel)
@@ -8706,7 +8743,7 @@ result data frames).
 
 Reference to scanned content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/result.py#L18)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L18)
 
 ``` python
 class Reference(BaseModel)
@@ -8730,7 +8767,7 @@ Reference id (message or event id)
 
 Scan error (runtime error which occurred during scan).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/result.py#L66)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L66)
 
 ``` python
 class Error(BaseModel)
@@ -8757,7 +8794,7 @@ Was this error a refusal.
 
 Load transcript data.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/loader.py#L48)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/loader.py#L48)
 
 ``` python
 class Loader(Protocol[TLoaderResult]):
@@ -8786,7 +8823,7 @@ respects context window limits. Each segment is scanned independently
 with globally unique message numbering (`[M1]`, `[M2]`, …) across all
 segments.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76)
 
 ``` python
 @scanner(messages="all")
@@ -8908,7 +8945,7 @@ Messages are searched if `transcript.messages` is populated - Events are
 searched if `transcript.events` is populated - Control population via
 `@scanner(messages=..., events=...)`
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14)
 
 ``` python
 @scanner(messages="all")
@@ -8972,7 +9009,7 @@ globally, so multiple calls produce M1..M5, then M6..M10, etc.
 The returned extract_references resolves citations from ANY prior
 messages_as_str call within this numbering scope.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/extract.py#L143)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L143)
 
 ``` python
 def message_numbering(
@@ -8997,7 +9034,7 @@ want the default prompt structure but need control over generation (via
 For fully custom prompt templates, use `answer_type()` to access the
 `.prompt` and `.format` strings directly.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/generate.py#L228)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L228)
 
 ``` python
 def scanner_prompt(
@@ -9025,7 +9062,7 @@ Dispatches to the appropriate generation strategy based on the answer
 type: tool-based structured generation for :class:`AnswerStructured`,
 standard text generation with refusal retry for all other types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/generate.py#L82)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L82)
 
 ``` python
 async def generate_answer(
@@ -9076,7 +9113,7 @@ Parse a model output into a Result using the answer specification.
 Delegates to the answer type’s parsing logic. This is a pure function —
 no LLM call is made.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/generate.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L31)
 
 ``` python
 def parse_answer(
@@ -9108,7 +9145,7 @@ Each static method is an async reducer with signature
 `(list[Result]) -> Result`. The :meth:`llm` factory returns a reducer
 that uses an LLM to synthesize results.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L77)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L77)
 
 ``` python
 class ResultReducer
@@ -9119,7 +9156,7 @@ class ResultReducer
 mean  
 Arithmetic mean of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L85)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L85)
 
 ``` python
 @staticmethod
@@ -9131,7 +9168,7 @@ async def mean(results: list[Result]) -> Result
 median  
 Median of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L94)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L94)
 
 ``` python
 @staticmethod
@@ -9143,7 +9180,7 @@ async def median(results: list[Result]) -> Result
 mode  
 Mode (most common) of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L103)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L103)
 
 ``` python
 @staticmethod
@@ -9155,7 +9192,7 @@ async def mode(results: list[Result]) -> Result
 max  
 Maximum of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L112)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L112)
 
 ``` python
 @staticmethod
@@ -9167,7 +9204,7 @@ async def max(results: list[Result]) -> Result
 min  
 Minimum of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L121)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L121)
 
 ``` python
 @staticmethod
@@ -9179,7 +9216,7 @@ async def min(results: list[Result]) -> Result
 any  
 Boolean OR — True if any result is True.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L130)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L130)
 
 ``` python
 @staticmethod
@@ -9191,7 +9228,7 @@ async def any(results: list[Result]) -> Result
 union  
 Union of list values, deduplicated, preserving order.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L137)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L137)
 
 ``` python
 @staticmethod
@@ -9207,7 +9244,7 @@ Counts occurrences of each `value` across results. If there is a unique
 winner it is used; otherwise the last result’s value breaks the tie. The
 `answer` is taken from the matching result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L152)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L152)
 
 ``` python
 @staticmethod
@@ -9219,7 +9256,7 @@ async def majority(results: list[Result]) -> Result
 last  
 Return the last result with merged auxiliary fields.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L187)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L187)
 
 ``` python
 @staticmethod
@@ -9234,7 +9271,7 @@ Factory that returns an LLM-based reducer.
 The returned reducer formats all segment results into a prompt and asks
 the model to synthesize the best answer.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/_reducer.py#L197)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L197)
 
 ``` python
 @staticmethod
@@ -9254,7 +9291,7 @@ Custom synthesis prompt template. If None, uses a default template.
 
 Protocol for LLM scanner answer types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/answer.py#L66)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L66)
 
 ``` python
 @runtime_checkable
@@ -9274,7 +9311,7 @@ Return the answer format string.
 result_for_answer  
 Extract and return the result from model output.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/answer.py#L80)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L80)
 
 ``` python
 def result_for_answer(
@@ -9298,7 +9335,7 @@ Resolve an answer specification into an Answer object.
 The returned object exposes `.prompt` and `.format` properties
 containing the prompt text and format instructions for the answer type.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/answer.py#L115)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L115)
 
 ``` python
 def answer_type(
@@ -9322,7 +9359,7 @@ Pass `"boolean"`, `"numeric"`, or `"string"` for a simple answer; pass
 multi-classification; or pass :class:`AnswerStructured` for tool-based
 structured output.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/types.py#L56)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L56)
 
 ``` python
 AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
@@ -9332,7 +9369,7 @@ AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
 
 Label descriptions for LLM scanner multi-classification.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/types.py#L6)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L6)
 
 ``` python
 class AnswerMultiLabel(NamedTuple)
@@ -9354,7 +9391,7 @@ Answer with structured output.
 
 Structured answers are objects that conform to a JSON Schema.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_llm_scanner/types.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L19)
 
 ``` python
 class AnswerStructured(NamedTuple)
@@ -9397,7 +9434,7 @@ schema.
 
 Concatenate list of chat messages into a string.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/extract.py#L75)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L75)
 
 ``` python
 async def messages_as_str(
@@ -9430,7 +9467,7 @@ Message formatting options for controlling message content display.
 These options control which parts of messages are included when
 formatting messages to strings.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/extract.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L22)
 
 ``` python
 @dataclass(frozen=True)
@@ -9459,7 +9496,7 @@ content removal transformations.
 The default `MessagesPreprocessor` will exclude system messages and do
 no other transformations.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/extract.py#L40)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L40)
 
 ``` python
 @dataclass(frozen=True)
@@ -9488,7 +9525,7 @@ call.
 This is useful for scanners that need to reference the assistant message
 that initiated a tool call, rather than the tool message itself.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/extract.py#L331)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L331)
 
 ``` python
 def tool_callers(
@@ -9505,7 +9542,7 @@ The transcript containing all messages.
 
 Message types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/types.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L15)
 
 ``` python
 MessageType = Literal["system", "user", "assistant", "tool"]
@@ -9515,7 +9552,7 @@ MessageType = Literal["system", "user", "assistant", "tool"]
 
 Event types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/types.py#L46)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L46)
 
 ``` python
 EventType = Literal[
@@ -9540,7 +9577,7 @@ Content filters for transcript loading.
 Specifies which messages, events, and timeline data to include when
 loading transcript content for scanning.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_transcript/types.py#L70)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L70)
 
 ``` python
 @dataclass
@@ -9562,7 +9599,7 @@ Filter for which timeline events to include.
 
 Error indicating that the model refused a scan request.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_util/refusal.py#L7)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_util/refusal.py#L7)
 
 ``` python
 class RefusalError(RuntimeError)
@@ -9574,7 +9611,7 @@ class RefusalError(RuntimeError)
 
 Decorator for registering scanners.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/scanner.py#L230)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scanner.py#L230)
 
 ``` python
 def scanner(
@@ -9627,7 +9664,7 @@ is converted to a scorer via `as_scorer()`).
 
 Decorator for registering loaders.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/loader.py#L151)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/loader.py#L151)
 
 ``` python
 def loader(
@@ -9659,7 +9696,7 @@ Transcript content filter.
 
 Convert a `Scanner` to an Inspect `Scorer`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanner/scorer.py#L28)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scorer.py#L28)
 
 ``` python
 def as_scorer(
@@ -9702,7 +9739,7 @@ with the same name, numbered prefixes will be automatically assigned.
 Alternatively, you can pass tuples of (name,scanner) or a dict with
 explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L184)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L184)
 
 ``` python
 async def scan_async(
@@ -9814,7 +9851,7 @@ Deprecated arguments.
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L369)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L369)
 
 ``` python
 async def scan_resume_async(
@@ -9839,7 +9876,7 @@ Complete a scan.
 This function is used to indicate that a scan with errors in some
 transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scan.py#L437)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scan.py#L437)
 
 ``` python
 async def scan_complete_async(
@@ -9858,7 +9895,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanlist.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanlist.py#L19)
 
 ``` python
 async def scan_list_async(scans_location: str) -> list[Status]
@@ -9871,7 +9908,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanresults.py#L32)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanresults.py#L32)
 
 ``` python
 async def scan_status_async(scan_location: str) -> Status
@@ -9884,7 +9921,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanresults.py#L101)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanresults.py#L101)
 
 ``` python
 async def scan_results_df_async(
@@ -9916,7 +9953,7 @@ reducing memory usage by skipping large unused columns.
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/e7f73ad1be28fe9957bfe43967496a8a825b3427/src/inspect_scout/_scanresults.py#L59)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanresults.py#L59)
 
 ``` python
 async def scan_results_arrow_async(scan_location: str) -> ScanResultsArrow

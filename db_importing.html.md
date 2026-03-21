@@ -10,8 +10,8 @@ where your transcript data lives and how it is managed:
     eval log files.
 
 2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith),
-    [Logfire](#logfire), and [W&B Weave](#wb-weave): Read transcript
-    data from LLM observability platforms.
+    [Logfire](#logfire), [MLFlow](#mlflow), and [W&B Weave](#wb-weave):
+    Read transcript data from LLM observability platforms.
 
 3.  [Claude Code](#claude-code): Read transcript data from local Claude
     Code sessions.
@@ -184,6 +184,36 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 > Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
 > Logfire. You can create a read token from [Logfire Settings \> Read
 > Tokens](https://logfire.pydantic.dev/).
+
+## MLFlow
+
+[MLFlow](https://mlflow.org/genai/observability) is an LLM and Agent
+Observability and Evaluations platform. Scout can import traces from
+MLFlow, with filtering by experiment name and/or tracking URI.
+
+To import transcripts from MLFlow, first install the `inspect-mlflow`
+package:
+
+``` bash
+pip install inspect-mlflow
+```
+
+Then, use the `import_mlflow_traces()` function to import traces. For
+example:
+
+``` python
+from inspect_mlflow.scout import import_mlflow_traces
+from inspect_scout import transcripts_db
+
+async with transcripts_db("./my-transcripts") as db:
+    await db.insert(import_mlflow_traces(
+        experiment_name="inspect-mlflow-demo",
+        tracking_uri="http://localhost:5000",
+    ))
+```
+
+Be sure to also specify required credentials using environment variables
+or other means before conducing an import.
 
 ## W&B Weave
 

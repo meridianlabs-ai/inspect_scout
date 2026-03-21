@@ -686,17 +686,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>Most observability systems will have some equivalent of the above in their traces. When reconstructing model events you will also likely want to use the helper functions mentioned above in <a href="#messages">Messages</a> for converting raw model API payloads to <code>ChatMessage</code>.</p>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-important callout-titled" title="events_data">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Note</span>Not Required
+<span class="screen-reader-only">Important</span>events_data
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The <code>events</code> field is only important if you have scanners that will be doing event analysis. Note that the default <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> provided within Scout looks only at <code>messages</code> not <code>events</code>.</p>
+<p>If you are including <code>events</code> you should also include an <code>events_data</code> field to reduce the size of your transcripts. Note that model events include the entire <code>input</code> so for long trajectories the storage requirements are O(n<sup>2</sup>).</p>
+<p>Use the Inspect AI <a href="https://inspect.aisi.org.uk/reference/inspect_ai.log.html#condense_events">condense_events()</a> function to take <code>events</code> and split them into <code>events</code> and <code>events_data</code>. The events will be automatically reconstructed when being scanned or viewed.</p>
 </div>
 </div>
 </section>

@@ -70,13 +70,20 @@ their traces. When reconstructing model events you will also likely want
 to use the helper functions mentioned above in [Messages](#messages) for
 converting raw model API payloads to `ChatMessage`.
 
-> [!NOTE]
+> [!IMPORTANT]
 >
-> ### Not Required
+> ### events_data
 >
-> The `events` field is only important if you have scanners that will be
-> doing event analysis. Note that the default `llm_scanner()` provided
-> within Scout looks only at `messages` not `events`.
+> If you are including `events` you should also include an `events_data`
+> field to reduce the size of your transcripts. Note that model events
+> include the entire `input` so for long trajectories the storage
+> requirements are O(n²).
+>
+> Use the Inspect AI
+> [condense_events()](https://inspect.aisi.org.uk/reference/inspect_ai.log.html#condense_events)
+> function to take `events` and split them into `events` and
+> `events_data`. The events will be automatically reconstructed when
+> being scanned or viewed.
 
 ## Schema in Code
 

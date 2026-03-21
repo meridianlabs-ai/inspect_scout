@@ -18,10 +18,13 @@ from ..types import (
     TranscriptInfo,
 )
 from ..util import filter_transcript
+from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENTS_PREFIX,
+    CALL_POOL_ITEM_PREFIX,
     EVENTS_ITEM_PREFIX,
+    MESSAGE_POOL_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
     METADATA_PREFIX,
     SCORES_PREFIX,
@@ -30,8 +33,10 @@ from .reducer import (
     ListProcessingConfig,
     ParseState,
     attachments_coroutine,
+    call_pool_item_coroutine,
     event_item_coroutine,
     message_item_coroutine,
+    message_pool_item_coroutine,
     metadata_coroutine,
     scores_coroutine,
     target_coroutine,
@@ -50,6 +55,8 @@ _SECTION_METADATA = 4
 _SECTION_TIMELINES = 5
 _SECTION_TARGET = 6
 _SECTION_SCORES = 7
+_SECTION_MESSAGE_POOL = 8
+_SECTION_CALL_POOL = 9
 
 _MESSAGES_ITEM_PREFIX_LEN = len(MESSAGES_ITEM_PREFIX)
 _EVENTS_ITEM_PREFIX_LEN = len(EVENTS_ITEM_PREFIX)
@@ -58,6 +65,8 @@ _METADATA_PREFIX_LEN = len(METADATA_PREFIX)
 _TIMELINES_ITEM_PREFIX_LEN = len(TIMELINES_ITEM_PREFIX)
 _SCORES_PREFIX_LEN = len(SCORES_PREFIX)
 _TARGET_PREFIX_LEN = len(TARGET_PREFIX)
+_MESSAGE_POOL_ITEM_PREFIX_LEN = len(MESSAGE_POOL_ITEM_PREFIX)
+_CALL_POOL_ITEM_PREFIX_LEN = len(CALL_POOL_ITEM_PREFIX)
 # "target" vs "timelines" — discriminate on 2nd char (derived from constant)
 _TARGET_CHAR1 = TARGET_PREFIX[1]
 _MIN_SECTION_PREFIX_LEN = min(
@@ -68,6 +77,8 @@ _MIN_SECTION_PREFIX_LEN = min(
     _TIMELINES_ITEM_PREFIX_LEN,
     _SCORES_PREFIX_LEN,
     _TARGET_PREFIX_LEN,
+    _MESSAGE_POOL_ITEM_PREFIX_LEN,
+    _CALL_POOL_ITEM_PREFIX_LEN,
 )
 
 
@@ -162,6 +173,7 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
+    _resolve_pools_from_dict(data)
 
     return filter_transcript(
         _resolve_attachments(
@@ -206,6 +218,20 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
     if state.scores:
         overrides["scores"] = state.scores
     return base.copy() | overrides if overrides else base
+
+
+def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
+    """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
+
+    No-op when pools are absent or empty (v2 files).
+    """
+    from .pool import _resolve_events_pools
+
+    _resolve_events_pools(
+        data.get("events", []),
+        data.get("message_pool", []),
+        data.get("call_pool", []),
+    )
 
 
 def _merge_unthinned_from_dict(
@@ -269,6 +295,8 @@ async def _parse_and_filter(
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)
+    message_pool_coro = message_pool_item_coroutine(state) if events_coro else None
+    call_pool_coro = call_pool_item_coroutine(state) if events_coro else None
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -295,7 +323,7 @@ async def _parse_and_filter(
         if prefix != last_prefix:
             last_prefix = prefix
             p_len = len(prefix)
-            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s"):
+            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
                 # Short prefixes: "scores" (6), "target" (6)
@@ -318,6 +346,12 @@ async def _parse_and_filter(
                     prefix == "metadata" or prefix.startswith(METADATA_PREFIX)
                 ):
                     current_section = _SECTION_METADATA
+                elif (
+                    p_len >= _MESSAGE_POOL_ITEM_PREFIX_LEN
+                    and prefix[:_MESSAGE_POOL_ITEM_PREFIX_LEN]
+                    == MESSAGE_POOL_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_MESSAGE_POOL
                 else:
                     current_section = _SECTION_OTHER
             elif (
@@ -332,6 +366,12 @@ async def _parse_and_filter(
                 and prefix[:_ATTACHMENTS_PREFIX_LEN] == ATTACHMENTS_PREFIX
             ):
                 current_section = _SECTION_ATTACHMENTS
+            elif (
+                prefix[0] == "c"
+                and p_len >= _CALL_POOL_ITEM_PREFIX_LEN
+                and prefix[:_CALL_POOL_ITEM_PREFIX_LEN] == CALL_POOL_ITEM_PREFIX
+            ):
+                current_section = _SECTION_CALL_POOL
             elif prefix[0] == "t":
                 if prefix[1] == _TARGET_CHAR1:
                     current_section = _SECTION_TARGET
@@ -365,6 +405,13 @@ async def _parse_and_filter(
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES:
             scores_coro.send((prefix, event, value))
+        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coro:
+            message_pool_coro.send((prefix, event, value))
+        elif current_section == _SECTION_CALL_POOL and call_pool_coro:
+            call_pool_coro.send((prefix, event, value))
+
+    # Resolve v3 pool references before returning
+    resolve_pools(state)
 
     return (
         RawTranscript(

@@ -31,6 +31,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# Built view maps
+/src/inspect_scout/_view/dist/assets/*.js.map
+
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -210,6 +214,7 @@ src/inspect_scout/_version.py
 
 # Inspect logs and scans
 /logs/
+/logs-*/
 /scans/
 
 # Scout local configuration (developer-only, not checked in)
@@ -225,9 +230,6 @@ scout.local.yaml
 
 # node
 /src/inspect_scout/_view/www/node_modules
-
-# dist builds
-/src/inspect_scout/_view/www/*.tgz
 
 # test data
 /examples/test-db

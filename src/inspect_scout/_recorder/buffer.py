@@ -50,15 +50,22 @@ class RecorderBuffer:
         normalized = normalize_for_hashing(scan_location)
         return scan_buffer_dir / f"{mm3_hash(normalized)}"
 
-    def __init__(self, scan_location: str, spec: ScanSpec, *, pool_dedup: bool = True):
+    def __init__(
+        self,
+        scan_location: str,
+        spec: ScanSpec,
+        *,
+        pool_dedup: bool = True,
+        reset: bool = False,
+    ):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
         self._pool_dedup = pool_dedup
 
-        # establish scan summary if required
+        # establish scan summary
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
-        if not scan_summary_file.exists():
+        if reset or not scan_summary_file.exists():
             self._scan_summary = Summary(
                 complete=False, scanners=list(spec.scanners.keys())
             )
@@ -67,10 +74,11 @@ class RecorderBuffer:
         else:
             self._scan_summary = read_scan_summary(self._buffer_dir, spec)
 
-        # truncate errors
+        # truncate errors on reset, preserve on resume
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
-        with self._error_file.open("w"):
-            pass  # truncates existing file
+        if reset or not self._error_file.exists():
+            with self._error_file.open("w"):
+                pass
 
     async def record(
         self,

@@ -1,3 +1,9 @@
+## Unreleased
+
+- Summary: Count only positive values in resultset aggregation.
+- Summary: Reset summary state on new scan init to prevent accumulation across scans.
+- Recorder: Preserve error file on scan resume instead of truncating.
+
 ## 0.4.21 (16 March 2026)
 
 - Scanner as scorer: Forward timelines from eval sample to scanner if requested.

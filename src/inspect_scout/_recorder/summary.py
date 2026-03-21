@@ -9,6 +9,7 @@ from inspect_scout._recorder.validation import (
 )
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._validation.validate import is_positive_value
 
 
 class ScannerSummary(BaseModel):
@@ -104,7 +105,12 @@ class Summary(BaseModel):
                 if result.result.type == "resultset" and isinstance(
                     result.result.value, list
                 ):
-                    agg_results += len(result.result.value)
+                    agg_results += sum(
+                        1
+                        for item in result.result.value
+                        if isinstance(item, dict)
+                        and is_positive_value(item.get("value"))
+                    )
                 else:
                     agg_results += 1
             if result.validation is not None:

@@ -1,13 +1,15 @@
 """Tests for summary module with ValidationEntry and precision/recall metrics."""
 
 import pytest
-from inspect_scout._recorder.summary import ScannerSummary
+from inspect_scout._recorder.summary import ScannerSummary, Summary
 from inspect_scout._recorder.validation import (
     ValidationEntry,
     ValidationMetrics,
     ValidationResults,
     compute_validation_metrics,
 )
+from inspect_scout._scanner.result import Result, ResultReport, as_resultset
+from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import is_positive_value
 
 
@@ -227,6 +229,51 @@ class TestComputeValidationMetrics:
         assert metrics.tn == 1
         assert metrics.precision == 1.0
         assert metrics.recall == 1.0
+
+
+class TestSummaryResultsetCounting:
+    """Tests that _report counts only positive resultset items."""
+
+    def _make_resultset_report(self, values: list[int]) -> ResultReport:
+        """Helper: create a ResultReport containing a resultset with given values."""
+        results = [Result(value=v, label=f"label_{i}") for i, v in enumerate(values)]
+        return ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=as_resultset(results),
+            validation=None,
+            error=None,
+            events=[],
+            model_usage={},
+        )
+
+    @pytest.mark.parametrize(
+        "values, expected",
+        [
+            ([3, 0, 0, 1, 0], 2),
+            ([0, 0, 0], 0),
+            ([5, 3, 1], 3),
+        ],
+        ids=["mixed", "all_zero", "all_positive"],
+    )
+    def test_counts_positive_values(self, values: list[int], expected: int) -> None:
+        summary = Summary(scanners=["scanner"])
+        report = self._make_resultset_report(values)
+        summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
+        assert summary.scanners["scanner"].results == expected
+
+    def test_accumulates_across_reports(self) -> None:
+        """Multiple _report calls should accumulate correctly."""
+        summary = Summary(scanners=["scanner"])
+        r1 = self._make_resultset_report([3, 0, 1])  # 2 positive
+        r2 = self._make_resultset_report([0, 0, 0])  # 0 positive
+        r3 = self._make_resultset_report([7, 2, 0])  # 2 positive
+        summary._report(None, "scanner", [r1], None)  # type: ignore[arg-type]
+        summary._report(None, "scanner", [r2], None)  # type: ignore[arg-type]
+        summary._report(None, "scanner", [r3], None)  # type: ignore[arg-type]
+        assert summary.scanners["scanner"].results == 4
+        assert summary.scanners["scanner"].scans == 3
 
 
 class TestValidationResults:

@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.22 (20 March 2026)
 
 - Transcripts: Use `events_data` to reduce memory and storage requirements of `events`.
 - Summary: Count only positive values in resultset aggregation.

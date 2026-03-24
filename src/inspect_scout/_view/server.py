@@ -25,10 +25,9 @@ from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
 from ._api_v2 import v2_api_app
+from ._dist_constants import DIST_DIR, REPO_URL
 
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
-_DIST_DIR = Path(__file__).parent / "dist"
-_REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
 
 
 class _ScoutStaticFiles(StaticFiles):
@@ -210,11 +209,11 @@ def _resolve_dist_directory() -> Path:
     lfs_logger.addHandler(handler)
     try:
         result = resolve_lfs_directory(
-            _DIST_DIR,
+            DIST_DIR,
             cache_dir=scout_cache_dir("dist"),
-            repo_url=_REPO_URL,
+            repo_url=REPO_URL,
         )
-        if result != _DIST_DIR:
+        if result != DIST_DIR:
             display().print(f"Serving static data from {result}")
 
         return result

@@ -337,7 +337,11 @@ def _handle_label_validation(
 
 def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
     """Expand condensed event refs in the input column, then drop input_data."""
-    if "input_data" not in df.columns or df["input_data"].isna().all():
+    if (
+        "input" not in df.columns
+        or "input_data" not in df.columns
+        or df["input_data"].isna().all()
+    ):
         return df.drop(columns=["input_data"], errors="ignore")
 
     df = df.copy()

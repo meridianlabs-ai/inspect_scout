@@ -2,7 +2,9 @@ import clsx from "clsx";
 import { FC } from "react";
 
 import { CopyButton } from "../../components/CopyButton";
+import { DownloadScanButton } from "../../components/DownloadScanButton";
 import { ApplicationIcons } from "../../components/icons";
+import { useApi } from "../../state/store";
 import { Status } from "../../types/api-types";
 import { formatDateTime } from "../../utils/format";
 import { toRelativePath } from "../../utils/path";
@@ -14,6 +16,8 @@ export const ScanPanelTitle: FC<{
   resultsDir: string | undefined;
   selectedScan: Status;
 }> = ({ resultsDir, selectedScan }) => {
+  const api = useApi();
+
   const scanJobName =
     selectedScan.spec.scan_name === "job"
       ? "scan"
@@ -38,11 +42,21 @@ export const ScanPanelTitle: FC<{
             {scannerModel ? ` (${scannerModel})` : ""}
           </h2>
           {selectedScan.location && (
-            <CopyButton
-              title="Copy Scan Path"
-              className={clsx("text-size-small")}
-              value={prettyDirUri(selectedScan.location)}
-            />
+            <>
+              <CopyButton
+                title="Copy Scan Path"
+                className={clsx("text-size-small")}
+                value={prettyDirUri(selectedScan.location)}
+              />
+              {resultsDir && api.downloadScan && (
+                <DownloadScanButton
+                  scansDir={resultsDir}
+                  scanPath={toRelativePath(selectedScan.location, resultsDir)}
+                  download={api.downloadScan}
+                  className={clsx("text-size-small")}
+                />
+              )}
+            </>
           )}
         </div>
         <div></div>

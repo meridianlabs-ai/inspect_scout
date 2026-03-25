@@ -182,6 +182,14 @@ export const apiScoutServer = (
 
       return asyncJsonParse<Status>(result.raw);
     },
+    downloadScan: async (scansDir: string, scanPath: string): Promise<Blob> => {
+      const result = await requestApi.fetchBytes(
+        "GET",
+        `/scans/${encodeBase64Url(scansDir)}/${encodeBase64Url(scanPath)}`,
+        { Accept: "application/zip" }
+      );
+      return new Blob([result.data], { type: "application/zip" });
+    },
 
     getScans: async (
       scansDir: string,

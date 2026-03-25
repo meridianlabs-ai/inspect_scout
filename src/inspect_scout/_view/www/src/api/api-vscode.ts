@@ -13,11 +13,12 @@ import { createVSCodeStore } from "./vscode-storage";
 
 export const apiVscode = (vscodeApi: VSCodeApi): ScoutApiV2 => {
   const rpcClient = webViewJsonRpcClient(vscodeApi);
+  const { downloadScan: _, ...serverApi } = apiScoutServer({
+    customFetch: createJsonRpcFetch(rpcClient),
+    disableSSE: true,
+  });
   return {
-    ...apiScoutServer({
-      customFetch: createJsonRpcFetch(rpcClient),
-      disableSSE: true,
-    }),
+    ...serverApi,
     storage: createVSCodeStore(vscodeApi),
     capability: "workbench",
   };

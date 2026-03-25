@@ -75,10 +75,15 @@ class TestSummaryResetOnInit:
         buf2 = RecorderBuffer("test_location", spec, reset=True)
         assert buf2._error_file.read_text() == ""
 
-    def test_resume_preserves_errors(
+    def test_resume_truncates_errors(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """reset=False should preserve the error file."""
+        """reset=False should also truncate the error file.
+
+        On resume, previously-errored transcripts are re-processed (is_recorded
+        returns False for errored parquets). Stale error entries must not persist
+        or they incorrectly mark the scan as incomplete when the retry succeeds.
+        """
         monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(tmp_path))
         spec = _make_spec(["s"])
         buf1 = RecorderBuffer("test_location", spec, reset=True)
@@ -87,6 +92,6 @@ class TestSummaryResetOnInit:
         with open(str(buf1._error_file), "w") as f:
             f.write(error_content)
 
-        # resume (reset=False): should preserve errors
+        # resume (reset=False): should still truncate errors
         buf2 = RecorderBuffer("test_location", spec, reset=False)
-        assert buf2._error_file.read_text() == error_content
+        assert buf2._error_file.read_text() == ""

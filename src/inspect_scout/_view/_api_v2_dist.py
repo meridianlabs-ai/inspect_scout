@@ -1,18 +1,15 @@
 """Dist REST API endpoint."""
 
-import anyio
-from fastapi import APIRouter, HTTPException
-from inspect_ai._lfs import LFSError, resolve_lfs_directory
-from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
+from pathlib import Path
 
-from inspect_scout._util.appdirs import scout_cache_dir
+from fastapi import APIRouter, HTTPException
+from starlette.status import HTTP_404_NOT_FOUND
 
 from ._api_v2_types import DistResponse
-from ._dist_constants import DIST_DIR, REPO_URL
 from ._server_common import InspectPydanticJSONResponse
 
 
-def create_dist_router() -> APIRouter:
+def create_dist_router(dist_path: Path | None = None) -> APIRouter:
     """Create dist API router.
 
     Returns:
@@ -30,25 +27,14 @@ def create_dist_router() -> APIRouter:
     )
     async def dist() -> DistResponse:
         """Resolve the frontend dist directory path."""
-        try:
-            resolved = await anyio.to_thread.run_sync(
-                lambda: resolve_lfs_directory(
-                    DIST_DIR,
-                    cache_dir=scout_cache_dir("dist"),
-                    repo_url=REPO_URL,
-                )
-            )
-        except LFSError as e:
+        if dist_path is None:
             raise HTTPException(
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                status_code=HTTP_404_NOT_FOUND,
                 detail=(
-                    f"Failed to resolve dist directory: {e}\n"
-                    "To fix this, either:\n"
-                    "  1. Install Git LFS: brew install git-lfs && git lfs install && git lfs pull\n"
-                    "  2. Build locally: cd src/inspect_scout/_view/ts-mono && pnpm build"
+                    "Unable to resolve dist directory path. This should not happen once the server has started."
                 ),
             ) from None
 
-        return DistResponse(path=resolved.as_posix())
+        return DistResponse(path=dist_path.as_posix())
 
     return router

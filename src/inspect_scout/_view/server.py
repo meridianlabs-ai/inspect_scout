@@ -115,7 +115,10 @@ def view_server(
         fs.mkdir(scans, True)
     scans = fs.info(scans).name
 
-    v2_api = v2_api_app(view_config=config)
+    # ensure we've resolved the dist directory
+    directory = _resolve_dist_directory()
+
+    v2_api = v2_api_app(view_config=config, dist_path=directory)
 
     if authorization:
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
@@ -126,7 +129,7 @@ def view_server(
     app.mount(
         "/",
         _ScoutStaticFiles(
-            directory=_resolve_dist_directory().as_posix(),
+            directory=directory.as_posix(),
             html=True,
             root_path=root_path,
         ),

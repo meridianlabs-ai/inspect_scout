@@ -28,6 +28,7 @@ API_VERSION = "2.0.0-alpha"
 def v2_api_app(
     view_config: ViewConfig | None = None,
     streaming_batch_size: int = 1024,
+    dist_path: PathlibPath | None = None,
 ) -> FastAPI:
     """Create V2 API FastAPI app.
 
@@ -41,7 +42,7 @@ def v2_api_app(
         version=API_VERSION,
     )
     app.include_router(create_config_router(view_config=view_config))
-    app.include_router(create_dist_router())
+    app.include_router(create_dist_router(dist_path=dist_path))
     app.include_router(create_topics_router())
     app.include_router(create_transcripts_router())
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))

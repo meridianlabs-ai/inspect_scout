@@ -273,16 +273,12 @@ class FileRecorder(ScanRecorder):
                     # Use pre_buffer=True to coalesce HTTP range requests,
                     # then read() + to_reader() instead of iter_batches()
                     # which doesn't support pre_buffer.
-                    parquet = pq.ParquetFile(
-                        pa_path, filesystem=pa_fs, pre_buffer=True
-                    )
+                    parquet = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
                 else:
                     parquet = pq.ParquetFile(pa_path)
 
                 exclude = set(exclude_columns) if exclude_columns else set()
-                columns = [
-                    c for c in parquet.schema.names if c not in exclude
-                ]
+                columns = [c for c in parquet.schema.names if c not in exclude]
 
                 if pa_fs is not None:
                     table = parquet.read(columns=columns)

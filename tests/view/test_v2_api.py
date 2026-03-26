@@ -272,7 +272,9 @@ class TestViewServerAppFieldsEndpoint:
         assert response.status_code == HTTP_400_BAD_REQUEST
 
     @pytest.mark.asyncio
-    async def test_fields_rejects_missing_fields_param(self, client: TestClient) -> None:
+    async def test_fields_rejects_missing_fields_param(
+        self, client: TestClient
+    ) -> None:
         """Returns 400 when fields query param is missing."""
         mock_results = MagicMock(spec=ScanResultsArrow)
         mock_results.scanners = ["scanner1"]
@@ -288,7 +290,9 @@ class TestViewServerAppFieldsEndpoint:
         assert response.status_code == HTTP_400_BAD_REQUEST
 
     @pytest.mark.asyncio
-    async def test_fields_returns_404_for_unknown_uuid(self, client: TestClient) -> None:
+    async def test_fields_returns_404_for_unknown_uuid(
+        self, client: TestClient
+    ) -> None:
         """Returns 404 when get_fields raises KeyError (unknown UUID)."""
         mock_results = MagicMock(spec=ScanResultsArrow)
         mock_results.scanners = ["scanner1"]

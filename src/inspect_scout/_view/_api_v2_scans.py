@@ -400,7 +400,9 @@ def create_scans_router(
                 detail="Missing required query parameter: fields",
             )
 
-        requested = list(dict.fromkeys(f.strip() for f in fields.split(",") if f.strip()))
+        requested = list(
+            dict.fromkeys(f.strip() for f in fields.split(",") if f.strip())
+        )
         unknown = set(requested) - _FIELDS_ALLOWLIST
         if unknown:
             raise HTTPException(

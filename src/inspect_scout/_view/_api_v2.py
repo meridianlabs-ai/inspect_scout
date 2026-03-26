@@ -11,6 +11,7 @@ from inspect_ai.model import ChatMessage, Content
 from .._llm_scanner.params import LlmScannerParams
 from .._transcript.types import Transcript
 from .._validation.types import ValidationCase
+from ._api_v2_chat import create_chat_router
 from ._api_v2_config import create_config_router
 from ._api_v2_scanners import create_scanners_router
 from ._api_v2_scans import create_scans_router
@@ -45,6 +46,7 @@ def v2_api_app(
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
+    app.include_router(create_chat_router())
 
     def custom_openapi() -> dict[str, Any]:
         if not app.openapi_schema:

@@ -815,6 +815,244 @@
         "title": "ChatMessageAssistant",
         "type": "object"
       },
+      "ChatMessageAssistant-Input": {
+        "description": "Assistant chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Input"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "role": {
+            "const": "assistant",
+            "default": "assistant",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ToolCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageAssistant",
+        "type": "object"
+      },
+      "ChatMessageAssistant-Output": {
+        "description": "Assistant chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "role": {
+            "const": "assistant",
+            "default": "assistant",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ToolCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageAssistant",
+        "type": "object"
+      },
       "ChatMessageSystem": {
         "description": "System chat message.",
         "properties": {
@@ -902,6 +1140,194 @@
               }
             ],
             "default": null,
+            "title": "Source"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageSystem",
+        "type": "object"
+      },
+      "ChatMessageSystem-Input": {
+        "description": "System chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Input"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "system",
+            "default": "system",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageSystem",
+        "type": "object"
+      },
+      "ChatMessageSystem-Output": {
+        "description": "System chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "system",
+            "default": "system",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Source"
           }
         },
@@ -1044,6 +1470,258 @@
         "title": "ChatMessageTool",
         "type": "object"
       },
+      "ChatMessageTool-Input": {
+        "description": "Tool chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Input"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "tool",
+            "default": "tool",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageTool",
+        "type": "object"
+      },
+      "ChatMessageTool-Output": {
+        "description": "Tool chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCallError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "tool",
+            "default": "tool",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageTool",
+        "type": "object"
+      },
       "ChatMessageUser": {
         "description": "User chat message.",
         "properties": {
@@ -1154,6 +1832,261 @@
           "role"
         ],
         "title": "ChatMessageUser",
+        "type": "object"
+      },
+      "ChatMessageUser-Input": {
+        "description": "User chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Input"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "user",
+            "default": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageUser",
+        "type": "object"
+      },
+      "ChatMessageUser-Output": {
+        "description": "User chat message.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentText-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentReasoning"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentImage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentAudio"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentVideo"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentData"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentToolUse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContentDocument"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "role": {
+            "const": "user",
+            "default": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "input",
+                  "generate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          }
+        },
+        "required": [
+          "content",
+          "role"
+        ],
+        "title": "ChatMessageUser",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ChatMessageSystem-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageUser-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageAssistant-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/ChatMessageTool-Input"
+                }
+              ]
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "transcript_dir": {
+            "title": "Transcript Dir",
+            "type": "string"
+          },
+          "transcript_id": {
+            "title": "Transcript Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript_dir",
+          "transcript_id",
+          "messages"
+        ],
+        "title": "ChatRequest",
         "type": "object"
       },
       "CompactionEvent": {
@@ -1836,6 +2769,154 @@
         "title": "ContentText",
         "type": "object"
       },
+      "ContentText-Input": {
+        "description": "Text content.",
+        "properties": {
+          "citations": {
+            "anyOf": [
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "content": "#/components/schemas/ContentCitation",
+                      "document": "#/components/schemas/DocumentCitation",
+                      "url": "#/components/schemas/UrlCitation"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DocumentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citations"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "default": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "ContentText",
+        "type": "object"
+      },
+      "ContentText-Output": {
+        "description": "Text content.",
+        "properties": {
+          "citations": {
+            "anyOf": [
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "content": "#/components/schemas/ContentCitation",
+                      "document": "#/components/schemas/DocumentCitation",
+                      "url": "#/components/schemas/UrlCitation"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ContentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DocumentCitation"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlCitation"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citations"
+          },
+          "internal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "default": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "ContentText",
+        "type": "object"
+      },
       "ContentToolUse": {
         "description": "Server side tool use.",
         "properties": {
@@ -2320,16 +3401,16 @@
             "items": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ChatMessageSystem"
+                  "$ref": "#/components/schemas/ChatMessageSystem-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageUser"
+                  "$ref": "#/components/schemas/ChatMessageUser-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageTool"
+                  "$ref": "#/components/schemas/ChatMessageTool-Output"
                 }
               ]
             },
@@ -4845,16 +5926,16 @@
             "items": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ChatMessageSystem"
+                  "$ref": "#/components/schemas/ChatMessageSystem-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageUser"
+                  "$ref": "#/components/schemas/ChatMessageUser-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageAssistant"
+                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageTool"
+                  "$ref": "#/components/schemas/ChatMessageTool-Output"
                 }
               ]
             },
@@ -7766,31 +8847,31 @@
                 "$ref": "#/components/schemas/Transcript"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageSystem"
+                "$ref": "#/components/schemas/ChatMessageSystem-Output"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageUser"
+                "$ref": "#/components/schemas/ChatMessageUser-Output"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageAssistant"
+                "$ref": "#/components/schemas/ChatMessageAssistant-Output"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageTool"
+                "$ref": "#/components/schemas/ChatMessageTool-Output"
               },
               {
                 "items": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/ChatMessageSystem"
+                      "$ref": "#/components/schemas/ChatMessageSystem-Output"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageUser"
+                      "$ref": "#/components/schemas/ChatMessageUser-Output"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageAssistant"
+                      "$ref": "#/components/schemas/ChatMessageAssistant-Output"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageTool"
+                      "$ref": "#/components/schemas/ChatMessageTool-Output"
                     }
                   ]
                 },
@@ -11359,6 +12440,36 @@
         "summary": "Get application configuration",
         "tags": [
           "config"
+        ]
+      }
+    },
+    "/chat": {
+      "post": {
+        "description": "Receive chat messages associated with a transcript.",
+        "operationId": "chat_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Send chat messages for a transcript",
+        "tags": [
+          "chat"
         ]
       }
     },

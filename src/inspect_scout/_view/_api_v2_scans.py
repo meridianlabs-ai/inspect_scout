@@ -430,9 +430,7 @@ def create_scans_router(
         # Build raw JSON manually to avoid re-parsing pre-serialized JSON fields.
         parts: list[str] = []
         for field in requested:
-            raw = row[field]
-            # Convert pyarrow scalars to native Python values.
-            value = raw.as_py() if hasattr(raw, "as_py") else raw
+            value = row[field]
             if value is None:
                 serialized = "null"
             elif field in _PLAIN_VALUE_FIELDS:

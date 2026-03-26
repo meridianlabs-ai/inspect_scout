@@ -254,9 +254,7 @@ class FileRecorder(ScanRecorder):
                 scanner_path = scan_path / f"{scanner}.parquet"
                 path_str = scanner_path.as_posix()
 
-                if path_str.startswith("s3://"):
-                    return path_str[len("s3://") :], pafs.S3FileSystem()
-                if path_str.startswith(("gs://", "az://", "abfs://")):
+                if path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
                     pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
                     return pa_path, pa_fs
 
@@ -278,20 +276,18 @@ class FileRecorder(ScanRecorder):
                     parquet = pq.ParquetFile(
                         pa_path, filesystem=pa_fs, pre_buffer=True
                     )
-                    columns = [
-                        c
-                        for c in parquet.schema.names
-                        if exclude_columns is None or c not in exclude_columns
-                    ]
+                else:
+                    parquet = pq.ParquetFile(pa_path)
+
+                exclude = set(exclude_columns) if exclude_columns else set()
+                columns = [
+                    c for c in parquet.schema.names if c not in exclude
+                ]
+
+                if pa_fs is not None:
                     table = parquet.read(columns=columns)
                     return table.to_reader(max_chunksize=streaming_batch_size)
 
-                parquet = pq.ParquetFile(pa_path)
-                columns = [
-                    c
-                    for c in parquet.schema.names
-                    if exclude_columns is None or c not in exclude_columns
-                ]
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
 
@@ -365,14 +361,36 @@ class FileRecorder(ScanRecorder):
 
                 if pa_fs is not None:
                     pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
-                else:
-                    pf = pq.ParquetFile(pa_path)
+                    schema_names = set(pf.schema.names)
+                    present = [c for c in target_columns if c in schema_names]
+                    missing = [c for c in target_columns if c not in schema_names]
 
-                schema_names = set(pf.schema.names)
+                    for i in range(pf.metadata.num_row_groups):
+                        rg_ids = pf.read_row_group(i, columns=[id_column])
+                        mask = pc.equal(rg_ids[id_column], id_value)
+                        if pc.any(mask).as_py():
+                            rg_data = pf.read_row_group(i, columns=present)
+                            table = rg_data.filter(mask)
+                            if len(table) > 1:
+                                raise ValueError(
+                                    f"Multiple rows found for {id_column}={id_value!r}"
+                                )
+                            result = {c: table[c][0].as_py() for c in present}
+                            for c in missing:
+                                result[c] = None
+                            return result
+
+                    raise KeyError(f"{id_value!r} not found in {id_column}")
+
+                dataset = ds.dataset(pa_path, format="parquet")
+                schema_names = set(dataset.schema.names)
                 present = [c for c in target_columns if c in schema_names]
                 missing = [c for c in target_columns if c not in schema_names]
 
-                table = self._point_lookup(scanner, id_column, id_value, present)
+                table = dataset.to_table(
+                    columns=present,
+                    filter=(pc.field(id_column) == id_value),
+                )
 
                 if len(table) == 0:
                     raise KeyError(f"{id_value!r} not found in {id_column}")

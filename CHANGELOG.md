@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.23 (25 March 2026)
 
 - Add timeline types to `@scanner` decorator overloads.
 - Scout View: Fix white circle over compaction markers.

@@ -269,21 +269,24 @@ class FileRecorder(ScanRecorder):
                 streaming_batch_size: int = 1024,
                 exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
-                scan_path = UPath(scan_location)
-                scanner_path = scan_path / f"{scanner}.parquet"
+                pa_path, pa_fs = self._resolve_parquet_source(scanner)
 
-                # For remote filesystems, download the entire file first.
-                # Range requests via S3FileSystem are slower here because
-                # iter_batches issues O(columns * row_groups) HTTP requests,
-                # and round-trip latency dominates when reading many columns.
-                scanner_path_str = scanner_path.as_posix()
-                if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
-                    with file(scanner_path_str, "rb") as f:
-                        file_bytes = f.read()
-                    parquet = pq.ParquetFile(io.BytesIO(file_bytes))
-                else:
-                    parquet = pq.ParquetFile(str(scanner_path))
+                if pa_fs is not None:
+                    # Use pre_buffer=True to coalesce HTTP range requests,
+                    # then read() + to_reader() instead of iter_batches()
+                    # which doesn't support pre_buffer.
+                    parquet = pq.ParquetFile(
+                        pa_path, filesystem=pa_fs, pre_buffer=True
+                    )
+                    columns = [
+                        c
+                        for c in parquet.schema.names
+                        if exclude_columns is None or c not in exclude_columns
+                    ]
+                    table = parquet.read(columns=columns)
+                    return table.to_reader(max_chunksize=streaming_batch_size)
 
+                parquet = pq.ParquetFile(pa_path)
                 columns = [
                     c
                     for c in parquet.schema.names

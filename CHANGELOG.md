@@ -1,3 +1,10 @@
+## 0.4.23 (25 March 2026)
+
+- Add timeline types to `@scanner` decorator overloads.
+- Scout View: Fix white circle over compaction markers.
+- Bugfix: Handle excluded input column in event expansion.
+- Bugfix: Always truncate error file on resume to prevent stale errors.
+
 ## 0.4.22 (20 March 2026)
 
 - Transcripts: Use `events_data` to reduce memory and storage requirements of `events`.

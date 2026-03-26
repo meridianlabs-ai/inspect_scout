@@ -468,7 +468,7 @@ def test_timeline_with_wrong_type_fails() -> None:
     """timeline='all' with ChatMessage type should fail."""
     with pytest.raises(TypeError, match="must accept Timeline"):
 
-        @scanner(timeline="all")
+        @scanner(timeline="all")  # type: ignore[type-var]
         def test_scanner() -> Scanner[ChatMessage]:
             async def scan(message: ChatMessage) -> Result:
                 return Result(value={"bad": True})

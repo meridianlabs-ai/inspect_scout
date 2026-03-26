@@ -30,6 +30,7 @@ from inspect_ai._util.registry import (
     registry_name,
     registry_tag,
 )
+from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from inspect_ai.scorer import Metric
@@ -70,6 +71,7 @@ TM = TypeVar(
     "TM", bound=Transcript | ChatMessage | list[ChatMessage], contravariant=True
 )
 TE = TypeVar("TE", bound=Transcript | Event | list[Event], contravariant=True)
+TT = TypeVar("TT", bound=Transcript | Timeline | list[Timeline], contravariant=True)
 P = ParamSpec("P")
 # Invariant TypeVar for decorator overloads where type inference is needed
 TScan = TypeVar("TScan", bound=ScannerInput)
@@ -206,6 +208,21 @@ def scanner(
 ) -> Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]: ...
 
 
+@overload
+def scanner(
+    *,
+    timeline: Literal[True] | list[EventType] | Literal["all"],
+    loader: Loader[Transcript] | None = ...,
+    messages: list[MessageType] | Literal["all"] | None = ...,
+    events: list[EventType] | Literal["all"] | None = ...,
+    name: str | None = ...,
+    version: int = 0,
+    metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
+    | Mapping[str, Sequence[Metric]]
+    | None = ...,
+) -> Callable[[ScannerFactory[P, TT]], ScannerFactory[P, ScannerInput]]: ...
+
+
 # overload for direct decoration without parentheses (will infer from types)
 # This needs to be last as it's the most general
 @overload
@@ -245,6 +262,7 @@ def scanner(
     | Callable[[ScannerFactory[P, TScan]], ScannerFactory[P, TScan]]
     | Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]
     | Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]
+    | Callable[[ScannerFactory[P, TT]], ScannerFactory[P, ScannerInput]]
 ):
     """Decorator for registering scanners.
 

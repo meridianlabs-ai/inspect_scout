@@ -78,7 +78,6 @@ def display_type() -> DisplayType:
     Returns:
        DisplayType: Display type.
     """
-    global _display_type
     if _display_type:
         return _display_type
     else:
@@ -95,7 +94,6 @@ def display_type_plain() -> bool:
 
 
 def display_type_initialized() -> bool:
-    global _display_type
     return _display_type is not None
 
 

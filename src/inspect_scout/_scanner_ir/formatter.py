@@ -43,6 +43,7 @@ def format_with_ruff(source: str, project_dir: Path | None = None) -> str:
             text=True,
             cwd=project_dir,
             timeout=30,
+            check=False,
         )
 
         if result.returncode == 0:

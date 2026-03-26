@@ -291,6 +291,14 @@ class MessagesEventsResponse(BaseModel):
 
 
 @dataclass
+class DistResponse:
+    """Response body for GET /dist endpoint."""
+
+    path: str
+    """Absolute filesystem path to the resolved dist directory."""
+
+
+@dataclass
 class StreamMetadata:
     """Metadata yielded first from streaming generators."""
 

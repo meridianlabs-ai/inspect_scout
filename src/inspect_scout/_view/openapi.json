@@ -1980,6 +1980,19 @@
         "title": "CreateValidationSetRequest",
         "type": "object"
       },
+      "DistResponse": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "DistResponse",
+        "type": "object"
+      },
       "DistinctRequest": {
         "properties": {
           "column": {
@@ -11406,6 +11419,28 @@
         "summary": "Code endpoint",
         "tags": [
           "scanners"
+        ]
+      }
+    },
+    "/dist": {
+      "get": {
+        "description": "Returns the absolute path to the frontend dist directory, downloading from Git LFS if needed.",
+        "operationId": "dist_dist_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Resolve dist directory",
+        "tags": [
+          "dist"
         ]
       }
     },

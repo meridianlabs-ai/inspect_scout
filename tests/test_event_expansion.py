@@ -5,9 +5,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Result, Scanner, scan, scanner
-from inspect_scout._scanresults import scan_results_df
+from inspect_scout._scanresults import _expand_events_in_df, scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
@@ -140,3 +141,11 @@ def test_transcript_mode_also_expands() -> None:
         input_json = df["input"].iloc[0]
         events = json.loads(input_json)
         assert not _has_unresolved_refs(events)
+
+
+def test_expand_events_no_input_column() -> None:
+    """DataFrame with input_data but without 'input' column should not raise."""
+    df = pd.DataFrame({"scanner": ["s1"], "value": [42], "input_data": ["data"]})
+    result = _expand_events_in_df(df)
+    assert "input_data" not in result.columns
+    assert "input" not in result.columns

@@ -11592,7 +11592,7 @@
     },
     "/chat": {
       "post": {
-        "description": "Receive chat messages associated with a transcript.",
+        "description": "Send chat messages and receive an LLM response about a transcript.",
         "operationId": "chat_chat_post",
         "requestBody": {
           "content": {
@@ -11608,7 +11608,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                }
               }
             },
             "description": "Successful Response"

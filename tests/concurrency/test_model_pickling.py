@@ -64,6 +64,7 @@ def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -149,6 +150,7 @@ def _unpickle_callable_in_subprocess(pickled: bytes) -> bool:
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(

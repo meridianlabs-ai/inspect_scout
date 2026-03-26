@@ -16,10 +16,12 @@ import anyio
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Request, Response
+from fastapi import Query as QueryParam
 from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -284,7 +286,7 @@ def create_scans_router(
             with result.reader(
                 scanner,
                 streaming_batch_size=streaming_batch_size,
-                exclude_columns=["input"],
+                exclude_columns=["input", "scan_events"],
             ) as reader:
                 with pa_ipc.new_stream(
                     buf,
@@ -315,6 +317,7 @@ def create_scans_router(
         summary="Get scanner input for a specific result",
         description="Returns a JSON envelope with input, input_type, and input_data "
         "(EventsData pools for condensed events, or null).",
+        deprecated=True,
     )
     async def scanner_input(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
@@ -360,6 +363,85 @@ def create_scans_router(
                 + (fields["input_data"] or "null")
                 + "}"
             ),
+            media_type="application/json",
+        )
+
+    _FIELDS_ALLOWLIST: frozenset[str] = frozenset(
+        {"input", "input_type", "input_data", "scan_events"}
+    )
+    _PLAIN_VALUE_FIELDS: frozenset[str] = frozenset({"input_type"})
+
+    @router.get(
+        "/scans/{dir}/{scan}/{scanner}/{uuid}/fields",
+        summary="Get specific fields for a result row",
+        description="Returns requested fields as a JSON object. "
+        "Allowed fields: input, input_type, input_data, scan_events. "
+        "Pass a comma-separated list via the `fields` query parameter.",
+    )
+    async def scanner_fields(
+        dir: str = Path(description="Scans directory (base64url-encoded)"),
+        scan: str = Path(description="Scan path (base64url-encoded)"),
+        scanner: str = Path(description="Scanner name"),
+        uuid: str = Path(description="UUID of the specific result row"),
+        fields: str | None = QueryParam(
+            default=None,
+            description="Comma-separated list of field names to return",
+        ),
+    ) -> Response:
+        """Retrieve specific fields for a result row as a JSON object.
+
+        Fields ``input``, ``input_data``, and ``scan_events`` are pre-serialized
+        JSON strings in parquet — passed through raw without re-encoding.
+        ``input_type`` is a plain scalar and is serialized with ``json.dumps``.
+        """
+        if not fields:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Missing required query parameter: fields",
+            )
+
+        requested = list(dict.fromkeys(f.strip() for f in fields.split(",") if f.strip()))
+        unknown = set(requested) - _FIELDS_ALLOWLIST
+        if unknown:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Unknown field(s): {sorted(unknown)}. "
+                f"Allowed: {sorted(_FIELDS_ALLOWLIST)}",
+            )
+
+        scans_dir = decode_base64url(dir)
+        scan_path = UPath(scans_dir) / decode_base64url(scan)
+
+        result = await scan_results_arrow_async(str(scan_path))
+        if scanner not in result.scanners:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"Scanner '{scanner}' not found in scan results",
+            )
+
+        try:
+            row = result.get_fields(scanner, "uuid", uuid, requested)
+        except (KeyError, ValueError) as err:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"No row found for uuid: {uuid}",
+            ) from err
+
+        # Build raw JSON manually to avoid re-parsing pre-serialized JSON fields.
+        parts: list[str] = []
+        for field in requested:
+            value = row[field]
+            if value is None:
+                serialized = "null"
+            elif field in _PLAIN_VALUE_FIELDS:
+                serialized = json.dumps(value)
+            else:
+                # Pre-serialized JSON string — pass through raw.
+                serialized = value
+            parts.append(json.dumps(field) + ":" + serialized)
+
+        return Response(
+            content="{" + ",".join(parts) + "}",
             media_type="application/json",
         )
 

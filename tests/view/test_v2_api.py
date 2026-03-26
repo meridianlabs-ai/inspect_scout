@@ -21,6 +21,7 @@ from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
 )
 
@@ -220,6 +221,134 @@ class TestViewServerAppScanEndpoint:
         data = response.json()
         assert data["complete"] is True
         assert data["location"] == "/test/scan"
+
+
+class TestViewServerAppFieldsEndpoint:
+    """Tests for the /scans/{dir}/{scan}/{scanner}/{uuid}/fields endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_requested_fields(self, client: TestClient) -> None:
+        """Happy path: returns requested fields as JSON."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.return_value = {
+            "input_type": "human",
+            "input": '["hello"]',
+            "input_data": None,
+            "scan_events": '{"events": []}',
+        }
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input_type,input,input_data,scan_events"
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["input_type"] == "human"
+        assert data["input"] == ["hello"]
+        assert data["input_data"] is None
+        assert data["scan_events"] == {"events": []}
+
+    @pytest.mark.asyncio
+    async def test_fields_rejects_unknown_fields(self, client: TestClient) -> None:
+        """Returns 400 for unknown field names."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input,unknown_field"
+            )
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_fields_rejects_missing_fields_param(self, client: TestClient) -> None:
+        """Returns 400 when fields query param is missing."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+            )
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_404_for_unknown_uuid(self, client: TestClient) -> None:
+        """Returns 404 when get_fields raises KeyError (unknown UUID)."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.side_effect = KeyError("no row for uuid")
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/nonexistent-uuid/fields"
+                "?fields=input"
+            )
+
+        assert response.status_code == HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_404_for_unknown_scanner(
+        self, client: TestClient
+    ) -> None:
+        """Returns 404 when scanner name is not found."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/nonexistent/some-uuid/fields"
+                "?fields=input"
+            )
+
+        assert response.status_code == HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_fields_none_value_serialized_as_null(
+        self, client: TestClient
+    ) -> None:
+        """None values for any field are returned as JSON null."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.return_value = {
+            "input_type": None,
+            "input": None,
+        }
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input_type,input"
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["input_type"] is None
+        assert data["input"] is None
 
 
 class TestAuthorizationMiddleware:

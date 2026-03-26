@@ -11833,8 +11833,93 @@
         ]
       }
     },
+    "/scans/{dir}/{scan}/{scanner}/{uuid}/fields": {
+      "get": {
+        "description": "Returns requested fields as a JSON object. Allowed fields: input, input_type, input_data, scan_events. Pass a comma-separated list via the `fields` query parameter.",
+        "operationId": "scanner_fields_scans__dir___scan___scanner___uuid__fields_get",
+        "parameters": [
+          {
+            "description": "Scans directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Scans directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scan path (base64url-encoded)",
+            "in": "path",
+            "name": "scan",
+            "required": true,
+            "schema": {
+              "description": "Scan path (base64url-encoded)",
+              "title": "Scan",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Scanner name",
+            "in": "path",
+            "name": "scanner",
+            "required": true,
+            "schema": {
+              "description": "Scanner name",
+              "title": "Scanner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "UUID of the specific result row",
+            "in": "path",
+            "name": "uuid",
+            "required": true,
+            "schema": {
+              "description": "UUID of the specific result row",
+              "title": "Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated list of field names to return",
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated list of field names to return",
+              "title": "Fields"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get specific fields for a result row",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
     "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
       "get": {
+        "deprecated": true,
         "description": "Returns a JSON envelope with input, input_type, and input_data (EventsData pools for condensed events, or null).",
         "operationId": "scanner_input_scans__dir___scan___scanner___uuid__input_get",
         "parameters": [

@@ -4,6 +4,10 @@ from pathlib import Path as PathlibPath
 
 from fastapi import FastAPI
 
+from .._llm_scanner.params import LlmScannerParams
+from .._transcript.types import Transcript
+from .._validation.types import ValidationCase
+from ._api_v2_chat import create_chat_router
 from ._api_v2_config import create_config_router
 from ._api_v2_dist import create_dist_router
 from ._api_v2_scanners import create_scanners_router
@@ -39,5 +43,6 @@ def v2_api_app(
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
+    app.include_router(create_chat_router())
 
     return app

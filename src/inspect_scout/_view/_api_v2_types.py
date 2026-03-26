@@ -290,3 +290,12 @@ class StreamMetadata:
 
     compression_method: ZipCompressionMethod | None
     uncompressed_size: int | None
+
+
+@dataclass
+class ChatRequest:
+    """Request body for the chat endpoint."""
+
+    transcript_dir: str
+    transcript_id: str
+    messages: list[ChatMessage]

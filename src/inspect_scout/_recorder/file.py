@@ -240,6 +240,8 @@ class FileRecorder(ScanRecorder):
     async def results_arrow(
         scan_location: str,
     ) -> ScanResultsArrow:
+        scan_path = UPath(scan_location)
+
         class _ScanResultsArrowFiles(ScanResultsArrow):
             def _resolve_parquet_source(
                 self, scanner: str
@@ -251,7 +253,6 @@ class FileRecorder(ScanRecorder):
                 For az:// (no native PyArrow support), downloads via fsspec
                 and returns a BytesIO. For local paths, returns (str, None).
                 """
-                scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 path_str = scanner_path.as_posix()
 
@@ -353,6 +354,15 @@ class FileRecorder(ScanRecorder):
 
                 return cast("Scalar[Any]", table[target_column][0])
 
+            def _schema_names(self, scanner: str) -> set[str]:
+                """Return the set of column names in a scanner's parquet file."""
+                pa_path, pa_fs = self._resolve_parquet_source(scanner)
+                if pa_fs is not None:
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                else:
+                    pf = pq.ParquetFile(pa_path)
+                return set(pf.schema.names)
+
             def get_fields(
                 self,
                 scanner: str,
@@ -364,44 +374,11 @@ class FileRecorder(ScanRecorder):
 
                 Missing columns (e.g. in old parquet files) return None.
                 """
-                pa_path, pa_fs = self._resolve_parquet_source(scanner)
-
-                if pa_fs is not None:
-                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
-                    schema_names = set(pf.schema.names)
-                    present = [c for c in target_columns if c in schema_names]
-                    missing = [c for c in target_columns if c not in schema_names]
-
-                    for i in range(pf.metadata.num_row_groups):
-                        rg_ids = pf.read_row_group(i, columns=[id_column])
-                        mask = pc.equal(rg_ids[id_column], id_value)
-                        if pc.any(mask).as_py():
-                            rg_data = pf.read_row_group(i, columns=present)
-                            table = rg_data.filter(mask)
-                            if len(table) > 1:
-                                raise ValueError(
-                                    f"Multiple rows found for {id_column}={id_value!r}"
-                                )
-                            result = {c: table[c][0].as_py() for c in present}
-                            for c in missing:
-                                result[c] = None
-                            return result
-
-                    raise KeyError(f"{id_value!r} not found in {id_column}")
-
-                dataset: ds.Dataset = (
-                    ds.dataset(pq.read_table(pa_path))
-                    if isinstance(pa_path, io.BytesIO)
-                    else ds.dataset(pa_path, format="parquet")
-                )
-                schema_names = set(dataset.schema.names)
+                schema_names = self._schema_names(scanner)
                 present = [c for c in target_columns if c in schema_names]
                 missing = [c for c in target_columns if c not in schema_names]
 
-                table = dataset.to_table(
-                    columns=present,
-                    filter=(pc.field(id_column) == id_value),
-                )
+                table = self._point_lookup(scanner, id_column, id_value, present)
 
                 if len(table) == 0:
                     raise KeyError(f"{id_value!r} not found in {id_column}")

@@ -327,43 +327,14 @@ def create_scans_router(
     ) -> Response:
         """Retrieve scanner input as a JSON envelope.
 
-        Returns ``{"input_type": ..., "input": ..., "input_data": ...}``
-        where ``input`` and ``input_data`` are raw JSON from parquet —
-        no server-side parsing or re-encoding.
+        Deprecated: use ``/fields?fields=input,input_type,input_data`` instead.
         """
-        scans_dir = decode_base64url(dir)
-        scan_path = UPath(scans_dir) / decode_base64url(scan)
-
-        result = await scan_results_arrow_async(str(scan_path))
-        if scanner not in result.scanners:
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"Scanner '{scanner}' not found in scan results",
-            )
-
-        fields = result.get_fields(
-            scanner, "uuid", uuid, ["input", "input_type", "input_data"]
-        )
-
-        # `input` and `input_data` are pre-serialized JSON strings in the parquet
-        # columns. The call to `.get_fields()` does `.as_py()` which returns a Python
-        # `str` from Arrow's `large_string`. This means that `fields["input"]` is
-        # a python `str`. They both pass straight through as raw JSON fragments
-        # — no parsing, no re-encoding, no extra copies beyond Arrow → Python str.
-        # Obviously, there's no type safety here — `response_model`` is for OpenAPI
-        # schema only.
-
-        return Response(
-            content=(
-                '{"input_type":'
-                + json.dumps(fields["input_type"])
-                + ',"input":'
-                + (fields["input"] or "null")
-                + ',"input_data":'
-                + (fields["input_data"] or "null")
-                + "}"
-            ),
-            media_type="application/json",
+        return await scanner_fields(
+            dir=dir,
+            scan=scan,
+            scanner=scanner,
+            uuid=uuid,
+            fields="input,input_type,input_data",
         )
 
     _FIELDS_ALLOWLIST: frozenset[str] = frozenset(

@@ -243,20 +243,27 @@ class FileRecorder(ScanRecorder):
         class _ScanResultsArrowFiles(ScanResultsArrow):
             def _resolve_parquet_source(
                 self, scanner: str
-            ) -> tuple[str, pafs.FileSystem | None]:
+            ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
                 """Return (path, filesystem) for opening a parquet file.
 
-                For S3/GCS/Azure paths, returns a pyarrow-native filesystem
-                that uses HTTP range requests instead of downloading the
-                entire file. For local paths, returns (str_path, None).
+                For cloud paths with native PyArrow support (S3, GCS, ABFS),
+                returns a pyarrow filesystem that uses HTTP range requests.
+                For az:// (no native PyArrow support), downloads via fsspec
+                and returns a BytesIO. For local paths, returns (str, None).
                 """
                 scan_path = UPath(scan_location)
                 scanner_path = scan_path / f"{scanner}.parquet"
                 path_str = scanner_path.as_posix()
 
-                if path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
+                if path_str.startswith(
+                    ("s3://", "gs://", "gcs://", "abfs://", "abfss://")
+                ):
                     pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
                     return pa_path, pa_fs
+
+                if path_str.startswith("az://"):
+                    with file(path_str, "rb") as f:
+                        return io.BytesIO(f.read()), None
 
                 return str(scanner_path), None
 
@@ -319,7 +326,11 @@ class FileRecorder(ScanRecorder):
                             return rg_data.filter(mask)
                     return pa.table({c: [] for c in target_columns})
 
-                dataset = ds.dataset(pa_path, format="parquet")
+                dataset: ds.Dataset = (
+                    ds.dataset(pq.read_table(pa_path))
+                    if isinstance(pa_path, io.BytesIO)
+                    else ds.dataset(pa_path, format="parquet")
+                )
                 return dataset.to_table(
                     columns=target_columns,
                     filter=(pc.field(id_column) == id_value),
@@ -378,7 +389,11 @@ class FileRecorder(ScanRecorder):
 
                     raise KeyError(f"{id_value!r} not found in {id_column}")
 
-                dataset = ds.dataset(pa_path, format="parquet")
+                dataset: ds.Dataset = (
+                    ds.dataset(pq.read_table(pa_path))
+                    if isinstance(pa_path, io.BytesIO)
+                    else ds.dataset(pa_path, format="parquet")
+                )
                 schema_names = set(dataset.schema.names)
                 present = [c for c in target_columns if c in schema_names]
                 missing = [c for c in target_columns if c not in schema_names]

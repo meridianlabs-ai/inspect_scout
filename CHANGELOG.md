@@ -1,3 +1,8 @@
+## Unreleased
+
+- Scout View: Show tooltip for array or object values which have been truncated.
+- VS Code Integration: Fix regression displaying Scout View in VS Code.
+
 ## 0.4.23 (25 March 2026)
 
 - Add timeline types to `@scanner` decorator overloads.

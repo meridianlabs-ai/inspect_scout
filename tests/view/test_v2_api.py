@@ -21,14 +21,9 @@ from inspect_scout._view.server import (
     AuthorizationMiddleware,
 )
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
 )
-
-
-def _base64url(s: str) -> str:
-    """Encode string as base64url (URL-safe base64 without padding)."""
-    return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
-
 
 if TYPE_CHECKING:
     from inspect_scout._transcript.types import Transcript
@@ -36,8 +31,6 @@ if TYPE_CHECKING:
 
 def base64url(s: str) -> str:
     """Encode string as base64url (URL-safe base64 without padding)."""
-    import base64
-
     return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
 
 
@@ -222,6 +215,138 @@ class TestViewServerAppScanEndpoint:
         assert data["location"] == "/test/scan"
 
 
+class TestViewServerAppFieldsEndpoint:
+    """Tests for the /scans/{dir}/{scan}/{scanner}/{uuid}/fields endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_requested_fields(self, client: TestClient) -> None:
+        """Happy path: returns requested fields as JSON."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.return_value = {
+            "input_type": "human",
+            "input": '["hello"]',
+            "input_data": None,
+            "scan_events": '{"events": []}',
+        }
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input_type,input,input_data,scan_events"
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["input_type"] == "human"
+        assert data["input"] == ["hello"]
+        assert data["input_data"] is None
+        assert data["scan_events"] == {"events": []}
+
+    @pytest.mark.asyncio
+    async def test_fields_rejects_unknown_fields(self, client: TestClient) -> None:
+        """Returns 400 for unknown field names."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input,unknown_field"
+            )
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_fields_rejects_missing_fields_param(
+        self, client: TestClient
+    ) -> None:
+        """Returns 400 when fields query param is missing."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+            )
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_404_for_unknown_uuid(
+        self, client: TestClient
+    ) -> None:
+        """Returns 404 when get_fields raises KeyError (unknown UUID)."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.side_effect = KeyError("no row for uuid")
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/nonexistent-uuid/fields"
+                "?fields=input"
+            )
+
+        assert response.status_code == HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_fields_returns_404_for_unknown_scanner(
+        self, client: TestClient
+    ) -> None:
+        """Returns 404 when scanner name is not found."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/nonexistent/some-uuid/fields"
+                "?fields=input"
+            )
+
+        assert response.status_code == HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_fields_none_value_serialized_as_null(
+        self, client: TestClient
+    ) -> None:
+        """None values for any field are returned as JSON null."""
+        mock_results = MagicMock(spec=ScanResultsArrow)
+        mock_results.scanners = ["scanner1"]
+        mock_results.get_fields.return_value = {
+            "input_type": None,
+            "input": None,
+        }
+
+        with patch(
+            "inspect_scout._view._api_v2_scans.scan_results_arrow_async",
+            return_value=mock_results,
+        ):
+            response = client.get(
+                f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid/fields"
+                "?fields=input_type,input"
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["input_type"] is None
+        assert data["input"] is None
+
+
 class TestAuthorizationMiddleware:
     """Tests for the AuthorizationMiddleware."""
 
@@ -398,9 +523,7 @@ class TestTranscriptsPagination:
         test_client = TestClient(v2_api_app())
 
         # Make request (empty dir)
-        response = test_client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}", json={}
-        )
+        response = test_client.post(f"/transcripts/{base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -418,7 +541,7 @@ class TestTranscriptsPagination:
         await _populate_transcripts(tmp_path, transcripts)
 
         client = TestClient(v2_api_app())
-        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
+        response = client.post(f"/transcripts/{base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -434,7 +557,7 @@ class TestTranscriptsPagination:
         client = TestClient(v2_api_app())
         # Filter to gpt-4 only (every other one = 5)
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={"filter": {"left": "model", "operator": "=", "right": "gpt-4"}},
         )
 
@@ -451,7 +574,7 @@ class TestTranscriptsPagination:
 
         client = TestClient(v2_api_app())
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={"pagination": {"limit": 3, "cursor": None, "direction": "forward"}},
         )
 
@@ -469,7 +592,7 @@ class TestTranscriptsPagination:
 
         # Make request without pagination
         client = TestClient(v2_api_app())
-        response = client.post(f"/transcripts/{_base64url(str(tmp_path))}", json={})
+        response = client.post(f"/transcripts/{base64url(str(tmp_path))}", json={})
 
         assert response.status_code == 200
         data = response.json()
@@ -486,7 +609,7 @@ class TestTranscriptsPagination:
         # Request first 3 items
         client = TestClient(v2_api_app())
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -513,7 +636,7 @@ class TestTranscriptsPagination:
 
         # Get first page
         response1 = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -523,7 +646,7 @@ class TestTranscriptsPagination:
 
         # Get second page using cursor
         response2 = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
             },
@@ -548,7 +671,7 @@ class TestTranscriptsPagination:
 
         # Get last 3 items (backward from end)
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": None, "direction": "backward"},
             },
@@ -568,7 +691,7 @@ class TestTranscriptsPagination:
         client = TestClient(v2_api_app())
 
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={"pagination": {"limit": 10, "cursor": None, "direction": "forward"}},
         )
 
@@ -588,7 +711,7 @@ class TestTranscriptsPagination:
 
         # Sort by model ASC, paginate
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "order_by": {"column": "model", "direction": "ASC"},
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
@@ -615,7 +738,7 @@ class TestTranscriptsPagination:
 
         # Sort by model ASC, then score DESC
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "order_by": [
                     {"column": "model", "direction": "ASC"},
@@ -646,7 +769,7 @@ class TestTranscriptsPagination:
 
         # Sort explicitly by transcript_id
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "order_by": {"column": "transcript_id", "direction": "DESC"},
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
@@ -674,7 +797,7 @@ class TestTranscriptsPagination:
 
         # Paginate without order_by
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -737,7 +860,7 @@ class TestTranscriptsPagination:
 
         # Sort by score (None values treated as empty string)
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "order_by": {"column": "score", "direction": "ASC"},
                 "pagination": {"limit": 2, "cursor": None, "direction": "forward"},
@@ -763,7 +886,7 @@ class TestTranscriptsPagination:
 
         # Get first page of 3
         response1 = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": None, "direction": "forward"},
             },
@@ -773,7 +896,7 @@ class TestTranscriptsPagination:
 
         # Get second (last) page - should have 2 items and no next_cursor
         response2 = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 3, "cursor": cursor, "direction": "forward"},
             },
@@ -797,7 +920,7 @@ class TestTranscriptsPagination:
 
         # Request 100 items when only 5 exist
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {"limit": 100, "cursor": None, "direction": "forward"},
             },
@@ -821,7 +944,7 @@ class TestTranscriptsPagination:
         fake_cursor = {"transcript_id": "t005", "extra_key": "ignored"}
 
         response = client.post(
-            f"/transcripts/{_base64url(str(tmp_path))}",
+            f"/transcripts/{base64url(str(tmp_path))}",
             json={
                 "pagination": {
                     "limit": 3,

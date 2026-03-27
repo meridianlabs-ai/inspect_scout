@@ -147,7 +147,7 @@ def mock_filesystem() -> Iterator[Mock]:
     with (
         patch(
             "inspect_scout._transcript.caching.filesystem",
-            side_effect=lambda path: MockFilesystem(path),
+            side_effect=MockFilesystem,
         ),
         patch(
             "inspect_scout._transcript.caching.log_files_from_ls",

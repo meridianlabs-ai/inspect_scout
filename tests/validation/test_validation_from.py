@@ -434,7 +434,7 @@ ghi789jkl012,false"""
     monkeypatch.setattr(
         validation_module.logger,
         "warning",
-        lambda msg: warnings_logged.append(msg),
+        warnings_logged.append,
     )
 
     validation = validation_from(csv_file)
@@ -467,7 +467,7 @@ def456,false"""
     monkeypatch.setattr(
         validation_module.logger,
         "warning",
-        lambda msg: warnings_logged.append(msg),
+        warnings_logged.append,
     )
 
     validation = validation_from(csv_file)
@@ -836,7 +836,7 @@ test2,false,test"""
     monkeypatch.setattr(
         validation_module.logger,
         "warning",
-        lambda msg: warnings_logged.append(msg),
+        warnings_logged.append,
     )
 
     validation = validation_from(csv_file, split="nonexistent")
@@ -955,7 +955,7 @@ test2,false"""
     monkeypatch.setattr(
         validation_module.logger,
         "warning",
-        lambda msg: warnings_logged.append(msg),
+        warnings_logged.append,
     )
 
     validation = validation_from(csv_file, split="dev")

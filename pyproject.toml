@@ -149,10 +149,12 @@ select = [
     "I",      # isort
     "B",      # flake8-bugbear
     "SIM101", # duplicate isinstance
+    "PLE",    # pylint errors
+    "PLW",    # pylint warnings
     # "RET", # flake8-return
     # "RUF", # ruff rules
 ]
-ignore = ["E203", "E501", "D10", "D212", "D415"]
+ignore = ["E203", "E501", "D10", "D212", "D415", "PLW0127", "PLW0603", "PLW2901"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

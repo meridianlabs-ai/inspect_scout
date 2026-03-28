@@ -226,13 +226,6 @@ def message_as_str(
             else:
                 entry += f"\nTool Call: {func_name}\nArguments: {args}\n"
 
-        # surround with prefill tag if this was a prefill message
-        if message.metadata and message.metadata.get("prefill", False) is True:
-            entry = f"<prefill>\n{entry}\n</prefill>"
-
-        # return entry
-        return entry
-
     elif isinstance(message, ChatMessageTool):
         if preprocessor.exclude_tool_usage:
             return None
@@ -245,7 +238,16 @@ def message_as_str(
         return f"{message.role.upper()}:\n{content}{error_part}\n"
 
     else:
-        return f"{message.role.upper()}:\n{content}\n"
+        entry = f"{message.role.upper()}:\n{content}\n"
+
+    if (
+        message.role == "assistant"
+        and message.metadata
+        and message.metadata.get("prefill")
+    ):
+        entry = f"<prefill>\n{entry}</prefill>"
+
+    return entry
 
 
 def _text_from_content(

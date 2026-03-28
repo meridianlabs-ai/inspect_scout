@@ -250,20 +250,17 @@ def _text_from_content(
         case "text":
             return content.text
         case "reasoning":
-            return (
-                None
-                if (
-                    exclude_reasoning
-                    or not (
-                        reasoning := content.summary
-                        if content.redacted
-                        else content.reasoning
-                    )
-                )
-                # We need to bracket it with a start/finish since it could be multiple
-                # lines long, and we need to distinguish it from content text's
-                else f"\n<think>{reasoning}</think>"
-            )
+            if exclude_reasoning:
+                return None
+            if content.redacted:
+                if content.summary:
+                    return f"\n<thinking_summary>{content.summary}</thinking_summary>"
+                else:
+                    return "\n<thinking_redacted/>"
+            elif content.reasoning:
+                return f"\n<thinking>{content.reasoning}</thinking>"
+            else:
+                return None
 
         case "tool_use":
             return (

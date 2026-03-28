@@ -441,6 +441,58 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             True,
             "ASSISTANT:\nAnswer\n",
         ),
+        # Redacted reasoning with summary: included
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(
+                        reasoning="", redacted=True, summary="Summary of thinking"
+                    ),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            False,
+            "ASSISTANT:\n\n<thinking_summary>Summary of thinking</thinking_summary>\nThe answer\n",
+        ),
+        # Redacted reasoning with summary: excluded
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(
+                        reasoning="", redacted=True, summary="Summary of thinking"
+                    ),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            True,
+            "ASSISTANT:\nThe answer\n",
+        ),
+        # Fully redacted reasoning (no summary): included
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(reasoning="", redacted=True),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            False,
+            "ASSISTANT:\n\n<thinking_redacted/>\nThe answer\n",
+        ),
+        # Fully redacted reasoning (no summary): excluded
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(reasoning="", redacted=True),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            True,
+            "ASSISTANT:\nThe answer\n",
+        ),
         # Combined: both excluded
         (
             ChatMessageAssistant(

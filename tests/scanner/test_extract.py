@@ -233,7 +233,7 @@ def test_assistant_messages_with_tool_calls(
                     ContentText(text="The answer is 42"),
                 ]
             ),
-            "ASSISTANT:\n\n<think>Let me think...</think>\nThe answer is 42\n",
+            "ASSISTANT:\n\n<thinking>Let me think...</thinking>\nThe answer is 42\n",
         ),
         # Text mixed with various content types
         (
@@ -387,7 +387,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "ASSISTANT:\n\n<think>Let me think...</think>\nThe answer is 42\n",
+            "ASSISTANT:\n\n<thinking>Let me think...</thinking>\nThe answer is 42\n",
         ),
         # Reasoning only: excluded (default, exclude=True)
         (
@@ -406,7 +406,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ChatMessageAssistant(content=[ContentReasoning(reasoning="Thinking...")]),
             False,
             False,
-            "ASSISTANT:\n\n<think>Thinking...</think>\n",
+            "ASSISTANT:\n\n<thinking>Thinking...</thinking>\n",
         ),
         # Reasoning only: only reasoning content, excluded (default)
         (
@@ -426,7 +426,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "ASSISTANT:\n\n<think>First thought</think>\nAnswer\n\n<think>Second thought</think>\n",
+            "ASSISTANT:\n\n<thinking>First thought</thinking>\nAnswer\n\n<thinking>Second thought</thinking>\n",
         ),
         # Reasoning only: multiple reasoning parts, excluded (default)
         (
@@ -440,6 +440,58 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             False,
             True,
             "ASSISTANT:\nAnswer\n",
+        ),
+        # Redacted reasoning with summary: included
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(
+                        reasoning="", redacted=True, summary="Summary of thinking"
+                    ),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            False,
+            "ASSISTANT:\n\n<thinking_summary>Summary of thinking</thinking_summary>\nThe answer\n",
+        ),
+        # Redacted reasoning with summary: excluded
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(
+                        reasoning="", redacted=True, summary="Summary of thinking"
+                    ),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            True,
+            "ASSISTANT:\nThe answer\n",
+        ),
+        # Fully redacted reasoning (no summary): included
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(reasoning="", redacted=True),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            False,
+            "ASSISTANT:\n\n<thinking_redacted/>\nThe answer\n",
+        ),
+        # Fully redacted reasoning (no summary): excluded
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(reasoning="", redacted=True),
+                    ContentText(text="The answer"),
+                ]
+            ),
+            False,
+            True,
+            "ASSISTANT:\nThe answer\n",
         ),
         # Combined: both excluded
         (
@@ -469,7 +521,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             False,
             False,
-            "ASSISTANT:\n\n<think>Let me think</think>\nAnswer\n\n"
+            "ASSISTANT:\n\n<thinking>Let me think</thinking>\nAnswer\n\n"
             "Tool Call: search\nArguments:\nq: test\n",
         ),
         # Combined: only reasoning included (tool calls excluded)
@@ -483,7 +535,7 @@ def test_messages_with_list_content(message: ChatMessage, expected: str) -> None
             ),
             True,
             False,
-            "ASSISTANT:\n\n<think>Thinking</think>\nDone\n",
+            "ASSISTANT:\n\n<thinking>Thinking</thinking>\nDone\n",
         ),
         # Combined: only tool calls included (reasoning excluded, default)
         (

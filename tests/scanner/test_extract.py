@@ -579,6 +579,43 @@ def test_exclude_parameters(
 
 
 @pytest.mark.parametrize(
+    "message,expected",
+    [
+        # Assistant with tool calls + prefill metadata
+        (
+            ChatMessageAssistant(
+                content="Answer",
+                tool_calls=[
+                    ToolCall(id="call_1", function="search", arguments={"q": "test"})
+                ],
+                metadata={"prefill": True},
+            ),
+            "<prefill>\nASSISTANT:\nAnswer\n\nTool Call: search\nArguments:\nq: test\n</prefill>",
+        ),
+        # Assistant without tool calls + prefill metadata
+        (
+            ChatMessageAssistant(content="Answer", metadata={"prefill": True}),
+            "<prefill>\nASSISTANT:\nAnswer\n</prefill>",
+        ),
+        # Assistant with prefill=False — not wrapped
+        (
+            ChatMessageAssistant(content="Answer", metadata={"prefill": False}),
+            "ASSISTANT:\nAnswer\n",
+        ),
+        # Assistant with no metadata — not wrapped
+        (
+            ChatMessageAssistant(content="Answer"),
+            "ASSISTANT:\nAnswer\n",
+        ),
+    ],
+)
+def test_prefill_wrapping(message: ChatMessageAssistant, expected: str) -> None:
+    """Test that assistant messages with prefill metadata are wrapped in <prefill> tags."""
+    result = message_as_str(message)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
     "messages,filter,include_ids,expected_result,expected_ids",
     [
         # Basic case without IDs

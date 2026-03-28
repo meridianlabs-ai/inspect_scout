@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.
+- Scanners: Surround assistant messages with `prefill=True` in metadata with `<prefill>` tag when rendering messages for scanners.
 - Scout View: Show tooltip for array or object values which have been truncated.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
 

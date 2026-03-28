@@ -226,6 +226,11 @@ def message_as_str(
             else:
                 entry += f"\nTool Call: {func_name}\nArguments: {args}\n"
 
+        # surround with prefill tag if this was a prefill message
+        if message.metadata and message.metadata.get("prefill", False) is True:
+            entry = f"<prefill>\n{entry}\n</prefill>"
+
+        # return entry
         return entry
 
     elif isinstance(message, ChatMessageTool):

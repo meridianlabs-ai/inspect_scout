@@ -1,3 +1,4 @@
+import math
 from typing import Any, Mapping, Sequence, cast
 
 from inspect_ai._eval.task.results import ScorerInfo, compute_eval_scores
@@ -39,7 +40,14 @@ class MetricsAccumulator:
         # a dict of values returned from the scorer)
         metrics: dict[str, dict[str, float]] = {}
         for score in scores:
-            metrics[score.name] = {k: v.value for k, v in score.metrics.items()}
+            # Filter out NaN values — compute_eval_scores produces NaN when
+            # there are zero successful results (e.g. all errored).  NaN
+            # serialises to JSON null which fails Summary Pydantic validation.
+            metrics[score.name] = {
+                k: v.value
+                for k, v in score.metrics.items()
+                if not (isinstance(v.value, float) and math.isnan(v.value))
+            }
         return metrics
 
     @throttle(3)

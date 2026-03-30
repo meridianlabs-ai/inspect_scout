@@ -300,34 +300,33 @@ def _extract_references(text: str, id_map: dict[str, str]) -> list[Reference]:
     """Extract message and event references from text.
 
     Args:
-        text: Text containing [M{n}], [E{n}], M{n}, or E{n} style references
+        text: Text containing references in bracketed form (e.g., [M1], [M1-M3],
+            [M2, M4], [M1, E2]).
         id_map: Dict mapping ordinal IDs (e.g., "M1", "M2", "E1", "E2") to actual IDs
 
     Returns:
         List of Reference objects with type="message" or type="event"
     """
-    # Match bracketed [M1]/[E1] or bare M1/E1 with word boundaries
-    pattern = r"\[(M|E)\d+\]|\b(M|E)\d+\b"
-    matches = re.finditer(pattern, text)
+    references: list[Reference] = []
+    seen_ids: set[str] = set()
 
-    references = []
-    seen_ids = set()
-
-    for match in matches:
-        cite = match.group(0)
-        # Extract ordinal key: "M1" from "[M1]" or "M1" from bare "M1"
-        ordinal_key = cite[1:-1] if cite.startswith("[") else cite
-
-        # Look up actual ID
+    def _add_ref(ordinal_key: str, cite: str) -> None:
         if ordinal_key in id_map:
             actual_id = id_map[ordinal_key]
-            # Avoid duplicate references
             if actual_id not in seen_ids:
                 ref_type: Literal["message", "event"] = (
                     "message" if ordinal_key.startswith("M") else "event"
                 )
                 references.append(Reference(type=ref_type, cite=cite, id=actual_id))
                 seen_ids.add(actual_id)
+
+    # Find all bracketed expressions containing M/E references,
+    # then extract each M/E token from within them.
+    for bracket_match in re.finditer(r"\[[^\]]*(?:M|E)\d+[^\]]*\]", text):
+        bracket_text = bracket_match.group(0)
+        for ref_match in re.finditer(r"(M|E)\d+", bracket_text):
+            ordinal_key = ref_match.group(0)
+            _add_ref(ordinal_key, f"[{ordinal_key}]")
 
     return references
 

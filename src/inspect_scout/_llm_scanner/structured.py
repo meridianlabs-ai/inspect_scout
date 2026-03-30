@@ -186,7 +186,7 @@ def structured_answer_type(answer: AnswerStructured) -> tuple[type[BaseModel], b
 def structured_result(
     answer: AnswerStructured,
     output: ModelOutput,
-    extract_references: Callable[[str], list[Reference]],
+    extract_references_fn: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None = None,
 ) -> Result:
     """Convert structured model output to Result(s).
@@ -194,7 +194,7 @@ def structured_result(
     Args:
         answer: The AnswerStructured configuration.
         output: The ModelOutput containing the validated JSON.
-        extract_references: Function to extract references from text.
+        extract_references_fn: Function to extract references from text.
         value_to_float: Optional function to convert result values to float
 
     Returns:
@@ -300,15 +300,14 @@ def structured_result(
                 k: v for k, v in all_fields.items() if k not in exclude_from_metadata
             }
 
-        # Extract references from explanation
-        references = extract_references(explanation_value)
-
         return Result(
             value=value,
             explanation=explanation_value,
             label=label_value,
             metadata=metadata if metadata else None,
-            references=references,
+            references=extract_references(
+                [value, explanation_value, metadata], extract_references_fn
+            ),
         )
 
     # Handle result set (multiple results)
@@ -327,6 +326,54 @@ def structured_result(
         # Handle single result
         assert parsed is not None  # parsed is always set for single results
         return create_result_from_parsed(parsed)
+
+
+def extract_references(
+    values: list[Any],
+    extract_fn: Callable[[str], list[Reference]],
+) -> list[Reference]:
+    """Extract deduplicated references from a list of values.
+
+    Recursively walks each value (strings, dicts, lists) and extracts
+    references using the provided function, deduplicating by reference id.
+
+    Args:
+        values: Values to extract references from (strings, dicts, lists, or None).
+        extract_fn: Function that extracts references from a string.
+
+    Returns:
+        Deduplicated list of references in order of first occurrence.
+    """
+    references: list[Reference] = []
+    seen_ids: set[str] = set()
+    for value in values:
+        _collect_references(value, extract_fn, references, seen_ids)
+    return references
+
+
+def _collect_references(
+    value: Any,
+    extract_references_fn: Callable[[str], list[Reference]],
+    references: list[Reference],
+    seen_ids: set[str],
+) -> None:
+    """Recursively extract references from strings within a value.
+
+    Deduplicates by reference id using the shared ``seen_ids`` set.
+    """
+    if value is None:
+        return
+    if isinstance(value, str):
+        for ref in extract_references_fn(value):
+            if ref.id not in seen_ids:
+                references.append(ref)
+                seen_ids.add(ref.id)
+    elif isinstance(value, dict):
+        for v in value.values():
+            _collect_references(v, extract_references_fn, references, seen_ids)
+    elif isinstance(value, list):
+        for item in value:
+            _collect_references(item, extract_references_fn, references, seen_ids)
 
 
 def validate_nested_models(model_type: Type[BaseModel], path: str = "") -> list[str]:

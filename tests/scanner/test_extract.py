@@ -981,52 +981,57 @@ async def test_type_checking_with_generic_preprocessor() -> None:
                 Reference(type="event", cite="[E1]", id="evt-1"),
             ],
         ),
-        # Bare references
+        # Bare references are not matched (brackets required)
         (
             "See M1 and M2",
             {"M1": "msg-1", "M2": "msg-2"},
-            [
-                Reference(type="message", cite="M1", id="msg-1"),
-                Reference(type="message", cite="M2", id="msg-2"),
-            ],
-        ),
-        # Bare reference should not match mid-word
-        (
-            "AM1 should not match",
-            {"M1": "msg-1"},
             [],
         ),
-        # Bare references in range context (no range expansion)
+        # Range inside brackets (only tokens present in text are matched)
         (
-            "M3-M7",
-            {"M3": "msg-3", "M7": "msg-7"},
-            [
-                Reference(type="message", cite="M3", id="msg-3"),
-                Reference(type="message", cite="M7", id="msg-7"),
-            ],
-        ),
-        # Bare reference with parentheses
-        (
-            "(M3)",
-            {"M3": "msg-3"},
-            [Reference(type="message", cite="M3", id="msg-3")],
-        ),
-        # Mixed bracketed and bare references
-        (
-            "[M1] and M2",
-            {"M1": "msg-1", "M2": "msg-2"},
+            "Early responses [M1-M3] are fine",
+            {"M1": "msg-1", "M2": "msg-2", "M3": "msg-3"},
             [
                 Reference(type="message", cite="[M1]", id="msg-1"),
-                Reference(type="message", cite="M2", id="msg-2"),
+                Reference(type="message", cite="[M3]", id="msg-3"),
             ],
         ),
-        # Bare event references
+        # Comma-separated inside brackets
         (
-            "E1 and E2",
-            {"E1": "evt-1", "E2": "evt-2"},
+            "See [M2, M4] for details",
+            {"M2": "msg-2", "M4": "msg-4"},
             [
-                Reference(type="event", cite="E1", id="evt-1"),
-                Reference(type="event", cite="E2", id="evt-2"),
+                Reference(type="message", cite="[M2]", id="msg-2"),
+                Reference(type="message", cite="[M4]", id="msg-4"),
+            ],
+        ),
+        # Mixed messages and events inside brackets
+        (
+            "Related [M1, E2] show the issue",
+            {"M1": "msg-1", "E2": "evt-2"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="event", cite="[E2]", id="evt-2"),
+            ],
+        ),
+        # Multiple bracketed groups in prose (ranges match endpoints only)
+        (
+            "Concerns [M1-M3] escalate, responses [M5-M7] are problematic",
+            {"M1": "m1", "M3": "m3", "M5": "m5", "M7": "m7"},
+            [
+                Reference(type="message", cite="[M1]", id="m1"),
+                Reference(type="message", cite="[M3]", id="m3"),
+                Reference(type="message", cite="[M5]", id="m5"),
+                Reference(type="message", cite="[M7]", id="m7"),
+            ],
+        ),
+        # Only refs present in id_map are returned
+        (
+            "[M1-M3] but M2 not in map",
+            {"M1": "msg-1", "M3": "msg-3"},
+            [
+                Reference(type="message", cite="[M1]", id="msg-1"),
+                Reference(type="message", cite="[M3]", id="msg-3"),
             ],
         ),
     ],

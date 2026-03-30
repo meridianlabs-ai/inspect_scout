@@ -23,6 +23,7 @@ reference: "inspect_scout"
 ### scanner_prompt
 ### generate_answer
 ### parse_answer
+### extract_references
 ### ResultReducer
 ### Answer
 ### answer_type

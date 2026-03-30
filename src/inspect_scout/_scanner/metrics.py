@@ -22,7 +22,9 @@ class MetricsAccumulator:
 
     def add_result(self, value: JsonValue) -> None:
         if value is not None:
-            self._scores.append(SampleScore(score=Score(value=as_score_value(value))))
+            self._scores.append(
+                SampleScore(score=Score(value=_numeric_score_value(value)))
+            )
 
     def compute_metrics(self) -> dict[str, dict[str, float]]:
         scores = compute_eval_scores(
@@ -78,6 +80,7 @@ def metrics_for_scanner(
 
 
 def as_score_value(value: JsonValue) -> Value:
+    """Convert a JsonValue to a Score Value, preserving all scalar types."""
     if isinstance(value, list):
         return [
             v if isinstance(v, str | int | float | bool) else to_json_str_safe(v)
@@ -94,3 +97,20 @@ def as_score_value(value: JsonValue) -> Value:
         return value
     else:
         raise AssertionError("None should not be passed to as_score_value")
+
+
+def _numeric_score_value(value: JsonValue) -> Value:
+    """Convert a JsonValue to a Score Value for metric computation.
+
+    Filters out non-numeric values (strings, None, complex objects) from
+    lists and dicts so that metric functions like mean() and stderr() only
+    see values they can aggregate.
+    """
+    if isinstance(value, list):
+        return [v for v in value if isinstance(v, int | float | bool)]
+    elif isinstance(value, dict):
+        return {k: v for k, v in value.items() if isinstance(v, int | float | bool)}
+    elif isinstance(value, str | int | float | bool):
+        return value
+    else:
+        raise AssertionError("None should not be passed to _numeric_score_value")

@@ -10,6 +10,7 @@ from inspect_ai.scorer import mean, stderr
 from inspect_scout import Result, Scanner, scan, scanner
 from inspect_scout._scanner.metrics import (
     MetricsAccumulator,
+    _numeric_score_value,
     as_score_value,
     metrics_accumulators,
     metrics_for_scanner,
@@ -140,6 +141,46 @@ def test_as_score_value_dict_with_nested() -> None:
     assert isinstance(result["b"], str)  # Serialized to JSON string
 
 
+# =============================================================================
+# Unit Tests: _numeric_score_value
+# =============================================================================
+
+
+def test_numeric_score_value_dict_filters_strings_and_none() -> None:
+    """Dict should filter out strings, None, and nested objects, keeping numerics."""
+    result = _numeric_score_value(
+        {
+            "score": 0.8,
+            "count": 3,
+            "flag": True,
+            "highlights": "some text",
+            "summary": "blah",
+            "empty": None,
+        }
+    )
+    assert result == {"score": 0.8, "count": 3, "flag": True}
+
+
+def test_numeric_score_value_dict_all_non_numeric() -> None:
+    """Dict with only non-numeric values should return empty dict."""
+    result = _numeric_score_value({"text": "hello", "nothing": None})
+    assert result == {}
+
+
+def test_numeric_score_value_list_filters_non_numeric() -> None:
+    """List should filter out strings, nested objects, and None."""
+    result = _numeric_score_value([1, "text", {"nested": "dict"}, 3, None, True])
+    assert result == [1, 3, True]
+
+
+def test_numeric_score_value_scalar_passthrough() -> None:
+    """Scalar values should pass through unchanged."""
+    assert _numeric_score_value(42) == 42
+    assert _numeric_score_value(3.14) == 3.14
+    assert _numeric_score_value("correct") == "correct"
+    assert _numeric_score_value(True) is True
+
+
 def test_as_score_value_none_raises() -> None:
     """None values should raise AssertionError."""
     with pytest.raises(AssertionError):
@@ -149,6 +190,25 @@ def test_as_score_value_none_raises() -> None:
 # =============================================================================
 # Unit Tests: MetricsAccumulator
 # =============================================================================
+
+
+def test_metrics_accumulator_dict_with_non_numeric_values() -> None:
+    """MetricsAccumulator should handle dicts with mixed numeric/string values."""
+    accumulator = MetricsAccumulator(scanner="test_scanner", metrics={"*": [mean()]})
+    accumulator.add_result(
+        {"dim1": 5, "dim2": 3, "highlights": "text", "summary": "blah"}
+    )
+    accumulator.add_result(
+        {"dim1": 7, "dim2": 9, "highlights": "more text", "summary": "etc"}
+    )
+
+    metrics = accumulator.compute_metrics()
+
+    # Should compute metrics only for numeric keys
+    assert "dim1" in metrics
+    assert "dim2" in metrics
+    assert metrics["dim1"]["mean"] == 6.0  # (5+7)/2
+    assert metrics["dim2"]["mean"] == 6.0  # (3+9)/2
 
 
 def test_metrics_accumulator_add_result_numeric() -> None:

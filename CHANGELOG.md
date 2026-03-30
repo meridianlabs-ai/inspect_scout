@@ -2,11 +2,14 @@
 
 - Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.
 - Scanners: Surround assistant messages with `prefill=True` in metadata with `<prefill>` tag when rendering messages for scanners.
+- Scanners: Match references across all fields in scan result.
 - Metrics: Filter out NaN metrics (occurs when all scan results are errors).
 - Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.
 - Timelines: Ensure that all events are loaded from reading timelines.
-- Scout View: Show tooltip for array or object values which have been truncated.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
+- Scout View: Show tooltip for array or object values which have been truncated.
+- Scout View: Improve citation matching in results view.
+
 
 ## 0.4.23 (25 March 2026)
 

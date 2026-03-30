@@ -8,6 +8,7 @@ from ._llm_scanner import (
     AnswerStructured,
     ResultReducer,
     answer_type,
+    extract_references,
     generate_answer,
     llm_scanner,
     parse_answer,
@@ -178,6 +179,7 @@ __all__ = [
     "answer_type",
     "generate_answer",
     "parse_answer",
+    "extract_references",
     "scanner_prompt",
     "grep_scanner",
     # validation

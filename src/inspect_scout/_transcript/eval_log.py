@@ -461,15 +461,23 @@ class EvalLogTranscriptsView(TranscriptsView):
             "Scout Eval Log Read",
             f"Reading from {t.source_uri} ({entry.filename})",
         ):
+            # When timelines are requested, load all events so that
+            # stored timeline UUID references can be resolved (stored
+            # timelines may reference any event type, not just the
+            # filtered subset).
             async with await zip_reader.open_member(entry) as json_iterable:
+                events_filter = (
+                    "all" if content.timeline is not None else content.events
+                )
                 transcript = await load_filtered_transcript(
                     json_iterable,
                     t,
                     content.messages,
-                    content.events,
+                    events_filter,
                 )
 
-            # Fallback: eval logs don't store timelines, so build from events
+            # Fallback: older eval logs don't store timelines, so build
+            # from events.
             if (
                 content.timeline is not None
                 and not transcript.timelines
@@ -482,6 +490,19 @@ class EvalLogTranscriptsView(TranscriptsView):
                 raw_timeline = timeline_build(transcript.events)
                 timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
+
+            # Filter events back down to what the scanner requested
+            # (we loaded "all" above only for timeline resolution).
+            if (
+                content.timeline is not None
+                and content.events is not None
+                and content.events != "all"
+            ):
+                from .util import filter_list
+
+                transcript = transcript.model_copy(
+                    update={"events": filter_list(transcript.events, content.events)}
+                )
 
             return transcript
 

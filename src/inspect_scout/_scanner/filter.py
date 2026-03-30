@@ -52,6 +52,7 @@ TIMELINE_DEFAULT_EVENTS: list[EventType] = [
     "approval",
     "compaction",
     "error",
+    "info",
     "span_begin",
     "span_end",
 ]

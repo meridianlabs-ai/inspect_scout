@@ -3,14 +3,17 @@
 import os
 
 from fastapi import APIRouter, HTTPException
-from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, get_model
+from inspect_ai.model import ChatMessageSystem, get_model
 
 from .._query import Column, Query
 from .._scanner.extract import messages_as_str
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
-from ._api_v2_types import ChatRequest
+from ._api_v2_types import ChatRequest, ChatResponse
 
+# TODO: figure out chunking, how to handle super huge transcripts
+# scout has some existing chunking + reducer
+# https://meridianlabs-ai.github.io/inspect_scout/scanner_tools.html#context-chunking
 CHAT_SYSTEM_PROMPT = """\
 You are a helpful assistant for analyzing LLM transcripts. \
 The user wants to discuss the following transcript. Answer their questions about it.
@@ -34,10 +37,11 @@ def create_chat_router() -> APIRouter:
     router = APIRouter(tags=["chat"])
 
     @router.post("/chat", summary="Send chat messages for a transcript")
-    async def chat(request: ChatRequest) -> ChatMessageAssistant:
+    async def chat(request: ChatRequest) -> ChatResponse:
         """Send chat messages and receive an LLM response about a transcript."""
         # Load transcript
         async with transcripts_view(request.transcript_dir) as view:
+            # TODO: could be moved into a method maybe
             condition = Column("transcript_id") == request.transcript_id
             infos = [info async for info in view.select(Query(where=[condition]))]
             if not infos:
@@ -49,7 +53,7 @@ def create_chat_router() -> APIRouter:
             )
 
         # Format transcript messages with [M1], [M2] IDs
-        transcript_str, _extract_refs = await messages_as_str(
+        transcript_str, extract_refs = await messages_as_str(
             transcript, include_ids=True
         )
 
@@ -68,6 +72,15 @@ def create_chat_router() -> APIRouter:
         except Exception as e:
             raise HTTPException(status_code=502, detail=str(e)) from e
 
-        return output.message
+        # Extract [M1], [M2] references from the assistant's response
+        content = output.message.content
+        response_text = (
+            content
+            if isinstance(content, str)
+            else " ".join(c.text for c in content if hasattr(c, "text"))
+        )
+        references = extract_refs(response_text)
+
+        return ChatResponse(message=output.message, references=references)
 
     return router

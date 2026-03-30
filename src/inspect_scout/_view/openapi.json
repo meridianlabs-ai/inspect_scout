@@ -2089,6 +2089,40 @@
         "title": "ChatRequest",
         "type": "object"
       },
+      "ChatResponse": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatMessageSystem-Output"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageUser-Output"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+              },
+              {
+                "$ref": "#/components/schemas/ChatMessageTool-Output"
+              }
+            ],
+            "title": "Message"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "references"
+        ],
+        "title": "ChatResponse",
+        "type": "object"
+      },
       "CompactionEvent": {
         "description": "Compaction of conversation history.",
         "properties": {
@@ -7279,6 +7313,40 @@
         ],
         "type": "string"
       },
+      "Reference": {
+        "description": "Reference to scanned content.",
+        "properties": {
+          "cite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cite"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "message",
+              "event"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "Reference",
+        "type": "object"
+      },
       "RenameValidationSetRequest": {
         "properties": {
           "name": {
@@ -12462,7 +12530,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                  "$ref": "#/components/schemas/ChatResponse"
                 }
               }
             },

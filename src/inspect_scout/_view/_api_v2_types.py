@@ -14,7 +14,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scanner.result import Error
+from .._scanner.result import Error, Reference
 from .._scanner.types import ScannerInput, ScannerInputNames
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
@@ -305,3 +305,11 @@ class ChatRequest:
     transcript_dir: str
     transcript_id: str
     messages: list[ChatMessage]
+
+
+@dataclass
+class ChatResponse:
+    """Response from the chat endpoint."""
+
+    message: ChatMessage
+    references: list[Reference]

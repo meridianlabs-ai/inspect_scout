@@ -782,12 +782,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
                 yield b"}"
 
-            # Use existing streaming JSON parser with filtering
+            # When timelines are requested, load all events so that
+            # stored timeline UUID references can be resolved (stored
+            # timelines may reference any event type, not just the
+            # filtered subset).
+            events_filter = "all" if content.timeline is not None else content.events
             transcript = await load_filtered_transcript(
                 stream_content_bytes(),
                 t,
                 content.messages,
-                content.events,
+                events_filter,
             )
 
             # Resolve pool references back to full messages/calls
@@ -808,6 +812,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 raw_timeline = timeline_build(transcript.events)
                 timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
+
+            # Filter events back down to what the scanner requested
+            # (we loaded "all" above only for timeline resolution).
+            if (
+                content.timeline is not None
+                and content.events is not None
+                and content.events != "all"
+            ):
+                from ...util import filter_list
+
+                transcript = transcript.model_copy(
+                    update={"events": filter_list(transcript.events, content.events)}
+                )
 
             return transcript
 

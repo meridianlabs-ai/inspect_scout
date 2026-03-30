@@ -4,6 +4,7 @@
 - Scanners: Surround assistant messages with `prefill=True` in metadata with `<prefill>` tag when rendering messages for scanners.
 - Metrics: Filter out NaN metrics (occurs when all scan results are errors).
 - Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.
+- Timelines: Ensure that all events are loaded from reading timelines.
 - Scout View: Show tooltip for array or object values which have been truncated.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
 

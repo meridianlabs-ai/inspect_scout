@@ -602,6 +602,92 @@
         "title": "BatchConfig",
         "type": "object"
       },
+      "BranchEvent": {
+        "description": "Branch in conversation history.",
+        "properties": {
+          "event": {
+            "const": "branch",
+            "default": "branch",
+            "title": "Event",
+            "type": "string"
+          },
+          "from_message": {
+            "title": "From Message",
+            "type": "string"
+          },
+          "from_span": {
+            "title": "From Span",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "from_span",
+          "from_message"
+        ],
+        "title": "BranchEvent",
+        "type": "object"
+      },
       "CachePolicy": {
         "description": "Caching options for model generation.",
         "properties": {
@@ -2282,6 +2368,9 @@
           },
           {
             "$ref": "#/components/schemas/ApprovalEvent"
+          },
+          {
+            "$ref": "#/components/schemas/BranchEvent"
           },
           {
             "$ref": "#/components/schemas/CompactionEvent"
@@ -4805,6 +4894,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
                   "$ref": "#/components/schemas/CompactionEvent"
@@ -7834,6 +7926,9 @@
                 "$ref": "#/components/schemas/ApprovalEvent"
               },
               {
+                "$ref": "#/components/schemas/BranchEvent"
+              },
+              {
                 "$ref": "#/components/schemas/CompactionEvent"
               },
               {
@@ -7892,6 +7987,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ApprovalEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/BranchEvent"
                     },
                     {
                       "$ref": "#/components/schemas/CompactionEvent"
@@ -9420,6 +9518,9 @@
                 "$ref": "#/components/schemas/ApprovalEvent"
               },
               {
+                "$ref": "#/components/schemas/BranchEvent"
+              },
+              {
                 "$ref": "#/components/schemas/CompactionEvent"
               },
               {
@@ -10204,6 +10305,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
                   "$ref": "#/components/schemas/CompactionEvent"

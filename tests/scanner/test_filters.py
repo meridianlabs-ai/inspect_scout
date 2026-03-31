@@ -294,6 +294,7 @@ def test_timeline_filter_true_contains_expected_types() -> None:
         "tool",
         "approval",
         "compaction",
+        "branch",
         "error",
         "info",
         "span_begin",

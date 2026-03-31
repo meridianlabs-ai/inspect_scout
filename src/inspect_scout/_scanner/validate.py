@@ -13,6 +13,7 @@ from typing import (
 
 from inspect_ai.event import Timeline
 from inspect_ai.event._approval import ApprovalEvent
+from inspect_ai.event._branch import BranchEvent
 from inspect_ai.event._compaction import CompactionEvent
 from inspect_ai.event._error import ErrorEvent
 from inspect_ai.event._event import (
@@ -65,6 +66,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     SpanBeginEvent: "span_begin",
     SpanEndEvent: "span_end",
     CompactionEvent: "compaction",
+    BranchEvent: "branch",
 }
 
 
@@ -395,6 +397,7 @@ def _get_event_types_from_filter(
         "store": StoreEvent,
         "approval": ApprovalEvent,
         "compaction": CompactionEvent,
+        "branch": BranchEvent,
         "input": InputEvent,
         "score": ScoreEvent,
         "error": ErrorEvent,

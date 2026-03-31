@@ -47,6 +47,7 @@ EventType = Literal[
     "model",
     "tool",
     "compaction",
+    "branch",
     "approval",
     "sandbox",
     "info",

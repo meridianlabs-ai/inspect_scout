@@ -162,7 +162,7 @@ class ScanDisplayRich(
         self._task_id = self._progress.add_task("Scan", total=self._total_scans)
 
         # skip already completed scans
-        self._progress.update(self._task_id, completed=self._completed_scans or 1)
+        self._progress.update(self._task_id, completed=self._completed_scans)
 
     def __exit__(self, *excinfo: Any) -> None:
         self._progress.stop()

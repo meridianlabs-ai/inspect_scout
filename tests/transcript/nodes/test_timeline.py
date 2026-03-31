@@ -12,6 +12,7 @@ from typing import Any, cast
 
 import pytest
 from inspect_ai.event import (
+    BranchEvent,
     CompactionEvent,
     Event,
     InfoEvent,
@@ -203,7 +204,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             working_time=None,
             agent=data.get("agent"),
             failed=None,
-            message_id=None,
+            message_id=data.get("message_id"),
         )
         if "agent_span_id" in data:
             tool_event.agent_span_id = data["agent_span_id"]
@@ -259,6 +260,19 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             metadata=None,
             event="compaction",
             type=data.get("type", "summary"),
+        )
+
+    elif event_type == "branch":
+        return BranchEvent(
+            uuid=uuid,
+            span_id=span_id,
+            timestamp=timestamp,
+            working_start=working_start,
+            pending=False,
+            metadata=None,
+            event="branch",
+            from_span=data.get("from_span", ""),
+            from_message=data.get("from_message", ""),
         )
 
     return None

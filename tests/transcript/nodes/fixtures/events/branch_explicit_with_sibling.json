@@ -46,6 +46,14 @@
       "timestamp": "2024-01-01T00:00:04Z"
     },
     {
+      "event": "branch",
+      "uuid": "b-001",
+      "span_id": "branch-span",
+      "from_span": "agent-a",
+      "from_message": "nonexistent-msg",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
       "event": "model",
       "uuid": "e-002",
       "span_id": "branch-span",
@@ -175,7 +183,7 @@
           "branches": [
             {
               "forked_at": "",
-              "event_uuids": ["e-002"]
+              "event_uuids": ["b-001", "e-002"]
             }
           ]
         },

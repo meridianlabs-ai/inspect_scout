@@ -42,6 +42,7 @@
       "span_id": "main-agent",
       "id": "tool-call-1",
       "function": "search",
+      "message_id": "msg-tool-1",
       "timestamp": "2024-01-01T00:00:04Z",
       "completed": "2024-01-01T00:00:05Z"
     },
@@ -52,6 +53,14 @@
       "name": "branch_attempt_1",
       "type": "branch",
       "parent_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:06Z"
+    },
+    {
+      "event": "branch",
+      "uuid": "b-001",
+      "span_id": "branch-1",
+      "from_span": "main-agent",
+      "from_message": "msg-tool-1",
       "timestamp": "2024-01-01T00:00:06Z"
     },
     {
@@ -96,6 +105,14 @@
       "name": "branch_attempt_2",
       "type": "branch",
       "parent_id": "main-agent",
+      "timestamp": "2024-01-01T00:00:12Z"
+    },
+    {
+      "event": "branch",
+      "uuid": "b-002",
+      "span_id": "branch-2",
+      "from_span": "main-agent",
+      "from_message": "msg-tool-1",
       "timestamp": "2024-01-01T00:00:12Z"
     },
     {
@@ -179,11 +196,11 @@
       "branches": [
         {
           "forked_at": "e-002",
-          "event_uuids": ["e-003", "e-004"]
+          "event_uuids": ["b-001", "e-003", "e-004"]
         },
         {
           "forked_at": "e-002",
-          "event_uuids": ["e-005", "e-006"]
+          "event_uuids": ["b-002", "e-005", "e-006"]
         }
       ]
     },

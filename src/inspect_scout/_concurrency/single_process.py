@@ -305,14 +305,26 @@ def single_process_strategy(
                 metrics.task_count -= 1
                 _update_metrics()
 
+        async def _metrics_ticker(scope: anyio.CancelScope) -> None:
+            """Periodically push metrics to the display during long-running operations."""
+            with scope:
+                while True:
+                    await anyio.sleep(1)
+                    _update_metrics()
+
         try:
             async with create_task_group() as tg:
+                ticker_scope = anyio.CancelScope()
+                tg.start_soon(_metrics_ticker, ticker_scope)
+
                 # Spawn initial workers for faster ramp-up
                 global worker_id_counter
-                for _ in range(task_count):
-                    worker_id_counter += 1
-                    metrics.task_count += 1
-                    tg.start_soon(_worker_task, worker_id_counter)
+                async with create_task_group() as worker_tg:
+                    for _ in range(task_count):
+                        worker_id_counter += 1
+                        metrics.task_count += 1
+                        worker_tg.start_soon(_worker_task, worker_id_counter)
+                ticker_scope.cancel()
 
         except Exception as ex:
             raise inner_exception(ex) from None

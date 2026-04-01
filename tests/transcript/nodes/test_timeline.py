@@ -33,7 +33,6 @@ from inspect_ai.model import (
 )
 from inspect_scout._transcript.timeline import (
     Timeline,
-    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
     timeline_build,
@@ -400,7 +399,7 @@ def assert_scoring_span_matches(
 
 
 def assert_branch_matches(
-    actual: TimelineBranch,
+    actual: TimelineSpan,
     expected: dict[str, Any],
     branch_name: str = "branch",
 ) -> None:
@@ -421,6 +420,21 @@ def assert_branch_matches(
             f"{branch_name} event UUIDs mismatch: "
             f"got {actual_uuids}, expected {expected['event_uuids']}"
         )
+
+    if "branches" in expected:
+        expected_branches = expected["branches"]
+        assert len(actual.branches) == len(expected_branches), (
+            f"{branch_name} nested branch count mismatch: "
+            f"got {len(actual.branches)}, expected {len(expected_branches)}"
+        )
+        for i, (actual_branch, expected_branch) in enumerate(
+            zip(actual.branches, expected_branches, strict=True)
+        ):
+            assert_branch_matches(
+                actual_branch,
+                expected_branch,
+                f"{branch_name}.branches[{i}]",
+            )
 
 
 def assert_span_matches(
@@ -840,7 +854,10 @@ def test_idle_time_branch() -> None:
     end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
     ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
     end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
-    branch = TimelineBranch(
+    branch = TimelineSpan(
+        id="branch-span",
+        name="branch",
+        span_type="branch",
         forked_at="",
         content=[
             TimelineEvent(

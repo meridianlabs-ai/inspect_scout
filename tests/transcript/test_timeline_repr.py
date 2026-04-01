@@ -8,7 +8,6 @@ from typing import Any
 import pytest
 from inspect_ai.event import (
     Timeline,
-    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
 )
@@ -96,17 +95,19 @@ def _make_span(
     name: str,
     *,
     content: list[TimelineEvent | TimelineSpan] | None = None,
-    branches: list[TimelineBranch] | None = None,
+    branches: list[TimelineSpan] | None = None,
     utility: bool = False,
+    forked_at: str | None = None,
 ) -> TimelineSpan:
     """Build a TimelineSpan with given content."""
     return TimelineSpan(
         id=f"span-{name}",
         name=name,
-        span_type="agent",
+        span_type="branch" if forked_at is not None else "agent",
         content=content or [],
         branches=branches or [],
         utility=utility,
+        forked_at=forked_at,
     )
 
 
@@ -329,10 +330,7 @@ def test_branches_prefix() -> None:
         timestamp=_ts(10), completed=_ts(50), input_tokens=200, output_tokens=100
     )
     branch_child = _make_span("Refactor", content=[branch_evt])
-    branch = TimelineBranch(
-        forked_at="",
-        content=[branch_child],
-    )
+    branch = _make_span("Branch", content=[branch_child], forked_at="")
 
     root = _make_span("Transcript", content=[evt1], branches=[branch])
     tl = _make_timeline(root)

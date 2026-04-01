@@ -9452,42 +9452,6 @@
         "title": "Timeline",
         "type": "object"
       },
-      "TimelineBranch": {
-        "description": "A discarded alternative path from a branch point.",
-        "properties": {
-          "content": {
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/TimelineEvent"
-                },
-                {
-                  "$ref": "#/components/schemas/TimelineSpan"
-                }
-              ]
-            },
-            "title": "Content",
-            "type": "array"
-          },
-          "forked_at": {
-            "title": "Forked At",
-            "type": "string"
-          },
-          "type": {
-            "const": "branch",
-            "default": "branch",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "forked_at",
-          "content"
-        ],
-        "title": "TimelineBranch",
-        "type": "object"
-      },
       "TimelineEvent": {
         "description": "Wraps a single Event.",
         "properties": {
@@ -9587,7 +9551,7 @@
           },
           "branches": {
             "items": {
-              "$ref": "#/components/schemas/TimelineBranch"
+              "$ref": "#/components/schemas/TimelineSpan"
             },
             "title": "Branches",
             "type": "array"
@@ -9617,6 +9581,18 @@
             ],
             "default": null,
             "title": "Description"
+          },
+          "forked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Forked At"
           },
           "id": {
             "title": "Id",

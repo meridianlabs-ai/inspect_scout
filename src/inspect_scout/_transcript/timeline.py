@@ -18,9 +18,9 @@ if TYPE_CHECKING:
 from inspect_ai.event import (
     ModelEvent,
     Timeline,
-    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
+    timeline_branch,
     timeline_build,
     timeline_dump,
     timeline_filter,
@@ -40,7 +40,6 @@ __all__ = [
     "Outline",
     "OutlineNode",
     "Timeline",
-    "TimelineBranch",
     "TimelineContentItem",
     "TimelineEvent",
     "TimelineSpan",
@@ -49,6 +48,7 @@ __all__ = [
     "timeline_dump",
     "timeline_filter",
     "timeline_load",
+    "timeline_branch",
     # Scout-specific
     "TimelineMessages",
     "filter_timeline_events",
@@ -90,21 +90,29 @@ def filter_timeline_events(
 def _filter_span(span: TimelineSpan, allowed: set[str]) -> TimelineSpan:
     """Filter a span's content and branches, keeping only allowed event types."""
     filtered_content = _filter_content_list(span.content, allowed)
-    filtered_branches = [
-        TimelineBranch(
-            forked_at=b.forked_at,
-            content=_filter_content_list(b.content, allowed),
-        )
-        for b in span.branches
-    ]
-    # Remove branches that ended up empty
-    filtered_branches = [b for b in filtered_branches if b.content]
+    filtered_branches_list: list[TimelineSpan] = []
+    for b in span.branches:
+        fb = _filter_span(b, allowed)
+        if fb.content or fb.branches:
+            filtered_branches_list.append(
+                TimelineSpan(
+                    id=fb.id,
+                    name=fb.name,
+                    span_type=fb.span_type,
+                    content=fb.content,
+                    branches=fb.branches,
+                    forked_at=b.forked_at,
+                    description=fb.description,
+                    utility=fb.utility,
+                    outline=fb.outline,
+                )
+            )
     return TimelineSpan(
         id=span.id,
         name=span.name,
         span_type=span.span_type,
         content=filtered_content,
-        branches=filtered_branches,
+        branches=filtered_branches_list,
         description=span.description,
         utility=span.utility,
         outline=span.outline,

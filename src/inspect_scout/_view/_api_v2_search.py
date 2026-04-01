@@ -11,6 +11,27 @@ from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
 from ._api_v2_types import SearchRequest, SearchResponse
 
+LLM_SEARCH_TEMPLATE = """\
+You are a search assistant for LLM transcript analysis. A user is searching \
+through a transcript and wants to find relevant information.
+
+[BEGIN TRANSCRIPT]
+===================================
+{{ messages }}
+===================================
+[END TRANSCRIPT]
+
+The user's search query is:
+{{ question }}
+
+Find the parts of the transcript most relevant to the query. \
+Cite specific messages using their IDs (e.g. '[M1]', '[M5]'). \
+Be concise — write short paragraphs, not essays. \
+If nothing in the transcript matches the query, say so briefly.
+
+{{ answer_format }}
+"""
+
 
 def create_search_router() -> APIRouter:
     """Create search API router.
@@ -23,7 +44,7 @@ def create_search_router() -> APIRouter:
     @router.post("/search", summary="Search a transcript")
     async def search(request: SearchRequest) -> SearchResponse:
         """Search a transcript using grep or LLM-based search."""
-        # Load transcript
+
         async with transcripts_view(request.transcript_dir) as view:
             condition = Column("transcript_id") == request.transcript_id
             infos = [info async for info in view.select(Query(where=[condition]))]
@@ -45,14 +66,14 @@ def create_search_router() -> APIRouter:
             )
             results = [result]
         else:
-            # LLM search
             model_name = os.getenv("SCOUT_SCAN_MODEL")
             scan = llm_scanner(
                 question=request.query,
                 answer="string",
+                template=LLM_SEARCH_TEMPLATE,
                 model=model_name,
             )
-            # TODO: force this to throw and see what happens
+            # TODO: force this to throw and see what FastAPI does
             output = await scan(transcript)
 
             if isinstance(output, list):

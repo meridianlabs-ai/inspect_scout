@@ -1459,8 +1459,8 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.203.dev5+gd2422f1d"
-source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main#d2422f1d7ad6e973d57dc5185077971b5c0f2585" }
+version = "0.3.203.dev8+ga04f01f8"
+source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai.git?rev=main#a04f01f802af1ecc917fc5915ffe0732db5fd9e3" }
 dependencies = [
     { name = "aioboto3" },
     { name = "aiohttp" },

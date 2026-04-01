@@ -1,0 +1,174 @@
+{
+  "description": "Branch 2 forks from branch 1 and gets relocated as a nested branch",
+  "events": [
+    {
+      "event": "span_begin",
+      "uuid": "s-solvers",
+      "id": "solvers",
+      "name": "solvers",
+      "parent_id": null,
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-agent",
+      "id": "agent",
+      "name": "orchestrator",
+      "type": "agent",
+      "parent_id": "solvers",
+      "timestamp": "2024-01-01T00:00:01Z"
+    },
+    {
+      "event": "model",
+      "uuid": "m-001",
+      "span_id": "agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:02Z",
+      "completed": "2024-01-01T00:00:03Z",
+      "input": [
+        {"role": "user", "content": "Solve the task."}
+      ],
+      "output": {
+        "choices": [
+          {"message": {"role": "assistant", "content": "Starting.", "id": "msg-1"}, "stop_reason": "stop"}
+        ],
+        "usage": {"input_tokens": 50, "output_tokens": 25}
+      }
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-branch-1",
+      "id": "branch-1",
+      "name": "branch_attempt_1",
+      "type": "branch",
+      "parent_id": "agent",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "branch",
+      "uuid": "b-001",
+      "span_id": "branch-1",
+      "from_span": "agent",
+      "from_message": "msg-1",
+      "timestamp": "2024-01-01T00:00:04Z"
+    },
+    {
+      "event": "model",
+      "uuid": "m-002",
+      "span_id": "branch-1",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:05Z",
+      "completed": "2024-01-01T00:00:06Z",
+      "input": [
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Starting."}
+      ],
+      "output": {
+        "choices": [
+          {"message": {"role": "assistant", "content": "Branch 1 response.", "id": "msg-2"}, "stop_reason": "stop"}
+        ],
+        "usage": {"input_tokens": 60, "output_tokens": 30}
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-branch-1-end",
+      "span_id": "branch-1",
+      "timestamp": "2024-01-01T00:00:07Z"
+    },
+    {
+      "event": "span_begin",
+      "uuid": "s-branch-2",
+      "id": "branch-2",
+      "name": "branch_attempt_2",
+      "type": "branch",
+      "parent_id": "agent",
+      "timestamp": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "branch",
+      "uuid": "b-002",
+      "span_id": "branch-2",
+      "from_span": "branch-1",
+      "from_message": "msg-2",
+      "timestamp": "2024-01-01T00:00:08Z"
+    },
+    {
+      "event": "model",
+      "uuid": "m-003",
+      "span_id": "branch-2",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:09Z",
+      "completed": "2024-01-01T00:00:10Z",
+      "input": [
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Branch 1 response."}
+      ],
+      "output": {
+        "choices": [
+          {"message": {"role": "assistant", "content": "Branch 2 response.", "id": "msg-3"}, "stop_reason": "stop"}
+        ],
+        "usage": {"input_tokens": 70, "output_tokens": 35}
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-branch-2-end",
+      "span_id": "branch-2",
+      "timestamp": "2024-01-01T00:00:11Z"
+    },
+    {
+      "event": "model",
+      "uuid": "m-004",
+      "span_id": "agent",
+      "model": "test-model",
+      "timestamp": "2024-01-01T00:00:12Z",
+      "completed": "2024-01-01T00:00:13Z",
+      "input": [
+        {"role": "user", "content": "Solve the task."},
+        {"role": "assistant", "content": "Starting."},
+        {"role": "assistant", "content": "Final answer."}
+      ],
+      "output": {
+        "usage": {"input_tokens": 80, "output_tokens": 40}
+      }
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-agent-end",
+      "span_id": "agent",
+      "timestamp": "2024-01-01T00:00:14Z"
+    },
+    {
+      "event": "span_end",
+      "uuid": "s-solvers-end",
+      "span_id": "solvers",
+      "timestamp": "2024-01-01T00:00:15Z"
+    }
+  ],
+  "expected": {
+    "init": null,
+    "agent": {
+      "id": "agent",
+      "name": "orchestrator",
+      "source": {
+        "source": "span",
+        "span_id": "agent"
+      },
+      "event_uuids": ["m-001", "m-004"],
+      "branches": [
+        {
+          "forked_at": "m-001",
+          "event_uuids": ["b-001", "m-002"],
+          "nested_branches": [
+            {
+              "forked_at": "m-002",
+              "event_uuids": ["b-002", "m-003"]
+            }
+          ]
+        }
+      ]
+    },
+    "scoring": null
+  }
+}

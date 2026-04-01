@@ -53,7 +53,7 @@ def create_search_router() -> APIRouter:
                     status_code=404, detail="Transcript not found"
                 )
             transcript = await view.read(
-                infos[0], TranscriptContent(messages="all")
+                infos[0], TranscriptContent(messages="all", events="all")
             )
 
         if request.type == "grep":

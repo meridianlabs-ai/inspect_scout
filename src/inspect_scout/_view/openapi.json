@@ -2084,79 +2084,6 @@
         "title": "ChatMessageUser",
         "type": "object"
       },
-      "ChatRequest": {
-        "properties": {
-          "messages": {
-            "items": {
-              "anyOf": [
-                {
-                  "$ref": "#/components/schemas/ChatMessageSystem-Input"
-                },
-                {
-                  "$ref": "#/components/schemas/ChatMessageUser-Input"
-                },
-                {
-                  "$ref": "#/components/schemas/ChatMessageAssistant-Input"
-                },
-                {
-                  "$ref": "#/components/schemas/ChatMessageTool-Input"
-                }
-              ]
-            },
-            "title": "Messages",
-            "type": "array"
-          },
-          "transcript_dir": {
-            "title": "Transcript Dir",
-            "type": "string"
-          },
-          "transcript_id": {
-            "title": "Transcript Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "transcript_dir",
-          "transcript_id",
-          "messages"
-        ],
-        "title": "ChatRequest",
-        "type": "object"
-      },
-      "ChatResponse": {
-        "properties": {
-          "message": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ChatMessageSystem-Output"
-              },
-              {
-                "$ref": "#/components/schemas/ChatMessageUser-Output"
-              },
-              {
-                "$ref": "#/components/schemas/ChatMessageAssistant-Output"
-              },
-              {
-                "$ref": "#/components/schemas/ChatMessageTool-Output"
-              }
-            ],
-            "title": "Message"
-          },
-          "references": {
-            "items": {
-              "$ref": "#/components/schemas/Reference"
-            },
-            "title": "References",
-            "type": "array"
-          }
-        },
-        "required": [
-          "message",
-          "references"
-        ],
-        "title": "ChatResponse",
-        "type": "object"
-      },
       "CompactionEvent": {
         "description": "Compaction of conversation history.",
         "properties": {
@@ -6806,6 +6733,93 @@
         "title": "ResponseSchema",
         "type": "object"
       },
+      "Result": {
+        "description": "Scan result.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "Result",
+        "type": "object"
+      },
       "Sample": {
         "description": "Sample for an evaluation task.",
         "properties": {
@@ -9100,6 +9114,54 @@
           "intermediate"
         ],
         "title": "ScoreEvent",
+        "type": "object"
+      },
+      "SearchRequest": {
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "transcript_dir": {
+            "title": "Transcript Dir",
+            "type": "string"
+          },
+          "transcript_id": {
+            "title": "Transcript Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "grep",
+              "llm"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript_dir",
+          "transcript_id",
+          "query",
+          "type"
+        ],
+        "title": "SearchRequest",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "SearchResponse",
         "type": "object"
       },
       "SpanBeginEvent": {
@@ -11658,38 +11720,6 @@
         ]
       }
     },
-    "/chat": {
-      "post": {
-        "description": "Send chat messages and receive an LLM response about a transcript.",
-        "operationId": "chat_chat_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Send chat messages for a transcript",
-        "tags": [
-          "chat"
-        ]
-      }
-    },
     "/code": {
       "post": {
         "description": "Process condition.",
@@ -12350,6 +12380,48 @@
           }
         },
         "summary": " Validation Case"
+      }
+    },
+    "/search": {
+      "post": {
+        "description": "Search a transcript using grep or LLM-based search.",
+        "operationId": "search_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search a transcript",
+        "tags": [
+          "search"
+        ]
       }
     },
     "/startscan": {

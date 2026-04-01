@@ -14,7 +14,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scanner.result import Error, Reference
+from .._scanner.result import Error, Result
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 
@@ -293,17 +293,17 @@ class StreamMetadata:
 
 
 @dataclass
-class ChatRequest:
-    """Request body for the chat endpoint."""
+class SearchRequest:
+    """Request body for the search endpoint."""
 
     transcript_dir: str
     transcript_id: str
-    messages: list[ChatMessage]
+    query: str
+    type: Literal["grep", "llm"]
 
 
 @dataclass
-class ChatResponse:
-    """Response from the chat endpoint."""
+class SearchResponse:
+    """Response from the search endpoint."""
 
-    message: ChatMessage
-    references: list[Reference]
+    results: list["Result"]

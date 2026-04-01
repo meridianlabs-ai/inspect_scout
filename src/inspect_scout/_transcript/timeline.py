@@ -93,15 +93,12 @@ def _filter_span(span: TimelineSpan, allowed: set[str]) -> TimelineSpan:
     filtered_branches = [
         TimelineBranch(
             forked_at=b.forked_at,
-            from_span=b.from_span,
-            content=_filter_span(b.content, allowed),
+            content=_filter_content_list(b.content, allowed),
         )
         for b in span.branches
     ]
-    # Remove branches whose content span ended up empty
-    filtered_branches = [
-        b for b in filtered_branches if b.content.content or b.content.branches
-    ]
+    # Remove branches that ended up empty
+    filtered_branches = [b for b in filtered_branches if b.content]
     return TimelineSpan(
         id=span.id,
         name=span.name,

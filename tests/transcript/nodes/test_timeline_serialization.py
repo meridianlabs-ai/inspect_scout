@@ -191,19 +191,14 @@ class TestTimelineBranchSerialization:
         event = _make_model_event(uuid="branch-event")
         branch = TimelineBranch(
             forked_at="fork-point",
-            content=TimelineSpan(
-                id="branch-span",
-                name="branch",
-                span_type="branch",
-                content=[TimelineEvent(event=event)],
-            ),
+            content=[TimelineEvent(event=event)],
         )
 
         data = branch.model_dump()
 
         assert data["type"] == "branch"
         assert data["forked_at"] == "fork-point"
-        assert len(data["content"]["content"]) == 1
+        assert len(data["content"]) == 1
 
 
 class TestTimelineSerialization:

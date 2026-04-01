@@ -331,7 +331,7 @@ def test_branches_prefix() -> None:
     branch_child = _make_span("Refactor", content=[branch_evt])
     branch = TimelineBranch(
         forked_at="",
-        content=_make_span("branch", content=[branch_child]),
+        content=[branch_child],
     )
 
     root = _make_span("Transcript", content=[evt1], branches=[branch])

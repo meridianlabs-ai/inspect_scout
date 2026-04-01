@@ -9456,15 +9456,21 @@
         "description": "A discarded alternative path from a branch point.",
         "properties": {
           "content": {
-            "$ref": "#/components/schemas/TimelineSpan"
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TimelineEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/TimelineSpan"
+                }
+              ]
+            },
+            "title": "Content",
+            "type": "array"
           },
           "forked_at": {
             "title": "Forked At",
-            "type": "string"
-          },
-          "from_span": {
-            "default": "",
-            "title": "From Span",
             "type": "string"
           },
           "type": {
@@ -9477,7 +9483,6 @@
         "required": [
           "type",
           "forked_at",
-          "from_span",
           "content"
         ],
         "title": "TimelineBranch",

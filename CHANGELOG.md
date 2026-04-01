@@ -6,6 +6,7 @@
 - Metrics: Filter out NaN metrics (occurs when all scan results are errors).
 - Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.
 - Timelines: Ensure that all events are loaded from reading timelines.
+- Timelines: Update to use new timeline branch scheme from inspect-ai.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
 - Scout View: Show tooltip for array or object values which have been truncated.
 - Scout View: Improve citation matching in results view.

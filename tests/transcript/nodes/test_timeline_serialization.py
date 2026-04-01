@@ -10,7 +10,6 @@ from inspect_scout._transcript.timeline import (
     Outline,
     OutlineNode,
     Timeline,
-    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
 )
@@ -184,26 +183,24 @@ class TestTimelineSpanSerialization:
 
 
 class TestTimelineBranchSerialization:
-    """Tests for TimelineBranch serialization."""
+    """Tests for branch (TimelineSpan with span_type='branch') serialization."""
 
     def test_serialize_branch(self) -> None:
-        """model_dump should serialize branch with type discriminator."""
+        """model_dump should serialize branch span with correct fields."""
         event = _make_model_event(uuid="branch-event")
-        branch = TimelineBranch(
+        branch = TimelineSpan(
+            id="branch-span",
+            name="branch",
+            span_type="branch",
             forked_at="fork-point",
-            content=TimelineSpan(
-                id="branch-span",
-                name="branch",
-                span_type="branch",
-                content=[TimelineEvent(event=event)],
-            ),
+            content=[TimelineEvent(event=event)],
         )
 
         data = branch.model_dump()
 
-        assert data["type"] == "branch"
+        assert data["span_type"] == "branch"
         assert data["forked_at"] == "fork-point"
-        assert len(data["content"]["content"]) == 1
+        assert len(data["content"]) == 1
 
 
 class TestTimelineSerialization:

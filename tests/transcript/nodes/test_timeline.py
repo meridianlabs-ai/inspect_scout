@@ -33,7 +33,6 @@ from inspect_ai.model import (
 )
 from inspect_scout._transcript.timeline import (
     Timeline,
-    TimelineBranch,
     TimelineEvent,
     TimelineSpan,
     timeline_build,
@@ -139,10 +138,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
         choices: list[dict[str, Any]] = []
         for choice_data in choices_data:
             msg_data = choice_data.get("message", {})
-            msg_kwargs: dict[str, Any] = {"content": msg_data.get("content", "")}
-            if "id" in msg_data:
-                msg_kwargs["id"] = msg_data["id"]
-            msg = ChatMessageAssistant(**msg_kwargs)
+            msg = ChatMessageAssistant(content=msg_data.get("content", ""))
             choices.append(
                 {"message": msg, "stop_reason": choice_data.get("stop_reason", "stop")}
             )
@@ -403,7 +399,7 @@ def assert_scoring_span_matches(
 
 
 def assert_branch_matches(
-    actual: TimelineBranch,
+    actual: TimelineSpan,
     expected: dict[str, Any],
     branch_name: str = "branch",
 ) -> None:
@@ -415,7 +411,7 @@ def assert_branch_matches(
 
     if "event_uuids" in expected:
         actual_uuids: list[str] = []
-        for item in actual.content.content:
+        for item in actual.content:
             if isinstance(item, TimelineEvent):
                 uuid = getattr(item.event, "uuid", None)
                 if uuid:
@@ -425,19 +421,19 @@ def assert_branch_matches(
             f"got {actual_uuids}, expected {expected['event_uuids']}"
         )
 
-    if "nested_branches" in expected:
-        expected_nested = expected["nested_branches"]
-        assert len(actual.content.branches) == len(expected_nested), (
+    if "branches" in expected:
+        expected_branches = expected["branches"]
+        assert len(actual.branches) == len(expected_branches), (
             f"{branch_name} nested branch count mismatch: "
-            f"got {len(actual.content.branches)}, expected {len(expected_nested)}"
+            f"got {len(actual.branches)}, expected {len(expected_branches)}"
         )
-        for i, (actual_nested, expected_nested_branch) in enumerate(
-            zip(actual.content.branches, expected_nested, strict=True)
+        for i, (actual_branch, expected_branch) in enumerate(
+            zip(actual.branches, expected_branches, strict=True)
         ):
             assert_branch_matches(
-                actual_nested,
-                expected_nested_branch,
-                f"{branch_name}.nested[{i}]",
+                actual_branch,
+                expected_branch,
+                f"{branch_name}.branches[{i}]",
             )
 
 
@@ -858,21 +854,19 @@ def test_idle_time_branch() -> None:
     end1 = datetime(2024, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
     ts2 = datetime(2024, 1, 1, 12, 0, 7, tzinfo=timezone.utc)
     end2 = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
-    branch = TimelineBranch(
+    branch = TimelineSpan(
+        id="branch-span",
+        name="branch",
+        span_type="branch",
         forked_at="",
-        content=TimelineSpan(
-            id="branch-span",
-            name="branch",
-            span_type="branch",
-            content=[
-                TimelineEvent(
-                    event=create_model_event(uuid="b1", timestamp=ts1, completed=end1)
-                ),
-                TimelineEvent(
-                    event=create_model_event(uuid="b2", timestamp=ts2, completed=end2)
-                ),
-            ],
-        ),
+        content=[
+            TimelineEvent(
+                event=create_model_event(uuid="b1", timestamp=ts1, completed=end1)
+            ),
+            TimelineEvent(
+                event=create_model_event(uuid="b2", timestamp=ts2, completed=end2)
+            ),
+        ],
     )
     # Gap of 4s is below 5-min threshold → idle = 0
     assert branch.idle_time == pytest.approx(0.0)

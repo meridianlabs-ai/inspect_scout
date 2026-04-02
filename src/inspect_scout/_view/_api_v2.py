@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from inspect_ai._util.json import JsonChange
+from inspect_ai._view._openapi import build_openapi_schema
 from inspect_ai.event._event import Event
 from inspect_ai.model import ChatMessage, Content
 
@@ -18,7 +19,6 @@ from ._api_v2_scans import create_scans_router
 from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import RawEncoding, create_transcripts_router
 from ._api_v2_validations import create_validation_router
-from ._openapi import build_openapi_schema
 from .invalidationTopics import InvalidationTopic
 from .types import ViewConfig
 

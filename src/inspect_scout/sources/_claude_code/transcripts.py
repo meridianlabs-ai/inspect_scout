@@ -298,8 +298,8 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     timeline = timeline_build(merged_events)
     root = timeline.root
     if root.content:
-        wall_clock = (root.end_time - root.start_time).total_seconds()
-        total_time = wall_clock - root.idle_time
+        wall_clock = (root.end_time() - root.start_time()).total_seconds()
+        total_time = wall_clock - root.idle_time()
     else:
         total_time = sum(t.total_time for t in transcripts if t.total_time)
 
@@ -460,8 +460,8 @@ async def _create_transcript(
     model_name = extract_model_name(events)
     total_tokens = sum_scout_tokens(scout_events)
     root = timeline.root
-    wall_clock = (root.end_time - root.start_time).total_seconds()
-    total_time = wall_clock - root.idle_time
+    wall_clock = (root.end_time() - root.start_time()).total_seconds()
+    total_time = wall_clock - root.idle_time()
     first_timestamp = get_first_timestamp(events)
 
     # Get project path for task_set

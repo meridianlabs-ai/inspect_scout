@@ -169,7 +169,7 @@
         "source": "span",
         "span_id": "root"
       },
-      "total_tokens": 315,
+      "total_tokens": 390,
       "children": [
         {
           "id": "agent-a",
@@ -179,7 +179,7 @@
             "span_id": "agent-a"
           },
           "event_uuids": ["e-001", "e-003"],
-          "total_tokens": 165,
+          "total_tokens": 240,
           "branches": [
             {
               "forked_at": "",

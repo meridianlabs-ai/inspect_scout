@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Export OpenAPI schema from FastAPI app to JSON file.
+"""Export OpenAPI schema and regenerate TypeScript types.
 
-Run this script when API models change to regenerate the OpenAPI schema.
-The generated openapi.json is used by TypeScript build to generate types.
+Run this script when API models change to regenerate the OpenAPI schema
+and TypeScript types together.
 
 Usage:
     python scripts/export_openapi_schema.py
 """
 
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -35,9 +37,19 @@ def main() -> None:
 
     with output_path.open("w") as f:
         json.dump(schema, f, indent=2, sort_keys=True)
-        f.write("\n")  # Add trailing newline
+        f.write("\n")
 
     print(f"✓ Exported OpenAPI schema to {output_path.relative_to(repo_root)}")
+
+    # Regenerate TypeScript types from the updated schema
+    ts_mono_dir = os.path.abspath(
+        (repo_root / "src/inspect_scout/_view/ts-mono").as_posix()
+    )
+    subprocess.run(
+        ["pnpm", "--filter", "scout", "types:generate"],
+        cwd=ts_mono_dir,
+        check=True,
+    )
 
 
 if __name__ == "__main__":

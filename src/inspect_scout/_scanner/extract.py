@@ -138,11 +138,31 @@ async def messages_as_str(
 
 MessagesAsStr: TypeAlias = Callable[[list[ChatMessage]], Awaitable[str]]
 ExtractReferences: TypeAlias = Callable[[str], list[Reference]]
+LabelForId: TypeAlias = Callable[[str], str | None]
+
+
+@overload
+def message_numbering(
+    preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
+) -> tuple[MessagesAsStr, ExtractReferences]: ...
+
+
+@overload
+def message_numbering(
+    preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
+    *,
+    label_for_id: Literal[True],
+) -> tuple[MessagesAsStr, ExtractReferences, LabelForId]: ...
 
 
 def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
-) -> tuple[MessagesAsStr, ExtractReferences]:
+    *,
+    label_for_id: bool = False,
+) -> (
+    tuple[MessagesAsStr, ExtractReferences]
+    | tuple[MessagesAsStr, ExtractReferences, LabelForId]
+):
     """Create a messages_as_str / extract_references pair with shared numbering.
 
     Returns two functions that share a closure-captured counter and id_map.
@@ -156,14 +176,18 @@ def message_numbering(
         preprocessor: Message preprocessing options applied to every call
             (e.g., exclude_system, exclude_reasoning). Defaults to excluding
             system messages when no preprocessor is provided.
+        label_for_id: When True, return a third function that maps real
+            message IDs to their assigned labels (e.g. ``"M3"``).
 
     Returns:
         Tuple of:
             - messages_as_str: takes list[ChatMessage], returns formatted string with globally unique [M1], [M2], etc. prefixes.
             - extract_refs: takes text, returns list of Reference objects for any [M1], [M2], etc. references found across all prior calls.
+            - label_for_id (when requested): takes a real message ID, returns its label (e.g. ``"M3"``) or None if not yet seen.
     """
     counter = [0]
     id_map: dict[str, str] = {}
+    reverse_map: dict[str, str] = {}
 
     async def _messages_as_str(messages: list[ChatMessage]) -> str:
         if preprocessor is not None and preprocessor.transform is not None:
@@ -175,7 +199,9 @@ def message_numbering(
             if content is not None:
                 counter[0] += 1
                 ordinal = f"M{counter[0]}"
-                id_map[ordinal] = _message_id(message)
+                real_id = _message_id(message)
+                id_map[ordinal] = real_id
+                reverse_map[real_id] = ordinal
                 items.append(f"[{ordinal}] {content}")
 
         return "\n".join(items)
@@ -183,7 +209,13 @@ def message_numbering(
     def _extract_refs(text: str) -> list[Reference]:
         return _extract_references(text, id_map)
 
-    return _messages_as_str, _extract_refs
+    def _label_for_id(message_id: str) -> str | None:
+        return reverse_map.get(message_id)
+
+    if label_for_id:
+        return _messages_as_str, _extract_refs, _label_for_id
+    else:
+        return _messages_as_str, _extract_refs
 
 
 def message_as_str(

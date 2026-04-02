@@ -32,6 +32,7 @@ from ._scanjob import ScanJob, scanjob
 from ._scanjob_config import ScanJobConfig
 from ._scanlist import scan_list
 from ._scanner.extract import (
+    LabelForId,
     MessageFormatOptions,
     MessagesPreprocessor,
     message_numbering,
@@ -160,6 +161,7 @@ __all__ = [
     "MessageType",
     "TranscriptContent",
     "as_scorer",
+    "LabelForId",
     "message_numbering",
     "messages_as_str",
     "span_messages",

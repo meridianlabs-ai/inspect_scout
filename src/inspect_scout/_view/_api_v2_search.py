@@ -1,15 +1,22 @@
 """Search API endpoint."""
 
+import hashlib
+import json
 import os
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
+from fastapi.responses import Response
+from inspect_ai._util.kvstore import KVStore
 
 from .._grep_scanner._grep_scanner import grep_scanner
 from .._llm_scanner._llm_scanner import llm_scanner
 from .._query import Column, Query
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
-from ._api_v2_types import SearchRequest, SearchResponse
+from .._util.appdirs import scout_data_dir
+from ._api_v2_types import SavedSearch, SavedSearchListResponse, SearchRequest
+from ._server_common import decode_base64url
 
 LLM_SEARCH_TEMPLATE = """\
 You are a search assistant for LLM transcript analysis. A user is searching \
@@ -32,32 +39,84 @@ If nothing in the transcript matches the query, say so briefly.
 {{ answer_format }}
 """
 
+MAX_ENTRIES = 500
+
+
+def _search_id(query: str, search_type: str) -> str:
+    """Deterministic ID from search parameters."""
+    canonical = json.dumps({"query": query, "type": search_type}, sort_keys=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+
+def _dir_hash(transcript_dir: str) -> str:
+    """Short hash of the transcript directory path."""
+    return hashlib.sha256(transcript_dir.encode()).hexdigest()[:12]
+
+
+def _transcript_prefix(transcript_dir: str, transcript_id: str) -> str:
+    """Composite key prefix for all searches within a transcript."""
+    return f"{_dir_hash(transcript_dir)}:{transcript_id}:"
+
+
+def _composite_key(transcript_dir: str, transcript_id: str, search_id: str) -> str:
+    """Full composite key for a single search."""
+    return f"{_transcript_prefix(transcript_dir, transcript_id)}{search_id}"
+
+
+def _search_store() -> KVStore:
+    """Open the single search KVStore."""
+    db_path = scout_data_dir("search") / "searches.db"
+    return KVStore(db_path.as_posix(), max_entries=MAX_ENTRIES)
+
 
 def create_search_router() -> APIRouter:
     """Create search API router.
 
     Returns:
-        Configured APIRouter with search endpoint.
+        Configured APIRouter with search endpoints.
     """
     router = APIRouter(tags=["search"])
 
-    @router.post("/search", summary="Search a transcript")
-    async def search(request: SearchRequest) -> SearchResponse:
-        """Search a transcript using grep or LLM-based search."""
-        async with transcripts_view(request.transcript_dir) as view:
-            condition = Column("transcript_id") == request.transcript_id
+    @router.post(
+        "/transcripts/{dir}/{id}/search",
+        summary="Search a transcript",
+    )
+    async def search(
+        request: SearchRequest,
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> SavedSearch:
+        """Search a transcript using grep or LLM-based search.
+
+        Returns cached results if the same search was run before.
+        """
+        transcript_dir = decode_base64url(dir)
+        sid = _search_id(request.query, request.type)
+        key = _composite_key(transcript_dir, id, sid)
+
+        # Check cache
+        with _search_store() as store:
+            cached = store.get(key)
+        if cached:
+            return SavedSearch.model_validate_json(cached)
+
+        # Load transcript
+        async with transcripts_view(transcript_dir) as view:
+            condition = Column("transcript_id") == id
             infos = [info async for info in view.select(Query(where=[condition]))]
             if not infos:
                 raise HTTPException(status_code=404, detail="Transcript not found")
             transcript = await view.read(
-                infos[0],
-                # TODO: make this configurable, what do you want to search?
-                TranscriptContent(messages="all", events="all"),
+                infos[0], TranscriptContent(messages="all", events="all")
             )
 
+        # Run search
         scan = (
             grep_scanner(
-                request.query, regex=False, ignore_case=True, word_boundary=False
+                request.query,
+                regex=False,
+                ignore_case=True,
+                word_boundary=False,
             )
             if request.type == "grep"
             else llm_scanner(
@@ -67,11 +126,79 @@ def create_search_router() -> APIRouter:
                 model=os.getenv("SCOUT_SCAN_MODEL"),
             )
         )
-
-        # TODO: force this to throw and see what FastAPI does
         output = await scan(transcript)
         results = output if isinstance(output, list) else [output]
 
-        return SearchResponse(results=results)
+        # Persist
+        saved = SavedSearch(
+            search_id=sid,
+            query=request.query,
+            type=request.type,
+            results=results,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        with _search_store() as store:
+            store.put(key, saved.model_dump_json())
+
+        return saved
+
+    @router.get(
+        "/transcripts/{dir}/{id}/searches",
+        summary="List saved searches for a transcript",
+    )
+    async def list_searches(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+    ) -> SavedSearchListResponse:
+        """List all saved searches for a transcript, newest first."""
+        transcript_dir = decode_base64url(dir)
+        prefix = _transcript_prefix(transcript_dir, id)
+
+        with _search_store() as store:
+            rows = store.list_by_prefix(prefix)
+
+        items = [SavedSearch.model_validate_json(value) for _, value in rows]
+        return SavedSearchListResponse(items=items)
+
+    @router.get(
+        "/transcripts/{dir}/{id}/searches/{search_id}",
+        summary="Get a saved search",
+    )
+    async def get_search(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+        search_id: str = Path(description="Search ID"),
+    ) -> SavedSearch:
+        """Get a single saved search by ID."""
+        transcript_dir = decode_base64url(dir)
+        key = _composite_key(transcript_dir, id, search_id)
+
+        with _search_store() as store:
+            value = store.get(key)
+
+        if value is None:
+            raise HTTPException(status_code=404, detail="Search not found")
+        return SavedSearch.model_validate_json(value)
+
+    @router.delete(
+        "/transcripts/{dir}/{id}/searches/{search_id}",
+        summary="Delete a saved search",
+        status_code=204,
+    )
+    async def delete_search(
+        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
+        id: str = Path(description="Transcript ID"),
+        search_id: str = Path(description="Search ID"),
+    ) -> Response:
+        """Delete a saved search by ID."""
+        transcript_dir = decode_base64url(dir)
+        key = _composite_key(transcript_dir, id, search_id)
+
+        with _search_store() as store:
+            deleted = store.delete(key)
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Search not found")
+        return Response(status_code=204)
 
     return router

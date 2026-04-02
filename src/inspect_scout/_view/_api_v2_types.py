@@ -296,14 +296,22 @@ class StreamMetadata:
 class SearchRequest:
     """Request body for the search endpoint."""
 
-    transcript_dir: str
-    transcript_id: str
     query: str
     type: Literal["grep", "llm"]
 
 
-@dataclass
-class SearchResponse:
-    """Response from the search endpoint."""
+class SavedSearch(BaseModel):
+    """A persisted search result."""
 
-    results: list["Result"]
+    search_id: str
+    query: str
+    type: Literal["grep", "llm"]
+    results: list[Result]
+    created_at: str
+
+
+@dataclass
+class SavedSearchListResponse:
+    """Response from the list searches endpoint."""
+
+    items: list[SavedSearch]

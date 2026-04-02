@@ -862,244 +862,6 @@
         "title": "ChatMessageAssistant",
         "type": "object"
       },
-      "ChatMessageAssistant-Input": {
-        "description": "Assistant chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Input"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "role": {
-            "const": "assistant",
-            "default": "assistant",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_calls": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/ToolCall"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Calls"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageAssistant",
-        "type": "object"
-      },
-      "ChatMessageAssistant-Output": {
-        "description": "Assistant chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Output"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "role": {
-            "const": "assistant",
-            "default": "assistant",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_calls": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/ToolCall"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Calls"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageAssistant",
-        "type": "object"
-      },
       "ChatMessageSystem": {
         "description": "System chat message.",
         "properties": {
@@ -1113,194 +875,6 @@
                   "anyOf": [
                     {
                       "$ref": "#/components/schemas/ContentText"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "system",
-            "default": "system",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageSystem",
-        "type": "object"
-      },
-      "ChatMessageSystem-Input": {
-        "description": "System chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Input"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "system",
-            "default": "system",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageSystem",
-        "type": "object"
-      },
-      "ChatMessageSystem-Output": {
-        "description": "System chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Output"
                     },
                     {
                       "$ref": "#/components/schemas/ContentReasoning"
@@ -1508,258 +1082,6 @@
         "title": "ChatMessageTool",
         "type": "object"
       },
-      "ChatMessageTool-Input": {
-        "description": "Tool chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Input"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ToolCallError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "function": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "tool",
-            "default": "tool",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageTool",
-        "type": "object"
-      },
-      "ChatMessageTool-Output": {
-        "description": "Tool chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Output"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ToolCallError"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "function": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "tool",
-            "default": "tool",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageTool",
-        "type": "object"
-      },
       "ChatMessageUser": {
         "description": "User chat message.",
         "properties": {
@@ -1773,222 +1095,6 @@
                   "anyOf": [
                     {
                       "$ref": "#/components/schemas/ContentText"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "user",
-            "default": "user",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageUser",
-        "type": "object"
-      },
-      "ChatMessageUser-Input": {
-        "description": "User chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Input"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentReasoning"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentImage"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentAudio"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentVideo"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentData"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentToolUse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ContentDocument"
-                    }
-                  ]
-                },
-                "type": "array"
-              }
-            ],
-            "title": "Content"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadata"
-          },
-          "role": {
-            "const": "user",
-            "default": "user",
-            "title": "Role",
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "input",
-                  "generate"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "tool_call_id": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool Call Id"
-          }
-        },
-        "required": [
-          "content",
-          "role"
-        ],
-        "title": "ChatMessageUser",
-        "type": "object"
-      },
-      "ChatMessageUser-Output": {
-        "description": "User chat message.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentText-Output"
                     },
                     {
                       "$ref": "#/components/schemas/ContentReasoning"
@@ -2715,154 +1821,6 @@
         "title": "ContentText",
         "type": "object"
       },
-      "ContentText-Input": {
-        "description": "Text content.",
-        "properties": {
-          "citations": {
-            "anyOf": [
-              {
-                "items": {
-                  "discriminator": {
-                    "mapping": {
-                      "content": "#/components/schemas/ContentCitation",
-                      "document": "#/components/schemas/DocumentCitation",
-                      "url": "#/components/schemas/UrlCitation"
-                    },
-                    "propertyName": "type"
-                  },
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DocumentCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/UrlCitation"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Citations"
-          },
-          "internal": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JsonValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "refusal": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refusal"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "type": {
-            "const": "text",
-            "default": "text",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "text"
-        ],
-        "title": "ContentText",
-        "type": "object"
-      },
-      "ContentText-Output": {
-        "description": "Text content.",
-        "properties": {
-          "citations": {
-            "anyOf": [
-              {
-                "items": {
-                  "discriminator": {
-                    "mapping": {
-                      "content": "#/components/schemas/ContentCitation",
-                      "document": "#/components/schemas/DocumentCitation",
-                      "url": "#/components/schemas/UrlCitation"
-                    },
-                    "propertyName": "type"
-                  },
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ContentCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DocumentCitation"
-                    },
-                    {
-                      "$ref": "#/components/schemas/UrlCitation"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Citations"
-          },
-          "internal": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JsonValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "refusal": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refusal"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "type": {
-            "const": "text",
-            "default": "text",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "text"
-        ],
-        "title": "ContentText",
-        "type": "object"
-      },
       "ContentToolUse": {
         "description": "Server side tool use.",
         "properties": {
@@ -3289,16 +2247,16 @@
             "items": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ChatMessageSystem-Output"
+                  "$ref": "#/components/schemas/ChatMessageSystem"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageUser-Output"
+                  "$ref": "#/components/schemas/ChatMessageUser"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageTool-Output"
+                  "$ref": "#/components/schemas/ChatMessageTool"
                 }
               ]
             },
@@ -5283,16 +4241,16 @@
             "items": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/ChatMessageSystem-Output"
+                  "$ref": "#/components/schemas/ChatMessageSystem"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageUser-Output"
+                  "$ref": "#/components/schemas/ChatMessageUser"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                  "$ref": "#/components/schemas/ChatMessageAssistant"
                 },
                 {
-                  "$ref": "#/components/schemas/ChatMessageTool-Output"
+                  "$ref": "#/components/schemas/ChatMessageTool"
                 }
               ]
             },
@@ -6617,6 +5575,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Cite"
           },
           "id": {
@@ -6772,7 +5731,7 @@
           "metadata": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -6811,11 +5770,12 @@
             "title": "Uuid"
           },
           "value": {
-            "title": "Value"
+            "$ref": "#/components/schemas/JsonValue"
           }
         },
         "required": [
-          "value"
+          "value",
+          "references"
         ],
         "title": "Result",
         "type": "object"
@@ -7304,6 +6264,63 @@
           "action"
         ],
         "title": "SandboxEvent",
+        "type": "object"
+      },
+      "SavedSearch": {
+        "description": "A persisted search result.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "grep",
+              "llm"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_id",
+          "query",
+          "type",
+          "results",
+          "created_at"
+        ],
+        "title": "SavedSearch",
+        "type": "object"
+      },
+      "SavedSearchListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SavedSearch"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SavedSearchListResponse",
         "type": "object"
       },
       "ScanJobConfig": {
@@ -8224,31 +7241,31 @@
                 "$ref": "#/components/schemas/Transcript"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageSystem-Output"
+                "$ref": "#/components/schemas/ChatMessageSystem"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageUser-Output"
+                "$ref": "#/components/schemas/ChatMessageUser"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                "$ref": "#/components/schemas/ChatMessageAssistant"
               },
               {
-                "$ref": "#/components/schemas/ChatMessageTool-Output"
+                "$ref": "#/components/schemas/ChatMessageTool"
               },
               {
                 "items": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/ChatMessageSystem-Output"
+                      "$ref": "#/components/schemas/ChatMessageSystem"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageUser-Output"
+                      "$ref": "#/components/schemas/ChatMessageUser"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageAssistant-Output"
+                      "$ref": "#/components/schemas/ChatMessageAssistant"
                     },
                     {
-                      "$ref": "#/components/schemas/ChatMessageTool-Output"
+                      "$ref": "#/components/schemas/ChatMessageTool"
                     }
                   ]
                 },
@@ -9122,14 +8139,6 @@
             "title": "Query",
             "type": "string"
           },
-          "transcript_dir": {
-            "title": "Transcript Dir",
-            "type": "string"
-          },
-          "transcript_id": {
-            "title": "Transcript Id",
-            "type": "string"
-          },
           "type": {
             "enum": [
               "grep",
@@ -9140,28 +8149,10 @@
           }
         },
         "required": [
-          "transcript_dir",
-          "transcript_id",
           "query",
           "type"
         ],
         "title": "SearchRequest",
-        "type": "object"
-      },
-      "SearchResponse": {
-        "properties": {
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/Result"
-            },
-            "title": "Results",
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "title": "SearchResponse",
         "type": "object"
       },
       "SpanBeginEvent": {
@@ -9847,6 +8838,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Branched From"
           },
           "branches": {
@@ -12382,48 +11374,6 @@
         "summary": " Validation Case"
       }
     },
-    "/search": {
-      "post": {
-        "description": "Search a transcript using grep or LLM-based search.",
-        "operationId": "search_search_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SearchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Search a transcript",
-        "tags": [
-          "search"
-        ]
-      }
-    },
     "/startscan": {
       "post": {
         "description": "Runs a scan using llm_scanner with the provided ScanJobConfig.",
@@ -12796,6 +11746,213 @@
         "summary": "Get transcript messages and events",
         "tags": [
           "transcripts"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/search": {
+      "post": {
+        "description": "Search a transcript using grep or LLM-based search.\n\nReturns cached results if the same search was run before.",
+        "operationId": "search_transcripts__dir___id__search_post",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Search a transcript",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/searches": {
+      "get": {
+        "description": "List all saved searches for a transcript, newest first.",
+        "operationId": "list_searches_transcripts__dir___id__searches_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List saved searches for a transcript",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/searches/{search_id}": {
+      "delete": {
+        "description": "Delete a saved search by ID.",
+        "operationId": "delete_search_transcripts__dir___id__searches__search_id__delete",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search ID",
+            "in": "path",
+            "name": "search_id",
+            "required": true,
+            "schema": {
+              "description": "Search ID",
+              "title": "Search Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a saved search",
+        "tags": [
+          "search"
+        ]
+      },
+      "get": {
+        "description": "Get a single saved search by ID.",
+        "operationId": "get_search_transcripts__dir___id__searches__search_id__get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search ID",
+            "in": "path",
+            "name": "search_id",
+            "required": true,
+            "schema": {
+              "description": "Search ID",
+              "title": "Search Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get a saved search",
+        "tags": [
+          "search"
         ]
       }
     },

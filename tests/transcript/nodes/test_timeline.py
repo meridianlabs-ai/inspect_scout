@@ -392,7 +392,7 @@ def assert_scoring_span_matches(
         )
 
     if "total_tokens" in expected:
-        assert scoring.total_tokens == expected["total_tokens"], (
+        assert scoring.total_tokens() == expected["total_tokens"], (
             f"scoring token count mismatch: "
             f"got {scoring.total_tokens}, expected {expected['total_tokens']}"
         )
@@ -472,7 +472,7 @@ def assert_span_matches(
 
     # Check total tokens if specified
     if "total_tokens" in expected:
-        assert actual.total_tokens == expected["total_tokens"], (
+        assert actual.total_tokens() == expected["total_tokens"], (
             f"{span_name} token count mismatch: "
             f"got {actual.total_tokens}, expected {expected['total_tokens']}"
         )
@@ -580,7 +580,7 @@ def assert_timeline_matches(actual: Timeline, expected: dict[str, Any]) -> None:
             expected_scoring = expected.get("scoring")
             if expected_scoring and "total_tokens" in expected_scoring:
                 expected_tokens += expected_scoring["total_tokens"]
-            assert root.total_tokens == expected_tokens, (
+            assert root.total_tokens() == expected_tokens, (
                 f"root token count mismatch: "
                 f"got {root.total_tokens}, expected {expected_tokens}"
             )
@@ -687,7 +687,7 @@ def test_empty_events_returns_empty_timeline() -> None:
     result = timeline_build([])
     assert result.root is not None
     assert len(result.root.content) == 0
-    assert result.root.total_tokens == 0
+    assert result.root.total_tokens() == 0
 
 
 def test_timeline_event_extracts_timing_from_event() -> None:
@@ -698,8 +698,8 @@ def test_timeline_event_extracts_timing_from_event() -> None:
     event = create_model_event(timestamp=ts, completed=completed)
     node = TimelineEvent(event=event)
 
-    assert node.start_time == ts
-    assert node.end_time == completed
+    assert node.start_time() == ts
+    assert node.end_time() == completed
 
 
 def test_timeline_event_extracts_tokens_from_model_event() -> None:
@@ -708,7 +708,7 @@ def test_timeline_event_extracts_tokens_from_model_event() -> None:
     event = create_model_event(usage=usage)
     node = TimelineEvent(event=event)
 
-    assert node.total_tokens == 150
+    assert node.total_tokens() == 150
 
 
 def test_timeline_event_returns_zero_tokens_for_non_model_event() -> None:
@@ -726,7 +726,7 @@ def test_timeline_event_returns_zero_tokens_for_non_model_event() -> None:
     )
 
     node = TimelineEvent(event=event)
-    assert node.total_tokens == 0
+    assert node.total_tokens() == 0
 
 
 def test_timeline_event_idle_time_is_zero() -> None:
@@ -735,7 +735,7 @@ def test_timeline_event_idle_time_is_zero() -> None:
     completed = datetime(2024, 1, 1, 12, 0, 5, tzinfo=timezone.utc)
     event = create_model_event(timestamp=ts, completed=completed)
     node = TimelineEvent(event=event)
-    assert node.idle_time == 0.0
+    assert node.idle_time() == 0.0
 
 
 def test_idle_time_single_event_in_span() -> None:
@@ -766,7 +766,7 @@ def test_idle_time_single_event_in_span() -> None:
         ],
     )
     # Gap of 2s is below 5-min threshold → idle = 0
-    assert span.idle_time == pytest.approx(0.0)
+    assert span.idle_time() == pytest.approx(0.0)
 
 
 def test_idle_time_no_gaps() -> None:
@@ -782,7 +782,7 @@ def test_idle_time_no_gaps() -> None:
         span_type="agent",
         content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
     )
-    assert span.idle_time == pytest.approx(0.0)
+    assert span.idle_time() == pytest.approx(0.0)
 
 
 def test_idle_time_gap_between_events() -> None:
@@ -800,7 +800,7 @@ def test_idle_time_gap_between_events() -> None:
         content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
     )
     # Gap of 4s is below 5-min threshold → idle = 0
-    assert span.idle_time == pytest.approx(0.0)
+    assert span.idle_time() == pytest.approx(0.0)
 
 
 def test_idle_time_nested_spans() -> None:
@@ -824,7 +824,7 @@ def test_idle_time_nested_spans() -> None:
             ),
         ],
     )
-    assert child.idle_time == pytest.approx(0.0)
+    assert child.idle_time() == pytest.approx(0.0)
 
     # Parent span: gap from child end to info is 2s (below threshold) → idle = 0
     end_parent = datetime(2024, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
@@ -845,7 +845,7 @@ def test_idle_time_nested_spans() -> None:
         span_type="agent",
         content=[child, TimelineEvent(event=info_event)],
     )
-    assert parent.idle_time == pytest.approx(0.0)
+    assert parent.idle_time() == pytest.approx(0.0)
 
 
 def test_idle_time_branch() -> None:
@@ -869,7 +869,7 @@ def test_idle_time_branch() -> None:
         ],
     )
     # Gap of 4s is below 5-min threshold → idle = 0
-    assert branch.idle_time == pytest.approx(0.0)
+    assert branch.idle_time() == pytest.approx(0.0)
 
 
 def test_timeline_span_aggregates_tokens_from_content() -> None:
@@ -887,7 +887,7 @@ def test_timeline_span_aggregates_tokens_from_content() -> None:
         content=[TimelineEvent(event=event1), TimelineEvent(event=event2)],
     )
 
-    assert span.total_tokens == 450  # 150 + 300
+    assert span.total_tokens() == 450  # 150 + 300
 
 
 def test_idle_time_large_gap_between_events() -> None:
@@ -905,7 +905,7 @@ def test_idle_time_large_gap_between_events() -> None:
         content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
     )
     # Gap of 360s (6 min) exceeds 5-min threshold → idle = 360
-    assert span.idle_time == pytest.approx(360.0)
+    assert span.idle_time() == pytest.approx(360.0)
 
 
 def test_idle_time_small_gap_not_counted() -> None:
@@ -923,7 +923,7 @@ def test_idle_time_small_gap_not_counted() -> None:
         content=[TimelineEvent(event=e1), TimelineEvent(event=e2)],
     )
     # Gap of 240s (4 min) is below 5-min threshold → idle = 0
-    assert span.idle_time == pytest.approx(0.0)
+    assert span.idle_time() == pytest.approx(0.0)
 
 
 def test_idle_time_span_boundary_gaps() -> None:
@@ -972,7 +972,7 @@ def test_idle_time_span_boundary_gaps() -> None:
     # Gap: info_start→e1 = 360s (> threshold, counted)
     # Gap: e1→info_end = 360s (> threshold, counted)
     # Gap: info_end→span_end = 0s (same time)
-    assert span.idle_time == pytest.approx(720.0)
+    assert span.idle_time() == pytest.approx(720.0)
 
 
 def test_idle_time_nested_with_large_gaps() -> None:
@@ -996,7 +996,7 @@ def test_idle_time_nested_with_large_gaps() -> None:
             ),
         ],
     )
-    assert child.idle_time == pytest.approx(360.0)
+    assert child.idle_time() == pytest.approx(360.0)
 
     # Parent span ends 7 min after child (> threshold)
     end_parent = datetime(2024, 1, 1, 12, 13, 6, tzinfo=timezone.utc)
@@ -1020,4 +1020,4 @@ def test_idle_time_nested_with_large_gaps() -> None:
     # Child idle = 360s (propagated)
     # Gap: child end (12:06:06) → info (12:13:06) = 420s (> threshold, counted)
     # Total parent idle = 360 + 420 = 780
-    assert parent.idle_time == pytest.approx(780.0)
+    assert parent.idle_time() == pytest.approx(780.0)

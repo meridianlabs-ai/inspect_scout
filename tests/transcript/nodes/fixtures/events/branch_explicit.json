@@ -195,11 +195,11 @@
       "total_tokens": 900,
       "branches": [
         {
-          "forked_at": "e-002",
+          "branched_from": "msg-tool-1",
           "event_uuids": ["b-001", "e-003", "e-004"]
         },
         {
-          "forked_at": "e-002",
+          "branched_from": "msg-tool-1",
           "event_uuids": ["b-002", "e-005", "e-006"]
         }
       ]

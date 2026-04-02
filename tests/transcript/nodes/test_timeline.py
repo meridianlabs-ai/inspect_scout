@@ -404,9 +404,9 @@ def assert_branch_matches(
     branch_name: str = "branch",
 ) -> None:
     """Assert a branch matches expected structure."""
-    assert actual.forked_at == expected["forked_at"], (
-        f"{branch_name} forked_at mismatch: "
-        f"got {actual.forked_at!r}, expected {expected['forked_at']!r}"
+    assert actual.branched_from == expected["branched_from"], (
+        f"{branch_name} branched_from mismatch: "
+        f"got {actual.branched_from!r}, expected {expected['branched_from']!r}"
     )
 
     if "event_uuids" in expected:
@@ -858,7 +858,7 @@ def test_idle_time_branch() -> None:
         id="branch-span",
         name="branch",
         span_type="branch",
-        forked_at="",
+        branched_from="",
         content=[
             TimelineEvent(
                 event=create_model_event(uuid="b1", timestamp=ts1, completed=end1)

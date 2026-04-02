@@ -97,17 +97,17 @@ def _make_span(
     content: list[TimelineEvent | TimelineSpan] | None = None,
     branches: list[TimelineSpan] | None = None,
     utility: bool = False,
-    forked_at: str | None = None,
+    branched_from: str | None = None,
 ) -> TimelineSpan:
     """Build a TimelineSpan with given content."""
     return TimelineSpan(
         id=f"span-{name}",
         name=name,
-        span_type="branch" if forked_at is not None else "agent",
+        span_type="branch" if branched_from is not None else "agent",
         content=content or [],
         branches=branches or [],
         utility=utility,
-        forked_at=forked_at,
+        branched_from=branched_from,
     )
 
 
@@ -330,7 +330,7 @@ def test_branches_prefix() -> None:
         timestamp=_ts(10), completed=_ts(50), input_tokens=200, output_tokens=100
     )
     branch_child = _make_span("Refactor", content=[branch_evt])
-    branch = _make_span("Branch", content=[branch_child], forked_at="")
+    branch = _make_span("Branch", content=[branch_child], branched_from="")
 
     root = _make_span("Transcript", content=[evt1], branches=[branch])
     tl = _make_timeline(root)

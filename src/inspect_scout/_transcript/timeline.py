@@ -101,7 +101,7 @@ def _filter_span(span: TimelineSpan, allowed: set[str]) -> TimelineSpan:
                     span_type=fb.span_type,
                     content=fb.content,
                     branches=fb.branches,
-                    forked_at=b.forked_at,
+                    branched_from=b.branched_from,
                     description=fb.description,
                     utility=fb.utility,
                     outline=fb.outline,

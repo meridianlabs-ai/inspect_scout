@@ -4,7 +4,7 @@ import os
 
 from fastapi import APIRouter, HTTPException
 
-from .._grep_scanner._grep_scanner import _scan_single
+from .._grep_scanner._grep_scanner import grep_scanner
 from .._llm_scanner._llm_scanner import llm_scanner
 from .._query import Column, Query
 from .._transcript.database.factory import transcripts_view
@@ -44,42 +44,33 @@ def create_search_router() -> APIRouter:
     @router.post("/search", summary="Search a transcript")
     async def search(request: SearchRequest) -> SearchResponse:
         """Search a transcript using grep or LLM-based search."""
-
         async with transcripts_view(request.transcript_dir) as view:
             condition = Column("transcript_id") == request.transcript_id
             infos = [info async for info in view.select(Query(where=[condition]))]
             if not infos:
-                raise HTTPException(
-                    status_code=404, detail="Transcript not found"
-                )
+                raise HTTPException(status_code=404, detail="Transcript not found")
             transcript = await view.read(
-                infos[0], TranscriptContent(messages="all", events="all")
+                infos[0],
+                # TODO: make this configurable, what do you want to search?
+                TranscriptContent(messages="all", events="all"),
             )
 
-        if request.type == "grep":
-            result = _scan_single(
-                transcript,
-                request.query,
-                regex=False,
-                ignore_case=True,
-                word_boundary=False,
+        scan = (
+            grep_scanner(
+                request.query, regex=False, ignore_case=True, word_boundary=False
             )
-            results = [result]
-        else:
-            model_name = os.getenv("SCOUT_SCAN_MODEL")
-            scan = llm_scanner(
+            if request.type == "grep"
+            else llm_scanner(
                 question=request.query,
                 answer="string",
                 template=LLM_SEARCH_TEMPLATE,
-                model=model_name,
+                model=os.getenv("SCOUT_SCAN_MODEL"),
             )
-            # TODO: force this to throw and see what FastAPI does
-            output = await scan(transcript)
+        )
 
-            if isinstance(output, list):
-                results = output
-            else:
-                results = [output]
+        # TODO: force this to throw and see what FastAPI does
+        output = await scan(transcript)
+        results = output if isinstance(output, list) else [output]
 
         return SearchResponse(results=results)
 

@@ -9549,6 +9549,18 @@
             "default": null,
             "title": "Agent Result"
           },
+          "branched_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Branched From"
+          },
           "branches": {
             "items": {
               "$ref": "#/components/schemas/TimelineSpan"
@@ -9581,18 +9593,6 @@
             ],
             "default": null,
             "title": "Description"
-          },
-          "forked_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Forked At"
           },
           "id": {
             "title": "Id",

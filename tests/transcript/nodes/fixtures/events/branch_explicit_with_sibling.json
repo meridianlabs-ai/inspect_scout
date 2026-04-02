@@ -182,7 +182,7 @@
           "total_tokens": 240,
           "branches": [
             {
-              "forked_at": "",
+              "branched_from": "nonexistent-msg",
               "event_uuids": ["b-001", "e-002"]
             }
           ]

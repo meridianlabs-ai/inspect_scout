@@ -1,6 +1,6 @@
 ---
 title: Async API
-reference: inspect_scout.async
+reference: inspect_scout.aio
 ---
 
 ::: {.callout-note}

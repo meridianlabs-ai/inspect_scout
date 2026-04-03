@@ -8,6 +8,7 @@
 - Timelines: Ensure that all events are loaded from reading timelines.
 - Timelines: Update to use new timeline branch scheme from inspect-ai.
 - Timelines: Add `label_for_id` option to `message_numbering()` function.
+- Modules: Rename `async` module to `aio`.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
 - Scout View: Show tooltip for array or object values which have been truncated.
 - Scout View: Improve citation matching in results view.

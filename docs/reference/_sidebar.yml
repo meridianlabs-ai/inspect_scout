@@ -152,6 +152,8 @@ website:
           href: reference/scanner.qmd#generate_answer
         - text: parse_answer
           href: reference/scanner.qmd#parse_answer
+        - text: extract_references
+          href: reference/scanner.qmd#extract_references
         - text: ResultReducer
           href: reference/scanner.qmd#resultreducer
         - text: Answer
@@ -199,23 +201,23 @@ website:
           href: reference/sources.qmd#weave
         - text: claude_code
           href: reference/sources.qmd#claude_code
-      - section: async
-        href: reference/async.qmd
+      - section: aio
+        href: reference/aio.qmd
         contents:
         - text: scan_async
-          href: reference/async.qmd#scan_async
+          href: reference/aio.qmd#scan_async
         - text: scan_resume_async
-          href: reference/async.qmd#scan_resume_async
+          href: reference/aio.qmd#scan_resume_async
         - text: scan_complete_async
-          href: reference/async.qmd#scan_complete_async
+          href: reference/aio.qmd#scan_complete_async
         - text: scan_list_async
-          href: reference/async.qmd#scan_list_async
+          href: reference/aio.qmd#scan_list_async
         - text: scan_status_async
-          href: reference/async.qmd#scan_status_async
+          href: reference/aio.qmd#scan_status_async
         - text: scan_results_df_async
-          href: reference/async.qmd#scan_results_df_async
+          href: reference/aio.qmd#scan_results_df_async
         - text: scan_results_arrow_async
-          href: reference/async.qmd#scan_results_arrow_async
+          href: reference/aio.qmd#scan_results_arrow_async
     - section: Scout CLI
       href: reference/scout_scan.qmd
       contents:

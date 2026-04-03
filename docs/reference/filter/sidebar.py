@@ -15,7 +15,7 @@ reference_docs = [
     "reference/transcript.qmd",
     "reference/scanner.qmd",
     "reference/sources.qmd",
-    "reference/async.qmd"
+    "reference/aio.qmd"
 ]
 
 # build sidebar yaml

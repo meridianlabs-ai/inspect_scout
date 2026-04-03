@@ -474,7 +474,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -641,7 +640,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -742,22 +740,6 @@
         ],
         "title": "ChatCompletionChoice",
         "type": "object"
-      },
-      "ChatMessage": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/ChatMessageSystem"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageUser"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageAssistant"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageTool"
-          }
-        ]
       },
       "ChatMessageAssistant": {
         "description": "Assistant chat message.",
@@ -1261,7 +1243,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -1486,34 +1467,6 @@
         ],
         "title": "Condition",
         "type": "object"
-      },
-      "Content": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/ContentText"
-          },
-          {
-            "$ref": "#/components/schemas/ContentReasoning"
-          },
-          {
-            "$ref": "#/components/schemas/ContentImage"
-          },
-          {
-            "$ref": "#/components/schemas/ContentAudio"
-          },
-          {
-            "$ref": "#/components/schemas/ContentVideo"
-          },
-          {
-            "$ref": "#/components/schemas/ContentData"
-          },
-          {
-            "$ref": "#/components/schemas/ContentToolUse"
-          },
-          {
-            "$ref": "#/components/schemas/ContentDocument"
-          }
-        ]
       },
       "ContentAudio": {
         "description": "Audio content.",
@@ -2222,7 +2175,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -2275,70 +2227,6 @@
         "title": "EvalError",
         "type": "object"
       },
-      "Event": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/SampleInitEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SampleLimitEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SandboxEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StateEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StoreEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ModelEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ToolEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ApprovalEvent"
-          },
-          {
-            "$ref": "#/components/schemas/BranchEvent"
-          },
-          {
-            "$ref": "#/components/schemas/CompactionEvent"
-          },
-          {
-            "$ref": "#/components/schemas/InputEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ScoreEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ScoreEditEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ErrorEvent"
-          },
-          {
-            "$ref": "#/components/schemas/LoggerEvent"
-          },
-          {
-            "$ref": "#/components/schemas/InfoEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SpanBeginEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SpanEndEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StepEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SubtaskEvent"
-          }
-        ]
-      },
       "EventsData": {
         "additionalProperties": true,
         "description": "Pooled data extracted by condense_events / condense_sample.",
@@ -2376,451 +2264,6 @@
           "calls"
         ],
         "title": "EventsData",
-        "type": "object"
-      },
-      "GenerateConfig": {
-        "description": "Model generation options.",
-        "properties": {
-          "attempt_timeout": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attempt Timeout"
-          },
-          "batch": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "$ref": "#/components/schemas/BatchConfig"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Batch"
-          },
-          "best_of": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Best Of"
-          },
-          "cache": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "$ref": "#/components/schemas/CachePolicy"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cache"
-          },
-          "cache_prompt": {
-            "anyOf": [
-              {
-                "const": "auto",
-                "type": "string"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cache Prompt"
-          },
-          "effort": {
-            "anyOf": [
-              {
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "max"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effort"
-          },
-          "extra_body": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Body"
-          },
-          "extra_headers": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Headers"
-          },
-          "frequency_penalty": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Frequency Penalty"
-          },
-          "internal_tools": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Internal Tools"
-          },
-          "logit_bias": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "number"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Logit Bias"
-          },
-          "logprobs": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Logprobs"
-          },
-          "max_connections": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Connections"
-          },
-          "max_retries": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Retries"
-          },
-          "max_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Tokens"
-          },
-          "max_tool_output": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Tool Output"
-          },
-          "modalities": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ImageOutput"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modalities"
-          },
-          "num_choices": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Num Choices"
-          },
-          "parallel_tool_calls": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parallel Tool Calls"
-          },
-          "presence_penalty": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Presence Penalty"
-          },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "minimal",
-                  "low",
-                  "medium",
-                  "high",
-                  "xhigh"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Effort"
-          },
-          "reasoning_history": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "all",
-                  "last",
-                  "auto"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning History"
-          },
-          "reasoning_summary": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "concise",
-                  "detailed",
-                  "auto"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Summary"
-          },
-          "reasoning_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Tokens"
-          },
-          "response_schema": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResponseSchema"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "seed": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Seed"
-          },
-          "stop_seqs": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stop Seqs"
-          },
-          "system_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "System Message"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Temperature"
-          },
-          "timeout": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timeout"
-          },
-          "top_k": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Top K"
-          },
-          "top_logprobs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Top Logprobs"
-          },
-          "top_p": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Top P"
-          },
-          "verbosity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "low",
-                  "medium",
-                  "high"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verbosity"
-          }
-        },
-        "title": "GenerateConfig",
         "type": "object"
       },
       "GenerateConfig-Input": {
@@ -3809,7 +3252,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3890,7 +3332,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3926,156 +3367,8 @@
           "scans",
           "transcripts"
         ],
+        "title": "InvalidationTopic",
         "type": "string"
-      },
-      "JSONSchema": {
-        "description": "JSON Schema for type.",
-        "properties": {
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Additionalproperties"
-          },
-          "anyOf": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/JSONSchema"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Anyof"
-          },
-          "default": {
-            "default": null,
-            "title": "Default"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "enum": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enum"
-          },
-          "format": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Format"
-          },
-          "items": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "properties": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JSONSchema"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Properties"
-          },
-          "required": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Required"
-          },
-          "type": {
-            "anyOf": [
-              {
-                "enum": [
-                  "string",
-                  "integer",
-                  "number",
-                  "boolean",
-                  "array",
-                  "object",
-                  "null"
-                ],
-                "type": "string"
-              },
-              {
-                "items": {
-                  "enum": [
-                    "string",
-                    "integer",
-                    "number",
-                    "boolean",
-                    "array",
-                    "object",
-                    "null"
-                  ],
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Type"
-          }
-        },
-        "required": [
-          "default"
-        ],
-        "title": "JSONSchema",
-        "type": "object"
       },
       "JSONSchema-Input": {
         "description": "JSON Schema for type.",
@@ -4404,12 +3697,10 @@
             "type": "string"
           },
           "replaced": {
-            "$ref": "#/components/schemas/JsonValue",
-            "default": null
+            "$ref": "#/components/schemas/JsonValue"
           },
           "value": {
-            "$ref": "#/components/schemas/JsonValue",
-            "default": null
+            "$ref": "#/components/schemas/JsonValue"
           }
         },
         "required": [
@@ -4421,33 +3712,7 @@
         "title": "JsonChange",
         "type": "object"
       },
-      "JsonValue": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "integer"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "string"
-          },
-          {
-            "items": {},
-            "type": "array"
-          },
-          {
-            "additionalProperties": {},
-            "type": "object"
-          }
-        ]
-      },
+      "JsonValue": {},
       "LlmScannerParams": {
         "description": "Parameters for llm_scanner.",
         "properties": {
@@ -4529,7 +3794,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5042,7 +4306,6 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
@@ -5052,7 +4315,7 @@
             "title": "Completed"
           },
           "config": {
-            "$ref": "#/components/schemas/GenerateConfig"
+            "$ref": "#/components/schemas/GenerateConfig-Output"
           },
           "error": {
             "anyOf": [
@@ -5179,7 +4442,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6141,9 +5403,8 @@
         "type": "object"
       },
       "RawEncoding": {
-        "enum": [
-          "zstd"
-        ],
+        "const": "zstd",
+        "title": "RawEncoding",
         "type": "string"
       },
       "RenameValidationSetRequest": {
@@ -6157,46 +5418,6 @@
           "name"
         ],
         "title": "RenameValidationSetRequest",
-        "type": "object"
-      },
-      "ResponseSchema": {
-        "description": "Schema for model response when using Structured Output.",
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "json_schema": {
-            "$ref": "#/components/schemas/JSONSchema"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "strict": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Strict"
-          }
-        },
-        "required": [
-          "name",
-          "json_schema"
-        ],
-        "title": "ResponseSchema",
         "type": "object"
       },
       "ResponseSchema-Input": {
@@ -6456,7 +5677,6 @@
             "$ref": "#/components/schemas/JsonValue"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6545,7 +5765,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6592,7 +5811,6 @@
         "description": "Specification of a SandboxEnvironment.",
         "properties": {
           "config": {
-            "default": null,
             "title": "Config"
           },
           "type": {
@@ -6633,7 +5851,6 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
@@ -6741,7 +5958,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8419,7 +7635,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8546,7 +7761,6 @@
             "title": "Target"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8639,7 +7853,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8728,7 +7941,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8808,7 +8020,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8927,7 +8138,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9019,7 +8229,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9054,7 +8263,6 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
@@ -9107,7 +8315,6 @@
             "title": "Pending"
           },
           "result": {
-            "default": null,
             "title": "Result"
           },
           "span_id": {
@@ -9122,7 +8329,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9226,69 +8432,8 @@
         "description": "Wraps a single Event.",
         "properties": {
           "event": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SampleInitEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SampleLimitEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SandboxEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StateEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StoreEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ModelEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ToolEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ApprovalEvent"
-              },
-              {
-                "$ref": "#/components/schemas/BranchEvent"
-              },
-              {
-                "$ref": "#/components/schemas/CompactionEvent"
-              },
-              {
-                "$ref": "#/components/schemas/InputEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ScoreEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ScoreEditEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ErrorEvent"
-              },
-              {
-                "$ref": "#/components/schemas/LoggerEvent"
-              },
-              {
-                "$ref": "#/components/schemas/InfoEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SpanBeginEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SpanEndEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StepEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SubtaskEvent"
-              }
-            ],
-            "title": "Event"
+            "title": "Event",
+            "type": "string"
           },
           "type": {
             "const": "event",
@@ -9594,7 +8739,6 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
@@ -9743,7 +8887,6 @@
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9879,7 +9022,7 @@
           "additionalProperties": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/JSONSchema"
+                "$ref": "#/components/schemas/JSONSchema-Output"
               },
               {
                 "type": "boolean"
@@ -9893,7 +9036,7 @@
           },
           "properties": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/JSONSchema"
+              "$ref": "#/components/schemas/JSONSchema-Output"
             },
             "title": "Properties",
             "type": "object"
@@ -11722,6 +10865,96 @@
         "tags": [
           "scans"
         ]
+      }
+    },
+    "/schema/invalidation-topic": {
+      "get": {
+        "operationId": "_invalidation_topic_schema_invalidation_topic_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidationTopic"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Invalidation Topic"
+      }
+    },
+    "/schema/llm-scanner-params": {
+      "get": {
+        "operationId": "_llm_scanner_params_schema_llm_scanner_params_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmScannerParams"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Llm Scanner Params"
+      }
+    },
+    "/schema/raw-encoding": {
+      "get": {
+        "operationId": "_raw_encoding_schema_raw_encoding_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawEncoding"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Raw Encoding"
+      }
+    },
+    "/schema/transcript": {
+      "get": {
+        "operationId": "_transcript_schema_transcript_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Transcript"
+      }
+    },
+    "/schema/validation-case": {
+      "get": {
+        "operationId": "_validation_case_schema_validation_case_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationCase"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Validation Case"
       }
     },
     "/startscan": {

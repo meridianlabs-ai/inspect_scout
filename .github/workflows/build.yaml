@@ -101,10 +101,13 @@ jobs:
           python -m pip install dist/*.whl
           python -c "import inspect_scout; print('Package imported successfully')"
 
-  openapi-schema:
+  check-schema-and-types:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -116,23 +119,35 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .
-      - name: Export OpenAPI schema
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/inspect_scout/_view/ts-mono/package.json
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/inspect_scout/_view/ts-mono/pnpm-lock.yaml
+      - name: Install JS dependencies
+        working-directory: src/inspect_scout/_view/ts-mono
+        run: pnpm install --frozen-lockfile
+
+      - name: Export OpenAPI schema and generate types
         run: python scripts/export_openapi_schema.py
-      - name: Check schema is up-to-date
+      - name: Check schema and types are up-to-date
         run: |
-          if ! git diff --exit-code src/inspect_scout/_view/openapi.json
+          if [[ $(git status --porcelain) != "" ]]
           then
-            echo "❌ openapi.json is out of sync with Python API code!"
-            echo ""
-            echo "The OpenAPI schema has changed. Please run:"
+            echo "❌ Schemas or generated types are out of date. Please run:"
             echo "  .venv/bin/python scripts/export_openapi_schema.py"
-            echo ""
-            echo "Then commit the updated openapi.json file."
+            git status
+            git diff
             exit 1
           fi
 
@@ -179,25 +194,6 @@ jobs:
       - name: Install dependencies
         working-directory: src/inspect_scout/_view/ts-mono
         run: pnpm install --frozen-lockfile
-
-      - name: Generate TypeScript types from OpenAPI
-        working-directory: src/inspect_scout/_view/ts-mono
-        run: pnpm --filter scout types:generate
-
-      - name: Check generated types are up-to-date
-        working-directory: src/inspect_scout/_view/ts-mono
-        run: |
-          if ! git diff --exit-code
-          then
-            echo "❌ generated.ts is out of sync with openapi.json!"
-            echo ""
-            echo "TypeScript types need to be regenerated. Run:"
-            echo "  cd src/inspect_scout/_view/ts-mono"
-            echo "  pnpm --filter scout types:generate"
-            echo ""
-            echo "Then commit the updated generated.ts file."
-            exit 1
-          fi
 
       - name: Build
         working-directory: src/inspect_scout/_view/ts-mono

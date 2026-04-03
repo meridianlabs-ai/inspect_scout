@@ -423,7 +423,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Explanation"
           },
           "message": {
@@ -440,7 +439,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "modified": {
@@ -451,8 +449,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "pending": {
             "anyOf": [
@@ -463,7 +460,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -475,11 +471,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -492,7 +486,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "view": {
@@ -503,8 +496,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "working_start": {
             "title": "Working Start",
@@ -535,7 +527,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Max Batches"
           },
           "max_consecutive_check_failures": {
@@ -547,7 +538,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Max Consecutive Check Failures"
           },
           "max_size": {
@@ -559,7 +549,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Max Size"
           },
           "send_delay": {
@@ -571,7 +560,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Send Delay"
           },
           "size": {
@@ -583,7 +571,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Size"
           },
           "tick": {
@@ -595,7 +582,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tick"
           }
         },
@@ -629,7 +615,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -641,7 +626,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -653,11 +637,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -670,7 +652,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -734,8 +715,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "message": {
             "$ref": "#/components/schemas/ChatMessageAssistant"
@@ -760,22 +740,6 @@
         ],
         "title": "ChatCompletionChoice",
         "type": "object"
-      },
-      "ChatMessage": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/ChatMessageSystem"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageUser"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageAssistant"
-          },
-          {
-            "$ref": "#/components/schemas/ChatMessageTool"
-          }
-        ]
       },
       "ChatMessageAssistant": {
         "description": "Assistant chat message.",
@@ -828,7 +792,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -841,7 +804,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -853,7 +815,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Model"
           },
           "role": {
@@ -875,7 +836,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           },
           "tool_calls": {
@@ -890,7 +850,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tool Calls"
           }
         },
@@ -952,7 +911,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -965,7 +923,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -987,7 +944,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           }
         },
@@ -1048,8 +1004,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "function": {
             "anyOf": [
@@ -1060,7 +1015,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Function"
           },
           "id": {
@@ -1072,7 +1026,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -1085,7 +1038,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -1107,7 +1059,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           },
           "tool_call_id": {
@@ -1119,7 +1070,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tool Call Id"
           }
         },
@@ -1181,7 +1131,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Id"
           },
           "metadata": {
@@ -1194,7 +1143,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "role": {
@@ -1216,7 +1164,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           },
           "tool_call_id": {
@@ -1231,7 +1178,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tool Call Id"
           }
         },
@@ -1261,7 +1207,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -1273,7 +1218,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "source": {
@@ -1285,7 +1229,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           },
           "span_id": {
@@ -1297,11 +1240,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -1314,7 +1255,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tokens After"
           },
           "tokens_before": {
@@ -1326,7 +1266,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Tokens Before"
           },
           "type": {
@@ -1348,7 +1287,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -1530,34 +1468,6 @@
         "title": "Condition",
         "type": "object"
       },
-      "Content": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/ContentText"
-          },
-          {
-            "$ref": "#/components/schemas/ContentReasoning"
-          },
-          {
-            "$ref": "#/components/schemas/ContentImage"
-          },
-          {
-            "$ref": "#/components/schemas/ContentAudio"
-          },
-          {
-            "$ref": "#/components/schemas/ContentVideo"
-          },
-          {
-            "$ref": "#/components/schemas/ContentData"
-          },
-          {
-            "$ref": "#/components/schemas/ContentToolUse"
-          },
-          {
-            "$ref": "#/components/schemas/ContentDocument"
-          }
-        ]
-      },
       "ContentAudio": {
         "description": "Audio content.",
         "properties": {
@@ -1581,8 +1491,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "type": {
             "const": "audio",
@@ -1619,7 +1528,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -1634,7 +1542,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Internal"
           },
           "title": {
@@ -1646,7 +1553,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Title"
           },
           "type": {
@@ -1680,8 +1586,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "type": {
             "const": "data",
@@ -1716,8 +1621,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "mime_type": {
             "title": "Mime Type",
@@ -1765,8 +1669,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "type": {
             "const": "image",
@@ -1794,8 +1697,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "reasoning": {
             "title": "Reasoning",
@@ -1815,7 +1717,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Signature"
           },
           "summary": {
@@ -1827,7 +1728,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Summary"
           },
           "type": {
@@ -1878,7 +1778,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Citations"
           },
           "internal": {
@@ -1889,8 +1788,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "refusal": {
             "anyOf": [
@@ -1901,7 +1799,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Refusal"
           },
           "text": {
@@ -1938,7 +1835,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Context"
           },
           "error": {
@@ -1950,7 +1846,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Error"
           },
           "id": {
@@ -1965,8 +1860,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "name": {
             "title": "Name",
@@ -2023,8 +1917,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "type": {
             "const": "video",
@@ -2122,7 +2015,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -2137,7 +2029,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Internal"
           },
           "range": {
@@ -2148,8 +2039,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "title": {
             "anyOf": [
@@ -2160,7 +2050,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Title"
           },
           "type": {
@@ -2261,7 +2150,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -2273,7 +2161,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -2285,11 +2172,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -2302,7 +2187,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -2343,70 +2227,6 @@
         "title": "EvalError",
         "type": "object"
       },
-      "Event": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/SampleInitEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SampleLimitEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SandboxEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StateEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StoreEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ModelEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ToolEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ApprovalEvent"
-          },
-          {
-            "$ref": "#/components/schemas/BranchEvent"
-          },
-          {
-            "$ref": "#/components/schemas/CompactionEvent"
-          },
-          {
-            "$ref": "#/components/schemas/InputEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ScoreEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ScoreEditEvent"
-          },
-          {
-            "$ref": "#/components/schemas/ErrorEvent"
-          },
-          {
-            "$ref": "#/components/schemas/LoggerEvent"
-          },
-          {
-            "$ref": "#/components/schemas/InfoEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SpanBeginEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SpanEndEvent"
-          },
-          {
-            "$ref": "#/components/schemas/StepEvent"
-          },
-          {
-            "$ref": "#/components/schemas/SubtaskEvent"
-          }
-        ]
-      },
       "EventsData": {
         "additionalProperties": true,
         "description": "Pooled data extracted by condense_events / condense_sample.",
@@ -2444,485 +2264,6 @@
           "calls"
         ],
         "title": "EventsData",
-        "type": "object"
-      },
-      "GenerateConfig": {
-        "description": "Model generation options.",
-        "properties": {
-          "attempt_timeout": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Attempt Timeout"
-          },
-          "batch": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "$ref": "#/components/schemas/BatchConfig"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Batch"
-          },
-          "best_of": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Best Of"
-          },
-          "cache": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "$ref": "#/components/schemas/CachePolicy"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Cache"
-          },
-          "cache_prompt": {
-            "anyOf": [
-              {
-                "const": "auto",
-                "type": "string"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Cache Prompt"
-          },
-          "effort": {
-            "anyOf": [
-              {
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "max"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Effort"
-          },
-          "extra_body": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Extra Body"
-          },
-          "extra_headers": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Extra Headers"
-          },
-          "frequency_penalty": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Frequency Penalty"
-          },
-          "internal_tools": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Internal Tools"
-          },
-          "logit_bias": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "number"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Logit Bias"
-          },
-          "logprobs": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Logprobs"
-          },
-          "max_connections": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Max Connections"
-          },
-          "max_retries": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Max Retries"
-          },
-          "max_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Max Tokens"
-          },
-          "max_tool_output": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Max Tool Output"
-          },
-          "modalities": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ImageOutput"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Modalities"
-          },
-          "num_choices": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Num Choices"
-          },
-          "parallel_tool_calls": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Parallel Tool Calls"
-          },
-          "presence_penalty": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Presence Penalty"
-          },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "minimal",
-                  "low",
-                  "medium",
-                  "high",
-                  "xhigh"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Reasoning Effort"
-          },
-          "reasoning_history": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "all",
-                  "last",
-                  "auto"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Reasoning History"
-          },
-          "reasoning_summary": {
-            "anyOf": [
-              {
-                "enum": [
-                  "none",
-                  "concise",
-                  "detailed",
-                  "auto"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Reasoning Summary"
-          },
-          "reasoning_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Reasoning Tokens"
-          },
-          "response_schema": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResponseSchema"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "seed": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Seed"
-          },
-          "stop_seqs": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Stop Seqs"
-          },
-          "system_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "System Message"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Temperature"
-          },
-          "timeout": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Timeout"
-          },
-          "top_k": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Top K"
-          },
-          "top_logprobs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Top Logprobs"
-          },
-          "top_p": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Top P"
-          },
-          "verbosity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "low",
-                  "medium",
-                  "high"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Verbosity"
-          }
-        },
-        "title": "GenerateConfig",
         "type": "object"
       },
       "GenerateConfig-Input": {
@@ -3847,7 +3188,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Options"
           }
         },
@@ -3876,7 +3216,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -3888,7 +3227,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "source": {
@@ -3900,7 +3238,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Source"
           },
           "span_id": {
@@ -3912,11 +3249,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -3929,7 +3264,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -3973,7 +3307,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -3985,7 +3318,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -3997,11 +3329,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -4014,7 +3344,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4038,165 +3367,8 @@
           "scans",
           "transcripts"
         ],
+        "title": "InvalidationTopic",
         "type": "string"
-      },
-      "JSONSchema": {
-        "description": "JSON Schema for type.",
-        "properties": {
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Additionalproperties"
-          },
-          "anyOf": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/JSONSchema"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Anyof"
-          },
-          "default": {
-            "default": null,
-            "title": "Default"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          },
-          "enum": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Enum"
-          },
-          "format": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Format"
-          },
-          "items": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/JSONSchema"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          },
-          "properties": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JSONSchema"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Properties"
-          },
-          "required": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Required"
-          },
-          "type": {
-            "anyOf": [
-              {
-                "enum": [
-                  "string",
-                  "integer",
-                  "number",
-                  "boolean",
-                  "array",
-                  "object",
-                  "null"
-                ],
-                "type": "string"
-              },
-              {
-                "items": {
-                  "enum": [
-                    "string",
-                    "integer",
-                    "number",
-                    "boolean",
-                    "array",
-                    "object",
-                    "null"
-                  ],
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Type"
-          }
-        },
-        "required": [
-          "default"
-        ],
-        "title": "JSONSchema",
-        "type": "object"
       },
       "JSONSchema-Input": {
         "description": "JSON Schema for type.",
@@ -4506,7 +3678,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "From"
           },
           "op": {
@@ -4526,12 +3697,10 @@
             "type": "string"
           },
           "replaced": {
-            "$ref": "#/components/schemas/JsonValue",
-            "default": null
+            "$ref": "#/components/schemas/JsonValue"
           },
           "value": {
-            "$ref": "#/components/schemas/JsonValue",
-            "default": null
+            "$ref": "#/components/schemas/JsonValue"
           }
         },
         "required": [
@@ -4543,33 +3712,7 @@
         "title": "JsonChange",
         "type": "object"
       },
-      "JsonValue": {
-        "oneOf": [
-          {
-            "type": "null"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "integer"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "string"
-          },
-          {
-            "items": {},
-            "type": "array"
-          },
-          {
-            "additionalProperties": {},
-            "type": "object"
-          }
-        ]
-      },
+      "JsonValue": {},
       "LlmScannerParams": {
         "description": "Parameters for llm_scanner.",
         "properties": {
@@ -4626,7 +3769,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -4638,7 +3780,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -4650,11 +3791,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -4667,7 +3806,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -4733,7 +3871,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Name"
           }
         },
@@ -4773,7 +3910,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Bytes"
           },
           "logprob": {
@@ -4796,7 +3932,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Top Logprobs"
           }
         },
@@ -4994,7 +4129,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Call Key"
           },
           "call_refs": {
@@ -5019,7 +4153,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Call Refs"
           },
           "error": {
@@ -5031,7 +4164,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Error"
           },
           "request": {
@@ -5053,7 +4185,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Response"
           },
           "time": {
@@ -5065,7 +4196,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Time"
           }
         },
@@ -5161,7 +4291,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cache"
           },
           "call": {
@@ -5172,24 +4301,21 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Completed"
           },
           "config": {
-            "$ref": "#/components/schemas/GenerateConfig"
+            "$ref": "#/components/schemas/GenerateConfig-Output"
           },
           "error": {
             "anyOf": [
@@ -5200,7 +4326,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Error"
           },
           "event": {
@@ -5251,7 +4376,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Input Refs"
           },
           "metadata": {
@@ -5264,7 +4388,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -5283,7 +4406,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "retries": {
@@ -5295,7 +4417,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Retries"
           },
           "role": {
@@ -5307,7 +4428,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Role"
           },
           "span_id": {
@@ -5319,11 +4439,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -5359,7 +4477,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Traceback"
           },
           "traceback_ansi": {
@@ -5371,7 +4488,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Traceback Ansi"
           },
           "uuid": {
@@ -5383,7 +4499,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -5399,7 +4514,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Working Time"
           }
         },
@@ -5442,7 +4556,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Error"
           },
           "metadata": {
@@ -5455,7 +4568,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "model": {
@@ -5471,7 +4583,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Time"
           },
           "usage": {
@@ -5482,8 +4593,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           }
         },
         "required": [
@@ -5511,7 +4621,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Input Tokens Cache Read"
           },
           "input_tokens_cache_write": {
@@ -5523,7 +4632,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Input Tokens Cache Write"
           },
           "output_tokens": {
@@ -5540,7 +4648,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Reasoning Tokens"
           },
           "total_cost": {
@@ -5552,7 +4659,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Total Cost"
           },
           "total_tokens": {
@@ -6280,7 +5386,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Reason"
           },
           "timestamp": {
@@ -6298,9 +5403,8 @@
         "type": "object"
       },
       "RawEncoding": {
-        "enum": [
-          "zstd"
-        ],
+        "const": "zstd",
+        "title": "RawEncoding",
         "type": "string"
       },
       "RenameValidationSetRequest": {
@@ -6314,48 +5418,6 @@
           "name"
         ],
         "title": "RenameValidationSetRequest",
-        "type": "object"
-      },
-      "ResponseSchema": {
-        "description": "Schema for model response when using Structured Output.",
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          },
-          "json_schema": {
-            "$ref": "#/components/schemas/JSONSchema"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "strict": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Strict"
-          }
-        },
-        "required": [
-          "name",
-          "json_schema"
-        ],
-        "title": "ResponseSchema",
         "type": "object"
       },
       "ResponseSchema-Input": {
@@ -6453,7 +5515,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Choices"
           },
           "files": {
@@ -6468,7 +5529,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Files"
           },
           "id": {
@@ -6483,7 +5543,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Id"
           },
           "input": {
@@ -6523,7 +5582,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "sandbox": {
@@ -6534,8 +5592,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "setup": {
             "anyOf": [
@@ -6546,7 +5603,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Setup"
           },
           "target": {
@@ -6590,7 +5646,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -6602,7 +5657,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "sample": {
@@ -6617,14 +5671,12 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "state": {
             "$ref": "#/components/schemas/JsonValue"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6637,7 +5689,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -6673,7 +5724,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Limit"
           },
           "message": {
@@ -6690,7 +5740,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -6702,7 +5751,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -6714,11 +5762,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6744,7 +5790,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -6766,7 +5811,6 @@
         "description": "Specification of a SandboxEnvironment.",
         "properties": {
           "config": {
-            "default": null,
             "title": "Config"
           },
           "type": {
@@ -6802,20 +5846,17 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cmd"
           },
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Completed"
           },
           "event": {
@@ -6833,7 +5874,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "File"
           },
           "input": {
@@ -6845,7 +5885,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Input"
           },
           "metadata": {
@@ -6858,7 +5897,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "options": {
@@ -6873,7 +5911,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Options"
           },
           "output": {
@@ -6885,7 +5922,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Output"
           },
           "pending": {
@@ -6897,7 +5933,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "result": {
@@ -6909,7 +5944,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Result"
           },
           "span_id": {
@@ -6921,11 +5955,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -6938,7 +5970,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -8325,7 +7356,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Answer"
           },
           "explanation": {
@@ -8337,7 +7367,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Explanation"
           },
           "history": {
@@ -8357,7 +7386,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "value": {
@@ -8483,8 +7511,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "value": {
             "anyOf": [
@@ -8579,7 +7606,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -8591,7 +7617,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "score_name": {
@@ -8607,11 +7632,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8624,7 +7647,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -8666,7 +7688,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "model_usage": {
@@ -8681,7 +7702,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Model Usage"
           },
           "pending": {
@@ -8693,7 +7713,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "role_usage": {
@@ -8708,7 +7727,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Role Usage"
           },
           "score": {
@@ -8723,7 +7741,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "target": {
@@ -8741,11 +7758,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Target"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8758,7 +7773,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -8799,7 +7813,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -8815,7 +7828,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Parent Id"
           },
           "pending": {
@@ -8827,7 +7839,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -8839,11 +7850,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8856,7 +7865,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -8868,7 +7876,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -8909,7 +7916,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -8921,7 +7927,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -8933,11 +7938,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -8950,7 +7953,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -8993,7 +7995,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -9005,7 +8006,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -9017,11 +8017,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9034,7 +8032,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -9112,7 +8109,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -9128,7 +8124,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -9140,11 +8135,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9157,7 +8150,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -9169,7 +8161,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -9213,7 +8204,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -9225,7 +8215,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "span_id": {
@@ -9237,11 +8226,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9254,7 +8241,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -9277,14 +8263,12 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Completed"
           },
           "event": {
@@ -9313,7 +8297,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "name": {
@@ -9329,11 +8312,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "result": {
-            "default": null,
             "title": "Result"
           },
           "span_id": {
@@ -9345,11 +8326,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -9362,7 +8341,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Type"
           },
           "uuid": {
@@ -9374,7 +8352,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "working_start": {
@@ -9390,7 +8367,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Working Time"
           }
         },
@@ -9456,69 +8432,8 @@
         "description": "Wraps a single Event.",
         "properties": {
           "event": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SampleInitEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SampleLimitEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SandboxEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StateEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StoreEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ModelEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ToolEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ApprovalEvent"
-              },
-              {
-                "$ref": "#/components/schemas/BranchEvent"
-              },
-              {
-                "$ref": "#/components/schemas/CompactionEvent"
-              },
-              {
-                "$ref": "#/components/schemas/InputEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ScoreEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ScoreEditEvent"
-              },
-              {
-                "$ref": "#/components/schemas/ErrorEvent"
-              },
-              {
-                "$ref": "#/components/schemas/LoggerEvent"
-              },
-              {
-                "$ref": "#/components/schemas/InfoEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SpanBeginEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SpanEndEvent"
-              },
-              {
-                "$ref": "#/components/schemas/StepEvent"
-              },
-              {
-                "$ref": "#/components/schemas/SubtaskEvent"
-              }
-            ],
-            "title": "Event"
+            "title": "Event",
+            "type": "string"
           },
           "type": {
             "const": "event",
@@ -9546,7 +8461,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Agent Result"
           },
           "branched_from": {
@@ -9558,7 +8472,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Branched From"
           },
           "branches": {
@@ -9591,7 +8504,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Description"
           },
           "id": {
@@ -9610,8 +8522,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "span_type": {
             "anyOf": [
@@ -9671,7 +8582,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Parse Error"
           },
           "type": {
@@ -9691,8 +8601,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           }
         },
         "required": [
@@ -9728,7 +8637,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Title"
           }
         },
@@ -9780,8 +8688,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "context": {
             "anyOf": [
@@ -9791,8 +8698,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           }
         },
         "title": "ToolCallView",
@@ -9810,7 +8716,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Agent"
           },
           "agent_span_id": {
@@ -9822,7 +8727,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Agent Span Id"
           },
           "arguments": {
@@ -9835,14 +8739,12 @@
           "completed": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Completed"
           },
           "error": {
@@ -9853,8 +8755,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "event": {
             "const": "tool",
@@ -9876,7 +8777,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Failed"
           },
           "function": {
@@ -9896,7 +8796,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Message Id"
           },
           "metadata": {
@@ -9909,7 +8808,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Metadata"
           },
           "pending": {
@@ -9921,7 +8819,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Pending"
           },
           "result": {
@@ -9987,11 +8884,9 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Span Id"
           },
           "timestamp": {
-            "format": "date-time",
             "title": "Timestamp",
             "type": "string"
           },
@@ -10014,7 +8909,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Truncated"
           },
           "type": {
@@ -10032,7 +8926,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Uuid"
           },
           "view": {
@@ -10043,8 +8936,7 @@
               {
                 "type": "null"
               }
-            ],
-            "default": null
+            ]
           },
           "working_start": {
             "title": "Working Start",
@@ -10059,7 +8951,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Working Time"
           }
         },
@@ -10111,7 +9002,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Options"
           },
           "parameters": {
@@ -10132,7 +9022,7 @@
           "additionalProperties": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/JSONSchema"
+                "$ref": "#/components/schemas/JSONSchema-Output"
               },
               {
                 "type": "boolean"
@@ -10146,7 +9036,7 @@
           },
           "properties": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/JSONSchema"
+              "$ref": "#/components/schemas/JSONSchema-Output"
             },
             "title": "Properties",
             "type": "object"
@@ -10188,7 +9078,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Bytes"
           },
           "logprob": {
@@ -10863,7 +9752,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cited Text"
           },
           "internal": {
@@ -10878,7 +9766,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Internal"
           },
           "title": {
@@ -10890,7 +9777,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Title"
           },
           "type": {
@@ -11979,6 +10865,96 @@
         "tags": [
           "scans"
         ]
+      }
+    },
+    "/schema/invalidation-topic": {
+      "get": {
+        "operationId": "_invalidation_topic_schema_invalidation_topic_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidationTopic"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Invalidation Topic"
+      }
+    },
+    "/schema/llm-scanner-params": {
+      "get": {
+        "operationId": "_llm_scanner_params_schema_llm_scanner_params_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmScannerParams"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Llm Scanner Params"
+      }
+    },
+    "/schema/raw-encoding": {
+      "get": {
+        "operationId": "_raw_encoding_schema_raw_encoding_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawEncoding"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Raw Encoding"
+      }
+    },
+    "/schema/transcript": {
+      "get": {
+        "operationId": "_transcript_schema_transcript_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Transcript"
+      }
+    },
+    "/schema/validation-case": {
+      "get": {
+        "operationId": "_validation_case_schema_validation_case_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationCase"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Validation Case"
       }
     },
     "/startscan": {

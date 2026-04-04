@@ -1,4 +1,4 @@
-## 0.4.24 (04 April 2026)
+## 0.4.25 (04 April 2026)
 
 - Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.
 - Scanners: Surround assistant messages with `prefill=True` in metadata with `<prefill>` tag when rendering messages for scanners.

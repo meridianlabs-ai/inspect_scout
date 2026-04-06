@@ -5575,7 +5575,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Cite"
           },
           "id": {
@@ -6272,6 +6271,17 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
           },
           "query": {
             "title": "Query",
@@ -8135,6 +8145,17 @@
       },
       "SearchRequest": {
         "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
           "query": {
             "title": "Query",
             "type": "string"
@@ -8838,7 +8859,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Branched From"
           },
           "branches": {

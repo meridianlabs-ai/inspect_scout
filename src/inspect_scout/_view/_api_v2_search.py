@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Path
@@ -42,9 +41,12 @@ If nothing in the transcript matches the query, say so briefly.
 MAX_ENTRIES = 500
 
 
-def _search_id(query: str, search_type: str) -> str:
+def _search_id(query: str, search_type: str, model: str | None = None) -> str:
     """Deterministic ID from search parameters."""
-    canonical = json.dumps({"query": query, "type": search_type}, sort_keys=True)
+    parts: dict[str, str] = {"query": query, "type": search_type}
+    if model is not None:
+        parts["model"] = model
+    canonical = json.dumps(parts, sort_keys=True)
     return hashlib.sha256(canonical.encode()).hexdigest()[:12]
 
 
@@ -91,7 +93,8 @@ def create_search_router() -> APIRouter:
         Returns cached results if the same search was run before.
         """
         transcript_dir = decode_base64url(dir)
-        sid = _search_id(request.query, request.type)
+        model = request.model if request.type == "llm" else None
+        sid = _search_id(request.query, request.type, model)
         key = _composite_key(transcript_dir, id, sid)
 
         # Check cache
@@ -123,7 +126,7 @@ def create_search_router() -> APIRouter:
                 question=request.query,
                 answer="string",
                 template=LLM_SEARCH_TEMPLATE,
-                model=os.getenv("SCOUT_SCAN_MODEL"),
+                model=model,
             )
         )
         output = await scan(transcript)
@@ -134,6 +137,7 @@ def create_search_router() -> APIRouter:
             search_id=sid,
             query=request.query,
             type=request.type,
+            model=model,
             results=results,
             created_at=datetime.now(timezone.utc).isoformat(),
         )

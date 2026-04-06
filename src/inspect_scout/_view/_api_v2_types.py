@@ -298,6 +298,8 @@ class SearchRequest:
 
     query: str
     type: Literal["grep", "llm"]
+    model: str | None = None
+    """Model to use for LLM search. Ignored for grep searches."""
 
 
 class SavedSearch(BaseModel):
@@ -306,6 +308,8 @@ class SavedSearch(BaseModel):
     search_id: str
     query: str
     type: Literal["grep", "llm"]
+    model: str | None = None
+    """Model used for LLM search. None for grep searches."""
     results: list[Result]
     created_at: str
 

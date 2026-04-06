@@ -217,9 +217,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#march-2026" id="toc-march-2026" class="nav-link active" data-scroll-target="#march-2026">0.4.22 (20 March 2026)</a></li>
-  <li><a href="#march-2026-1" id="toc-march-2026-1" class="nav-link" data-scroll-target="#march-2026-1">0.4.21 (16 March 2026)</a></li>
-  <li><a href="#march-2026-2" id="toc-march-2026-2" class="nav-link" data-scroll-target="#march-2026-2">0.4.20 (16 March 2026)</a></li>
+  <li><a href="#april-2026" id="toc-april-2026" class="nav-link active" data-scroll-target="#april-2026">0.4.25 (04 April 2026)</a></li>
+  <li><a href="#march-2026" id="toc-march-2026" class="nav-link" data-scroll-target="#march-2026">0.4.23 (25 March 2026)</a></li>
+  <li><a href="#march-2026-1" id="toc-march-2026-1" class="nav-link" data-scroll-target="#march-2026-1">0.4.22 (20 March 2026)</a></li>
+  <li><a href="#march-2026-2" id="toc-march-2026-2" class="nav-link" data-scroll-target="#march-2026-2">0.4.21 (16 March 2026)</a></li>
+  <li><a href="#march-2026-3" id="toc-march-2026-3" class="nav-link" data-scroll-target="#march-2026-3">0.4.20 (16 March 2026)</a></li>
   <li><a href="#february-2026" id="toc-february-2026" class="nav-link" data-scroll-target="#february-2026">0.4.19 (17 February 2026)</a></li>
   <li><a href="#february-2026-1" id="toc-february-2026-1" class="nav-link" data-scroll-target="#february-2026-1">0.4.18 (14 February 2026)</a></li>
   <li><a href="#february-2026-2" id="toc-february-2026-2" class="nav-link" data-scroll-target="#february-2026-2">0.4.17 (13 February 2026)</a></li>
@@ -249,8 +251,34 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="april-2026" class="level2">
+<h2 class="anchored" data-anchor-id="april-2026">0.4.25 (04 April 2026)</h2>
+<ul>
+<li>Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.</li>
+<li>Scanners: Surround assistant messages with <code>prefill=True</code> in metadata with <code>&lt;prefill&gt;</code> tag when rendering messages for scanners.</li>
+<li>Scanners: Match references across all fields in scan result.</li>
+<li>Metrics: Filter out NaN metrics (occurs when all scan results are errors).</li>
+<li>Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.</li>
+<li>Timelines: Ensure that all events are loaded from reading timelines.</li>
+<li>Timelines: Update to use new timeline branch scheme from inspect-ai.</li>
+<li>Timelines: Add <code>label_for_id</code> option to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span> function.</li>
+<li>Modules: Rename <code>async</code> module to <code>aio</code>.</li>
+<li>VS Code Integration: Fix regression displaying Scout View in VS Code.</li>
+<li>Scout View: Show tooltip for array or object values which have been truncated.</li>
+<li>Scout View: Improve citation matching in results view.</li>
+</ul>
+</section>
 <section id="march-2026" class="level2">
-<h2 class="anchored" data-anchor-id="march-2026">0.4.22 (20 March 2026)</h2>
+<h2 class="anchored" data-anchor-id="march-2026">0.4.23 (25 March 2026)</h2>
+<ul>
+<li>Add timeline types to <code>@scanner</code> decorator overloads.</li>
+<li>Scout View: Fix white circle over compaction markers.</li>
+<li>Bugfix: Handle excluded input column in event expansion.</li>
+<li>Bugfix: Always truncate error file on resume to prevent stale errors.</li>
+</ul>
+</section>
+<section id="march-2026-1" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026-1">0.4.22 (20 March 2026)</h2>
 <ul>
 <li>Transcripts: Use <code>events_data</code> to reduce memory and storage requirements of <code>events</code>.</li>
 <li>Summary: Count only positive values in resultset aggregation.</li>
@@ -258,8 +286,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Recorder: Preserve error file on scan resume instead of truncating.</li>
 </ul>
 </section>
-<section id="march-2026-1" class="level2">
-<h2 class="anchored" data-anchor-id="march-2026-1">0.4.21 (16 March 2026)</h2>
+<section id="march-2026-2" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026-2">0.4.21 (16 March 2026)</h2>
 <ul>
 <li>Scanner as scorer: Forward timelines from eval sample to scanner if requested.</li>
 <li>Scout View: Correctly display timelines in results view.</li>
@@ -267,8 +295,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Scout View: Bundle <code>dist/</code> assets during packaging.</li>
 </ul>
 </section>
-<section id="march-2026-2" class="level2">
-<h2 class="anchored" data-anchor-id="march-2026-2">0.4.20 (16 March 2026)</h2>
+<section id="march-2026-3" class="level2">
+<h2 class="anchored" data-anchor-id="march-2026-3">0.4.20 (16 March 2026)</h2>
 <ul>
 <li>LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.</li>
 <li>LLM Scanner: <code>AnswerMultiLabel(allow_none=True)</code> lets the model respond with <code>ANSWER: NONE</code> when no labels apply.</li>

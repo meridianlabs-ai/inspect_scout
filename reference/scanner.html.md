@@ -7,7 +7,7 @@
 
 Scan transcript content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scanner.py#L81)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scanner.py#L83)
 
 ``` python
 class Scanner(Protocol[T]):
@@ -21,7 +21,7 @@ Input to scan.
 
 Union of all valid scanner input types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/types.py#L12)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/types.py#L12)
 
 ``` python
 ScannerInput = Union[
@@ -39,7 +39,7 @@ ScannerInput = Union[
 
 Scan result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L34)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L34)
 
 ``` python
 class Result(BaseModel)
@@ -76,7 +76,7 @@ result data frames).
 
 Reference to scanned content.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L18)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L18)
 
 ``` python
 class Reference(BaseModel)
@@ -100,7 +100,7 @@ Reference id (message or event id)
 
 Scan error (runtime error which occurred during scan).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/result.py#L66)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L66)
 
 ``` python
 class Error(BaseModel)
@@ -127,7 +127,7 @@ Was this error a refusal.
 
 Load transcript data.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/loader.py#L48)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/loader.py#L48)
 
 ``` python
 class Loader(Protocol[TLoaderResult]):
@@ -156,7 +156,7 @@ respects context window limits. Each segment is scanned independently
 with globally unique message numbering (`[M1]`, `[M2]`, …) across all
 segments.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76)
 
 ``` python
 @scanner(messages="all")
@@ -278,7 +278,7 @@ Messages are searched if `transcript.messages` is populated - Events are
 searched if `transcript.events` is populated - Control population via
 `@scanner(messages=..., events=...)`
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14)
 
 ``` python
 @scanner(messages="all")
@@ -342,18 +342,27 @@ globally, so multiple calls produce M1..M5, then M6..M10, etc.
 The returned extract_references resolves citations from ANY prior
 messages_as_str call within this numbering scope.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L143)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L158)
 
 ``` python
 def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
-) -> tuple[MessagesAsStr, ExtractReferences]
+    *,
+    label_for_id: bool = False,
+) -> (
+    tuple[MessagesAsStr, ExtractReferences]
+    | tuple[MessagesAsStr, ExtractReferences, LabelForId]
+)
 ```
 
 `preprocessor` [MessagesPreprocessor](scanner.qmd#messagespreprocessor)\[list\[ChatMessage\]\] \| None  
 Message preprocessing options applied to every call (e.g.,
 exclude_system, exclude_reasoning). Defaults to excluding system
 messages when no preprocessor is provided.
+
+`label_for_id` bool  
+When True, return a third function that maps real message IDs to their
+assigned labels (e.g. `"M3"`).
 
 ### scanner_prompt
 
@@ -367,7 +376,7 @@ want the default prompt structure but need control over generation (via
 For fully custom prompt templates, use `answer_type()` to access the
 `.prompt` and `.format` strings directly.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L228)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L228)
 
 ``` python
 def scanner_prompt(
@@ -395,7 +404,7 @@ Dispatches to the appropriate generation strategy based on the answer
 type: tool-based structured generation for :class:`AnswerStructured`,
 standard text generation with refusal retry for all other types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L82)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L82)
 
 ``` python
 async def generate_answer(
@@ -446,7 +455,7 @@ Parse a model output into a Result using the answer specification.
 Delegates to the answer type’s parsing logic. This is a pure function —
 no LLM call is made.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/generate.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L31)
 
 ``` python
 def parse_answer(
@@ -470,6 +479,28 @@ Function to extract `[M1]`-style references from the explanation text.
 `value_to_float` ValueToFloat \| None  
 Optional function to convert the parsed value to a float.
 
+### extract_references
+
+Extract deduplicated references from a list of values.
+
+Recursively walks each value (strings, dicts, lists) and extracts
+references using the provided function, deduplicating by reference id.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/structured.py#L331)
+
+``` python
+def extract_references(
+    values: list[Any],
+    extract_fn: Callable[[str], list[Reference]],
+) -> list[Reference]
+```
+
+`values` list\[Any\]  
+Values to extract references from (strings, dicts, lists, or None).
+
+`extract_fn` Callable\[\[str\], list\[[Reference](scanner.qmd#reference)\]\]  
+Function that extracts references from a string.
+
 ### ResultReducer
 
 Standard reducers for aggregating multi-segment scan results.
@@ -478,7 +509,7 @@ Each static method is an async reducer with signature
 `(list[Result]) -> Result`. The :meth:`llm` factory returns a reducer
 that uses an LLM to synthesize results.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L77)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L77)
 
 ``` python
 class ResultReducer
@@ -489,7 +520,7 @@ class ResultReducer
 mean  
 Arithmetic mean of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L85)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L85)
 
 ``` python
 @staticmethod
@@ -501,7 +532,7 @@ async def mean(results: list[Result]) -> Result
 median  
 Median of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L94)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L94)
 
 ``` python
 @staticmethod
@@ -513,7 +544,7 @@ async def median(results: list[Result]) -> Result
 mode  
 Mode (most common) of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L103)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L103)
 
 ``` python
 @staticmethod
@@ -525,7 +556,7 @@ async def mode(results: list[Result]) -> Result
 max  
 Maximum of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L112)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L112)
 
 ``` python
 @staticmethod
@@ -537,7 +568,7 @@ async def max(results: list[Result]) -> Result
 min  
 Minimum of numeric values.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L121)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L121)
 
 ``` python
 @staticmethod
@@ -549,7 +580,7 @@ async def min(results: list[Result]) -> Result
 any  
 Boolean OR — True if any result is True.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L130)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L130)
 
 ``` python
 @staticmethod
@@ -561,7 +592,7 @@ async def any(results: list[Result]) -> Result
 union  
 Union of list values, deduplicated, preserving order.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L137)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L137)
 
 ``` python
 @staticmethod
@@ -577,7 +608,7 @@ Counts occurrences of each `value` across results. If there is a unique
 winner it is used; otherwise the last result’s value breaks the tie. The
 `answer` is taken from the matching result.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L152)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L152)
 
 ``` python
 @staticmethod
@@ -589,7 +620,7 @@ async def majority(results: list[Result]) -> Result
 last  
 Return the last result with merged auxiliary fields.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L187)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L187)
 
 ``` python
 @staticmethod
@@ -604,7 +635,7 @@ Factory that returns an LLM-based reducer.
 The returned reducer formats all segment results into a prompt and asks
 the model to synthesize the best answer.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/_reducer.py#L197)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L197)
 
 ``` python
 @staticmethod
@@ -624,7 +655,7 @@ Custom synthesis prompt template. If None, uses a default template.
 
 Protocol for LLM scanner answer types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L66)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L66)
 
 ``` python
 @runtime_checkable
@@ -644,7 +675,7 @@ Return the answer format string.
 result_for_answer  
 Extract and return the result from model output.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L80)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L80)
 
 ``` python
 def result_for_answer(
@@ -668,7 +699,7 @@ Resolve an answer specification into an Answer object.
 The returned object exposes `.prompt` and `.format` properties
 containing the prompt text and format instructions for the answer type.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/answer.py#L115)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L115)
 
 ``` python
 def answer_type(
@@ -692,7 +723,7 @@ Pass `"boolean"`, `"numeric"`, or `"string"` for a simple answer; pass
 multi-classification; or pass :class:`AnswerStructured` for tool-based
 structured output.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L56)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L56)
 
 ``` python
 AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
@@ -702,7 +733,7 @@ AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
 
 Label descriptions for LLM scanner multi-classification.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L6)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L6)
 
 ``` python
 class AnswerMultiLabel(NamedTuple)
@@ -724,7 +755,7 @@ Answer with structured output.
 
 Structured answers are objects that conform to a JSON Schema.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_llm_scanner/types.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L19)
 
 ``` python
 class AnswerStructured(NamedTuple)
@@ -767,7 +798,7 @@ schema.
 
 Concatenate list of chat messages into a string.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L75)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L75)
 
 ``` python
 async def messages_as_str(
@@ -800,7 +831,7 @@ Message formatting options for controlling message content display.
 These options control which parts of messages are included when
 formatting messages to strings.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L22)
 
 ``` python
 @dataclass(frozen=True)
@@ -829,7 +860,7 @@ content removal transformations.
 The default `MessagesPreprocessor` will exclude system messages and do
 no other transformations.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L40)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L40)
 
 ``` python
 @dataclass(frozen=True)
@@ -858,7 +889,7 @@ call.
 This is useful for scanners that need to reference the assistant message
 that initiated a tool call, rather than the tool message itself.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/extract.py#L331)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L366)
 
 ``` python
 def tool_callers(
@@ -875,7 +906,7 @@ The transcript containing all messages.
 
 Message types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L15)
 
 ``` python
 MessageType = Literal["system", "user", "assistant", "tool"]
@@ -885,13 +916,14 @@ MessageType = Literal["system", "user", "assistant", "tool"]
 
 Event types.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L46)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L46)
 
 ``` python
 EventType = Literal[
     "model",
     "tool",
     "compaction",
+    "branch",
     "approval",
     "sandbox",
     "info",
@@ -910,7 +942,7 @@ Content filters for transcript loading.
 Specifies which messages, events, and timeline data to include when
 loading transcript content for scanning.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_transcript/types.py#L70)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L71)
 
 ``` python
 @dataclass
@@ -932,7 +964,7 @@ Filter for which timeline events to include.
 
 Error indicating that the model refused a scan request.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_util/refusal.py#L7)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_util/refusal.py#L7)
 
 ``` python
 class RefusalError(RuntimeError)
@@ -944,7 +976,7 @@ class RefusalError(RuntimeError)
 
 Decorator for registering scanners.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scanner.py#L230)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scanner.py#L247)
 
 ``` python
 def scanner(
@@ -965,6 +997,7 @@ def scanner(
     | Callable[[ScannerFactory[P, TScan]], ScannerFactory[P, TScan]]
     | Callable[[ScannerFactory[P, TM]], ScannerFactory[P, ScannerInput]]
     | Callable[[ScannerFactory[P, TE]], ScannerFactory[P, ScannerInput]]
+    | Callable[[ScannerFactory[P, TT]], ScannerFactory[P, ScannerInput]]
 )
 ```
 
@@ -997,7 +1030,7 @@ is converted to a scorer via `as_scorer()`).
 
 Decorator for registering loaders.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/loader.py#L151)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/loader.py#L151)
 
 ``` python
 def loader(
@@ -1029,7 +1062,7 @@ Transcript content filter.
 
 Convert a `Scanner` to an Inspect `Scorer`.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/089857955ac63ed253276941b0b703fdd68c433e/src/inspect_scout/_scanner/scorer.py#L28)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scorer.py#L28)
 
 ``` python
 def as_scorer(

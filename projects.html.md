@@ -1,16 +1,10 @@
 # Projects
 
-
 ## Overview
 
-In some cases you’ll prefer to define your transcript source and
-filters, scanning model, and other configuration once for a project
-rather than each time you run `scout scan`. You can do this with a
-`scout.yaml` project file.
+In some cases you’ll prefer to define your transcript source and filters, scanning model, and other configuration once for a project rather than each time you run `scout scan`. You can do this with a `scout.yaml` project file.
 
 For example, if we have this project file in our working directory:
-
-**scout.yaml**
 
 ``` yaml
 transcripts: s3://weave-rollouts/
@@ -25,13 +19,9 @@ Then we can run a scan with simply:
 scout scan scanner.py 
 ```
 
-Note that the `filter` field contains one or more SQL WHERE clauses that
-address fields in the [transcript database](db_schema.qmd).
+Note that the `filter` field contains one or more SQL WHERE clauses that address fields in the [transcript database](db_schema.html.md).
 
-You can also define the location of scanning results and other
-configuration in project files. For example:
-
-**scout.yaml**
+You can also define the location of scanning results and other configuration in project files. For example:
 
 ``` yaml
 transcripts: s3://weave-rollouts/
@@ -50,29 +40,19 @@ generate_config:
 tags: [ctf, cybench]
 ```
 
-Note that the `filter` will constrain any scan done within the project
-(i.e. filters applied to individual scans will be AND combined with this
-filter).
+Note that the `filter` will constrain any scan done within the project (i.e. filters applied to individual scans will be AND combined with this filter).
 
-Note that `scout.yaml` project files are intended to be checked in to
-version control so do not contain secrets. See the section below on
-using [environment files](#environment-files) for details on handling
-secrets.
+Note that `scout.yaml` project files are intended to be checked in to version control so do not contain secrets. See the section below on using [environment files](#environment-files) for details on handling secrets.
 
 ## Scout View
 
-When you run `scout view` from a project directory it uses the project
-settings to initialize the **Transcripts** and **Results** panes. You
-can also edit the project settings by clicking on the **Project** button
-at the top right:
+When you run `scout view` from a project directory it uses the project settings to initialize the **Transcripts** and **Results** panes. You can also edit the project settings by clicking on the **Project** button at the top right:
 
 ![](images/project.png)
 
 ## Project Settings
 
-Project files support all of the same options available to [scan
-jobs](#scan-jobs). The table below describes the available configuration
-fields:
+Project files support all of the same options available to [scan jobs](#scan-jobs). The table below describes the available configuration fields:
 
 | Field | Type | Description |
 |----|----|----|
@@ -84,7 +64,7 @@ fields:
 | `model_base_url` | str | Base URL for model API. |
 | `model_args` | dict \| str | Model creation args as a dictionary or path to JSON/YAML file. |
 | `generate_config` | dict | Generation config (e.g., `temperature`) |
-| `model_roles` | dict | Named model roles for use with `get_model()`. |
+| `model_roles` | dict | Named model roles for use with [get_model()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model). |
 | `max_transcripts` | int | Maximum concurrent transcripts to process (defaults to 25). |
 | `max_processes` | int | Maximum concurrent processes for multiprocessing (defaults to 4). |
 | `limit` | int | Limit the number of transcripts processed. |
@@ -98,13 +78,7 @@ fields:
 
 ### Local Config
 
-In some cases you might want to provide local overrides to a shared
-project configuration file. You can do this by adding a
-`scout.local.yaml` file alongside your `scout.yaml` file. For example,
-here we override the main project file with a different model, max
-connections, and log level:
-
-**scout.local.yaml**
+In some cases you might want to provide local overrides to a shared project configuration file. You can do this by adding a `scout.local.yaml` file alongside your `scout.yaml` file. For example, here we override the main project file with a different model, max connections, and log level:
 
 ``` yaml
 model: openai/gpt-5-mini
@@ -113,14 +87,11 @@ generate_config:
 log_level: info
 ```
 
-Be sure to add `scout.local.yaml` to your `.gitignore` so it isn’t
-checked in to version control.
+Be sure to add `scout.local.yaml` to your `.gitignore` so it isn’t checked in to version control.
 
 ## Environment (.env)
 
-While `scout.yaml` project files are intended to be checked into version
-control, you’ll often have secrets and credentials that should not be
-committed. Use a `.env` file for these values.
+While `scout.yaml` project files are intended to be checked into version control, you’ll often have secrets and credentials that should not be committed. Use a `.env` file for these values.
 
 Common secrets to store in `.env`:
 
@@ -128,11 +99,7 @@ Common secrets to store in `.env`:
 - Access tokens: `HF_TOKEN` for Hugging Face datasets and models.
 - Cloud credentials: AWS credentials for S3 access
 
-When you run `scout scan` or other Scout commands, the `.env` file in
-your working directory (or any parent directory) is automatically
-loaded. For example:
-
-**.env**
+When you run `scout scan` or other Scout commands, the `.env` file in your working directory (or any parent directory) is automatically loaded. For example:
 
 ``` bash
 OPENAI_API_KEY=sk-...
@@ -141,42 +108,25 @@ AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 ```
 
-Be sure to add `.env` to your `.gitignore` file to prevent accidentally
-committing secrets.
+Be sure to add `.env` to your `.gitignore` file to prevent accidentally committing secrets.
 
-See the Inspect AI documentation on [environment
-files](https://inspect.aisi.org.uk/options.html#env-files) for
-additional details on `.env` file handling
+See the Inspect AI documentation on [environment files](https://inspect.aisi.org.uk/options.html#env-files) for additional details on `.env` file handling
 
 ## Scan Jobs
 
-Projects share all configuration fields with [scan
-jobs](reference/scanning.qmd#scanjob). When you run a scan, the project
-configuration is automatically merged with the scan job (whether defined
-in code via `@scanjob` or in a YAML/JSON config file).
+Projects share all configuration fields with [scan jobs](reference/scanning.html.md#scanjob). When you run a scan, the project configuration is automatically merged with the scan job (whether defined in code via `@scanjob` or in a YAML/JSON config file).
 
 The merge follows these rules:
 
-- For simple fields like `scans`, `model`, `max_transcripts`, etc., the
-  project value is used only when the scan job doesn’t specify a value.
+- For simple fields like `scans`, `model`, `max_transcripts`, etc., the project value is used only when the scan job doesn’t specify a value.
 
-- The input transcripts (`transcripts`, `filter`) are treated as an
-  atomic unit. A scan job can fully override project transcripts but not
-  e.g. add clauses to the `filter`.
+- The input transcripts (`transcripts`, `filter`) are treated as an atomic unit. A scan job can fully override project transcripts but not e.g. add clauses to the `filter`.
 
-- The model configuration (`model`, `model_base_url`, `model_args`,
-  `generate_config`) are also treated as an atomic unit. If the scan job
-  specifies a model, all model-related configuration comes from the scan
-  job. Otherwise, all model configuration comes from the project.
+- The model configuration (`model`, `model_base_url`, `model_args`, `generate_config`) are also treated as an atomic unit. If the scan job specifies a model, all model-related configuration comes from the scan job. Otherwise, all model configuration comes from the project.
 
-- For collection fields like `tags`, `metadata`, `scanners`, `worklist`,
-  and `validation`, values from both the project and scan job are
-  combined. If there are key conflicts, the scan job value takes
-  precedence.
+- For collection fields like `tags`, `metadata`, `scanners`, `worklist`, and `validation`, values from both the project and scan job are combined. If there are key conflicts, the scan job value takes precedence.
 
 For example, given this project:
-
-**scout.yaml**
 
 ``` yaml
 transcripts: s3://weave-rollouts/cybench
@@ -186,27 +136,20 @@ tags: [production]
 
 And this scan job:
 
-**scan.yaml**
-
 ``` yaml
 scanners:
   - file: scanner.py
 tags: [safety-audit]
 ```
 
-The effective configuration will use `transcripts` and `model` from the
-project, `scanners` from the scan job, and the merged tags
-`[production, safety-audit]`.
+The effective configuration will use `transcripts` and `model` from the project, `scanners` from the scan job, and the merged tags `[production, safety-audit]`.
 
 ## Default Project
 
-When you run `scout scan` or other Scout commands, the system
-automatically searches for a `scout.yaml` project file wihtin the
-current working directory.
+When you run `scout scan` or other Scout commands, the system automatically searches for a `scout.yaml` project file wihtin the current working directory.
 
 If no project file is found, Scout uses the following defaults:
 
 - `name`: Project directory name
-- `transcripts`: `./transcripts` (if that directory exists) or `./logs`
-  (if that directory exists)
+- `transcripts`: `./transcripts` (if that directory exists) or `./logs` (if that directory exists)
 - `scans`: `./scans`

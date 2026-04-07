@@ -1,0 +1,188 @@
+## 0.4.25 (04 April 2026)
+
+- Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.
+- Scanners: Surround assistant messages with `prefill=True` in metadata with `<prefill>` tag when rendering messages for scanners.
+- Scanners: Match references across all fields in scan result.
+- Metrics: Filter out NaN metrics (occurs when all scan results are errors).
+- Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.
+- Timelines: Ensure that all events are loaded from reading timelines.
+- Timelines: Update to use new timeline branch scheme from inspect-ai.
+- Timelines: Add `label_for_id` option to [message_numbering()](reference/scanner.html.md#message_numbering) function.
+- Modules: Rename `async` module to `aio`.
+- VS Code Integration: Fix regression displaying Scout View in VS Code.
+- Scout View: Show tooltip for array or object values which have been truncated.
+- Scout View: Improve citation matching in results view.
+
+## 0.4.23 (25 March 2026)
+
+- Add timeline types to `@scanner` decorator overloads.
+- Scout View: Fix white circle over compaction markers.
+- Bugfix: Handle excluded input column in event expansion.
+- Bugfix: Always truncate error file on resume to prevent stale errors.
+
+## 0.4.22 (20 March 2026)
+
+- Transcripts: Use `events_data` to reduce memory and storage requirements of `events`.
+- Summary: Count only positive values in resultset aggregation.
+- Summary: Reset summary state on new scan init to prevent accumulation across scans.
+- Recorder: Preserve error file on scan resume instead of truncating.
+
+## 0.4.21 (16 March 2026)
+
+- Scanner as scorer: Forward timelines from eval sample to scanner if requested.
+- Scout View: Correctly display timelines in results view.
+- Scout View: Show dictionary-based metriecs in scanner sidebar.
+- Scout View: Bundle `dist/` assets during packaging.
+
+## 0.4.20 (16 March 2026)
+
+- LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
+- LLM Scanner: `AnswerMultiLabel(allow_none=True)` lets the model respond with `ANSWER: NONE` when no labels apply.
+- Scanner Tools: [generate_answer()](reference/scanner.html.md#generate_answer) automatically retries with format feedback when the model’s response can’t be parsed.
+- Scanner Tools: [message_numbering()](reference/scanner.html.md#message_numbering), [scanner_prompt()](reference/scanner.html.md#scanner_prompt), [generate_answer()](reference/scanner.html.md#generate_answer), and [parse_answer()](reference/scanner.html.md#parse_answer) functions for building custom scanners with fine-grained control.
+- Scanner Tools: [ResultReducer](reference/scanner.html.md#resultreducer) for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
+- Scanner Tools: [transcript_messages()](reference/transcript.html.md#transcript_messages), [segment_messages()](reference/transcript.html.md#segment_messages), and [span_messages()](reference/transcript.html.md#span_messages) functions for extracting and segmenting transcript messages.
+- Transcript DB: [claude_code()](reference/sources.html.md#claude_code) source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
+- CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
+- Serialization: Use `pa.large_string` for string types to support larger column/file sizes.
+- Multiprocessing: Improve handling of model instances with multiprocessing serialization.
+- Transcripts: unthin `target` and and add `scores` from sample JSON.
+- Transcripts: Set row group size to 25 (specify as rows not bytes).
+- Transcripts: Address DuckDB 1.5 compatibility issue w/ mixed type CASE expressions.
+- Transcripts: Switch over to async ZIP modules (`async_zip`, `zip_common`, `compression`, `compression_transcoding`, `async_bytes_reader`) that have migrated to `inspect_ai`.
+- Transcripts: Remove parquet encryption (not used + issues w/ DuckDB 1.5).
+- Transcripts: Ensure that all documented schema columns exist when running transcript queries.
+- Observe: Prevent transcript index staleness/warning from occurring when running parallel observe contexts.
+- Scout View: Properly sort scanner results using the value type.
+- Scout View: Enable minification and caching of view static assets.
+- Scout View: Fix issue rendering transcript events when showing the validation panel.
+- Scout View: Add ‘None’ option to column chooser to unselect all columns.
+- Bugfix: Fix early-exit bug the failed to unthin `sample_metadata`
+
+## 0.4.19 (17 February 2026)
+
+- LLM Scanner: Store model stop_reason result metadata.
+- Scout View: Fix incorrect behavior when attempting to view scanner results with result sets.
+
+## 0.4.18 (14 February 2026)
+
+- Bugfix: Fix token counting when a single worker task processes multiple scans sequentially.
+
+## 0.4.17 (13 February 2026)
+
+- Transcript DB: Improve Anthropic and Google tool call capture for `pheonix()` transcript source.
+
+## 0.4.16 (13 February 2026)
+
+- Transcript DB: [phoenix()](reference/sources.html.md#phoenix) transcript source for importing transcripts from Arize Phoenix.
+
+## 0.4.15 (12 February 2026)
+
+- Scout View: Support for displaying cost limits.
+
+## 0.4.14 (12 February 2026)
+
+- Scout View: Improve display of large dictionary scan values.
+- Enable customization of the scan buffer directory via `SCOUT_SCANBUFFER_DIR` environment variable.
+- Bugfix: Fix answer parsing when LLM echoes “Answer:” in reasoning before the actual answer marker.
+
+## 0.4.13 (11 February 2026)
+
+- Validation: Support for applying validation labels in Scout View.
+- Compatibility with latest release of the Inspect VS Code Extension.
+
+## 0.4.12 (09 February 2026)
+
+- Scoring: Apply content filter for scanners when using them as Inspect scorers.
+- Add [SampleMetadata](reference/transcript.html.md#samplemetadata) class for typed access to Inspect eval log metadata fields.
+- Add support for Inspect [CompactionEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#compactionevent) and display of native compaction data from OpenAI and Anthropic.
+- Add “store” event to [EventType](reference/scanner.html.md#eventtype) enumeration.
+- View Server: Add optimized `/transcripts/{dir}/{id}/info` and `/transcripts/{dir}/{id}/messages-events` endpoints for fetching transcript data. The `messages-events` endpoint streams raw (potentially compressed) JSON for improved performance.
+- Bugfix: Eliminate problem with stale transcript status when deleting validation cases.
+
+## 0.4.11 (29 January 2026)
+
+- Projects: Always read `scout.local.yaml` even if there is no `scout.yaml` file.
+- Projects: Always apply project level `filter` to scans (AND combine with scan filters).
+- Validation: Label validation is now binary: validate `true` if the label is present with a truthy value; validate `false` if the label is not present or has only falsey values.
+- Scan Results: Add `exclude_columns` parameter for reading parquet reuslts to optionally reduce memory usage.
+- Scan Results: Pre-fetch optimization for S3/remote parquet files.
+- Transcript DB: [observe()](%5Btranscript%20database%20schema%5D(https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html).) decorator/context manager for writing transcripts based on observed LLM generations.
+- Transcript DB: [langsmith()](reference/sources.html.md#langsmith) and [logfire()](reference/sources.html.md#logfire) transcript sources for importing transcripts from LLM observability systems.
+
+## 0.4.10 (21 January 2026)
+
+- Scanning: Implement significant scanning performance improvement when scanning eval logs and events are unneeded.
+- Scan config: Set ‘model’ to `None` if no model is specified.
+- Scan config: Deprecate use of environment variables for config (in favor of project config).
+- Scout View: Move ‘Project’ UI button to main activity bar.
+
+## 0.4.9 (20 January 2026)
+
+- Bugfix: Don’t check index coverage when running with an active limit or other query filter.
+- Bugfix: Correctly normalize relative database file paths.
+
+## 0.4.8 (18 January 2026)
+
+- Validation: Add support for defining and using named splits (e.g. ‘dev’, ‘test’) for validation data.
+- Validation: Add support for specifying per-case predicates within validation data.
+- Add `message_count` as standard transcript metadata field.
+- Bugfix: Correct async generator cleanup in AsyncBytesReader.
+
+## 0.4.7 (16 January 2026)
+
+- Scout View: Editing UI for project settings.
+- Scanning: Apply model config when resuming scans.
+- Transcript DB: Warn when there is no index or the index is out of date.
+- Validation: Improve error messages and documentation; deprecate (with warning) headerless CSVs.
+- CLI: Add `scout --version` to print current scout version.
+
+## 0.4.6 (08 January 2026)
+
+- LLM Scanner: Add `value_to_float` option to for converting model reported values to numeric.
+- Projects: Support local project config in `scout.local.yaml`.
+- Transcripts: Enable use of SQL for specifying filters.
+- Transcripts: Add `filter` field to scan job and project config.
+- Scanning: Add [tool_callers()](reference/scanner.html.md#tool_callers) helper function for mapping tool_call_id to assistant message.
+- Rename `--results` option to `--scans`.
+- Bugfix: Avoid `UnboundLocalError` by importing Inspect AI batch reporting functions directly.
+- Bugfix: Fix issue with reading large numbers of rows from transcript database.
+
+## 0.4.5 (03 January 2026)
+
+- [Projects](https://meridianlabs-ai.github.io/inspect_scout/projects.html) for centrally managing scanning configuration.
+- [Grep Scanner](https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html) for pattern-based scanning of transcripts.
+- Scanning: Add `--dry-run` option for previewing scanner counts.
+- Scanners: Fixup type annotations in @scanner decorator.
+- Display: Add text progress and metrics support to `display="log"` mode.
+- Transcript DB: Don’t remove orphaned data files.
+- Transcript DB: Handle duplicate transcript ids while indexing.
+- Transcript DB: Remove redundant TranscriptSource class (covered by AsyncIterable already).
+- Bugfix: Store relative paths in transcript database index.
+
+## 0.4.4 (24 December 2025)
+
+- Bugfix: Restore compatibility with v1 view server API.
+
+## 0.4.3 (22 December 2025)
+
+- Add more standard fields to the [transcript database schema](https://meridianlabs-ai.github.io/inspect_scout/db_schema.html).
+- Add an optional index to transcript database for higher performance queries on very large databases.
+- Add `as_json` option to `messages_as_str` for JSON output format.
+- Persist transcripts.where() clauses as part of scan specification.
+- Bugfix: Fix LLM answer parsing for decimals, negatives, and markdown.
+
+## 0.4.2 (14 December 2025)
+
+- Scanning: Switch from `dill` to `cloudpickle` and restore default `max_processes` to 4 after resolving multiprocessing serialization issues.
+- Track scan job completion status explicitly in the filesystem (vs. merely looking at whether buffer dir exists).
+- Transcript databases: Include all `.parquet` files in directory (don’t require `transcripts_` prefix).
+
+## 0.4.1 (12 December 2025)
+
+- Scan jobs: Correct resolution order for options (CLI, then scanjob config, then environment variables).
+- Scanning: Restore default `max_processes` to 1 while we resolve some multiprocessing serialization issues.
+
+## 0.4.0 (11 December 2025)
+
+- Initial release.

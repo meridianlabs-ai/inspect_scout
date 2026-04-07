@@ -1,34 +1,20 @@
 # Publishing Transcripts
 
-
 ## Overview
 
-In this article we’ll cover recommended ways to publish transcript
-databases for use by others. Whenever publishing transcripts you should
-be mindful to do everything you can to prevent them from entering the
-training data of models (as this may “leak” benchmark datasets). The
-main mitigation available for this is making access to the transcripts
-authenticated (e.g. S3 or Hugging Face).
+In this article we’ll cover recommended ways to publish transcript databases for use by others. Whenever publishing transcripts you should be mindful to do everything you can to prevent them from entering the training data of models (as this may “leak” benchmark datasets). The main mitigation available for this is making access to the transcripts authenticated (e.g. S3 or Hugging Face).
 
 We’ll cover both of these scenarios in detail below.
 
 ## Hugging Face
 
-Publishing transcript databases as a [Hugging Face
-Dataset](https://huggingface.co/datasets) is useful when you want to
-share with a broader audience. Benefits of using Hugging Face include:
+Publishing transcript databases as a [Hugging Face Dataset](https://huggingface.co/datasets) is useful when you want to share with a broader audience. Benefits of using Hugging Face include:
 
 1.  You can make access private to only your account or organization.
 
-2.  You can create a [Gated
-    Dataset](https://huggingface.co/docs/hub/datasets-gated) that
-    requires users to provide contact information and optionally abide
-    by a usage agreement and share other information to obtain access.
+2.  You can create a [Gated Dataset](https://huggingface.co/docs/hub/datasets-gated) that requires users to provide contact information and optionally abide by a usage agreement and share other information to obtain access.
 
-See the Hugging Face documentation on [uploading
-datasets](https://huggingface.co/docs/hub/datasets-adding) for details
-on how to create datasets. For transcript databases, you can just upload
-the parquet file(s) into the root of the dataset repository.
+See the Hugging Face documentation on [uploading datasets](https://huggingface.co/docs/hub/datasets-adding) for details on how to create datasets. For transcript databases, you can just upload the parquet file(s) into the root of the dataset repository.
 
 To access a dataset on Hugging Face:
 
@@ -38,15 +24,13 @@ To access a dataset on Hugging Face:
     pip install huggingface_hub
     ```
 
-2.  Configure credentials either by setting the `HF_TOKEN` environment
-    variable or via login:
+2.  Configure credentials either by setting the `HF_TOKEN` environment variable or via login:
 
     ``` bash
     hf auth login
     ```
 
-3.  Refer to your dataset in a scout scan using the `hf://` protocol.
-    For example:
+3.  Refer to your dataset in a scout scan using the `hf://` protocol. For example:
 
     ``` bash
     scout scan scanner.py -T hf://datasets/account-name/dataset-name
@@ -54,16 +38,9 @@ To access a dataset on Hugging Face:
 
 ## S3
 
-Publishing transcripst databases to AWS
-[S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html)
-enables you to configure authenticated access using S3 credentials. S3
-buckets support a wide variety of options for authorization (see the
-[documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html)
-for further details).
+Publishing transcripst databases to AWS [S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html) enables you to configure authenticated access using S3 credentials. S3 buckets support a wide variety of options for authorization (see the [documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-management.html) for further details).
 
-After you have uploaded the parquet file(s) for your transcript database
-to an S3 bucket, you can refer to it in a scout scan using the `s3://`
-protocol. For example:
+After you have uploaded the parquet file(s) for your transcript database to an S3 bucket, you can refer to it in a scout scan using the `s3://` protocol. For example:
 
 ``` bash
 scout scan scanner.py -T s3://my-transcript-databases/database-name

@@ -1,29 +1,19 @@
 # LLM Scanner
 
-
 ## Overview
 
-The `llm_scanner()` provides a core “batteries included” implementation
-of an LLM-based `Transcript` scanner with the following features:.
+The [llm_scanner()](reference/scanner.html.md#llm_scanner) provides a core “batteries included” implementation of an LLM-based [Transcript](reference/transcript.html.md#transcript) scanner with the following features:.
 
-- Support for a variety of model answer types including boolean, number,
-  string, classification (single or multi), and structured JSON output.
-- Textual presentation of message history including a numbering scheme
-  that enables models to create reference links to specific messages.
-- Filtering of message history to include or exclude system messages,
-  tool calls, and reasoning traces.
-- Flexible prompt templates (using jinja2) that can use variables from
-  transcript metadata or from custom sources.
+- Support for a variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output.
+- Textual presentation of message history including a numbering scheme that enables models to create reference links to specific messages.
+- Filtering of message history to include or exclude system messages, tool calls, and reasoning traces.
+- Flexible prompt templates (using jinja2) that can use variables from transcript metadata or from custom sources.
 
-The `llm_scanner()` is designed to be flexible enough to meet a variety
-of demanding requirements. For LLM scanning you should generally start
-here and only resort to writing a custom lower-level scanner if
-absolutely required.
+The [llm_scanner()](reference/scanner.html.md#llm_scanner) is designed to be flexible enough to meet a variety of demanding requirements. For LLM scanning you should generally start here and only resort to writing a custom lower-level scanner if absolutely required.
 
 ## Basic Usage
 
-Prompting and parsing for several common answer types are supported.
-Here is a simple example of using `llm_scanner()` for a boolean answer:
+Prompting and parsing for several common answer types are supported. Here is a simple example of using [llm_scanner()](reference/scanner.html.md#llm_scanner) for a boolean answer:
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -36,8 +26,7 @@ def refusal_detected() -> Scanner[Transcript]:
     ) 
 ```
 
-Here is an example of using `llm_scanner()` for a classification task
-across a set of labels:
+Here is an example of using [llm_scanner()](reference/scanner.html.md#llm_scanner) for a classification task across a set of labels:
 
 ``` python
 @scanner(messages="all")
@@ -53,14 +42,11 @@ def response_quality() -> Scanner[Transcript]:
     )
 ```
 
-The section below provides more details on how prompts are constructed
-for `llm_scanner()`.
+The section below provides more details on how prompts are constructed for [llm_scanner()](reference/scanner.html.md#llm_scanner).
 
 ## Answer Types
 
-The `answer` type determines how the LLM is prompted to respond, the way
-that answers are extracted, and the Python type of the scanner result
-value. There are several distinct `answer` types supported:
+The `answer` type determines how the LLM is prompted to respond, the way that answers are extracted, and the Python type of the scanner result value. There are several distinct `answer` types supported:
 
 | Type              | LLM Output        | Result Type           |
 |-------------------|-------------------|-----------------------|
@@ -71,9 +57,7 @@ value. There are several distinct `answer` types supported:
 | labels (multiple) | ANSWER: C, D      | `list[str]`           |
 | structured        | JSON object       | `dict[str,JsonValue]` |
 
-Note that passing `list[str]` prompts the model to select a **single**
-label. To allow **multiple** label selections, wrap the labels in
-`AnswerMultiLabel`:
+Note that passing `list[str]` prompts the model to select a **single** label. To allow **multiple** label selections, wrap the labels in [AnswerMultiLabel](reference/scanner.html.md#answermultilabel):
 
 ``` python
 from inspect_scout import AnswerMultiLabel
@@ -91,14 +75,11 @@ def issue_categories() -> Scanner[Transcript]:
     )
 ```
 
-For details on JSON object answers, see the [Structured
-Answers](#structured-answers) section below.
+For details on JSON object answers, see the [Structured Answers](#structured-answers) section below.
 
 ## Prompt Template
 
-Here is the structure of the default `template` for `llm_scanner()`
-(note that prompt templates are processed using
-[jinja2](https://pypi.org/project/Jinja2/)):
+Here is the structure of the default `template` for [llm_scanner()](reference/scanner.html.md#llm_scanner) (note that prompt templates are processed using [jinja2](https://pypi.org/project/Jinja2/)):
 
 ``` jinja2
 You are an expert in LLM transcript analysis. Here is an LLM transcript you will be analyzing to answer a question:
@@ -118,8 +99,7 @@ Your answer should include an explanation of your assessment. It should include 
 {{ answer_format }}
 ```
 
-You can provide your own `template` as an argument to `llm_scanner()`.
-The following substitutable values are available for prompt templates:
+You can provide your own `template` as an argument to [llm_scanner()](reference/scanner.html.md#llm_scanner). The following substitutable values are available for prompt templates:
 
 | Variable | Type | Description |
 |----|----|----|
@@ -144,13 +124,11 @@ The following substitutable values are available for prompt templates:
 | `{{ limit }}` | str | Limit that caused the task to exit (e.g. “tokens”, “messages, etc.) |
 | `{{ metadata }}` | dict | Additional metadata |
 
-In addition, you can use the `template_variables` option to pass
-additional variables for use in your template.
+In addition, you can use the `template_variables` option to pass additional variables for use in your template.
 
 ## Scanner Results
 
-The following provides an end to end example of a scanner, generated
-prompt, model response, and results yielded back from the scanner.
+The following provides an end to end example of a scanner, generated prompt, model response, and results yielded back from the scanner.
 
 #### Scanner
 
@@ -199,7 +177,7 @@ ANSWER: yes
 
 #### Result
 
-The `Result` object returned from the scanner will consist of:
+The [Result](reference/scanner.html.md#result) object returned from the scanner will consist of:
 
 |  |  |
 |----|----|
@@ -210,9 +188,7 @@ The `Result` object returned from the scanner will consist of:
 
 ## Message Filtering
 
-Transcript messages are included within the prompt template subject to a
-`MessagesPreprocessor` passed to `llm_scanner()`. The preprocessor
-exposes the following options:
+Transcript messages are included within the prompt template subject to a [MessagesPreprocessor](reference/scanner.html.md#messagespreprocessor) passed to [llm_scanner()](reference/scanner.html.md#llm_scanner). The preprocessor exposes the following options:
 
 |  |  |
 |----|----|
@@ -221,18 +197,13 @@ exposes the following options:
 | `exclude_reasoning` | Exclude reasoning content (defaults to `False`) |
 | `exclude_tool_usage` | Excluding tool calls and output (defaults to `False`) |
 
-The default `MessagesPreprocessor` used by the LLM scanner removes
-system messages and leaves all other content alone.
+The default [MessagesPreprocessor](reference/scanner.html.md#messagespreprocessor) used by the LLM scanner removes system messages and leaves all other content alone.
 
 ## Structured Answers
 
-Scanners can yield richer results and/or multiple results by prompting
-the scanner model to return JSON rather than a simple data type
-(“yes/no”, etc.).
+Scanners can yield richer results and/or multiple results by prompting the scanner model to return JSON rather than a simple data type (“yes/no”, etc.).
 
-For example, here we prompt the model to look at a transcript and
-provide several pieces of data. To do this we create a Pydantic model
-that enumerates the fields, their types, and descriptions:
+For example, here we prompt the model to look at a transcript and provide several pieces of data. To do this we create a Pydantic model that enumerates the fields, their types, and descriptions:
 
 ``` python
 from pydantic import BaseModel, Field
@@ -255,13 +226,9 @@ def cyberlint():
 
 ### Result Values
 
-Scanners produce results which ultimately carry a specific `value`.
-There are two types of `value` supported by the LLM scanner:
+Scanners produce results which ultimately carry a specific `value`. There are two types of `value` supported by the LLM scanner:
 
-1.  The default behavior is to yield a `dict` for the value, where the
-    fields correspond to the fields in your Pydantic model. For example,
-    this will result in the `value` being a dict with fields
-    `efficiency` and `persistence`:
+1.  The default behavior is to yield a `dict` for the value, where the fields correspond to the fields in your Pydantic model. For example, this will result in the `value` being a dict with fields `efficiency` and `persistence`:
 
     ``` python
     class AgentRating(BaseModel):
@@ -275,9 +242,7 @@ There are two types of `value` supported by the LLM scanner:
     )
     ```
 
-2.  For cases where you want your scanner to yield a more specific
-    value, you can designate a field in your `BaseModel` as the value by
-    adding `alias="value"` to it. For example:
+2.  For cases where you want your scanner to yield a more specific value, you can designate a field in your `BaseModel` as the value by adding `alias="value"` to it. For example:
 
     ``` python
     class ToolErrors(BaseModel):
@@ -288,21 +253,13 @@ There are two types of `value` supported by the LLM scanner:
 
 ### Labels and Explanations
 
-We’ve noted the special `alias="value"` field annotation that promotes
-one of your `BaseModel` fields to be the main `value` for the returned
-result. In addition, there are two other special field annotations:
+We’ve noted the special `alias="value"` field annotation that promotes one of your `BaseModel` fields to be the main `value` for the returned result. In addition, there are two other special field annotations:
 
-- `alias="label"` — Promotes the field to be the result `label`, which
-  is useful because it the label gets its own column in the results
-  database (for filtering) and is also displayed prominently in Scout
-  View.
+- `alias="label"` — Promotes the field to be the result `label`, which is useful because it the label gets its own column in the results database (for filtering) and is also displayed prominently in Scout View.
 
-- `alias="explanation"` — Promotes the field to be the result
-  `explanation`, which also gets more prominent treatment in the Scout
-  View UI.
+- `alias="explanation"` — Promotes the field to be the result `explanation`, which also gets more prominent treatment in the Scout View UI.
 
-For example, here we alias the `category` and `reason` fields to `label`
-and `explanation` fields (respectively):
+For example, here we alias the `category` and `reason` fields to `label` and `explanation` fields (respectively):
 
 ``` python
 class CyberLint(BaseModel):
@@ -311,15 +268,11 @@ class CyberLint(BaseModel):
     reason: str = Field(alias="explanation", description="Explain the reasons for the reported issue, citing specific message numbers where the issue was observed.")
 ```
 
-If appropriate it’s always beneficial to add these aliases for improved
-filtering and review of scanner results. Note that if you don’t label a
-field with `alias="explanation"` then an explanation field is
-automatically added to prompt the model for an explicit explanation.
+If appropriate it’s always beneficial to add these aliases for improved filtering and review of scanner results. Note that if you don’t label a field with `alias="explanation"` then an explanation field is automatically added to prompt the model for an explicit explanation.
 
 ### Multiple Results
 
-In some cases it may be more natural for scanners to return multiple
-results. To do this, just specify `list[T]` as the `type`. For example:
+In some cases it may be more natural for scanners to return multiple results. To do this, just specify `list[T]` as the `type`. For example:
 
 ``` python
 from pydantic import BaseModel, Field
@@ -344,14 +297,11 @@ def cyberlint():
     )
 ```
 
-Note that we add a `label` field alias for distinguishing different
-observation types.
+Note that we add a `label` field alias for distinguishing different observation types.
 
 ## Value to Float
 
-If you want the model to respond using a set of labels then convert the
-underlying `value` to numeric, you can pass a `value_to_float` function
-to `llm_scanner()` to do this conversion. For example:
+If you want the model to respond using a set of labels then convert the underlying `value` to numeric, you can pass a `value_to_float` function to [llm_scanner()](reference/scanner.html.md#llm_scanner) to do this conversion. For example:
 
 ``` python
 from typing import Literal
@@ -387,13 +337,11 @@ The value passed to `value_to_float` depends on the answer type:
 | string | The answer text (str) |
 | label (single) | The letter selected (e.g., `"A"`, `"B"`) |
 | label (multiple) | Not supported. |
-| `AnswerStructured` | The field with `alias="value"`, or the full object if no value field |
+| [AnswerStructured](reference/scanner.html.md#answerstructured) | The field with `alias="value"`, or the full object if no value field |
 
 ## Dynamic Questions
 
-Instead of a static string, you can pass a function that takes a
-`Transcript` and returns a string. This enables you to dynamically
-generate questions based on the transcript content:
+Instead of a static string, you can pass a function that takes a [Transcript](reference/transcript.html.md#transcript) and returns a string. This enables you to dynamically generate questions based on the transcript content:
 
 ``` python
 async def question_from_transcript(transcript: Transcript) -> str:
@@ -417,51 +365,38 @@ def contextual_accuracy() -> Scanner[Transcript]:
 Dynamic questions are useful when:
 
 - The question depends on transcript metadata.
-- You need to reference specific aspects of the conversation in your
-  question
+- You need to reference specific aspects of the conversation in your question
 - The same scanner needs to adapt its question based on context
 
 ## Segmentation
 
 ### Context Window
 
-When a transcript’s message history exceeds the scanning model’s context
-window, `llm_scanner()` automatically segments the messages to fit
-within 80% of the model’s available context. Each segment is scanned
-independently with the same prompt, and results from multiple segments
-are combined using a reducer.
+When a transcript’s message history exceeds the scanning model’s context window, [llm_scanner()](reference/scanner.html.md#llm_scanner) automatically segments the messages to fit within 80% of the model’s available context. Each segment is scanned independently with the same prompt, and results from multiple segments are combined using a reducer.
 
 The default reducer is selected based on the answer type:
 
-| Answer Type              | Default Reducer          |
-|--------------------------|--------------------------|
-| `"boolean"`              | `ResultReducer.any`      |
-| `"numeric"`              | `ResultReducer.mean`     |
-| `"string"`               | `ResultReducer.llm()`    |
-| labels                   | `ResultReducer.majority` |
-| `AnswerMultiLabel`       | `ResultReducer.union`    |
-| `AnswerStructured`       | `ResultReducer.last`     |
-| `list[AnswerStructured]` | `ResultReducer.union`    |
+| Answer Type | Default Reducer |
+|----|----|
+| `"boolean"` | `ResultReducer.any` |
+| `"numeric"` | `ResultReducer.mean` |
+| `"string"` | `ResultReducer.llm()` |
+| labels | `ResultReducer.majority` |
+| [AnswerMultiLabel](reference/scanner.html.md#answermultilabel) | `ResultReducer.union` |
+| [AnswerStructured](reference/scanner.html.md#answerstructured) | `ResultReducer.last` |
+| `list[AnswerStructured]` | `ResultReducer.union` |
 
-You can override the reducer with a custom function or use
-`ResultReducer.llm()` for LLM-based synthesis of multi-segment results.
+You can override the reducer with a custom function or use `ResultReducer.llm()` for LLM-based synthesis of multi-segment results.
 
-Note that if you have a structured scanner that returns a
-`list[BaseModel]` then those results will be auto‑combined via union so
-there is no need to specify a reducer.
+Note that if you have a structured scanner that returns a `list[BaseModel]` then those results will be auto‑combined via union so there is no need to specify a reducer.
 
-Use the `context_window` option of `llm_scanner()` to set a custom
-threshold (again, the default is 80% of available context).
+Use the `context_window` option of [llm_scanner()](reference/scanner.html.md#llm_scanner) to set a custom threshold (again, the default is 80% of available context).
 
 ### Compaction
 
-During long-running agent tasks, the agent framework may *compact* the
-conversation history—summarizing, trimming, or editing it—to stay within
-the model’s context window. These compaction events create natural
-boundaries in the message history.
+During long-running agent tasks, the agent framework may *compact* the conversation history—summarizing, trimming, or editing it—to stay within the model’s context window. These compaction events create natural boundaries in the message history.
 
-The `compaction` parameter controls how `llm_scanner()` handles these
-boundaries when extracting messages to scan:
+The `compaction` parameter controls how [llm_scanner()](reference/scanner.html.md#llm_scanner) handles these boundaries when extracting messages to scan:
 
 ``` python
 # Scan all compaction regions (default)
@@ -492,29 +427,17 @@ scanner = llm_scanner(
 | `"last"` | Scans only the messages that led to the model’s final generation. Use this when earlier context is irrelevant or when you want to focus on the final answer. |
 | integer `n` | Keeps the last *n* compaction regions, merged together. Provides a middle ground between full coverage and recency focus. |
 
-Compaction determines *which* messages to extract; [context
-window](#context-window) segmentation then splits those messages to fit
-the scanner model’s context. The two work together sequentially:
-compaction selects the region of interest, then context window
-segmentation ensures each piece fits within the scanning model’s limits.
+Compaction determines *which* messages to extract; [context window](#context-window) segmentation then splits those messages to fit the scanner model’s context. The two work together sequentially: compaction selects the region of interest, then context window segmentation ensures each piece fits within the scanning model’s limits.
 
 ## Scanning Timelines
 
-A timeline is a tree of **spans** representing the structure of an
-agent’s execution. Each span corresponds to an agent, tool, or scorer
-invocation, and contains **events** (model calls, tool calls,
-compaction) with optional child spans. Timelines are built automatically
-from transcript events—they detect agent hierarchies, conversation
-threads, re-rolled attempts (branches), and utility agents.
+A timeline is a tree of **spans** representing the structure of an agent’s execution. Each span corresponds to an agent, tool, or scorer invocation, and contains **events** (model calls, tool calls, compaction) with optional child spans. Timelines are built automatically from transcript events—they detect agent hierarchies, conversation threads, re-rolled attempts (branches), and utility agents.
 
-Utility spans (single-turn helper agents with different system prompts)
-are excluded from scanning by default, so the scanner focuses on the
-substantive agent interactions.
+Utility spans (single-turn helper agents with different system prompts) are excluded from scanning by default, so the scanner focuses on the substantive agent interactions.
 
 ### Opting In
 
-To scan timelines instead of raw messages, decorate your scanner with
-`@scanner(timeline=True)`:
+To scan timelines instead of raw messages, decorate your scanner with `@scanner(timeline=True)`:
 
 ``` python
 from inspect_scout import llm_scanner, scanner
@@ -527,17 +450,11 @@ def my_scanner():
     )
 ```
 
-When timeline scanning is enabled, each span in the timeline tree is
-scanned independently—the LLM sees only that span’s conversation. This
-is particularly powerful with structured list answers, where each span
-produces its own list of findings that naturally roll up into a combined
-result set across all spans.
+When timeline scanning is enabled, each span in the timeline tree is scanned independently—the LLM sees only that span’s conversation. This is particularly powerful with structured list answers, where each span produces its own list of findings that naturally roll up into a combined result set across all spans.
 
 ### Structured Lists
 
-Structured list answers (`list[MyModel]`) are ideal for timeline
-scanning because they preserve per-span detail without needing a reducer
-to collapse results:
+Structured list answers (`list[MyModel]`) are ideal for timeline scanning because they preserve per-span detail without needing a reducer to collapse results:
 
 ``` python
 from pydantic import BaseModel, Field
@@ -557,8 +474,7 @@ def timeline_findings():
     )
 ```
 
-For simple answer types (boolean, numeric), the result from each span is
-reduced using the default reducer for that type.
+For simple answer types (boolean, numeric), the result from each span is reduced using the default reducer for that type.
 
 ### Depth Control
 

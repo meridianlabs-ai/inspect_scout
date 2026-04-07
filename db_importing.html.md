@@ -1,40 +1,26 @@
 # Importing Transcripts
 
-
 ## Overview
 
-You can populate a transcript database in a variety of ways depending on
-where your transcript data lives and how it is managed:
+You can populate a transcript database in a variety of ways depending on where your transcript data lives and how it is managed:
 
-1.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect
-    eval log files.
+1.  [Inspect Logs](#inspect-logs): Read transcript data from Inspect eval log files.
 
-2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith),
-    [Logfire](#logfire), [MLFlow](#mlflow), and [W&B Weave](#wb-weave):
-    Read transcript data from LLM observability platforms.
+2.  [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith), [Logfire](#logfire), [MLFlow](#mlflow), and [W&B Weave](#wb-weave): Read transcript data from LLM observability platforms.
 
-3.  [Claude Code](#claude-code): Read transcript data from local Claude
-    Code sessions.
+3.  [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4.  [Transcript API](#transcript-api): Python API for creating and
-    inserting transcripts.
+4.  [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-5.  [Arrow Import](#arrow-import): Efficient direct insertion using
-    `RecordBatchReader`.
+5.  [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
 
-6.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake
-    not created using Inspect Scout.
+6.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
-We’ll cover each of these in turn below. Before proceeding though you
-should be sure to familiarize yourself with the [Database
-Schema](db_schema.qmd) and make a plan for how you want to map your data
-into it.
+We’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.html.md) and make a plan for how you want to map your data into it.
 
 ## Inspect Logs
 
-While Scout can read Inspect logs directly, you might prefer to keep
-them in a transcript database. You can easily import Inspect logs as
-follows:
+While Scout can read Inspect logs directly, you might prefer to keep them in a transcript database. You can easily import Inspect logs as follows:
 
 ``` python
 from inspect_scout import transcripts_db, transcripts_from
@@ -59,15 +45,9 @@ async with transcripts_db("s3://my-transcript-db/") as db:
 
 ## Arize Phoenix
 
-[Arize Phoenix](https://phoenix.arize.com/) is an open-source
-observability platform for LLM applications. Phoenix uses
-[OpenInference](https://arize.com/openinference/) semantic conventions
-which normalize trace data across all LLM providers, so Scout can import
-transcripts from any provider traced through Phoenix.
+[Arize Phoenix](https://phoenix.arize.com/) is an open-source observability platform for LLM applications. Phoenix uses [OpenInference](https://arize.com/openinference/) semantic conventions which normalize trace data across all LLM providers, so Scout can import transcripts from any provider traced through Phoenix.
 
-Use the `phoenix()` transcript source to import traces from a Phoenix
-project. You can filter by time range, specific trace ID, or limit the
-number of transcripts:
+Use the [phoenix()](reference/sources.html.md#phoenix) transcript source to import traces from a Phoenix project. You can filter by time range, specific trace ID, or limit the number of transcripts:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -79,10 +59,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-Phoenix automatically extracts
-[OpenInference](https://arize.com/openinference/) context attributes —
-`session.id`, `user.id`, `tag.tags`, and `metadata.*` — into transcript
-metadata when present.
+Phoenix automatically extracts [OpenInference](https://arize.com/openinference/) context attributes — `session.id`, `user.id`, `tag.tags`, and `metadata.*` — into transcript metadata when present.
 
 You can also filter traces by session, tags, or metadata:
 
@@ -112,27 +89,19 @@ await db.insert(phoenix(
 ))
 ```
 
-> [!NOTE]
+> **NOTE:**
 >
-> ### Authentication
->
-> Set the `PHOENIX_API_KEY` environment variable to authenticate with
-> Phoenix. Set `PHOENIX_COLLECTOR_ENDPOINT` for the base URL (defaults
-> to `https://app.phoenix.arize.com`).
+> Set the `PHOENIX_API_KEY` environment variable to authenticate with Phoenix. Set `PHOENIX_COLLECTOR_ENDPOINT` for the base URL (defaults to `https://app.phoenix.arize.com`).
 
 ## LangSmith
 
-[LangSmith](https://smith.langchain.com/) is LangChain’s platform for
-tracing, evaluating, and monitoring LLM applications. Scout can import
-transcripts from LangSmith traces, supporting:
+[LangSmith](https://smith.langchain.com/) is LangChain’s platform for tracing, evaluating, and monitoring LLM applications. Scout can import transcripts from LangSmith traces, supporting:
 
 - LangChain agents and chains (via langchain tracing)
 - OpenAI API calls (via `wrap_openai`)
 - Anthropic API calls (via `wrap_anthropic`)
 
-Use the `langsmith()` transcript source to import traces from a
-LangSmith project. You can filter by tags, time range, or using
-LangSmith’s filter syntax:
+Use the [langsmith()](reference/sources.html.md#langsmith) transcript source to import traces from a LangSmith project. You can filter by tags, time range, or using LangSmith’s filter syntax:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -145,27 +114,20 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-> [!NOTE]
+> **NOTE:**
 >
-> ### Authentication
->
-> Set the `LANGSMITH_API_KEY` environment variable to authenticate with
-> LangSmith. You can create an API key from [LangSmith
-> Settings](https://smith.langchain.com/settings).
+> Set the `LANGSMITH_API_KEY` environment variable to authenticate with LangSmith. You can create an API key from [LangSmith Settings](https://smith.langchain.com/settings).
 
 ## Logfire
 
-[Logfire](https://logfire.pydantic.dev/) is Pydantic’s observability
-platform for Python applications. Scout can import transcripts from
-Logfire traces created by any of the supported instrumentors:
+[Logfire](https://logfire.pydantic.dev/) is Pydantic’s observability platform for Python applications. Scout can import transcripts from Logfire traces created by any of the supported instrumentors:
 
 - Pydantic AI (`logfire.instrument_pydantic_ai()`)
 - OpenAI (`logfire.instrument_openai()`)
 - Anthropic (`logfire.instrument_anthropic()`)
 - Google GenAI (`logfire.instrument_google_genai()`)
 
-Use the `logfire()` transcript source to import traces. You can filter
-by time range, specific trace ID, or using SQL WHERE fragments:
+Use the [logfire()](reference/sources.html.md#logfire) transcript source to import traces. You can filter by time range, specific trace ID, or using SQL WHERE fragments:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -177,29 +139,21 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-> [!NOTE]
+> **NOTE:**
 >
-> ### Authentication
->
-> Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with
-> Logfire. You can create a read token from [Logfire Settings \> Read
-> Tokens](https://logfire.pydantic.dev/).
+> Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with Logfire. You can create a read token from [Logfire Settings \> Read Tokens](https://logfire.pydantic.dev/).
 
 ## MLFlow
 
-[MLFlow](https://mlflow.org/genai/observability) is an LLM and Agent
-Observability and Evaluations platform. Scout can import traces from
-MLFlow, with filtering by experiment name and/or tracking URI.
+[MLFlow](https://mlflow.org/genai/observability) is an LLM and Agent Observability and Evaluations platform. Scout can import traces from MLFlow, with filtering by experiment name and/or tracking URI.
 
-To import transcripts from MLFlow, first install the `inspect-mlflow`
-package:
+To import transcripts from MLFlow, first install the `inspect-mlflow` package:
 
 ``` bash
 pip install inspect-mlflow
 ```
 
-Then, use the `import_mlflow_traces()` function to import traces. For
-example:
+Then, use the `import_mlflow_traces()` function to import traces. For example:
 
 ``` python
 from inspect_mlflow.scout import import_mlflow_traces
@@ -212,22 +166,18 @@ async with transcripts_db("./my-transcripts") as db:
     ))
 ```
 
-Be sure to also specify required credentials using environment variables
-or other means before conducing an import.
+Be sure to also specify required credentials using environment variables or other means before conducing an import.
 
 ## W&B Weave
 
-[W&B Weave](https://wandb.ai/site/weave) is Weights & Biases’ tracing
-and evaluation framework for LLM applications. Scout can import
-transcripts from Weave traces, supporting:
+[W&B Weave](https://wandb.ai/site/weave) is Weights & Biases’ tracing and evaluation framework for LLM applications. Scout can import transcripts from Weave traces, supporting:
 
 - OpenAI API calls
 - Anthropic API calls
 - Google/Gemini API calls
 - Custom instrumented code (via Weave ops)
 
-Use the `weave()` transcript source to import traces from a Weave
-project. The `project` parameter should be in `"entity/project"` format:
+Use the [weave()](reference/sources.html.md#weave) transcript source to import traces from a Weave project. The `project` parameter should be in `"entity/project"` format:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -239,8 +189,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-You can filter traces by time range, apply call filters, or limit the
-number of transcripts:
+You can filter traces by time range, apply call filters, or limit the number of transcripts:
 
 ``` python
 from datetime import datetime
@@ -265,24 +214,15 @@ await db.insert(weave(
 ))
 ```
 
-> [!NOTE]
+> **NOTE:**
 >
-> ### Authentication
->
-> Set the `WANDB_API_KEY` environment variable to authenticate with W&B.
-> You can create an API key from [W&B
-> Settings](https://wandb.ai/settings).
+> Set the `WANDB_API_KEY` environment variable to authenticate with W&B. You can create an API key from [W&B Settings](https://wandb.ai/settings).
 
 ## Claude Code
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is
-Anthropic’s agentic coding tool. Scout can import transcripts directly
-from Claude Code’s session files, which are normally stored at
-`~/.claude/projects/`.
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic’s agentic coding tool. Scout can import transcripts directly from Claude Code’s session files, which are normally stored at `~/.claude/projects/`.
 
-Use the `claude_code()` transcript source to import sessions. Each
-session can contain multiple conversations separated by `/clear`
-commands — each conversation segment becomes a separate transcript.
+Use the [claude_code()](reference/sources.html.md#claude_code) transcript source to import sessions. Each session can contain multiple conversations separated by `/clear` commands — each conversation segment becomes a separate transcript.
 
 ``` python
 from inspect_scout import transcripts_db
@@ -292,9 +232,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     await db.insert(claude_code())
 ```
 
-By default, all sessions across all projects are imported. You can
-narrow the import by specifying a project path, session ID, or time
-range:
+By default, all sessions across all projects are imported. You can narrow the import by specifying a project path, session ID, or time range:
 
 ``` python
 # Import sessions from a specific project
@@ -326,10 +264,7 @@ Claude Code transcripts are mapped to the database schema as follows:
 
 ## Transcript API
 
-You can import transcripts from any source so long as you can create
-`Transcript` objects to be imported. In this example imagine we have a
-`read_weave_transcripts()` function which can read transcripts from an
-external JSON transcript format:
+You can import transcripts from any source so long as you can create [Transcript](reference/transcript.html.md#transcript) objects to be imported. In this example imagine we have a `read_weave_transcripts()` function which can read transcripts from an external JSON transcript format:
 
 ``` python
 from inspect_scout import transcripts_db
@@ -346,8 +281,7 @@ async with transcripts_db("s3://my-transcripts") as db:
     await db.insert(transcripts)
 ```
 
-Once you’ve created a database and populated it with transcripts, you
-can read from it using `transcripts_from()`:
+Once you’ve created a database and populated it with transcripts, you can read from it using [transcripts_from()](reference/transcript.html.md#transcripts_from):
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -360,13 +294,7 @@ scan(
 
 ### Streaming
 
-Each call to `db.insert()` will minimally create one Parquet file, but
-will break transcripts across multiple files as required (typically of
-size 75-100MB). This will create a storage layout optimized for fast
-queries and content reading. Consequently, when importing a large number
-of transcripts you should always write a generator to yield transcripts
-rather than making many calls to `db.insert()` (which is likely to
-result in more Parquet files than is ideal).
+Each call to `db.insert()` will minimally create one Parquet file, but will break transcripts across multiple files as required (typically of size 75-100MB). This will create a storage layout optimized for fast queries and content reading. Consequently, when importing a large number of transcripts you should always write a generator to yield transcripts rather than making many calls to `db.insert()` (which is likely to result in more Parquet files than is ideal).
 
 For example, we might implement `read_json_transcripts()` like this:
 
@@ -392,10 +320,7 @@ async with transcripts_db("s3://my-transcripts") as db:
     await db.insert(read_json_transcripts())
 ```
 
-Note that transcript insertion is idempotent—once a transcript with a
-given ID has been inserted it will not be inserted again. This means
-that you can safely resume imports that are interrupted, and only new
-transcripts will be added.
+Note that transcript insertion is idempotent—once a transcript with a given ID has been inserted it will not be inserted again. This means that you can safely resume imports that are interrupted, and only new transcripts will be added.
 
 ### Transcripts
 
@@ -438,28 +363,15 @@ async def json_to_messages(
     return messages
 ```
 
-Note that we use the `messages_from_openai()` and
-`model_output_from_openai()` function from `inspect_ai` to convert the
-raw model payloads in the trace data to the correct types for the
-transcript database.
+Note that we use the [messages_from_openai()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages_from_openai) and [model_output_from_openai()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model_output_from_openai) function from `inspect_ai` to convert the raw model payloads in the trace data to the correct types for the transcript database.
 
-The most important fields to populate are `transcript_id` and
-`messages`. The `source_*` fields are also useful for providing
-additional context. The `metadata` field, while not required, is a
-convenient way to provide additional transcript attributes which may be
-useful for filtering or analysis. The `events` field is not required and
-useful primarily for more complex multi-agent transcripts.
+The most important fields to populate are `transcript_id` and `messages`. The `source_*` fields are also useful for providing additional context. The `metadata` field, while not required, is a convenient way to provide additional transcript attributes which may be useful for filtering or analysis. The `events` field is not required and useful primarily for more complex multi-agent transcripts.
 
 ## Arrow Import
 
-In some cases you may already have arrow-accessible data (e.g. from
-Parquet files or a database that supports yielding arrow batches) that
-you want to insert directly into a transcript database. So long as your
-data conforms to the [schema](db_schema.qmd), you can do this by passing
-a PyArrow `RecordBatchReader` to `db.insert()`.
+In some cases you may already have arrow-accessible data (e.g. from Parquet files or a database that supports yielding arrow batches) that you want to insert directly into a transcript database. So long as your data conforms to the [schema](db_schema.html.md), you can do this by passing a PyArrow `RecordBatchReader` to `db.insert()`.
 
-For example, to read from existing Parquet files using the PyArrow
-dataset API:
+For example, to read from existing Parquet files using the PyArrow dataset API:
 
 ``` python
 import pyarrow.dataset as ds
@@ -495,10 +407,7 @@ async with transcripts_db("s3://my-transcripts") as db:
 
 ## Parquet Data Lake
 
-If you have transcripts already stored in Parquet format you don’t need
-to use `db.insert()` at all. So long as your Parquet files conform to
-the [transcript database schema](db_schema.qmd) then you can read them
-directly using `transcripts_from()`. For example:
+If you have transcripts already stored in Parquet format you don’t need to use `db.insert()` at all. So long as your Parquet files conform to the [transcript database schema](db_schema.html.md) then you can read them directly using [transcripts_from()](reference/transcript.html.md#transcripts_from). For example:
 
 ``` python
 from inspect_scout import transcripts_from
@@ -509,11 +418,9 @@ transcripts = transcripts_from(
 )
 ```
 
-Note that several fields in the database schema are marked as JSON—these
-should be encoded as serialized JSON strings within your parquet files.
+Note that several fields in the database schema are marked as JSON—these should be encoded as serialized JSON strings within your parquet files.
 
-You can validate that your custom data lake conforms to the schema using
-the `scout db validate` command. For example:
+You can validate that your custom data lake conforms to the schema using the `scout db validate` command. For example:
 
 ``` bash
 scout db validate s3://my-transcripts-data-lake/cyber
@@ -521,10 +428,7 @@ scout db validate s3://my-transcripts-data-lake/cyber
 
 ### Transcript Index
 
-One critical additional step required for a custom data lake is to build
-a transcript index. While this is not required, it can make querying
-across large sets of transcripts dramatically faster (10x or better) as
-well as improve the handling of large databases in Scout View.
+One critical additional step required for a custom data lake is to build a transcript index. While this is not required, it can make querying across large sets of transcripts dramatically faster (10x or better) as well as improve the handling of large databases in Scout View.
 
 To build an index, use the `scout db index` command. For example:
 
@@ -532,15 +436,11 @@ To build an index, use the `scout db index` command. For example:
 scout db index s3://my-transcripts-data-lake/cyber
 ```
 
-You should run this command whenever you add or remove transcripts from
-your data lake (transcripts will not be visible to clients until the
-index is updated). While building an index is not required, it is highly
-reccommend if you want optimal query performance.
+You should run this command whenever you add or remove transcripts from your data lake (transcripts will not be visible to clients until the index is updated). While building an index is not required, it is highly reccommend if you want optimal query performance.
 
 ## CLI Import
 
-The `scout import` command provides a CLI alternative to the Python API
-for importing transcripts from any registered source. For example:
+The `scout import` command provides a CLI alternative to the Python API for importing transcripts from any registered source. For example:
 
 ``` bash
 scout import claude_code
@@ -549,7 +449,4 @@ scout import langsmith -P project=my-project --limit 100
 scout import weave -P project=my-team/my-project
 ```
 
-Use `scout import --sources` to list available sources and their
-parameters, or `--dry-run` to preview what would be imported without
-writing. See [scout import](reference/scout_import.qmd) for full
-details.
+Use `scout import --sources` to list available sources and their parameters, or `--dry-run` to preview what would be imported without writing. See [scout import](reference/scout_import.html.md) for full details.

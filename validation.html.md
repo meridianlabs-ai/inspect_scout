@@ -1,22 +1,14 @@
 # Validation
 
-
 ## Overview
 
-When developing scanners, it’s often desirable to create a feedback loop
-based on human labeling of transcripts that indicate expected scanner
-results. You can do this by creating a validation set and applying it
-during your scan:
+When developing scanners, it’s often desirable to create a feedback loop based on human labeling of transcripts that indicate expected scanner results. You can do this by creating a validation set and applying it during your scan:
 
-![](images/validation-flow.jpg)
+[![](images/validation-flow.jpg)](images/validation-flow.jpg)
 
-The *validation set* is the set of labeled transcripts that are compared
-against scan results. Validation sets are typically associated with the
-domain of a particular scanner type (e.g. “evaluation awareness”,
-“refusal”, etc.) so you will likely develop many of them for use with
-different scanners.
+The *validation set* is the set of labeled transcripts that are compared against scan results. Validation sets are typically associated with the domain of a particular scanner type (e.g. “evaluation awareness”, “refusal”, etc.) so you will likely develop many of them for use with different scanners.
 
-Apply a validation set by passing it to `scan()`. For example:
+Apply a validation set by passing it to [scan()](reference/scanning.html.md#scan). For example:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -36,58 +28,39 @@ Or from the command line:
 scout scan eval_awareness.py -V eval-awarness.csv
 ```
 
-Validation sets are stored in CSV, YAML, JSON, or JSONL text files,
-however you don’t need to edit them in their raw format. The next
-section describes recommended workflows for editing and managing
-validation sets.
+Validation sets are stored in CSV, YAML, JSON, or JSONL text files, however you don’t need to edit them in their raw format. The next section describes recommended workflows for editing and managing validation sets.
 
 ## Validation Sets
 
-The easiest way to work with validation data is to use [Scout
-View](index.qmd#scout-view), which provides inline editing of validation
-cases as well as various tools for editing and refining validation sets.
+The easiest way to work with validation data is to use [Scout View](index.html.md#scout-view), which provides inline editing of validation cases as well as various tools for editing and refining validation sets.
 
 ### Transcript View
 
-When viewing any transcript, you can activate the validation case editor
-by clicking the button at the top right of the content view:
+When viewing any transcript, you can activate the validation case editor by clicking the button at the top right of the content view:
 
-![](images/validation-panel-transcripts.png)
+[![](images/validation-panel-transcripts.png)](images/validation-panel-transcripts.png)
 
-A validation case maps a transcript to an expected target result. In the
-example above we indicate that this transcript does have evidence of
-evaluation awareness which should be detected by scanners.
+A validation case maps a transcript to an expected target result. In the example above we indicate that this transcript does have evidence of evaluation awareness which should be detected by scanners.
 
 ### Results View
 
-Sometimes its more convenient to apply validation labels in the context
-of scan results. There is also a validation editor available in every
-result view:
+Sometimes its more convenient to apply validation labels in the context of scan results. There is also a validation editor available in every result view:
 
-![](images/validation-panel-results.png)
+[![](images/validation-panel-results.png)](images/validation-panel-results.png)
 
-It’s often very natural to create cases this way as reviewing scan
-results often leads to judgments about whether the scanner is working as
-intended.
+It’s often very natural to create cases this way as reviewing scan results often leads to judgments about whether the scanner is working as intended.
 
 ### Validation Pane
 
-The **Validation** pane provides a top level view of all validation sets
-as well as various tools for managing them:
+The **Validation** pane provides a top level view of all validation sets as well as various tools for managing them:
 
-![](images/validation-pane.png)
+[![](images/validation-pane.png)](images/validation-pane.png)
 
-Use the validation pane to review and edit validation cases, manage
-[splits](#validation-splits), or copy and move validation cases between
-validation sets.
+Use the validation pane to review and edit validation cases, manage [splits](#validation-splits), or copy and move validation cases between validation sets.
 
 ### Validation Files
 
-While you don’t often need to edit validation files directly, you can do
-so if necessary since they are ordinary CSV for YAML files. For example,
-here’s a validation set in CSV format:
-
-**eval-awareness.csv**
+While you don’t often need to edit validation files directly, you can do so if necessary since they are ordinary CSV for YAML files. For example, here’s a validation set in CSV format:
 
 ``` default
 id,target
@@ -96,24 +69,17 @@ VFkCH7gXWpJYUYonvfHxrG,false
 SiEXpECj7U9nNAvM3H7JqB,true
 ```
 
-If you are editing validation files directly you will need a way to
-discover trancript IDs. Use the **Copy** button in the transcript view
-to copy the UUID of the transcript you are viewing:
+If you are editing validation files directly you will need a way to discover trancript IDs. Use the **Copy** button in the transcript view to copy the UUID of the transcript you are viewing:
 
-![](images/transcript-uuid-copy.png)
+[![](images/transcript-uuid-copy.png)](images/transcript-uuid-copy.png)
 
-See the [File Formats](#file-formats) section below for complete details
-on validation set files.
+See the [File Formats](#file-formats) section below for complete details on validation set files.
 
 ## Scanning
 
 ### Adding Validation
 
-You’ll typically create a distinct validation set (with potentially
-multiple splits) for each scanner, and then pass the validation sets to
-`scan()` as a dict mapping scanner to set:
-
-**scanning.py**
+You’ll typically create a distinct validation set (with potentially multiple splits) for each scanner, and then pass the validation sets to [scan()](reference/scanning.html.md#scan) as a dict mapping scanner to set:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -128,10 +94,7 @@ scan(
 )
 ```
 
-If you have only only a single scanner you can pass the validation set
-without the mapping:
-
-**scanning.py**
+If you have only only a single scanner you can pass the validation set without the mapping:
 
 ``` python
 scan(
@@ -141,9 +104,7 @@ scan(
 )
 ```
 
-You can also specify validation sets on the command line. If the above
-scans were defined in a `@scanjob` you could add a validation set from
-the CLI using the `-V` option as follows:
+You can also specify validation sets on the command line. If the above scans were defined in a `@scanjob` you could add a validation set from the CLI using the `-V` option as follows:
 
 ``` bash
 # single validation set
@@ -159,22 +120,17 @@ scout scan scanning.py \
 
 Validation results are reported in the scan status/summary UI:
 
-![](images/validation-results-cli.png)
+[![](images/validation-results-cli.png)](images/validation-results-cli.png)
 
-The validation metric reported in the task summary is the *balanced
-accurary*, which is good overall metric especially for unbalanced
-datasets (which is often the case for validation sets). Other metrics
-(precision, recall, and f1) are available in Scout View.
+The validation metric reported in the task summary is the *balanced accurary*, which is good overall metric especially for unbalanced datasets (which is often the case for validation sets). Other metrics (precision, recall, and f1) are available in Scout View.
 
 #### Scout View
 
-Scout View will also show validation results alongside scanner values
-(sorting validated scans to the top for easy review):
+Scout View will also show validation results alongside scanner values (sorting validated scans to the top for easy review):
 
-![](images/validation.png)
+[![](images/validation.png)](images/validation.png)
 
-Validation results are reported using four standard classification
-metrics:
+Validation results are reported using four standard classification metrics:
 
 | Metric | Description |
 |----|----|
@@ -183,47 +139,28 @@ metrics:
 | **Recall** | Of all items that should be flagged, how many did the scanner find? High recall means few missed cases. |
 | **F1** | Harmonic mean of precision and recall. Useful when you need to balance both concerns. |
 
-In practice, there’s often a tradeoff between precision and recall. A
-conservative scanner may have high precision but miss cases (low
-recall), while an aggressive scanner catches more cases (high recall)
-but with more false positives (lower precision). The right balance
-depends on your use case. Here are some resources that cover this in
-more depth:
+In practice, there’s often a tradeoff between precision and recall. A conservative scanner may have high precision but miss cases (low recall), while an aggressive scanner catches more cases (high recall) but with more false positives (lower precision). The right balance depends on your use case. Here are some resources that cover this in more depth:
 
-- [Precision and
-  Recall](https://en.wikipedia.org/wiki/Precision_and_recall)
-  (Wikipedia) — Comprehensive overview of precision, recall, F1, and
-  related metrics.
-- [Classification
-  Metrics](https://developers.google.com/machine-learning/crash-course/classification/precision-and-recall)
-  (Google ML Crash Course) — Interactive tutorial on precision, recall,
-  and the tradeoffs between them.
+- [Precision and Recall](https://en.wikipedia.org/wiki/Precision_and_recall) (Wikipedia) — Comprehensive overview of precision, recall, F1, and related metrics.
+- [Classification Metrics](https://developers.google.com/machine-learning/crash-course/classification/precision-and-recall) (Google ML Crash Course) — Interactive tutorial on precision, recall, and the tradeoffs between them.
 
 ## Validation Splits
 
-Validation cases can be organized into named groups called “splits”
-(e.g., “dev”, “test”, etc.). This enables you to iterate your scanner
-prompts on a subset of cases (e.g. “dev”) then do final testing on a
-holdout set (e.g. “test”). Maintaining this separation is often critical
-to ensure that your scanner prompts aren’t overfit to your validation
-set.
+Validation cases can be organized into named groups called “splits” (e.g., “dev”, “test”, etc.). This enables you to iterate your scanner prompts on a subset of cases (e.g. “dev”) then do final testing on a holdout set (e.g. “test”). Maintaining this separation is often critical to ensure that your scanner prompts aren’t overfit to your validation set.
 
 ### Defining Splits
 
 Use the validation pane to assign splits to validation cases:
 
-![](images/validation-split.png)
+[![](images/validation-split.png)](images/validation-split.png)
 
 Select multiple transcripts to assign several splits at once:
 
-![](images/validation-split-multiple.png)
+[![](images/validation-split-multiple.png)](images/validation-split-multiple.png)
 
-You can also directly assign splits from within the validation case
-editor in the transcripts and scan results views.
+You can also directly assign splits from within the validation case editor in the transcripts and scan results views.
 
 Splits are then written to validation set CSVs using a `split` column:
-
-**validation.csv**
 
 ``` default
 id,target,split
@@ -234,8 +171,7 @@ SiEXpECj7U9nNAvM3H7JqB,true,test
 
 ### Applying Splits
 
-Pass the `split` option to `validation_set()` to filter by split when
-creating your validation set:
+Pass the `split` option to [validation_set()](reference/results.html.md#validation_set) to filter by split when creating your validation set:
 
 ``` python
 from inspect_scout import validation_set
@@ -247,64 +183,19 @@ validation = validation_set("validation.csv", split="dev")
 validation = validation_set("validation.csv", split=["dev", "test"])
 ```
 
-When filtering by split, only cases with matching split values are
-included. Cases without a split value are excluded when a split filter
-is applied.
-
-<!----
-&#10;## Validating Labels
-&#10;When a scanner returns a list of multiple results (see [Multiple Results](scanners.qmd#multiple-results)), you can validate whether results with specific labels are present or absent. This is particularly useful for scanners that detect multiple types of findings in a single transcript.
-&#10;### Specifying Labels
-&#10;Use the labels UI within the validation case editor to specify lables that are expected (or not expected) for a transcript:
-&#10;![](images/validation-panel-transcripts.png){.border}
-&#10;### Label Validation
-&#10;Label validation uses boolean expectations to check for presence or absence of labeled results:
-&#10;-   **`true`**: Validation passes if at least one result with that label has a **positive** (non-negative) value
--   **`false`**: Validation passes if no results with that label exist, or if all results have **negative** values
-&#10;**Negative values** are: `false`, `null`/`None`, `0`, `""` (empty string), `"NONE"`, `{}` (empty dict), `[]` (empty list).
-&#10;**Positive values** are: `true`, non-zero numbers, non-empty strings, non-empty dicts/lists.
-&#10;For example, if your validation expects the `deception` label and the scanner returns a result with `label="deception"` and `value={"confidence": 0.9}`, the validation passes because a non-empty dict is a positive value.
-&#10;If your validation does not expect the `phishing` label and the scanner returns no results with `label="phishing"`, validation passes because absence is treated as negative.
-&#10;### Labels in CSV/YAML
-&#10;If you are editing validation CSV files directly, use `label_*` columns:
-&#10;``` {.default filename="security-validation.csv"}
-id, label_deception, label_jailbreak, label_misconfig
-Fg3KBpgFr6RSsEWmHBUqeo, true, false, false
-VFkCH7gXWpJYUYonvfHxrG, false, true, false
-SiEXpECj7U9nNAvM3H7JqB, false, false, true
-```
-&#10;For YAML/JSON files, use a labels key instead of target:
-&#10;``` yaml
-- id: Fg3KBpgFr6RSsEWmHBUqeo 
-  labels: 
-    deception: true 
-    jailbreak: false 
-    misconfig: false
-&#10;- id: VFkCH7gXWpJYUYonvfHxrG 
-  labels: 
-    deception: false 
-    jailbreak: true 
-    misconfig: false
-```
-&#10;---->
+When filtering by split, only cases with matching split values are included. Cases without a split value are excluded when a split filter is applied.
 
 ## Predicates
 
-By default, validation compares scanner results to targets using
-equality (`eq`). You can specify different comparison predicates either
-per-case or as a default for all cases.
+By default, validation compares scanner results to targets using equality (`eq`). You can specify different comparison predicates either per-case or as a default for all cases.
 
 ### Per-Case Predicates
 
-When specifying a non-boolean target for a validation case, you can also
-customize the predicate used for comparison:
+When specifying a non-boolean target for a validation case, you can also customize the predicate used for comparison:
 
-![](images/validation-panel-predicate.png)
+[![](images/validation-panel-predicate.png)](images/validation-panel-predicate.png)
 
-Within a validation set CSV, add a `predicate` column to specify
-comparison logic for individual cases:
-
-**validation.csv**
+Within a validation set CSV, add a `predicate` column to specify comparison logic for individual cases:
 
 ``` default
 id,target,predicate
@@ -337,18 +228,13 @@ In this example:
 
 ### Default Predicate
 
-You can also set a default predicate for all cases using the `predicate`
-parameter of `validation_set()`:
+You can also set a default predicate for all cases using the `predicate` parameter of [validation_set()](reference/results.html.md#validation_set):
 
 ``` python
 validation_set(cases="validation.csv", predicate="gte")
 ```
 
-When both are specified, per-case predicates take precedence over the
-default. This allows you to set a common predicate while overriding it
-for specific cases:
-
-**validation.csv**
+When both are specified, per-case predicates take precedence over the default. This allows you to set a common predicate while overriding it for specific cases:
 
 ``` default
 id,target,predicate
@@ -366,18 +252,9 @@ validation_set(cases="validation.csv", predicate="gte")
 
 ### Non-Transcript IDs
 
-In the above examples, we provided a validation set of transcript_id =\>
-boolean. Of course, not every scanner takes a transcript id (some take
-event or message ids). All of these other variations are supported
-(including lists of events or messages yielded by a custom
-[Loader](scanners.qmd#loader)).
+In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.html.md#loader)).
 
-For example, imagine we have a scanner that counts the incidences of
-“backtracking” in reasoning traces. In this case our scanner yields a
-number rather than a boolean. So our validation set would be message_id
-=\> number:
-
-**backtracking.csv**
+For example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
 
 ``` default
 id,target
@@ -386,10 +263,7 @@ VFkCH7gXWpJYUYonvfHxrG,0
 SiEXpECj7U9nNAvM3H7JqB,3
 ```
 
-In the case of a custom loader (.e.g. one that extracts user/assistant
-message pairs) we can also include multiple IDs:
-
-**validation.csv**
+In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
 
 ``` default
 id,target
@@ -405,16 +279,9 @@ Both formats are automatically parsed into a list of IDs.
 
 ### Complex Targets
 
-Some scanners yield complex values (e.g. lists or dictionaries). For
-purposes of validation it’s often much better to deal with simple
-values, however if you want to validate against lists and dicts this is
-fully supported (although you can’t define validation cases with
-non-scaner targets in the Scout View UI).
+Some scanners yield complex values (e.g. lists or dictionaries). For purposes of validation it’s often much better to deal with simple values, however if you want to validate against lists and dicts this is fully supported (although you can’t define validation cases with non-scaner targets in the Scout View UI).
 
-One middle ground is that if your scanner is yielding a dict (e.g for
-[Structured Answers](llm_scanner.qmd#structured-answers)) you can still
-mark one of the dict fields as the “value” using `alias="value"`. For
-example:
+One middle ground is that if your scanner is yielding a dict (e.g for [Structured Answers](llm_scanner.html.md#structured-answers)) you can still mark one of the dict fields as the “value” using `alias="value"`. For example:
 
 ``` python
 class Refusal(BaseModel):
@@ -431,32 +298,21 @@ class Refusal(BaseModel):
     )
 ```
 
-This enables you to combine complex results with more straightforward
-validation. See the [File Formats](#file-formats) section below for
-details on specifying dict values as validation targets.
+This enables you to combine complex results with more straightforward validation. See the [File Formats](#file-formats) section below for details on specifying dict values as validation targets.
 
 ## File Formats
 
-You can specify a `ValidationSet` either in code, as a CSV, YAML, JSON,
-or JSONL file.
+You can specify a [ValidationSet](reference/results.html.md#validationset) either in code, as a CSV, YAML, JSON, or JSONL file.
 
 ### CSV
 
-Here are the various ways you can structure a validation CSV for
-different scenarios:
+Here are the various ways you can structure a validation CSV for different scenarios:
 
-| Format | Header Row | Example |
-|----|----|----|
-| Single target | `id,target` | `id,target``abc123,true` |
-| Dict targets | `id,target_*,...` | `id,target_foo,target_bar``abc123,true,42` |
-| Label validation | `id,label_*,...` | `id,label_deception,label_jailbreak``abc123,true,false` |
-| With splits | `id,target,split` | `id,target,split``abc123,true,dev` |
+[TABLE]
 
 ### YAML
 
 Here is what a YAML file would look like for a single target:
-
-**validation.yaml**
 
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -467,8 +323,6 @@ Here is what a YAML file would look like for a single target:
 ```
 
 Here is a YAML file for multiple targets:
-
-**validation.yaml**
 
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -484,8 +338,6 @@ Here is a YAML file for multiple targets:
 
 Here is a YAML file for label-based validation (resultsets):
 
-**validation.yaml**
-
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
   labels:
@@ -500,10 +352,7 @@ Here is a YAML file for label-based validation (resultsets):
      misconfig: false
 ```
 
-Here is a YAML file with splits using the flat format (split field on
-each case):
-
-**validation.yaml**
+Here is a YAML file with splits using the flat format (split field on each case):
 
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -516,8 +365,6 @@ each case):
 ```
 
 You can also use a nested format that groups cases by split:
-
-**validation.yaml**
 
 ``` yaml
 - split: dev
@@ -537,8 +384,6 @@ You can also use a nested format that groups cases by split:
 
 JSON files use the same structure as YAML:
 
-**validation.json**
-
 ``` json
 [
   {"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true},
@@ -547,8 +392,6 @@ JSON files use the same structure as YAML:
 ```
 
 JSONL (JSON Lines) format has one case per line:
-
-**validation.jsonl**
 
 ``` default
 {"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true}

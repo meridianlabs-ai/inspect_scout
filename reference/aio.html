@@ -2,13 +2,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.25">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="description" content="Asynchronous variants of the scan functions for embedded library use.">
 
 <title>Async API – Inspect Scout</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -66,18 +70,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../reference/aio.qmd#scan_async" rel="next">
-<link href="../reference/sources.qmd#claude_code" rel="prev">
+<link href="../reference/index.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-635e1193c7225b6cf6641c3367fdb6ca.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-00d6323372c11ee1e1ff703f7da802e4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -122,8 +125,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Inspect Scout</span>
     </a>
@@ -135,7 +136,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../index.html" aria-current="page"> 
+    <a class="nav-link" href="../index.html"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
   <li class="nav-item dropdown ">
@@ -224,7 +225,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </ul>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
+    <a class="nav-link active" href="../reference/index.html" aria-current="page"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
@@ -249,7 +250,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/aio.html">aio</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/aio.html">Python API</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -259,10 +260,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
-    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
-      <a href="../index.html" class="sidebar-logo-link">
-      </a>
-      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -273,7 +270,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
+            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Python API</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -282,101 +279,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanning</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Async API</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan</span></a>
+  <a href="../reference/aio.html#scan_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume</span></a>
+  <a href="../reference/aio.html#scan_resume_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_resume_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete</span></a>
+  <a href="../reference/aio.html#scan_complete_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_complete_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanjob</span></a>
+  <a href="../reference/aio.html#scan_list_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_list_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJob</span></a>
+  <a href="../reference/aio.html#scan_status_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_status_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJobConfig</span></a>
+  <a href="../reference/aio.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_df_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ProjectConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerWork</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#worklist" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Worklist</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanRevision</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanTranscripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptField</span></a>
+  <a href="../reference/aio.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_arrow_async</span></a>
   </div>
 </li>
       </ul>
@@ -384,7 +333,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../reference/results.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">results</span></a>
+ <span class="menu-text">Results</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -478,174 +427,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript</span></a>
+            <a href="../reference/scanner.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanner API</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_from</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcript</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptInfo</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsReader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#samplemetadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SampleMetadata</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db_schema" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db_schema</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsDB</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Column</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Condition</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LogColumns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">log_columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">timeline_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">segment_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">span_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessagesSegment</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TimelineMessages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observe" class="sidebar-item-text sidebar-link">
- <span class="menu-text">observe</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observe_update" class="sidebar-item-text sidebar-link">
- <span class="menu-text">observe_update</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observeprovider" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ObserveProvider</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observeemit" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ObserveEmit</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../reference/scanner.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanner</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
@@ -830,8 +618,109 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanning</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_resume</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_complete</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scanjob</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanJob</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanJobConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ProjectConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScannerSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScannerWork</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#worklist" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Worklist</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanOptions</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanRevision</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanTranscripts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptField</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="../reference/sources.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">sources</span></a>
+ <span class="menu-text">Sources</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -871,53 +760,161 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">aio</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcript API</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_async</span></a>
+  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_from</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_resume_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume_async</span></a>
+  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcript</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_complete_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete_async</span></a>
+  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptInfo</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_list_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list_async</span></a>
+  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcripts</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_status_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status_async</span></a>
+  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptsReader</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df_async</span></a>
+  <a href="../reference/transcript.html#samplemetadata" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SampleMetadata</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow_async</span></a>
+  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_db</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcripts_db_schema" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_db_schema</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptsDB</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Column</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Condition</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LogColumns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">log_columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcript_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">timeline_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">segment_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">span_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MessagesSegment</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineMessages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe_update" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe_update</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeprovider" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveProvider</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeemit" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveEmit</span></a>
   </div>
 </li>
       </ul>
@@ -926,31 +923,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scout CLI</span></a>
+            <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">CLI Commands</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout scan</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout view</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout trace</span></a>
-  </div>
-</li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
@@ -963,6 +942,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">scout import</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout scan</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout trace</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout view</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -971,7 +968,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="1">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
@@ -983,16 +980,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#scan_results_df_async" id="toc-scan_results_df_async" class="nav-link" data-scroll-target="#scan_results_df_async">scan_results_df_async</a></li>
   <li><a href="#scan_results_arrow_async" id="toc-scan_results_arrow_async" class="nav-link" data-scroll-target="#scan_results_arrow_async">scan_results_arrow_async</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/aio.html">aio</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
 <h1 class="title">Async API</h1>
 </div>
 
+<div>
+  <div class="description">
+    Asynchronous variants of the scan functions for embedded library use.
+  </div>
+</div>
 
 
 <div class="quarto-title-meta">
@@ -1026,35 +1028,31 @@ Note
 <p>Scan transcripts.</p>
 <p>Scan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scan.py#L184">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scan.py#L184">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_async(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    scanners: (</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        Sequence[Scanner[Any] <span class="op">|</span> <span class="bu">tuple</span>[<span class="bu">str</span>, Scanner[Any]]]</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, Scanner[Any]]</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> ScanJob</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">|</span> ScanJobConfig</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    transcripts: Transcripts <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    scans: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    worklist: Sequence[ScannerWork] <span class="op">|</span> Sequence[Worklist] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    validation: <span class="bu">str</span> <span class="op">|</span> ValidationSet <span class="op">|</span> Mapping[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> ValidationSet] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> Model <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    model_config: GenerateConfig <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    model_base_url: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    model_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    model_roles: <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> Model] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    max_transcripts: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    max_processes: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    shuffle: <span class="bu">bool</span> <span class="op">|</span> <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    tags: <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    fail_on_error: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span>,</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    dry_run: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span>,</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>deprecated: Unpack[ScanDeprecatedArgs],</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_async(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    scanners: Sequence[Scanner[Any] <span class="op">|</span> <span class="bu">tuple</span>[<span class="bu">str</span>, Scanner[Any]]] <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, Scanner[Any]] <span class="op">|</span> ScanJob <span class="op">|</span> ScanJobConfig,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    transcripts: Transcripts <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    scans: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    worklist: Sequence[ScannerWork] <span class="op">|</span> Sequence[Worklist] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    validation: <span class="bu">str</span> <span class="op">|</span> ValidationSet <span class="op">|</span> Mapping[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> ValidationSet] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    model: <span class="bu">str</span> <span class="op">|</span> Model <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    model_config: GenerateConfig <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    model_base_url: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    model_args: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    model_roles: <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">str</span> <span class="op">|</span> Model] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    max_transcripts: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    max_processes: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    limit: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    shuffle: <span class="bu">bool</span> <span class="op">|</span> <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    tags: <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    metadata: <span class="bu">dict</span>[<span class="bu">str</span>, Any] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    fail_on_error: <span class="bu">bool</span> <span class="op">=</span> ...,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    dry_run: <span class="bu">bool</span> <span class="op">=</span> ...,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    results: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> ...,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">scanners</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>] | tuple[<span class="element-type-name">str</span>, <span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>]]] | dict[<span class="element-type-name">str</span>, <span class="element-type-name"><a href="../reference/scanner.html#scanner">Scanner</a></span>[<span class="element-type-name">Any</span>]] | <span class="element-type-name"><a href="../reference/scanning.html#scanjob">ScanJob</a></span> | <span class="element-type-name"><a href="../reference/scanning.html#scanjobconfig">ScanJobConfig</a></span></span></dt>
 <dd>
@@ -1076,11 +1074,11 @@ Note
 <dd>
 <p>Validation cases to apply for scanners. Can be a file path (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner names to file paths or ValidationSets.</p>
 </dd>
-<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Model to use for scanning by default (individual scanners can always call <code>get_model()</code> to us arbitrary models). If not specified use the model specified in the scout project config (if any).</p>
+<p>Model to use for scanning by default (individual scanners can always call <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model">get_model()</a></span> to us arbitrary models). If not specified use the model specified in the scout project config (if any).</p>
 </dd>
-<dt><code class="ref-definition">model_config</code> <span class="element-type"><span class="element-type-name">GenerateConfig</span> | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model_config</code> <span class="element-type"><span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#generateconfig">GenerateConfig</a></span> | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p><code>GenerationConfig</code> for calls to the model.</p>
 </dd>
@@ -1092,9 +1090,9 @@ Note
 <dd>
 <p>Model creation args (as a dictionary or as a path to a JSON or YAML config file).</p>
 </dd>
-<dt><code class="ref-definition">model_roles</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">str</span> | <span class="element-type-name">Model</span>] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model_roles</code> <span class="element-type">dict[<span class="element-type-name">str</span>, <span class="element-type-name">str</span> | <span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span>] | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Named roles for use in <code>get_model()</code>.</p>
+<p>Named roles for use in <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model">get_model()</a></span>.</p>
 </dd>
 <dt><code class="ref-definition">max_transcripts</code> <span class="element-type"><span class="element-type-name">int</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1132,9 +1130,9 @@ Note
 <dd>
 <p>Don’t actually run the scan, just print the spec and return the status. Defaults to False.</p>
 </dd>
-<dt><code class="ref-definition">**deprecated</code> <span class="element-type"><span class="element-type-name">Unpack</span>[<span class="element-type-name">ScanDeprecatedArgs</span>]</span></dt>
+<dt><code class="ref-definition">results</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Deprecated arguments.</p>
+
 </dd>
 </dl>
 </section>
@@ -1142,7 +1140,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_resume_async">scan_resume_async</h3>
 <p>Resume a previous scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scan.py#L369">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scan.py#L369">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_resume_async(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>, fail_on_error: <span class="bu">bool</span> <span class="op">=</span> <span class="va">False</span></span>
@@ -1167,7 +1165,7 @@ Note
 <p>Complete a scan.</p>
 <p>This function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scan.py#L437">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scan.py#L437">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_complete_async(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>, log_level: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
@@ -1187,7 +1185,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_list_async">scan_list_async</h3>
 <p>List completed and pending scans.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanlist.py#L19">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanlist.py#L19">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_list_async(scans_location: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Status]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1201,7 +1199,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_status_async">scan_status_async</h3>
 <p>Status of scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanresults.py#L32">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L32">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_status_async(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1215,7 +1213,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_results_df_async">scan_results_df_async</h3>
 <p>Scan results as Pandas data frames.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanresults.py#L101">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L101">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_df_async(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
@@ -1247,7 +1245,7 @@ Note
 <h3 class="anchored" data-anchor-id="scan_results_arrow_async">scan_results_arrow_async</h3>
 <p>Scan results as Arrow.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanresults.py#L59">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L59">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> scan_results_arrow_async(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> ScanResultsArrow</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1261,6 +1259,74 @@ Note
 </section>
 
 </main> <!-- /main -->
+<div id="copy-page-btn" class="btn-group" style="display:none;">
+  <button type="button" class="btn btn-sm btn-light" id="copy-page-action" title="Copy page as Markdown">
+    <i class="bi bi-clipboard"></i> Copy page
+  </button>
+  <button type="button" class="btn btn-sm btn-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+    <span class="visually-hidden">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="#" id="copy-page-md">
+      <i class="bi bi-clipboard"></i> Copy page as Markdown
+    </a></li>
+    <li><a class="dropdown-item" href="#" id="open-page-md">
+      <i class="bi bi-box-arrow-up-right"></i> Open Markdown
+    </a></li>
+  </ul>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var mdUrl = window.location.pathname.replace(/\.html$/, ".html.md");
+  var btn = document.getElementById("copy-page-btn");
+  var cachedMarkdown = null;
+
+  // Pre-fetch the .html.md content
+  fetch(mdUrl)
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      cachedMarkdown = text;
+
+      // Relocate button into the .quarto-title div
+      var titleDiv = document.querySelector(".quarto-title");
+      if (titleDiv) {
+        titleDiv.appendChild(btn);
+        btn.style.display = "";
+      }
+    })
+    .catch(function () {
+      // No .html.md available — remove button entirely
+      btn.remove();
+    });
+
+  function copyMarkdown(e) {
+    e.preventDefault();
+    if (!cachedMarkdown) return;
+    navigator.clipboard.writeText(cachedMarkdown).then(function () {
+      // Brief visual feedback — lock width to prevent layout shift
+      var actionBtn = document.getElementById("copy-page-action");
+      var original = actionBtn.innerHTML;
+      actionBtn.style.minWidth = actionBtn.offsetWidth + "px";
+      actionBtn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+      setTimeout(function () {
+        actionBtn.innerHTML = original;
+        actionBtn.style.minWidth = "";
+      }, 1500);
+    });
+  }
+
+  document.getElementById("copy-page-action").addEventListener("click", copyMarkdown);
+  document.getElementById("copy-page-md").addEventListener("click", copyMarkdown);
+  document.getElementById("open-page-md").addEventListener("click", function (e) {
+    e.preventDefault();
+    window.open(mdUrl, "_blank");
+  });
+});
+</script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";
@@ -1704,8 +1770,8 @@ Note
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/sources.html#claude_code" class="pagination-link" aria-label="claude_code">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">claude_code</span>
+      <a href="../reference/index.html" class="pagination-link" aria-label="Reference">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Reference</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
@@ -1720,7 +1786,7 @@ Note
     <div class="nav-footer-left">
       <ul class="footer-items list-unstyled">
     <li class="nav-item">
-    <a class="nav-link" href="https://github.com/meridianlabs-ai/">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai">
 <p>Meridian Labs</p>
 </a>
   </li>  
@@ -1728,11 +1794,6 @@ Note
     </div>   
     <div class="nav-footer-center">
       <ul class="footer-items list-unstyled">
-    <li class="nav-item">
-    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout">
-<p>Code</p>
-</a>
-  </li>  
     <li class="nav-item">
     <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/blob/main/LICENSE">
 <p>License</p>
@@ -1744,13 +1805,14 @@ Note
 </a>
   </li>  
 </ul>
-    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    </div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout">
-<p>Code</p>
-</a>
+      <i class="bi bi-github" role="img" aria-label="Inspect Scout on GitHub">
+</i> 
+    </a>
   </li>  
 </ul>
     </div>

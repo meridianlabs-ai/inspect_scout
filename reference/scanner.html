@@ -2,13 +2,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.25">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="description" content="Defining custom scanners and the supporting types, tools, and registration helpers.">
 
 <title>Scanner API – Inspect Scout</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -66,18 +70,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../reference/scanner.qmd#scanner" rel="next">
-<link href="../reference/transcript.qmd#observeemit" rel="prev">
+<link href="../reference/results.qmd#validationpredicate" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-635e1193c7225b6cf6641c3367fdb6ca.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-00d6323372c11ee1e1ff703f7da802e4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -122,8 +125,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Inspect Scout</span>
     </a>
@@ -135,7 +136,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../index.html" aria-current="page"> 
+    <a class="nav-link" href="../index.html"> 
 <span class="menu-text">Getting Started</span></a>
   </li>  
   <li class="nav-item dropdown ">
@@ -224,7 +225,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </ul>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
+    <a class="nav-link active" href="../reference/index.html" aria-current="page"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
@@ -249,7 +250,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/scanner.html">scanner</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/aio.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/scanner.html">Scanner API</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -259,10 +260,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
-    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
-      <a href="../index.html" class="sidebar-logo-link">
-      </a>
-      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -273,7 +270,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
+            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Python API</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -282,8 +279,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanning</span></a>
+            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Async API</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -291,92 +288,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan</span></a>
+  <a href="../reference/aio.html#scan_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume</span></a>
+  <a href="../reference/aio.html#scan_resume_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_resume_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete</span></a>
+  <a href="../reference/aio.html#scan_complete_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_complete_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scanjob</span></a>
+  <a href="../reference/aio.html#scan_list_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_list_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJob</span></a>
+  <a href="../reference/aio.html#scan_status_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_status_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanJobConfig</span></a>
+  <a href="../reference/aio.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_df_async</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ProjectConfig</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScannerWork</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#worklist" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Worklist</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanSpec</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanOptions</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanRevision</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ScanTranscripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptField</span></a>
+  <a href="../reference/aio.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_arrow_async</span></a>
   </div>
 </li>
       </ul>
@@ -384,7 +333,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../reference/results.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">results</span></a>
+ <span class="menu-text">Results</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -478,174 +427,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_from</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcript</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptInfo</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Transcripts</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsReader</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#samplemetadata" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SampleMetadata</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcripts_db_schema" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcripts_db_schema</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TranscriptsDB</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Column</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Condition</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LogColumns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
- <span class="menu-text">log_columns</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">transcript_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">timeline_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">segment_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">span_messages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
- <span class="menu-text">MessagesSegment</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TimelineMessages</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observe" class="sidebar-item-text sidebar-link">
- <span class="menu-text">observe</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observe_update" class="sidebar-item-text sidebar-link">
- <span class="menu-text">observe_update</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observeprovider" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ObserveProvider</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/transcript.html#observeemit" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ObserveEmit</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
             <a href="../reference/scanner.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">scanner</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+ <span class="menu-text">Scanner API</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#scanner" class="sidebar-item-text sidebar-link">
@@ -830,8 +618,109 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
+            <a href="../reference/scanning.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Scanning</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan_resume" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_resume</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scan_complete" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_complete</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scanjob</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjob" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanJob</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanjobconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanJobConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#projectconfig" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ProjectConfig</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scannerspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScannerSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scannerwork" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScannerWork</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#worklist" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Worklist</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanspec" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanSpec</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanoptions" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanOptions</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scanrevision" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanRevision</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#scantranscripts" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ScanTranscripts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scanning.html#transcriptfield" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptField</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
             <a href="../reference/sources.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">sources</span></a>
+ <span class="menu-text">Sources</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -871,8 +760,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/aio.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">aio</span></a>
+            <a href="../reference/transcript.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcript API</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -880,44 +769,152 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_async</span></a>
+  <a href="../reference/transcript.html#transcripts_from" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_from</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_resume_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_resume_async</span></a>
+  <a href="../reference/transcript.html#transcript" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcript</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_complete_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_complete_async</span></a>
+  <a href="../reference/transcript.html#transcriptinfo" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptInfo</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_list_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_list_async</span></a>
+  <a href="../reference/transcript.html#transcripts" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Transcripts</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_status_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_status_async</span></a>
+  <a href="../reference/transcript.html#transcriptsreader" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptsReader</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_results_df_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_df_async</span></a>
+  <a href="../reference/transcript.html#samplemetadata" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SampleMetadata</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/aio.html#scan_results_arrow_async" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scan_results_arrow_async</span></a>
+  <a href="../reference/transcript.html#transcripts_db" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_db</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcripts_db_schema" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcripts_db_schema</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcriptsdb" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TranscriptsDB</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#column" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Column</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#condition" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Condition</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#logcolumns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LogColumns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#log_columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">log_columns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#transcript_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">transcript_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timeline_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">timeline_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#segment_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">segment_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#span_messages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">span_messages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#messagessegment" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">MessagesSegment</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#timelinemessages" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">TimelineMessages</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observe_update" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">observe_update</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeprovider" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveProvider</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/transcript.html#observeemit" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ObserveEmit</span></a>
   </div>
 </li>
       </ul>
@@ -926,31 +923,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Scout CLI</span></a>
+            <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">CLI Commands</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout scan</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout view</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">scout trace</span></a>
-  </div>
-</li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../reference/scout_db.html" class="sidebar-item-text sidebar-link">
@@ -963,6 +942,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">scout import</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_scan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout scan</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_trace.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout trace</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/scout_view.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scout view</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -971,7 +968,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="1">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
@@ -1024,16 +1021,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#as_scorer" id="toc-as_scorer" class="nav-link" data-scroll-target="#as_scorer">as_scorer</a></li>
   </ul></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/scanning.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/scanner.html">scanner</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/aio.html">Python API</a></li><li class="breadcrumb-item"><a href="../reference/scanner.html">Scanner API</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Scanner API</h1>
 </div>
 
+<div>
+  <div class="description">
+    Defining custom scanners and the supporting types, tools, and registration helpers.
+  </div>
+</div>
 
 
 <div class="quarto-title-meta">
@@ -1054,7 +1056,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanner-1">Scanner</h3>
 <p>Scan transcript content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scanner.py#L83">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/scanner.py#L83">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Scanner(Protocol[T]):</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__call__</span>(<span class="va">self</span>, <span class="bu">input</span>: T, <span class="op">/</span>) <span class="op">-&gt;</span> Awaitable[Result <span class="op">|</span> <span class="bu">list</span>[Result]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1069,7 +1071,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scannerinput">ScannerInput</h3>
 <p>Union of all valid scanner input types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/types.py#L12">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/types.py#L12">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ScannerInput <span class="op">=</span> Union[</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Transcript,</span>
@@ -1085,7 +1087,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="result">Result</h3>
 <p>Scan result.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L34">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/result.py#L34">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Result(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1130,7 +1132,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="reference">Reference</h3>
 <p>Reference to scanned content.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L18">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/result.py#L18">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Reference(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1156,7 +1158,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="error">Error</h3>
 <p>Scan error (runtime error which occurred during scan).</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/result.py#L66">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/result.py#L66">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Error(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1189,7 +1191,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="loader">Loader</h3>
 <p>Load transcript data.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/loader.py#L48">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/loader.py#L48">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Loader(Protocol[TLoaderResult]):</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__call__</span>(</span>
@@ -1212,7 +1214,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This scanner presents a conversation transcript to an LLM along with a custom prompt and answer specification, enabling automated analysis of conversations for specific patterns, behaviors, or outcomes.</p>
 <p>Messages are extracted via <span class="element-type-name ref-interlink"><a href="../reference/transcript.html#transcript_messages">transcript_messages()</a></span>, which automatically selects the best strategy (timelines → events → raw messages) and respects context window limits. Each segment is scanned independently with globally unique message numbering (<code>[M1]</code>, <code>[M2]</code>, …) across all segments.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_llm_scanner.py#L76">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> llm_scanner(</span>
@@ -1260,9 +1262,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Transform conversation messages before analysis. Controls exclusion of system messages, reasoning tokens, and tool calls. Defaults to removing system messages. Note: custom <code>transform</code> functions that accept a <span class="element-type-name ref-interlink"><a href="../reference/transcript.html#transcript">Transcript</a></span> are not supported when <code>context_window</code> or timeline scanning produces multiple segments, as the transform receives <code>list[ChatMessage]</code> per segment.</p>
 </dd>
-<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Optional model specification. Can be a model name string or <code>Model</code> instance. If None, uses the default model.</p>
+<p>Optional model specification. Can be a model name string or <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> instance. If None, uses the default model.</p>
 </dd>
 <dt><code class="ref-definition">model_role</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1304,7 +1306,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scans transcript messages and events for text patterns using grep-style matching. By default, patterns are treated as literal strings (like grep without -E). Set <code>regex=True</code> to treat patterns as regular expressions.</p>
 <p>What gets searched depends on what’s populated in the transcript: - Messages are searched if <code>transcript.messages</code> is populated - Events are searched if <code>transcript.events</code> is populated - Control population via <code>@scanner(messages=..., events=...)</code></p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_grep_scanner/_grep_scanner.py#L14">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="at">@scanner</span>(messages<span class="op">=</span><span class="st">"all"</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> grep_scanner(</span>
@@ -1355,7 +1357,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Returns two functions that share a closure-captured counter and id_map. Each call to the returned messages_as_str auto-increments message IDs globally, so multiple calls produce M1..M5, then M6..M10, etc.</p>
 <p>The returned extract_references resolves citations from ANY prior messages_as_str call within this numbering scope.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L158">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/extract.py#L158">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> message_numbering(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    preprocessor: MessagesPreprocessor[<span class="bu">list</span>[ChatMessage]] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -1366,7 +1368,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> <span class="bu">tuple</span>[MessagesAsStr, ExtractReferences, LabelForId]</span>
 <span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
-<dt><code class="ref-definition">preprocessor</code> <span class="element-type"><span class="element-type-name"><a href="../reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span>[list[<span class="element-type-name">ChatMessage</span>]] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">preprocessor</code> <span class="element-type"><span class="element-type-name"><a href="../reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span>[list[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage">ChatMessage</a></span>]] | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Message preprocessing options applied to every call (e.g., exclude_system, exclude_reasoning). Defaults to excluding system messages when no preprocessor is provided.</p>
 </dd>
@@ -1382,7 +1384,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Combines the transcript messages, question, and answer type into a complete prompt using the standard scanner template. Use this when you want the default prompt structure but need control over generation (via <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#generate_answer">generate_answer()</a></span>) or other scanning steps.</p>
 <p>For fully custom prompt templates, use <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answer_type">answer_type()</a></span> to access the <code>.prompt</code> and <code>.format</code> strings directly.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L228">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/generate.py#L228">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scanner_prompt(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    messages: <span class="bu">str</span>,</span>
@@ -1409,7 +1411,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Generate a model response, optionally parsing it into a Result.</p>
 <p>Dispatches to the appropriate generation strategy based on the answer type: tool-based structured generation for :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answerstructured">AnswerStructured</a></span>, standard text generation with refusal retry for all other types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L82">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/generate.py#L82">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> generate_answer(</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    prompt: <span class="bu">str</span> <span class="op">|</span> <span class="bu">list</span>[ChatMessage],</span>
@@ -1422,7 +1424,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    value_to_float: ValueToFloat <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Result <span class="op">|</span> ModelOutput</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
-<dt><code class="ref-definition">prompt</code> <span class="element-type"><span class="element-type-name">str</span> | list[<span class="element-type-name">ChatMessage</span>]</span></dt>
+<dt><code class="ref-definition">prompt</code> <span class="element-type"><span class="element-type-name">str</span> | list[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage">ChatMessage</a></span>]</span></dt>
 <dd>
 <p>The scanning prompt (string or message list).</p>
 </dd>
@@ -1430,9 +1432,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Answer specification (<code>"boolean"</code>, <code>"numeric"</code>, <code>"string"</code>, <code>list[str]</code>, or :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answerstructured">AnswerStructured</a></span>). Determines both the generation strategy and (when parsing) how to extract the result.</p>
 </dd>
-<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>Model to use for generation. Can be a model name string or <code>Model</code> instance. If <code>None</code>, uses the default model.</p>
+<p>Model to use for generation. Can be a model name string or <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> instance. If <code>None</code>, uses the default model.</p>
 </dd>
 <dt><code class="ref-definition">retry_refusals</code> <span class="element-type"><span class="element-type-name">int</span></span></dt>
 <dd>
@@ -1440,7 +1442,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 <dt><code class="ref-definition">parse</code> <span class="element-type"><span class="element-type-name">bool</span></span></dt>
 <dd>
-<p>When <code>True</code> (default), parse the model output into a :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>. When <code>False</code>, return the raw :class:<code>ModelOutput</code>.</p>
+<p>When <code>True</code> (default), parse the model output into a :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>. When <code>False</code>, return the raw :class:<span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#modeloutput">ModelOutput</a></span>.</p>
 </dd>
 <dt><code class="ref-definition">extract_refs</code> <span class="element-type"><span class="element-type-name">Callable</span>[[<span class="element-type-name">str</span>], list[<span class="element-type-name"><a href="../reference/scanner.html#reference">Reference</a></span>]] | <span class="element-type-name">None</span></span></dt>
 <dd>
@@ -1457,7 +1459,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Parse a model output into a Result using the answer specification.</p>
 <p>Delegates to the answer type’s parsing logic. This is a pure function — no LLM call is made.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/generate.py#L31">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/generate.py#L31">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> parse_answer(</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    output: ModelOutput,</span>
@@ -1466,7 +1468,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    value_to_float: ValueToFloat <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
-<dt><code class="ref-definition">output</code> <span class="element-type"><span class="element-type-name">ModelOutput</span></span></dt>
+<dt><code class="ref-definition">output</code> <span class="element-type"><span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#modeloutput">ModelOutput</a></span></span></dt>
 <dd>
 <p>The model’s response to parse.</p>
 </dd>
@@ -1489,7 +1491,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Extract deduplicated references from a list of values.</p>
 <p>Recursively walks each value (strings, dicts, lists) and extracts references using the provided function, deduplicating by reference id.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/structured.py#L331">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/structured.py#L331">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> extract_references(</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    values: <span class="bu">list</span>[Any],</span>
@@ -1511,7 +1513,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Standard reducers for aggregating multi-segment scan results.</p>
 <p>Each static method is an async reducer with signature <code>(list[Result]) -&gt; Result</code>. The :meth:<code>llm</code> factory returns a reducer that uses an LLM to synthesize results.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L77">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L77">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ResultReducer</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4 class-methods">
@@ -1521,7 +1523,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Arithmetic mean of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L85">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L85">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> mean(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1536,7 +1538,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Median of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L94">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L94">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> median(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1551,7 +1553,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Mode (most common) of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L103">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L103">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> mode(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1566,7 +1568,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Maximum of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L112">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L112">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">max</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1581,7 +1583,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Minimum of numeric values.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L121">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L121">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">min</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1596,7 +1598,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Boolean OR — True if any result is True.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L130">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L130">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> <span class="bu">any</span>(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1611,7 +1613,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Union of list values, deduplicated, preserving order.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L137">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L137">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> union(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1627,7 +1629,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Most common value, with last-result tiebreaker.</p>
 <p>Counts occurrences of each <code>value</code> across results. If there is a unique winner it is used; otherwise the last result’s value breaks the tie. The <code>answer</code> is taken from the matching result.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L152">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L152">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> majority(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1642,7 +1644,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Return the last result with merged auxiliary fields.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L187">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L187">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> last(results: <span class="bu">list</span>[Result]) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1658,7 +1660,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Factory that returns an LLM-based reducer.</p>
 <p>The returned reducer formats all segment results into a prompt and asks the model to synthesize the best answer.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/_reducer.py#L197">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/_reducer.py#L197">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="at">@staticmethod</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> llm(</span>
@@ -1666,7 +1668,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    prompt: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Callable[[<span class="bu">list</span>[Result]], Awaitable[Result]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
-<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Model</span> | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">model</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Model to use for synthesis. Defaults to the default model.</p>
 </dd>
@@ -1683,7 +1685,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="answer">Answer</h3>
 <p>Protocol for LLM scanner answer types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L66">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/answer.py#L66">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="at">@runtime_checkable</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Answer(Protocol)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1707,7 +1709,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Extract and return the result from model output.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L80">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/answer.py#L80">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> result_for_answer(</span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
@@ -1716,7 +1718,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    value_to_float: ValueToFloat <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Result</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
-<dt><code class="ref-definition">output</code> <span class="element-type"><span class="element-type-name">ModelOutput</span></span></dt>
+<dt><code class="ref-definition">output</code> <span class="element-type"><span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#modeloutput">ModelOutput</a></span></span></dt>
 <dd>
 
 </dd>
@@ -1738,7 +1740,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Resolve an answer specification into an Answer object.</p>
 <p>The returned object exposes <code>.prompt</code> and <code>.format</code> properties containing the prompt text and format instructions for the answer type.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/answer.py#L115">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/answer.py#L115">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> answer_type(</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    answer: Literal[<span class="st">"boolean"</span>, <span class="st">"numeric"</span>, <span class="st">"string"</span>]</span>
@@ -1758,7 +1760,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Specification of the answer format for an LLM scanner.</p>
 <p>Pass <code>"boolean"</code>, <code>"numeric"</code>, or <code>"string"</code> for a simple answer; pass <code>list[str]</code> for a set of labels; pass :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answermultilabel">AnswerMultiLabel</a></span> for multi-classification; or pass :class:<span class="element-type-name ref-interlink"><a href="../reference/scanner.html#answerstructured">AnswerStructured</a></span> for tool-based structured output.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L56">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/types.py#L56">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>AnswerSpec: TypeAlias <span class="op">=</span> _TextualAnswerSpec <span class="op">|</span> AnswerStructured</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -1766,7 +1768,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="answermultilabel">AnswerMultiLabel</h3>
 <p>Label descriptions for LLM scanner multi-classification.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L6">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/types.py#L6">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AnswerMultiLabel(NamedTuple)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1789,7 +1791,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Answer with structured output.</p>
 <p>Structured answers are objects that conform to a JSON Schema.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_llm_scanner/types.py#L19">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_llm_scanner/types.py#L19">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AnswerStructured(NamedTuple)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1828,7 +1830,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="messages_as_str">messages_as_str</h3>
 <p>Concatenate list of chat messages into a string.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L75">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/extract.py#L75">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> messages_as_str(</span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">input</span>: T,</span>
@@ -1861,7 +1863,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Message formatting options for controlling message content display.</p>
 <p>These options control which parts of messages are included when formatting messages to strings.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L22">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/extract.py#L22">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MessageFormatOptions</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1889,7 +1891,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Provide a <code>transform</code> function for fully custom transformations. Use the higher-level options (e.g.&nbsp;<code>exclude_system</code>) to perform various common content removal transformations.</p>
 <p>The default <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> will exclude system messages and do no other transformations.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L40">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/extract.py#L40">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MessagesPreprocessor(MessageFormatOptions, Generic[T])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1908,7 +1910,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Exclude tool usage (defaults to <code>False</code>)</p>
 </dd>
-<dt><code class="ref-definition">transform</code> <span class="element-type"><span class="element-type-name">Callable</span>[[<span class="element-type-name">T</span>], <span class="element-type-name">Awaitable</span>[list[<span class="element-type-name">ChatMessage</span>]]] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">transform</code> <span class="element-type"><span class="element-type-name">Callable</span>[[<span class="element-type-name">T</span>], <span class="element-type-name">Awaitable</span>[list[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage">ChatMessage</a></span>]]] | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Transform the list of messages.</p>
 </dd>
@@ -1920,7 +1922,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Build a mapping from tool_call_id to the assistant message that made the call.</p>
 <p>This is useful for scanners that need to reference the assistant message that initiated a tool call, rather than the tool message itself.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/extract.py#L366">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/extract.py#L366">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> tool_callers(</span>
 <span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>    transcript: Transcript,</span>
@@ -1939,7 +1941,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="messagetype">MessageType</h3>
 <p>Message types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L15">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_transcript/types.py#L15">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>MessageType <span class="op">=</span> Literal[<span class="st">"system"</span>, <span class="st">"user"</span>, <span class="st">"assistant"</span>, <span class="st">"tool"</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -1947,7 +1949,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="eventtype">EventType</h3>
 <p>Event types.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L46">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_transcript/types.py#L46">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>EventType <span class="op">=</span> Literal[</span>
 <span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"model"</span>,</span>
@@ -1969,14 +1971,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Content filters for transcript loading.</p>
 <p>Specifies which messages, events, and timeline data to include when loading transcript content for scanning.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_transcript/types.py#L71">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_transcript/types.py#L71">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TranscriptContent</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
-<dt><code class="ref-definition">messages</code> <span class="element-type"><span class="element-type-name">MessageFilter</span></span></dt>
+<dt><code class="ref-definition">messages</code> <span class="element-type"><span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.analysis.html#messagefilter">MessageFilter</a></span></span></dt>
 <dd>
 <p>Filter for which message types to include.</p>
 </dd>
@@ -1995,7 +1997,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="refusalerror">RefusalError</h3>
 <p>Error indicating that the model refused a scan request.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_util/refusal.py#L7">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_util/refusal.py#L7">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> RefusalError(<span class="pp">RuntimeError</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
@@ -2006,7 +2008,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanner-2">scanner</h3>
 <p>Decorator for registering scanners.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scanner.py#L247">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/scanner.py#L247">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scanner(</span>
 <span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>    factory: ScannerFactory[P, T] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
@@ -2057,7 +2059,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Scanner version (defaults to 0).</p>
 </dd>
-<dt><code class="ref-definition">metrics</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span> | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span>]]] | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span>]] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">metrics</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span> | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span>]]] | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span>]] | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>One or more metrics to calculate over the values (only used if scanner is converted to a scorer via <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#as_scorer">as_scorer()</a></span>).</p>
 </dd>
@@ -2067,7 +2069,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="loader-1">loader</h3>
 <p>Decorator for registering loaders.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/loader.py#L151">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/loader.py#L151">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> loader(</span>
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
@@ -2102,9 +2104,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="as_scorer" class="level3">
 <h3 class="anchored" data-anchor-id="as_scorer">as_scorer</h3>
-<p>Convert a <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#scanner">Scanner</a></span> to an Inspect <code>Scorer</code>.</p>
+<p>Convert a <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#scanner">Scanner</a></span> to an Inspect <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer">Scorer</a></span>.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/6f1451913b02edf6be97663337639e17398f02b6/src/inspect_scout/_scanner/scorer.py#L28">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanner/scorer.py#L28">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> as_scorer(</span>
 <span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>    scanner: Scanner[Transcript],</span>
@@ -2117,7 +2119,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Scanner to convert (must take a <span class="element-type-name ref-interlink"><a href="../reference/transcript.html#transcript">Transcript</a></span>).</p>
 </dd>
-<dt><code class="ref-definition">metrics</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span> | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span>]]] | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name">Metric</span>]] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">metrics</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span> | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span>]]] | <span class="element-type-name">Mapping</span>[<span class="element-type-name">str</span>, <span class="element-type-name">Sequence</span>[<span class="element-type-name"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#metric">Metric</a></span>]] | <span class="element-type-name">None</span></span></dt>
 <dd>
 <p>Metrics for scorer. Defaults to <code>metrics</code> specified on the <code>@scanner</code> decorator (or <code>[mean(), stderr()]</code> if none were specified).</p>
 </dd>
@@ -2128,6 +2130,74 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 
 </main> <!-- /main -->
+<div id="copy-page-btn" class="btn-group" style="display:none;">
+  <button type="button" class="btn btn-sm btn-light" id="copy-page-action" title="Copy page as Markdown">
+    <i class="bi bi-clipboard"></i> Copy page
+  </button>
+  <button type="button" class="btn btn-sm btn-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+    <span class="visually-hidden">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="#" id="copy-page-md">
+      <i class="bi bi-clipboard"></i> Copy page as Markdown
+    </a></li>
+    <li><a class="dropdown-item" href="#" id="open-page-md">
+      <i class="bi bi-box-arrow-up-right"></i> Open Markdown
+    </a></li>
+  </ul>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var mdUrl = window.location.pathname.replace(/\.html$/, ".html.md");
+  var btn = document.getElementById("copy-page-btn");
+  var cachedMarkdown = null;
+
+  // Pre-fetch the .html.md content
+  fetch(mdUrl)
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      cachedMarkdown = text;
+
+      // Relocate button into the .quarto-title div
+      var titleDiv = document.querySelector(".quarto-title");
+      if (titleDiv) {
+        titleDiv.appendChild(btn);
+        btn.style.display = "";
+      }
+    })
+    .catch(function () {
+      // No .html.md available — remove button entirely
+      btn.remove();
+    });
+
+  function copyMarkdown(e) {
+    e.preventDefault();
+    if (!cachedMarkdown) return;
+    navigator.clipboard.writeText(cachedMarkdown).then(function () {
+      // Brief visual feedback — lock width to prevent layout shift
+      var actionBtn = document.getElementById("copy-page-action");
+      var original = actionBtn.innerHTML;
+      actionBtn.style.minWidth = actionBtn.offsetWidth + "px";
+      actionBtn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+      setTimeout(function () {
+        actionBtn.innerHTML = original;
+        actionBtn.style.minWidth = "";
+      }, 1500);
+    });
+  }
+
+  document.getElementById("copy-page-action").addEventListener("click", copyMarkdown);
+  document.getElementById("copy-page-md").addEventListener("click", copyMarkdown);
+  document.getElementById("open-page-md").addEventListener("click", function (e) {
+    e.preventDefault();
+    window.open(mdUrl, "_blank");
+  });
+});
+</script>
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";
@@ -2571,8 +2641,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/transcript.html#observeemit" class="pagination-link" aria-label="ObserveEmit">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">ObserveEmit</span>
+      <a href="../reference/results.html#validationpredicate" class="pagination-link" aria-label="ValidationPredicate">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">ValidationPredicate</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
@@ -2587,7 +2657,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div class="nav-footer-left">
       <ul class="footer-items list-unstyled">
     <li class="nav-item">
-    <a class="nav-link" href="https://github.com/meridianlabs-ai/">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai">
 <p>Meridian Labs</p>
 </a>
   </li>  
@@ -2595,11 +2665,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     </div>   
     <div class="nav-footer-center">
       <ul class="footer-items list-unstyled">
-    <li class="nav-item">
-    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout">
-<p>Code</p>
-</a>
-  </li>  
     <li class="nav-item">
     <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/blob/main/LICENSE">
 <p>License</p>
@@ -2611,13 +2676,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </a>
   </li>  
 </ul>
-    <div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/meridianlabs-ai/inspect_scout/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div>
+    </div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout">
-<p>Code</p>
-</a>
+      <i class="bi bi-github" role="img" aria-label="Inspect Scout on GitHub">
+</i> 
+    </a>
   </li>  
 </ul>
     </div>

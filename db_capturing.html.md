@@ -1,20 +1,12 @@
 # Capturing Transcripts
 
-
 ## Overview
 
-The `observe()` decorator and context manager captures LLM calls and
-writes transcripts directly to a database. This is useful for recording
-agent interactions during development and building transcript datasets
-from custom inference pipelines.
+The [observe()](reference/transcript.html.md#observe) decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.
 
-Observe can be used with either the Inspect AI [Model
-API](https://inspect.aisi.org.uk/models.html) or with the native SDKs
-from [OpenAI](https://github.com/openai/openai-python),
-[Anthropic](https://github.com/anthropics/anthropic-sdk-python), and
-[Google](https://github.com/googleapis/python-genai).
+Observe can be used with either the Inspect AI [Model API](https://inspect.aisi.org.uk/models.html) or with the native SDKs from [OpenAI](https://github.com/openai/openai-python), [Anthropic](https://github.com/anthropics/anthropic-sdk-python), and [Google](https://github.com/googleapis/python-genai).
 
-Use `observe()` as a decorator on async functions:
+Use [observe()](reference/transcript.html.md#observe) as a decorator on async functions:
 
 ``` python
 from inspect_ai.model import get_model, ChatMessageUser
@@ -40,18 +32,13 @@ async with observe(db="./transcripts", task_set="my_eval"):
     ])
 ```
 
-The `db` parameter accepts either a path string or a `TranscriptsDB`
-instance. If omitted, it defaults to the project’s configured
-transcripts directory (or `./transcripts` if none is configured).
+The `db` parameter accepts either a path string or a [TranscriptsDB](reference/transcript.html.md#transcriptsdb) instance. If omitted, it defaults to the project’s configured transcripts directory (or `./transcripts` if none is configured).
 
 ## Providers
 
-Above we demonstrated capturing transcripts when using the Inspect Model
-API. You can alternatively capture LLM generation from a native SDK by
-specifying an alternate `provider` (“openai”, “anthropic”, or “google”).
+Above we demonstrated capturing transcripts when using the Inspect Model API. You can alternatively capture LLM generation from a native SDK by specifying an alternate `provider` (“openai”, “anthropic”, or “google”).
 
-For example, here we `observe()` transcripts generated with the
-Anthropic SDK:
+For example, here we [observe()](reference/transcript.html.md#observe) transcripts generated with the Anthropic SDK:
 
 ``` python
 import anthropic
@@ -72,8 +59,7 @@ async def run_case():
     return response.content[0].text
 ```
 
-The `provider` parameter tells `observe()` to patch the specified SDK to
-capture LLM calls. Available providers include:
+The `provider` parameter tells [observe()](reference/transcript.html.md#observe) to patch the specified SDK to capture LLM calls. Available providers include:
 
 | Provider | SDK | Description |
 |----|----|----|
@@ -82,12 +68,11 @@ capture LLM calls. Available providers include:
 | `anthropic` | [Anthropic](https://github.com/anthropics/anthropic-sdk-python) | Anthropic Messages API |
 | `google` | [Google GenAI](https://github.com/googleapis/python-genai) | Google Gemini API |
 
-You can also implement a custom provider by implementing the
-`ObserveProvider` protocol.
+You can also implement a custom provider by implementing the [ObserveProvider](reference/transcript.html.md#observeprovider) protocol.
 
 ## Decorator Usage
 
-The `observe()` decorator supports several usage patterns:
+The [observe()](reference/transcript.html.md#observe) decorator supports several usage patterns:
 
 ``` python
 # without parameters (uses project default db)
@@ -108,7 +93,7 @@ async def my_function():
 
 ## Parameters
 
-The `observe()` function accepts the following parameters.
+The [observe()](reference/transcript.html.md#observe) function accepts the following parameters.
 
 | Parameter | Type | Description |
 |----|----|----|
@@ -125,12 +110,9 @@ The `observe()` function accepts the following parameters.
 | `agent_args` | `dict` | Arguments passed to create agent. |
 | `metadata` | `dict` | Additional metadata (merged with parent context). |
 
-The `task_set` and `task_id` parameters are not required but are a good
-way of providing context on transcripts (e.g in evaluations these are
-often used for dataset name and sample id).
+The `task_set` and `task_id` parameters are not required but are a good way of providing context on transcripts (e.g in evaluations these are often used for dataset name and sample id).
 
-The following `Transcript` fields are automatically populated when a
-transcript is written:
+The following [Transcript](reference/transcript.html.md#transcript) fields are automatically populated when a transcript is written:
 
 | Field | Description |
 |----|----|
@@ -142,13 +124,12 @@ transcript is written:
 | `model` | Model name from the final generation (if not explicitly set) |
 | `model_options` | Generation config from the final generation (if not explicitly set) |
 | `error` | Error message if an exception occurred |
-| `events` | Events which occurred during execution (e.g. `ModelEvent`, `ToolEvent`). |
+| `events` | Events which occurred during execution (e.g. [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent), [ToolEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#toolevent)). |
 | `messages` | Input and output message(s) of the final generation in the transcript. |
 
 ## Updating Fields
 
-Use `observe_update()` to set transcript fields after execution, which
-is useful for recording scores or outcomes:
+Use [observe_update()](reference/transcript.html.md#observe_update) to set transcript fields after execution, which is useful for recording scores or outcomes:
 
 ``` python
 @observe(db="./transcripts", task_set="eval")
@@ -169,14 +150,11 @@ async def run_and_score():
     return response.completion
 ```
 
-You can call `observe_update()` multiple times—fields are merged
-(metadata is combined, other fields are overwritten).
+You can call [observe_update()](reference/transcript.html.md#observe_update) multiple times—fields are merged (metadata is combined, other fields are overwritten).
 
 ## Nested Contexts
 
-Nested `observe` contexts support batch processing where an outer
-context sets shared parameters and inner contexts represent individual
-transcripts:
+Nested `observe` contexts support batch processing where an outer context sets shared parameters and inner contexts represent individual transcripts:
 
 ``` python
 @observe(db="./transcripts", task_set="cybench")
@@ -194,20 +172,14 @@ async def run_evaluation():
 
 Key behaviors for nested contexts:
 
-1.  **Inheritance**: Inner contexts inherit parameters from outer
-    contexts.
-2.  **Leaf detection**: Only the innermost context (the “leaf”) writes a
-    transcript
-3.  **Database scope**: The `db` parameter can only be set on the
-    outermost context
-4.  **Metadata merging**: The `metadata` dict is merged across all
-    levels
+1.  **Inheritance**: Inner contexts inherit parameters from outer contexts.
+2.  **Leaf detection**: Only the innermost context (the “leaf”) writes a transcript
+3.  **Database scope**: The `db` parameter can only be set on the outermost context
+4.  **Metadata merging**: The `metadata` dict is merged across all levels
 
 ## Error Handling
 
-Exceptions within an `observe` context are caught, logged, and saved to
-the transcript’s `error` field. The exception is suppressed to allow
-batch processing to continue:
+Exceptions within an `observe` context are caught, logged, and saved to the transcript’s `error` field. The exception is suppressed to allow batch processing to continue:
 
 ``` python
 @observe(db="./transcripts", task_set="eval")
@@ -223,8 +195,7 @@ await run_with_error()
 
 ## Example: Evaluation
 
-Here’s a complete example of running a batch evaluation with parallel
-processing:
+Here’s a complete example of running a batch evaluation with parallel processing:
 
 ``` python
 import asyncio

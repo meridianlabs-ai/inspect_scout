@@ -3,6 +3,7 @@ title: "Inspect Scout"
 description: "Transcript Analysis for AI Agents"
 tbl-colwidths: [30,70]
 lightbox: true
+llms-description: "Installation and tutorial on basic usage"
 ---
 
 ## Welcome

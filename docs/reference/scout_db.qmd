@@ -1,3 +1,4 @@
 ---
-title: scout db
+description: Manage the local transcript database.
+reference: scout db
 ---

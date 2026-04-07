@@ -1,5 +1,6 @@
 ---
 title: Publishing Transcripts
+llms-description: "Best practices for publishing transcript databases for use by others"
 ---
 
 ## Overview

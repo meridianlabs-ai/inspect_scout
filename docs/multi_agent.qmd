@@ -1,6 +1,7 @@
 ---
 title: "Multi Agent"
 lightbox: true
+llms-description: "Scanning transcripts with multiple agent trajectories"
 ---
 
 ## Overview

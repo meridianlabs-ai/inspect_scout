@@ -1,5 +1,6 @@
 ---
 title: Results
+description: Inspecting scan status, retrieving result data frames, and validating predictions.
 reference: inspect_scout
 ---
 

@@ -1,4 +1,4 @@
-import sys
+# pyright: basic
 from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
@@ -10,6 +10,7 @@ from griffe import (
     Attribute,
     Class,
     CyclicAliasError,
+    Docstring,
     DocstringSection,
     DocstringSectionExamples,
     DocstringSectionParameters,
@@ -82,6 +83,17 @@ def parse_docs(path: str, options: DocParseOptions) -> DocObject:
     if isinstance(object, Alias):
         object = object.final_target
 
+    # if we landed on a module, look for a same-named member inside it
+    # (handles cases like `from ._task import audit` where _task/audit.py
+    # contains a function also named `audit`)
+    if isinstance(object, Module):
+        leaf = path.rsplit(".", 1)[-1]
+        if leaf in object.members:
+            member = object.members[leaf]
+            if isinstance(member, Alias):
+                member = member.final_target
+            object = member
+
     # type-specific parsing
     if isinstance(object, Function):
         return parse_function_docs(object, options)
@@ -108,6 +120,43 @@ def parse_attribute_docs(attrib: Attribute, options: DocParseOptions) -> DocObje
     )
 
 
+def field_description_to_docstring(attribute: Attribute) -> None:
+    """Extract description from Pydantic Field(description=...) if no docstring."""
+    if attribute.docstring is not None:
+        return
+
+    if attribute.value is None:
+        return
+
+    value_str = str(attribute.value)
+    if not ("Field(" in value_str and "description=" in value_str):
+        return
+
+    try:
+        import ast
+
+        value_str = value_str.strip()
+        if not value_str.startswith("Field("):
+            return
+
+        tree = ast.parse(f"x = {value_str}")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            for keyword in node.keywords:
+                if keyword.arg == "description" and isinstance(
+                    keyword.value, ast.Constant
+                ):
+                    attribute.docstring = Docstring(
+                        str(keyword.value.value),
+                        lineno=attribute.lineno,
+                        endlineno=attribute.endlineno,
+                    )
+                    return
+    except Exception:
+        pass
+
+
 def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
     # if this is a protocol then amend the declaration w/ the __call__
     is_protocol = clz.bases and str(clz.bases[0]).startswith("Protocol")
@@ -116,31 +165,31 @@ def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
         call = cast(Function, clz.members["__call__"])
         call_docs = parse_function_docs(call, options)
         call_docs.name = clz.name
-        call_docs.declaration = f"class {clz.name}({str(clz.bases[0])}):\n{call_docs.declaration}"
+        call_docs.declaration = (
+            f"class {clz.name}({str(clz.bases[0])}):\n{call_docs.declaration}"
+        )
         return call_docs
     else:
         # read source
         source, declaration, docstrings = read_source(clz, options)
 
-        # read attributes and methods (both direct AND inherited)
+        # read attributes and methods
         attributes: list[DocAttribute] = []
         methods: list[DocFunction] = []
 
-        # Process inherited members FIRST (base class fields come before derived class fields)
+        # process inherited members first (base class fields appear first)
         for name, alias in clz.inherited_members.items():
-            # Skip if name is overridden by a direct member
             if name in clz.members:
                 continue
-
-            # Resolve the alias to get the actual member
             try:
                 member: Object | Alias = alias.final_target
             except (AliasResolutionError, CyclicAliasError):
                 continue
-
             if member.docstring is None:
-                continue
-
+                if isinstance(member, Attribute):
+                    field_description_to_docstring(member)
+                if member.docstring is None:
+                    continue
             if isinstance(member, Attribute):
                 if not isinstance(member.annotation, Expr):
                     continue
@@ -156,13 +205,23 @@ def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
                     )
                 )
             elif isinstance(member, Function) and include_function(member):
-                methods.append(parse_function_docs(member, options))
+                try:
+                    methods.append(parse_function_docs(member, options))
+                except MissingDocstringError:
+                    # Silently skip __init__ when it has no docstring -- the
+                    # constructor is often documented via the class docstring
+                    # or via property accessors instead.
+                    if member.name == "__init__":
+                        continue
+                    raise
 
-        # Then process direct (derived class) members
+        # then process direct (derived class) members
         for member in clz.members.values():
             if member.docstring is None:
-                continue
-
+                if isinstance(member, Attribute):
+                    field_description_to_docstring(member)
+                if member.docstring is None:
+                    continue
             if isinstance(member, Attribute):
                 if not isinstance(member.annotation, Expr):
                     continue
@@ -178,7 +237,15 @@ def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
                     )
                 )
             elif isinstance(member, Function) and include_function(member):
-                methods.append(parse_function_docs(member, options))
+                try:
+                    methods.append(parse_function_docs(member, options))
+                except MissingDocstringError:
+                    # Silently skip __init__ when it has no docstring -- the
+                    # constructor is often documented via the class docstring
+                    # or via property accessors instead.
+                    if member.name == "__init__":
+                        continue
+                    raise
 
         # return as a class
         return DocClass(
@@ -194,7 +261,7 @@ def parse_class_docs(clz: Class, options: DocParseOptions) -> DocObject:
 
 
 def include_function(function: Function) -> bool:
-    # skip private
+    # skip private (except __init__)
     if function.name.startswith("_") and not function.name.startswith("__init__"):
         return False
 
@@ -271,7 +338,8 @@ def read_params(
                 else str(p.annotation),
                 required=p.required,
                 default=str(p.default) if p.required else "",
-                description=parameter_descriptions.get(name, "") or parameter_descriptions.get(name.replace("*", ""), ""),
+                description=parameter_descriptions.get(name, "")
+                or parameter_descriptions.get(name.replace("*", ""), ""),
             )
         )
 
@@ -288,7 +356,7 @@ def read_docstring_sections(docstrings: list[DocstringSection]) -> DocstringCont
     raises: dict[str, str] = {}
     for doc_section in docstrings[1:]:
         if isinstance(doc_section, DocstringSectionParameters):
-            for p in docstrings[1].value:
+            for p in doc_section.value:
                 desc = p.description.strip()
                 parameter_descriptions[p.name] = desc
         elif isinstance(doc_section, DocstringSectionExamples):
@@ -306,15 +374,36 @@ def read_docstring_sections(docstrings: list[DocstringSection]) -> DocstringCont
     )
 
 
+class MissingDocstringError(Exception):
+    """Raised when a reference symbol has no docstring to render."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"{name} has no docstring")
+        self.name = name
+
+
 def read_source(
     object: Object, options: DocParseOptions
 ) -> tuple[str, str, list[DocstringSection]]:
-    # assert preconditions
-    sys.stderr.write(object.name + "\n")
-    assert isinstance(object.filepath, Path)
-    assert object.lineno is not None
-    assert object.docstring is not None
-    assert object.docstring.lineno is not None
+    # Build a qualified name (e.g. "MyClass.__init__") so warnings about
+    # inherited / undocumented members point at the containing class.
+    qualified = (
+        f"{object.parent.name}.{object.name}"
+        if object.parent is not None and getattr(object.parent, "name", None)
+        else object.name
+    )
+
+    # Inherited members carry no source location (their implementation lives
+    # in a parent class). Without a lineno or filepath we can't slice the
+    # declaration out of the source file, so treat them the same as a missing
+    # docstring -- the symbol is skipped with a warning rather than crashing
+    # the build.
+    if not isinstance(object.filepath, Path) or object.lineno is None:
+        raise MissingDocstringError(qualified)
+    if object.docstring is None:
+        raise MissingDocstringError(qualified)
+    if object.docstring.lineno is None:
+        raise MissingDocstringError(qualified)
 
     # url to code
     source = f"{options.source_url}/{object.relative_package_filepath}#L{object.lineno}"
@@ -324,11 +413,44 @@ def read_source(
         read_lines(object.filepath, object.lineno, object.docstring.lineno - 1)
     )
 
-    # read docstrings
-    docstrings = object.docstring.parse("google")
+    # if Unpack was expanded by griffe, reconstruct the declaration
+    if isinstance(object, Function) and "Unpack[" in declaration:
+        declaration = reconstruct_declaration(object)
+
+    # use pre-parsed docstrings (preserves UnpackTypedDictExtension expansion)
+    docstrings = object.docstring.parsed
 
     # return
     return source, declaration, docstrings
+
+
+def reconstruct_declaration(function: Function) -> str:
+    """Reconstruct a function declaration with Unpack[TypedDict] kwargs expanded."""
+    parts = [f"def {function.name}("]
+    has_keyword_only_separator = False
+    for p in function.parameters:
+        if p.name == "self" or p.name == "cls":
+            parts.append(f"    {p.name},")
+            continue
+        if p.kind == ParameterKind.keyword_only and not has_keyword_only_separator:
+            parts.append("    *,")
+            has_keyword_only_separator = True
+        ann = (
+            str(p.annotation.modernize())
+            if isinstance(p.annotation, Expr)
+            else str(p.annotation)
+        )
+        if p.required:
+            parts.append(f"    {p.name}: {ann},")
+        else:
+            parts.append(f"    {p.name}: {ann} = ...,")
+    ret = (
+        str(function.annotation.modernize())
+        if isinstance(function.annotation, Expr)
+        else str(function.annotation)
+    )
+    parts.append(f") -> {ret}")
+    return "\n".join(parts)
 
 
 def read_declaration(object: Object | Alias) -> str:

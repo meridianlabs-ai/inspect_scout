@@ -1,5 +1,6 @@
 ---
 title: Results
+llms-description: "Collecting and analyzing scanner results"
 ---
 
 ## Overview

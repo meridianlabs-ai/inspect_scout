@@ -1,5 +1,6 @@
 ---
 title: Scanners
+llms-description: "Basics of using scanners"
 ---
 
 ## Overview

@@ -1,5 +1,6 @@
 ---
 title: Scanner API
+description: Defining custom scanners and the supporting types, tools, and registration helpers.
 reference: "inspect_scout"
 ---
 

@@ -1,8 +1,26 @@
 ---
-title: "Reference"
-tbl-colwidths: [25,75]
-page-layout: full
-toc-depth: 4
+title: Reference
 ---
 
-{{< include _reference.md >}}
+### Python API
+
+| | |
+|---|---|
+| [Async API](aio.qmd) | Asynchronous variants of the scan functions for embedded library use. |
+| [Results](results.qmd) | Inspecting scan status, retrieving result data frames, and validating predictions. |
+| [Scanner API](scanner.qmd) | Defining custom scanners and the supporting types, tools, and registration helpers. |
+| [Scanning](scanning.qmd) | Running scans, configuring jobs, and orchestrating multi-scanner runs. |
+| [Sources](sources.qmd) | Built-in transcript sources for ingesting data from external observability platforms. |
+| [Transcript API](transcript.qmd) | Reading transcripts, querying the database, filtering messages, and observing message traffic. |
+: {.borderless tbl-colwidths=[35,65]}
+
+### CLI
+
+| | |
+|---|---|
+| [scout db](scout_db.qmd) | Manage the local transcript database. |
+| [scout import](scout_import.qmd) | Import transcripts from external sources into the local database. |
+| [scout scan](scout_scan.qmd) | Run scanners against transcripts. |
+| [scout trace](scout_trace.qmd) | Inspect detailed scan execution traces. |
+| [scout view](scout_view.qmd) | Browse scan results in a web UI. |
+: {.borderless tbl-colwidths=[35,65]}

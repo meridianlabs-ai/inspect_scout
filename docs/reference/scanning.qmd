@@ -1,5 +1,6 @@
 ---
 title: Scanning
+description: Running scans, configuring jobs, and orchestrating multi-scanner runs.
 reference: inspect_scout
 ---
 

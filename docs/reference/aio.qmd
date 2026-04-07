@@ -1,5 +1,6 @@
 ---
 title: Async API
+description: Asynchronous variants of the scan functions for embedded library use.
 reference: inspect_scout.aio
 ---
 

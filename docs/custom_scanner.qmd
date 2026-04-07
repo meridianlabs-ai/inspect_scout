@@ -1,5 +1,6 @@
 ---
 title: Custom Scanners
+llms-description: "Comprehensive documentation on creating custom scanners"
 ---
 
 ## Overview

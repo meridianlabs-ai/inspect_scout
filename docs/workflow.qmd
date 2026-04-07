@@ -1,5 +1,6 @@
 ---
 title: Workflow
+llms-description: "End to end workflow for transcript analysis projects"
 ---
 
 ## Overview

@@ -1,6 +1,7 @@
 ---
 title: "Validation"
 lightbox: true
+llms-description: "Validation of scanner results against ground truth target values"
 ---
 
 {{< include _validation-workflow.md >}}

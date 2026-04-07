@@ -1,5 +1,6 @@
 ---
 title: "LLM Scanner"
+llms-description: "Customizable LLM scanner for model evaluation of transcripts"
 ---
 
 ## Overview

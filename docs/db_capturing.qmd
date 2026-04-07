@@ -1,5 +1,6 @@
 ---
 title: Capturing Transcripts
+llms-description: "The `observe` decorator and context manager captures LLM calls and writes transcripts directly to a database"
 ---
 
 ## Overview

@@ -1,6 +1,7 @@
 ---
 title: "Scanner Tools"
 code-annotations: select
+llms-description: "Create custom scanners with the same tools used under the hood by `llm_scanner()`"
 ---
 
 ## Overview

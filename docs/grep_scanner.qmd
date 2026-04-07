@@ -1,5 +1,6 @@
 ---
 title: "Grep Scanner"
+llms-description: "Customizable scanner for text-pattern searching of transcripts"
 ---
 
 ## Overview

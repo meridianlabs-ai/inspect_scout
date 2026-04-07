@@ -1,139 +1,37 @@
 project:
-  type: website
-  resources:
-    - llms.txt
-  pre-render:
-    - reference/filter/sidebar.py
-  post-render:
-    - scripts/post-render.sh
+  type: meridianlabs-ai/inspect-docs
 
-metadata-files:
-  - reference/_sidebar.yml
-
-filters:
-  - at: pre-quarto
-    path: reference/filter/interlink.lua
-  - _filters/shift-headings.lua
-
-website:
-  title: "Inspect Scout"
+inspect-docs:
+  title: Inspect Scout
   description: "Transcript Analysis for AI Agents"
-  bread-crumbs: true
-  page-navigation: true
-  repo-url: https://github.com/meridianlabs-ai/inspect_scout
-  site-url: https://meridianlabs-ai.github.io/inspect_scout
-  repo-actions: [issue]
-  twitter-card:
-    title: "Inspect Scout"
-    description: "Transcript Analysis for AI Agents"
-  open-graph:
-    title: "Inspect Scout"
-    description: "Transcript Analysis for AI Agents"
-  navbar:
-    title: "Inspect Scout"
-    background: light
-    search: true
-    left:
-      - text: "Getting Started"
-        href: index.qmd
-      - text: "Using"
-        menu:
-          - href: scanners.qmd
-          - href: transcripts.qmd
-          - href: workflow.qmd
-          - href: projects.qmd
-          - href: results.qmd
-          - href: validation.qmd
-      - text: "Scanners"
-        menu:
-          - href: llm_scanner.qmd
-          - href: grep_scanner.qmd
-          - href: custom_scanner.qmd
-          - href: scanner_tools.qmd
-          - href: multi_agent.qmd
-      - text: "Transcripts"
-        menu:
-          - href: db_overview.qmd
-          - href: db_schema.qmd
-          - href: db_capturing.qmd
-          - href: db_importing.qmd
-          - href: db_publishing.qmd
-      - text: "Reference"
-        href: reference/index.qmd
-
-    right:
-      - text: Changelog
-        href: CHANGELOG.md
-      - icon: github
-        href: https://github.com/meridianlabs-ai/inspect_scout
-
-  sidebar:
-    - title: Main
-      style: docked
-      contents:
-        - text: Getting Started
-          href: index.qmd
-          contents:
-            - text: Welcome
-              href: index.qmd
-            - text: Scout Basics
-              href: index.qmd#scout-basics
-            - href: examples.qmd
-        - text: Using Scout
-          href: workflow.qmd
-          contents:
-            - href: scanners.qmd
-            - href: transcripts.qmd
-            - href: workflow.qmd
-            - href: projects.qmd
-            - href: results.qmd
-            - href: validation.qmd
-        - text: "Scanners"
-          contents:
-            - href: llm_scanner.qmd
-            - href: grep_scanner.qmd
-            - href: custom_scanner.qmd
-            - href: scanner_tools.qmd
-            - href: multi_agent.qmd
-        - text: Transcripts
-          href: db_overview.qmd
-          contents:
-            - text: Overview
-              href: db_overview.qmd
-            - text: Schema
-              href: db_schema.qmd
-            - text: Capturing
-              href: db_capturing.qmd
-            - text: Importing
-              href: db_importing.qmd
-            - text: Publishing
-              href: db_publishing.qmd
-
-  page-footer:
-    left:
-      - text: Meridian Labs
-        href: https://github.com/meridianlabs-ai/
-    center:
-      - text: Code
-        href: https://github.com/meridianlabs-ai/inspect_scout
-      - text: License
-        href: https://github.com/meridianlabs-ai/inspect_scout/blob/main/LICENSE
-      - text: Issues
-        href: https://github.com/meridianlabs-ai/inspect_scout/issues
-
-    right:
-      - icon: github
-        href: https://github.com/meridianlabs-ai/inspect_scout
-        aria-label: Inspect Scout on GitHub
-
-format:
-  html:
-    theme: [cosmo, theme.scss]
-    toc: true
-    toc-depth: 3
-    code-overflow: wrap
-    code-annotations: select
-    fig-width: 8
-    fig-height: 4
-    syntax-definitions:
-      - jinja2.xml
+  url: https://meridianlabs-ai.github.io/inspect_scout
+  module: inspect_scout
+  repo: meridianlabs-ai/inspect_scout
+  org: Meridian Labs
+  navigation:
+    - text: "Getting Started"
+      href: index.qmd
+    - text: "Using"
+      menu:
+        - href: scanners.qmd
+        - href: transcripts.qmd
+        - href: workflow.qmd
+        - href: projects.qmd
+        - href: results.qmd
+        - href: validation.qmd
+    - text: "Scanners"
+      menu:
+        - href: llm_scanner.qmd
+        - href: grep_scanner.qmd
+        - href: custom_scanner.qmd
+        - href: scanner_tools.qmd
+        - href: multi_agent.qmd
+    - text: "Transcripts"
+      menu:
+        - href: db_overview.qmd
+        - href: db_schema.qmd
+        - href: db_capturing.qmd
+        - href: db_importing.qmd
+        - href: db_publishing.qmd
+  external_refs:
+    inspect_ai: https://inspect.aisi.org.uk

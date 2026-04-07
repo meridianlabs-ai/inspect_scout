@@ -1,3 +1,4 @@
+# pyright: basic
 # (C) Datadog, Inc. 2020-present
 # All rights reserved
 # Licensed under the Apache license (see LICENSE)
@@ -7,7 +8,6 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import keyword
 from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator, cast
 
@@ -16,7 +16,9 @@ from markdown.extensions.toc import slugify
 
 
 def make_command_docs(
-    command: str,
+    *,
+    command: click.BaseCommand,
+    prog_name: str,
     depth: int = 0,
     style: str = "table",
     remove_ascii_art: bool = False,
@@ -25,14 +27,9 @@ def make_command_docs(
     has_attr_list: bool = True,
 ) -> Iterator[str]:
     """Create the Markdown lines for a command and its sub-commands."""
-    command = command.replace("-", "_")
-    module = command
-    # Python keywords can't be module names, so we use the {command}_command convention
-    if keyword.iskeyword(module):
-        module = f"{module}_command"
     for line in _recursively_make_command_docs(
-        f"scout {command}",
-        load_command(f"inspect_scout._cli.{module}", f"{command}_command"),
+        prog_name,
+        cast(click.Command, command),
         depth=depth,
         style=style,
         remove_ascii_art=remove_ascii_art,
@@ -44,6 +41,96 @@ def make_command_docs(
             continue
 
         yield line
+
+
+def resolve_cli_command(
+    entry_point: str,
+    subcommand_path: list[str] | None = None,
+    cli_name: str | None = None,
+) -> click.BaseCommand:
+    """Resolve a Click command from a pyproject `[project.scripts]` entry point.
+
+    `entry_point` is a string of the form `module:attribute`. The attribute
+    may be either a click group/command directly, or a wrapper function (in
+    which case the module is scanned for a top-level click group). When
+    `subcommand_path` is non-empty, the function walks into that group's
+    nested subcommands and returns the leaf.
+
+    Examples:
+        # entry: scout = "inspect_scout._cli.main:main"
+        resolve_cli_command("inspect_scout._cli.main:main", ["import"])
+            -> the `import` subcommand of the scout group
+
+        resolve_cli_command("inspect_scout._cli.main:main", ["scan", "resume"])
+            -> the `resume` subcommand of `scan` (nested groups)
+
+        resolve_cli_command("inspect_scout._cli.main:main")
+            -> the top-level scout group itself
+    """
+    if ":" in entry_point:
+        module_path, attr = entry_point.rsplit(":", 1)
+    else:
+        module_path, attr = entry_point, "main"
+
+    try:
+        mod = importlib.import_module(module_path)
+    except SystemExit:
+        raise RuntimeError("the module appeared to call sys.exit()")  # pragma: no cover
+
+    obj = getattr(mod, attr, None)
+
+    # If the entry-point attribute is a wrapper function (e.g. `def main():
+    # init(); cli()`), it won't be a click command -- scan the module for a
+    # top-level click group instead. Prefer a group whose `.name` matches
+    # `cli_name` so we don't pick up unrelated groups (e.g. a `db_command`
+    # subgroup imported into the same module).
+    if not isinstance(obj, click.BaseCommand):  # type: ignore[arg-type]
+        obj = _find_click_group_in_module(mod, preferred_name=cli_name)
+        if obj is None:
+            raise RuntimeError(
+                f"Entry point {entry_point!r} is not a click command and "
+                f"no click group was found in module {module_path!r}"
+            )
+
+    current: click.BaseCommand = cast(click.BaseCommand, obj)
+    for token in subcommand_path or ():
+        if not isinstance(current, click.Group):
+            raise RuntimeError(
+                f"Cannot descend into {token!r}: parent is not a click group"
+            )
+        child = current.commands.get(token)
+        if child is None:
+            available = ", ".join(sorted(current.commands.keys())) or "(none)"
+            raise RuntimeError(
+                f"Subcommand {token!r} not found in click group. "
+                f"Available: {available}"
+            )
+        current = child
+    return current
+
+
+def _find_click_group_in_module(
+    mod: Any, preferred_name: str | None = None
+) -> click.BaseCommand | None:
+    """Return a top-level `click.BaseCommand` declared in `mod`.
+
+    Two-pass scan: first prefer a command whose `.name` matches
+    `preferred_name` (to avoid picking up unrelated subgroups that happen
+    to be imported into the same module). Otherwise return the first
+    `click.BaseCommand` found.
+    """
+    found: list[click.BaseCommand] = []
+    for name in dir(mod):
+        candidate = getattr(mod, name, None)
+        if isinstance(candidate, click.BaseCommand):  # type: ignore[arg-type]
+            found.append(cast(click.BaseCommand, candidate))
+
+    if preferred_name is not None:
+        for cmd in found:
+            if getattr(cmd, "name", None) == preferred_name:
+                return cmd
+
+    return found[0] if found else None
 
 
 def _recursively_make_command_docs(
@@ -62,15 +149,16 @@ def _recursively_make_command_docs(
 
     if ctx.command.hidden and not show_hidden:
         return
-    
+
     subcommands = _get_sub_commands(ctx.command, ctx)
 
     if parent is not None:
-        yield from _make_title(ctx, depth+1 if parent is None else depth, has_attr_list=has_attr_list)
+        yield from _make_title(ctx, depth, has_attr_list=has_attr_list)
     yield from _make_description(ctx, remove_ascii_art=remove_ascii_art)
     yield from _make_usage(ctx)
-    
-    yield from _make_options(ctx, style, show_hidden=show_hidden)
+    if len(subcommands) == 0:
+        yield from _make_options(ctx, style, show_hidden=show_hidden)
+        return
 
     if list_subcommands:
         yield from _make_subcommands_links(
@@ -79,7 +167,6 @@ def _recursively_make_command_docs(
             has_attr_list=has_attr_list,
             show_hidden=show_hidden,
         )
-
 
     for command in subcommands:
         yield from _recursively_make_command_docs(
@@ -106,17 +193,18 @@ def _get_sub_commands(command: click.Command, ctx: click.Context) -> list[click.
     if subcommands:
         return list(subcommands.values())
 
-    if not isinstance(command, click.Group):
+    if not isinstance(command, click.MultiCommand):  # type: ignore[arg-type]
         return []
 
-    subcommands = []
+    multi = cast(click.MultiCommand, command) # type: ignore
+    subcommands_list: list[click.Command] = []
 
-    for name in command.list_commands(ctx):
-        subcommand = command.get_command(ctx, name)
+    for name in multi.list_commands(ctx):
+        subcommand = multi.get_command(ctx, name)
         assert subcommand is not None
-        subcommands.append(subcommand)
+        subcommands_list.append(subcommand)
 
-    return subcommands
+    return subcommands_list
 
 
 def _make_title(ctx: click.Context, depth: int, *, has_attr_list: bool) -> Iterator[str]:
@@ -268,7 +356,6 @@ _HTML_PIPE = "&#x7C;"
 def _format_table_option_type(option: click.Option) -> str:
     typename = option.type.name
 
-
     if isinstance(option.type, click.Choice):
         # @click.option(..., type=click.Choice(["A", "B", "C"]))
         # -> choices (`A` | `B` | `C`)
@@ -278,22 +365,22 @@ def _format_table_option_type(option: click.Option) -> str:
     if isinstance(option.type, click.DateTime):
         # @click.option(..., type=click.DateTime(["A", "B", "C"]))
         # -> datetime (`%Y-%m-%d` | `%Y-%m-%dT%H:%M:%S` | `%Y-%m-%d %H:%M:%S`)
-        formats = f" {_HTML_PIPE} ".join(f"`{fmt}`" for fmt in option.type.formats) 
+        formats = f" {_HTML_PIPE} ".join(f"`{fmt}`" for fmt in option.type.formats)
         return f"{typename} ({formats})"
 
     if isinstance(option.type, (click.IntRange, click.FloatRange)):
-        if option.type.min is not None and option.type.max is not None:  
+        if option.type.min is not None and option.type.max is not None:
             # @click.option(..., type=click.IntRange(min=0, max=10))
             # -> integer range (between `0` and `10`)
-            return f"{typename} (between `{option.type.min}` and `{option.type.max}`)" 
+            return f"{typename} (between `{option.type.min}` and `{option.type.max}`)"
         elif option.type.min is not None:
             # @click.option(..., type=click.IntRange(min=0))
             # -> integer range (`0` and above)
-            return f"{typename} (`{option.type.min}` and above)" 
+            return f"{typename} (`{option.type.min}` and above)"
         else:
             # @click.option(..., type=click.IntRange(max=10))
             # -> integer range (`10` and below)
-            return f"{typename} (`{option.type.max}` and below)" 
+            return f"{typename} (`{option.type.max}` and below)"
 
     # -> "boolean", "text", etc.
     return typename
@@ -317,8 +404,8 @@ def _format_table_option_row(option: click.Option) -> str:
     description = option.help if option.help is not None else "N/A"
 
     # -> `False`
-    none_default_msg = "_required" if option.required else ""
-    default = f"`{option.default}`" if (option.default is not None and not not option.default) else none_default_msg
+    none_default_msg = "_required" if option.required else "None"
+    default = f"`{option.default}`" if option.default is not None else none_default_msg
 
     # -> "| `-V`, `--version` / `--show-version` | boolean | Show version info. | `False` |"
     return f"| {names} | {value_type} | {description} | {default} |"
@@ -372,30 +459,37 @@ def _make_subcommands_links(
 
 
 def load_command(module: str, attribute: str) -> click.Command:
+    """Load and return a Click command object from a module.
+
+    First tries `getattr(module, attribute)`. If that yields a Click command,
+    returns it. Otherwise scans the module for any `click.BaseCommand` whose
+    `.name` matches `attribute` — this handles the common pattern of
+    decorating a function named `foo_command` with `@click.command("foo")`,
+    where the attribute name in the module differs from the CLI command name.
     """
-    Load and return the Click command object located at '<module>:<attribute>'.
-    """
-    command = _load_obj(module, attribute)
-
-    if not isinstance(command, click.Command):
-        raise RuntimeError(
-            f"{attribute!r} must be a 'click.Command' object, got {type(command)}"
-        )
-
-    return command
-
-
-def _load_obj(module: str, attribute: str) -> Any:
     try:
         mod = importlib.import_module(module)
     except SystemExit:
         raise RuntimeError("the module appeared to call sys.exit()")  # pragma: no cover
 
-    try:
-        return getattr(mod, attribute)
-    except AttributeError:
-        raise RuntimeError(f"Module {module!r} has no attribute {attribute!r}")
-    
+    # 1. direct attribute lookup
+    obj = getattr(mod, attribute, None)
+    if isinstance(obj, click.BaseCommand):  # type: ignore[arg-type]
+        return obj
 
-if __name__ == "__main__":
-    print("\n".join(list(make_command_docs("scan"))))
+    # 2. scan for a Click command whose .name matches
+    for name in dir(mod):
+        candidate = getattr(mod, name, None)
+        if (
+            isinstance(candidate, click.BaseCommand)  # type: ignore[arg-type]
+            and getattr(candidate, "name", None) == attribute
+        ):
+            return candidate
+
+    if obj is None:
+        raise RuntimeError(
+            f"Module {module!r} has no Click command named {attribute!r}"
+        )
+    raise RuntimeError(
+        f"{attribute!r} must be a 'click.BaseCommand' object, got {type(obj)}"
+    )

@@ -1,5 +1,6 @@
 ---
 title: Database Schema
+llms-description: "Details on the required and optional fields for databases and underlying data formats for messages and events"
 ---
 
 ## Overview

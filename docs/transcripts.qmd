@@ -1,5 +1,6 @@
 ---
 title: Transcripts
+llms-description: "Reading and filtering transcripts for scanning"
 ---
 
 ## Overview

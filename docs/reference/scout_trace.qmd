@@ -1,4 +1,5 @@
 ---
-title: scout trace
+description: Inspect detailed scan execution traces.
+reference: scout trace
 ---
 

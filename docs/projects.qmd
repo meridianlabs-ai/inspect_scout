@@ -1,5 +1,6 @@
 ---
 title: Projects
+llms-description: "Using projects to manage scanning configuration"
 ---
 
 ## Overview

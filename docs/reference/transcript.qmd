@@ -1,5 +1,6 @@
 ---
 title: Transcript API
+description: Reading transcripts, querying the database, filtering messages, and observing message traffic.
 reference: "inspect_scout"
 ---
 

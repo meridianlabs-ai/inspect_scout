@@ -1,3 +1,4 @@
 ---
-title: scout import
+description: Import transcripts from external sources into the local database.
+reference: scout import
 ---

@@ -1,6 +1,6 @@
 title: Inspect Docs
 author: Meridian Labs
-version: 1.0.0
+version: 1.0.1
 quarto-required: ">=1.9"
 contributes:
   project:

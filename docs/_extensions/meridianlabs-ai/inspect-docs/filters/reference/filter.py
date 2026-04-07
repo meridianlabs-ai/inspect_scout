@@ -136,6 +136,19 @@ def main() -> Any:
             return False
         return os.path.basename(doc_path.rstrip("/").rstrip(os.sep)) == "reference"
 
+    # default the page title from the `reference:` field when no title
+    # is set explicitly. Runs once per document.
+    def set_default_title(elem: pf.Element, doc: pf.Doc) -> None:
+        if not isinstance(elem, pf.Doc):
+            return
+        if "title" in doc.metadata:
+            return
+        if "reference" not in doc.metadata:
+            return
+        reference = pf.stringify(doc.metadata["reference"])
+        if reference:
+            doc.metadata["title"] = pf.MetaInlines(pf.Str(reference))
+
     # python api -- convert h3 headings into rendered reference docs
     def python_api(elem: pf.Element, doc: pf.Doc) -> Any:
         if not isinstance(elem, pf.Header):
@@ -240,7 +253,7 @@ def main() -> Any:
         )
         doc.content.append(pf.RawBlock(docs, "markdown"))
 
-    return pf.run_filters([python_api, click_cli])
+    return pf.run_filters([set_default_title, python_api, click_cli])
 
 
 if __name__ == "__main__":

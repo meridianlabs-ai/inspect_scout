@@ -23,8 +23,8 @@ contributes:
     html:
       theme: [cosmo, resources/theme.scss]
       toc: true
-      toc-depth: 2
-      toc-expand: true
+      toc-depth: 3
+      toc-expand: 1
       code-overflow: wrap
       code-annotations: select
       fig-width: 8

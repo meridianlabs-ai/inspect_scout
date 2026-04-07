@@ -132,7 +132,7 @@ def single_process_strategy(
         def _scanner_job_info(item: ScannerJob) -> str:
             return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
-        @throttle(2)
+        @throttle(1)
         def _update_metrics() -> None:
             if update_metrics:
                 # USS - Unique Set Size

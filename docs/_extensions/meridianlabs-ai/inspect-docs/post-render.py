@@ -33,6 +33,7 @@ def main() -> None:
             config: YamlDict = yaml.safe_load(f)
         opts: YamlDict = config.get("inspect-docs", {})
         generate_llms_txt(output_dir, opts)
+        generate_llms_full_and_guide(output_dir, opts)
 
 
 def rename_llms_files(output_dir: Path, output_files: list[Path] | None) -> None:
@@ -193,6 +194,95 @@ def format_reference_section(module_name: str, base_url: str) -> list[str]:
         return []
 
     return ["## Reference", "", *entries, ""]
+
+
+def generate_llms_full_and_guide(output_dir: Path, opts: YamlDict) -> None:
+    """Generate `llms-full.txt` and `llms-guide.txt` at the site root.
+
+    Both files are a concatenation of every page's rendered Markdown
+    source (`.html.md`) in navigation order, prefixed with the site
+    title and description:
+
+    - `llms-full.txt`  -- every page, including reference docs.
+    - `llms-guide.txt` -- every page except anything under `reference/`.
+
+    The per-page Markdown is already written to `output_dir` by Quarto's
+    llms-txt pass; this function just concatenates what's already there.
+    """
+    title: str = opts.get("title", "")
+    description: str = opts.get("description", "")
+    navigation: list[YamlDict] = opts.get("navigation", [])
+
+    nav_paths = _collect_nav_qmd_paths(navigation)
+    ref_paths = _collect_reference_qmd_paths()
+
+    header: list[str] = []
+    if title:
+        header.append(f"# {title}")
+        header.append("")
+    if description:
+        header.append(f"> {description}")
+        header.append("")
+    header_text = "\n".join(header)
+
+    def read_html_md(qmd: Path) -> str:
+        # .qmd -> .html.md (doesn't use with_suffix because of double suffix)
+        rel = str(qmd).removesuffix(".qmd") + ".html.md"
+        html_md = output_dir / rel
+        return html_md.read_text() if html_md.exists() else ""
+
+    # llms-guide.txt: navigation pages only, excluding reference/
+    guide_parts: list[str] = [header_text] if header_text else []
+    seen: set[str] = set()
+    for qmd in nav_paths:
+        if qmd.parts and qmd.parts[0] == "reference":
+            continue
+        key = str(qmd)
+        if key in seen:
+            continue
+        seen.add(key)
+        body = read_html_md(qmd)
+        if body:
+            guide_parts.append(body)
+    (output_dir / "llms-guide.txt").write_text("\n\n".join(guide_parts))
+
+    # llms-full.txt: navigation pages + all reference pages
+    full_parts: list[str] = [header_text] if header_text else []
+    seen = set()
+    for qmd in list(nav_paths) + list(ref_paths):
+        key = str(qmd)
+        if key in seen:
+            continue
+        seen.add(key)
+        body = read_html_md(qmd)
+        if body:
+            full_parts.append(body)
+    (output_dir / "llms-full.txt").write_text("\n\n".join(full_parts))
+
+
+def _collect_nav_qmd_paths(navigation: list[YamlDict]) -> list[Path]:
+    """Walk the navigation tree in order and return every `href` as a Path."""
+    paths: list[Path] = []
+
+    def walk(items: list[YamlDict]) -> None:
+        for item in items:
+            href = item.get("href")
+            if isinstance(href, str) and href.endswith(".qmd"):
+                paths.append(Path(href))
+            children = item.get("contents") or item.get("menu")
+            if isinstance(children, list):
+                walk(children)
+
+    walk(navigation)
+    return paths
+
+
+def _collect_reference_qmd_paths() -> list[Path]:
+    """Return all `.qmd` files under `reference/` except the auto-generated index."""
+    ref_dir = Path("reference")
+    if not ref_dir.is_dir():
+        return []
+    return [qmd for qmd in sorted(ref_dir.glob("*.qmd")) if qmd.stem != "index"]
 
 
 def qmd_to_url(href: str, base_url: str) -> str:

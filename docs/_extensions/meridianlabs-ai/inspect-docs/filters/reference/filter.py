@@ -2,7 +2,14 @@
 import os
 import subprocess
 import sys
+import warnings
 from typing import Any, cast
+
+# Suppress a noisy SyntaxWarning emitted by panflute's own io.py on Python
+# 3.12+ (the warning is unrelated to our code -- panflute's docstring uses
+# `\*\*kwargs`). The filter catches the warning on first compile of any
+# panflute module.
+warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 # ensure sibling imports (parse/render/commands) work regardless of cwd
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))

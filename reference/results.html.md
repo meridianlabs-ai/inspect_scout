@@ -8,7 +8,7 @@ Inspecting scan status, retrieving result data frames, and validating prediction
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanlist.py#L7)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_scanlist.py#L7)
 
 ``` python
 def scan_list(scans_location: str) -> list[Status]
@@ -21,7 +21,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L20)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_scanresults.py#L20)
 
 ``` python
 def scan_status(scan_location: str) -> Status
@@ -34,7 +34,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Status of scan job.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_recorder/recorder.py#L19)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_recorder/recorder.py#L19)
 
 ``` python
 @dataclass
@@ -62,7 +62,7 @@ Errors during last scan attempt.
 
 Summary of scan results.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_recorder/summary.py#L68)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_recorder/summary.py#L68)
 
 ``` python
 class Summary(BaseModel)
@@ -80,7 +80,7 @@ Summary for each scanner.
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L72)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_scanresults.py#L72)
 
 ``` python
 def scan_results_df(
@@ -110,7 +110,7 @@ Scan results as pandas data frames.
 
 The `scanners` mapping provides lazy access to DataFrames - each DataFrame is only materialized when its key is accessed. This allows efficient access to specific scanner results without loading all data upfront.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_recorder/recorder.py#L86)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_recorder/recorder.py#L86)
 
 ``` python
 @dataclass
@@ -141,7 +141,7 @@ Mapping of scanner name to pandas data frame (lazily loaded).
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_scanresults.py#L45)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_scanresults.py#L45)
 
 ``` python
 def scan_results_arrow(
@@ -156,7 +156,7 @@ Location of scan (e.g. directory or s3 bucket).
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_recorder/recorder.py#L39)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_recorder/recorder.py#L39)
 
 ``` python
 @dataclass
@@ -190,7 +190,7 @@ Acquire a reader for the specified scanner.
 
 The return reader is a context manager that should be acquired before reading.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_recorder/recorder.py#L58)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_recorder/recorder.py#L58)
 
 ``` python
 @abc.abstractmethod
@@ -214,7 +214,7 @@ def reader(
 
 Create a validation set by reading cases from a file or data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/validation.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/validation.py#L15)
 
 ``` python
 def validation_set(
@@ -237,7 +237,7 @@ Optional split name(s) to filter cases by. Only cases with matching split values
 
 Validation set for a scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/types.py#L64)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/types.py#L64)
 
 ``` python
 class ValidationSet(BaseModel)
@@ -264,7 +264,7 @@ A [ValidationCase](../reference/results.html.md#validationcase) specifies the gr
 
 Use `target` for single-value or dict validation. Use `labels` for validating resultsets with label-specific expectations.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/types.py#L10)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/types.py#L10)
 
 ``` python
 class ValidationCase(BaseModel)
@@ -298,7 +298,7 @@ Optional split name for organizing cases (e.g., ‘dev’, ‘test’, ‘train�
 coerce_labels_to_bool  
 Coerce label values to boolean for backwards compatibility.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/types.py#L46)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/types.py#L46)
 
 ``` python
 @field_validator("labels", mode="before")
@@ -312,7 +312,7 @@ def coerce_labels_to_bool(cls, v: Any) -> dict[str, bool] | None
 
 String name of a built-in validation predicate.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/predicates.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/predicates.py#L15)
 
 ``` python
 PredicateType: TypeAlias = Literal[
@@ -334,7 +334,7 @@ PredicateType: TypeAlias = Literal[
 
 Function that implements a validation predicate.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/predicates.py#L9)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/predicates.py#L9)
 
 ``` python
 PredicateFn: TypeAlias = Callable[
@@ -346,7 +346,7 @@ PredicateFn: TypeAlias = Callable[
 
 Predicate used to compare scanner result with target value.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/5282cf41f9ae85a8bc81a91585c6c3424508c536/src/inspect_scout/_validation/predicates.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f15bbca722b0a4a0428269a2b4c1df96d3cf5869/src/inspect_scout/_validation/predicates.py#L31)
 
 ``` python
 ValidationPredicate: TypeAlias = PredicateType | PredicateFn

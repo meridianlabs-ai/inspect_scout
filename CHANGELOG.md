@@ -1,3 +1,7 @@
+## Unreleased
+
+- Utilities: Export `message_as_str` function.
+
 ## 0.4.25 (04 April 2026)
 
 - Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.

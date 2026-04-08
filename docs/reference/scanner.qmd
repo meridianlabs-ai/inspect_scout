@@ -34,6 +34,7 @@ reference: "inspect_scout"
 
 ## Utils
 
+### message_as_str
 ### messages_as_str
 ### MessageFormatOptions
 ### MessagesPreprocessor

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
 from inspect_ai._util.kvstore import KVStore
+from pydantic import TypeAdapter
 
 from .._grep_scanner._grep_scanner import grep_scanner
 from .._llm_scanner._llm_scanner import llm_scanner
@@ -14,7 +15,14 @@ from .._query import Column, Query
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
 from .._util.appdirs import scout_data_dir
-from ._api_v2_types import SavedSearch, SavedSearchListResponse, SearchRequest
+from ._api_v2_types import (
+    GrepSavedSearch,
+    GrepSearchRequest,
+    LlmSavedSearch,
+    SavedSearch,
+    SavedSearchListResponse,
+    SearchRequest,
+)
 from ._server_common import decode_base64url
 
 LLM_SEARCH_TEMPLATE = """\
@@ -39,13 +47,18 @@ If nothing in the transcript matches the query, say so briefly.
 """
 
 MAX_ENTRIES = 500
+SAVED_SEARCH_ADAPTER: TypeAdapter[SavedSearch] = TypeAdapter(SavedSearch)
 
 
-def _search_id(query: str, search_type: str, model: str | None = None) -> str:
+def _search_id(request: SearchRequest) -> str:
     """Deterministic ID from search parameters."""
-    parts: dict[str, str] = {"query": query, "type": search_type}
-    if model is not None:
-        parts["model"] = model
+    parts: dict[str, str | bool] = {"query": request.query, "type": request.type}
+    if isinstance(request, GrepSearchRequest):
+        parts["regex"] = request.regex
+        parts["ignore_case"] = request.ignore_case
+        parts["word_boundary"] = request.word_boundary
+    elif request.model is not None:
+        parts["model"] = request.model
     canonical = json.dumps(parts, sort_keys=True)
     return hashlib.sha256(canonical.encode()).hexdigest()[:12]
 
@@ -93,15 +106,14 @@ def create_search_router() -> APIRouter:
         Returns cached results if the same search was run before.
         """
         transcript_dir = decode_base64url(dir)
-        model = request.model if request.type == "llm" else None
-        sid = _search_id(request.query, request.type, model)
+        sid = _search_id(request)
         key = _composite_key(transcript_dir, id, sid)
 
         # Check cache
         with _search_store() as store:
             cached = store.get(key)
         if cached:
-            return SavedSearch.model_validate_json(cached)
+            return SAVED_SEARCH_ADAPTER.validate_json(cached)
 
         # Load transcript
         async with transcripts_view(transcript_dir) as view:
@@ -114,33 +126,42 @@ def create_search_router() -> APIRouter:
             )
 
         # Run search
-        scan = (
-            grep_scanner(
+        if isinstance(request, GrepSearchRequest):
+            output = await grep_scanner(
                 request.query,
-                regex=False,
-                ignore_case=True,
-                word_boundary=False,
-            )
-            if request.type == "grep"
-            else llm_scanner(
+                regex=request.regex,
+                ignore_case=request.ignore_case,
+                word_boundary=request.word_boundary,
+            )(transcript)
+        else:
+            output = await llm_scanner(
                 question=request.query,
                 answer="string",
                 template=LLM_SEARCH_TEMPLATE,
-                model=model,
-            )
-        )
-        output = await scan(transcript)
+                model=request.model,
+            )(transcript)
         results = output if isinstance(output, list) else [output]
 
         # Persist
-        saved = SavedSearch(
-            search_id=sid,
-            query=request.query,
-            type=request.type,
-            model=model,
-            results=results,
-            created_at=datetime.now(timezone.utc).isoformat(),
-        )
+        created_at = datetime.now(timezone.utc).isoformat()
+        if isinstance(request, GrepSearchRequest):
+            saved: SavedSearch = GrepSavedSearch(
+                search_id=sid,
+                query=request.query,
+                regex=request.regex,
+                ignore_case=request.ignore_case,
+                word_boundary=request.word_boundary,
+                results=results,
+                created_at=created_at,
+            )
+        else:
+            saved = LlmSavedSearch(
+                search_id=sid,
+                query=request.query,
+                model=request.model,
+                results=results,
+                created_at=created_at,
+            )
         with _search_store() as store:
             store.put(key, saved.model_dump_json())
 
@@ -161,7 +182,7 @@ def create_search_router() -> APIRouter:
         with _search_store() as store:
             rows = store.list_by_prefix(prefix)
 
-        items = [SavedSearch.model_validate_json(value) for _, value in rows]
+        items = [SAVED_SEARCH_ADAPTER.validate_json(value) for _, value in rows]
         return SavedSearchListResponse(items=items)
 
     @router.get(
@@ -182,7 +203,7 @@ def create_search_router() -> APIRouter:
 
         if value is None:
             raise HTTPException(status_code=404, detail="Search not found")
-        return SavedSearch.model_validate_json(value)
+        return SAVED_SEARCH_ADAPTER.validate_json(value)
 
     @router.delete(
         "/transcripts/{dir}/{id}/searches/{search_id}",

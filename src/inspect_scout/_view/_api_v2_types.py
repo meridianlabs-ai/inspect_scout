@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
 from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.log import EventsData
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from typing_extensions import TypeAliasType
 
 from .._project.types import ProjectConfig
 from .._query.condition import Condition
@@ -292,26 +293,67 @@ class StreamMetadata:
     uncompressed_size: int | None
 
 
-@dataclass
-class SearchRequest:
-    """Request body for the search endpoint."""
+class SearchRequestBase(BaseModel):
+    """Shared fields for search request variants."""
 
     query: str
-    type: Literal["grep", "llm"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class GrepSearchRequest(SearchRequestBase):
+    """Request body for grep transcript searches."""
+
+    type: Literal["grep"] = "grep"
+    regex: bool = False
+    ignore_case: bool = True
+    word_boundary: bool = False
+
+
+class LlmSearchRequest(SearchRequestBase):
+    """Request body for LLM transcript searches."""
+
+    type: Literal["llm"] = "llm"
     model: str | None = None
-    """Model to use for LLM search. Ignored for grep searches."""
 
 
-class SavedSearch(BaseModel):
-    """A persisted search result."""
+SearchRequest = TypeAliasType(
+    "SearchRequest",
+    Annotated[GrepSearchRequest | LlmSearchRequest, Field(discriminator="type")],
+)
+
+
+class SavedSearchBase(BaseModel):
+    """Shared fields for persisted search results."""
 
     search_id: str
     query: str
-    type: Literal["grep", "llm"]
-    model: str | None = None
-    """Model used for LLM search. None for grep searches."""
     results: list[Result]
     created_at: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class GrepSavedSearch(SavedSearchBase):
+    """A persisted grep search result."""
+
+    type: Literal["grep"] = "grep"
+    regex: bool
+    ignore_case: bool
+    word_boundary: bool
+
+
+class LlmSavedSearch(SavedSearchBase):
+    """A persisted LLM search result."""
+
+    type: Literal["llm"] = "llm"
+    model: str | None = None
+
+
+SavedSearch = TypeAliasType(
+    "SavedSearch",
+    Annotated[GrepSavedSearch | LlmSavedSearch, Field(discriminator="type")],
+)
 
 
 @dataclass

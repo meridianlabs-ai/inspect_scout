@@ -3165,6 +3165,101 @@
         "title": "GenerateConfig",
         "type": "object"
       },
+      "GrepSavedSearch": {
+        "additionalProperties": false,
+        "description": "A persisted grep search result.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "ignore_case": {
+            "title": "Ignore Case",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "regex": {
+            "title": "Regex",
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "grep",
+            "default": "grep",
+            "title": "Type",
+            "type": "string"
+          },
+          "word_boundary": {
+            "title": "Word Boundary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "search_id",
+          "query",
+          "results",
+          "created_at",
+          "type",
+          "regex",
+          "ignore_case",
+          "word_boundary"
+        ],
+        "title": "GrepSavedSearch",
+        "type": "object"
+      },
+      "GrepSearchRequest": {
+        "additionalProperties": false,
+        "description": "Request body for grep transcript searches.",
+        "properties": {
+          "ignore_case": {
+            "default": true,
+            "title": "Ignore Case",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "regex": {
+            "default": false,
+            "title": "Regex",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "grep",
+            "default": "grep",
+            "title": "Type",
+            "type": "string"
+          },
+          "word_boundary": {
+            "default": false,
+            "title": "Word Boundary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "type",
+          "regex",
+          "ignore_case",
+          "word_boundary"
+        ],
+        "title": "GrepSearchRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3436,18 +3531,6 @@
             ],
             "title": "Enum"
           },
-          "examples": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Examples"
-          },
           "format": {
             "anyOf": [
               {
@@ -3468,67 +3551,6 @@
                 "type": "null"
               }
             ]
-          },
-          "maxLength": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maxlength"
-          },
-          "maximum": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum"
-          },
-          "minLength": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minlength"
-          },
-          "minimum": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum"
-          },
-          "pattern": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pattern"
           },
           "properties": {
             "anyOf": [
@@ -3657,18 +3679,6 @@
             ],
             "title": "Enum"
           },
-          "examples": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Examples"
-          },
           "format": {
             "anyOf": [
               {
@@ -3689,67 +3699,6 @@
                 "type": "null"
               }
             ]
-          },
-          "maxLength": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maxlength"
-          },
-          "maximum": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum"
-          },
-          "minLength": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minlength"
-          },
-          "minimum": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum"
-          },
-          "pattern": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pattern"
           },
           "properties": {
             "anyOf": [
@@ -3868,6 +3817,57 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LlmSavedSearch": {
+        "additionalProperties": false,
+        "description": "A persisted LLM search result.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "llm",
+            "default": "llm",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_id",
+          "query",
+          "results",
+          "created_at",
+          "type"
+        ],
+        "title": "LlmSavedSearch",
+        "type": "object"
+      },
       "LlmScannerParams": {
         "description": "Parameters for llm_scanner.",
         "properties": {
@@ -3900,6 +3900,39 @@
           "answer"
         ],
         "title": "LlmScannerParams",
+        "type": "object"
+      },
+      "LlmSearchRequest": {
+        "additionalProperties": false,
+        "description": "Request body for LLM transcript searches.",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "type": {
+            "const": "llm",
+            "default": "llm",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "type"
+        ],
+        "title": "LlmSearchRequest",
         "type": "object"
       },
       "LoggerEvent": {
@@ -6266,56 +6299,21 @@
         "type": "object"
       },
       "SavedSearch": {
-        "description": "A persisted search result.",
-        "properties": {
-          "created_at": {
-            "title": "Created At",
-            "type": "string"
+        "discriminator": {
+          "mapping": {
+            "grep": "#/components/schemas/GrepSavedSearch",
+            "llm": "#/components/schemas/LlmSavedSearch"
           },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "query": {
-            "title": "Query",
-            "type": "string"
-          },
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/Result"
-            },
-            "title": "Results",
-            "type": "array"
-          },
-          "search_id": {
-            "title": "Search Id",
-            "type": "string"
-          },
-          "type": {
-            "enum": [
-              "grep",
-              "llm"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
+          "propertyName": "type"
         },
-        "required": [
-          "search_id",
-          "query",
-          "type",
-          "results",
-          "created_at"
-        ],
-        "title": "SavedSearch",
-        "type": "object"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GrepSavedSearch"
+          },
+          {
+            "$ref": "#/components/schemas/LlmSavedSearch"
+          }
+        ]
       },
       "SavedSearchListResponse": {
         "properties": {
@@ -8141,39 +8139,6 @@
           "intermediate"
         ],
         "title": "ScoreEvent",
-        "type": "object"
-      },
-      "SearchRequest": {
-        "properties": {
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "query": {
-            "title": "Query",
-            "type": "string"
-          },
-          "type": {
-            "enum": [
-              "grep",
-              "llm"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "query",
-          "type"
-        ],
-        "title": "SearchRequest",
         "type": "object"
       },
       "SpanBeginEvent": {
@@ -11801,7 +11766,22 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SearchRequest"
+                "discriminator": {
+                  "mapping": {
+                    "grep": "#/components/schemas/GrepSearchRequest",
+                    "llm": "#/components/schemas/LlmSearchRequest"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/GrepSearchRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LlmSearchRequest"
+                  }
+                ],
+                "title": "Request"
               }
             }
           },

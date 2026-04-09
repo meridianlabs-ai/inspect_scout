@@ -82,7 +82,8 @@ doc = [
     "griffe",
     "pyyaml",
     "types-Markdown",
-    "quarto-cli>=1.9.36"
+    "rich",
+    "quarto-cli>=1.7"
 ]
 dist = ["twine", "build"]
 

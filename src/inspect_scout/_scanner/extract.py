@@ -2,7 +2,17 @@ import json
 import re
 from dataclasses import dataclass
 from functools import reduce
-from typing import Awaitable, Callable, Generic, Literal, TypeAlias, TypeVar, overload
+from logging import getLogger
+from typing import (
+    Awaitable,
+    Callable,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+    overload,
+)
 
 from inspect_ai.model import (
     ChatMessage,
@@ -10,11 +20,15 @@ from inspect_ai.model import (
     ChatMessageTool,
     Content,
 )
+from inspect_ai.util import warn_once
+from typing_extensions import Unpack
 
 from inspect_scout._scanner.result import Reference
 from inspect_scout._transcript.types import Transcript
 
 from .util import _message_id
+
+logger = getLogger(__name__)
 
 T = TypeVar("T", Transcript, list[ChatMessage])
 
@@ -53,12 +67,17 @@ class MessagesPreprocessor(MessageFormatOptions, Generic[T]):
     """Transform the list of messages."""
 
 
+class DeprecatedArgs(TypedDict, total=False):
+    as_json: bool
+
+
 @overload
 async def messages_as_str(
     input: T,
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
-    as_json: bool = False,
+    format: Literal["text", "json"] = "text",
+    **deprecated: Unpack[DeprecatedArgs],
 ) -> str: ...
 
 
@@ -67,9 +86,31 @@ async def messages_as_str(
     input: T,
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
+    format: Literal["list"],
+    **deprecated: Unpack[DeprecatedArgs],
+) -> list[str]: ...
+
+
+@overload
+async def messages_as_str(
+    input: T,
+    *,
+    preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
-    as_json: bool = False,
+    format: Literal["text", "json"] = "text",
+    **deprecated: Unpack[DeprecatedArgs],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
+
+
+@overload
+async def messages_as_str(
+    input: T,
+    *,
+    preprocessor: MessagesPreprocessor[T] | None = None,
+    include_ids: Literal[True],
+    format: Literal["list"],
+    **deprecated: Unpack[DeprecatedArgs],
+) -> tuple[list[str], Callable[[str], list[Reference]]]: ...
 
 
 async def messages_as_str(
@@ -77,8 +118,9 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
-    as_json: bool = False,
-) -> str | tuple[str, Callable[[str], list[Reference]]]:
+    format: Literal["text", "json", "list"] = "text",
+    **deprecated: Unpack[DeprecatedArgs],
+) -> str | list[str] | tuple[str | list[str], Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
 
     Args:
@@ -87,14 +129,22 @@ async def messages_as_str(
        include_ids: If True, prepend ordinal references (e.g., [M1], [M2])
           to each message and return a function to extract references from text.
           If None (default), return plain formatted string.
-       as_json: If True, output as JSON string instead of plain text.
+       format: Output format. `"text"` (default) joins messages with newlines,
+          `"json"` returns a JSON string, `"list"` returns individual
+          formatted strings as a list.
 
     Returns:
-       If include_ids is False: Messages concatenated as a formatted string.
-       If include_ids is True: Tuple of (formatted string with [M1], [M2], etc.
-          prefixes, function that takes text and returns list of Reference objects
-          for any [M1], [M2], etc. references found in the text).
+       If include_ids is None: Messages as `str` (text/json) or `list[str]` (list).
+       If include_ids is True: Tuple of (formatted output, function that takes text
+          and returns list of Reference objects for any [M1], [M2], etc. references
+          found in the text).
     """
+    # handle deprecated as_json parameter
+    if "as_json" in deprecated:
+        warn_once(logger, "'as_json' is deprecated, please use 'format' instead")
+        if deprecated["as_json"]:
+            format = "json"
+
     messages = (
         await preprocessor.transform(input)
         if preprocessor is not None and preprocessor.transform is not None
@@ -120,14 +170,18 @@ async def messages_as_str(
         reduce_message, messages, (list[dict[str, str]](), dict[str, str]())
     )
 
-    result = (
-        json.dumps(items)
-        if as_json
-        else "\n".join(
+    if format == "json":
+        result: str | list[str] = json.dumps(items)
+    elif format == "list":
+        result = [
+            f"[{item['id']}] {item['content']}" if "id" in item else item["content"]
+            for item in items
+        ]
+    else:
+        result = "\n".join(
             f"[{item['id']}] {item['content']}" if "id" in item else item["content"]
             for item in items
         )
-    )
 
     return (
         (result, lambda text: _extract_references(text, id_map))

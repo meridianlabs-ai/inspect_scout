@@ -1046,13 +1046,13 @@ def test_extract_references(
 
 @pytest.mark.asyncio
 async def test_messages_as_str_json_without_ids() -> None:
-    """Test as_json=True without include_ids."""
+    """Test format="json" without include_ids."""
     messages: list[ChatMessage] = [
         ChatMessageUser(content="Hello", id="msg1"),
         ChatMessageAssistant(content="Hi there", id="msg2"),
     ]
 
-    result = await messages_as_str(messages, as_json=True)
+    result = await messages_as_str(messages, format="json")
     parsed = json.loads(result)
 
     assert len(parsed) == 2
@@ -1065,14 +1065,14 @@ async def test_messages_as_str_json_without_ids() -> None:
 
 @pytest.mark.asyncio
 async def test_messages_as_str_json_with_ids() -> None:
-    """Test as_json=True with include_ids=True."""
+    """Test format="json" with include_ids=True."""
     messages: list[ChatMessage] = [
         ChatMessageUser(content="Hello", id="msg1"),
         ChatMessageAssistant(content="Hi there", id="msg2"),
     ]
 
     result, extract_references = await messages_as_str(
-        messages, include_ids=True, as_json=True
+        messages, format="json", include_ids=True
     )
     parsed = json.loads(result)
 
@@ -1093,7 +1093,7 @@ async def test_messages_as_str_json_with_ids() -> None:
 
 @pytest.mark.asyncio
 async def test_messages_as_str_json_with_filtered_messages() -> None:
-    """Test as_json=True with system messages excluded."""
+    """Test format="json" with system messages excluded."""
     messages: list[ChatMessage] = [
         ChatMessageSystem(content="System prompt", id="sys1"),
         ChatMessageUser(content="Hello", id="msg1"),
@@ -1101,7 +1101,7 @@ async def test_messages_as_str_json_with_filtered_messages() -> None:
     ]
 
     result = await messages_as_str(
-        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]](), as_json=True
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]](), format="json"
     )
     parsed = json.loads(result)
 
@@ -1113,13 +1113,74 @@ async def test_messages_as_str_json_with_filtered_messages() -> None:
 
 @pytest.mark.asyncio
 async def test_messages_as_str_json_empty_list() -> None:
-    """Test as_json=True with empty message list."""
+    """Test format="json" with empty message list."""
     messages: list[ChatMessage] = []
 
-    result = await messages_as_str(messages, as_json=True)
+    result = await messages_as_str(messages, format="json")
     parsed = json.loads(result)
 
     assert parsed == []
+
+
+# --- format="list" tests ---
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_list_without_ids() -> None:
+    """Test format="list" returns list of formatted strings."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi there", id="msg2"),
+    ]
+
+    result = await messages_as_str(messages, format="list")
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert result[0] == "USER:\nHello\n"
+    assert result[1] == "ASSISTANT:\nHi there\n"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_list_with_ids() -> None:
+    """Test format="list" with include_ids=True."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi there", id="msg2"),
+    ]
+
+    result, extract_references = await messages_as_str(
+        messages, format="list", include_ids=True
+    )
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert result[0] == "[M1] USER:\nHello\n"
+    assert result[1] == "[M2] ASSISTANT:\nHi there\n"
+
+    refs = extract_references("[M1] and [M2]")
+    assert len(refs) == 2
+    assert refs[0].id == "msg1"
+    assert refs[1].id == "msg2"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_list_with_filtered_messages() -> None:
+    """Test format="list" with system messages excluded."""
+    messages: list[ChatMessage] = [
+        ChatMessageSystem(content="System prompt", id="sys1"),
+        ChatMessageUser(content="Hello", id="msg1"),
+        ChatMessageAssistant(content="Hi", id="msg2"),
+    ]
+
+    result = await messages_as_str(
+        messages, preprocessor=MessagesPreprocessor[list[ChatMessage]](), format="list"
+    )
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert result[0] == "USER:\nHello\n"
+    assert result[1] == "ASSISTANT:\nHi\n"
 
 
 # --- message_numbering() tests ---

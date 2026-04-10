@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Utilities: Export `message_as_str` function.
+- Scout View: Consolidate transcript viewer to shared component. Miscellaneous fixes and improvements.
 
 ## 0.4.25 (04 April 2026)
 

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Path
@@ -51,9 +52,23 @@ MAX_ENTRIES = 500
 SAVED_SEARCH_ADAPTER: TypeAdapter[SavedSearch] = TypeAdapter(SavedSearch)
 
 
+def _normalize_filter(value: object) -> object:
+    """Normalize a message/event filter for stable hashing."""
+    if value is None or isinstance(value, str):
+        return value
+    # Sequence of types — sort for stability
+    assert isinstance(value, Sequence)
+    return sorted(str(item) for item in value)
+
+
 def _search_id(request: SearchRequest) -> str:
     """Deterministic ID from search parameters."""
-    parts: dict[str, str | bool] = {"query": request.query, "type": request.type}
+    parts: dict[str, object] = {
+        "query": request.query,
+        "type": request.type,
+        "messages": _normalize_filter(request.messages),
+        "events": _normalize_filter(request.events),
+    }
     if isinstance(request, GrepSearchRequest):
         parts["regex"] = request.regex
         parts["ignore_case"] = request.ignore_case
@@ -123,7 +138,11 @@ def create_search_router() -> APIRouter:
             if not infos:
                 raise HTTPException(status_code=404, detail="Transcript not found")
             transcript = await view.read(
-                infos[0], TranscriptContent(messages="all", events="all")
+                infos[0],
+                TranscriptContent(
+                    messages=request.messages,
+                    events=request.events,
+                ),
             )
 
         # Run search

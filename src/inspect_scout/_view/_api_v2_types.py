@@ -17,7 +17,7 @@ from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
 from .._scanner.result import Error, Result
 from .._scanspec import ScanSpec
-from .._transcript.types import TranscriptInfo
+from .._transcript.types import EventFilter, MessageFilter, TranscriptInfo
 
 
 @dataclass
@@ -297,6 +297,12 @@ class SearchRequestBase(BaseModel):
     """Shared fields for search request variants."""
 
     query: str
+
+    messages: MessageFilter = "all"
+    """Filter for which message types to include when loading the transcript."""
+
+    events: EventFilter = "all"
+    """Filter for which event types to include when loading the transcript."""
 
     model_config = ConfigDict(extra="forbid")
 

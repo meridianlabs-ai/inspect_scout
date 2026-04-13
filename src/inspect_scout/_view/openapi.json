@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "ActiveScanInfo": {
+        "description": "Info for an active scan stored in the KV store.",
         "properties": {
           "config": {
             "title": "Config",
@@ -61,6 +62,7 @@
         "type": "object"
       },
       "ActiveScansResponse": {
+        "description": "Response body for GET /scans/active endpoint.",
         "properties": {
           "items": {
             "additionalProperties": {
@@ -1939,6 +1941,7 @@
         "type": "object"
       },
       "CreateValidationSetRequest": {
+        "description": "Request body for POST /validations endpoint.",
         "properties": {
           "cases": {
             "items": {
@@ -1960,6 +1963,7 @@
         "type": "object"
       },
       "DistResponse": {
+        "description": "Response body for GET /dist endpoint.",
         "properties": {
           "path": {
             "title": "Path",
@@ -1973,6 +1977,7 @@
         "type": "object"
       },
       "DistinctRequest": {
+        "description": "Request body for POST /transcripts/{dir}/distinct endpoint.",
         "properties": {
           "column": {
             "title": "Column",
@@ -4106,6 +4111,7 @@
         "type": "object"
       },
       "MessageFormatOptions": {
+        "description": "Message formatting options for controlling message content display.\n\nThese options control which parts of messages are included when\nformatting messages to strings.",
         "properties": {
           "exclude_reasoning": {
             "default": false,
@@ -5554,6 +5560,7 @@
         "type": "string"
       },
       "RenameValidationSetRequest": {
+        "description": "Request body for PUT /validations/{uri}/rename endpoint.",
         "properties": {
           "name": {
             "title": "Name",
@@ -6419,6 +6426,7 @@
         "type": "object"
       },
       "ScanMetrics": {
+        "description": "Encapsulates all worker-related metrics.",
         "properties": {
           "batch_failures": {
             "default": 0,
@@ -7003,6 +7011,7 @@
         "type": "object"
       },
       "ScannerInfo": {
+        "description": "Info about a registered scanner factory.",
         "properties": {
           "description": {
             "anyOf": [
@@ -7249,6 +7258,7 @@
         "type": "object"
       },
       "ScannerParam": {
+        "description": "Parameter definition for a scanner factory.",
         "properties": {
           "default": {
             "anyOf": [
@@ -7399,6 +7409,7 @@
         "type": "object"
       },
       "ScannersResponse": {
+        "description": "Response body for GET /scanners endpoint.",
         "properties": {
           "items": {
             "items": {
@@ -7415,6 +7426,7 @@
         "type": "object"
       },
       "ScansRequest": {
+        "description": "Request body for POST /scans endpoint.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -7458,6 +7470,7 @@
         "type": "object"
       },
       "ScansResponse": {
+        "description": "Response body for POST /scans endpoint.",
         "properties": {
           "items": {
             "items": {
@@ -8195,6 +8208,7 @@
         "type": "object"
       },
       "Status": {
+        "description": "Status of scan job.",
         "properties": {
           "complete": {
             "title": "Complete",
@@ -8794,6 +8808,7 @@
         "type": "object"
       },
       "ToolCallError": {
+        "description": "Error raised by a tool call.",
         "properties": {
           "message": {
             "title": "Message",
@@ -9115,6 +9130,7 @@
         "type": "object"
       },
       "ToolFunction": {
+        "description": "Indicate that a specific tool function should be called.",
         "properties": {
           "name": {
             "title": "Name",
@@ -9803,6 +9819,7 @@
         "type": "object"
       },
       "TranscriptsRequest": {
+        "description": "Request body for POST /transcripts endpoint.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -10028,6 +10045,7 @@
         "type": "object"
       },
       "ValidationCaseRequest": {
+        "description": "Request body for creating or updating a validation case.",
         "properties": {
           "id": {
             "anyOf": [

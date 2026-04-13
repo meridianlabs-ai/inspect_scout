@@ -10,6 +10,7 @@ from inspect_ai._util.kvstore import KVStore
 from pydantic import TypeAdapter
 
 from .._grep_scanner._grep_scanner import grep_scanner
+from .._llm_scanner import ResultReducer
 from .._llm_scanner._llm_scanner import llm_scanner
 from .._query import Column, Query
 from .._transcript.database.factory import transcripts_view
@@ -139,7 +140,9 @@ def create_search_router() -> APIRouter:
                 answer="string",
                 template=LLM_SEARCH_TEMPLATE,
                 model=request.model,
+                reducer=ResultReducer.llm(model=request.model),
             )(transcript)
+
         results = output if isinstance(output, list) else [output]
 
         # Persist

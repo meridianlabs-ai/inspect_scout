@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -382,6 +383,12 @@ def create_scans_router(
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
         def _delete_scan_sync() -> None:
+            if scan_path.protocol != "file" and scan_path.protocol != "":
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="Delete is only supported for local scans",
+                )
+
             # Check if scan exists
             if not scan_path.exists():
                 raise HTTPException(

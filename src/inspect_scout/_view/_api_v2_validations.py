@@ -48,7 +48,7 @@ def create_validation_router(
         description="Scans the project directory for validation files (.csv, .yaml, .json, .jsonl) "
         "and returns their URIs.",
     )
-    async def list_validations() -> list[str]:
+    def list_validations() -> list[str]:
         """List all validation files in the project."""
         paths: list[str] = []
 
@@ -69,7 +69,7 @@ def create_validation_router(
         description="Creates a new validation file at the specified path with optional initial cases. "
         "Returns the URI of the created file.",
     )
-    async def create_validation(body: CreateValidationSetRequest) -> str:
+    def create_validation(body: CreateValidationSetRequest) -> str:
         """Create a new validation file."""
         # Convert URI to path
         file_path = _uri_to_path(body.path)
@@ -114,7 +114,7 @@ def create_validation_router(
         summary="Get validation cases",
         description="Returns all cases from a validation file.",
     )
-    async def get_validation_cases(
+    def get_validation_cases(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
     ) -> list[dict[str, Any]]:
         """Get all cases from a validation file."""
@@ -141,7 +141,7 @@ def create_validation_router(
         summary="Delete a validation file",
         description="Deletes a validation file from the project.",
     )
-    async def delete_validation(
+    def delete_validation(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
     ) -> None:
         """Delete a validation file."""
@@ -165,7 +165,7 @@ def create_validation_router(
         summary="Rename a validation file",
         description="Renames a validation file. Returns the new URI.",
     )
-    async def rename_validation(
+    def rename_validation(
         body: RenameValidationSetRequest,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
     ) -> str:
@@ -227,7 +227,7 @@ def create_validation_router(
         summary="Get a specific case",
         description="Returns a specific case from a validation file by ID.",
     )
-    async def get_validation_case(
+    def get_validation_case(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
     ) -> dict[str, Any]:
@@ -264,7 +264,7 @@ def create_validation_router(
         description="Creates or updates a case in a validation file. If the case ID exists, "
         "it will be updated; otherwise, a new case will be created.",
     )
-    async def upsert_validation_case(
+    def upsert_validation_case(
         body: ValidationCaseRequest,
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
@@ -307,7 +307,7 @@ def create_validation_router(
         summary="Delete a case",
         description="Deletes a case from a validation file.",
     )
-    async def delete_validation_case(
+    def delete_validation_case(
         uri: str = PathParam(description="Validation file URI (base64url-encoded)"),
         case_id: str = PathParam(description="Case ID (base64url-encoded)"),
     ) -> None:

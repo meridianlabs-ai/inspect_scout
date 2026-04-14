@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -159,7 +160,7 @@ def create_scans_router(
         summary="Get active scans",
         description="Returns info on all currently running scans.",
     )
-    async def active_scans() -> ActiveScansResponse:
+    def active_scans() -> ActiveScansResponse:
         """Get info on all active scans from the KV store."""
         with active_scans_store() as store:
             return ActiveScansResponse(items=store.read_all())
@@ -173,7 +174,9 @@ def create_scans_router(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-        proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
+        proc, temp_path, _stdout_lines, stderr_lines = await anyio.to_thread.run_sync(
+            lambda: _spawn_scan_subprocess(body)
+        )
         pid = proc.pid
 
         active_info = await _wait_for_active_scan(pid)
@@ -338,8 +341,10 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        fields = result.get_fields(
-            scanner, "uuid", uuid, ["input", "input_type", "input_data"]
+        fields = await anyio.to_thread.run_sync(
+            lambda: result.get_fields(
+                scanner, "uuid", uuid, ["input", "input_type", "input_data"]
+            )
         )
 
         # `input` and `input_data` are pre-serialized JSON strings in the parquet
@@ -377,25 +382,34 @@ def create_scans_router(
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
-        # Check if scan exists
-        if not scan_path.exists():
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Scan not found",
-            )
+        def _delete_scan_sync() -> None:
+            if scan_path.protocol != "file" and scan_path.protocol != "":
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="Delete is only supported for local scans",
+                )
 
-        # Check if scan is active (prevent deletion of running scans)
-        scan_location_str = str(scan_path)
-        with active_scans_store() as store:
-            active_scans = store.read_all()
-            for active_info in active_scans.values():
-                if active_info.location == scan_location_str:
-                    raise HTTPException(
-                        status_code=HTTP_409_CONFLICT,
-                        detail=f"Cannot delete active scan: {active_info.scan_id}",
-                    )
+            # Check if scan exists
+            if not scan_path.exists():
+                raise HTTPException(
+                    status_code=HTTP_404_NOT_FOUND,
+                    detail="Scan not found",
+                )
 
-        send2trash(scan_path.path)
+            # Check if scan is active (prevent deletion of running scans)
+            scan_location_str = str(scan_path)
+            with active_scans_store() as store:
+                active_scans = store.read_all()
+                for active_info in active_scans.values():
+                    if active_info.location == scan_location_str:
+                        raise HTTPException(
+                            status_code=HTTP_409_CONFLICT,
+                            detail=f"Cannot delete active scan: {active_info.scan_id}",
+                        )
+
+            send2trash(scan_path.path)
+
+        await anyio.to_thread.run_sync(_delete_scan_sync)
 
         # Notify clients to invalidate scan caches
         await notify_topics(["scans"])

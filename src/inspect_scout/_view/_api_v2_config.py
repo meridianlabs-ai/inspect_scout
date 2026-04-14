@@ -2,6 +2,7 @@
 
 from pathlib import Path as PathlibPath
 
+import anyio
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from inspect_ai._util.error import PrerequisiteError
 from starlette.status import (
@@ -48,7 +49,7 @@ def create_config_router(
         summary="Get application configuration",
         description="Returns app config including transcripts and scans directories.",
     )
-    async def config(request: Request) -> AppConfig:
+    def config(request: Request) -> AppConfig:
         """Return application configuration."""
         EvalLogTranscriptsView.clear_cache()
         project = read_project()
@@ -78,7 +79,7 @@ def create_config_router(
         description="Returns the project configuration from scout.yaml. "
         "The ETag header contains a hash of the file for conditional updates.",
     )
-    async def get_project_config() -> Response:
+    def get_project_config() -> Response:
         """Return project configuration with ETag header."""
         config, etag = read_project_config_with_etag()
 
@@ -108,7 +109,9 @@ def create_config_router(
         expected_etag = if_match.strip('"') if if_match else None
 
         try:
-            updated_config, new_etag = write_project_config(config, expected_etag)
+            updated_config, new_etag = await anyio.to_thread.run_sync(
+                lambda: write_project_config(config, expected_etag)
+            )
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,

@@ -3261,7 +3261,6 @@
                 "type": "null"
               }
             ],
-            "default": "all",
             "title": "Events"
           },
           "ignore_case": {
@@ -3291,7 +3290,6 @@
                 "type": "null"
               }
             ],
-            "default": "all",
             "title": "Messages"
           },
           "query": {
@@ -4154,7 +4152,6 @@
                 "type": "null"
               }
             ],
-            "default": "all",
             "title": "Events"
           },
           "messages": {
@@ -4179,7 +4176,6 @@
                 "type": "null"
               }
             ],
-            "default": "all",
             "title": "Messages"
           },
           "model": {

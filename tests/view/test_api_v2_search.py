@@ -74,6 +74,22 @@ async def transcript_location(tmp_path: Path) -> AsyncIterator[Path]:
 class TestSearchEndpoint:
     """Tests for POST /transcripts/{dir}/{id}/search."""
 
+    def test_search_request_preserves_unspecified_scope_filters(self) -> None:
+        """Unspecified scope filters remain unset instead of defaulting to all."""
+        request = TypeAdapter(SearchRequest).validate_python(
+            {
+                "events": "all",
+                "ignore_case": True,
+                "query": "random",
+                "regex": False,
+                "type": "grep",
+                "word_boundary": False,
+            }
+        )
+
+        assert request.events == "all"
+        assert request.messages is None
+
     def test_grep_search_lifecycle(
         self, client: TestClient, transcript_location: Path, tmp_path: Path
     ) -> None:

@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pydantic import RootModel
+from pydantic import BaseModel, RootModel
 
 
 def main() -> None:
@@ -25,7 +25,9 @@ def main() -> None:
     sys.path.insert(0, str(repo_root / "src"))
 
     from inspect_ai._view._openapi import build_openapi_schema
+    from inspect_ai.log import EventsData
     from inspect_scout._llm_scanner.params import LlmScannerParams
+    from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
     from inspect_scout._transcript.types import Transcript
     from inspect_scout._validation.types import ValidationCase
     from inspect_scout._view._api_v2 import v2_api_app
@@ -42,6 +44,13 @@ def main() -> None:
 
     class RawEncoding(RootModel[_RawEncoding]):
         pass
+
+    class ScannerInputResponse(BaseModel):
+        """Schema-only type for scanner input column values."""
+
+        input_type: ScannerInputNames
+        input: ScannerInput
+        input_data: EventsData | None = None
 
     # Create the real app, then add stub endpoints for scout-specific types.
     app = v2_api_app()
@@ -64,6 +73,10 @@ def main() -> None:
 
     @app.get("/schema/raw-encoding")
     def _raw_encoding() -> RawEncoding:
+        raise NotImplementedError
+
+    @app.get("/schema/scanner-input")
+    def _scanner_input() -> ScannerInputResponse:
         raise NotImplementedError
 
     schema = build_openapi_schema(app)

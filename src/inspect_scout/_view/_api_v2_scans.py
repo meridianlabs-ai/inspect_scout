@@ -16,6 +16,7 @@ import anyio
 import pyarrow.ipc as pa_ipc
 from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Request, Response
+from fastapi import Query as QueryParam
 from fastapi.responses import StreamingResponse
 from inspect_ai._util.file import file
 from send2trash import send2trash
@@ -34,10 +35,10 @@ from .._recorder.factory import scan_recorder_for_location
 from .._scanjob_config import ScanJobConfig
 from .._scanjobs.duckdb import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
+from .._transcript.eval_log import JSON_COLUMNS
 from ._api_v2_types import (
     ActiveScansResponse,
     DistinctRequest,
-    ScannerInputResponse,
     ScanRow,
     ScansRequest,
     ScansResponse,
@@ -46,6 +47,10 @@ from ._api_v2_types import (
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
 from .invalidationTopics import notify_topics
+
+# Scan result columns that are stored as pre-serialized JSON strings in
+# parquet, in addition to the transcript-level JSON_COLUMNS.
+_SCAN_JSON_COLUMNS = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -160,7 +165,7 @@ def create_scans_router(
         summary="Get active scans",
         description="Returns info on all currently running scans.",
     )
-    def active_scans() -> ActiveScansResponse:
+    async def active_scans() -> ActiveScansResponse:
         """Get info on all active scans from the KV store."""
         with active_scans_store() as store:
             return ActiveScansResponse(items=store.read_all())
@@ -174,9 +179,7 @@ def create_scans_router(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-        proc, temp_path, _stdout_lines, stderr_lines = await anyio.to_thread.run_sync(
-            lambda: _spawn_scan_subprocess(body)
-        )
+        proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid
 
         active_info = await _wait_for_active_scan(pid)
@@ -263,14 +266,24 @@ def create_scans_router(
         "/scans/{dir}/{scan}/{scanner}",
         summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
-        "Excludes input column for efficiency; use the input endpoint for input text.",
+        "Use exclude_columns to omit heavy columns from the response.",
     )
     async def scan_df(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
+        exclude_columns: str | None = QueryParam(
+            default=None,
+            description="Comma-separated list of column names to exclude",
+        ),
     ) -> Response:
         """Stream scanner results as Arrow IPC with LZ4 compression."""
+        excluded = (
+            [c.strip() for c in exclude_columns.split(",") if c.strip()]
+            if exclude_columns
+            else []
+        )
+
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
@@ -287,7 +300,7 @@ def create_scans_router(
             with result.reader(
                 scanner,
                 streaming_batch_size=streaming_batch_size,
-                exclude_columns=["input"],
+                exclude_columns=excluded,
             ) as reader:
                 with pa_ipc.new_stream(
                     buf,
@@ -313,24 +326,37 @@ def create_scans_router(
         )
 
     @router.get(
-        "/scans/{dir}/{scan}/{scanner}/{uuid}/input",
-        response_model=ScannerInputResponse,
-        summary="Get scanner input for a specific result",
-        description="Returns a JSON envelope with input, input_type, and input_data "
-        "(EventsData pools for condensed events, or null).",
+        "/scans/{dir}/{scan}/{scanner}/{uuid}",
+        summary="Get specific columns for a result row",
+        description="Returns requested columns as a JSON object. "
+        "Pass a comma-separated list via the `columns` query parameter.",
     )
-    async def scanner_input(
+    async def scanner_row(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
+        columns: str | None = QueryParam(
+            default=None,
+            description="Comma-separated list of column names to return",
+        ),
     ) -> Response:
-        """Retrieve scanner input as a JSON envelope.
+        """Retrieve specific columns for a result row as a JSON object.
 
-        Returns ``{"input_type": ..., "input": ..., "input_data": ...}``
-        where ``input`` and ``input_data`` are raw JSON from parquet —
-        no server-side parsing or re-encoding.
+        Columns in ``JSON_COLUMNS`` are pre-serialized JSON strings in
+        parquet — embedded raw in the response without re-encoding.
+        All other columns are serialized with ``json.dumps()``.
         """
+        if not columns:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Missing required query parameter: columns",
+            )
+
+        requested = list(
+            dict.fromkeys(c.strip() for c in columns.split(",") if c.strip())
+        )
+
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
@@ -341,30 +367,29 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
-        fields = await anyio.to_thread.run_sync(
-            lambda: result.get_fields(
-                scanner, "uuid", uuid, ["input", "input_type", "input_data"]
-            )
-        )
+        try:
+            row = result.get_fields(scanner, "uuid", uuid, requested)
+        except (KeyError, ValueError) as err:
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"No row found for uuid: {uuid}",
+            ) from err
 
-        # `input` and `input_data` are pre-serialized JSON strings in the parquet
-        # columns. The call to `.get_fields()` does `.as_py()` which returns a Python
-        # `str` from Arrow's `large_string`. This means that `fields["input"]` is
-        # a python `str`. They both pass straight through as raw JSON fragments
-        # — no parsing, no re-encoding, no extra copies beyond Arrow → Python str.
-        # Obviously, there's no type safety here — `response_model`` is for OpenAPI
-        # schema only.
+        # Build JSON manually: columns in JSON_COLUMNS are pre-serialized
+        # JSON strings in parquet and are embedded raw to avoid double-encoding.
+        parts: list[str] = []
+        for col in requested:
+            value = row[col]
+            if value is None:
+                serialized = "null"
+            elif col in _SCAN_JSON_COLUMNS and isinstance(value, str) and value:
+                serialized = value
+            else:
+                serialized = json.dumps(value)
+            parts.append(json.dumps(col) + ":" + serialized)
 
         return Response(
-            content=(
-                '{"input_type":'
-                + json.dumps(fields["input_type"])
-                + ',"input":'
-                + (fields["input"] or "null")
-                + ',"input_data":'
-                + (fields["input_data"] or "null")
-                + "}"
-            ),
+            content="{" + ",".join(parts) + "}",
             media_type="application/json",
         )
 
@@ -382,34 +407,25 @@ def create_scans_router(
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
-        def _delete_scan_sync() -> None:
-            if scan_path.protocol != "file" and scan_path.protocol != "":
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail="Delete is only supported for local scans",
-                )
+        # Check if scan exists
+        if not scan_path.exists():
+            raise HTTPException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Scan not found",
+            )
 
-            # Check if scan exists
-            if not scan_path.exists():
-                raise HTTPException(
-                    status_code=HTTP_404_NOT_FOUND,
-                    detail="Scan not found",
-                )
+        # Check if scan is active (prevent deletion of running scans)
+        scan_location_str = str(scan_path)
+        with active_scans_store() as store:
+            active_scans = store.read_all()
+            for active_info in active_scans.values():
+                if active_info.location == scan_location_str:
+                    raise HTTPException(
+                        status_code=HTTP_409_CONFLICT,
+                        detail=f"Cannot delete active scan: {active_info.scan_id}",
+                    )
 
-            # Check if scan is active (prevent deletion of running scans)
-            scan_location_str = str(scan_path)
-            with active_scans_store() as store:
-                active_scans = store.read_all()
-                for active_info in active_scans.values():
-                    if active_info.location == scan_location_str:
-                        raise HTTPException(
-                            status_code=HTTP_409_CONFLICT,
-                            detail=f"Cannot delete active scan: {active_info.scan_id}",
-                        )
-
-            send2trash(scan_path.path)
-
-        await anyio.to_thread.run_sync(_delete_scan_sync)
+        send2trash(scan_path.path)
 
         # Notify clients to invalidate scan caches
         await notify_topics(["scans"])

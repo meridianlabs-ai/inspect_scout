@@ -7,6 +7,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
+import pyarrow.fs as pafs
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
@@ -239,7 +240,34 @@ class FileRecorder(ScanRecorder):
     async def results_arrow(
         scan_location: str,
     ) -> ScanResultsArrow:
+        scan_path = UPath(scan_location)
+
         class _ScanResultsArrowFiles(ScanResultsArrow):
+            def _resolve_parquet_source(
+                self, scanner: str
+            ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
+                """Return (path, filesystem) for opening a parquet file.
+
+                For cloud paths with native PyArrow support (S3, GCS, ABFS),
+                returns a pyarrow filesystem that uses HTTP range requests.
+                For az:// (no native PyArrow support), downloads via fsspec
+                and returns a BytesIO. For local paths, returns (str, None).
+                """
+                scanner_path = scan_path / f"{scanner}.parquet"
+                path_str = scanner_path.as_posix()
+
+                if path_str.startswith(
+                    ("s3://", "gs://", "gcs://", "abfs://", "abfss://")
+                ):
+                    pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
+                    return pa_path, pa_fs
+
+                if path_str.startswith("az://"):
+                    with file(path_str, "rb") as f:
+                        return io.BytesIO(f.read()), None
+
+                return str(scanner_path), None
+
             @override
             def reader(
                 self,
@@ -247,27 +275,23 @@ class FileRecorder(ScanRecorder):
                 streaming_batch_size: int = 1024,
                 exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
-                scan_path = UPath(scan_location)
-                scanner_path = scan_path / f"{scanner}.parquet"
+                pa_path, pa_fs = self._resolve_parquet_source(scanner)
 
-                # For remote filesystems (S3, etc.), pre-fetch the file into memory
-                # to avoid per-row-group latency. This is 2-3x faster for files with
-                # many row groups. For local files, read directly to avoid memory copy.
-                scanner_path_str = scanner_path.as_posix()
-                if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
-                    # Pre-fetch entire file into memory for faster iteration
-                    with file(scanner_path_str, "rb") as f:
-                        file_bytes = f.read()
-                    parquet = pq.ParquetFile(io.BytesIO(file_bytes))
+                if pa_fs is not None:
+                    # Use pre_buffer=True to coalesce HTTP range requests,
+                    # then read() + to_reader() instead of iter_batches()
+                    # which doesn't support pre_buffer.
+                    parquet = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
                 else:
-                    # Local files: read directly (no memory copy needed)
-                    parquet = pq.ParquetFile(str(scanner_path))
+                    parquet = pq.ParquetFile(pa_path)
 
-                columns = [
-                    c
-                    for c in parquet.schema.names
-                    if exclude_columns is None or c not in exclude_columns
-                ]
+                exclude = set(exclude_columns) if exclude_columns else set()
+                columns = [c for c in parquet.schema.names if c not in exclude]
+
+                if pa_fs is not None:
+                    table = parquet.read(columns=columns)
+                    return table.to_reader(max_chunksize=streaming_batch_size)
+
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
 
@@ -278,27 +302,46 @@ class FileRecorder(ScanRecorder):
                     ),
                 )
 
-            def _get_dataset(self, scanner: str) -> "ds.Dataset":
-                scan_path = UPath(scan_location)
-                scanner_path = scan_path / f"{scanner}.parquet"
-                scanner_path_str = scanner_path.as_posix()
+            def _point_lookup(
+                self,
+                scanner: str,
+                id_column: str,
+                id_value: Any,
+                target_columns: list[str],
+            ) -> pa.Table:
+                """Look up a single row by id, returning a 1-row table.
 
-                # For remote filesystems, pre-fetch the file into memory
-                if scanner_path_str.startswith(("s3://", "gs://", "az://", "abfs://")):
-                    with file(scanner_path_str, "rb") as f:
-                        file_bytes = f.read()
-                    table = pq.read_table(io.BytesIO(file_bytes))
-                    return ds.dataset(table)
-                return ds.dataset(str(scanner_path), format="parquet")
+                For remote files, scans only the id column across row groups
+                via range requests, then fetches target columns from the
+                matching group only. For local files, uses a dataset filter.
+                """
+                pa_path, pa_fs = self._resolve_parquet_source(scanner)
+
+                if pa_fs is not None:
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                    for i in range(pf.metadata.num_row_groups):
+                        rg_ids = pf.read_row_group(i, columns=[id_column])
+                        mask = pc.equal(rg_ids[id_column], id_value)
+                        if pc.any(mask).as_py():
+                            rg_data = pf.read_row_group(i, columns=target_columns)
+                            return rg_data.filter(mask)
+                    return pa.table({c: [] for c in target_columns})
+
+                dataset: ds.Dataset = (
+                    ds.dataset(pq.read_table(pa_path))
+                    if isinstance(pa_path, io.BytesIO)
+                    else ds.dataset(pa_path, format="parquet")
+                )
+                return dataset.to_table(
+                    columns=target_columns,
+                    filter=(pc.field(id_column) == id_value),
+                )
 
             def get_field(
                 self, scanner: str, id_column: str, id_value: Any, target_column: str
             ) -> "Scalar[Any]":
-                dataset = self._get_dataset(scanner)
-
-                table = dataset.to_table(
-                    columns=[target_column],
-                    filter=(pc.field(id_column) == id_value),
+                table = self._point_lookup(
+                    scanner, id_column, id_value, [target_column]
                 )
 
                 if len(table) == 0:
@@ -311,6 +354,15 @@ class FileRecorder(ScanRecorder):
 
                 return cast("Scalar[Any]", table[target_column][0])
 
+            def _schema_names(self, scanner: str) -> set[str]:
+                """Return the set of column names in a scanner's parquet file."""
+                pa_path, pa_fs = self._resolve_parquet_source(scanner)
+                if pa_fs is not None:
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                else:
+                    pf = pq.ParquetFile(pa_path)
+                return set(pf.schema.names)
+
             def get_fields(
                 self,
                 scanner: str,
@@ -322,15 +374,11 @@ class FileRecorder(ScanRecorder):
 
                 Missing columns (e.g. in old parquet files) return None.
                 """
-                dataset = self._get_dataset(scanner)
-                schema_names = set(dataset.schema.names)
+                schema_names = self._schema_names(scanner)
                 present = [c for c in target_columns if c in schema_names]
                 missing = [c for c in target_columns if c not in schema_names]
 
-                table = dataset.to_table(
-                    columns=present,
-                    filter=(pc.field(id_column) == id_value),
-                )
+                table = self._point_lookup(scanner, id_column, id_value, present)
 
                 if len(table) == 0:
                     raise KeyError(f"{id_value!r} not found in {id_column}")

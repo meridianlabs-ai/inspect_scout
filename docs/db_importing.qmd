@@ -11,7 +11,7 @@ You can populate a transcript database in a variety of ways depending on where y
 
 2. [Arize Phoenix](#arize-phoenix), [LangSmith](#langsmith), [Logfire](#logfire), [MLFlow](#mlflow), and [W&B Weave](#wb-weave): Read transcript data from LLM observability platforms.
 
-3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
+3. [Claude Code](#claude-code) and [Codex](#codex): Read transcript data from local coding-agent sessions.
 
 4. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
@@ -276,6 +276,51 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `agent` | `"claude-code"` |
 
 
+## Codex
+
+[Codex CLI](https://github.com/openai/codex) is OpenAI's terminal coding agent. Scout can import transcripts directly from Codex rollout files, which are normally stored at `~/.codex/sessions/`.
+
+Use the `codex()` transcript source to import rollout sessions. Each rollout file becomes one Scout transcript.
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import codex
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(codex())
+```
+
+By default, all rollout files under `~/.codex/sessions/` are imported. You can narrow the import by specifying a path, session ID, or time range:
+
+```python
+# Import rollout files from a specific directory
+await db.insert(codex(
+    path="~/.codex/sessions/2026/04/13",
+))
+
+# Import a specific Codex session by ID
+await db.insert(codex(
+    session_id="019d8739-0fa5-7a43-9bb7-805000da67af",
+))
+
+# Import rollout files from a time range
+from datetime import datetime
+await db.insert(codex(
+    from_time=datetime(2026, 4, 1),
+    to_time=datetime(2026, 4, 30),
+))
+```
+
+Codex transcripts are mapped to the database schema as follows:
+
+| Field | Value |
+|-------|-------|
+| `source_type` | `"codex"` |
+| `task_set` | Rollout working directory (`cwd`) |
+| `task_id` | Codex session ID |
+| `agent` | `"codex"` |
+
+
 ## Transcript API
 
 You can import transcripts from any source so long as you can create `Transcript` objects to be imported. In this example imagine we have a `read_weave_transcripts()` function which can read transcripts from an external JSON transcript format:
@@ -460,10 +505,10 @@ The `scout import` command provides a CLI alternative to the Python API for impo
 
 ```bash
 scout import claude_code
+scout import codex
 scout import phoenix -P project=my-project
 scout import langsmith -P project=my-project --limit 100
 scout import weave -P project=my-team/my-project
 ```
 
 Use `scout import --sources` to list available sources and their parameters, or `--dry-run` to preview what would be imported without writing. See [scout import](reference/scout_import.qmd) for full details.
-

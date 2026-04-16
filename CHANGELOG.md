@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.26 (15 April 2026)
 
 - Utilities: Export `message_as_str` function.
 - Utilities: Add `format` option to `messages_as_str` function ("text", "json", or "list").

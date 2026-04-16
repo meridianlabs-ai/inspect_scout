@@ -266,23 +266,19 @@ def create_scans_router(
         "/scans/{dir}/{scan}/{scanner}",
         summary="Get scanner dataframe containing results for all transcripts",
         description="Streams scanner results as Arrow IPC format with LZ4 compression. "
-        "Use exclude_columns to omit heavy columns from the response.",
+        "Use exclude_column to omit heavy columns from the response.",
     )
     async def scan_df(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
-        exclude_columns: str | None = QueryParam(
-            default=None,
-            description="Comma-separated list of column names to exclude",
+        exclude_column: list[str] = QueryParam(  # noqa: B008
+            default=[],
+            description="Column names to exclude (repeat for multiple)",
         ),
     ) -> Response:
         """Stream scanner results as Arrow IPC with LZ4 compression."""
-        excluded = (
-            [c.strip() for c in exclude_columns.split(",") if c.strip()]
-            if exclude_columns
-            else []
-        )
+        excluded = [c.strip() for c in exclude_column if c.strip()]
 
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)
@@ -329,16 +325,16 @@ def create_scans_router(
         "/scans/{dir}/{scan}/{scanner}/{uuid}",
         summary="Get specific columns for a result row",
         description="Returns requested columns as a JSON object. "
-        "Pass a comma-separated list via the `columns` query parameter.",
+        "Repeat the `column` query parameter for each column.",
     )
     async def scanner_row(
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
         uuid: str = Path(description="UUID of the specific result row"),
-        columns: str | None = QueryParam(
-            default=None,
-            description="Comma-separated list of column names to return",
+        column: list[str] = QueryParam(  # noqa: B008
+            default=[],
+            description="Column names to return (repeat for multiple)",
         ),
     ) -> Response:
         """Retrieve specific columns for a result row as a JSON object.
@@ -347,15 +343,13 @@ def create_scans_router(
         parquet — embedded raw in the response without re-encoding.
         All other columns are serialized with ``json.dumps()``.
         """
-        if not columns:
+        if not column:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail="Missing required query parameter: columns",
+                detail="Missing required query parameter: column",
             )
 
-        requested = list(
-            dict.fromkeys(c.strip() for c in columns.split(",") if c.strip())
-        )
+        requested = list(dict.fromkeys(c.strip() for c in column if c.strip()))
 
         scans_dir = decode_base64url(dir)
         scan_path = UPath(scans_dir) / decode_base64url(scan)

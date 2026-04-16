@@ -190,10 +190,10 @@ class TestViewServerAppScanDfEndpoint:
         assert response.status_code == HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_scanner_df_passes_exclude_columns(
+    async def test_scanner_df_passes_exclude_column(
         self, client: TestClient, sample_dataframe: pd.DataFrame
     ) -> None:
-        """exclude_columns query param is forwarded to reader()."""
+        """exclude_column query params are forwarded to reader()."""
         mock_results = self._mock_arrow_results(sample_dataframe)
 
         with patch(
@@ -202,7 +202,7 @@ class TestViewServerAppScanDfEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1"
-                "?exclude_columns=input,scan_events"
+                "?exclude_column=input&exclude_column=scan_events"
             )
 
         assert response.status_code == 200
@@ -211,10 +211,10 @@ class TestViewServerAppScanDfEndpoint:
         assert call_kwargs.kwargs["exclude_columns"] == ["input", "scan_events"]
 
     @pytest.mark.asyncio
-    async def test_scanner_df_no_exclude_columns(
+    async def test_scanner_df_no_exclude_column(
         self, client: TestClient, sample_dataframe: pd.DataFrame
     ) -> None:
-        """Without exclude_columns, reader is called with empty list."""
+        """Without exclude_column, reader is called with empty list."""
         mock_results = self._mock_arrow_results(sample_dataframe)
 
         with patch(
@@ -282,7 +282,7 @@ class TestViewServerAppRowEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid"
-                "?columns=input_type,input,input_data,scan_events"
+                "?column=input_type&column=input&column=input_data&column=scan_events"
             )
 
         assert response.status_code == 200
@@ -307,7 +307,7 @@ class TestViewServerAppRowEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid"
-                "?columns=nonexistent_col"
+                "?column=nonexistent_col"
             )
 
         assert response.status_code == 200
@@ -315,8 +315,8 @@ class TestViewServerAppRowEndpoint:
         assert data["nonexistent_col"] is None
 
     @pytest.mark.asyncio
-    async def test_row_rejects_missing_columns_param(self, client: TestClient) -> None:
-        """Returns 400 when columns query param is missing."""
+    async def test_row_rejects_missing_column_param(self, client: TestClient) -> None:
+        """Returns 400 when column query param is missing."""
         mock_results = MagicMock(spec=ScanResultsArrow)
         mock_results.scanners = ["scanner1"]
 
@@ -343,7 +343,7 @@ class TestViewServerAppRowEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/nonexistent-uuid"
-                "?columns=input"
+                "?column=input"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
@@ -362,7 +362,7 @@ class TestViewServerAppRowEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/nonexistent/some-uuid"
-                "?columns=input"
+                "?column=input"
             )
 
         assert response.status_code == HTTP_404_NOT_FOUND
@@ -383,7 +383,7 @@ class TestViewServerAppRowEndpoint:
         ):
             response = client.get(
                 f"/scans/{base64url('/tmp')}/{base64url('test_scan')}/scanner1/some-uuid"
-                "?columns=input_type,input"
+                "?column=input_type&column=input"
             )
 
         assert response.status_code == 200

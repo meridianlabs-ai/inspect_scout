@@ -7049,7 +7049,7 @@
         "type": "object"
       },
       "ScannerInputResponse": {
-        "description": "Response body for GET /scans/{dir}/{scan}/scanners/{scanner}/input/{uuid}.\n\nUsed only for OpenAPI schema generation \u2014 the endpoint returns a\npre-serialized JSON string via ``Response`` to avoid parsing/re-encoding\nthe raw parquet payloads.",
+        "description": "Schema-only type for scanner input column values.",
         "properties": {
           "input": {
             "anyOf": [
@@ -10910,7 +10910,7 @@
     },
     "/scans/{dir}/{scan}/{scanner}": {
       "get": {
-        "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Excludes input column for efficiency; use the input endpoint for input text.",
+        "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Use exclude_column to omit heavy columns from the response.",
         "operationId": "scan_df_scans__dir___scan___scanner__get",
         "parameters": [
           {
@@ -10945,6 +10945,21 @@
               "title": "Scanner",
               "type": "string"
             }
+          },
+          {
+            "description": "Column names to exclude (repeat for multiple)",
+            "in": "query",
+            "name": "exclude_column",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Column names to exclude (repeat for multiple)",
+              "items": {
+                "type": "string"
+              },
+              "title": "Exclude Column",
+              "type": "array"
+            }
           }
         ],
         "responses": {
@@ -10963,10 +10978,10 @@
         ]
       }
     },
-    "/scans/{dir}/{scan}/{scanner}/{uuid}/input": {
+    "/scans/{dir}/{scan}/{scanner}/{uuid}": {
       "get": {
-        "description": "Returns a JSON envelope with input, input_type, and input_data (EventsData pools for condensed events, or null).",
-        "operationId": "scanner_input_scans__dir___scan___scanner___uuid__input_get",
+        "description": "Returns requested columns as a JSON object. Repeat the `column` query parameter for each column.",
+        "operationId": "scanner_row_scans__dir___scan___scanner___uuid__get",
         "parameters": [
           {
             "description": "Scans directory (base64url-encoded)",
@@ -11011,21 +11026,34 @@
               "title": "Uuid",
               "type": "string"
             }
+          },
+          {
+            "description": "Column names to return (repeat for multiple)",
+            "in": "query",
+            "name": "column",
+            "required": false,
+            "schema": {
+              "default": [],
+              "description": "Column names to return (repeat for multiple)",
+              "items": {
+                "type": "string"
+              },
+              "title": "Column",
+              "type": "array"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScannerInputResponse"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get scanner input for a specific result",
+        "summary": "Get specific columns for a result row",
         "tags": [
           "scans"
         ]
@@ -11083,6 +11111,24 @@
           }
         },
         "summary": " Raw Encoding"
+      }
+    },
+    "/schema/scanner-input": {
+      "get": {
+        "operationId": "_scanner_input_schema_scanner_input_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScannerInputResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": " Scanner Input"
       }
     },
     "/schema/transcript": {

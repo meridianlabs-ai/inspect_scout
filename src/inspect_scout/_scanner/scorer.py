@@ -120,37 +120,20 @@ def as_scorer(
 
 
 def _metadata_from_result(result: Result) -> dict[str, Any] | None:
-    """Build the Score metadata dict from a Result.
+    """Build the Score metadata dict from a Result."""
+    # base metadata
+    metadata = result.metadata or {}
 
-    Reference entries are emitted as ``[{"id": ..., "cite": ...}, ...]``
-    so downstream consumers can map cite tokens (e.g. ``[M22]``) in the
-    explanation/metadata text back to message/event ids. References whose
-    ``cite`` is ``None`` are skipped (they couldn't be linked anyway).
-    """
+    # Add sentinal scanner value
+    metadata["scanner_content"] = True
 
-    def references_for_type(type: str) -> list[dict[str, str | None]]:
-        return [
-            ref.model_dump()
-            for ref in result.references
-            if ref.type == type and ref.cite is not None
-        ]
+    # convert references to metadata
+    all_references = result.references
+    if all_references:
+        metadata["scanner_references"] = all_references
 
-    if result.metadata or result.references:
-        # base metadata
-        metadata = result.metadata or {}
-
-        # convert references to metadata
-        msg_references = references_for_type("message")
-        if msg_references:
-            metadata["message_references"] = msg_references
-        evt_references = references_for_type("event")
-        if evt_references:
-            metadata["event_references"] = evt_references
-
-        # return metadata
-        return metadata
-    else:
-        return None
+    # return metadata
+    return metadata
 
 
 def _scanner_content(

@@ -647,57 +647,47 @@ def test_user_assistant_filter_full_pipeline() -> None:
         assert score.metadata.get("other", 0) == 0
 
 
-# Tests for _metadata_from_result reference shape
+# Tests for _metadata_from_result
 
 
-def test_metadata_from_result_filters_message_refs_without_cite() -> None:
-    """Message references without a cite are dropped; cited ones become {id, cite}."""
-    result = Result(
-        value=True,
-        references=[
-            Reference(type="message", id="msg-A", cite="[M1]"),
-            Reference(type="message", id="msg-B", cite=None),
-        ],
-    )
-    metadata = _metadata_from_result(result)
-    assert metadata is not None
-    assert metadata["message_references"] == [
-        {"type": "message", "id": "msg-A", "cite": "[M1]"}
-    ]
-    assert "event_references" not in metadata
-
-
-def test_metadata_from_result_mixed_message_and_event_refs() -> None:
-    """Both message and event references are emitted under their respective keys."""
-    result = Result(
-        value=True,
-        references=[
-            Reference(type="message", id="msg-A", cite="[M1]"),
-            Reference(type="message", id="msg-B", cite="[M2]"),
-            Reference(type="event", id="evt-X", cite="[E1]"),
-        ],
-    )
-    metadata = _metadata_from_result(result)
-    assert metadata is not None
-    assert metadata["message_references"] == [
-        {"type": "message", "id": "msg-A", "cite": "[M1]"},
-        {"type": "message", "id": "msg-B", "cite": "[M2]"},
-    ]
-    assert metadata["event_references"] == [
-        {"type": "event", "id": "evt-X", "cite": "[E1]"}
-    ]
-
-
-def test_metadata_from_result_no_metadata_no_refs_returns_none() -> None:
-    """A Result with neither metadata nor references yields None."""
+def test_metadata_from_result_includes_scanner_content_sentinel() -> None:
+    """Metadata always includes the scanner_content sentinel."""
     result = Result(value=True)
-    assert _metadata_from_result(result) is None
-
-
-def test_metadata_from_result_metadata_only_passes_through() -> None:
-    """Metadata without references is returned unchanged (no reference keys added)."""
-    result = Result(value=True, metadata={"foo": "bar", "n": 42})
     metadata = _metadata_from_result(result)
-    assert metadata == {"foo": "bar", "n": 42}
-    assert "message_references" not in metadata
-    assert "event_references" not in metadata
+    assert metadata is not None
+    assert metadata["scanner_content"] is True
+
+
+def test_metadata_from_result_passes_through_references() -> None:
+    """References are stored as Reference objects under scanner_references."""
+    refs = [
+        Reference(type="message", id="msg-A", cite="[M1]"),
+        Reference(type="event", id="evt-X", cite="[E1]"),
+    ]
+    result = Result(value=True, references=refs)
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["scanner_references"] == refs
+
+
+def test_metadata_from_result_no_refs_omits_key() -> None:
+    """When there are no references, scanner_references is not present."""
+    result = Result(value=True)
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert "scanner_references" not in metadata
+
+
+def test_metadata_from_result_preserves_existing_metadata() -> None:
+    """Existing metadata is preserved alongside scanner keys."""
+    result = Result(
+        value=True,
+        metadata={"foo": "bar", "n": 42},
+        references=[Reference(type="message", id="msg-A", cite="[M1]")],
+    )
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["foo"] == "bar"
+    assert metadata["n"] == 42
+    assert metadata["scanner_content"] is True
+    assert len(metadata["scanner_references"]) == 1

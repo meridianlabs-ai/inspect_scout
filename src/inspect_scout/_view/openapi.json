@@ -2349,6 +2349,7 @@
                   "low",
                   "medium",
                   "high",
+                  "xhigh",
                   "max"
                 ],
                 "type": "string"
@@ -2540,7 +2541,8 @@
                   "low",
                   "medium",
                   "high",
-                  "xhigh"
+                  "xhigh",
+                  "max"
                 ],
                 "type": "string"
               },
@@ -2794,6 +2796,7 @@
                   "low",
                   "medium",
                   "high",
+                  "xhigh",
                   "max"
                 ],
                 "type": "string"
@@ -2985,7 +2988,8 @@
                   "low",
                   "medium",
                   "high",
-                  "xhigh"
+                  "xhigh",
+                  "max"
                 ],
                 "type": "string"
               },

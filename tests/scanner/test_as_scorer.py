@@ -20,9 +20,13 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer import mean
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
-from inspect_scout._scanner.scorer import _scanner_content, as_scorer
+from inspect_scout._scanner.scorer import (
+    _metadata_from_result,
+    _scanner_content,
+    as_scorer,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
@@ -641,3 +645,59 @@ def test_user_assistant_filter_full_pipeline() -> None:
     # Check metadata confirms no 'other' roles
     if score.metadata:
         assert score.metadata.get("other", 0) == 0
+
+
+# Tests for _metadata_from_result reference shape
+
+
+def test_metadata_from_result_filters_message_refs_without_cite() -> None:
+    """Message references without a cite are dropped; cited ones become {id, cite}."""
+    result = Result(
+        value=True,
+        references=[
+            Reference(type="message", id="msg-A", cite="[M1]"),
+            Reference(type="message", id="msg-B", cite=None),
+        ],
+    )
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["message_references"] == [
+        {"type": "message", "id": "msg-A", "cite": "[M1]"}
+    ]
+    assert "event_references" not in metadata
+
+
+def test_metadata_from_result_mixed_message_and_event_refs() -> None:
+    """Both message and event references are emitted under their respective keys."""
+    result = Result(
+        value=True,
+        references=[
+            Reference(type="message", id="msg-A", cite="[M1]"),
+            Reference(type="message", id="msg-B", cite="[M2]"),
+            Reference(type="event", id="evt-X", cite="[E1]"),
+        ],
+    )
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["message_references"] == [
+        {"type": "message", "id": "msg-A", "cite": "[M1]"},
+        {"type": "message", "id": "msg-B", "cite": "[M2]"},
+    ]
+    assert metadata["event_references"] == [
+        {"type": "event", "id": "evt-X", "cite": "[E1]"}
+    ]
+
+
+def test_metadata_from_result_no_metadata_no_refs_returns_none() -> None:
+    """A Result with neither metadata nor references yields None."""
+    result = Result(value=True)
+    assert _metadata_from_result(result) is None
+
+
+def test_metadata_from_result_metadata_only_passes_through() -> None:
+    """Metadata without references is returned unchanged (no reference keys added)."""
+    result = Result(value=True, metadata={"foo": "bar", "n": 42})
+    metadata = _metadata_from_result(result)
+    assert metadata == {"foo": "bar", "n": 42}
+    assert "message_references" not in metadata
+    assert "event_references" not in metadata

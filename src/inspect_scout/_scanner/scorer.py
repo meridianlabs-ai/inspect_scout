@@ -120,9 +120,20 @@ def as_scorer(
 
 
 def _metadata_from_result(result: Result) -> dict[str, Any] | None:
-    # references
-    def references_for_type(type: str) -> list[str]:
-        return [ref.id for ref in result.references if ref.type == type]
+    """Build the Score metadata dict from a Result.
+
+    Reference entries are emitted as ``[{"id": ..., "cite": ...}, ...]``
+    so downstream consumers can map cite tokens (e.g. ``[M22]``) in the
+    explanation/metadata text back to message/event ids. References whose
+    ``cite`` is ``None`` are skipped (they couldn't be linked anyway).
+    """
+
+    def references_for_type(type: str) -> list[dict[str, str | None]]:
+        return [
+            ref.model_dump()
+            for ref in result.references
+            if ref.type == type and ref.cite is not None
+        ]
 
     if result.metadata or result.references:
         # base metadata

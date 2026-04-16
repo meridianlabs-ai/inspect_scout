@@ -33,7 +33,7 @@ def create_dist_router(dist_path: Path | None = None) -> APIRouter:
                 detail=(
                     "Unable to resolve dist directory path. This should not happen once the server has started."
                 ),
-            ) from None
+            )
 
         return DistResponse(path=dist_path.as_posix())
 

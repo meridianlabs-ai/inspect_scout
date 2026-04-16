@@ -28,7 +28,7 @@ def create_scanners_router() -> APIRouter:
         summary="List available scanners",
         description="Returns info about all registered scanners.",
     )
-    async def scanners() -> ScannersResponse:
+    def scanners() -> ScannersResponse:
         """Return info about all registered scanner factories."""
 
         def param_schema(p: inspect.Parameter) -> dict[str, Any]:

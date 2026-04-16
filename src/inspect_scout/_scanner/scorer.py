@@ -124,13 +124,8 @@ def _metadata_from_result(result: Result) -> dict[str, Any] | None:
     # base metadata
     metadata = result.metadata or {}
 
-    # Add sentinal scanner value
-    metadata["scanner_content"] = True
-
-    # convert references to metadata
-    all_references = result.references
-    if all_references:
-        metadata["scanner_references"] = all_references
+    # add references to metadata
+    metadata["scanner_references"] = result.references
 
     # return metadata
     return metadata

@@ -5,14 +5,25 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from unittest.mock import patch
 
+import anthropic
+import httpx
+import openai
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from google.genai.errors import ClientError as GoogleClientError
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_scout._scanner.result import Result
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
+from inspect_scout._view._api_v2_types import SearchRequest
+from pydantic import TypeAdapter
+
+
+def _fake_httpx_response(status_code: int) -> httpx.Response:
+    return httpx.Response(status_code, request=httpx.Request("POST", "https://test"))
 
 
 def _base64url(s: str) -> str:
@@ -191,6 +202,7 @@ class TestSearchEndpoint:
             answer: str,
             template: str,
             model: str | None,
+            reducer: object,
         ) -> Callable[[Transcript], Awaitable[Result]]:
             llm_calls.append(
                 {
@@ -310,3 +322,149 @@ class TestSearchEndpoint:
 
         assert response.status_code == 404
         assert response.json() == {"detail": "Transcript not found"}
+
+    @pytest.mark.parametrize(
+        ("error", "expected_status", "expected_detail"),
+        [
+            (
+                ValueError(
+                    "Model name 'not-a-model' should be in the format of "
+                    "<api_name>/<model_name>."
+                ),
+                400,
+                "Model name 'not-a-model' should be in the format of "
+                "<api_name>/<model_name>.",
+            ),
+            (
+                ValueError("Model API bogus of model 'bogus/not-a-model' not recognized."),
+                400,
+                "Model API bogus of model 'bogus/not-a-model' not recognized.",
+            ),
+            (
+                anthropic.NotFoundError(
+                    "model: claude-haiku-4.5",
+                    response=_fake_httpx_response(404),
+                    body=None,
+                ),
+                404,
+                "model: claude-haiku-4.5",
+            ),
+            (
+                openai.NotFoundError(
+                    "The model `gpt-nope` does not exist or you do not have access to it.",
+                    response=_fake_httpx_response(404),
+                    body=None,
+                ),
+                404,
+                "The model `gpt-nope` does not exist or you do not have access to it.",
+            ),
+            (
+                GoogleClientError(
+                    404,
+                    {"message": "models/gemini-nope is not found", "status": "NOT_FOUND"},
+                ),
+                404,
+                "models/gemini-nope is not found",
+            ),
+            (
+                PrerequisiteError(
+                    "ERROR: Unable to initialise Perplexity client\n\n"
+                    "No [bold][blue]PERPLEXITY_API_KEY[/blue][/bold] "
+                    "defined in the environment."
+                ),
+                400,
+                "ERROR: Unable to initialise Perplexity client\n\n"
+                "No [bold][blue]PERPLEXITY_API_KEY[/blue][/bold] "
+                "defined in the environment.",
+            ),
+        ],
+    )
+    def test_llm_provider_error_forwarded_to_client(
+        self,
+        client: TestClient,
+        transcript_location: Path,
+        tmp_path: Path,
+        error: Exception,
+        expected_status: int,
+        expected_detail: str,
+    ) -> None:
+        """Provider errors are forwarded with their status code and message."""
+
+        def fake_llm_scanner(
+            *,
+            question: str,
+            answer: str,
+            template: str,
+            model: str | None,
+            reducer: object,
+        ) -> Callable[[Transcript], Awaitable[Result]]:
+            async def _scan(_: Transcript) -> Result:
+                raise error
+
+            return _scan
+
+        encoded_dir = _base64url(str(transcript_location))
+        with (
+            patch(
+                "inspect_scout._view._api_v2_search.scout_data_dir",
+                side_effect=_search_data_dir(tmp_path / "search-data"),
+            ),
+            patch(
+                "inspect_scout._view._api_v2_search.llm_scanner",
+                side_effect=fake_llm_scanner,
+            ),
+        ):
+            response = client.post(
+                f"/transcripts/{encoded_dir}/t001/search",
+                json={
+                    "query": "Where is the needle?",
+                    "type": "llm",
+                    "model": "some/model",
+                },
+            )
+
+        assert response.status_code == expected_status
+        assert response.json() == {"detail": expected_detail}
+
+    def test_uncaught_llm_error_propagates(
+        self,
+        client: TestClient,
+        transcript_location: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Unexpected LLM failures propagate rather than being swallowed."""
+        error = RuntimeError("temporary provider outage")
+
+        def fake_llm_scanner(
+            *,
+            question: str,
+            answer: str,
+            template: str,
+            model: str | None,
+            reducer: object,
+        ) -> Callable[[Transcript], Awaitable[Result]]:
+            async def _scan(_: Transcript) -> Result:
+                raise error
+
+            return _scan
+
+        encoded_dir = _base64url(str(transcript_location))
+        with (
+            patch(
+                "inspect_scout._view._api_v2_search.scout_data_dir",
+                side_effect=_search_data_dir(tmp_path / "search-data"),
+            ),
+            patch(
+                "inspect_scout._view._api_v2_search.llm_scanner",
+                side_effect=fake_llm_scanner,
+            ),
+        ):
+            with pytest.raises(RuntimeError, match="temporary provider outage"):
+                client.post(
+                    f"/transcripts/{encoded_dir}/t001/search",
+                    json={
+                        "query": "Where is the needle?",
+                        "type": "llm",
+                        "model": "openai/gpt-5.4-mini",
+                    },
+                )

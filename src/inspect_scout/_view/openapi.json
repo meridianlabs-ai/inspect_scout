@@ -10910,7 +10910,7 @@
     },
     "/scans/{dir}/{scan}/{scanner}": {
       "get": {
-        "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Use exclude_columns to omit heavy columns from the response.",
+        "description": "Streams scanner results as Arrow IPC format with LZ4 compression. Use exclude_column to omit heavy columns from the response.",
         "operationId": "scan_df_scans__dir___scan___scanner__get",
         "parameters": [
           {
@@ -10947,21 +10947,18 @@
             }
           },
           {
-            "description": "Comma-separated list of column names to exclude",
+            "description": "Column names to exclude (repeat for multiple)",
             "in": "query",
-            "name": "exclude_columns",
+            "name": "exclude_column",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Comma-separated list of column names to exclude",
-              "title": "Exclude Columns"
+              "default": [],
+              "description": "Column names to exclude (repeat for multiple)",
+              "items": {
+                "type": "string"
+              },
+              "title": "Exclude Column",
+              "type": "array"
             }
           }
         ],
@@ -10983,7 +10980,7 @@
     },
     "/scans/{dir}/{scan}/{scanner}/{uuid}": {
       "get": {
-        "description": "Returns requested columns as a JSON object. Pass a comma-separated list via the `columns` query parameter.",
+        "description": "Returns requested columns as a JSON object. Repeat the `column` query parameter for each column.",
         "operationId": "scanner_row_scans__dir___scan___scanner___uuid__get",
         "parameters": [
           {
@@ -11031,21 +11028,18 @@
             }
           },
           {
-            "description": "Comma-separated list of column names to return",
+            "description": "Column names to return (repeat for multiple)",
             "in": "query",
-            "name": "columns",
+            "name": "column",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Comma-separated list of column names to return",
-              "title": "Columns"
+              "default": [],
+              "description": "Column names to return (repeat for multiple)",
+              "items": {
+                "type": "string"
+              },
+              "title": "Column",
+              "type": "array"
             }
           }
         ],

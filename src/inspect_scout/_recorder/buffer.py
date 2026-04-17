@@ -307,15 +307,15 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
 
     # Correct schema to handle type inconsistencies across files:
     # 1. Promote null-type columns to string (unknown type)
-    # 2. Force 'value' column to string since it can have mixed types (bool, int, float, str)
-    #    across different result reports
+    # 2. Force 'value' and 'transcript_score' columns to string since they can have
+    #    mixed types across different result reports / transcripts
     corrected_fields = []
     for field in schema:
         if pa.types.is_null(field.type):
             # Promote null type to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
-        elif field.name == "value":
-            # Force value column to string to handle mixed types
+        elif field.name in {"value", "transcript_score"}:
+            # Force mixed-type columns to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         else:
             corrected_fields.append(field)

@@ -1,3 +1,7 @@
+## Unreleased
+
+- Bugfix: resolve transcript_score types to string when resuming scans.
+
 ## 0.4.26 (15 April 2026)
 
 - Utilities: Export `message_as_str` function.

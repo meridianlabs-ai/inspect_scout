@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import io
 import tempfile
 from pathlib import Path
 from typing import Generator
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
@@ -145,6 +148,44 @@ async def test_sanitize_table_names(
 
     # Should still be able to retrieve
     scanner_table(recorder_buffer._buffer_dir, scanner_name)
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_casts_mixed_transcript_score_to_string(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+) -> None:
+    scanner_name = "test_scanner"
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="score-int",
+            source_type="test",
+            source_id="source-1",
+            source_uri="/path/to/source-1.log",
+            score=1,
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="score-json",
+            source_type="test",
+            source_id="source-2",
+            source_uri="/path/to/source-2.log",
+            score={"value": 0, "answer": "nope", "history": []},
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+
+    parquet_bytes = scanner_table(recorder_buffer._buffer_dir, scanner_name)
+    assert parquet_bytes is not None
+
+    table = pq.read_table(io.BytesIO(parquet_bytes))
+    assert table.schema.field("transcript_score").type == pa.string()
 
 
 def test_buffer_dir_respects_env_var(

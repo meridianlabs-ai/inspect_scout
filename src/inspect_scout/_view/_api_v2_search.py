@@ -5,12 +5,8 @@ import json
 from collections.abc import Sequence
 from datetime import datetime, timezone
 
-import anthropic
-import openai
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import Response
-from google.genai.errors import ClientError as GoogleClientError
-from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.kvstore import KVStore
 from pydantic import TypeAdapter
 
@@ -166,24 +162,9 @@ def create_search_router() -> APIRouter:
                     model=request.model,
                     reducer=ResultReducer.llm(model=request.model),
                 )(transcript)
-            except (anthropic.APIStatusError, openai.APIStatusError) as err:
+            except Exception as err:
                 raise HTTPException(
-                    status_code=err.status_code,
-                    detail=err.message,
-                ) from err
-            except GoogleClientError as err:
-                raise HTTPException(
-                    status_code=err.code,
-                    detail=err.message or str(err),
-                ) from err
-            except PrerequisiteError as err:
-                raise HTTPException(
-                    status_code=400,
-                    detail=str(err.message),
-                ) from err
-            except ValueError as err:
-                raise HTTPException(
-                    status_code=400,
+                    status_code=502,
                     detail=str(err),
                 ) from err
         results = output if isinstance(output, list) else [output]

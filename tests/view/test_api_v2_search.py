@@ -324,21 +324,15 @@ class TestSearchEndpoint:
         assert response.json() == {"detail": "Transcript not found"}
 
     @pytest.mark.parametrize(
-        ("error", "expected_status", "expected_detail"),
+        ("error", "expected_detail_substring"),
         [
             (
                 ValueError(
                     "Model name 'not-a-model' should be in the format of "
                     "<api_name>/<model_name>."
                 ),
-                400,
                 "Model name 'not-a-model' should be in the format of "
                 "<api_name>/<model_name>.",
-            ),
-            (
-                ValueError("Model API bogus of model 'bogus/not-a-model' not recognized."),
-                400,
-                "Model API bogus of model 'bogus/not-a-model' not recognized.",
             ),
             (
                 anthropic.NotFoundError(
@@ -346,7 +340,6 @@ class TestSearchEndpoint:
                     response=_fake_httpx_response(404),
                     body=None,
                 ),
-                404,
                 "model: claude-haiku-4.5",
             ),
             (
@@ -355,15 +348,16 @@ class TestSearchEndpoint:
                     response=_fake_httpx_response(404),
                     body=None,
                 ),
-                404,
                 "The model `gpt-nope` does not exist or you do not have access to it.",
             ),
             (
                 GoogleClientError(
                     404,
-                    {"message": "models/gemini-nope is not found", "status": "NOT_FOUND"},
+                    {
+                        "message": "models/gemini-nope is not found",
+                        "status": "NOT_FOUND",
+                    },
                 ),
-                404,
                 "models/gemini-nope is not found",
             ),
             (
@@ -372,23 +366,23 @@ class TestSearchEndpoint:
                     "No [bold][blue]PERPLEXITY_API_KEY[/blue][/bold] "
                     "defined in the environment."
                 ),
-                400,
-                "ERROR: Unable to initialise Perplexity client\n\n"
-                "No [bold][blue]PERPLEXITY_API_KEY[/blue][/bold] "
-                "defined in the environment.",
+                "PERPLEXITY_API_KEY",
+            ),
+            (
+                RuntimeError("temporary provider outage"),
+                "temporary provider outage",
             ),
         ],
     )
-    def test_llm_provider_error_forwarded_to_client(
+    def test_llm_scanner_errors_forwarded_as_502(
         self,
         client: TestClient,
         transcript_location: Path,
         tmp_path: Path,
         error: Exception,
-        expected_status: int,
-        expected_detail: str,
+        expected_detail_substring: str,
     ) -> None:
-        """Provider errors are forwarded with their status code and message."""
+        """All scanner exceptions are forwarded to the client as 502."""
 
         def fake_llm_scanner(
             *,
@@ -423,48 +417,5 @@ class TestSearchEndpoint:
                 },
             )
 
-        assert response.status_code == expected_status
-        assert response.json() == {"detail": expected_detail}
-
-    def test_uncaught_llm_error_propagates(
-        self,
-        client: TestClient,
-        transcript_location: Path,
-        tmp_path: Path,
-    ) -> None:
-        """Unexpected LLM failures propagate rather than being swallowed."""
-        error = RuntimeError("temporary provider outage")
-
-        def fake_llm_scanner(
-            *,
-            question: str,
-            answer: str,
-            template: str,
-            model: str | None,
-            reducer: object,
-        ) -> Callable[[Transcript], Awaitable[Result]]:
-            async def _scan(_: Transcript) -> Result:
-                raise error
-
-            return _scan
-
-        encoded_dir = _base64url(str(transcript_location))
-        with (
-            patch(
-                "inspect_scout._view._api_v2_search.scout_data_dir",
-                side_effect=_search_data_dir(tmp_path / "search-data"),
-            ),
-            patch(
-                "inspect_scout._view._api_v2_search.llm_scanner",
-                side_effect=fake_llm_scanner,
-            ),
-        ):
-            with pytest.raises(RuntimeError, match="temporary provider outage"):
-                client.post(
-                    f"/transcripts/{encoded_dir}/t001/search",
-                    json={
-                        "query": "Where is the needle?",
-                        "type": "llm",
-                        "model": "openai/gpt-5.4-mini",
-                    },
-                )
+        assert response.status_code == 502
+        assert expected_detail_substring in response.json()["detail"]

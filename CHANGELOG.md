@@ -3,6 +3,9 @@
 - Utilities: Export `message_as_str` function.
 - Utilities: Add `format` option to `messages_as_str` function ("text", "json", or "list").
 - Scout View: Consolidate transcript viewer to shared component. Miscellaneous fixes and improvements.
+- Scout View: Lazy-load scan events via detail endpoint for improved performance.
+- Scout View: Fix infinite re-render loop when collapsing/expanding transcript events.
+- Scout View: Fix expand-all to fully expand all nodes and correct initial chevron state.
 
 ## 0.4.25 (04 April 2026)
 

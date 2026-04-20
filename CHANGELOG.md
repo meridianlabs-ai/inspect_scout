@@ -1,6 +1,9 @@
 ## Unreleased
 
 - Bugfix: resolve transcript_score types to string when resuming scans.
+- Scout View: Fix error when attempting to collapse all or expand all events in transcripts.
+- Scout View: Improvements to expand / collapse behavior in transcripts.
+- Scout View: Don't show empty entries in messages view when a message is retried.
 
 ## 0.4.26 (15 April 2026)
 

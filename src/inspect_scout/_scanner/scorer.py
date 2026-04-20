@@ -120,26 +120,15 @@ def as_scorer(
 
 
 def _metadata_from_result(result: Result) -> dict[str, Any] | None:
-    # references
-    def references_for_type(type: str) -> list[str]:
-        return [ref.id for ref in result.references if ref.type == type]
+    """Build the Score metadata dict from a Result."""
+    # base metadata
+    metadata = result.metadata or {}
 
-    if result.metadata or result.references:
-        # base metadata
-        metadata = result.metadata or {}
+    # add references to metadata
+    metadata["scanner_references"] = result.references
 
-        # convert references to metadata
-        msg_references = references_for_type("message")
-        if msg_references:
-            metadata["message_references"] = msg_references
-        evt_references = references_for_type("event")
-        if evt_references:
-            metadata["event_references"] = evt_references
-
-        # return metadata
-        return metadata
-    else:
-        return None
+    # return metadata
+    return metadata
 
 
 def _scanner_content(

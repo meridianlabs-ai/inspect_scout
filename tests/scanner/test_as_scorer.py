@@ -20,9 +20,13 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer import mean
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
-from inspect_scout._scanner.scorer import _scanner_content, as_scorer
+from inspect_scout._scanner.scorer import (
+    _metadata_from_result,
+    _scanner_content,
+    as_scorer,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
@@ -641,3 +645,49 @@ def test_user_assistant_filter_full_pipeline() -> None:
     # Check metadata confirms no 'other' roles
     if score.metadata:
         assert score.metadata.get("other", 0) == 0
+
+
+# Tests for _metadata_from_result
+
+
+def test_metadata_from_result_always_includes_scanner_references() -> None:
+    """scanner_references is always present, even as an empty list when no refs."""
+    result = Result(value=True)
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["scanner_references"] == []
+
+
+def test_metadata_from_result_passes_through_references() -> None:
+    """References are stored as Reference objects under scanner_references."""
+    refs = [
+        Reference(type="message", id="msg-A", cite="[M1]"),
+        Reference(type="event", id="evt-X", cite="[E1]"),
+    ]
+    result = Result(value=True, references=refs)
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["scanner_references"] == refs
+
+
+def test_metadata_from_result_no_refs_includes_empty_list() -> None:
+    """When there are no references, scanner_references is present as an empty list."""
+    result = Result(value=True)
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert "scanner_references" in metadata
+    assert metadata["scanner_references"] == []
+
+
+def test_metadata_from_result_preserves_existing_metadata() -> None:
+    """Existing metadata is preserved alongside scanner keys."""
+    result = Result(
+        value=True,
+        metadata={"foo": "bar", "n": 42},
+        references=[Reference(type="message", id="msg-A", cite="[M1]")],
+    )
+    metadata = _metadata_from_result(result)
+    assert metadata is not None
+    assert metadata["foo"] == "bar"
+    assert metadata["n"] == 42
+    assert len(metadata["scanner_references"]) == 1

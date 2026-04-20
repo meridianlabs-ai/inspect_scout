@@ -6588,6 +6588,7 @@
         ]
       },
       "SavedSearchListResponse": {
+        "description": "Response from the list searches endpoint.",
         "properties": {
           "items": {
             "items": {

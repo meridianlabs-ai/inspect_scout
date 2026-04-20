@@ -1,9 +1,11 @@
 ## Unreleased
 
-- Bugfix: resolve transcript_score types to string when resuming scans.
+- Scanner as Scorer: Modify format for improved API for view client.
+- Scanner as Scorer: Write sentinel value so view client can detect scanner content.
 - Scout View: Fix error when attempting to collapse all or expand all events in transcripts.
 - Scout View: Improvements to expand / collapse behavior in transcripts.
 - Scout View: Don't show empty entries in messages view when a message is retried.
+- Bugfix: resolve transcript_score types to string when resuming scans.
 
 ## 0.4.26 (15 April 2026)
 

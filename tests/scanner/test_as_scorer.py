@@ -650,12 +650,12 @@ def test_user_assistant_filter_full_pipeline() -> None:
 # Tests for _metadata_from_result
 
 
-def test_metadata_from_result_includes_scanner_content_sentinel() -> None:
-    """Metadata always includes the scanner_content sentinel."""
+def test_metadata_from_result_always_includes_scanner_references() -> None:
+    """scanner_references is always present, even as an empty list when no refs."""
     result = Result(value=True)
     metadata = _metadata_from_result(result)
     assert metadata is not None
-    assert metadata["scanner_content"] is True
+    assert metadata["scanner_references"] == []
 
 
 def test_metadata_from_result_passes_through_references() -> None:
@@ -670,12 +670,13 @@ def test_metadata_from_result_passes_through_references() -> None:
     assert metadata["scanner_references"] == refs
 
 
-def test_metadata_from_result_no_refs_omits_key() -> None:
-    """When there are no references, scanner_references is not present."""
+def test_metadata_from_result_no_refs_includes_empty_list() -> None:
+    """When there are no references, scanner_references is present as an empty list."""
     result = Result(value=True)
     metadata = _metadata_from_result(result)
     assert metadata is not None
-    assert "scanner_references" not in metadata
+    assert "scanner_references" in metadata
+    assert metadata["scanner_references"] == []
 
 
 def test_metadata_from_result_preserves_existing_metadata() -> None:
@@ -689,5 +690,4 @@ def test_metadata_from_result_preserves_existing_metadata() -> None:
     assert metadata is not None
     assert metadata["foo"] == "bar"
     assert metadata["n"] == 42
-    assert metadata["scanner_content"] is True
     assert len(metadata["scanner_references"]) == 1

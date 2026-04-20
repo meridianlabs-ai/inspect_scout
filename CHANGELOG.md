@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.27 (20 April 2026)
 
 - Scanner as Scorer: Modify format for improved API for view client.
 - Scanner as Scorer: Write sentinel value so view client can detect scanner content.

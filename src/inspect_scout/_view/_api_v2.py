@@ -8,6 +8,7 @@ from ._api_v2_config import create_config_router
 from ._api_v2_dist import create_dist_router
 from ._api_v2_scanners import create_scanners_router
 from ._api_v2_scans import create_scans_router
+from ._api_v2_search import create_search_router
 from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import create_transcripts_router
 from ._api_v2_validations import create_validation_router
@@ -39,5 +40,6 @@ def v2_api_app(
     app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
+    app.include_router(create_search_router())
 
     return app

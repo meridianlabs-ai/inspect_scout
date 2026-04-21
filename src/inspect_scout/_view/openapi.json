@@ -3165,6 +3165,164 @@
         "title": "GenerateConfig",
         "type": "object"
       },
+      "GrepSavedSearch": {
+        "additionalProperties": false,
+        "description": "A persisted grep search result.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "ignore_case": {
+            "title": "Ignore Case",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "regex": {
+            "title": "Regex",
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "grep",
+            "default": "grep",
+            "title": "Type",
+            "type": "string"
+          },
+          "word_boundary": {
+            "title": "Word Boundary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "search_id",
+          "query",
+          "results",
+          "created_at",
+          "type",
+          "regex",
+          "ignore_case",
+          "word_boundary"
+        ],
+        "title": "GrepSavedSearch",
+        "type": "object"
+      },
+      "GrepSearchRequest": {
+        "additionalProperties": false,
+        "description": "Request body for grep transcript searches.",
+        "properties": {
+          "events": {
+            "anyOf": [
+              {
+                "const": "all",
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "model",
+                        "tool",
+                        "compaction",
+                        "branch",
+                        "approval",
+                        "sandbox",
+                        "info",
+                        "store",
+                        "logger",
+                        "error",
+                        "span_begin",
+                        "span_end"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "ignore_case": {
+            "default": true,
+            "title": "Ignore Case",
+            "type": "boolean"
+          },
+          "messages": {
+            "anyOf": [
+              {
+                "const": "all",
+                "type": "string"
+              },
+              {
+                "items": {
+                  "enum": [
+                    "system",
+                    "user",
+                    "assistant",
+                    "tool"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messages"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "regex": {
+            "default": false,
+            "title": "Regex",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "grep",
+            "default": "grep",
+            "title": "Type",
+            "type": "string"
+          },
+          "word_boundary": {
+            "default": false,
+            "title": "Word Boundary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "type",
+          "regex",
+          "ignore_case",
+          "word_boundary"
+        ],
+        "title": "GrepSearchRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3868,6 +4026,57 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LlmSavedSearch": {
+        "additionalProperties": false,
+        "description": "A persisted LLM search result.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "llm",
+            "default": "llm",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_id",
+          "query",
+          "results",
+          "created_at",
+          "type"
+        ],
+        "title": "LlmSavedSearch",
+        "type": "object"
+      },
       "LlmScannerParams": {
         "description": "Parameters for llm_scanner.",
         "properties": {
@@ -3900,6 +4109,102 @@
           "answer"
         ],
         "title": "LlmScannerParams",
+        "type": "object"
+      },
+      "LlmSearchRequest": {
+        "additionalProperties": false,
+        "description": "Request body for LLM transcript searches.",
+        "properties": {
+          "events": {
+            "anyOf": [
+              {
+                "const": "all",
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "model",
+                        "tool",
+                        "compaction",
+                        "branch",
+                        "approval",
+                        "sandbox",
+                        "info",
+                        "store",
+                        "logger",
+                        "error",
+                        "span_begin",
+                        "span_end"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "messages": {
+            "anyOf": [
+              {
+                "const": "all",
+                "type": "string"
+              },
+              {
+                "items": {
+                  "enum": [
+                    "system",
+                    "user",
+                    "assistant",
+                    "tool"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messages"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "type": {
+            "const": "llm",
+            "default": "llm",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "type"
+        ],
+        "title": "LlmSearchRequest",
         "type": "object"
       },
       "LoggerEvent": {
@@ -5563,6 +5868,40 @@
         "title": "RawEncoding",
         "type": "string"
       },
+      "Reference": {
+        "description": "Reference to scanned content.",
+        "properties": {
+          "cite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cite"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "message",
+              "event"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "Reference",
+        "type": "object"
+      },
       "RenameValidationSetRequest": {
         "description": "Request body for PUT /validations/{uri}/rename endpoint.",
         "properties": {
@@ -5655,6 +5994,94 @@
           "json_schema"
         ],
         "title": "ResponseSchema",
+        "type": "object"
+      },
+      "Result": {
+        "description": "Scan result.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "value": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        },
+        "required": [
+          "value",
+          "references"
+        ],
+        "title": "Result",
         "type": "object"
       },
       "Sample": {
@@ -6141,6 +6568,40 @@
           "action"
         ],
         "title": "SandboxEvent",
+        "type": "object"
+      },
+      "SavedSearch": {
+        "discriminator": {
+          "mapping": {
+            "grep": "#/components/schemas/GrepSavedSearch",
+            "llm": "#/components/schemas/LlmSavedSearch"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GrepSavedSearch"
+          },
+          {
+            "$ref": "#/components/schemas/LlmSavedSearch"
+          }
+        ]
+      },
+      "SavedSearchListResponse": {
+        "description": "Response from the list searches endpoint.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SavedSearch"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SavedSearchListResponse",
         "type": "object"
       },
       "ScanJobConfig": {
@@ -11543,6 +12004,228 @@
         "summary": "Get transcript messages and events",
         "tags": [
           "transcripts"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/search": {
+      "post": {
+        "description": "Search a transcript using grep or LLM-based search.\n\nReturns cached results if the same search was run before.",
+        "operationId": "search_transcripts__dir___id__search_post",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "grep": "#/components/schemas/GrepSearchRequest",
+                    "llm": "#/components/schemas/LlmSearchRequest"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/GrepSearchRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LlmSearchRequest"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Search a transcript",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/searches": {
+      "get": {
+        "description": "List all saved searches for a transcript, newest first.",
+        "operationId": "list_searches_transcripts__dir___id__searches_get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearchListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List saved searches for a transcript",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/transcripts/{dir}/{id}/searches/{search_id}": {
+      "delete": {
+        "description": "Delete a saved search by ID.",
+        "operationId": "delete_search_transcripts__dir___id__searches__search_id__delete",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search ID",
+            "in": "path",
+            "name": "search_id",
+            "required": true,
+            "schema": {
+              "description": "Search ID",
+              "title": "Search Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete a saved search",
+        "tags": [
+          "search"
+        ]
+      },
+      "get": {
+        "description": "Get a single saved search by ID.",
+        "operationId": "get_search_transcripts__dir___id__searches__search_id__get",
+        "parameters": [
+          {
+            "description": "Transcripts directory (base64url-encoded)",
+            "in": "path",
+            "name": "dir",
+            "required": true,
+            "schema": {
+              "description": "Transcripts directory (base64url-encoded)",
+              "title": "Dir",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Transcript ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Transcript ID",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search ID",
+            "in": "path",
+            "name": "search_id",
+            "required": true,
+            "schema": {
+              "description": "Search ID",
+              "title": "Search Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedSearch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get a saved search",
+        "tags": [
+          "search"
         ]
       }
     },

@@ -87,7 +87,7 @@ class TestSearchEndpoint:
 
     def test_search_request_preserves_unspecified_scope_filters(self) -> None:
         """Unspecified scope filters remain unset instead of defaulting to all."""
-        request = TypeAdapter(SearchRequest).validate_python(
+        request: SearchRequest = TypeAdapter(SearchRequest).validate_python(
             {
                 "events": "all",
                 "ignore_case": True,

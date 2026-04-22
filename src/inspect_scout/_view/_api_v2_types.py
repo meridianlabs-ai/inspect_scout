@@ -298,10 +298,10 @@ class SearchRequestBase(BaseModel):
 
     query: str
 
-    messages: MessageFilter = None
+    messages: MessageFilter = Field(default=None)
     """Filter for which message types to include when loading the transcript."""
 
-    events: EventFilter = None
+    events: EventFilter = Field(default=None)
     """Filter for which event types to include when loading the transcript."""
 
     model_config = ConfigDict(extra="forbid")

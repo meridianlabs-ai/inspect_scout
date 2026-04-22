@@ -52,12 +52,13 @@ MAX_ENTRIES = 500
 SAVED_SEARCH_ADAPTER: TypeAdapter[SavedSearch] = TypeAdapter(SavedSearch)
 
 
-def _normalize_filter(value: object) -> object:
+def _normalize_filter(
+    value: str | None | Sequence[object],
+) -> str | None | Sequence[str]:
     """Normalize a message/event filter for stable hashing."""
     if value is None or isinstance(value, str):
         return value
     # Sequence of types — sort for stability
-    assert isinstance(value, Sequence)
     return sorted(str(item) for item in value)
 
 

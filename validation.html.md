@@ -1,4 +1,4 @@
-# Validation
+# Validation – Inspect Scout
 
 ## Overview
 
@@ -8,7 +8,7 @@ When developing scanners, it’s often desirable to create a feedback loop based
 
 The *validation set* is the set of labeled transcripts that are compared against scan results. Validation sets are typically associated with the domain of a particular scanner type (e.g. “evaluation awareness”, “refusal”, etc.) so you will likely develop many of them for use with different scanners.
 
-Apply a validation set by passing it to [scan()](reference/scanning.html.md#scan). For example:
+Apply a validation set by passing it to [scan()](./reference/scanning.html.md#scan). For example:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -32,7 +32,7 @@ Validation sets are stored in CSV, YAML, JSON, or JSONL text files, however you 
 
 ## Validation Sets
 
-The easiest way to work with validation data is to use [Scout View](index.html.md#scout-view), which provides inline editing of validation cases as well as various tools for editing and refining validation sets.
+The easiest way to work with validation data is to use [Scout View](./index.html.md#scout-view), which provides inline editing of validation cases as well as various tools for editing and refining validation sets.
 
 ### Transcript View
 
@@ -62,6 +62,8 @@ Use the validation pane to review and edit validation cases, manage [splits](#va
 
 While you don’t often need to edit validation files directly, you can do so if necessary since they are ordinary CSV for YAML files. For example, here’s a validation set in CSV format:
 
+    eval-awareness.csv
+
 ``` default
 id,target
 Fg3KBpgFr6RSsEWmHBUqeo,true
@@ -79,7 +81,9 @@ See the [File Formats](#file-formats) section below for complete details on vali
 
 ### Adding Validation
 
-You’ll typically create a distinct validation set (with potentially multiple splits) for each scanner, and then pass the validation sets to [scan()](reference/scanning.html.md#scan) as a dict mapping scanner to set:
+You’ll typically create a distinct validation set (with potentially multiple splits) for each scanner, and then pass the validation sets to [scan()](./reference/scanning.html.md#scan) as a dict mapping scanner to set:
+
+    scanning.py
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -95,6 +99,8 @@ scan(
 ```
 
 If you have only only a single scanner you can pass the validation set without the mapping:
+
+    scanning.py
 
 ``` python
 scan(
@@ -162,6 +168,8 @@ You can also directly assign splits from within the validation case editor in th
 
 Splits are then written to validation set CSVs using a `split` column:
 
+    validation.csv
+
 ``` default
 id,target,split
 Fg3KBpgFr6RSsEWmHBUqeo,true,dev
@@ -171,7 +179,7 @@ SiEXpECj7U9nNAvM3H7JqB,true,test
 
 ### Applying Splits
 
-Pass the `split` option to [validation_set()](reference/results.html.md#validation_set) to filter by split when creating your validation set:
+Pass the `split` option to [validation_set()](./reference/results.html.md#validation_set) to filter by split when creating your validation set:
 
 ``` python
 from inspect_scout import validation_set
@@ -196,6 +204,8 @@ When specifying a non-boolean target for a validation case, you can also customi
 [![](images/validation-panel-predicate.png)](images/validation-panel-predicate.png)
 
 Within a validation set CSV, add a `predicate` column to specify comparison logic for individual cases:
+
+    validation.csv
 
 ``` default
 id,target,predicate
@@ -228,13 +238,15 @@ In this example:
 
 ### Default Predicate
 
-You can also set a default predicate for all cases using the `predicate` parameter of [validation_set()](reference/results.html.md#validation_set):
+You can also set a default predicate for all cases using the `predicate` parameter of [validation_set()](./reference/results.html.md#validation_set):
 
 ``` python
 validation_set(cases="validation.csv", predicate="gte")
 ```
 
 When both are specified, per-case predicates take precedence over the default. This allows you to set a common predicate while overriding it for specific cases:
+
+    validation.csv
 
 ``` default
 id,target,predicate
@@ -252,9 +264,11 @@ validation_set(cases="validation.csv", predicate="gte")
 
 ### Non-Transcript IDs
 
-In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](scanners.html.md#loader)).
+In the above examples, we provided a validation set of transcript_id =\> boolean. Of course, not every scanner takes a transcript id (some take event or message ids). All of these other variations are supported (including lists of events or messages yielded by a custom [Loader](./scanners.html.md#loader)).
 
 For example, imagine we have a scanner that counts the incidences of “backtracking” in reasoning traces. In this case our scanner yields a number rather than a boolean. So our validation set would be message_id =\> number:
+
+    backtracking.csv
 
 ``` default
 id,target
@@ -264,6 +278,8 @@ SiEXpECj7U9nNAvM3H7JqB,3
 ```
 
 In the case of a custom loader (.e.g. one that extracts user/assistant message pairs) we can also include multiple IDs:
+
+    validation.csv
 
 ``` default
 id,target
@@ -281,7 +297,7 @@ Both formats are automatically parsed into a list of IDs.
 
 Some scanners yield complex values (e.g. lists or dictionaries). For purposes of validation it’s often much better to deal with simple values, however if you want to validate against lists and dicts this is fully supported (although you can’t define validation cases with non-scaner targets in the Scout View UI).
 
-One middle ground is that if your scanner is yielding a dict (e.g for [Structured Answers](llm_scanner.html.md#structured-answers)) you can still mark one of the dict fields as the “value” using `alias="value"`. For example:
+One middle ground is that if your scanner is yielding a dict (e.g for [Structured Answers](./llm_scanner.html.md#structured-answers)) you can still mark one of the dict fields as the “value” using `alias="value"`. For example:
 
 ``` python
 class Refusal(BaseModel):
@@ -302,7 +318,7 @@ This enables you to combine complex results with more straightforward validation
 
 ## File Formats
 
-You can specify a [ValidationSet](reference/results.html.md#validationset) either in code, as a CSV, YAML, JSON, or JSONL file.
+You can specify a [ValidationSet](./reference/results.html.md#validationset) either in code, as a CSV, YAML, JSON, or JSONL file.
 
 ### CSV
 
@@ -314,6 +330,8 @@ Here are the various ways you can structure a validation CSV for different scena
 
 Here is what a YAML file would look like for a single target:
 
+    validation.yaml
+
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
   target: true
@@ -323,6 +341,8 @@ Here is what a YAML file would look like for a single target:
 ```
 
 Here is a YAML file for multiple targets:
+
+    validation.yaml
 
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -337,6 +357,8 @@ Here is a YAML file for multiple targets:
 ```
 
 Here is a YAML file for label-based validation (resultsets):
+
+    validation.yaml
 
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
@@ -354,6 +376,8 @@ Here is a YAML file for label-based validation (resultsets):
 
 Here is a YAML file with splits using the flat format (split field on each case):
 
+    validation.yaml
+
 ``` yaml
 - id: Fg3KBpgFr6RSsEWmHBUqeo
   target: true
@@ -365,6 +389,8 @@ Here is a YAML file with splits using the flat format (split field on each case)
 ```
 
 You can also use a nested format that groups cases by split:
+
+    validation.yaml
 
 ``` yaml
 - split: dev
@@ -384,6 +410,8 @@ You can also use a nested format that groups cases by split:
 
 JSON files use the same structure as YAML:
 
+    validation.json
+
 ``` json
 [
   {"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true},
@@ -392,6 +420,8 @@ JSON files use the same structure as YAML:
 ```
 
 JSONL (JSON Lines) format has one case per line:
+
+    validation.jsonl
 
 ``` default
 {"id": "Fg3KBpgFr6RSsEWmHBUqeo", "target": true}

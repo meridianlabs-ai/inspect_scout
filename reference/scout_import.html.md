@@ -1,6 +1,4 @@
-# scout import
-
-Import transcripts from external sources into the local database.
+# scout_import – Inspect Scout
 
 Import transcripts from a source.
 

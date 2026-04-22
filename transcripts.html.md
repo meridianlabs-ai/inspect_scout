@@ -1,12 +1,12 @@
-# Transcripts
+# Transcripts – Inspect Scout
 
 ## Overview
 
-Transcripts are the fundamental input to scanners. The [Transcripts](reference/transcript.html.md#transcripts) class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.
+Transcripts are the fundamental input to scanners. The [Transcripts](./reference/transcript.html.md#transcripts) class represents a collection of transcripts that has been selected for scanning, and supports various filtering operations to refine the collection.
 
 ## Reading Transcripts
 
-Use the [transcripts_from()](reference/transcript.html.md#transcripts_from) function to read a collection of [Transcripts](reference/transcript.html.md#transcripts):
+Use the [transcripts_from()](./reference/transcript.html.md#transcripts_from) function to read a collection of [Transcripts](./reference/transcript.html.md#transcripts):
 
 ``` python
 from inspect_scout import transcripts_from
@@ -18,7 +18,7 @@ transcripts = transcripts_from("s3://weave-rollouts/cybench")
 transcripts = transcripts_from("./logs")
 ```
 
-The [transcripts_from()](reference/transcript.html.md#transcripts_from) function can read transcripts from either:
+The [transcripts_from()](./reference/transcript.html.md#transcripts_from) function can read transcripts from either:
 
 1.  A transcript database that contains transcripts you have imported from a variety of sources (Agent traces, RL rollouts, Inspect logs, etc.); or
 
@@ -40,7 +40,7 @@ transcripts = (
 )
 ```
 
-See the [Columns](reference/transcript.html.md#columns) documentation for additional details on supported filtering operations.
+See the [Columns](./reference/transcript.html.md#columns) documentation for additional details on supported filtering operations.
 
 You can also limit the total number of transcripts as well as shuffle the order of transcripts read (both are useful during scanner development when you don’t want to process all transcripts). For example:
 
@@ -62,25 +62,25 @@ You can use Scout View to view and filter transcripts:
 scout view
 ```
 
-![](images/transcripts-list.png)
+[![](images/transcripts-list.png)](images/transcripts-list.png)
 
 If you filter down into a set of transcripts that you want to analyze, use the **Copy** button to copy the code required to apply the filter:
 
-![](images/transcripts-copy.png)
+[![](images/transcripts-copy.png)](images/transcripts-copy.png)
 
 If you drill into a transcript you can see its messages, events, and other details:
 
-![](images/transcripts-detail.png)
+[![](images/transcripts-detail.png)](images/transcripts-detail.png)
 
 ## Transcript Fields
 
-Here are the available [Transcript](reference/transcript.html.md#transcript) fields:
+Here are the available [Transcript](./reference/transcript.html.md#transcript) fields:
 
 [TABLE]
 
 ## Scanning Transcripts
 
-Once you have established your list of transcripts to scan, just pass them to the [scan()](reference/scanning.html.md#scan) function:
+Once you have established your list of transcripts to scan, just pass them to the [scan()](./reference/scanning.html.md#scan) function:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -94,6 +94,8 @@ scan(
 ```
 
 If you want to do transcript filtering and then invoke your scan from the CLI using `scout scan`, then perform the filtering inside a `@scanjob`. For example:
+
+    cybench_scan.py
 
 ``` python
 from inspect_scout (
@@ -124,7 +126,7 @@ The `-S` argument enables you to pass arguments to the `@scanjob` function (in t
 
 ## Inspect Eval Logs
 
-The [transcripts_from()](reference/transcript.html.md#transcripts_from) function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:
+The [transcripts_from()](./reference/transcript.html.md#transcripts_from) function can read a collection of transcripts directly from an Inspect log directory. You can specify one or more directories and/or individual log files. For example:
 
 ``` python
 # read from a log directory
@@ -139,7 +141,7 @@ transcripts = transcripts_from(
 )
 ```
 
-For Inspect logs, the `metadata` field within [TranscriptInfo](reference/transcript.html.md#transcriptinfo) includes fields from eval sample metadata. For example:
+For Inspect logs, the `metadata` field within [TranscriptInfo](./reference/transcript.html.md#transcriptinfo) includes fields from eval sample metadata. For example:
 
 ``` python
 transcript.metadata["sample_id"]        # sample uuid 
@@ -150,7 +152,7 @@ transcript.metadata["sample_metadata"]  # sample metadata
 transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 
-See the [LogColumns](reference/transcript.html.md#logcolumns) class for details on all of the fields included in `transcript.metadata`. Use `log_columns` (aliased to `c` below) to do typesafe filtering for Inspect logs:
+See the [LogColumns](./reference/transcript.html.md#logcolumns) class for details on all of the fields included in `transcript.metadata`. Use `log_columns` (aliased to `c` below) to do typesafe filtering for Inspect logs:
 
 ``` python
 from inspect_scout import transcripts_from, log_columns as c
@@ -165,7 +167,7 @@ transcripts = (
 
 Scout can analyze transcripts from any source (e.g. Agent traces, RL rollouts, etc.) so long as the transcripts have been organized into a transcripts database. Transcript databases use [Parquet](https://parquet.apache.org) files for storage and can be located in the local filesystem or remote systems like S3.
 
-You can read from a transcript database using the [transcripts_from()](reference/transcript.html.md#transcripts_from) function. For example:
+You can read from a transcript database using the [transcripts_from()](./reference/transcript.html.md#transcripts_from) function. For example:
 
 ``` python
 from inspect_scout import transcripts_from
@@ -174,4 +176,4 @@ from inspect_scout import transcripts_from
 transcripts = transcripts_from("s3://weave-rollouts/cybench")
 ```
 
-See the [Transcripts Database](db_overview.html.md) documentation for additional details on creating, managing, and publishing transcript databases.
+See the [Transcripts Database](./db_overview.html.md) documentation for additional details on creating, managing, and publishing transcript databases.

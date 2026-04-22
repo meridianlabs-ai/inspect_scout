@@ -1,6 +1,4 @@
-# scout db
-
-Manage the local transcript database.
+# scout_db – Inspect Scout
 
 Scout transcript database management.
 

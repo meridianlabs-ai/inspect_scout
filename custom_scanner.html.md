@@ -1,16 +1,16 @@
-# Custom Scanners
+# Custom Scanners – Inspect Scout
 
 ## Overview
 
-Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types ([Transcript](reference/transcript.html.md#transcript), [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage), `Event`, or [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline)) as well as creating custom loaders which enable scanning of lists of events or messages.
+Scanners are the main unit of processing in Inspect Scout and can target a wide variety of content types. In this article we’ll cover the basic scanning concepts, and then drill into creating scanners that target various types ([Transcript](./reference/transcript.html.md#transcript), [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage), `Event`, or [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline)) as well as creating custom loaders which enable scanning of lists of events or messages.
 
-This article goes in depth on custom scanner development. If you are looking for a straightforward high-level way to create an LLM-based scanner see the [LLM Scanner](llm_scanner.html.md) documentation.
+This article goes in depth on custom scanner development. If you are looking for a straightforward high-level way to create an LLM-based scanner see the [LLM Scanner](./llm_scanner.html.md) documentation.
 
 Note that you can also use scanners directly as Inspect scorers (see [Scanners as Scorers](#scanners-as-scorers) for details).
 
 ## Scanner Basics
 
-A [Scanner](reference/scanner.html.md#scanner) is a function that takes a [ScannerInput](reference/scanner.html.md#scannerinput) (typically a [Transcript](reference/transcript.html.md#transcript), but possibly an `Event`, [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage), [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline), or list of events or messages) and returns a [Result](reference/scanner.html.md#result).
+A [Scanner](./reference/scanner.html.md#scanner) is a function that takes a [ScannerInput](./reference/scanner.html.md#scannerinput) (typically a [Transcript](./reference/transcript.html.md#transcript), but possibly an `Event`, [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage), [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline), or list of events or messages) and returns a [Result](./reference/scanner.html.md#result).
 
 The result includes a `value` which can be of any type—this might be `True` to indicate that something was found but might equally be a number to indicate a count. More elaborate scanner values (`dict` or `list`) are also possible.
 
@@ -64,7 +64,7 @@ def confusion() -> Scanner[Transcript]:
     return scan
 ```
 
-This scanner illustrates some of the lower-level mechanics of building custom scanners. You can also use the higher level [llm_scanner()](reference/scanner.html.md#llm_scanner) to implement this in far fewer lines of code:
+This scanner illustrates some of the lower-level mechanics of building custom scanners. You can also use the higher level [llm_scanner()](./reference/scanner.html.md#llm_scanner) to implement this in far fewer lines of code:
 
 ``` python
 from inspect_scout import Transcript, llm_scanner, scanner
@@ -80,7 +80,7 @@ def confusion() -> Scanner[Transcript]:
 
 ### Input Types
 
-[Transcript](reference/transcript.html.md#transcript) is the most common [ScannerInput](reference/scanner.html.md#scannerinput) however several other types are possible:
+[Transcript](./reference/transcript.html.md#transcript) is the most common [ScannerInput](./reference/scanner.html.md#scannerinput) however several other types are possible:
 
 - `Event` — Single event from the transcript (e.g. [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent), [ToolEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#toolevent), etc.).
 
@@ -88,7 +88,7 @@ def confusion() -> Scanner[Transcript]:
 
 - [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline) — Hierarchical span tree representing the structure of agent execution. See [Timeline Scanners](#timelines) below for details.
 
-- `list[Event]` or `list[ChatMessage]` — Arbitrary sets of events or messages extracted from the [Transcript](reference/transcript.html.md#transcript) (see [Loaders](#loaders) below for details).
+- `list[Event]` or `list[ChatMessage]` — Arbitrary sets of events or messages extracted from the [Transcript](./reference/transcript.html.md#transcript) (see [Loaders](#loaders) below for details).
 
 See the sections on [Transcripts](#transcripts), [Events](#events), [Messages](#messages), [Timelines](#timelines), and [Loaders](#loaders) below for additional details on handling various input types.
 
@@ -130,11 +130,11 @@ You can also provide a `version` parameter to track scanner versions. When the v
 
 ## Transcripts
 
-Transcripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have `samples * epochs` transcripts. If you are reading from another source, each agent trace will yield a single [Transcript](reference/transcript.html.md#transcript).
+Transcripts are the most common input to scanners. If you are reading from Inspect eval logs, each log will have `samples * epochs` transcripts. If you are reading from another source, each agent trace will yield a single [Transcript](./reference/transcript.html.md#transcript).
 
 ### Transcript Fields
 
-Here are the available [Transcript](reference/transcript.html.md#transcript) fields:
+Here are the available [Transcript](./reference/transcript.html.md#transcript) fields:
 
 [TABLE]
 
@@ -163,7 +163,7 @@ def my_scanner() -> Scanner[Transcript]: ...
 
 ### Presenting Messages
 
-When processing transcripts, you will often want to present an entire message history to a model for analysis. The [message_numbering()](reference/scanner.html.md#message_numbering) function provides numbered message formatting and reference extraction:
+When processing transcripts, you will often want to present an entire message history to a model for analysis. The [message_numbering()](./reference/scanner.html.md#message_numbering) function provides numbered message formatting and reference extraction:
 
 ``` python
 # setup message numbering
@@ -186,13 +186,13 @@ explanation = output.completion
 references = extract_refs(explanation)
 ```
 
-The [message_numbering()](reference/scanner.html.md#message_numbering) function returns a `(messages_as_str, extract_refs)` pair:
+The [message_numbering()](./reference/scanner.html.md#message_numbering) function returns a `(messages_as_str, extract_refs)` pair:
 
-- [messages_as_str()](reference/scanner.html.md#messages_as_str) converts a list of messages into a numbered string representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g. the second call starts at `[M6]` if the first call rendered five messages).
+- [messages_as_str()](./reference/scanner.html.md#messages_as_str) converts a list of messages into a numbered string representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g. the second call starts at `[M6]` if the first call rendered five messages).
 
-- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](reference/scanner.html.md#reference) objects suitable for `Result.references`.
+- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](./reference/scanner.html.md#reference) objects suitable for `Result.references`.
 
-You can optionally pass a [MessagesPreprocessor](reference/scanner.html.md#messagespreprocessor) to [message_numbering()](reference/scanner.html.md#message_numbering) to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
+You can optionally pass a [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) to [message_numbering()](./reference/scanner.html.md#message_numbering) to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
 
 ## Event Scanners
 
@@ -258,7 +258,7 @@ def my_scanner() -> Scanner[Timeline]: ...
 
 Timeline scanning differs from transcript scanning in that each span in the timeline tree is scanned independently, allowing you to analyze individual agent invocations and their relationships.
 
-Note that timeline scanners are available only in the development version of Inspect Scout. See the [Multi Agent](multi_agent.html.md) article for a full description of the timeline data model and examples of timeline scanners.
+Note that timeline scanners are available only in the development version of Inspect Scout. See the [Multi Agent](./multi_agent.html.md) article for a full description of the timeline data model and examples of timeline scanners.
 
 ## Multiple Results
 
@@ -273,15 +273,15 @@ return [
 
 This is useful when a scanner is capable of making several types of observation. In this case it’s also important to indicate the origin of the result (i.e. which class of observation is is), which you can do using the `label` field (note that `label` can repeat multiple times in a set, so e.g. you could have multiple results with `label="deception"`).
 
-When a list is returned, each individual result will yield its own row in the [results data frame](results.html.md#data-frames).
+When a list is returned, each individual result will yield its own row in the [results data frame](./results.html.md#data-frames).
 
-When validating scanners that return lists of results, you can use [result set validation](validation.html.md#result-set-validation) to specify expected values for each label independently.
+When validating scanners that return lists of results, you can use [result set validation](./validation.html.md#result-set-validation) to specify expected values for each label independently.
 
 ## Custom Loaders
 
-When you want to process multiple discrete items from a [Transcript](reference/transcript.html.md#transcript) this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom [Loader](reference/scanner.html.md#loader) that yields the content as required.
+When you want to process multiple discrete items from a [Transcript](./reference/transcript.html.md#transcript) this might not always fall neatly into single messages or events. For example, you might want to process pairs of user/assistant messages. To do this, create a custom [Loader](./reference/scanner.html.md#loader) that yields the content as required.
 
-For example, here is a [Loader](reference/scanner.html.md#loader) that yields user/assistant message pairs:
+For example, here is a [Loader](./reference/scanner.html.md#loader) that yields user/assistant message pairs:
 
 ``` python
 @loader(messages=["user", "assistant"])
@@ -336,27 +336,23 @@ Here’s an example that walks through all of the requirements for registering s
 
 The `_registry.py` file serves as a place to import things that you want registered with Inspect. For example:
 
+    _registry.py
+
 ``` python
 from .scanners import reward_hacking
 ```
 
 You can then register `reward_hacking` (and anything else imported into `_registry.py`) as a [setuptools entry point](https://setuptools.pypa.io/en/latest/userguide/entry_point.html). This will ensure that inspect can resolve references to your package from the CLI. Here is how this looks in `pyproject.toml`:
 
-## Setuptools
-
 ``` toml
 [project.entry-points.inspect_ai]
 myscanners = "myscanners._registry"
 ```
 
-## uv
-
 ``` toml
 [project.entry-points.inspect_ai]
 myscanners = "myscanners._registry"
 ```
-
-## Poetry
 
 ``` toml
 [tool.poetry.plugins.inspect_ai]
@@ -413,7 +409,7 @@ The metrics used for the scorer will default to [mean()](https://inspect.aisi.or
 def confusion() -> Scanner[Transcript]: ...
 ```
 
-If you are interfacing with code that expects only [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer) instances, you can also use the [as_scorer()](reference/scanner.html.md#as_scorer) function from Inspect Scout to explicitly convert your scanner to a scorer:
+If you are interfacing with code that expects only [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer) instances, you can also use the [as_scorer()](./reference/scanner.html.md#as_scorer) function from Inspect Scout to explicitly convert your scanner to a scorer:
 
 ``` python
 from inspect_ai import eval

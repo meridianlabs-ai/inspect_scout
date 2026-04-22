@@ -1,7 +1,5 @@
 # Inspect Scout
 
-Transcript Analysis for AI Agents
-
 ## Welcome
 
 Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:
@@ -29,13 +27,15 @@ Below we’ll provide some simple examples of creating and using Scout scanners.
 
 - **Transcript** — LLM conversation to analyze (e.g. an agent rollout or a sample from an Inspect eval).
 
-- **Scanner** — Function that takes an input from a [Transcript](reference/transcript.html.md#transcript) and returns a [Result](reference/scanner.html.md#result) (conceptually very similar to an Inspect [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer)).
+- **Scanner** — Function that takes an input from a [Transcript](./reference/transcript.html.md#transcript) and returns a [Result](./reference/scanner.html.md#result) (conceptually very similar to an Inspect [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer)).
 
 - **Results** — Data frame(s) that includes the results of scanners applied to transcripts.
 
 ### LLM Scanner
 
-For many applications you can use the high-level [llm_scanner()](reference/scanner.html.md#llm_scanner), which uses a model for transcript analysis and can be customized with many options. For example:
+For many applications you can use the high-level [llm_scanner()](./reference/scanner.html.md#llm_scanner), which uses a model for transcript analysis and can be customized with many options. For example:
+
+    scanner.py
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -50,11 +50,11 @@ def ctf_environment() -> Scanner[Transcript]:
     )
 ```
 
-The [llm_scanner()](reference/scanner.html.md#llm_scanner) supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](llm_scanner.html.md) article.
+The [llm_scanner()](./reference/scanner.html.md#llm_scanner) supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](./llm_scanner.html.md) article.
 
 ### Grep Scanner
 
-Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the [grep_scanner()](reference/scanner.html.md#grep_scanner). For example, here we search assistant messages for references to phrases that might indicate secrets:
+Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the [grep_scanner()](./reference/scanner.html.md#grep_scanner). For example, here we search assistant messages for references to phrases that might indicate secrets:
 
 ``` python
 from inspect_scout import Transcript, grep_scanner, scanner
@@ -64,11 +64,13 @@ def secrets() -> Scanner[Transcript]:
     return grep_scanner(["password", "secret", "token"])
 ```
 
-For additional details on using this scanner, see the [Grep Scanner](grep_scanner.html.md) article.
+For additional details on using this scanner, see the [Grep Scanner](./grep_scanner.html.md) article.
 
 ### Custom Scanners
 
 If the higher level LLM and Grep scanners don’t meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):
+
+    scanner.py
 
 ``` python
 from inspect_scout import (
@@ -78,7 +80,7 @@ from inspect_scout import (
 from inspect_ai.model import get_model
 import re
 
-@scanner(messages="all") # <1>
+1@scanner(messages="all")
 def ctf_environment() -> Scanner[Transcript]:
     
     async def scan(transcript: Transcript) -> Result:
@@ -87,12 +89,12 @@ def ctf_environment() -> Scanner[Transcript]:
         messages_as_str, extract_refs = message_numbering()
 
         # call model
-        output = await get_model().generate( # <2>
+2        output = await get_model().generate(
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
-            "===================================" + # <3>
-            await messages_as_str(transcript.messages) +  # <3>
-            "===================================\n\n" + # <3>
+3            "===================================" +
+            await messages_as_str(transcript.messages) +
+            "===================================\n\n" +
             "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing its " +
@@ -108,34 +110,41 @@ def ctf_environment() -> Scanner[Transcript]:
         if match:
             answer = match.group(0)
             explanation = output.completion
-            return Result( # <4> 
-                value=answer.lower() == "yes", # <4> 
-                answer=answer, # <4> 
-                explanation=explanation, # <4> 
-                references=extract_refs(explanation) # <4>
-            ) # <4> 
+4            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=explanation,
+                references=extract_refs(explanation)
+            )
         else:
             return Result(value=False, explanation=output.completion)
 
     return scan
 ```
 
-1.  Scanners are decorated with `@scanner` so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.
-2.  Scanners frequently use models to perform scanning. Calling [get_model()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model) utilizes the default model for the scan job (which can be specified in the top level call to scan).
-3.  Convert the message history into a string for presentation to the model. The [messages_as_str()](reference/scanner.html.md#messages_as_str) function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See [MessagesPreprocessor](reference/scanner.html.md#messagespreprocessor) for other available options.
-4.  As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).
+1  
+Scanners are decorated with `@scanner` so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.
 
-For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on [Custom Scanners](custom_scanner.html.md).
+2  
+Scanners frequently use models to perform scanning. Calling [get_model()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model) utilizes the default model for the scan job (which can be specified in the top level call to scan).
+
+3  
+Convert the message history into a string for presentation to the model. The [messages_as_str()](./reference/scanner.html.md#messages_as_str) function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) for other available options.
+
+4  
+As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).
+
+For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on [Custom Scanners](./custom_scanner.html.md).
 
 ### Running a Scan
 
-Use the `scout scan` command to run one or more scanners on a set of transcripts. The [Scanner](reference/scanner.html.md#scanner) will be called once for each [Transcript](reference/transcript.html.md#transcript). For example:
+Use the `scout scan` command to run one or more scanners on a set of transcripts. The [Scanner](./reference/scanner.html.md#scanner) will be called once for each [Transcript](./reference/transcript.html.md#transcript). For example:
 
 ``` bash
 scout scan scanner.py -T ./logs --model openai/gpt-5
 ```
 
-The `-T` argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a [transcripts database](transcripts.html.md#transcripts-database) that is either local or on S3. For example, here we scan some W&B Weave transcripts stored on S3:
+The `-T` argument indicates which transcripts to scan (in this case a local Inspect log directory). You can also scan from a [transcripts database](./transcripts.html.md#transcripts-database) that is either local or on S3. For example, here we scan some W&B Weave transcripts stored on S3:
 
 ``` bash
 scout scan scanner.py -T s3://cybench-rollouts --model openai/gpt-5
@@ -171,6 +180,8 @@ Scans will be listed from most to least recent. If you are running within VS Cod
 
 In some cases you’ll prefer to define your transcript source, scanning model, and other configuration once for a project rather than each time you run `scout scan`. You can do this with a `scout.yaml` project file. For example, if we have this project file in our working directory:
 
+    scout.yaml
+
 ``` yaml
 transcripts: s3://weave-rollouts/cybench
 model: openai/gpt-5
@@ -186,13 +197,15 @@ Use Scout View to explore and manage project settings:
 
 [![](images/project.png)](images/project.png)
 
-See the [Projects](projects.html.md) article for more details on managing configuration with projects.
+See the [Projects](./projects.html.md) article for more details on managing configuration with projects.
 
 ## Scan Jobs
 
-You may want to import scanners from other modules and compose them into a [ScanJob](reference/scanning.html.md#scanjob). To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
+You may want to import scanners from other modules and compose them into a [ScanJob](./reference/scanning.html.md#scanjob). To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
 
-A [ScanJob](reference/scanning.html.md#scanjob) can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
+A [ScanJob](./reference/scanning.html.md#scanjob) can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
+
+    scanning.py
 
 ``` python
 from inspect_scout import ScanJob, scanjob
@@ -213,6 +226,8 @@ scout scan scanning.py
 ```
 
 You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:
+
+    scan.yaml
 
 ``` yaml
 scanners:
@@ -239,7 +254,7 @@ Note that if you had a scout.yaml [project file](#projects) defining the `transc
 
 By default, the results of scans are written into the `./scans` directory. You can override this using the `--scans` option—both local file paths and remote filesystems (e.g. `s3://`) are supported.
 
-Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the [scan_results_df()](reference/results.html.md#scan_results_df) function:
+Each scan is stored in its own directory and has both metadata about the scan (configuration, errors, summary of results) as well as parquet files that contain the results. You can read the results as a dict of Pandas data frames using the [scan_results_df()](./reference/results.html.md#scan_results_df) function:
 
 ``` python
 # results as pandas data frames
@@ -248,7 +263,7 @@ deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
 ```
 
-See the [Results](results.html.md) article for more details on the columns available in the data frames returned by [scan_results_df()](reference/results.html.md#scan_results_df).
+See the [Results](./results.html.md) article for more details on the columns available in the data frames returned by [scan_results_df()](./reference/results.html.md#scan_results_df).
 
 ## Validation
 
@@ -262,7 +277,7 @@ You can create and edit validation sets directly within the transcript or scan r
 
 [![](images/validation-panel-transcripts.png)](images/validation-panel-transcripts.png)
 
-Apply a validation set by passing it to [scan()](reference/scanning.html.md#scan). For example:
+Apply a validation set by passing it to [scan()](./reference/scanning.html.md#scan). For example:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -276,7 +291,7 @@ scan(
 )
 ```
 
-To learn more about building and using validation sets see the article on [Validation](validation.html.md).
+To learn more about building and using validation sets see the article on [Validation](./validation.html.md).
 
 ## Handling Errors
 
@@ -320,7 +335,9 @@ status = scan(
 
 The `columns` object (aliased to `c`) provides a convenient way to specify `where()` clauses for filtering transcripts.
 
-Note that doing this query required us to switch to the Python [scan()](reference/scanning.html.md#scan) API. We can still use the CLI if we wrap our transcript query in a [ScanJob](reference/scanning.html.md#scanjob):
+Note that doing this query required us to switch to the Python [scan()](./reference/scanning.html.md#scan) API. We can still use the CLI if we wrap our transcript query in a [ScanJob](./reference/scanning.html.md#scanjob):
+
+    cybench_scan.py
 
 ``` python
 from inspect_scout (
@@ -349,7 +366,7 @@ scout scan cybench.py -S logs=./logs --model openai/gpt-5
 
 The `-S` argument enables you to pass arguments to the `@scanjob` function (in this case determining what directory to read logs from).
 
-See the article on [Transcripts](transcripts.html.md) to learn more about the various ways to create, read, and filter transcripts.
+See the article on [Transcripts](./transcripts.html.md) to learn more about the various ways to create, read, and filter transcripts.
 
 ## Parallelism
 
@@ -365,14 +382,14 @@ The Scout scanning pipeline is optimized for parallel reading and scanning as we
 
 Above we provided a high-level tour of Scout features. See the following articles to learn more about using Scout:
 
-- [Scanners](scanners.html.md): Basics of using scanners including the high-level [LLM Scanner](llm_scanner.html.md) and [Grep Scanner](grep_scanner.html.md).
+- [Scanners](./scanners.html.md): Basics of using scanners including the high-level [LLM Scanner](./llm_scanner.html.md) and [Grep Scanner](./grep_scanner.html.md).
 
-- [Examples](examples.html.md): Example implementations of various types of scanners.
+- [Examples](./examples.html.md): Example implementations of various types of scanners.
 
-- [Projects](projects.html.md): Managing scanning configuration using project files.
+- [Projects](./projects.html.md): Managing scanning configuration using project files.
 
-- [Transcripts](transcripts.html.md): Reading and filtering transcripts for scanning.
+- [Transcripts](./transcripts.html.md): Reading and filtering transcripts for scanning.
 
-- [Workflow](workflow.html.md): Workflow for the stages of a transcript analysis project.
+- [Workflow](./workflow.html.md): Workflow for the stages of a transcript analysis project.
 
-There is also more in depth documentation available on [Results](results.html.md), [Validation](validation.html.md) and [Transcript Databases](db_overview.html.md).
+There is also more in depth documentation available on [Results](./results.html.md), [Validation](./validation.html.md) and [Transcript Databases](./db_overview.html.md).

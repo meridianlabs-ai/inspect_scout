@@ -1,6 +1,4 @@
-# scout view
-
-Browse scan results in a web UI.
+# scout_view – Inspect Scout
 
 View scan results.
 

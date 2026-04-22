@@ -1,10 +1,12 @@
-# Projects
+# Projects – Inspect Scout
 
 ## Overview
 
 In some cases you’ll prefer to define your transcript source and filters, scanning model, and other configuration once for a project rather than each time you run `scout scan`. You can do this with a `scout.yaml` project file.
 
 For example, if we have this project file in our working directory:
+
+    scout.yaml
 
 ``` yaml
 transcripts: s3://weave-rollouts/
@@ -19,9 +21,11 @@ Then we can run a scan with simply:
 scout scan scanner.py 
 ```
 
-Note that the `filter` field contains one or more SQL WHERE clauses that address fields in the [transcript database](db_schema.html.md).
+Note that the `filter` field contains one or more SQL WHERE clauses that address fields in the [transcript database](./db_schema.html.md).
 
 You can also define the location of scanning results and other configuration in project files. For example:
+
+    scout.yaml
 
 ``` yaml
 transcripts: s3://weave-rollouts/
@@ -48,7 +52,7 @@ Note that `scout.yaml` project files are intended to be checked in to version co
 
 When you run `scout view` from a project directory it uses the project settings to initialize the **Transcripts** and **Results** panes. You can also edit the project settings by clicking on the **Project** button at the top right:
 
-![](images/project.png)
+[![](images/project.png)](images/project.png)
 
 ## Project Settings
 
@@ -80,6 +84,8 @@ Project files support all of the same options available to [scan jobs](#scan-job
 
 In some cases you might want to provide local overrides to a shared project configuration file. You can do this by adding a `scout.local.yaml` file alongside your `scout.yaml` file. For example, here we override the main project file with a different model, max connections, and log level:
 
+    scout.local.yaml
+
 ``` yaml
 model: openai/gpt-5-mini
 generate_config:
@@ -101,6 +107,8 @@ Common secrets to store in `.env`:
 
 When you run `scout scan` or other Scout commands, the `.env` file in your working directory (or any parent directory) is automatically loaded. For example:
 
+    .env
+
 ``` bash
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
@@ -114,7 +122,7 @@ See the Inspect AI documentation on [environment files](https://inspect.aisi.org
 
 ## Scan Jobs
 
-Projects share all configuration fields with [scan jobs](reference/scanning.html.md#scanjob). When you run a scan, the project configuration is automatically merged with the scan job (whether defined in code via `@scanjob` or in a YAML/JSON config file).
+Projects share all configuration fields with [scan jobs](./reference/scanning.html.md#scanjob). When you run a scan, the project configuration is automatically merged with the scan job (whether defined in code via `@scanjob` or in a YAML/JSON config file).
 
 The merge follows these rules:
 
@@ -128,6 +136,8 @@ The merge follows these rules:
 
 For example, given this project:
 
+    scout.yaml
+
 ``` yaml
 transcripts: s3://weave-rollouts/cybench
 model: openai/gpt-5
@@ -135,6 +145,8 @@ tags: [production]
 ```
 
 And this scan job:
+
+    scan.yaml
 
 ``` yaml
 scanners:

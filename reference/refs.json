@@ -39,6 +39,7 @@
   "AnswerSpec": "scanner.qmd#answerspec",
   "AnswerMultiLabel": "scanner.qmd#answermultilabel",
   "AnswerStructured": "scanner.qmd#answerstructured",
+  "message_as_str": "scanner.qmd#message_as_str",
   "messages_as_str": "scanner.qmd#messages_as_str",
   "MessageFormatOptions": "scanner.qmd#messageformatoptions",
   "MessagesPreprocessor": "scanner.qmd#messagespreprocessor",

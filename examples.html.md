@@ -1,4 +1,4 @@
-# Examples
+# Examples – Inspect Scout
 
 ## Overview
 
@@ -6,7 +6,7 @@ Below are several examples which illustrate commonly used scanner features and t
 
 - [Refusal Scanners](#refusal-scanners) — Scanners which look for model refusals (scanning for refusals with and without an LLM classifer are demonstrated).
 
-- [Eval Awareness](#eval-awareness) – Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates [llm_scanner()](reference/scanner.html.md#llm_scanner) with a custom template.
+- [Eval Awareness](#eval-awareness) – Scanner which detects whether models sense that they are in evaluation scaffold. Demonstrates [llm_scanner()](./reference/scanner.html.md#llm_scanner) with a custom template.
 
 - [Command Error](#command-error) — Scanner which looks for ‘command not found’ errors in tool invocations. Demonstrates scanning with regex (as opposed to a model) and creating message references.
 
@@ -17,6 +17,8 @@ Refusal scanners are useful for determining whether an agent failed because of a
 ### LLM Scanner
 
 This scanner demonstrates basic usage of an LLM Scanner with structured output. A `Refusal` Pydantic model is declared which defines the fields the model should respond with.
+
+    refusal_classifier.py
 
 ``` python
 from inspect_scout import (
@@ -69,7 +71,7 @@ There are a few things worth highlighting about this implementation:
 
 2.  The `type` field provides additional context on the refusal type. The field is mapped to the result `label` via the `alias="label"` statement. Designating a label enables you to filter results by that label and is also shown by default alongside the value in scout view.
 
-3.  An `explanation` field is also automatically added by [llm_scanner()](reference/scanner.html.md#llm_scanner), and the model uses this field to describe its rationale for the classification.
+3.  An `explanation` field is also automatically added by [llm_scanner()](./reference/scanner.html.md#llm_scanner), and the model uses this field to describe its rationale for the classification.
 
 ### Grep Scanner
 
@@ -95,6 +97,8 @@ This type of scanning will produce more false positives than an LLM based scanne
 ### Custom Scanner
 
 Grep scanner provides a high level interface to pattern based scanning. You might however want to do something more custom. Here’s an example of a custom scanner with roughly the same behavior as our grep scanner:
+
+    refusal_keywords.py
 
 ``` python
 from inspect_scout import (
@@ -138,11 +142,13 @@ def refusal_keywords() -> Scanner[Transcript]:
     return scan
 ```
 
-Note that we create [Reference](reference/scanner.html.md#reference) objects to enable linking from message references in the results viewer (the grep scanner does the same).
+Note that we create [Reference](./reference/scanner.html.md#reference) objects to enable linking from message references in the results viewer (the grep scanner does the same).
 
 ## Eval Awareness
 
 The `eval_awareness()` scanner is useful for determining whether models suspect that they are in an evaluation, which in turn might affect their behavior in ways that undermine the eval.
+
+    eval_awareness.py
 
 ``` python
 from typing import Literal
@@ -249,6 +255,8 @@ The `command_not_found()` scanner is useful for observing tools that the model a
 
 This scanner demonstrates scanning with a regex rather than a model. Not all scanning tasks can be effectively performed with pattern matching, but those that can should always use it for both higher performance and lower cost.
 
+    command_not_found.py
+
 ``` python
 import re
 
@@ -332,8 +340,8 @@ def command_not_found() -> Scanner[Transcript]:
 
 A few things to note here:
 
-1.  We use the [tool_callers()](reference/scanner.html.md#tool_callers) function to build a map of tool call ids to assistant messages. This enables us to only scan [ChatMessageTool](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessagetool) but still provide references to [ChatMessageAssistant](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessageassistant).
+1.  We use the [tool_callers()](./reference/scanner.html.md#tool_callers) function to build a map of tool call ids to assistant messages. This enables us to only scan [ChatMessageTool](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessagetool) but still provide references to [ChatMessageAssistant](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessageassistant).
 
 2.  We use the `CommandNotFound` Pydantic model for type safety then convert it to a `dict()` with `.model_dump()` when yielding the result.
 
-3.  We provide an `explanation` and create an explicit [Reference](reference/scanner.html.md#reference) to the assistant message as part of our result.
+3.  We provide an `explanation` and create an explicit [Reference](./reference/scanner.html.md#reference) to the assistant message as part of our result.

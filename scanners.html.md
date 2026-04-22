@@ -1,4 +1,4 @@
-# Scanners
+# Scanners – Inspect Scout
 
 ## Overview
 
@@ -29,11 +29,13 @@ results = scan(
 
 Once a scan is complete you can view its results by running `scout view` or by computing on the data frame(s) returned in `results`.
 
-Note that if you want run multiple scanners at once you can either pass a list of scanners to the [scan()](reference/scanning.html.md#scan) function or define a scan job (see [Scan Jobs](#scan-jobs) below for details).
+Note that if you want run multiple scanners at once you can either pass a list of scanners to the [scan()](./reference/scanning.html.md#scan) function or define a scan job (see [Scan Jobs](#scan-jobs) below for details).
 
 ## LLM Scanner
 
-For many applications you can use the high-level [llm_scanner()](reference/scanner.html.md#llm_scanner), which uses a model for transcript analysis and can be customized with many options. For example:
+For many applications you can use the high-level [llm_scanner()](./reference/scanner.html.md#llm_scanner), which uses a model for transcript analysis and can be customized with many options. For example:
+
+    scanner.py
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -48,11 +50,11 @@ def ctf_environment() -> Scanner[Transcript]:
     )
 ```
 
-The [llm_scanner()](reference/scanner.html.md#llm_scanner) supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](llm_scanner.html.md) article.
+The [llm_scanner()](./reference/scanner.html.md#llm_scanner) supports a wide variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output. For additional details, see the [LLM Scanner](./llm_scanner.html.md) article.
 
 ## Grep Scanner
 
-Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the [grep_scanner()](reference/scanner.html.md#grep_scanner). For example, here we search assistant messages for references to phrases that might indicate secrets:
+Using an LLM to search transcripts is often required for more nuanced judgements, but if you are just looking for text patterns, you can also use the [grep_scanner()](./reference/scanner.html.md#grep_scanner). For example, here we search assistant messages for references to phrases that might indicate secrets:
 
 ``` python
 from inspect_scout import Transcript, grep_scanner, scanner
@@ -62,11 +64,13 @@ def secrets() -> Scanner[Transcript]:
     return grep_scanner(["password", "secret", "token"])
 ```
 
-For additional details on using this scanner, see the [Grep Scanner](grep_scanner.html.md) article.
+For additional details on using this scanner, see the [Grep Scanner](./grep_scanner.html.md) article.
 
 ## Custom Scanners
 
 If the higher level LLM and Grep scanners don’t meet your requirements, you can write a custom scanners with whatever behavior you need. For example, the following illustrates the implementation of a basic LLM scanner (click on the numbers at right for further explanation):
+
+    scanner.py
 
 ``` python
 from inspect_scout import (
@@ -76,7 +80,7 @@ from inspect_scout import (
 from inspect_ai.model import get_model
 import re
 
-@scanner(messages="all") # <1>
+1@scanner(messages="all")
 def ctf_environment() -> Scanner[Transcript]:
     
     async def scan(transcript: Transcript) -> Result:
@@ -85,12 +89,12 @@ def ctf_environment() -> Scanner[Transcript]:
         messages_as_str, extract_refs = message_numbering()
 
         # call model
-        output = await get_model().generate( # <2>
+2        output = await get_model().generate(
             "Here is a transcript of an LLM agent " +
             "solving a cybersecurity challenge:\n\n" +
-            "===================================" + # <3>
-            await messages_as_str(transcript.messages) +  # <3>
-            "===================================\n\n" + # <3>
+3            "===================================" +
+            await messages_as_str(transcript.messages) +
+            "===================================\n\n" +
             "In the transcript above do you detect any " +
             "instances of environment misconfiguration " +
             "preventing the agent from completing its " +
@@ -106,30 +110,39 @@ def ctf_environment() -> Scanner[Transcript]:
         if match:
             answer = match.group(0)
             explanation = output.completion
-            return Result( # <4> 
-                value=answer.lower() == "yes", # <4> 
-                answer=answer, # <4> 
-                explanation=explanation, # <4> 
-                references=extract_refs(explanation) # <4>
-            ) # <4> 
+4            return Result(
+                value=answer.lower() == "yes",
+                answer=answer,
+                explanation=explanation,
+                references=extract_refs(explanation)
+            )
         else:
             return Result(value=False, explanation=output.completion)
 
     return scan
 ```
 
-1.  Scanners are decorated with `@scanner` so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.
-2.  Scanners frequently use models to perform scanning. Calling [get_model()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model) utilizes the default model for the scan job (which can be specified in the top level call to scan).
-3.  Convert the message history into a string for presentation to the model. The [messages_as_str()](reference/scanner.html.md#messages_as_str) function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See [MessagesPreprocessor](reference/scanner.html.md#messagespreprocessor) for other available options.
-4.  As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).
+1  
+Scanners are decorated with `@scanner` so they can specify the exact subset of content they need to read. In this case only messages (and not events) will be read from the log, decreasing load time.
 
-For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on [Custom Scanners](custom_scanner.html.md).
+2  
+Scanners frequently use models to perform scanning. Calling [get_model()](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#get_model) utilizes the default model for the scan job (which can be specified in the top level call to scan).
+
+3  
+Convert the message history into a string for presentation to the model. The [messages_as_str()](./reference/scanner.html.md#messages_as_str) function takes a `Transcript | list[Messages]` and will by default remove system messages from the message list. See [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) for other available options.
+
+4  
+As with scorers, results also include additional context (here the extracted answer, full model completion, and message references).
+
+For more details on creating custom scanners, including scanning individual messages or events, handling compaction and context overflow, and computing metrics, see the article on [Custom Scanners](./custom_scanner.html.md).
 
 ## Scan Jobs
 
-You may want to import scanners from other modules and compose them into a [ScanJob](reference/scanning.html.md#scanjob). To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
+You may want to import scanners from other modules and compose them into a [ScanJob](./reference/scanning.html.md#scanjob). To do this, add a `@scanjob` decorated function to your source file (it will be used in preference to `@scanner` decorated functions).
 
-A [ScanJob](reference/scanning.html.md#scanjob) can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
+A [ScanJob](./reference/scanning.html.md#scanjob) can also include `transcripts` or any other option that you can pass to `scout scan` (e.g. `model`). For example:
+
+    scanning.py
 
 ``` python
 from inspect_scout import ScanJob, scanjob
@@ -150,6 +163,8 @@ scout scan scanning.py
 ```
 
 You can also specify a scan job using YAML or JSON. For example, the following is equivalent to the example above:
+
+    scan.yaml
 
 ``` yaml
 scanners:
@@ -174,10 +189,10 @@ scout scan scan.yaml
 
 To learn more about using and developing scanners, see the following articles:
 
-- [LLM Scanner](llm_scanner.html.md): High level scanner for using models to read transcripts.
+- [LLM Scanner](./llm_scanner.html.md): High level scanner for using models to read transcripts.
 
-- [Grep Scanner](grep_scanner.html.md): High level scanner for pattern matching in transcripts.
+- [Grep Scanner](./grep_scanner.html.md): High level scanner for pattern matching in transcripts.
 
-- [Custom Scanners](custom_scanner.html.md): Comprehensive documentation on creating custom scanners.
+- [Custom Scanners](./custom_scanner.html.md): Comprehensive documentation on creating custom scanners.
 
-- [Scanner Tools](scanner_tools.html.md): Create custom scanners with the same tools used under the hood by [llm_scanner()](reference/scanner.html.md#llm_scanner).
+- [Scanner Tools](./scanner_tools.html.md): Create custom scanners with the same tools used under the hood by [llm_scanner()](./reference/scanner.html.md#llm_scanner).

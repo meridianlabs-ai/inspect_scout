@@ -1,4 +1,4 @@
-# Multi Agent
+# Multi Agent – Inspect Scout
 
 ## Overview
 
@@ -104,8 +104,8 @@ Because context-window segmentation can produce multiple results from a single s
 | `"numeric"` | `ResultReducer.mean` |
 | `"string"` | `ResultReducer.llm()` |
 | labels | `ResultReducer.majority` |
-| [AnswerMultiLabel](reference/scanner.html.md#answermultilabel) | `ResultReducer.union` |
-| [AnswerStructured](reference/scanner.html.md#answerstructured) | `ResultReducer.last` |
+| [AnswerMultiLabel](./reference/scanner.html.md#answermultilabel) | `ResultReducer.union` |
+| [AnswerStructured](./reference/scanner.html.md#answerstructured) | `ResultReducer.last` |
 
 Override with the `reducer` parameter:
 
@@ -131,19 +131,19 @@ Single-turn helper agents with different system prompts (e.g., a bash command ch
 
 ## Custom Scanners
 
-The examples above all use the high-level [llm_scanner()](reference/scanner.html.md#llm_scanner), customizing its behavior with the `depth`, `compaction`, and `reducer` options.
+The examples above all use the high-level [llm_scanner()](./reference/scanner.html.md#llm_scanner), customizing its behavior with the `depth`, `compaction`, and `reducer` options.
 
-You might however want to build a fully custom scanner for multi-agent transcripts—you can do this by using the lower level [Scanner Tools](scanner_tools.html.md) employed by [llm_scanner()](reference/scanner.html.md#llm_scanner). These tools include:
+You might however want to build a fully custom scanner for multi-agent transcripts—you can do this by using the lower level [Scanner Tools](./scanner_tools.html.md) employed by [llm_scanner()](./reference/scanner.html.md#llm_scanner). These tools include:
 
-1.  [Message Extraction](scanner_tools.html.md#message-extraction)—Extracting message lists for scanning from timelines.
+1.  [Message Extraction](./scanner_tools.html.md#message-extraction)—Extracting message lists for scanning from timelines.
 
-2.  [Message Presentation](scanner_tools.html.md#message-presentation)—Number messages for presentation to the model and then automatically create message citations from model output.
+2.  [Message Presentation](./scanner_tools.html.md#message-presentation)—Number messages for presentation to the model and then automatically create message citations from model output.
 
-3.  [Prompt Construction](scanner_tools.html.md#prompt-construction)—Create prompts that include numbered messages and formatting various types of answers (boolean, multi-lable, structured, etc.)
+3.  [Prompt Construction](./scanner_tools.html.md#prompt-construction)—Create prompts that include numbered messages and formatting various types of answers (boolean, multi-lable, structured, etc.)
 
-4.  [Answer Generation and Parsing](scanner_tools.html.md#answer-generation)—Executing LLM generations and parsing the answer into a [Result](reference/scanner.html.md#result) including citations for messages.
+4.  [Answer Generation and Parsing](./scanner_tools.html.md#answer-generation)—Executing LLM generations and parsing the answer into a [Result](./reference/scanner.html.md#result) including citations for messages.
 
-See the article on [Scanner Tools](scanner_tools.html.md) for details on using these tools in custom scanners.
+See the article on [Scanner Tools](./scanner_tools.html.md) for details on using these tools in custom scanners.
 
 ## Timeline Data Model
 

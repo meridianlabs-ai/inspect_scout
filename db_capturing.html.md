@@ -1,12 +1,12 @@
-# Capturing Transcripts
+# Capturing Transcripts – Inspect Scout
 
 ## Overview
 
-The [observe()](reference/transcript.html.md#observe) decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.
+The [observe()](./reference/transcript.html.md#observe) decorator and context manager captures LLM calls and writes transcripts directly to a database. This is useful for recording agent interactions during development and building transcript datasets from custom inference pipelines.
 
 Observe can be used with either the Inspect AI [Model API](https://inspect.aisi.org.uk/models.html) or with the native SDKs from [OpenAI](https://github.com/openai/openai-python), [Anthropic](https://github.com/anthropics/anthropic-sdk-python), and [Google](https://github.com/googleapis/python-genai).
 
-Use [observe()](reference/transcript.html.md#observe) as a decorator on async functions:
+Use [observe()](./reference/transcript.html.md#observe) as a decorator on async functions:
 
 ``` python
 from inspect_ai.model import get_model, ChatMessageUser
@@ -32,13 +32,13 @@ async with observe(db="./transcripts", task_set="my_eval"):
     ])
 ```
 
-The `db` parameter accepts either a path string or a [TranscriptsDB](reference/transcript.html.md#transcriptsdb) instance. If omitted, it defaults to the project’s configured transcripts directory (or `./transcripts` if none is configured).
+The `db` parameter accepts either a path string or a [TranscriptsDB](./reference/transcript.html.md#transcriptsdb) instance. If omitted, it defaults to the project’s configured transcripts directory (or `./transcripts` if none is configured).
 
 ## Providers
 
 Above we demonstrated capturing transcripts when using the Inspect Model API. You can alternatively capture LLM generation from a native SDK by specifying an alternate `provider` (“openai”, “anthropic”, or “google”).
 
-For example, here we [observe()](reference/transcript.html.md#observe) transcripts generated with the Anthropic SDK:
+For example, here we [observe()](./reference/transcript.html.md#observe) transcripts generated with the Anthropic SDK:
 
 ``` python
 import anthropic
@@ -59,7 +59,7 @@ async def run_case():
     return response.content[0].text
 ```
 
-The `provider` parameter tells [observe()](reference/transcript.html.md#observe) to patch the specified SDK to capture LLM calls. Available providers include:
+The `provider` parameter tells [observe()](./reference/transcript.html.md#observe) to patch the specified SDK to capture LLM calls. Available providers include:
 
 | Provider | SDK | Description |
 |----|----|----|
@@ -68,11 +68,11 @@ The `provider` parameter tells [observe()](reference/transcript.html.md#observe)
 | `anthropic` | [Anthropic](https://github.com/anthropics/anthropic-sdk-python) | Anthropic Messages API |
 | `google` | [Google GenAI](https://github.com/googleapis/python-genai) | Google Gemini API |
 
-You can also implement a custom provider by implementing the [ObserveProvider](reference/transcript.html.md#observeprovider) protocol.
+You can also implement a custom provider by implementing the [ObserveProvider](./reference/transcript.html.md#observeprovider) protocol.
 
 ## Decorator Usage
 
-The [observe()](reference/transcript.html.md#observe) decorator supports several usage patterns:
+The [observe()](./reference/transcript.html.md#observe) decorator supports several usage patterns:
 
 ``` python
 # without parameters (uses project default db)
@@ -93,7 +93,7 @@ async def my_function():
 
 ## Parameters
 
-The [observe()](reference/transcript.html.md#observe) function accepts the following parameters.
+The [observe()](./reference/transcript.html.md#observe) function accepts the following parameters.
 
 | Parameter | Type | Description |
 |----|----|----|
@@ -112,7 +112,7 @@ The [observe()](reference/transcript.html.md#observe) function accepts the follo
 
 The `task_set` and `task_id` parameters are not required but are a good way of providing context on transcripts (e.g in evaluations these are often used for dataset name and sample id).
 
-The following [Transcript](reference/transcript.html.md#transcript) fields are automatically populated when a transcript is written:
+The following [Transcript](./reference/transcript.html.md#transcript) fields are automatically populated when a transcript is written:
 
 | Field | Description |
 |----|----|
@@ -129,7 +129,7 @@ The following [Transcript](reference/transcript.html.md#transcript) fields are a
 
 ## Updating Fields
 
-Use [observe_update()](reference/transcript.html.md#observe_update) to set transcript fields after execution, which is useful for recording scores or outcomes:
+Use [observe_update()](./reference/transcript.html.md#observe_update) to set transcript fields after execution, which is useful for recording scores or outcomes:
 
 ``` python
 @observe(db="./transcripts", task_set="eval")
@@ -150,7 +150,7 @@ async def run_and_score():
     return response.completion
 ```
 
-You can call [observe_update()](reference/transcript.html.md#observe_update) multiple times—fields are merged (metadata is combined, other fields are overwritten).
+You can call [observe_update()](./reference/transcript.html.md#observe_update) multiple times—fields are merged (metadata is combined, other fields are overwritten).
 
 ## Nested Contexts
 

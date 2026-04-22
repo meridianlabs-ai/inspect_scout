@@ -1,3 +1,20 @@
+# changelog – Inspect Scout
+
+## 0.4.27 (20 April 2026)
+
+- Scanner as Scorer: Modify format for improved API for view client.
+- Scanner as Scorer: Write sentinel value so view client can detect scanner content.
+- Scout View: Fix error when attempting to collapse all or expand all events in transcripts.
+- Scout View: Improvements to expand / collapse behavior in transcripts.
+- Scout View: Don’t show empty entries in messages view when a message is retried.
+- Bugfix: resolve transcript_score types to string when resuming scans.
+
+## 0.4.26 (15 April 2026)
+
+- Utilities: Export `message_as_str` function.
+- Utilities: Add `format` option to `messages_as_str` function (“text”, “json”, or “list”).
+- Scout View: Consolidate transcript viewer to shared component. Miscellaneous fixes and improvements.
+
 ## 0.4.25 (04 April 2026)
 
 - Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.
@@ -7,7 +24,7 @@
 - Metrics: Filter out non-numeric keys from scanner values when computing scanner metrics.
 - Timelines: Ensure that all events are loaded from reading timelines.
 - Timelines: Update to use new timeline branch scheme from inspect-ai.
-- Timelines: Add `label_for_id` option to [message_numbering()](reference/scanner.html.md#message_numbering) function.
+- Timelines: Add `label_for_id` option to [message_numbering()](./reference/scanner.html.md#message_numbering) function.
 - Modules: Rename `async` module to `aio`.
 - VS Code Integration: Fix regression displaying Scout View in VS Code.
 - Scout View: Show tooltip for array or object values which have been truncated.
@@ -38,11 +55,11 @@
 
 - LLM Scanner: Automatic transcript segmentation by context window with configurable compaction handling.
 - LLM Scanner: `AnswerMultiLabel(allow_none=True)` lets the model respond with `ANSWER: NONE` when no labels apply.
-- Scanner Tools: [generate_answer()](reference/scanner.html.md#generate_answer) automatically retries with format feedback when the model’s response can’t be parsed.
-- Scanner Tools: [message_numbering()](reference/scanner.html.md#message_numbering), [scanner_prompt()](reference/scanner.html.md#scanner_prompt), [generate_answer()](reference/scanner.html.md#generate_answer), and [parse_answer()](reference/scanner.html.md#parse_answer) functions for building custom scanners with fine-grained control.
-- Scanner Tools: [ResultReducer](reference/scanner.html.md#resultreducer) for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
-- Scanner Tools: [transcript_messages()](reference/transcript.html.md#transcript_messages), [segment_messages()](reference/transcript.html.md#segment_messages), and [span_messages()](reference/transcript.html.md#span_messages) functions for extracting and segmenting transcript messages.
-- Transcript DB: [claude_code()](reference/sources.html.md#claude_code) source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
+- Scanner Tools: [generate_answer()](./reference/scanner.html.md#generate_answer) automatically retries with format feedback when the model’s response can’t be parsed.
+- Scanner Tools: [message_numbering()](./reference/scanner.html.md#message_numbering), [scanner_prompt()](./reference/scanner.html.md#scanner_prompt), [generate_answer()](./reference/scanner.html.md#generate_answer), and [parse_answer()](./reference/scanner.html.md#parse_answer) functions for building custom scanners with fine-grained control.
+- Scanner Tools: [ResultReducer](./reference/scanner.html.md#resultreducer) for reducing results from multiple transcript segments into single results, with built-in majority and LLM-based reducers.
+- Scanner Tools: [transcript_messages()](./reference/transcript.html.md#transcript_messages), [segment_messages()](./reference/transcript.html.md#segment_messages), and [span_messages()](./reference/transcript.html.md#span_messages) functions for extracting and segmenting transcript messages.
+- Transcript DB: [claude_code()](./reference/sources.html.md#claude_code) source for importing transcripts from Claude Code session logs. Supports filtering by project, session, and time range, session merging, and image extraction.
 - CLI: `scout import` command for importing transcripts from registered sources into Scout projects.
 - Serialization: Use `pa.large_string` for string types to support larger column/file sizes.
 - Multiprocessing: Improve handling of model instances with multiprocessing serialization.
@@ -74,7 +91,7 @@
 
 ## 0.4.16 (13 February 2026)
 
-- Transcript DB: [phoenix()](reference/sources.html.md#phoenix) transcript source for importing transcripts from Arize Phoenix.
+- Transcript DB: [phoenix()](./reference/sources.html.md#phoenix) transcript source for importing transcripts from Arize Phoenix.
 
 ## 0.4.15 (12 February 2026)
 
@@ -94,9 +111,9 @@
 ## 0.4.12 (09 February 2026)
 
 - Scoring: Apply content filter for scanners when using them as Inspect scorers.
-- Add [SampleMetadata](reference/transcript.html.md#samplemetadata) class for typed access to Inspect eval log metadata fields.
+- Add [SampleMetadata](./reference/transcript.html.md#samplemetadata) class for typed access to Inspect eval log metadata fields.
 - Add support for Inspect [CompactionEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#compactionevent) and display of native compaction data from OpenAI and Anthropic.
-- Add “store” event to [EventType](reference/scanner.html.md#eventtype) enumeration.
+- Add “store” event to [EventType](./reference/scanner.html.md#eventtype) enumeration.
 - View Server: Add optimized `/transcripts/{dir}/{id}/info` and `/transcripts/{dir}/{id}/messages-events` endpoints for fetching transcript data. The `messages-events` endpoint streams raw (potentially compressed) JSON for improved performance.
 - Bugfix: Eliminate problem with stale transcript status when deleting validation cases.
 
@@ -108,7 +125,7 @@
 - Scan Results: Add `exclude_columns` parameter for reading parquet reuslts to optionally reduce memory usage.
 - Scan Results: Pre-fetch optimization for S3/remote parquet files.
 - Transcript DB: [observe()](%5Btranscript%20database%20schema%5D(https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html).) decorator/context manager for writing transcripts based on observed LLM generations.
-- Transcript DB: [langsmith()](reference/sources.html.md#langsmith) and [logfire()](reference/sources.html.md#logfire) transcript sources for importing transcripts from LLM observability systems.
+- Transcript DB: [langsmith()](./reference/sources.html.md#langsmith) and [logfire()](./reference/sources.html.md#logfire) transcript sources for importing transcripts from LLM observability systems.
 
 ## 0.4.10 (21 January 2026)
 
@@ -143,7 +160,7 @@
 - Projects: Support local project config in `scout.local.yaml`.
 - Transcripts: Enable use of SQL for specifying filters.
 - Transcripts: Add `filter` field to scan job and project config.
-- Scanning: Add [tool_callers()](reference/scanner.html.md#tool_callers) helper function for mapping tool_call_id to assistant message.
+- Scanning: Add [tool_callers()](./reference/scanner.html.md#tool_callers) helper function for mapping tool_call_id to assistant message.
 - Rename `--results` option to `--scans`.
 - Bugfix: Avoid `UnboundLocalError` by importing Inspect AI batch reporting functions directly.
 - Bugfix: Fix issue with reading large numbers of rows from transcript database.

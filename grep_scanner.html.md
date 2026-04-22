@@ -1,8 +1,8 @@
-# Grep Scanner
+# Grep Scanner – Inspect Scout
 
 ## Overview
 
-The [grep_scanner()](reference/scanner.html.md#grep_scanner) provides pattern-based scanning of transcripts using grep-style matching. Unlike [LLM Scanner](llm_scanner.html.md) which uses a language model for analysis, [grep_scanner()](reference/scanner.html.md#grep_scanner) performs fast, deterministic text pattern matching.
+The [grep_scanner()](./reference/scanner.html.md#grep_scanner) provides pattern-based scanning of transcripts using grep-style matching. Unlike [LLM Scanner](./llm_scanner.html.md) which uses a language model for analysis, [grep_scanner()](./reference/scanner.html.md#grep_scanner) performs fast, deterministic text pattern matching.
 
 The grep scanner does simple string matching by default (literal patterns) and has an optional regex mode for complex patterns You can also search for multiple patterns with OR composition or alternatively labeled patterns for categorized results.
 
@@ -18,7 +18,7 @@ def find_errors() -> Scanner[Transcript]:
     return grep_scanner("error")
 ```
 
-The scanner returns a [Result](reference/scanner.html.md#result) with:
+The scanner returns a [Result](./reference/scanner.html.md#result) with:
 
 - `value`: Count of matches found (integer)
 - `explanation`: Context snippets showing each match
@@ -121,7 +121,7 @@ For single/list patterns:
 | `explanation` | `str \| None`     | Context snippets for each match |
 | `references`  | `list[Reference]` | Message/event citations         |
 
-For labeled patterns (dict), each label produces its own [Result](reference/scanner.html.md#result) with the same structure, plus:
+For labeled patterns (dict), each label produces its own [Result](./reference/scanner.html.md#result) with the same structure, plus:
 
 | Field   | Type  | Description        |
 |---------|-------|--------------------|

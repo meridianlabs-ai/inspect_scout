@@ -1,6 +1,4 @@
-# scout scan
-
-Run scanners against transcripts.
+# scout_scan – Inspect Scout
 
 Scan transcripts and read results.
 

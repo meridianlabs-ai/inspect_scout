@@ -1,6 +1,4 @@
-# scout trace
-
-Inspect detailed scan execution traces.
+# scout_trace – Inspect Scout
 
 List and read execution traces.
 

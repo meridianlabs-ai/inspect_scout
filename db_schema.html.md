@@ -1,10 +1,10 @@
-# Database Schema
+# Database Schema – Inspect Scout
 
 ## Overview
 
 In a transcript database, the only strictly required field is `transcript_id` (although you’ll almost always want to also include a `messages` field as that’s the main thing targeted by most scanners).
 
-Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`) which you’ll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include `source_*` fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the [Transcripts](reference/transcript.html.md#transcripts) API.
+Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`) which you’ll want to populate if you have access to them (as this will provide important context both when viewing transcripts and when viewing scan results). You can also include `source_*` fields as a reference to where the transcript originated,. Finally, arbitrary other fields can be included. All fields are queryable using the [Transcripts](./reference/transcript.html.md#transcripts) API.
 
 | Field | Type | Description |
 |----|----|----|
@@ -32,7 +32,7 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`
 | `timelines` | string (JSON) | Optional. List of Timeline views over the transcript. |
 | `events_data` | string (JSON) | Optional. Auxiliary event data: deduplicated message/call pools referenced by ModelEvent refs. |
 
-Field types marked with (JSON) are stored in the database as serialized JSON strings and then converted to richer types when accessed via the [Transcript](reference/transcript.html.md#transcript) interface.
+Field types marked with (JSON) are stored in the database as serialized JSON strings and then converted to richer types when accessed via the [Transcript](./reference/transcript.html.md#transcript) interface.
 
 ### Metadata
 
@@ -66,7 +66,7 @@ While you can include any of the event types in defined in [inspect_ai.event](ht
 
 Most observability systems will have some equivalent of the above in their traces. When reconstructing model events you will also likely want to use the helper functions mentioned above in [Messages](#messages) for converting raw model API payloads to [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage).
 
-> **IMPORTANT:**
+> **IMPORTANT: events_data**
 >
 > If you are including `events` you should also include an `events_data` field to reduce the size of your transcripts. Note that model events include the entire `input` so for long trajectories the storage requirements are O(n²).
 >
@@ -114,10 +114,10 @@ scout db validate ./my_transcript_db
 
 Now that you understand the schema and have an idea for how you want to map your data into it, use one of the following methods to create the database:
 
-1.  [Transcript API](db_importing.html.md#transcript-api): Read and parse transcripts into [Transcript](reference/transcript.html.md#transcript) objects and use the `TranscriptsDB.insert()` function to add them to the database.
+1.  [Transcript API](./db_importing.html.md#transcript-api): Read and parse transcripts into [Transcript](./reference/transcript.html.md#transcript) objects and use the `TranscriptsDB.insert()` function to add them to the database.
 
-2.  [Arrow Import](db_importing.html.md#arrow-import): Read an existing set of transcripts stored in Arrow/Parquet and pass them to `TranscriptsDB.insert()` as a PyArrow `RecordBatchReader`.
+2.  [Arrow Import](./db_importing.html.md#arrow-import): Read an existing set of transcripts stored in Arrow/Parquet and pass them to `TranscriptsDB.insert()` as a PyArrow `RecordBatchReader`.
 
-3.  [Parquet Data Lake](db_importing.html.md#parquet-data-lake): Point the `TranscriptDB` at an existing data lake (ensuring that the records adhere to the transcript database schema).
+3.  [Parquet Data Lake](./db_importing.html.md#parquet-data-lake): Point the `TranscriptDB` at an existing data lake (ensuring that the records adhere to the transcript database schema).
 
-4.  [Inspect Logs](db_importing.html.md#inspect-logs): Import Inspect AI eval logs from a log directory.
+4.  [Inspect Logs](./db_importing.html.md#inspect-logs): Import Inspect AI eval logs from a log directory.

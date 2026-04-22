@@ -1,4 +1,4 @@
-# Workflow
+# Workflow – Inspect Scout
 
 ## Overview
 
@@ -19,9 +19,9 @@ The dataset for an analysis project consists of a set of transcripts, drawn eith
 
 1.  An Inspect AI log directory.
 
-2.  A [database](db_overview.html.md) that can include transcripts from any source.
+2.  A [database](./db_overview.html.md) that can include transcripts from any source.
 
-In the simplest case your dataset will map one to one with storage (e.g. your log directory contains only the logs you want to analyze). In these cases your dataset is ready to go and the [transcripts_from()](reference/transcript.html.md#transcripts_from) function will provide access to it for Scout:
+In the simplest case your dataset will map one to one with storage (e.g. your log directory contains only the logs you want to analyze). In these cases your dataset is ready to go and the [transcripts_from()](./reference/transcript.html.md#transcripts_from) function will provide access to it for Scout:
 
 ``` python
 from inspect_scout import transcripts_from, columns as c
@@ -33,7 +33,7 @@ transcripts = transcripts_from("./logs")
 transcripts = transcripts_from("s3://weave-rollouts/")
 ```
 
-Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily [publish](db_publishing.html.md) your dataset to others.
+Creating a dedicated database for an analysis project is generally a good practice as it ensure that your dataset is stable for the lifetime of the analysis and that you can easily [publish](./db_publishing.html.md) your dataset to others.
 
 ### Filtering Transcripts
 
@@ -70,6 +70,8 @@ scout scan scanner.py -T ./transcripts --model openai/gpt-5
 
 Above we described how to specify transcripts, filters, and a scanning model directly on the command line. You might however prefer to set all of this up in a `scout.yaml` project file. For example, if we have this project file in our working directory:
 
+    scout.yaml
+
 ``` yaml
 transcripts: s3://weave-rollouts/
 filter: 
@@ -92,9 +94,9 @@ All configuration within the project file will be automatically applied to the `
 
 Use Scout View to explore and manage project settings:
 
-![](images/project.png)
+[![](images/project.png)](images/project.png)
 
-See the article on [Projects](projects.html.md) to learn more about using projects.
+See the article on [Projects](./projects.html.md) to learn more about using projects.
 
 ## Initial Exploration
 
@@ -108,15 +110,15 @@ You can use Scout View to view and filter transcripts:
 scout view
 ```
 
-![](images/transcripts-list.png)
+[![](images/transcripts-list.png)](images/transcripts-list.png)
 
 If you filter down into a set of transcripts that you want to analyze, use the **Copy** button to copy the code required to apply the filter:
 
-![](images/transcripts-copy.png)
+[![](images/transcripts-copy.png)](images/transcripts-copy.png)
 
 If you drill into a transcript you can see its messages, events, and other details:
 
-![](images/transcripts-detail.png)
+[![](images/transcripts-detail.png)](images/transcripts-detail.png)
 
 Read a selection of individual transcripts to get a flavor for model problem solving approaches and difficulties encountered.
 
@@ -124,13 +126,15 @@ Read a selection of individual transcripts to get a flavor for model problem sol
 
 You should also try to leverage language models to understand transcripts—when viewing a transcript there is a **Copy -\> Transcript** command you can use to copy the full transcript to the clipboard:
 
-![](images/transcript-messages-copy.png)
+[![](images/transcript-messages-copy.png)](images/transcript-messages-copy.png)
 
 You can then paste this transcript into a chat conversation and ask questions about what happened, why the agent failed, or what patterns are present. This helps develop intuitions about specific cases and generate hypothesis.
 
 ## Building a Scanner
 
 Building a scanner is an iterative process that starts with prototyping on subsets of data and progresses to more formal validation as you refine its definition. In its simplest form a scanner is prompt that looks for a binary condition. For example:
+
+    scanner.py
 
 ``` python
 from inspect_scout import Scanner, Transcript, llm_scanner, scanner
@@ -143,7 +147,7 @@ def reward_hacking() -> Scanner[Transcript]:
     )
 ```
 
-This example is kept very simple for illustration purposes—it’s not actually a good reward hacking prompt! Scanners can also yield numeric results, do classification, and even return richer JSON structures. We won’t cover that here, but see the documentation on [LLM Scanner](llm_scanner.html.md) and [Scanners](scanners.html.md) for additional details.
+This example is kept very simple for illustration purposes—it’s not actually a good reward hacking prompt! Scanners can also yield numeric results, do classification, and even return richer JSON structures. We won’t cover that here, but see the documentation on [LLM Scanner](./llm_scanner.html.md) and [Scanners](./scanners.html.md) for additional details.
 
 ### Analyzing a Subset
 
@@ -169,11 +173,11 @@ scout scan scanner.py -T ./transcripts --limit 20 --shuffle --cache
 
 Use Scout View to see a list of results for your scan. If you are in VS Code you can click on the link in the terminal to open the results in a tab. In other environments, use `scout view` to open a browser with the viewer.
 
-![](images/view-resultlist.png)
+[![](images/view-resultlist.png)](images/view-resultlist.png)
 
 When you click into a result you’ll see the model’s explanation along with references to related messages. Click the messages IDs to navigate to the message contents:
 
-![](images/view-result.png)
+[![](images/view-result.png)](images/view-result.png)
 
 ### Scanner Metrics
 
@@ -196,9 +200,11 @@ See the Inspect documentation on [Built in Metrics](https://inspect.aisi.org.uk/
 
 ### Defining a Scan Job
 
-Above we provided a variety of options to the scout scan command. If you accumulate enough of these options you might want to consider defining a [Scan Job](index.html.md#scan-jobs) to bundle these options together, do transcript filtering, and provide a validation set (described in the section below).
+Above we provided a variety of options to the scout scan command. If you accumulate enough of these options you might want to consider defining a [Scan Job](./index.html.md#scan-jobs) to bundle these options together, do transcript filtering, and provide a validation set (described in the section below).
 
 Scan jobs can be provide as YAML configuration or defined in code. For example, here’s a scan job definition for the commands we were executing above:
+
+    scan.yaml
 
 ``` yaml
 transcripts: ./transcripts
@@ -225,11 +231,11 @@ scout scan scan.yaml --limit 20
 
 When developing scanners, it’s often desirable to create a feedback loop based on human labeling of transcripts that indicate expected scanner results. You can do this by creating a validation set and applying it during your scan:
 
-![](images/validation-flow.jpg)
+[![](images/validation-flow.jpg)](images/validation-flow.jpg)
 
 The *validation set* is the set of labeled transcripts that are compared against scan results. Validation sets are typically associated with the domain of a particular scanner type (e.g. “evaluation awareness”, “refusal”, etc.) so you will likely develop many of them for use with different scanners.
 
-Apply a validation set by passing it to [scan()](reference/scanning.html.md#scan). For example:
+Apply a validation set by passing it to [scan()](./reference/scanning.html.md#scan). For example:
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -253,13 +259,13 @@ Validation sets are stored in CSV, YAML, JSON, or JSONL text files, however you 
 
 ### Validation Sets
 
-The easiest way to work with validation data is to use [Scout View](index.html.md#scout-view), which provides inline editing of validation cases as well as various tools for editing and refining validation sets.
+The easiest way to work with validation data is to use [Scout View](./index.html.md#scout-view), which provides inline editing of validation cases as well as various tools for editing and refining validation sets.
 
 #### Transcript View
 
 When viewing any transcript, you can activate the validation case editor by clicking the button at the top right of the content view:
 
-![](images/validation-panel-transcripts.png)
+[![](images/validation-panel-transcripts.png)](images/validation-panel-transcripts.png)
 
 A validation case maps a transcript to an expected target result. In the example above we indicate that this transcript does have evidence of evaluation awareness which should be detected by scanners.
 
@@ -267,7 +273,7 @@ A validation case maps a transcript to an expected target result. In the example
 
 Sometimes its more convenient to apply validation labels in the context of scan results. There is also a validation editor available in every result view:
 
-![](images/validation-panel-results.png)
+[![](images/validation-panel-results.png)](images/validation-panel-results.png)
 
 It’s often very natural to create cases this way as reviewing scan results often leads to judgments about whether the scanner is working as intended.
 
@@ -275,13 +281,15 @@ It’s often very natural to create cases this way as reviewing scan results oft
 
 The **Validation** pane provides a top level view of all validation sets as well as various tools for managing them:
 
-![](images/validation-pane.png)
+[![](images/validation-pane.png)](images/validation-pane.png)
 
 Use the validation pane to review and edit validation cases, manage [splits](#validation-splits), or copy and move validation cases between validation sets.
 
 #### Validation Files
 
 While you don’t often need to edit validation files directly, you can do so if necessary since they are ordinary CSV for YAML files. For example, here’s a validation set in CSV format:
+
+    eval-awareness.csv
 
 ``` default
 id,target
@@ -292,7 +300,7 @@ SiEXpECj7U9nNAvM3H7JqB,true
 
 If you are editing validation files directly you will need a way to discover trancript IDs. Use the **Copy** button in the transcript view to copy the UUID of the transcript you are viewing:
 
-![](images/transcript-uuid-copy.png)
+[![](images/transcript-uuid-copy.png)](images/transcript-uuid-copy.png)
 
 See the [File Formats](#file-formats) section below for complete details on validation set files.
 
@@ -300,7 +308,9 @@ See the [File Formats](#file-formats) section below for complete details on vali
 
 #### Adding Validation
 
-You’ll typically create a distinct validation set (with potentially multiple splits) for each scanner, and then pass the validation sets to [scan()](reference/scanning.html.md#scan) as a dict mapping scanner to set:
+You’ll typically create a distinct validation set (with potentially multiple splits) for each scanner, and then pass the validation sets to [scan()](./reference/scanning.html.md#scan) as a dict mapping scanner to set:
+
+    scanning.py
 
 ``` python
 from inspect_scout import scan, transcripts_from
@@ -316,6 +326,8 @@ scan(
 ```
 
 If you have only only a single scanner you can pass the validation set without the mapping:
+
+    scanning.py
 
 ``` python
 scan(
@@ -341,7 +353,7 @@ scout scan scanning.py \
 
 Validation results are reported in the scan status/summary UI:
 
-![](images/validation-results-cli.png)
+[![](images/validation-results-cli.png)](images/validation-results-cli.png)
 
 The validation metric reported in the task summary is the *balanced accurary*, which is good overall metric especially for unbalanced datasets (which is often the case for validation sets). Other metrics (precision, recall, and f1) are available in Scout View.
 
@@ -349,7 +361,7 @@ The validation metric reported in the task summary is the *balanced accurary*, w
 
 Scout View will also show validation results alongside scanner values (sorting validated scans to the top for easy review):
 
-![](images/validation.png)
+[![](images/validation.png)](images/validation.png)
 
 Validation results are reported using four standard classification metrics:
 
@@ -369,9 +381,9 @@ In practice, there’s often a tradeoff between precision and recall. A conserva
 
 The `scout scan` command will print its status at the end of its run. If all of the scanners complete without errors you’ll see a message indicating the scan is complete along with a pointer to the scan directory where results are stored:
 
-![](images/scan-complete.png)
+[![](images/scan-complete.png)](images/scan-complete.png)
 
-To get programmatic access to the results, pass the scan directory to the [scan_results_df()](reference/results.html.md#scan_results_df) function:
+To get programmatic access to the results, pass the scan directory to the [scan_results_df()](./reference/results.html.md#scan_results_df) function:
 
 ``` python
 from inspect_scout import scan_results_df
@@ -381,7 +393,7 @@ deception_df = results.scanners["deception"]
 tool_errors_df = results.scanners["tool_errors"]
 ```
 
-The `Results` object returned from [scan_results_df()](reference/results.html.md#scan_results_df) includes both metadata about the scan as well as the scanner data frames:
+The `Results` object returned from [scan_results_df()](./reference/results.html.md#scan_results_df) includes both metadata about the scan as well as the scanner data frames:
 
 | Field | Type | Description |
 |----|----|----|
@@ -398,12 +410,12 @@ The data frames available for each scanner contain information about the source 
 
 #### Row Granularity
 
-Note that by default the results data frame will include an individual row for each result returned by a scanner. This means that if a scanner returned [multiple results](scanners.html.md#multiple-results) there would be multiple rows all sharing the same `transcript_id`. You can customize this behavior via the `rows` option of the scan results functions:
+Note that by default the results data frame will include an individual row for each result returned by a scanner. This means that if a scanner returned [multiple results](./scanners.html.md#multiple-results) there would be multiple rows all sharing the same `transcript_id`. You can customize this behavior via the `rows` option of the scan results functions:
 
 |  |  |
 |----|----|
 | `rows = "results"` | Default. Yield a row for each scanner result (potentially multiple rows per transcript) |
-| `rows = "transcripts"` | Yield a row for each transcript (in which case multiple results will be packed into the `value` field as a JSON list of [Result](reference/scanner.html.md#result)) and the `value_type` will be “resultset”. |
+| `rows = "transcripts"` | Yield a row for each transcript (in which case multiple results will be packed into the `value` field as a JSON list of [Result](./reference/scanner.html.md#result)) and the `value_type` will be “resultset”. |
 
 #### Available Fields
 
@@ -418,6 +430,8 @@ Once you’ve developed, refined, and validated your scanner you are ready to do
 ### Scout Jobs
 
 We discussed scout jobs above in the context of scanner development—job definitions are even more valuable for production scanning as they endure reproducibility of scanning inputs and options. We demonstrated defining jobs in a YAML file, here is a job defined in Python:
+
+    cybench_scan.py
 
 ``` python
 from inspect_scout (
@@ -487,7 +501,7 @@ See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/mod
 
 By default, if errors occur during a scan they are caught and reported and the overall scan operation is not aborted. In that case the scan is not yet marked “complete”. You can then choose to retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
 
-![](images/scan-resume.png)
+[![](images/scan-resume.png)](images/scan-resume.png)
 
 Generally you should use Scout View to review errors in more details to determine if they are fundamental problems (e.g. bugs in your code) or transient infrastructure errors that it might be acceptable to exclude from scan results.
 
@@ -501,7 +515,7 @@ With this flag, any exception will cause the entire scan to terminate immediatel
 
 ### Online Scanning
 
-Once you have developed a scanner that you find produces good results across a variety of transcripts, you may want run it “online” as part of evaluations. You can do this by using your [Scanner](reference/scanner.html.md#scanner) directly as an Inspect [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer).
+Once you have developed a scanner that you find produces good results across a variety of transcripts, you may want run it “online” as part of evaluations. You can do this by using your [Scanner](./reference/scanner.html.md#scanner) directly as an Inspect [Scorer](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer).
 
 For example, if we wanted to run the reward hacking scanner from above as a scorer we could do this:
 

@@ -722,6 +722,16 @@
           "message": {
             "$ref": "#/components/schemas/ChatMessageAssistant"
           },
+          "prompt_logprobs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Logprobs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "stop_reason": {
             "default": "unknown",
             "enum": [
@@ -2532,6 +2542,17 @@
             ],
             "title": "Presence Penalty"
           },
+          "prompt_logprobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Logprobs"
+          },
           "reasoning_effort": {
             "anyOf": [
               {
@@ -2978,6 +2999,17 @@
               }
             ],
             "title": "Presence Penalty"
+          },
+          "prompt_logprobs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Logprobs"
           },
           "reasoning_effort": {
             "anyOf": [
@@ -7866,7 +7898,6 @@
           "scans",
           "results",
           "errors",
-          "validation",
           "tokens",
           "model_usage"
         ],
@@ -10503,8 +10534,7 @@
           }
         },
         "required": [
-          "id",
-          "labels"
+          "id"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -10866,8 +10896,7 @@
           }
         },
         "required": [
-          "cases",
-          "predicate"
+          "cases"
         ],
         "title": "ValidationSet",
         "type": "object"
@@ -10912,8 +10941,7 @@
           }
         },
         "required": [
-          "cases",
-          "predicate"
+          "cases"
         ],
         "title": "ValidationSet",
         "type": "object"

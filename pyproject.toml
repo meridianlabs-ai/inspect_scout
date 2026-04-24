@@ -63,7 +63,7 @@ dev = [
     "google-genai>=1.69.0",
     "huggingface_hub",
     "langsmith",
-    "logfire",
+    "logfire>=3",
     "openai>=2.26.0",
     "pytest-dotenv",
     "pytest-asyncio",

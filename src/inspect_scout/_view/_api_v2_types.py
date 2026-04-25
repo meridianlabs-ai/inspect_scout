@@ -334,7 +334,7 @@ class SavedSearchBase(BaseModel):
 
     search_id: str
     query: str
-    results: list[Result]
+    result: Result
     created_at: str
 
     model_config = ConfigDict(extra="forbid")

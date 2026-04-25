@@ -168,9 +168,12 @@ def create_search_router() -> APIRouter:
                     status_code=502,
                     detail=str(err),
                 ) from err
-        results = output if isinstance(output, list) else [output]
 
-        # Persist
+        if isinstance(output, list):
+            raise RuntimeError(
+                "Single-transcript search returned multiple results unexpectedly"
+            )
+
         created_at = datetime.now(timezone.utc).isoformat()
         if isinstance(request, GrepSearchRequest):
             saved: SavedSearch = GrepSavedSearch(
@@ -179,7 +182,7 @@ def create_search_router() -> APIRouter:
                 regex=request.regex,
                 ignore_case=request.ignore_case,
                 word_boundary=request.word_boundary,
-                results=results,
+                result=output,
                 created_at=created_at,
             )
         else:
@@ -187,9 +190,10 @@ def create_search_router() -> APIRouter:
                 search_id=sid,
                 query=request.query,
                 model=request.model,
-                results=results,
+                result=output,
                 created_at=created_at,
             )
+
         with _search_store() as store:
             store.put(key, saved.model_dump_json())
 

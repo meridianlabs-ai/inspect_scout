@@ -3217,12 +3217,8 @@
             "title": "Regex",
             "type": "boolean"
           },
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/Result"
-            },
-            "title": "Results",
-            "type": "array"
+          "result": {
+            "$ref": "#/components/schemas/Result"
           },
           "search_id": {
             "title": "Search Id",
@@ -3242,7 +3238,7 @@
         "required": [
           "search_id",
           "query",
-          "results",
+          "result",
           "created_at",
           "type",
           "regex",
@@ -4081,12 +4077,8 @@
             "title": "Query",
             "type": "string"
           },
-          "results": {
-            "items": {
-              "$ref": "#/components/schemas/Result"
-            },
-            "title": "Results",
-            "type": "array"
+          "result": {
+            "$ref": "#/components/schemas/Result"
           },
           "search_id": {
             "title": "Search Id",
@@ -4102,7 +4094,7 @@
         "required": [
           "search_id",
           "query",
-          "results",
+          "result",
           "created_at",
           "type"
         ],

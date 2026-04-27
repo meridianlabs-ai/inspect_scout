@@ -7,6 +7,7 @@ from inspect_ai.event import Event, Timeline
 from inspect_ai.log import transcript as sample_transcript
 from inspect_ai.model import ChatMessage
 from inspect_ai.scorer import (
+    NOANSWER,
     Metric,
     Score,
     Scorer,
@@ -83,9 +84,21 @@ def as_scorer(
             if isinstance(result, list):
                 result = as_resultset(result)
 
-            # None means no score
+            # None means no score (unless there is explanation/metadata to preserve,
+            # in which case we record a NOANSWER score so that context isn't lost)
             if result.value is None:
-                return None
+                if (
+                    result.answer is None
+                    and result.explanation is None
+                    and not result.metadata
+                ):
+                    return None
+                return Score(
+                    value=NOANSWER,
+                    answer=result.answer,
+                    explanation=result.explanation,
+                    metadata=_metadata_from_result(result),
+                )
 
             # if its a resultset, then project as dict
             if result.type == "resultset":

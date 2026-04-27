@@ -19,7 +19,7 @@ from inspect_ai.model import (
     GenerateConfig,
     ModelOutput,
 )
-from inspect_ai.scorer import mean
+from inspect_ai.scorer import NOANSWER, mean
 from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
 from inspect_scout._scanner.scorer import (
@@ -48,6 +48,58 @@ def test_scanner_as_scorer_implicit() -> None:
     task = Task(scorer=my_scanner())
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
+
+
+# None value tests
+
+
+@scanner(messages="all")
+def none_value_scanner() -> Scanner[Transcript]:
+    """Scanner that returns Result(value=None) with no other context."""
+
+    async def scan(_transcript: Transcript) -> Result:
+        return Result(value=None)
+
+    return scan
+
+
+@scanner(messages="all")
+def none_value_with_context_scanner() -> Scanner[Transcript]:
+    """Scanner that returns Result(value=None) but carries explanation/metadata."""
+
+    async def scan(_transcript: Transcript) -> Result:
+        return Result(
+            value=None,
+            explanation="Judge refused to score this transcript.",
+            metadata={"refusal": True},
+        )
+
+    return scan
+
+
+def test_none_value_without_context_returns_no_score() -> None:
+    """Result(value=None) with no explanation/metadata produces no score."""
+    task = Task(scorer=as_scorer(none_value_scanner()))
+    log = eval(tasks=task, model="mockllm/model")[0]
+    assert log.status == "success"
+    assert log.samples is not None
+    sample = log.samples[0]
+    assert "none_value_scanner" not in (sample.scores or {})
+
+
+def test_none_value_with_context_preserves_explanation_and_metadata() -> None:
+    """Result(value=None) with explanation/metadata yields a NOANSWER score."""
+    task = Task(scorer=as_scorer(none_value_with_context_scanner()))
+    log = eval(tasks=task, model="mockllm/model")[0]
+    assert log.status == "success"
+    assert log.samples is not None
+    sample = log.samples[0]
+    assert sample.scores is not None
+    score = sample.scores["none_value_with_context_scanner"]
+    assert score.value == NOANSWER
+    assert score.explanation == "Judge refused to score this transcript."
+    assert score.metadata is not None
+    assert score.metadata["refusal"] is True
 
 
 # Resultset tests

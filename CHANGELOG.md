@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Scanner as Scorer: When `Result.value` is `None` but the result includes an answer, explanation, or metadata, return a `NOANSWER` score that preserves those fields instead of dropping the score entirely.
 - Scout View: Improve message collapse behavior.
 - Scout View: Fade out bottom of truncated expandable panels to indicate more content below.
 - Scout View: Fix timeline error markers incorrectly flagging every model and tool event.

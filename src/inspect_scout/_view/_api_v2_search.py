@@ -4,9 +4,10 @@ import hashlib
 import json
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Path
-from fastapi.responses import Response
+from fastapi import Query as QueryParam
 from inspect_ai._util.kvstore import KVStore
 from pydantic import TypeAdapter
 
@@ -18,11 +19,14 @@ from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
 from .._util.appdirs import scout_data_dir
 from ._api_v2_types import (
-    GrepSavedSearch,
+    GrepSavedSearchResult,
+    GrepSearchInput,
     GrepSearchRequest,
-    LlmSavedSearch,
-    SavedSearch,
-    SavedSearchListResponse,
+    LlmSavedSearchResult,
+    LlmSearchInput,
+    SavedSearchResult,
+    SearchInput,
+    SearchInputListResponse,
     SearchRequest,
 )
 from ._server_common import decode_base64url
@@ -49,7 +53,10 @@ If nothing in the transcript matches the query, say so briefly.
 """
 
 MAX_ENTRIES = 500
-SAVED_SEARCH_ADAPTER: TypeAdapter[SavedSearch] = TypeAdapter(SavedSearch)
+SAVED_SEARCH_RESULT_ADAPTER: TypeAdapter[SavedSearchResult] = TypeAdapter(
+    SavedSearchResult
+)
+SEARCH_INPUT_ADAPTER: TypeAdapter[SearchInput] = TypeAdapter(SearchInput)
 
 
 def _normalize_filter(
@@ -67,16 +74,29 @@ def _search_id(request: SearchRequest) -> str:
     parts: dict[str, object] = {
         "query": request.query,
         "type": request.type,
-        "messages": _normalize_filter(request.messages),
-        "events": _normalize_filter(request.events),
     }
     if isinstance(request, GrepSearchRequest):
         parts["regex"] = request.regex
         parts["ignore_case"] = request.ignore_case
         parts["word_boundary"] = request.word_boundary
-    elif request.model is not None:
+    else:
         parts["model"] = request.model
     canonical = json.dumps(parts, sort_keys=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()[:12]
+
+
+def _scope_id(
+    messages: str | None | Sequence[object],
+    events: str | None | Sequence[object],
+) -> str:
+    """Deterministic ID from transcript content filters."""
+    canonical = json.dumps(
+        {
+            "messages": _normalize_filter(messages),
+            "events": _normalize_filter(events),
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(canonical.encode()).hexdigest()[:12]
 
 
@@ -85,19 +105,80 @@ def _dir_hash(transcript_dir: str) -> str:
     return hashlib.sha256(transcript_dir.encode()).hexdigest()[:12]
 
 
-def _transcript_prefix(transcript_dir: str, transcript_id: str) -> str:
-    """Composite key prefix for all searches within a transcript."""
-    return f"{_dir_hash(transcript_dir)}:{transcript_id}:"
+def _search_input_key(search_type: Literal["grep", "llm"], search_id: str) -> str:
+    """Full key for a global search input."""
+    return f"{search_type}:{search_id}"
 
 
-def _composite_key(transcript_dir: str, transcript_id: str, search_id: str) -> str:
-    """Full composite key for a single search."""
-    return f"{_transcript_prefix(transcript_dir, transcript_id)}{search_id}"
+def _search_input_prefix(search_type: Literal["grep", "llm"]) -> str:
+    """Key prefix for search inputs of a given type."""
+    return f"{search_type}:"
 
 
-def _search_store() -> KVStore:
-    """Open the single search KVStore."""
-    db_path = scout_data_dir("search") / "searches.db"
+def _result_key(
+    transcript_dir: str,
+    transcript_id: str,
+    search_id: str,
+    *,
+    messages: str | None | Sequence[object],
+    events: str | None | Sequence[object],
+) -> str:
+    """Full key for one transcript-specific cached search result."""
+    return (
+        f"{_dir_hash(transcript_dir)}:{transcript_id}:"
+        f"{_scope_id(messages, events)}:{search_id}"
+    )
+
+
+def _search_input_from_request(
+    request: SearchRequest,
+    *,
+    search_id: str,
+    created_at: str,
+) -> SearchInput:
+    """Build the global input-history object for a search request."""
+    if isinstance(request, GrepSearchRequest):
+        return GrepSearchInput(
+            search_id=search_id,
+            query=request.query,
+            regex=request.regex,
+            ignore_case=request.ignore_case,
+            word_boundary=request.word_boundary,
+            created_at=created_at,
+        )
+    return LlmSearchInput(
+        search_id=search_id,
+        query=request.query,
+        model=request.model,
+        created_at=created_at,
+    )
+
+
+def _save_search_input(search_input: SearchInput) -> None:
+    """Persist or refresh one global search input."""
+    with _search_input_store() as store:
+        store.put(
+            _search_input_key(search_input.type, search_input.search_id),
+            search_input.model_dump_json(),
+        )
+
+
+def _parse_scope_filter(value: str | None) -> str | None:
+    """Parse transcript scope query parameters for cached-result lookups."""
+    if value is None or value == "all":
+        return value
+    return value
+
+
+def _search_input_store() -> KVStore:
+    """Open the global search input-history KVStore."""
+    db_path = scout_data_dir("search") / "search_inputs.db"
+    return KVStore(db_path.as_posix(), max_entries=MAX_ENTRIES)
+
+
+def _search_result_store() -> KVStore:
+    """Open the transcript-specific search result KVStore."""
+    db_path = scout_data_dir("search") / "search_results.db"
     return KVStore(db_path.as_posix(), max_entries=MAX_ENTRIES)
 
 
@@ -109,28 +190,57 @@ def create_search_router() -> APIRouter:
     """
     router = APIRouter(tags=["search"])
 
-    @router.post(
-        "/transcripts/{dir}/{id}/search",
-        summary="Search a transcript",
-    )
+    @router.get("/searches", summary="List recent search inputs")
+    async def list_search_inputs(
+        search_type: Literal["grep", "llm"] = QueryParam(
+            alias="type", description="Search input type to list"
+        ),
+        count: int = QueryParam(
+            default=20,
+            ge=1,
+            le=100,
+            description="Maximum number of recent search inputs to return",
+        ),
+    ) -> SearchInputListResponse:
+        """List recent global search inputs, newest first."""
+        with _search_input_store() as store:
+            rows = store.list_by_prefix(_search_input_prefix(search_type))
+
+        items = [SEARCH_INPUT_ADAPTER.validate_json(value) for _, value in rows[:count]]
+        return SearchInputListResponse(items=items)
+
+    @router.post("/transcripts/{dir}/{id}/search", summary="Search a transcript")
     async def search(
         request: SearchRequest,
         dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         id: str = Path(description="Transcript ID"),
-    ) -> SavedSearch:
+    ) -> SavedSearchResult:
         """Search a transcript using grep or LLM-based search.
 
         Returns cached results if the same search was run before.
         """
         transcript_dir = decode_base64url(dir)
         sid = _search_id(request)
-        key = _composite_key(transcript_dir, id, sid)
+        key = _result_key(
+            transcript_dir,
+            id,
+            sid,
+            messages=request.messages,
+            events=request.events,
+        )
 
         # Check cache
-        with _search_store() as store:
+        with _search_result_store() as store:
             cached = store.get(key)
         if cached:
-            return SAVED_SEARCH_ADAPTER.validate_json(cached)
+            _save_search_input(
+                _search_input_from_request(
+                    request,
+                    search_id=sid,
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                )
+            )
+            return SAVED_SEARCH_RESULT_ADAPTER.validate_json(cached)
 
         # Load transcript
         async with transcripts_view(transcript_dir) as view:
@@ -175,8 +285,13 @@ def create_search_router() -> APIRouter:
             )
 
         created_at = datetime.now(timezone.utc).isoformat()
+        search_input = _search_input_from_request(
+            request,
+            search_id=sid,
+            created_at=created_at,
+        )
         if isinstance(request, GrepSearchRequest):
-            saved: SavedSearch = GrepSavedSearch(
+            saved: SavedSearchResult = GrepSavedSearchResult(
                 search_id=sid,
                 query=request.query,
                 regex=request.regex,
@@ -186,7 +301,7 @@ def create_search_router() -> APIRouter:
                 created_at=created_at,
             )
         else:
-            saved = LlmSavedSearch(
+            saved = LlmSavedSearchResult(
                 search_id=sid,
                 query=request.query,
                 model=request.model,
@@ -194,68 +309,44 @@ def create_search_router() -> APIRouter:
                 created_at=created_at,
             )
 
-        with _search_store() as store:
+        _save_search_input(search_input)
+        with _search_result_store() as store:
             store.put(key, saved.model_dump_json())
 
         return saved
 
     @router.get(
-        "/transcripts/{dir}/{id}/searches",
-        summary="List saved searches for a transcript",
-    )
-    async def list_searches(
-        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
-        id: str = Path(description="Transcript ID"),
-    ) -> SavedSearchListResponse:
-        """List all saved searches for a transcript, newest first."""
-        transcript_dir = decode_base64url(dir)
-        prefix = _transcript_prefix(transcript_dir, id)
-
-        with _search_store() as store:
-            rows = store.list_by_prefix(prefix)
-
-        items = [SAVED_SEARCH_ADAPTER.validate_json(value) for _, value in rows]
-        return SavedSearchListResponse(items=items)
-
-    @router.get(
         "/transcripts/{dir}/{id}/searches/{search_id}",
-        summary="Get a saved search",
+        summary="Get a saved search result",
     )
     async def get_search(
         dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         id: str = Path(description="Transcript ID"),
         search_id: str = Path(description="Search ID"),
-    ) -> SavedSearch:
-        """Get a single saved search by ID."""
+        messages: str | None = QueryParam(
+            default=None,
+            description="Message filter used for the cached search result",
+        ),
+        events: str | None = QueryParam(
+            default=None,
+            description="Event filter used for the cached search result",
+        ),
+    ) -> SavedSearchResult:
+        """Get a cached search result by search input ID and transcript scope."""
         transcript_dir = decode_base64url(dir)
-        key = _composite_key(transcript_dir, id, search_id)
+        key = _result_key(
+            transcript_dir,
+            id,
+            search_id,
+            messages=_parse_scope_filter(messages),
+            events=_parse_scope_filter(events),
+        )
 
-        with _search_store() as store:
+        with _search_result_store() as store:
             value = store.get(key)
 
         if value is None:
-            raise HTTPException(status_code=404, detail="Search not found")
-        return SAVED_SEARCH_ADAPTER.validate_json(value)
-
-    @router.delete(
-        "/transcripts/{dir}/{id}/searches/{search_id}",
-        summary="Delete a saved search",
-        status_code=204,
-    )
-    async def delete_search(
-        dir: str = Path(description="Transcripts directory (base64url-encoded)"),
-        id: str = Path(description="Transcript ID"),
-        search_id: str = Path(description="Search ID"),
-    ) -> Response:
-        """Delete a saved search by ID."""
-        transcript_dir = decode_base64url(dir)
-        key = _composite_key(transcript_dir, id, search_id)
-
-        with _search_store() as store:
-            deleted = store.delete(key)
-
-        if not deleted:
-            raise HTTPException(status_code=404, detail="Search not found")
-        return Response(status_code=204)
+            raise HTTPException(status_code=404, detail="Search result not found")
+        return SAVED_SEARCH_RESULT_ADAPTER.validate_json(value)
 
     return router

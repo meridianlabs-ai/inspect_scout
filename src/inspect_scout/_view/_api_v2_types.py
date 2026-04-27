@@ -329,18 +329,52 @@ SearchRequest = TypeAliasType(
 )
 
 
-class SavedSearchBase(BaseModel):
-    """Shared fields for persisted search results."""
+class SearchInputBase(BaseModel):
+    """Shared fields for persisted search input history."""
 
     search_id: str
     query: str
-    result: Result
     created_at: str
 
     model_config = ConfigDict(extra="forbid")
 
 
-class GrepSavedSearch(SavedSearchBase):
+class GrepSearchInput(SearchInputBase):
+    """A persisted grep search input."""
+
+    type: Literal["grep"] = "grep"
+    regex: bool
+    ignore_case: bool
+    word_boundary: bool
+
+
+class LlmSearchInput(SearchInputBase):
+    """A persisted LLM search input."""
+
+    type: Literal["llm"] = "llm"
+    model: str | None = None
+
+
+SearchInput = TypeAliasType(
+    "SearchInput",
+    Annotated[GrepSearchInput | LlmSearchInput, Field(discriminator="type")],
+)
+
+
+@dataclass
+class SearchInputListResponse:
+    """Response from the list search inputs endpoint."""
+
+    items: list[SearchInput]
+
+
+class SavedSearchResultBase(SearchInputBase):
+    """Shared fields for persisted search results."""
+
+    result: Result
+
+
+class GrepSavedSearchResult(SavedSearchResultBase):
     """A persisted grep search result."""
 
     type: Literal["grep"] = "grep"
@@ -349,21 +383,16 @@ class GrepSavedSearch(SavedSearchBase):
     word_boundary: bool
 
 
-class LlmSavedSearch(SavedSearchBase):
+class LlmSavedSearchResult(SavedSearchResultBase):
     """A persisted LLM search result."""
 
     type: Literal["llm"] = "llm"
     model: str | None = None
 
 
-SavedSearch = TypeAliasType(
-    "SavedSearch",
-    Annotated[GrepSavedSearch | LlmSavedSearch, Field(discriminator="type")],
+SavedSearchResult = TypeAliasType(
+    "SavedSearchResult",
+    Annotated[
+        GrepSavedSearchResult | LlmSavedSearchResult, Field(discriminator="type")
+    ],
 )
-
-
-@dataclass
-class SavedSearchListResponse:
-    """Response from the list searches endpoint."""
-
-    items: list[SavedSearch]

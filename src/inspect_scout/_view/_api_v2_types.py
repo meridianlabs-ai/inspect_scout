@@ -15,7 +15,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scanner.result import Error, Result
+from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import EventFilter, MessageFilter, TranscriptInfo
 
@@ -366,33 +366,3 @@ class SearchInputListResponse:
     """Response from the list search inputs endpoint."""
 
     items: list[SearchInput]
-
-
-class SavedSearchResultBase(SearchInputBase):
-    """Shared fields for persisted search results."""
-
-    result: Result
-
-
-class GrepSavedSearchResult(SavedSearchResultBase):
-    """A persisted grep search result."""
-
-    type: Literal["grep"] = "grep"
-    regex: bool
-    ignore_case: bool
-    word_boundary: bool
-
-
-class LlmSavedSearchResult(SavedSearchResultBase):
-    """A persisted LLM search result."""
-
-    type: Literal["llm"] = "llm"
-    model: str | None = None
-
-
-SavedSearchResult = TypeAliasType(
-    "SavedSearchResult",
-    Annotated[
-        GrepSavedSearchResult | LlmSavedSearchResult, Field(discriminator="type")
-    ],
-)

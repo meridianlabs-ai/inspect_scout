@@ -15,16 +15,14 @@ from .._grep_scanner._grep_scanner import grep_scanner
 from .._llm_scanner import ResultReducer
 from .._llm_scanner._llm_scanner import llm_scanner
 from .._query import Column, Query
+from .._scanner.result import Result
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
 from .._util.appdirs import scout_data_dir
 from ._api_v2_types import (
-    GrepSavedSearchResult,
     GrepSearchInput,
     GrepSearchRequest,
-    LlmSavedSearchResult,
     LlmSearchInput,
-    SavedSearchResult,
     SearchInput,
     SearchInputListResponse,
     SearchRequest,
@@ -53,9 +51,7 @@ If nothing in the transcript matches the query, say so briefly.
 """
 
 MAX_ENTRIES = 500
-SAVED_SEARCH_RESULT_ADAPTER: TypeAdapter[SavedSearchResult] = TypeAdapter(
-    SavedSearchResult
-)
+SEARCH_RESULT_ADAPTER: TypeAdapter[Result] = TypeAdapter(Result)
 SEARCH_INPUT_ADAPTER: TypeAdapter[SearchInput] = TypeAdapter(SearchInput)
 
 
@@ -214,7 +210,7 @@ def create_search_router() -> APIRouter:
         request: SearchRequest,
         dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         id: str = Path(description="Transcript ID"),
-    ) -> SavedSearchResult:
+    ) -> Result:
         """Search a transcript using grep or LLM-based search.
 
         Returns cached results if the same search was run before.
@@ -240,7 +236,7 @@ def create_search_router() -> APIRouter:
                     created_at=datetime.now(timezone.utc).isoformat(),
                 )
             )
-            return SAVED_SEARCH_RESULT_ADAPTER.validate_json(cached)
+            return SEARCH_RESULT_ADAPTER.validate_json(cached)
 
         # Load transcript
         async with transcripts_view(transcript_dir) as view:
@@ -290,30 +286,11 @@ def create_search_router() -> APIRouter:
             search_id=sid,
             created_at=created_at,
         )
-        if isinstance(request, GrepSearchRequest):
-            saved: SavedSearchResult = GrepSavedSearchResult(
-                search_id=sid,
-                query=request.query,
-                regex=request.regex,
-                ignore_case=request.ignore_case,
-                word_boundary=request.word_boundary,
-                result=output,
-                created_at=created_at,
-            )
-        else:
-            saved = LlmSavedSearchResult(
-                search_id=sid,
-                query=request.query,
-                model=request.model,
-                result=output,
-                created_at=created_at,
-            )
-
         _save_search_input(search_input)
         with _search_result_store() as store:
-            store.put(key, saved.model_dump_json())
+            store.put(key, output.model_dump_json())
 
-        return saved
+        return output
 
     @router.get(
         "/transcripts/{dir}/{id}/searches/{search_id}",
@@ -331,7 +308,7 @@ def create_search_router() -> APIRouter:
             default=None,
             description="Event filter used for the cached search result",
         ),
-    ) -> SavedSearchResult:
+    ) -> Result:
         """Get a cached search result by search input ID and transcript scope."""
         transcript_dir = decode_base64url(dir)
         key = _result_key(
@@ -347,6 +324,6 @@ def create_search_router() -> APIRouter:
 
         if value is None:
             raise HTTPException(status_code=404, detail="Search result not found")
-        return SAVED_SEARCH_RESULT_ADAPTER.validate_json(value)
+        return SEARCH_RESULT_ADAPTER.validate_json(value)
 
     return router

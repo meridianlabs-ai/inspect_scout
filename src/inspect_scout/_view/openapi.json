@@ -3197,57 +3197,6 @@
         "title": "GenerateConfig",
         "type": "object"
       },
-      "GrepSavedSearchResult": {
-        "additionalProperties": false,
-        "description": "A persisted grep search result.",
-        "properties": {
-          "created_at": {
-            "title": "Created At",
-            "type": "string"
-          },
-          "ignore_case": {
-            "title": "Ignore Case",
-            "type": "boolean"
-          },
-          "query": {
-            "title": "Query",
-            "type": "string"
-          },
-          "regex": {
-            "title": "Regex",
-            "type": "boolean"
-          },
-          "result": {
-            "$ref": "#/components/schemas/Result"
-          },
-          "search_id": {
-            "title": "Search Id",
-            "type": "string"
-          },
-          "type": {
-            "const": "grep",
-            "default": "grep",
-            "title": "Type",
-            "type": "string"
-          },
-          "word_boundary": {
-            "title": "Word Boundary",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "search_id",
-          "query",
-          "created_at",
-          "result",
-          "type",
-          "regex",
-          "ignore_case",
-          "word_boundary"
-        ],
-        "title": "GrepSavedSearchResult",
-        "type": "object"
-      },
       "GrepSearchInput": {
         "additionalProperties": false,
         "description": "A persisted grep search input.",
@@ -4101,53 +4050,6 @@
         "type": "object"
       },
       "JsonValue": {},
-      "LlmSavedSearchResult": {
-        "additionalProperties": false,
-        "description": "A persisted LLM search result.",
-        "properties": {
-          "created_at": {
-            "title": "Created At",
-            "type": "string"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "query": {
-            "title": "Query",
-            "type": "string"
-          },
-          "result": {
-            "$ref": "#/components/schemas/Result"
-          },
-          "search_id": {
-            "title": "Search Id",
-            "type": "string"
-          },
-          "type": {
-            "const": "llm",
-            "default": "llm",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "search_id",
-          "query",
-          "created_at",
-          "result",
-          "type"
-        ],
-        "title": "LlmSavedSearchResult",
-        "type": "object"
-      },
       "LlmScannerParams": {
         "description": "Parameters for llm_scanner.",
         "properties": {
@@ -6683,23 +6585,6 @@
         ],
         "title": "SandboxEvent",
         "type": "object"
-      },
-      "SavedSearchResult": {
-        "discriminator": {
-          "mapping": {
-            "grep": "#/components/schemas/GrepSavedSearchResult",
-            "llm": "#/components/schemas/LlmSavedSearchResult"
-          },
-          "propertyName": "type"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/GrepSavedSearchResult"
-          },
-          {
-            "$ref": "#/components/schemas/LlmSavedSearchResult"
-          }
-        ]
       },
       "ScanJobConfig": {
         "additionalProperties": false,
@@ -12251,7 +12136,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SavedSearchResult"
+                  "$ref": "#/components/schemas/Result"
                 }
               }
             },
@@ -12344,7 +12229,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SavedSearchResult"
+                  "$ref": "#/components/schemas/Result"
                 }
               }
             },

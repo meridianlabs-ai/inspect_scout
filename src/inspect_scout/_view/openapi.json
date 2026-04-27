@@ -9191,6 +9191,11 @@
             ],
             "title": "Span Type"
           },
+          "tool_invoked": {
+            "default": false,
+            "title": "Tool Invoked",
+            "type": "boolean"
+          },
           "type": {
             "const": "span",
             "default": "span",
@@ -9209,7 +9214,8 @@
           "name",
           "content",
           "branches",
-          "utility"
+          "utility",
+          "tool_invoked"
         ],
         "title": "TimelineSpan",
         "type": "object"

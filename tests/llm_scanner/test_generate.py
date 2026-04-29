@@ -11,7 +11,7 @@ import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from inspect_ai.model import ModelOutput
+from inspect_ai.model import GenerateConfig, ModelOutput
 from inspect_scout._llm_scanner.generate import generate_answer
 from inspect_scout._llm_scanner.types import (
     AnswerMultiLabel,
@@ -56,6 +56,41 @@ async def test_generate_normal_dispatch() -> None:
     mock_gen.assert_awaited_once()
     assert isinstance(result, Result)
     assert result.value is True
+
+
+@pytest.mark.anyio
+async def test_generate_forwards_config_text() -> None:
+    cfg = GenerateConfig(cache=True)
+    with patch(
+        "inspect_scout._llm_scanner.generate.generate_retry_refusals",
+        new_callable=AsyncMock,
+        return_value=_make_mock_output(),
+    ) as mock_gen:
+        await generate_answer("Q?", "boolean", model="mockllm/model", config=cfg)
+    assert mock_gen.call_args.kwargs["config"] is cfg
+
+
+@pytest.mark.anyio
+async def test_generate_forwards_config_structured() -> None:
+    class MyAnswer(BaseModel):
+        explanation: str = Field(description="Reasoning")
+        score: int = Field(alias="value", description="Score")
+
+    cfg = GenerateConfig(cache=True, parallel_tool_calls=True)
+    with patch(
+        "inspect_scout._llm_scanner.structured.generate_retry_refusals",
+        new_callable=AsyncMock,
+        return_value=ModelOutput.from_content(model="test", content="{}"),
+    ) as mock_gen:
+        await generate_answer(
+            "Q?",
+            AnswerStructured(type=MyAnswer, max_attempts=1),
+            model="mockllm/model",
+            config=cfg,
+        )
+    forwarded = mock_gen.call_args.kwargs["config"]
+    assert forwarded.cache is True
+    assert forwarded.parallel_tool_calls is False
 
 
 @pytest.mark.anyio

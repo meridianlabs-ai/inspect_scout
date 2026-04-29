@@ -37,6 +37,7 @@ async def structured_generate(
     schema: JSONSchema,
     answer_tool: str | None = "answer",
     model: str | Model | None = None,
+    config: GenerateConfig | None = None,
     max_attempts: int = 3,
     retry_refusals: int = 3,
 ) -> tuple[dict[str, Any] | None, list[ChatMessage], ModelOutput]:
@@ -73,7 +74,9 @@ async def structured_generate(
             input=messages,
             tools=[answer_tooldef],
             tool_choice=ToolFunction(answer_tooldef.name),
-            config=GenerateConfig(parallel_tool_calls=False),
+            config=(config or GenerateConfig()).merge(
+                GenerateConfig(parallel_tool_calls=False)
+            ),
             retry_refusals=retry_refusals,
         )
         messages.append(output.message)

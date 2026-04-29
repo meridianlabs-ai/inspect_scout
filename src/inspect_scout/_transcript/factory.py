@@ -74,23 +74,28 @@ async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
 def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "database"]:
     """Determine the type of location based on its contents.
 
+    A location is treated as a transcript database if it contains a parquet
+    file matching the writer's canonical `transcripts_*.parquet` naming
+    convention (searched recursively), if it does not exist, or if it is an
+    empty directory. Otherwise it is treated as a directory of eval logs.
+
     Args:
         location: Path to location (local or S3 URI)
 
     Returns:
-        "database" if location contains parquet files or is empty,
-        otherwise "eval_log"
+        "database" if location looks like a transcript database (or is
+        absent/empty), otherwise "eval_log".
     """
-    from inspect_scout._transcript.database.parquet import PARQUET_TRANSCRIPTS_GLOB
-
-    # ensure any filesystem depenencies (as we'll be probing the fs w/ UPath)
+    # ensure any filesystem dependencies (as we'll be probing the fs w/ UPath)
     ensure_filesystem_dependencies(str(location))
 
     location_path = UPath(location)
 
-    # Check for parquet files with the database naming convention
-    parquet_files = list(location_path.rglob(PARQUET_TRANSCRIPTS_GLOB))
-    if parquet_files:
+    # Check for parquet files with the database naming convention. Match the
+    # canonical `transcripts_*.parquet` filename emitted by the writer rather
+    # than any `*.parquet`, otherwise scan-result parquet files (e.g. under a
+    # nested `scans/` dir) would misidentify the location as a database.
+    if next(location_path.rglob("transcripts_*.parquet"), None) is not None:
         return TRANSCRIPT_SOURCE_DATABASE
 
     # Check if directory doesn't exist or is empty

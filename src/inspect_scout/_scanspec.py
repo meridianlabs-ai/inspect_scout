@@ -6,9 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    SerializerFunctionWrapHandler,
     field_serializer,
-    model_serializer,
     model_validator,
 )
 from shortuuid import uuid

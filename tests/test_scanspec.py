@@ -22,19 +22,6 @@ class TestScanTranscriptsSerialization:
         assert "fields" not in data
         assert "data" not in data
 
-    def test_default_deprecated_fields_excluded_in_model_dump(self) -> None:
-        snapshot = ScanTranscripts(
-            type="database",
-            location="/tmp/some/location",
-            transcript_ids={"id-1": "file-1.parquet"},
-        )
-
-        dumped = snapshot.model_dump()
-
-        assert "count" not in dumped
-        assert "fields" not in dumped
-        assert "data" not in dumped
-
     def test_non_default_deprecated_fields_preserved(self) -> None:
         """Non-default deprecated values still serialize so legacy data round-trips."""
         snapshot = ScanTranscripts(

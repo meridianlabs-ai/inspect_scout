@@ -114,13 +114,15 @@ class ScanTranscripts(BaseModel):
 
     # deprecated fields
 
-    count: int = Field(default=0, deprecated=True)
+    count: int | None = Field(default=None)
     """Trancript count (deprecated)."""
 
-    fields: list[TranscriptField] | None = Field(default=None, deprecated=True)
+    fields: list[TranscriptField] | None = Field(default=None)
     """Data types of transcripts fields (deprecated)"""
 
-    data: str | None = Field(default=None, deprecated=True)
+    data: str | None = Field(
+        default=None,
+    )
     """Transcript data as a csv (deprecated)"""
 
     # migrate 'conditions' to 'filter'
@@ -136,18 +138,6 @@ class ScanTranscripts(BaseModel):
             ]
 
         return values
-
-    # don't write deprecated fields to disk when they are at their defaults
-    @model_serializer(mode="wrap")
-    def _exclude_default_deprecated(
-        self, handler: SerializerFunctionWrapHandler
-    ) -> dict[str, Any]:
-        data: dict[str, Any] = handler(self)
-        if isinstance(data, dict):
-            for name, info in type(self).model_fields.items():
-                if info.deprecated and name in data and data[name] == info.default:
-                    del data[name]
-        return data
 
 
 class Worklist(BaseModel):

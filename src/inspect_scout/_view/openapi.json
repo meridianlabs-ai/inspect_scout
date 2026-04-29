@@ -7369,7 +7369,97 @@
         "type": "object"
       },
       "ScanTranscripts": {
-        "additionalProperties": true,
+        "description": "Transcripts targeted by a scan.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TranscriptField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "transcript_ids": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Transcript Ids",
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "eval_log",
+              "database"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "transcript_ids"
+        ],
+        "title": "ScanTranscripts",
         "type": "object"
       },
       "ScannerInfo": {
@@ -9974,6 +10064,30 @@
           "timelines"
         ],
         "title": "Transcript",
+        "type": "object"
+      },
+      "TranscriptField": {
+        "description": "Field in transcript data frame.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "tz": {
+            "title": "Tz",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "tz"
+        ],
+        "title": "TranscriptField",
         "type": "object"
       },
       "TranscriptInfo": {

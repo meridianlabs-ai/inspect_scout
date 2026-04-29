@@ -722,16 +722,6 @@
           "message": {
             "$ref": "#/components/schemas/ChatMessageAssistant"
           },
-          "prompt_logprobs": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Logprobs"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "stop_reason": {
             "default": "unknown",
             "enum": [
@@ -2542,17 +2532,6 @@
             ],
             "title": "Presence Penalty"
           },
-          "prompt_logprobs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Prompt Logprobs"
-          },
           "reasoning_effort": {
             "anyOf": [
               {
@@ -2999,17 +2978,6 @@
               }
             ],
             "title": "Presence Penalty"
-          },
-          "prompt_logprobs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Prompt Logprobs"
           },
           "reasoning_effort": {
             "anyOf": [
@@ -7369,92 +7337,7 @@
         "type": "object"
       },
       "ScanTranscripts": {
-        "description": "Transcripts targeted by a scan.",
-        "properties": {
-          "count": {
-            "default": 0,
-            "title": "Count",
-            "type": "integer"
-          },
-          "data": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data"
-          },
-          "fields": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/TranscriptField"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fields"
-          },
-          "filter": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filter"
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location"
-          },
-          "transcript_ids": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "title": "Transcript Ids",
-            "type": "object"
-          },
-          "type": {
-            "enum": [
-              "eval_log",
-              "database"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "transcript_ids",
-          "count"
-        ],
-        "title": "ScanTranscripts",
+        "additionalProperties": true,
         "type": "object"
       },
       "ScannerInfo": {
@@ -7848,6 +7731,7 @@
           "scans",
           "results",
           "errors",
+          "validation",
           "tokens",
           "model_usage"
         ],
@@ -9175,11 +9059,6 @@
             ],
             "title": "Span Type"
           },
-          "tool_invoked": {
-            "default": false,
-            "title": "Tool Invoked",
-            "type": "boolean"
-          },
           "type": {
             "const": "span",
             "default": "span",
@@ -9198,8 +9077,7 @@
           "name",
           "content",
           "branches",
-          "utility",
-          "tool_invoked"
+          "utility"
         ],
         "title": "TimelineSpan",
         "type": "object"
@@ -10061,30 +9939,6 @@
         "title": "Transcript",
         "type": "object"
       },
-      "TranscriptField": {
-        "description": "Field in transcript data frame.",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          },
-          "tz": {
-            "title": "Tz",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "type",
-          "tz"
-        ],
-        "title": "TranscriptField",
-        "type": "object"
-      },
       "TranscriptInfo": {
         "description": "Transcript identifier, location, and metadata.",
         "properties": {
@@ -10524,7 +10378,8 @@
           }
         },
         "required": [
-          "id"
+          "id",
+          "labels"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -10886,7 +10741,8 @@
           }
         },
         "required": [
-          "cases"
+          "cases",
+          "predicate"
         ],
         "title": "ValidationSet",
         "type": "object"
@@ -10931,7 +10787,8 @@
           }
         },
         "required": [
-          "cases"
+          "cases",
+          "predicate"
         ],
         "title": "ValidationSet",
         "type": "object"

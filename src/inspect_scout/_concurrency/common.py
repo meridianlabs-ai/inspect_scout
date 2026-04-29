@@ -84,6 +84,14 @@ class ScannerJob(NamedTuple):
     scanner_name: str
     """The name of the scanner within the scan job."""
 
+    followers: tuple["ScannerJob", ...] = ()
+    """Followers held back until this job (the "lead") completes.
+
+    The first scanner for a transcript runs alone so its generate call can
+    populate the prompt cache; once it completes, followers are enqueued to
+    hit the warm cache.
+    """
+
 
 ParseFunctionResult = (
     tuple[Literal[True], list[ScannerJob]] | tuple[Literal[False], list[ResultReport]]

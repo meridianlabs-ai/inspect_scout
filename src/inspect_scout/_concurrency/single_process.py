@@ -258,6 +258,10 @@ def single_process_strategy(
                 )
                 return True
             finally:
+                # Release any followers held back by this lead. No-op when the
+                # job has no followers (single-scanner-per-transcript case).
+                for follower in scanner_job.followers:
+                    scanner_job_deque.append(follower)
                 metrics.tasks_scanning -= 1
 
         async def _worker_task(

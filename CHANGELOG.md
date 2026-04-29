@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.28 (29 April 2026)
 
 - LLM Scanner: Send default-template prompts as two content blocks (preamble + transcript / per-scanner tail) with `cache_prompt=True`. On Anthropic, the shared-prefix block is marked for caching so multiple scanners on the same transcript share a cache entry.
 - LLM Scanner: `template` parameter accepts a `tuple[str, str]` of `(prefix, suffix)` to opt custom templates into the same two-block cache-aware rendering. Passing a single `str` keeps the legacy single-block behavior unchanged.

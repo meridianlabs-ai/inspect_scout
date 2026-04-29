@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 
 from inspect_ai import Task, eval
@@ -19,7 +20,7 @@ from inspect_ai.model import (
     GenerateConfig,
     ModelOutput,
 )
-from inspect_ai.scorer import NOANSWER, mean
+from inspect_ai.scorer import mean
 from inspect_scout._scanner.result import Reference, Result
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, scanner
 from inspect_scout._scanner.scorer import (
@@ -88,7 +89,7 @@ def test_none_value_without_context_returns_no_score() -> None:
 
 
 def test_none_value_with_context_preserves_explanation_and_metadata() -> None:
-    """Result(value=None) with explanation/metadata yields a NOANSWER score."""
+    """Result(value=None) with explanation/metadata yields an unscored Score."""
     task = Task(scorer=as_scorer(none_value_with_context_scanner()))
     log = eval(tasks=task, model="mockllm/model")[0]
     assert log.status == "success"
@@ -96,7 +97,9 @@ def test_none_value_with_context_preserves_explanation_and_metadata() -> None:
     sample = log.samples[0]
     assert sample.scores is not None
     score = sample.scores["none_value_with_context_scanner"]
-    assert score.value == NOANSWER
+    # Score.unscored() sets value to NaN so the sample is preserved with its
+    # context but excluded from metrics and counted toward unscored_samples.
+    assert isinstance(score.value, float) and math.isnan(score.value)
     assert score.explanation == "Judge refused to score this transcript."
     assert score.metadata is not None
     assert score.metadata["refusal"] is True

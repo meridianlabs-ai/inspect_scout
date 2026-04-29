@@ -7,7 +7,6 @@ from inspect_ai.event import Event, Timeline
 from inspect_ai.log import transcript as sample_transcript
 from inspect_ai.model import ChatMessage
 from inspect_ai.scorer import (
-    NOANSWER,
     Metric,
     Score,
     Scorer,
@@ -85,7 +84,8 @@ def as_scorer(
                 result = as_resultset(result)
 
             # None means no score (unless there is explanation/metadata to preserve,
-            # in which case we record a NOANSWER score so that context isn't lost)
+            # in which case we record a NaN-valued Score so that context isn't
+            # lost but the sample is still excluded from metrics)
             if result.value is None:
                 if (
                     result.answer is None
@@ -94,7 +94,7 @@ def as_scorer(
                 ):
                     return None
                 return Score(
-                    value=NOANSWER,
+                    value=float("nan"),
                     answer=result.answer,
                     explanation=result.explanation,
                     metadata=_metadata_from_result(result),

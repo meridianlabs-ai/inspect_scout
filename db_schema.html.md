@@ -66,7 +66,7 @@ While you can include any of the event types in defined in [inspect_ai.event](ht
 
 Most observability systems will have some equivalent of the above in their traces. When reconstructing model events you will also likely want to use the helper functions mentioned above in [Messages](#messages) for converting raw model API payloads to [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage).
 
-> **IMPORTANT: events_data**
+> **IMPORTANT: Importantevents_data**
 >
 > If you are including `events` you should also include an `events_data` field to reduce the size of your transcripts. Note that model events include the entire `input` so for long trajectories the storage requirements are O(n²).
 >

@@ -89,7 +89,7 @@ await db.insert(phoenix(
 ))
 ```
 
-> **NOTE: Authentication**
+> **NOTE: NoteAuthentication**
 >
 > Set the `PHOENIX_API_KEY` environment variable to authenticate with Phoenix. Set `PHOENIX_COLLECTOR_ENDPOINT` for the base URL (defaults to `https://app.phoenix.arize.com`).
 
@@ -114,7 +114,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-> **NOTE: Authentication**
+> **NOTE: NoteAuthentication**
 >
 > Set the `LANGSMITH_API_KEY` environment variable to authenticate with LangSmith. You can create an API key from [LangSmith Settings](https://smith.langchain.com/settings).
 
@@ -139,7 +139,7 @@ async with transcripts_db("s3://my-transcript-db/") as db:
     ))
 ```
 
-> **NOTE: Authentication**
+> **NOTE: NoteAuthentication**
 >
 > Set the `LOGFIRE_READ_TOKEN` environment variable to authenticate with Logfire. You can create a read token from [Logfire Settings \> Read Tokens](https://logfire.pydantic.dev/).
 
@@ -214,7 +214,7 @@ await db.insert(weave(
 ))
 ```
 
-> **NOTE: Authentication**
+> **NOTE: NoteAuthentication**
 >
 > Set the `WANDB_API_KEY` environment variable to authenticate with W&B. You can create an API key from [W&B Settings](https://wandb.ai/settings).
 

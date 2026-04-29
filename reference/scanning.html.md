@@ -8,7 +8,7 @@ Scan transcripts.
 
 Scan transcripts using one or more scanners. Note that scanners must each have a unique name. If you have more than one instance of a scanner with the same name, numbered prefixes will be automatically assigned. Alternatively, you can pass tuples of (name,scanner) or a dict with explicit names for each scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scan.py#L90)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scan.py#L90)
 
 ``` python
 def scan(
@@ -103,7 +103,7 @@ Don’t actually run the scan, just print the spec and return the status. Defaul
 
 Resume a previous scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scan.py#L343)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scan.py#L343)
 
 ``` python
 def scan_resume(
@@ -132,7 +132,7 @@ Complete a scan.
 
 This function is used to indicate that a scan with errors in some transcripts should be completed in spite of the errors.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scan.py#L413)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scan.py#L413)
 
 ``` python
 def scan_complete(
@@ -157,7 +157,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Decorator for registering scan jobs.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanjob.py#L299)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanjob.py#L299)
 
 ``` python
 def scanjob(
@@ -175,7 +175,7 @@ Optional name for scanjob (defaults to function name).
 
 Scan job definition.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanjob.py#L57)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanjob.py#L57)
 
 ``` python
 class ScanJob
@@ -243,7 +243,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scan job configuration.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanjob_config.py#L11)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanjob_config.py#L11)
 
 ``` python
 class ScanJobConfig(BaseModel)
@@ -320,7 +320,7 @@ Scout project configuration from scout.yaml.
 
 Extends ScanJobConfig to represent project-level defaults. All fields from ScanJobConfig are available as project defaults.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_project/types.py#L8)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_project/types.py#L8)
 
 ``` python
 class ProjectConfig(ScanJobConfig)
@@ -395,7 +395,7 @@ Level for logging to the console: “debug”, “http”, “sandbox”, “inf
 
 Scanner used by scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L22)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L22)
 
 ``` python
 class ScannerSpec(BaseModel)
@@ -424,7 +424,7 @@ Definition of work to perform for a scanner.
 
 By default scanners process all transcripts passed to [scan()](../reference/scanning.html.md#scan). You can alternately pass a list of [ScannerWork](../reference/scanning.html.md#scannerwork) to specify that only particular scanners and transcripts should be processed.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_transcript/transcripts.py#L227)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_transcript/transcripts.py#L227)
 
 ``` python
 class ScannerWork
@@ -442,7 +442,7 @@ Transcripts.
 
 List of transcript ids to process for a scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L139)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L139)
 
 ``` python
 class Worklist(BaseModel)
@@ -462,7 +462,7 @@ List of transcript ids.
 
 Scan specification (scanners, transcripts, config).
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L149)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L149)
 
 ``` python
 class ScanSpec(BaseModel)
@@ -522,7 +522,7 @@ Validation cases to apply for scanners.
 
 Options used for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L60)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L60)
 
 ``` python
 class ScanOptions(BaseModel)
@@ -546,7 +546,7 @@ Shuffle order of transcripts.
 
 Git revision for scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L44)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L44)
 
 ``` python
 class ScanRevision(BaseModel)
@@ -570,7 +570,7 @@ Revision commit.
 
 Transcripts targeted by a scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L89)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L89)
 
 ``` python
 class ScanTranscripts(BaseModel)
@@ -598,7 +598,7 @@ The location value depends on the backing store: - For parquet databases: the pa
 
 Field in transcript data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/9cbc8a49559bbb4238176f507a8a4098b2d2ce7f/src/inspect_scout/_scanspec.py#L76)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/19a800e76910e0b6f93ae93389c4e3ff7ba42a0b/src/inspect_scout/_scanspec.py#L76)
 
 ``` python
 class TranscriptField(TypedDict, total=False)

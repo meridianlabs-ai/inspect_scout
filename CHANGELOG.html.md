@@ -1,5 +1,21 @@
 # changelog – Inspect Scout
 
+## Unreleased
+
+- [generate_answer()](./reference/scanner.html.md#generate_answer) / `structured_generate()`: add `config: GenerateConfig | None` parameter for per-call overrides (e.g. `cache`), so callers no longer need to mutate or copy the role [Model](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model) to set generation options. `parallel_tool_calls` remains forced to `False` for structured answers.
+- Scout View: Improve message collapse behavior.
+- Scout View: Fade out bottom of truncated expandable panels to indicate more content below.
+- Scout View: Fix timeline error markers incorrectly flagging every model and tool event.
+- Scout View: Store task list filter/sort state independently per scope (Tasks vs Folders, individual folders).
+- Scout View: Add Tokens and Duration columns to samples list.
+- Scout View: Detect additional todo/task tool names (for inspect deepagent).
+- Scout View: Default expand transcripts to show branches.
+- Scout View: Fix transcript scroll-to-event navigation for short event lists.
+- Scout View: Branch-aware citation navigation in transcript view with deep-linking via `?message=<id>`.
+- Scout View: Fix double borders on root elements of transcript.
+- Scout View: Improve expandable panel height measurement and button visibility.
+- Scout View: Display approvals within tool calls; improve formatting of rejections and long approvals.
+
 ## 0.4.27 (20 April 2026)
 
 - Scanner as Scorer: Modify format for improved API for view client.

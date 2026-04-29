@@ -94,8 +94,14 @@ class ScannerJob(NamedTuple):
 
 
 ParseFunctionResult = (
-    tuple[Literal[True], list[ScannerJob]] | tuple[Literal[False], list[ResultReport]]
+    tuple[Literal[True], ScannerJob] | tuple[Literal[False], list[ResultReport]]
 )
+"""Result of parsing a transcript for scanning.
+
+Success branch carries the lead `ScannerJob` (with any followers attached
+on its `followers` field). Failure branch carries one `ResultReport` per
+affected scanner — parse failure is recorded as an error per scanner.
+"""
 
 
 class ConcurrencyStrategy(Protocol):

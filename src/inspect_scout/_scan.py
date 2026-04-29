@@ -625,11 +625,9 @@ async def _scan_async_inner(
                         lead_idx, *follower_indices = sorted(job.scanner_indices)
                         lead = _make_job(
                             lead_idx,
-                            followers=tuple(
-                                _make_job(idx) for idx in follower_indices
-                            ),
+                            followers=tuple(_make_job(idx) for idx in follower_indices),
                         )
-                        return (True, [lead])
+                        return (True, lead)
                     except Exception as ex:  # pylint: disable=W0718
                         # Create error ResultReport for each affected scanner
                         return (

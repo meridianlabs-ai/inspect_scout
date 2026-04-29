@@ -215,9 +215,9 @@ def single_process_strategy(
 
                 # Check success/failure tag
                 if result[0]:
-                    # Success: enqueue scanner jobs
-                    for scanner_job in result[1]:
-                        scanner_job_deque.append(scanner_job)
+                    # Success: enqueue the lead scanner job (followers are
+                    # attached to it and released when it completes).
+                    scanner_job_deque.append(result[1])
                 else:
                     # Error: record error results
                     for result_report in result[1]:

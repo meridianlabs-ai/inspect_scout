@@ -74,38 +74,28 @@ async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
 def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "database"]:
     """Determine the type of location based on its contents.
 
-    A location is treated as a transcript database if it contains a parquet
-    file matching the writer's canonical `transcripts_*.parquet` naming
-    convention (searched recursively), if it does not exist, or if it is an
-    empty directory. Otherwise it is treated as a directory of eval logs.
+    A location is treated as a directory of eval logs if it contains any
+    `.eval` files (recursively). Otherwise it is treated as a transcript
+    database. We invert the check this way because users may bring their
+    own parquet files with arbitrary names, so the presence of parquet
+    files is not a reliable signal of a transcript database.
 
     Args:
         location: Path to location (local or S3 URI)
 
     Returns:
-        "database" if location looks like a transcript database (or is
-        absent/empty), otherwise "eval_log".
+        "eval_log" if the location contains `.eval` files, otherwise
+        "database".
     """
     # ensure any filesystem dependencies (as we'll be probing the fs w/ UPath)
     ensure_filesystem_dependencies(str(location))
 
     location_path = UPath(location)
 
-    # Check for parquet files with the database naming convention. Match the
-    # canonical `transcripts_*.parquet` filename emitted by the writer rather
-    # than any `*.parquet`, otherwise scan-result parquet files (e.g. under a
-    # nested `scans/` dir) would misidentify the location as a database.
-    if next(location_path.rglob("transcripts_*.parquet"), None) is not None:
-        return TRANSCRIPT_SOURCE_DATABASE
+    # Treat the location as eval logs only if it actually contains `.eval`
+    # files. Note: this does not detect the rarer JSON eval log format
+    # (timestamped `*.json` files); revisit if that becomes a concern.
+    if location_path.exists() and next(location_path.rglob("*.eval"), None) is not None:
+        return TRANSCRIPT_SOURCE_EVAL_LOG
 
-    # Check if directory doesn't exist or is empty
-    if not location_path.exists():
-        return TRANSCRIPT_SOURCE_DATABASE
-    elif location_path.is_dir():
-        # Check if there are any files or subdirectories (efficiently, without materializing the full list)
-        if next(location_path.iterdir(), None) is None:
-            # Empty directory - treat as database location
-            return TRANSCRIPT_SOURCE_DATABASE
-
-    # Non-empty directory without parquet files - assume inspect_log
-    return TRANSCRIPT_SOURCE_EVAL_LOG
+    return TRANSCRIPT_SOURCE_DATABASE

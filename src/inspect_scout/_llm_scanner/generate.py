@@ -12,6 +12,7 @@ from typing import Literal, overload
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
+    GenerateConfig,
     Model,
     ModelOutput,
     get_model,
@@ -61,6 +62,7 @@ async def generate_answer(
     answer: AnswerSpec,
     *,
     model: str | Model | None = None,
+    config: GenerateConfig | None = None,
     retry_refusals: int = 3,
     parse: Literal[True] = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -74,6 +76,7 @@ async def generate_answer(
     answer: _TextualAnswerSpec,
     *,
     model: str | Model | None = None,
+    config: GenerateConfig | None = None,
     retry_refusals: int = 3,
     parse: Literal[False],
 ) -> ModelOutput: ...
@@ -84,6 +87,7 @@ async def generate_answer(
     answer: AnswerSpec,
     *,
     model: str | Model | None = None,
+    config: GenerateConfig | None = None,
     retry_refusals: int = 3,
     parse: bool = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -103,6 +107,9 @@ async def generate_answer(
             how to extract the result.
         model: Model to use for generation. Can be a model name string
             or ``Model`` instance. If ``None``, uses the default model.
+        config: Per-call :class:`GenerateConfig` overrides (e.g. ``cache``,
+            ``temperature``). For :class:`AnswerStructured` answers,
+            ``parallel_tool_calls`` is always forced to ``False``.
         retry_refusals: Number of times to retry on model refusals
             (``stop_reason == "content_filter"``).
         parse: When ``True`` (default), parse the model output into a
@@ -126,6 +133,7 @@ async def generate_answer(
             schema=structured_schema(answer),
             answer_tool=answer.answer_tool,
             model=model,
+            config=config,
             max_attempts=answer.max_attempts,
             retry_refusals=retry_refusals,
         )
@@ -150,6 +158,7 @@ async def generate_answer(
             get_model(model),
             prompt,
             resolved_answer,
+            config,
             retry_refusals,
             extract_refs or _no_references,
             value_to_float,
@@ -160,7 +169,7 @@ async def generate_answer(
             prompt,
             tools=[],
             tool_choice=None,
-            config=None,
+            config=config,
             retry_refusals=retry_refusals,
         )
 
@@ -172,6 +181,7 @@ async def _text_generate(
     model: Model,
     input: str | list[ChatMessage],
     answer: Answer,
+    config: GenerateConfig | None,
     retry_refusals: int,
     extract_refs: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None,
@@ -193,7 +203,7 @@ async def _text_generate(
             messages,
             tools=[],
             tool_choice=None,
-            config=None,
+            config=config,
             retry_refusals=retry_refusals,
         )
 

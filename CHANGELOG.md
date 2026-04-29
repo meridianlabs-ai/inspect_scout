@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Scanner as Scorer: When `Result.value` is `None` but the result includes an answer, explanation, or metadata, return a `NOANSWER` score that preserves those fields instead of dropping the score entirely.
+- `generate_answer()` / `structured_generate()`: add `config: GenerateConfig | None` parameter for per-call overrides (e.g. `cache`), so callers no longer need to mutate or copy the role `Model` to set generation options. `parallel_tool_calls` remains forced to `False` for structured answers.
 - Scout View: Improve message collapse behavior.
 - Scout View: Fade out bottom of truncated expandable panels to indicate more content below.
 - Scout View: Fix timeline error markers incorrectly flagging every model and tool event.

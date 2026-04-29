@@ -606,17 +606,28 @@ async def _scan_async_inner(
                         union_transcript = await reader.read(
                             job.transcript_info, union_content
                         )
-                        return (
-                            True,
-                            [
-                                ScannerJob(
-                                    union_transcript=union_transcript,
-                                    scanner=scanners_list[idx],
-                                    scanner_name=scanner_names_list[idx],
-                                )
-                                for idx in job.scanner_indices
-                            ],
+
+                        def _make_job(
+                            idx: int,
+                            followers: tuple[ScannerJob, ...] = (),
+                        ) -> ScannerJob:
+                            return ScannerJob(
+                                union_transcript=union_transcript,
+                                scanner=scanners_list[idx],
+                                scanner_name=scanner_names_list[idx],
+                                followers=followers,
+                            )
+
+                        # Run the first scanner alone for each transcript;
+                        # release the rest only after it completes. This lets
+                        # the lead's generate call populate the prompt cache
+                        # so followers hit the warm cache.
+                        lead_idx, *follower_indices = sorted(job.scanner_indices)
+                        lead = _make_job(
+                            lead_idx,
+                            followers=tuple(_make_job(idx) for idx in follower_indices),
                         )
+                        return (True, lead)
                     except Exception as ex:  # pylint: disable=W0718
                         # Create error ResultReport for each affected scanner
                         return (

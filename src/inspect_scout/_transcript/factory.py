@@ -74,17 +74,18 @@ async def transcripts_from_snapshot(snapshot: ScanTranscripts) -> Transcripts:
 def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "database"]:
     """Determine the type of location based on its contents.
 
-    A location is treated as a directory of eval logs if it contains any
-    `.eval` files (recursively). Otherwise it is treated as a transcript
-    database. We invert the check this way because users may bring their
-    own parquet files with arbitrary names, so the presence of parquet
-    files is not a reliable signal of a transcript database.
+    A location is treated as eval log(s) if it is a path to a `.eval` file
+    or a directory that contains any `.eval` files (recursively). Otherwise
+    it is treated as a transcript database. We invert the check this way
+    because users may bring their own parquet files with arbitrary names,
+    so the presence of parquet files is not a reliable signal of a
+    transcript database.
 
     Args:
         location: Path to location (local or S3 URI)
 
     Returns:
-        "eval_log" if the location contains `.eval` files, otherwise
+        "eval_log" if the location is or contains `.eval` files, otherwise
         "database".
     """
     # ensure any filesystem dependencies (as we'll be probing the fs w/ UPath)
@@ -92,7 +93,12 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
 
     location_path = UPath(location)
 
-    # Treat the location as eval logs only if it actually contains `.eval`
+    # A path to a single .eval file is itself an eval log. Check the suffix
+    # first to avoid filesystem probing for remote URIs.
+    if location_path.suffix == ".eval":
+        return TRANSCRIPT_SOURCE_EVAL_LOG
+
+    # Treat a directory as eval logs only if it actually contains `.eval`
     # files. Note: this does not detect the rarer JSON eval log format
     # (timestamped `*.json` files); revisit if that becomes a concern.
     if location_path.exists() and next(location_path.rglob("*.eval"), None) is not None:

@@ -47,9 +47,14 @@ def scan_title(spec: ScanSpec) -> str:
     else:
         title = SCAN
     if spec.options.limit:
-        title = f"{title} ({spec.options.limit:,} transcripts)"
+        count = spec.options.limit
     elif spec.transcripts is not None:
-        title = f"{title} ({len(spec.transcripts.transcript_ids):,} transcripts)"
+        count = len(spec.transcripts.transcript_ids)
+    else:
+        count = None
+    if count is not None:
+        noun = "transcript" if count == 1 else "transcripts"
+        title = f"{title} ({count:,} {noun})"
     return title
 
 

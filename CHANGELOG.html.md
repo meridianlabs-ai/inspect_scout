@@ -1,7 +1,11 @@
 # changelog – Inspect Scout
 
-## Unreleased
+## 0.4.28 (29 April 2026)
 
+- LLM Scanner: Send default-template prompts as two content blocks (preamble + transcript / per-scanner tail) with `cache_prompt=True`. On Anthropic, the shared-prefix block is marked for caching so multiple scanners on the same transcript share a cache entry.
+- LLM Scanner: `template` parameter accepts a `tuple[str, str]` of `(prefix, suffix)` to opt custom templates into the same two-block cache-aware rendering. Passing a single `str` keeps the legacy single-block behavior unchanged.
+- Scanners: Run the first scanner alone for each transcript; release the rest only after it completes. Lets the lead’s generate populate the prompt cache so followers hit the warm cache.
+- Scanner as Scorer: When `Result.value` is `None` but the result includes an answer, explanation, or metadata, return a `NOANSWER` score that preserves those fields instead of dropping the score entirely.
 - [generate_answer()](./reference/scanner.html.md#generate_answer) / `structured_generate()`: add `config: GenerateConfig | None` parameter for per-call overrides (e.g. `cache`), so callers no longer need to mutate or copy the role [Model](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model) to set generation options. `parallel_tool_calls` remains forced to `False` for structured answers.
 - Scout View: Improve message collapse behavior.
 - Scout View: Fade out bottom of truncated expandable panels to indicate more content below.

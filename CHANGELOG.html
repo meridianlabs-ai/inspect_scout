@@ -33,6 +33,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
+<link href="./images/scout.svg" rel="icon" type="image/svg+xml">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -87,6 +88,10 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
+    <a href="./index.html" class="navbar-brand navbar-brand-logo">
+    <img src="./images/scout.svg" alt="" class="navbar-logo light-content">
+    <img src="./images/scout.svg" alt="" class="navbar-logo dark-content">
+    </a>
     <a class="navbar-brand" href="./index.html">
     <span class="navbar-title">Inspect Scout</span>
     </a>
@@ -217,10 +222,10 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#unreleased" id="toc-unreleased" class="nav-link active" data-scroll-target="#unreleased">Unreleased</a></li>
-  <li><a href="#april-2026" id="toc-april-2026" class="nav-link" data-scroll-target="#april-2026">0.4.27 (20 April 2026)</a></li>
-  <li><a href="#april-2026-1" id="toc-april-2026-1" class="nav-link" data-scroll-target="#april-2026-1">0.4.26 (15 April 2026)</a></li>
-  <li><a href="#april-2026-2" id="toc-april-2026-2" class="nav-link" data-scroll-target="#april-2026-2">0.4.25 (04 April 2026)</a></li>
+  <li><a href="#april-2026" id="toc-april-2026" class="nav-link active" data-scroll-target="#april-2026">0.4.28 (29 April 2026)</a></li>
+  <li><a href="#april-2026-1" id="toc-april-2026-1" class="nav-link" data-scroll-target="#april-2026-1">0.4.27 (20 April 2026)</a></li>
+  <li><a href="#april-2026-2" id="toc-april-2026-2" class="nav-link" data-scroll-target="#april-2026-2">0.4.26 (15 April 2026)</a></li>
+  <li><a href="#april-2026-3" id="toc-april-2026-3" class="nav-link" data-scroll-target="#april-2026-3">0.4.25 (04 April 2026)</a></li>
   <li><a href="#march-2026" id="toc-march-2026" class="nav-link" data-scroll-target="#march-2026">0.4.23 (25 March 2026)</a></li>
   <li><a href="#march-2026-1" id="toc-march-2026-1" class="nav-link" data-scroll-target="#march-2026-1">0.4.22 (20 March 2026)</a></li>
   <li><a href="#march-2026-2" id="toc-march-2026-2" class="nav-link" data-scroll-target="#march-2026-2">0.4.21 (16 March 2026)</a></li>
@@ -254,9 +259,13 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="unreleased" class="level2">
-<h2 class="anchored" data-anchor-id="unreleased">Unreleased</h2>
+<section id="april-2026" class="level2">
+<h2 class="anchored" data-anchor-id="april-2026">0.4.28 (29 April 2026)</h2>
 <ul>
+<li>LLM Scanner: Send default-template prompts as two content blocks (preamble + transcript / per-scanner tail) with <code>cache_prompt=True</code>. On Anthropic, the shared-prefix block is marked for caching so multiple scanners on the same transcript share a cache entry.</li>
+<li>LLM Scanner: <code>template</code> parameter accepts a <code>tuple[str, str]</code> of <code>(prefix, suffix)</code> to opt custom templates into the same two-block cache-aware rendering. Passing a single <code>str</code> keeps the legacy single-block behavior unchanged.</li>
+<li>Scanners: Run the first scanner alone for each transcript; release the rest only after it completes. Lets the lead’s generate populate the prompt cache so followers hit the warm cache.</li>
+<li>Scanner as Scorer: When <code>Result.value</code> is <code>None</code> but the result includes an answer, explanation, or metadata, return a <code>NOANSWER</code> score that preserves those fields instead of dropping the score entirely.</li>
 <li><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span> / <code>structured_generate()</code>: add <code>config: GenerateConfig | None</code> parameter for per-call overrides (e.g.&nbsp;<code>cache</code>), so callers no longer need to mutate or copy the role <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.model.html#model">Model</a></span> to set generation options. <code>parallel_tool_calls</code> remains forced to <code>False</code> for structured answers.</li>
 <li>Scout View: Improve message collapse behavior.</li>
 <li>Scout View: Fade out bottom of truncated expandable panels to indicate more content below.</li>
@@ -272,8 +281,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Scout View: Display approvals within tool calls; improve formatting of rejections and long approvals.</li>
 </ul>
 </section>
-<section id="april-2026" class="level2">
-<h2 class="anchored" data-anchor-id="april-2026">0.4.27 (20 April 2026)</h2>
+<section id="april-2026-1" class="level2">
+<h2 class="anchored" data-anchor-id="april-2026-1">0.4.27 (20 April 2026)</h2>
 <ul>
 <li>Scanner as Scorer: Modify format for improved API for view client.</li>
 <li>Scanner as Scorer: Write sentinel value so view client can detect scanner content.</li>
@@ -283,16 +292,16 @@ ul.task-list li input[type="checkbox"] {
 <li>Bugfix: resolve transcript_score types to string when resuming scans.</li>
 </ul>
 </section>
-<section id="april-2026-1" class="level2">
-<h2 class="anchored" data-anchor-id="april-2026-1">0.4.26 (15 April 2026)</h2>
+<section id="april-2026-2" class="level2">
+<h2 class="anchored" data-anchor-id="april-2026-2">0.4.26 (15 April 2026)</h2>
 <ul>
 <li>Utilities: Export <code>message_as_str</code> function.</li>
 <li>Utilities: Add <code>format</code> option to <code>messages_as_str</code> function (“text”, “json”, or “list”).</li>
 <li>Scout View: Consolidate transcript viewer to shared component. Miscellaneous fixes and improvements.</li>
 </ul>
 </section>
-<section id="april-2026-2" class="level2">
-<h2 class="anchored" data-anchor-id="april-2026-2">0.4.25 (04 April 2026)</h2>
+<section id="april-2026-3" class="level2">
+<h2 class="anchored" data-anchor-id="april-2026-3">0.4.25 (04 April 2026)</h2>
 <ul>
 <li>Scanners: Distinguish thinking, thinking summary, and redacted thinking when rendering messages for scanners.</li>
 <li>Scanners: Surround assistant messages with <code>prefill=True</code> in metadata with <code>&lt;prefill&gt;</code> tag when rendering messages for scanners.</li>

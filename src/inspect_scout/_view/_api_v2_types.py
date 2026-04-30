@@ -15,7 +15,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scanner.result import Error, Result
+from .._scanner.result import Error
 from .._scanspec import ScanSpec
 from .._transcript.types import EventFilter, MessageFilter, TranscriptInfo
 
@@ -329,19 +329,18 @@ SearchRequest = TypeAliasType(
 )
 
 
-class SavedSearchBase(BaseModel):
-    """Shared fields for persisted search results."""
+class SearchInputBase(BaseModel):
+    """Shared fields for persisted search input history."""
 
     search_id: str
     query: str
-    results: list[Result]
     created_at: str
 
     model_config = ConfigDict(extra="forbid")
 
 
-class GrepSavedSearch(SavedSearchBase):
-    """A persisted grep search result."""
+class GrepSearchInput(SearchInputBase):
+    """A persisted grep search input."""
 
     type: Literal["grep"] = "grep"
     regex: bool
@@ -349,21 +348,21 @@ class GrepSavedSearch(SavedSearchBase):
     word_boundary: bool
 
 
-class LlmSavedSearch(SavedSearchBase):
-    """A persisted LLM search result."""
+class LlmSearchInput(SearchInputBase):
+    """A persisted LLM search input."""
 
     type: Literal["llm"] = "llm"
     model: str | None = None
 
 
-SavedSearch = TypeAliasType(
-    "SavedSearch",
-    Annotated[GrepSavedSearch | LlmSavedSearch, Field(discriminator="type")],
+SearchInput = TypeAliasType(
+    "SearchInput",
+    Annotated[GrepSearchInput | LlmSearchInput, Field(discriminator="type")],
 )
 
 
 @dataclass
-class SavedSearchListResponse:
-    """Response from the list searches endpoint."""
+class SearchInputListResponse:
+    """Response from the list search inputs endpoint."""
 
-    items: list[SavedSearch]
+    items: list[SearchInput]

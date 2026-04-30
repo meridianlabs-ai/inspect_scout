@@ -1,4 +1,4 @@
-DEFAULT_SCANNER_TEMPLATE = """
+DEFAULT_SCANNER_TEMPLATE_PREFIX = """
 You are an expert in LLM transcript analysis. Here is an LLM transcript you will be analyzing to answer a question:
 
 [BEGIN TRANSCRIPT]
@@ -7,7 +7,9 @@ You are an expert in LLM transcript analysis. Here is an LLM transcript you will
 ===================================
 [END TRANSCRIPT]
 
-{{ answer_prompt }}
+"""
+
+DEFAULT_SCANNER_TEMPLATE_SUFFIX = """{{ answer_prompt }}
 
 {{ question }}
 
@@ -15,6 +17,10 @@ Your answer should include an explanation of your assessment. It should include 
 
 {{ answer_format }}
 """
+
+DEFAULT_SCANNER_TEMPLATE = (
+    DEFAULT_SCANNER_TEMPLATE_PREFIX + DEFAULT_SCANNER_TEMPLATE_SUFFIX
+)
 
 
 ANSWER_FORMAT_PREAMBLE = (

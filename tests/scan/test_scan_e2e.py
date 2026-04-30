@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -212,6 +213,52 @@ def test_scan_processes_all_transcripts_beyond_1000(tmp_path: Path) -> None:
     assert len(scanner_df) == transcript_count, (
         f"Expected {transcript_count} scan results, got {len(scanner_df)}. "
         "This indicates a limit is being applied during scanning."
+    )
+
+
+def test_scan_with_scans_dir_under_logs_dir(tmp_path: Path) -> None:
+    """Regression test for scans dir nested under the logs dir.
+
+    When the scans output dir lives inside the logs dir, the parquet files
+    written by the first scan get picked up by `_location_type`'s recursive
+    glob on a subsequent scan, causing the logs dir to be misidentified as
+    a transcript database. The second scan then "scans" the result parquets
+    from the first scan instead of the actual eval logs.
+    """
+    logs_dir = tmp_path / "logs"
+    shutil.copytree(LOGS_DIR, logs_dir)
+
+    scans_dir = logs_dir / "scans"
+
+    first_status = scan(
+        scanners=[simple_scanner_factory()],
+        transcripts=transcripts_from(str(logs_dir)),
+        scans=str(scans_dir),
+        limit=2,
+        max_processes=1,
+        display="none",
+    )
+    assert first_status.complete
+    assert first_status.spec.transcripts is not None
+    assert first_status.spec.transcripts.type == "eval_log"
+
+    # Confirm the first scan wrote parquet files under the logs dir.
+    assert list(scans_dir.rglob("*.parquet"))
+
+    # The second scan must still treat logs_dir as eval logs, not a database.
+    second_status = scan(
+        scanners=[simple_scanner_factory()],
+        transcripts=transcripts_from(str(logs_dir)),
+        scans=str(scans_dir),
+        limit=2,
+        max_processes=1,
+        display="none",
+    )
+    assert second_status.complete
+    assert second_status.spec.transcripts is not None
+    assert second_status.spec.transcripts.type == "eval_log", (
+        "Second scan misclassified the logs dir as a transcript database "
+        "because parquet files written by the first scan live underneath it."
     )
 
 

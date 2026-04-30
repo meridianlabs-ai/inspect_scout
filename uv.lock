@@ -922,7 +922,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1491,7 +1491,7 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.211"
+version = "0.3.214"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioboto3" },
@@ -1534,9 +1534,9 @@ dependencies = [
     { name = "zipp" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/55/47/469704be6e5bfbf4d8992580d414fb49573ee4be795a8fc9026da0bd82d4/inspect_ai-0.3.211.tar.gz", hash = "sha256:4661e5d2b511d292aafd643319accc2e0a87f4ce9ab2d1f40a2f9c89147c1613", size = 45368418, upload-time = "2026-04-23T21:16:18.528Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/e2/13139f10daad0dcb54ea0b369c4568761578333c8b840e28e444219d2123/inspect_ai-0.3.214.tar.gz", hash = "sha256:6b5141854a2d28a98d0096bd39e40ce7c5a3d6fba35fefd743cb22bb3d505e90", size = 45485370, upload-time = "2026-04-29T22:08:42.373Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/da/4545ee3a32a30f9ff2d3044e8b8236b4f7fb3f32017d59e707580bc837ae/inspect_ai-0.3.211-py3-none-any.whl", hash = "sha256:615dda8f5f8aad0b06183b27aa708e06358baa66a34f73ea25caf86c322aec75", size = 35982597, upload-time = "2026-04-23T21:16:09.677Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/c5/7c10f7b9c20462b6fc0ed230a54800ca164510f4e40f04565af8176a6122/inspect_ai-0.3.214-py3-none-any.whl", hash = "sha256:43a7fdbdf1ba27a3c1facf122d774384c415fdc4a12e8d0235c173f0a30e5ae7", size = 36018642, upload-time = "2026-04-29T22:08:36.34Z" },
 ]
 
 [[package]]
@@ -1667,7 +1667,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", specifier = ">=0.3.205" },
+    { name = "inspect-ai", specifier = ">=0.3.214" },
     { name = "inspect-swe", specifier = ">=0.2.42" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },
@@ -5972,7 +5972,7 @@ name = "zipfile-zstd"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zstandard" },
+    { name = "zstandard", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f7/2a/2e0941bc0058d10ab37d8c578b94a19f611f6ae54f124140f2fb451f0932/zipfile-zstd-0.0.4.tar.gz", hash = "sha256:c1498e15b7922a3d1af0ea55df8b11b2af4e8f7e0e80e414e25d66899f7def89", size = 4603, upload-time = "2021-12-08T07:38:16.245Z" }
 wheels = [

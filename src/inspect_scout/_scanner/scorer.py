@@ -83,9 +83,22 @@ def as_scorer(
             if isinstance(result, list):
                 result = as_resultset(result)
 
-            # None means no score
+            # None means no score (unless there is explanation/metadata to preserve,
+            # in which case we record a NaN-valued Score so that context isn't
+            # lost but the sample is still excluded from metrics)
             if result.value is None:
-                return None
+                if (
+                    result.answer is None
+                    and result.explanation is None
+                    and not result.metadata
+                ):
+                    return None
+                return Score(
+                    value=float("nan"),
+                    answer=result.answer,
+                    explanation=result.explanation,
+                    metadata=_metadata_from_result(result),
+                )
 
             # if its a resultset, then project as dict
             if result.type == "resultset":

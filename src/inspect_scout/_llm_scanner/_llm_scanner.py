@@ -1,7 +1,10 @@
 from typing import Any, Awaitable, Callable, Literal, cast, overload
 
+from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageUser,
+    GenerateConfig,
     Model,
     get_model,
 )
@@ -23,7 +26,10 @@ from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import default_reducer, is_resultset_answer
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
-from .prompt import DEFAULT_SCANNER_TEMPLATE
+from .prompt import (
+    DEFAULT_SCANNER_TEMPLATE_PREFIX,
+    DEFAULT_SCANNER_TEMPLATE_SUFFIX,
+)
 from .types import AnswerSpec
 
 
@@ -33,7 +39,7 @@ def llm_scanner(
     question: str | Callable[[Transcript], Awaitable[str]],
     answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
-    template: str | None = None,
+    template: str | tuple[str, str] | None = None,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
@@ -56,7 +62,7 @@ def llm_scanner(
     question: None = None,
     answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
-    template: str,
+    template: str | tuple[str, str],
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
@@ -79,7 +85,7 @@ def llm_scanner(
     question: str | Callable[[Transcript], Awaitable[str]] | None = None,
     answer: AnswerSpec,
     value_to_float: ValueToFloat | None = None,
-    template: str | None = None,
+    template: str | tuple[str, str] | None = None,
     template_variables: dict[str, Any]
     | Callable[[Transcript], dict[str, Any]]
     | None = None,
@@ -118,7 +124,18 @@ def llm_scanner(
                 - {{ answer_prompt }} (prompt for a specific type of answer).
                 - {{ answer_format }} (instructions on how to format the answer)
             In addition, scanner templates can bind to any data within
-            `Transcript.metadata` (e.g. {{ metadata.score }})
+            `Transcript.metadata` (e.g. {{ metadata.score }}).
+
+            Pass a `tuple[str, str]` of `(prefix, suffix)` to render the
+            prompt as two content blocks. The first block is intended to
+            hold the cacheable shared prefix (e.g. preamble + transcript
+            messages); the second holds the per-scanner tail (e.g. question
+            and answer format). Both templates receive the full variable
+            bag. When `template` is `None` (default) or a tuple, the prompt
+            is sent as a multi-block user message with `cache_prompt=True`,
+            allowing prompt-cache hits across scanners that share the
+            same prefix bytes for the same transcript. Passing a single
+            `str` keeps the legacy single-block behavior (no caching).
         template_variables: Additional variables to make available in the template.
             Optionally takes a function which receives the current `Transcript` which
             can return variables.
@@ -161,8 +178,18 @@ def llm_scanner(
         A ``Scanner`` function that analyzes Transcript instances and returns
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
+    # Resolve template form once at factory time.
+    # - None or tuple: structured 2-block render with cache_prompt=True.
+    # - str: legacy single-block render, behavior unchanged.
+    resolved_template: str | tuple[str, str]
     if template is None:
-        template = DEFAULT_SCANNER_TEMPLATE
+        resolved_template = (
+            DEFAULT_SCANNER_TEMPLATE_PREFIX,
+            DEFAULT_SCANNER_TEMPLATE_SUFFIX,
+        )
+    else:
+        resolved_template = template
+
     resolved_answer = answer_from_argument(answer)
 
     # resolve retry_refusals
@@ -194,19 +221,42 @@ def llm_scanner(
             compaction=compaction,
             depth=depth,
         ):
-            prompt = await render_scanner_prompt(
-                template=template,
-                template_variables=template_variables,
-                transcript=transcript,
-                messages=segment.messages_str,
-                question=question,
-                answer=resolved_answer,
-            )
+            prompt: str | list[ChatMessage]
+            call_config: GenerateConfig | None
+            if isinstance(resolved_template, tuple):
+                prefix_str, suffix_str = await _render_split_prompt(
+                    templates=resolved_template,
+                    template_variables=template_variables,
+                    transcript=transcript,
+                    messages=segment.messages_str,
+                    question=question,
+                    answer=resolved_answer,
+                )
+                prompt = [
+                    ChatMessageUser(
+                        content=[
+                            ContentText(text=prefix_str),
+                            ContentText(text=suffix_str),
+                        ]
+                    )
+                ]
+                call_config = GenerateConfig(cache_prompt=True)
+            else:
+                prompt = await render_scanner_prompt(
+                    template=resolved_template,
+                    template_variables=template_variables,
+                    transcript=transcript,
+                    messages=segment.messages_str,
+                    question=question,
+                    answer=resolved_answer,
+                )
+                call_config = None
             results.append(
                 await generate_answer(
                     prompt,
                     answer,
                     model=resolved_model,
+                    config=call_config,
                     retry_refusals=retry_refusals,
                     extract_refs=extract_references,
                     value_to_float=value_to_float,
@@ -237,6 +287,69 @@ def llm_scanner(
     return scan
 
 
+async def _resolve_template_kwargs(
+    *,
+    template_variables: dict[str, Any] | Callable[[Transcript], dict[str, Any]] | None,
+    transcript: Transcript,
+    messages: str,
+    question: str | Callable[[Transcript], Awaitable[str]] | None,
+    answer: Answer,
+) -> dict[str, Any]:
+    """Resolve template kwargs once. Awaits any async question callable."""
+    template_variables = template_variables or {}
+    if callable(template_variables):
+        template_variables = template_variables(transcript)
+
+    return {
+        "messages": messages,
+        "question": question
+        if isinstance(question, str | None)
+        else await question(transcript),
+        "answer_prompt": answer.prompt,
+        "answer_format": answer.format,
+        "date": transcript.date,
+        "task_set": transcript.task_set,
+        "task_id": transcript.task_id,
+        "task_repeat": transcript.task_repeat,
+        "agent": transcript.agent,
+        "agent_args": transcript.agent_args,
+        "model": transcript.model,
+        "model_options": transcript.model_options,
+        "score": transcript.score,
+        "success": transcript.success,
+        "message_count": transcript.message_count,
+        "total_time": transcript.total_time,
+        "total_tokens": transcript.total_tokens,
+        "error": transcript.error,
+        "limit": transcript.limit,
+        # backward compatibility for existing templates
+        # TODO: remove this once users have updated
+        "metadata": transcript.metadata
+        | {
+            "task_name": transcript.task_set,
+            "score": transcript.score,
+            "model": transcript.model,
+            "solver": transcript.agent,
+            "error": transcript.error,
+            "limit": transcript.limit,
+        },
+        **template_variables,
+    }
+
+
+def _render_template(template: str, kwargs: dict[str, Any]) -> str:
+    # keep_trailing_newline=True preserves whitespace as written so the split
+    # render ((prefix, suffix) -> two strings concatenated) produces the same
+    # bytes as the combined render of `prefix + suffix`. Without it, Jinja
+    # silently strips one trailing newline per render, dropping the blank
+    # line between the prefix and suffix when rendered separately.
+    return (
+        Environment(undefined=StrictOnUseUndefined, keep_trailing_newline=True)
+        .from_string(template)
+        .render(**kwargs)
+    )
+
+
 async def render_scanner_prompt(
     *,
     template: str,
@@ -262,47 +375,32 @@ async def render_scanner_prompt(
     Returns:
         Rendered prompt string with all variables substituted.
     """
-    # resolve variables
-    template_variables = template_variables or {}
-    if callable(template_variables):
-        template_variables = template_variables(transcript)
-
-    return (
-        Environment(undefined=StrictOnUseUndefined)
-        .from_string(template)
-        .render(
-            messages=messages,
-            question=question
-            if isinstance(question, str | None)
-            else await question(transcript),
-            answer_prompt=answer.prompt,
-            answer_format=answer.format,
-            date=transcript.date,
-            task_set=transcript.task_set,
-            task_id=transcript.task_id,
-            task_repeat=transcript.task_repeat,
-            agent=transcript.agent,
-            agent_args=transcript.agent_args,
-            model=transcript.model,
-            model_options=transcript.model_options,
-            score=transcript.score,
-            success=transcript.success,
-            message_count=transcript.message_count,
-            total_time=transcript.total_time,
-            total_tokens=transcript.total_tokens,
-            error=transcript.error,
-            limit=transcript.limit,
-            metadata=transcript.metadata
-            # backward compatibility for existing templates
-            # TODO: remove this once users have updated
-            | {
-                "task_name": transcript.task_set,
-                "score": transcript.score,
-                "model": transcript.model,
-                "solver": transcript.agent,
-                "error": transcript.error,
-                "limit": transcript.limit,
-            },
-            **template_variables,
-        )
+    kwargs = await _resolve_template_kwargs(
+        template_variables=template_variables,
+        transcript=transcript,
+        messages=messages,
+        question=question,
+        answer=answer,
     )
+    return _render_template(template, kwargs)
+
+
+async def _render_split_prompt(
+    *,
+    templates: tuple[str, str],
+    template_variables: dict[str, Any] | Callable[[Transcript], dict[str, Any]] | None,
+    transcript: Transcript,
+    messages: str,
+    question: str | Callable[[Transcript], Awaitable[str]] | None,
+    answer: Answer,
+) -> tuple[str, str]:
+    """Render the prefix and suffix templates with a single shared kwarg resolution."""
+    kwargs = await _resolve_template_kwargs(
+        template_variables=template_variables,
+        transcript=transcript,
+        messages=messages,
+        question=question,
+        answer=answer,
+    )
+    prefix, suffix = templates
+    return _render_template(prefix, kwargs), _render_template(suffix, kwargs)

@@ -84,10 +84,24 @@ class ScannerJob(NamedTuple):
     scanner_name: str
     """The name of the scanner within the scan job."""
 
+    followers: tuple["ScannerJob", ...] = ()
+    """Followers held back until this job (the "lead") completes.
+
+    The first scanner for a transcript runs alone so its generate call can
+    populate the prompt cache; once it completes, followers are enqueued to
+    hit the warm cache.
+    """
+
 
 ParseFunctionResult = (
-    tuple[Literal[True], list[ScannerJob]] | tuple[Literal[False], list[ResultReport]]
+    tuple[Literal[True], ScannerJob] | tuple[Literal[False], list[ResultReport]]
 )
+"""Result of parsing a transcript for scanning.
+
+Success branch carries the lead `ScannerJob` (with any followers attached
+on its `followers` field). Failure branch carries one `ResultReport` per
+affected scanner — parse failure is recorded as an error per scanner.
+"""
 
 
 class ConcurrencyStrategy(Protocol):

@@ -101,10 +101,10 @@ class TestSearchEndpoint:
         assert request.events == "all"
         assert request.messages is None
 
-    def test_grep_search_lifecycle(
+    def test_grep_search_input_and_cached_result_lifecycle(
         self, client: TestClient, transcript_location: Path, tmp_path: Path
     ) -> None:
-        """Persist, list, fetch, and delete a grep search."""
+        """Persist global grep input history and transcript-scoped cached results."""
         grep_calls: list[dict[str, str | bool]] = []
 
         def fake_grep_scanner(
@@ -113,7 +113,7 @@ class TestSearchEndpoint:
             regex: bool,
             ignore_case: bool,
             word_boundary: bool,
-        ) -> Callable[[Transcript], Awaitable[list[Result]]]:
+        ) -> Callable[[Transcript], Awaitable[Result]]:
             grep_calls.append(
                 {
                     "query": query,
@@ -123,8 +123,8 @@ class TestSearchEndpoint:
                 }
             )
 
-            async def _scan(_: Transcript) -> list[Result]:
-                return [Result(value=1, explanation="Matched one message.")]
+            async def _scan(_: Transcript) -> Result:
+                return Result(value=1, explanation="Matched one message.")
 
             return _scan
 
@@ -142,6 +142,7 @@ class TestSearchEndpoint:
             create_response = client.post(
                 f"/transcripts/{encoded_dir}/t001/search",
                 json={
+                    "messages": "all",
                     "query": "needle",
                     "type": "grep",
                     "regex": True,
@@ -152,12 +153,9 @@ class TestSearchEndpoint:
 
             assert create_response.status_code == 200
             created = create_response.json()
-            assert created["type"] == "grep"
-            assert created["query"] == "needle"
-            assert created["regex"] is True
-            assert created["ignore_case"] is False
-            assert created["word_boundary"] is True
-            assert "model" not in created
+            assert created["value"] == 1
+            assert created["explanation"] == "Matched one message."
+            assert created["references"] == []
             assert grep_calls == [
                 {
                     "query": "needle",
@@ -167,26 +165,29 @@ class TestSearchEndpoint:
                 }
             ]
 
-            list_response = client.get(f"/transcripts/{encoded_dir}/t001/searches")
+            list_response = client.get("/searches?type=grep&count=10")
             assert list_response.status_code == 200
             listed = list_response.json()["items"]
             assert len(listed) == 1
-            assert listed[0] == created
+            search_id = listed[0]["search_id"]
+            assert listed[0] == {
+                "created_at": listed[0]["created_at"],
+                "ignore_case": False,
+                "query": "needle",
+                "regex": True,
+                "search_id": search_id,
+                "type": "grep",
+                "word_boundary": True,
+            }
 
-            search_id = created["search_id"]
             get_response = client.get(
-                f"/transcripts/{encoded_dir}/t001/searches/{search_id}"
+                f"/transcripts/{encoded_dir}/t001/searches/{search_id}?messages=all"
             )
             assert get_response.status_code == 200
             assert get_response.json() == created
 
-            delete_response = client.delete(
-                f"/transcripts/{encoded_dir}/t001/searches/{search_id}"
-            )
-            assert delete_response.status_code == 204
-
             missing_response = client.get(
-                f"/transcripts/{encoded_dir}/t001/searches/{search_id}"
+                f"/transcripts/{encoded_dir}/t001/searches/{search_id}?events=all"
             )
             assert missing_response.status_code == 404
 
@@ -254,9 +255,9 @@ class TestSearchEndpoint:
         first = first_response.json()
         second = second_response.json()
         assert first == second
-        assert first["type"] == "llm"
-        assert first["model"] == "openai/gpt-5.4-mini"
-        assert "regex" not in first
+        assert first["value"] == "The assistant says the needle is in the haystack."
+        assert first["explanation"] == "LLM summary."
+        assert first["references"] == []
         assert llm_calls == [
             {
                 "question": "Where is the needle?",

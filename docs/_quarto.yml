@@ -5,6 +5,8 @@ inspect-docs:
   title: Inspect Scout
   description: "Transcript Analysis for AI Agents"
   url: https://meridianlabs-ai.github.io/inspect_scout
+  logo: images/scout.svg
+  favicon: images/scout.svg
   module: inspect_scout
   repo: meridianlabs-ai/inspect_scout
   org: Meridian Labs

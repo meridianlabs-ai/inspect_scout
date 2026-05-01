@@ -225,6 +225,7 @@ scout.local.yaml
 
 # Claude Code
 **/.claude/settings.local.json
+**/.claude/*.lock
 
 /.luarc.json
 

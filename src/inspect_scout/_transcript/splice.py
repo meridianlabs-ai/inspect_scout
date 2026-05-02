@@ -1,7 +1,4 @@
-"""Reconstruct a branch's full event stream from a delta-encoded `Timeline`.
-
-A petri-style branched `Timeline` stores each branch's `.content` as the post-replay delta only — events emitted after the branch's `BranchEvent` boundary, with span IDs suffixed `:{branch_span_id}`. `splice()` walks the ancestor chain, takes each ancestor's events up to the `AnchorEvent` matching the next child's `branched_from`, strips the per-segment trajectory suffix, and concatenates. Because span IDs are deterministic per-(parent, name) occurrence, the stripped stream is well-formed: a `SpanBegin` opened in an ancestor's prefix is closed by the matching `SpanEnd` in a descendant's delta.
-"""
+"""Reconstruct a branch's full event stream from a delta-encoded `Timeline`."""
 
 from inspect_ai.event import (
     AnchorEvent,
@@ -18,17 +15,9 @@ __all__ = ["splice", "splice_to_timeline"]
 
 
 def splice(timeline: Timeline, target: TimelineSpan) -> list[Event]:
-    """Reconstruct `target`'s full event stream by splicing ancestor prefixes.
+    """Reconstruct `target`'s full event stream by concatenating ancestor prefixes.
 
-    Args:
-        timeline: The `Timeline` containing `target` (used to resolve the ancestor chain from `timeline.root`).
-        target: The branch span to reconstruct. May be `timeline.root` itself.
-
-    Returns:
-        A well-formed, suffix-stripped event list equivalent to what a standalone (unbranched) run of `target`'s lineage would have produced.
-
-    Raises:
-        ValueError: If `target` is not reachable from `timeline.root`.
+    For each ancestor, take events up to the `AnchorEvent` matching the next child's `branched_from`, strip the `:{span_id}` suffix from span IDs, and concatenate. The result is what a standalone unbranched run of `target`'s lineage would have produced.
     """
     chain = _ancestor_chain(timeline.root, target)
     out: list[Event] = []
@@ -48,10 +37,7 @@ def splice(timeline: Timeline, target: TimelineSpan) -> list[Event]:
 
 
 def splice_to_timeline(timeline: Timeline, target: TimelineSpan) -> Timeline:
-    """Splice `target` and rebuild it as a standalone (unbranched) `Timeline`.
-
-    Convenience for post-hoc scanners and the viewer punch-down: the result has the same span structure (sub-agent lanes, nested spans) that an unbranched eval of `target`'s lineage would have produced.
-    """
+    """Splice `target` and rebuild it as a standalone (unbranched) `Timeline`."""
     return timeline_build(events=splice(timeline, target), name=target.name)
 
 

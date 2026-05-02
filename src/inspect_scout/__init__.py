@@ -72,6 +72,7 @@ from ._transcript.messages import (
     transcript_messages,
 )
 from ._transcript.sample_metadata import SampleMetadata
+from ._transcript.splice import splice, splice_to_timeline
 from ._transcript.timeline import (
     TimelineMessages,
     timeline_messages,
@@ -148,6 +149,8 @@ __all__ = [
     "SampleMetadata",
     # timeline
     "TimelineMessages",
+    "splice",
+    "splice_to_timeline",
     "timeline_messages",
     # scanner
     "Error",

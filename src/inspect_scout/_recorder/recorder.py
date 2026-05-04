@@ -220,6 +220,14 @@ class ScanRecorder(abc.ABC):
     ) -> ScanSpec: ...
 
     @abc.abstractmethod
+    async def attach(
+        self,
+        scan_location: str,
+        *,
+        concurrent_writers: bool = False,
+    ) -> ScanSpec: ...
+
+    @abc.abstractmethod
     async def location(self) -> str: ...
 
     @abc.abstractmethod

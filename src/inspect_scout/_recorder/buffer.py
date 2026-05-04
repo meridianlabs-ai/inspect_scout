@@ -75,33 +75,34 @@ class RecorderBuffer:
         spec: ScanSpec,
         *,
         pool_dedup: bool = True,
-        reset: bool = False,
         concurrent_writers: bool = False,
     ):
+        """Initialize a buffer attached to `scan_location`.
+
+        This is purely a passive constructor: it reads existing buffer state
+        from disk or creates fresh files only if they don't exist. Mode-
+        specific setup (clearing for a fresh scan, truncating errors for a
+        retry-resume, preserving errors for a continuation) is the caller's
+        responsibility — see `FileRecorder.init` / `resume` / `attach`.
+        """
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
         self._pool_dedup = pool_dedup
         self._concurrent_writers = concurrent_writers
 
-        # establish scan summary
+        # read summary if present, else create fresh
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
-        if reset or not scan_summary_file.exists():
+        if scan_summary_file.exists():
+            self._scan_summary = read_scan_summary(self._buffer_dir, spec)
+        else:
             self._scan_summary = Summary(
                 complete=False, scanners=list(spec.scanners.keys())
             )
             with open(scan_summary_file.as_posix(), "w") as f:
                 f.write(self._scan_summary.model_dump_json(indent=2))
-        else:
-            self._scan_summary = read_scan_summary(self._buffer_dir, spec)
 
-        # Always truncate errors. On resume, previously-errored transcripts are
-        # re-processed (is_recorded returns False for errored parquets), so stale
-        # error entries must not persist -- they would incorrectly mark the scan
-        # as incomplete even if the re-run succeeds.
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
-        with self._error_file.open("w"):
-            pass
 
     async def record(
         self,

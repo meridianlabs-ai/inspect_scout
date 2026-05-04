@@ -112,11 +112,16 @@ class FileRecorder(ScanRecorder):
         self._scan_spec = spec
         self._write_scan_spec()
 
-        # create the scan buffer
+        # fresh start: clear any stale buffer state from a prior scan that
+        # used the same scan_location (the buffer dir is deterministic per
+        # scan_location, so unrelated remnants would otherwise carry over)
+        cleanup_buffer_dir(
+            RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
+        )
+
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
             self._scan_spec,
-            reset=True,
             concurrent_writers=concurrent_writers,
         )
 
@@ -132,21 +137,23 @@ class FileRecorder(ScanRecorder):
         *,
         concurrent_writers: bool = False,
     ) -> ScanSpec:
+        """Resume an interrupted scan, retrying transcripts that errored.
+
+        `is_recorded` returns False for errored transcripts so they're
+        re-processed; we truncate `_errors.jsonl` to clear stale entries
+        that would otherwise outlive a successful retry. To attach to a
+        completed scan to add records for *new* transcripts, use
+        `attach` instead.
+        """
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
 
-        # If a prior `sync(complete=True)` cleaned the buffer dir, the
-        # accumulated `_summary.json` from previous runs only lives in the
-        # scan dir. Seed the (recreated) buffer summary from there so the
-        # new RecorderBuffer picks up the prior counts instead of starting
-        # from zero.
+        self._seed_buffer_summary_from_scan_dir()
+        # clear errors of transcripts that are about to be retried
         buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
-        buffer_summary = buffer_dir / SCAN_SUMMARY
-        scan_summary = self._scan_dir / SCAN_SUMMARY
-        if not buffer_summary.exists() and scan_summary.exists():
-            buffer_dir.mkdir(parents=True, exist_ok=True)
-            buffer_summary.write_text(scan_summary.read_text())
+        buffer_dir.mkdir(parents=True, exist_ok=True)
+        (buffer_dir / SCAN_ERRORS).write_text("")
 
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
@@ -154,6 +161,61 @@ class FileRecorder(ScanRecorder):
             concurrent_writers=concurrent_writers,
         )
         return self._scan_spec
+
+    async def attach(
+        self,
+        scan_location: str,
+        *,
+        concurrent_writers: bool = False,
+    ) -> ScanSpec:
+        """Attach to an existing scan to add records for *new* transcripts.
+
+        Unlike `resume`, no transcripts are retried — every `record()` is
+        for a transcript not previously seen. `_errors.jsonl` is preserved
+        across calls so prior runs' errors aren't clobbered.
+        """
+        self._scan_dir = UPath(scan_location)
+        self._scan_fs = filesystem(self._scan_dir.as_posix())
+        self._scan_spec = _read_scan_spec(self._scan_dir)
+
+        self._seed_buffer_summary_from_scan_dir()
+        self._seed_buffer_errors_from_scan_dir()
+
+        self._scan_buffer = RecorderBuffer(
+            self._scan_dir.as_posix(),
+            self.scan_spec,
+            concurrent_writers=concurrent_writers,
+        )
+        return self._scan_spec
+
+    def _seed_buffer_summary_from_scan_dir(self) -> None:
+        """Bootstrap the buffer's summary from the scan dir if missing.
+
+        After `sync(complete=True)` cleans the buffer, the accumulated
+        summary only lives in the scan dir. When we attach via `resume`
+        or `attach`, copy it back so the new `RecorderBuffer` picks up
+        the prior counts instead of starting fresh.
+        """
+        buffer_dir = RecorderBuffer.buffer_dir(self.scan_dir.as_posix())
+        buffer_summary = buffer_dir / SCAN_SUMMARY
+        scan_summary = self.scan_dir / SCAN_SUMMARY
+        if not buffer_summary.exists() and scan_summary.exists():
+            buffer_dir.mkdir(parents=True, exist_ok=True)
+            buffer_summary.write_text(scan_summary.read_text())
+
+    def _seed_buffer_errors_from_scan_dir(self) -> None:
+        """Bootstrap the buffer's errors file from the scan dir if missing.
+
+        Same shape as the summary seed, used by `attach` so prior runs'
+        error entries survive across attaches and `record()` calls append
+        to the accumulated history.
+        """
+        buffer_dir = RecorderBuffer.buffer_dir(self.scan_dir.as_posix())
+        buffer_errors = buffer_dir / SCAN_ERRORS
+        scan_errors = self.scan_dir / SCAN_ERRORS
+        if not buffer_errors.exists() and scan_errors.exists():
+            buffer_dir.mkdir(parents=True, exist_ok=True)
+            buffer_errors.write_text(scan_errors.read_text())
 
     @override
     async def location(self) -> str:

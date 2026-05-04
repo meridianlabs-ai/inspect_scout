@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.29 (05 May 2026)
 
 - Transcripts: Treat directories with `.eval` files as an eval log collection (presence of `.parquet` no longer prevails).
 - Dependencies: Sync to semaphore changes in Inspect v0.3.217.

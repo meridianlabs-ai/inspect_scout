@@ -1,5 +1,9 @@
 # changelog – Inspect Scout
 
+## Unreleased
+
+- Bugfix: Exit non-zero when `--fail-on-error` and scan does not complete.
+
 ## 0.4.28 (29 April 2026)
 
 - LLM Scanner: Send default-template prompts as two content blocks (preamble + transcript / per-scanner tail) with `cache_prompt=True`. On Anthropic, the shared-prefix block is marked for caching so multiple scanners on the same transcript share a cache entry.

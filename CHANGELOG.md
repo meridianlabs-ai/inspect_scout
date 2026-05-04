@@ -3,7 +3,7 @@
 - Transcripts: Treat directories with `.eval` files as an eval log collection (presence of `.parquet` no longer prevails).
 - Dependencies: Sync to semaphore changes in Inspect v0.3.217.
 - Bugfix: Exit non-zero when `--fail-on-error` and scan does not complete.
-- Bugfix: Alwoays reset text progress indicator when job completes.
+- Bugfix: Always reset text progress indicator when job completes.
 
 ## 0.4.28 (29 April 2026)
 

@@ -191,10 +191,10 @@ class TestSearchEndpoint:
             )
             assert missing_response.status_code == 404
 
-    def test_llm_search_uses_cache(
+    def test_llm_search_always_runs(
         self, client: TestClient, transcript_location: Path, tmp_path: Path
     ) -> None:
-        """Identical LLM searches return the cached saved search."""
+        """Identical LLM POST searches each run the scanner and produce a new saved search."""
         llm_calls: list[dict[str, str | None]] = []
 
         def fake_llm_scanner(
@@ -254,18 +254,20 @@ class TestSearchEndpoint:
         assert second_response.status_code == 200
         first = first_response.json()
         second = second_response.json()
-        assert first == second
-        assert first["value"] == "The assistant says the needle is in the haystack."
-        assert first["explanation"] == "LLM summary."
-        assert first["references"] == []
-        assert llm_calls == [
-            {
-                "question": "Where is the needle?",
-                "answer": "string",
-                "template": LLM_SEARCH_TEMPLATE,
-                "model": "openai/gpt-5.4-mini",
-            }
-        ]
+        assert first["uuid"] != second["uuid"]
+        for response in (first, second):
+            assert (
+                response["value"] == "The assistant says the needle is in the haystack."
+            )
+            assert response["explanation"] == "LLM summary."
+            assert response["references"] == []
+        expected_call = {
+            "question": "Where is the needle?",
+            "answer": "string",
+            "template": LLM_SEARCH_TEMPLATE,
+            "model": "openai/gpt-5.4-mini",
+        }
+        assert llm_calls == [expected_call, expected_call]
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),

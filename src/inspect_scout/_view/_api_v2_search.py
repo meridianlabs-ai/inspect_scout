@@ -225,19 +225,6 @@ def create_search_router() -> APIRouter:
             events=request.events,
         )
 
-        # Check cache
-        with _search_result_store() as store:
-            cached = store.get(key)
-        if cached:
-            _save_search_input(
-                _search_input_from_request(
-                    request,
-                    search_id=sid,
-                    created_at=datetime.now(timezone.utc).isoformat(),
-                )
-            )
-            return SEARCH_RESULT_ADAPTER.validate_json(cached)
-
         # Load transcript
         async with transcripts_view(transcript_dir) as view:
             condition = Column("transcript_id") == id

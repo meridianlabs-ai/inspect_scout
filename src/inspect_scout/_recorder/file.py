@@ -1,4 +1,6 @@
 import io
+import os
+import tempfile
 from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
@@ -219,31 +221,35 @@ class FileRecorder(ScanRecorder):
         scan_spec = _read_scan_spec(scan_dir)
         scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
 
-        # write scanners. when an existing compacted parquet is present
-        # (e.g. from a prior sync within a multi-call eval_set lifecycle),
-        # include it as input so the new compaction is the union of prior
-        # data + buffer rows. with that in place, cleaning up the buffer
+        # write each scanner's compacted parquet. when a prior sync has
+        # already written one (e.g. on a multi-call eval_set lifecycle),
+        # merge it in so the new output is the union of prior data + this
+        # call's buffer rows. once that's in place, cleaning up the buffer
         # after sync is safe — the data lives on in the compacted output.
         #
+        # `scanner_table` uses pyarrow's `ds.dataset(list)` which requires
+        # uniform path types: the buffer dir is always local (per scout's
+        # existing convention — see `RecorderBuffer.buffer_dir`), but the
+        # scan dir may be on a remote filesystem (e.g. s3://). When the
+        # prior compacted parquet is remote, download it to a local temp
+        # file before passing to `scanner_table`.
+        #
         # write to a sibling `.tmp` then atomically rename so the same path
-        # is never both an input to scanner_table and the target of an
-        # in-progress write (avoids any read/write overlap and gives crash
-        # resilience: a failure mid-write leaves the prior compacted file
-        # intact).
+        # is never simultaneously an input to scanner_table and the target
+        # of an in-progress write (avoids any read/write overlap and gives
+        # crash resilience: a failure mid-write leaves the prior compacted
+        # file intact).
         sync_fs = filesystem(scan_dir.as_posix())
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
-                final_path = _scanner_parquet_file(scan_dir, scanner)
-                existing = UPath(final_path)
-                parquet_bytes = scanner_table(
-                    scan_buffer_dir,
-                    scanner,
-                    extra_inputs=[existing] if existing.exists() else None,
+                output_path = _scanner_parquet_file(scan_dir, scanner)
+                parquet_bytes = await _compact_with_prior(
+                    scan_buffer_dir, scanner, prior=UPath(output_path)
                 )
                 if parquet_bytes is not None:
-                    tmp_path = f"{final_path}.tmp"
+                    tmp_path = f"{output_path}.tmp"
                     await fs.write_file(tmp_path, parquet_bytes)
-                    sync_fs.mv(tmp_path, final_path)
+                    sync_fs.mv(tmp_path, output_path)
 
         # sync summary and errors
         _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
@@ -554,6 +560,34 @@ class FileRecorder(ScanRecorder):
             except FileNotFoundError:
                 pass
         return scans
+
+
+async def _compact_with_prior(
+    scan_buffer_dir: UPath, scanner: str, *, prior: UPath
+) -> bytes | None:
+    """Compact buffer parquets, optionally merging in a prior compacted output.
+
+    `scanner_table` requires uniform local paths. If `prior` exists on a
+    remote filesystem, download it to a local temp file before passing it
+    in, then clean up.
+    """
+    if not prior.exists():
+        return scanner_table(scan_buffer_dir, scanner)
+
+    local_prior: UPath | None = None
+    try:
+        if prior.protocol in ("", "file"):
+            extra = [prior]
+        else:
+            tmp_fd, tmp_name = tempfile.mkstemp(suffix=".parquet")
+            os.close(tmp_fd)
+            local_prior = UPath(tmp_name)
+            local_prior.write_bytes(prior.read_bytes())
+            extra = [local_prior]
+        return scanner_table(scan_buffer_dir, scanner, extra_inputs=extra)
+    finally:
+        if local_prior is not None:
+            local_prior.unlink(missing_ok=True)
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:

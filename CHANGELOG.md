@@ -1,6 +1,8 @@
 ## Unreleased
 
+- Transcripts: Treat directories with `.eval` files as an eval log collection (presence of `.parquet` no longer prevails).
 - Bugfix: Exit non-zero when `--fail-on-error` and scan does not complete.
+- Bugfix: Alwoays reset text progress indicator when job completes.
 
 ## 0.4.28 (29 April 2026)
 

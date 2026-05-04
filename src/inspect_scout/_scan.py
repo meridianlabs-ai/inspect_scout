@@ -66,6 +66,7 @@ from ._scancontext import ScanContext, create_scan, resume_scan
 from ._scanjob import (
     ScanDeprecatedArgs,
     ScanJob,
+    Scanners,
 )
 from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
@@ -88,12 +89,7 @@ logger = getLogger(__name__)
 
 
 def scan(
-    scanners: (
-        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-        | dict[str, Scanner[Any]]
-        | ScanJob
-        | ScanJobConfig
-    ),
+    scanners: Scanners,
     transcripts: Transcripts | None = None,
     scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
@@ -182,12 +178,7 @@ def scan(
 
 
 async def scan_async(
-    scanners: (
-        Sequence[Scanner[Any] | tuple[str, Scanner[Any]]]
-        | dict[str, Scanner[Any]]
-        | ScanJob
-        | ScanJobConfig
-    ),
+    scanners: Scanners,
     transcripts: Transcripts | None = None,
     scans: str | None = None,
     worklist: Sequence[ScannerWork] | Sequence[Worklist] | str | Path | None = None,
@@ -636,96 +627,11 @@ async def _scan_async_inner(
                         )
 
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
-                    from inspect_ai.log._transcript import (
-                        Transcript as InspectTranscript,
+                    return await _scan_one(
+                        job,
+                        validation=scan.validation,
+                        fail_on_error=fail_on_error,
                     )
-                    from inspect_ai.log._transcript import init_transcript
-
-                    # the code below might get called many times (e.g. if the scanner
-                    # task message or event or list[message], list[event] or if it has
-                    # a custom loader:
-                    # 1) Is there a loader? If so it's a generator that will yield
-                    #    scanner inputs.
-                    # 2) We need to reflect the signature of the scanner fn -- either
-                    #    by introspecting or by synthesizing a loader
-
-                    # initialize model_usage tracking for this scan (force
-                    # reset so usage doesn't accumulate across sequential
-                    # scans within the same worker task)
-                    init_model_usage(initial_usage={})
-
-                    inspect_transcript = InspectTranscript()
-                    init_transcript(inspect_transcript)
-
-                    results: list[ResultReport] = []
-                    validation: ResultValidation | None = None
-
-                    scanner_config = config_for_scanner(job.scanner)
-                    loader = scanner_config.loader
-
-                    async for loader_result in loader(job.union_transcript):
-                        result: Result | list[Result] | None = None
-                        final_result: Result | None = None
-                        error: Error | None = None
-                        try:
-                            type_and_ids = get_input_type_and_ids(loader_result)
-                            if type_and_ids is None:
-                                continue
-
-                            # do scan
-                            async with span("scan"):
-                                result = await job.scanner(loader_result)
-
-                            # handle lists
-                            final_result = (
-                                as_resultset(result)
-                                if isinstance(result, list)
-                                else result
-                            )
-
-                            # do validation if we have one for this scanner/id
-                            if scan.validation and job.scanner_name in scan.validation:
-                                validation = await _validate_scan(
-                                    scan.validation[job.scanner_name],
-                                    type_and_ids[1],
-                                    final_result,
-                                )
-
-                        # Special case for errors that should bring down the scan
-                        except PrerequisiteError:
-                            raise
-
-                        except Exception as ex:  # pylint: disable=W0718
-                            if fail_on_error:
-                                raise
-                            error = Error(
-                                transcript_id=job.union_transcript.transcript_id,
-                                scanner=job.scanner_name,
-                                error=str(ex),
-                                traceback=traceback.format_exc(),
-                                refusal=isinstance(ex, RefusalError),
-                            )
-
-                        # Always append a result (success or error) if we have type_and_ids
-                        if type_and_ids is not None:
-                            results.append(
-                                # All of this data needs to be pickeable (i.e. no
-                                # async functions that catpure the task group)
-                                ResultReport(
-                                    input_type=type_and_ids[0],
-                                    input_ids=type_and_ids[1],
-                                    input=loader_result,
-                                    result=final_result,
-                                    validation=validation,
-                                    error=error,
-                                    events=jsonable_python(
-                                        resolve_event_attachments(inspect_transcript)
-                                    ),
-                                    model_usage=model_usage(),
-                                )
-                            )
-
-                    return results
 
                 prefetch_multiple = 1.0
                 max_tasks = min(
@@ -1013,6 +919,110 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
         summary=recorder_summary.Summary(scanners=scanner_names),
         errors=[],
     )
+
+
+async def _scan_one(
+    job: ScannerJob,
+    *,
+    validation: dict[str, ValidationSet] | None = None,
+    fail_on_error: bool = False,
+) -> list[ResultReport]:
+    """Run a single scanner against a single transcript.
+
+    This is the core dispatch primitive: iterates the scanner's loader over
+    the union transcript, invokes the scanner on each yielded input, and
+    builds a `ResultReport` for each invocation. Captures inspect-side
+    events and model usage per call. Errors are turned into Error records
+    on the report unless `fail_on_error=True`.
+    """
+    from inspect_ai.log._transcript import (
+        Transcript as InspectTranscript,
+    )
+    from inspect_ai.log._transcript import init_transcript
+
+    # the code below might get called many times (e.g. if the scanner
+    # task message or event or list[message], list[event] or if it has
+    # a custom loader:
+    # 1) Is there a loader? If so it's a generator that will yield
+    #    scanner inputs.
+    # 2) We need to reflect the signature of the scanner fn -- either
+    #    by introspecting or by synthesizing a loader
+
+    # initialize model_usage tracking for this scan (force
+    # reset so usage doesn't accumulate across sequential
+    # scans within the same worker task)
+    init_model_usage(initial_usage={})
+
+    inspect_transcript = InspectTranscript()
+    init_transcript(inspect_transcript)
+
+    results: list[ResultReport] = []
+    validation_result: ResultValidation | None = None
+
+    scanner_config = config_for_scanner(job.scanner)
+    loader = scanner_config.loader
+
+    async for loader_result in loader(job.union_transcript):
+        result: Result | list[Result] | None = None
+        final_result: Result | None = None
+        error: Error | None = None
+        try:
+            type_and_ids = get_input_type_and_ids(loader_result)
+            if type_and_ids is None:
+                continue
+
+            # do scan
+            async with span("scan"):
+                result = await job.scanner(loader_result)
+
+            # handle lists
+            final_result = (
+                as_resultset(result) if isinstance(result, list) else result
+            )
+
+            # do validation if we have one for this scanner/id
+            if validation and job.scanner_name in validation:
+                validation_result = await _validate_scan(
+                    validation[job.scanner_name],
+                    type_and_ids[1],
+                    final_result,
+                )
+
+        # special case for errors that should bring down the scan
+        except PrerequisiteError:
+            raise
+
+        except Exception as ex:  # pylint: disable=W0718
+            if fail_on_error:
+                raise
+            error = Error(
+                transcript_id=job.union_transcript.transcript_id,
+                scanner=job.scanner_name,
+                error=str(ex),
+                traceback=traceback.format_exc(),
+                refusal=isinstance(ex, RefusalError),
+            )
+
+        # always append a result (success or error) if we have type_and_ids
+        if type_and_ids is not None:
+            results.append(
+                # all of this data needs to be pickleable (i.e. no async
+                # functions that capture the task group)
+                ResultReport(
+                    input_type=type_and_ids[0],
+                    input_ids=type_and_ids[1],
+                    input=loader_result,
+                    result=final_result,
+                    validation=validation_result,
+                    error=error,
+                    events=jsonable_python(
+                        resolve_event_attachments(inspect_transcript)
+                    ),
+                    model_usage=model_usage(),
+                )
+            )
+
+    return results
 
 
 def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:

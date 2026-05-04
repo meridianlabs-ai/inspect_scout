@@ -96,7 +96,13 @@ class FileRecorder(ScanRecorder):
         self._scan_spec: ScanSpec | None = None
 
     @override
-    async def init(self, spec: ScanSpec, scans_location: str) -> None:
+    async def init(
+        self,
+        spec: ScanSpec,
+        scans_location: str,
+        *,
+        concurrent_writers: bool = False,
+    ) -> None:
         # create the scan dir
         self._scan_dir = _ensure_scan_dir(UPath(scans_location), spec.scan_id)
         self._scanners_completed: list[str] = []
@@ -106,7 +112,10 @@ class FileRecorder(ScanRecorder):
 
         # create the scan buffer
         self._scan_buffer = RecorderBuffer(
-            self._scan_dir.as_posix(), self._scan_spec, reset=True
+            self._scan_dir.as_posix(),
+            self._scan_spec,
+            reset=True,
+            concurrent_writers=concurrent_writers,
         )
 
     async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None:
@@ -115,11 +124,20 @@ class FileRecorder(ScanRecorder):
         self._write_scan_spec()
 
     @override
-    async def resume(self, scan_location: str) -> ScanSpec:
+    async def resume(
+        self,
+        scan_location: str,
+        *,
+        concurrent_writers: bool = False,
+    ) -> ScanSpec:
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
-        self._scan_buffer = RecorderBuffer(self._scan_dir.as_posix(), self.scan_spec)
+        self._scan_buffer = RecorderBuffer(
+            self._scan_dir.as_posix(),
+            self.scan_spec,
+            concurrent_writers=concurrent_writers,
+        )
         return self._scan_spec
 
     @override

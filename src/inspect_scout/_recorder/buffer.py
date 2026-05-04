@@ -1,9 +1,11 @@
+import contextlib
 import json
 import os
 import shutil
 from datetime import datetime
-from typing import Any, Final, Sequence, Set, TypeVar, cast
+from typing import Any, AsyncIterator, Final, Sequence, Set, TypeVar, cast
 
+import anyio
 import jsonlines
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -25,6 +27,23 @@ from .._transcript.util import LazyJSONDict
 
 SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
+
+
+# In-process locks protecting the read-modify-write of `_summary.json` when
+# multiple ephemeral `RecorderBuffer` instances target the same buffer dir
+# (e.g. inspect_ai's eval_set scans samples concurrently). Opt-in via
+# `concurrent_writers=True`; the default keeps the existing single-writer
+# behavior unchanged.
+_summary_locks: dict[str, anyio.Lock] = {}
+
+
+def _summary_lock(buffer_dir: UPath) -> anyio.Lock:
+    key = buffer_dir.as_posix()
+    lock = _summary_locks.get(key)
+    if lock is None:
+        lock = anyio.Lock()
+        _summary_locks[key] = lock
+    return lock
 
 
 class RecorderBuffer:
@@ -57,11 +76,13 @@ class RecorderBuffer:
         *,
         pool_dedup: bool = True,
         reset: bool = False,
+        concurrent_writers: bool = False,
     ):
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
         self._pool_dedup = pool_dedup
+        self._concurrent_writers = concurrent_writers
 
         # establish scan summary
         scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
@@ -195,12 +216,18 @@ class RecorderBuffer:
         )
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
-        # update and write summary
-        self._scan_summary._report(transcript, scanner, results, metrics)
-        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(self._scan_summary.model_dump_json(indent=2))
+        # update and write summary. when concurrent_writers is set, serialize
+        # the read-modify-write so concurrent ephemeral instances don't lose
+        # updates; we re-read the on-disk summary inside the lock so this
+        # call's contribution applies on top of any peer writes.
+        async with self._summary_critical_section():
+            if self._concurrent_writers:
+                self._scan_summary = read_scan_summary(self._buffer_dir, self._spec)
+            self._scan_summary._report(transcript, scanner, results, metrics)
+            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+                f.write(self._scan_summary.model_dump_json(indent=2))
 
-        # record errors
+        # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
             if result.error is not None:
                 with open(str(self._error_file), "at") as f:
@@ -211,10 +238,21 @@ class RecorderBuffer:
         scanner: str,
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        # update and write summary
-        self._scan_summary._report_metrics(scanner, metrics)
-        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(self._scan_summary.model_dump_json(indent=2))
+        # update and write summary (lock and re-read under concurrent writers)
+        async with self._summary_critical_section():
+            if self._concurrent_writers:
+                self._scan_summary = read_scan_summary(self._buffer_dir, self._spec)
+            self._scan_summary._report_metrics(scanner, metrics)
+            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+                f.write(self._scan_summary.model_dump_json(indent=2))
+
+    @contextlib.asynccontextmanager
+    async def _summary_critical_section(self) -> AsyncIterator[None]:
+        if self._concurrent_writers:
+            async with _summary_lock(self._buffer_dir):
+                yield
+        else:
+            yield
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"

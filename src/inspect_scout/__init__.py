@@ -28,7 +28,7 @@ from ._scan import (
     scan_complete,
     scan_resume,
 )
-from ._scanjob import ScanJob, scanjob
+from ._scanjob import ScanJob, Scanners, scanjob
 from ._scanjob_config import ScanJobConfig
 from ._scanlist import scan_list
 from ._scanner.extract import (
@@ -121,6 +121,7 @@ __all__ = [
     "scanjob",
     "ScanJob",
     "ScanJobConfig",
+    "Scanners",
     "ProjectConfig",
     "scan_list",
     "scan_status",

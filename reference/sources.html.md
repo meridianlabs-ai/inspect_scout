@@ -6,7 +6,7 @@ Read transcripts from [Arize Phoenix](https://phoenix.arize.com/) traces.
 
 Each Phoenix trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/8a6325fef4cc5070d2449ba707f7961d90d32b5c/src/inspect_scout/sources/_phoenix/__init__.py#L43)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c13a285ecee49965e7c2613dd6c45bc29741b8b2/src/inspect_scout/sources/_phoenix/__init__.py#L43)
 
 ``` python
 async def phoenix(
@@ -64,7 +64,7 @@ Data sources:
 - `project` - Import traces from a project (default)
 - `dataset` - Import examples from a dataset
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/8a6325fef4cc5070d2449ba707f7961d90d32b5c/src/inspect_scout/sources/_langsmith/__init__.py#L49)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c13a285ecee49965e7c2613dd6c45bc29741b8b2/src/inspect_scout/sources/_langsmith/__init__.py#L49)
 
 ``` python
 async def langsmith(
@@ -121,7 +121,7 @@ Read transcripts from [Logfire](https://logfire.pydantic.dev/) traces.
 
 Each Logfire trace (collection of spans with same trace_id) becomes one Scout transcript. Child spans (LLM calls, tools) become events within the transcript.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/8a6325fef4cc5070d2449ba707f7961d90d32b5c/src/inspect_scout/sources/_logfire/__init__.py#L45)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c13a285ecee49965e7c2613dd6c45bc29741b8b2/src/inspect_scout/sources/_logfire/__init__.py#L45)
 
 ``` python
 async def logfire(
@@ -162,7 +162,7 @@ Read transcripts from [W&B Weave](https://wandb.ai/site/weave) traces.
 
 Each Weave trace (root call + children) becomes one Scout transcript. Child calls (LLM calls, tools) become events within the transcript.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/8a6325fef4cc5070d2449ba707f7961d90d32b5c/src/inspect_scout/sources/_weave/__init__.py#L49)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c13a285ecee49965e7c2613dd6c45bc29741b8b2/src/inspect_scout/sources/_weave/__init__.py#L49)
 
 ``` python
 async def weave(
@@ -201,7 +201,7 @@ Each Claude Code session can contain multiple conversations separated by /clear 
 
 When Claude Code enters plan mode and executes a plan, it creates separate session files that share the same slug. These related sessions are merged into a single transcript.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/8a6325fef4cc5070d2449ba707f7961d90d32b5c/src/inspect_scout/sources/_claude_code/transcripts.py#L63)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/c13a285ecee49965e7c2613dd6c45bc29741b8b2/src/inspect_scout/sources/_claude_code/transcripts.py#L63)
 
 ``` python
 async def claude_code(

@@ -1300,14 +1300,14 @@
     "href": "CHANGELOG.html",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Bugfix: Exit non-zero when --fail-on-error and scan does not complete."
+    "text": "Transcripts: Treat directories with .eval files as an eval log collection (presence of .parquet no longer prevails).\nDependencies: Sync to semaphore changes in Inspect v0.3.217.\nBugfix: Exit non-zero when --fail-on-error and scan does not complete.\nBugfix: Always reset text progress indicator when job completes."
   },
   {
-    "objectID": "CHANGELOG.html#unreleased",
-    "href": "CHANGELOG.html#unreleased",
+    "objectID": "CHANGELOG.html#may-2026",
+    "href": "CHANGELOG.html#may-2026",
     "title": "Inspect Scout",
     "section": "",
-    "text": "Bugfix: Exit non-zero when --fail-on-error and scan does not complete."
+    "text": "Transcripts: Treat directories with .eval files as an eval log collection (presence of .parquet no longer prevails).\nDependencies: Sync to semaphore changes in Inspect v0.3.217.\nBugfix: Exit non-zero when --fail-on-error and scan does not complete.\nBugfix: Always reset text progress indicator when job completes."
   },
   {
     "objectID": "CHANGELOG.html#april-2026",

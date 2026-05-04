@@ -78,6 +78,51 @@
         "title": "ActiveScansResponse",
         "type": "object"
       },
+      "AdaptiveConcurrency": {
+        "description": "Bounds and tuning for an adaptive concurrency controller.\n\nBasic fields (`min`, `start`, `max`) bound the range the controller will\nscale within. Advanced fields (`cooldown_seconds`, `decrease_factor`,\n`scale_up_percent`) tune the response curve and have sensible defaults\nfor typical evaluation workloads \u2014 see the parallelism docs for guidance.\nAccepts a string shorthand (\"min-max\" or \"min-start-max\") for use in CLI\nflags and config files; advanced fields are Python-only.",
+        "properties": {
+          "cooldown_seconds": {
+            "default": 15.0,
+            "title": "Cooldown Seconds",
+            "type": "number"
+          },
+          "decrease_factor": {
+            "default": 0.8,
+            "title": "Decrease Factor",
+            "type": "number"
+          },
+          "max": {
+            "default": 200,
+            "title": "Max",
+            "type": "integer"
+          },
+          "min": {
+            "default": 4,
+            "title": "Min",
+            "type": "integer"
+          },
+          "scale_up_percent": {
+            "default": 0.05,
+            "title": "Scale Up Percent",
+            "type": "number"
+          },
+          "start": {
+            "default": 20,
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min",
+          "max",
+          "start",
+          "cooldown_seconds",
+          "decrease_factor",
+          "scale_up_percent"
+        ],
+        "title": "AdaptiveConcurrency",
+        "type": "object"
+      },
       "AppConfig": {
         "additionalProperties": false,
         "description": "Application configuration returned by GET /config.",
@@ -2284,6 +2329,20 @@
       "GenerateConfig-Input": {
         "description": "Model generation options.",
         "properties": {
+          "adaptive_connections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/AdaptiveConcurrency"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptive Connections"
+          },
           "attempt_timeout": {
             "anyOf": [
               {
@@ -2742,6 +2801,20 @@
       "GenerateConfig-Output": {
         "description": "Model generation options.",
         "properties": {
+          "adaptive_connections": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "$ref": "#/components/schemas/AdaptiveConcurrency"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adaptive Connections"
+          },
           "attempt_timeout": {
             "anyOf": [
               {
@@ -8336,6 +8409,29 @@
           },
           "score": {
             "$ref": "#/components/schemas/Score"
+          },
+          "scorer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorer"
+          },
+          "scorer_args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorer Args"
           },
           "span_id": {
             "anyOf": [

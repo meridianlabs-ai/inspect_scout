@@ -30,6 +30,11 @@ def splice(timeline: Timeline, target: TimelineSpan) -> list[Event]:
             if not anchor:
                 out.clear()
                 continue
+            # TODO: replay extends past the anchor through trailing
+            # deterministic steps, so events between the anchor and where
+            # replay actually ends are dropped from both this prefix and the
+            # child's delta. Empty for current targets; revisit alongside the
+            # auditor-replay refactor.
             cut = _index_of_anchor(events, anchor)
             events = events[: cut + 1] if cut is not None else events
         out.extend(_strip_suffix(e, node.id) for e in events)

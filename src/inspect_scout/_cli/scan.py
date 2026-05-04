@@ -689,7 +689,7 @@ def scan_command(
     )
 
     # run scan
-    scan(
+    status = scan(
         scanners=scanjob,
         transcripts=tx,
         scans=scans,
@@ -710,6 +710,11 @@ def scan_command(
         log_level=scan_log_level,
         dry_run=dry_run,
     )
+
+    # exit non-zero when the user asked us to fail on error and the scan
+    # didn't complete cleanly
+    if common["fail_on_error"] and not status.complete:
+        ctx.exit(1)
 
 
 def _parse_comma_separated(value: str | None) -> list[str] | None:

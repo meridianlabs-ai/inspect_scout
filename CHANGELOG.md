@@ -1,3 +1,10 @@
+## 0.4.29 (05 May 2026)
+
+- Transcripts: Treat directories with `.eval` files as an eval log collection (presence of `.parquet` no longer prevails).
+- Dependencies: Sync to semaphore changes in Inspect v0.3.217.
+- Bugfix: Exit non-zero when `--fail-on-error` and scan does not complete.
+- Bugfix: Always reset text progress indicator when job completes.
+
 ## 0.4.28 (29 April 2026)
 
 - LLM Scanner: Send default-template prompts as two content blocks (preamble + transcript / per-scanner tail) with `cache_prompt=True`. On Anthropic, the shared-prefix block is marked for caching so multiple scanners on the same transcript share a cache entry.

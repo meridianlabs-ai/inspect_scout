@@ -1,4 +1,5 @@
 import importlib.util
+import logging
 import os
 import subprocess
 from typing import Any, Callable, TypeVar, cast
@@ -146,3 +147,20 @@ def reset_observe_providers() -> Any:
     reset_providers()
     yield
     reset_providers()
+
+
+@pytest.fixture(autouse=True)
+def restore_inspect_scout_log_propagation() -> Any:
+    """Ensure the ``inspect_scout`` logger propagates to root for caplog.
+
+    Why: ``inspect_ai._util.logger.init_logger`` sets
+    ``propagate = False`` on the ``inspect_scout`` logger when the CLI
+    initializes logging. That mutation persists for the lifetime of the
+    worker process and prevents pytest's caplog (whose handler is on the
+    root logger) from seeing records emitted by ``inspect_scout`` loggers
+    in tests that run later in the same worker.
+    """
+    logger = logging.getLogger("inspect_scout")
+    logger.propagate = True
+    yield
+    logger.propagate = True

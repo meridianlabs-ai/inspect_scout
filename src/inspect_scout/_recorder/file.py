@@ -133,6 +133,19 @@ class FileRecorder(ScanRecorder):
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = _read_scan_spec(self._scan_dir)
+
+        # If a prior `sync(complete=True)` cleaned the buffer dir, the
+        # accumulated `_summary.json` from previous runs only lives in the
+        # scan dir. Seed the (recreated) buffer summary from there so the
+        # new RecorderBuffer picks up the prior counts instead of starting
+        # from zero.
+        buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
+        buffer_summary = buffer_dir / SCAN_SUMMARY
+        scan_summary = self._scan_dir / SCAN_SUMMARY
+        if not buffer_summary.exists() and scan_summary.exists():
+            buffer_dir.mkdir(parents=True, exist_ok=True)
+            buffer_summary.write_text(scan_summary.read_text())
+
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
             self.scan_spec,
@@ -206,14 +219,31 @@ class FileRecorder(ScanRecorder):
         scan_spec = _read_scan_spec(scan_dir)
         scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
 
-        # write scanners
+        # write scanners. when an existing compacted parquet is present
+        # (e.g. from a prior sync within a multi-call eval_set lifecycle),
+        # include it as input so the new compaction is the union of prior
+        # data + buffer rows. with that in place, cleaning up the buffer
+        # after sync is safe — the data lives on in the compacted output.
+        #
+        # write to a sibling `.tmp` then atomically rename so the same path
+        # is never both an input to scanner_table and the target of an
+        # in-progress write (avoids any read/write overlap and gives crash
+        # resilience: a failure mid-write leaves the prior compacted file
+        # intact).
+        sync_fs = filesystem(scan_dir.as_posix())
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
-                parquet_bytes = scanner_table(scan_buffer_dir, scanner)
+                final_path = _scanner_parquet_file(scan_dir, scanner)
+                existing = UPath(final_path)
+                parquet_bytes = scanner_table(
+                    scan_buffer_dir,
+                    scanner,
+                    extra_inputs=[existing] if existing.exists() else None,
+                )
                 if parquet_bytes is not None:
-                    await fs.write_file(
-                        _scanner_parquet_file(scan_dir, scanner), parquet_bytes
-                    )
+                    tmp_path = f"{final_path}.tmp"
+                    await fs.write_file(tmp_path, parquet_bytes)
+                    sync_fs.mv(tmp_path, final_path)
 
         # sync summary and errors
         _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)

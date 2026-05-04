@@ -301,7 +301,12 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
             return None
 
 
-def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
+def scanner_table(
+    buffer_dir: UPath,
+    scanner: str,
+    *,
+    extra_inputs: list[UPath] | None = None,
+) -> bytes | None:
     import pyarrow as pa
     import pyarrow.dataset as ds
     import pyarrow.parquet as pq
@@ -324,15 +329,25 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
     MAX_BYTES: Final[int] = 100_000_000
     DEFAULT_BATCH_ROWS: Final[int] = 1_000
 
-    # resolve input dir
+    # resolve input paths: the per-transcript buffer dir, plus any extra
+    # parquets to merge in (e.g. the previously compacted output from an
+    # earlier sync, so multi-call resume retains prior rows even after
+    # the buffer is cleaned). pyarrow's ds.dataset(list) requires uniform
+    # types in the list, so we expand the directory to its parquet files.
     sdir = buffer_dir / f"scanner={_sanitize_component(scanner)}"
-    if not sdir.exists():
-        # we avoid creating a schema-less empty Parquet when there is no dataset at all.
-        # If you *must* emit a file even when the directory is missing, you need a known schema.
+    inputs: list[str] = []
+    if sdir.exists():
+        inputs.extend(str(p) for p in sdir.glob("*.parquet"))
+    if extra_inputs:
+        inputs.extend(p.as_posix() for p in extra_inputs if p.exists())
+    if not inputs:
+        # avoid creating a schema-less empty parquet when there's nothing to
+        # compact. If you *must* emit a file in that case, you need a known
+        # schema.
         return None
 
     # build dataset
-    dataset: ds.Dataset = ds.dataset(str(sdir), format="parquet")
+    dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
 
     # discover the unified schema up-front. This ensures column order/types are stable.
     # if there are absolutely no fragments under sdir, accessing .schema may raise.

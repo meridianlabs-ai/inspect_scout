@@ -14,6 +14,7 @@ from multiprocessing.queues import Queue
 from threading import Condition
 
 import anyio
+from inspect_ai.util import AdaptiveConcurrency
 from inspect_ai.util._concurrency import (
     ConcurrencySemaphore,
     ConcurrencySemaphoreRegistry,
@@ -73,7 +74,12 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         await run_sync_on_thread(self._create_semaphore_sync, name, concurrency)
 
     async def get_or_create(
-        self, name: str, concurrency: int, key: str | None, visible: bool
+        self,
+        name: str,
+        concurrency: int,
+        key: str | None,
+        visible: bool,
+        adaptive: AdaptiveConcurrency | None = None,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore.
 
@@ -85,6 +91,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             concurrency: Maximum concurrent holders
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
+            adaptive: Adaptive concurrency (if any)
 
         Returns:
             Wrapped semaphore instance
@@ -163,7 +170,12 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         return await run_sync_on_thread(wait_for_semaphore)
 
     async def get_or_create(
-        self, name: str, concurrency: int, key: str | None, visible: bool
+        self,
+        name: str,
+        concurrency: int,
+        key: str | None,
+        visible: bool,
+        adaptive: AdaptiveConcurrency | None = None,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore via IPC.
 
@@ -176,6 +188,7 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             concurrency: Maximum concurrent holders
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
+            adaptive: Adaptive concurrency (if any)
 
         Returns:
             Wrapped semaphore instance

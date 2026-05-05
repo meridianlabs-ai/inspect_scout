@@ -36,7 +36,11 @@ def splice(timeline: Timeline, target: TimelineSpan) -> list[Event]:
             # child's delta. Empty for current targets; revisit alongside the
             # auditor-replay refactor.
             cut = _index_of_anchor(events, anchor)
-            events = events[: cut + 1] if cut is not None else events
+            if cut is None:
+                raise ValueError(
+                    f"splice: anchor {anchor!r} not found in {node.name} ({node.id})"
+                )
+            events = events[: cut + 1]
         out.extend(_strip_suffix(e, node.id) for e in events)
     return out
 

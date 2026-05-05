@@ -270,8 +270,7 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
             pending=False,
             metadata=None,
             event="branch",
-            from_span=data.get("from_span", ""),
-            from_message=data.get("from_message", ""),
+            from_anchor=data.get("from_anchor", ""),
         )
 
     return None

@@ -11,8 +11,6 @@ from inspect_ai.event import (
     timeline_build,
 )
 
-__all__ = ["splice", "splice_to_timeline"]
-
 
 def splice(timeline: Timeline, target: TimelineSpan) -> list[Event]:
     """Reconstruct `target`'s full event stream by concatenating ancestor prefixes.

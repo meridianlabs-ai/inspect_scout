@@ -163,9 +163,13 @@ def llm_scanner(
         compaction: How to handle compaction boundaries when extracting
             messages from events. ``"all"`` (default) scans all compaction
             segments; ``"last"`` scans only the most recent.
-        depth: Maximum depth of the span tree to process when timelines
-            are present. ``None`` (default) processes all depths. Ignored
-            for events-only or messages-only transcripts.
+        depth: Maximum nesting level of scannable spans to scan when
+            timelines are present. ``1`` = top-level agent/solver spans;
+            ``2`` = top-level plus their first scannable descendants;
+            ``None`` (default) = all depths. Pure container spans (e.g.
+            the synthetic root) and utility spans do not consume a
+            depth level. Ignored for events-only or messages-only
+            transcripts.
         reducer: Custom reducer for aggregating multi-segment results.
             Accepts any ``Callable[[list[Result]], Awaitable[Result]]``.
             If None, uses a default reducer based on the answer type

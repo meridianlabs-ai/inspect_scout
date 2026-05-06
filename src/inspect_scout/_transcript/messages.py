@@ -190,8 +190,12 @@ async def transcript_messages(
         context_window: Override for the model's context window size.
         compaction: How to handle compaction boundaries when extracting
             messages from events.
-        depth: Maximum depth of the span tree to process when timelines
-            are present. Ignored for events-only or messages-only paths.
+        depth: Maximum nesting level of scannable spans to process when
+            timelines are present. Counts only spans that actually get
+            scanned — non-scannable container and utility spans are
+            transparent. ``1`` = outermost scannable spans on each
+            branch; ``None`` (default) = unlimited. Ignored for
+            events-only or messages-only paths.
         include_scorers: Whether to include scorer events in message
             extraction. Defaults to ``False``.
 

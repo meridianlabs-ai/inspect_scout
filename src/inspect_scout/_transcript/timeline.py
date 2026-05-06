@@ -195,9 +195,15 @@ async def timeline_messages(
             prompts and scanning overhead.
         compaction: How to handle compaction boundaries when extracting
             messages from span events.
-        depth: Maximum depth of the span tree to process. ``1`` processes
-            only the root span, ``2`` includes immediate children, etc.
-            None (default) recurses without limit.
+        depth: Maximum nesting level of *scannable* spans to process. A
+            scannable span is a non-utility span containing at least
+            one direct ``ModelEvent``; pure container spans (such as
+            the synthetic root produced by ``timeline_build``) and
+            utility spans are transparent and do not consume a depth
+            level. ``1`` processes only the outermost scannable span on
+            each branch (typically top-level agents/solvers); ``N``
+            allows up to N nested scannable layers. ``None`` (default)
+            recurses without limit. ``0`` yields nothing.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -228,32 +234,49 @@ def _walk_spans(
     span: TimelineSpan,
     *,
     depth: int | None = None,
-    _current_depth: int = 1,
+    _scannable_depth: int = 0,
 ) -> Iterator[TimelineSpan]:
     """Walk the span tree depth-first, yielding scannable spans.
 
-    A span is yielded if it is not a utility span and has at least one
-    direct ``ModelEvent`` in its content. Non-matching spans are still
-    traversed so their children can be checked.
+    A span is "scannable" when it is not a utility span and contains at
+    least one direct ``ModelEvent``. Non-scannable spans (utility spans
+    and pure container spans, including the synthetic root from
+    ``timeline_build``) are transparent: traversed so their scannable
+    descendants are reached, but they do not consume a level of
+    ``depth``.
+
+    ``depth`` therefore counts levels of *scannable* spans:
+
+    - ``1`` = outermost scannable span on each branch
+    - ``N`` = up to N nested scannable layers
+    - ``None`` = unlimited
+    - ``<= 0`` = nothing
 
     Args:
         span: The root span to walk.
-        depth: Maximum depth to recurse. 1 = root only, 2 = root +
-            children, None = unlimited.
-        _current_depth: Internal counter tracking current depth.
+        depth: Maximum nesting level of scannable spans (see above).
+        _scannable_depth: Internal counter tracking how many scannable
+            ancestors are above the current node (0 means none yet).
 
     Yields:
         Scannable TimelineSpan nodes in depth-first order.
     """
-    if not span.utility and any(
+    if depth is not None and depth <= 0:
+        return
+
+    is_scannable = not span.utility and any(
         isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
         for item in span.content
-    ):
-        yield span
+    )
 
-    if depth is not None and _current_depth >= depth:
-        return
+    if is_scannable:
+        next_depth = _scannable_depth + 1
+        if depth is not None and next_depth > depth:
+            return
+        yield span
+    else:
+        next_depth = _scannable_depth
 
     for item in span.content:
         if isinstance(item, TimelineSpan):
-            yield from _walk_spans(item, depth=depth, _current_depth=_current_depth + 1)
+            yield from _walk_spans(item, depth=depth, _scannable_depth=next_depth)

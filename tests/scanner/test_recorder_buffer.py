@@ -198,6 +198,128 @@ def test_buffer_dir_respects_env_var(
     assert result.parent == custom_dir
 
 
+@pytest.mark.asyncio
+async def test_scanner_table_dedupes_extra_inputs_against_buffer(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """`scanner_table` drops `extra_inputs` rows whose transcript_id is
+    already covered by a buffer file.
+
+    Otherwise, calling `scanner_table` against a buffer that wasn't
+    cleaned up after a prior compaction (e.g. inspect_ai's eval_set
+    resume cycle, where the prior compacted parquet is passed via
+    `extra_inputs`) would double-count every transcript present in
+    both — once from the buffer file, once from the prior compacted.
+    """
+    from upath import UPath
+    from inspect_ai.model import ChatMessageUser
+
+    scanner_name = "test_scanner"
+    # write two transcripts to the buffer
+    for tid in ("tid-A", "tid-B"):
+        await recorder_buffer.record(
+            TranscriptInfo(
+                transcript_id=tid,
+                source_type="test",
+                source_id=f"src-{tid}",
+                source_uri=f"/path/{tid}.log",
+            ),
+            scanner_name,
+            sample_results,
+            None,
+        )
+
+    # snapshot the buffer's compacted output and use it as extra_inputs
+    # — this mirrors what `_compact_with_prior` passes into `sync`.
+    first = scanner_table(recorder_buffer._buffer_dir, scanner_name)
+    assert first is not None
+    prior_path = tmp_path / "prior.parquet"
+    prior_path.write_bytes(first)
+
+    # second compaction with the prior as extra_inputs. Without dedup
+    # the output would have each tid's rows twice.
+    second = scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        extra_inputs=[UPath(prior_path)],
+    )
+    assert second is not None
+
+    # load and check: same row count as the original (no doubling),
+    # same set of transcript_ids
+    first_tbl = pq.read_table(io.BytesIO(first))
+    second_tbl = pq.read_table(io.BytesIO(second))
+    assert second_tbl.num_rows == first_tbl.num_rows, (
+        f"extra_inputs duplicated buffer rows: {second_tbl.num_rows} "
+        f"vs expected {first_tbl.num_rows}"
+    )
+    assert set(second_tbl.column("transcript_id").to_pylist()) == {"tid-A", "tid-B"}
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_keeps_extra_inputs_for_transcripts_not_in_buffer(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """`extra_inputs` rows for transcripts NOT in the buffer are preserved.
+
+    The dedup fix must only filter overlapping transcript_ids — rows
+    from `extra_inputs` for transcripts that aren't represented in the
+    buffer (e.g. transcripts compacted in an earlier sync whose buffer
+    files have since been cleaned) must still flow through.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+    # snapshot a buffer with one transcript ("tid-old"), use it as the
+    # prior compacted output, then clear and write a different one
+    # ("tid-new") to the buffer.
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="tid-old",
+            source_type="test",
+            source_id="src-old",
+            source_uri="/path/old.log",
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    prior_bytes = scanner_table(recorder_buffer._buffer_dir, scanner_name)
+    assert prior_bytes is not None
+    prior_path = tmp_path / "prior.parquet"
+    prior_path.write_bytes(prior_bytes)
+
+    # clear the buffer file for tid-old and write tid-new
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="tid-new",
+            source_type="test",
+            source_id="src-new",
+            source_uri="/path/new.log",
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+
+    out = scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        extra_inputs=[UPath(prior_path)],
+    )
+    assert out is not None
+    tbl = pq.read_table(io.BytesIO(out))
+    # both transcripts present: tid-new from buffer, tid-old from extras
+    assert set(tbl.column("transcript_id").to_pylist()) == {"tid-old", "tid-new"}
+
+
 def test_buffer_dir_expands_tilde(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

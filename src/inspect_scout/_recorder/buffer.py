@@ -335,17 +335,36 @@ def scanner_table(
     # earlier sync, so multi-call resume retains prior rows even after
     # the buffer is cleaned). pyarrow's ds.dataset(list) requires uniform
     # types in the list, so we expand the directory to its parquet files.
+    #
+    # The buffer's per-transcript file is named `<transcript_id>.parquet`
+    # and is authoritative for that transcript_id: any rows for the same
+    # transcript_id in `extra_inputs` (a previously-compacted output that
+    # was built from an earlier copy of these same buffer files) are
+    # duplicates and must be filtered out — otherwise rows double-count
+    # when `sync` runs more than once without clearing the buffer between
+    # calls (e.g. an `eval_set` resume cycle where `complete=False`).
     sdir = buffer_dir / f"scanner={_sanitize_component(scanner)}"
-    inputs: list[str] = []
+    buffer_inputs: list[str] = []
+    buffer_tids: list[str] = []
     if sdir.exists():
-        inputs.extend(str(p) for p in sdir.glob("*.parquet"))
-    if extra_inputs:
-        inputs.extend(p.as_posix() for p in extra_inputs if p.exists())
+        for p in sdir.glob("*.parquet"):
+            buffer_inputs.append(str(p))
+            buffer_tids.append(p.stem)
+    extra_paths: list[str] = (
+        [p.as_posix() for p in extra_inputs if p.exists()] if extra_inputs else []
+    )
+    inputs = buffer_inputs + extra_paths
     if not inputs:
         # avoid creating a schema-less empty parquet when there's nothing to
         # compact. If you *must* emit a file in that case, you need a known
         # schema.
         return None
+    # set of paths whose batches need transcript_id filtering against
+    # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
+    extra_paths_set: set[str] = set(extra_paths)
+    buffer_tid_array: pa.Array | None = (
+        pa.array(buffer_tids, type=pa.string()) if buffer_tids else None
+    )
 
     # build dataset
     dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
@@ -400,6 +419,9 @@ def scanner_table(
     # iterate materialized batches; to keep memory in check we use a small batch_size.
     # We iterate fragments and manually cast to handle schema inconsistencies
     for fragment in dataset.get_fragments():
+        # batches from `extra_inputs` get filtered against buffer_tids
+        # so a transcript represented in the buffer doesn't double-count
+        is_extra = fragment.path in extra_paths_set
         for batch in fragment.to_batches(
             batch_size=DEFAULT_BATCH_ROWS,
             use_threads=False,
@@ -420,6 +442,16 @@ def scanner_table(
                 batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
             except Exception as e:
                 raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
+
+            # drop rows whose transcript_id is already covered by a
+            # buffer file (the buffer is authoritative for those tids)
+            if is_extra and buffer_tid_array is not None:
+                mask = pc.invert(
+                    pc.is_in(batch.column("transcript_id"), value_set=buffer_tid_array)
+                )
+                batch = batch.filter(mask)
+                if batch.num_rows == 0:
+                    continue
 
             size = batch.nbytes
             if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:

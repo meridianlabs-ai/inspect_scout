@@ -1,4 +1,4 @@
-## 0.4.30 (06 May 2026)
+## 0.4.31 (06 May 2026)
 
 - LLM Scanner: Redefine `depth` semantics for timeline scanning. `depth` now counts levels of *scannable* spans (top-level agents/solvers and their scannable descendants).
 

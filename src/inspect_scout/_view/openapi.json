@@ -8617,6 +8617,24 @@
         "title": "SearchInputListResponse",
         "type": "object"
       },
+      "SearchResponse": {
+        "description": "Response from running a transcript search.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/Result"
+          }
+        },
+        "required": [
+          "id",
+          "result"
+        ],
+        "title": "SearchResponse",
+        "type": "object"
+      },
       "SpanBeginEvent": {
         "description": "Mark the beginning of a transcript span.",
         "properties": {
@@ -12327,7 +12345,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Result"
+                  "$ref": "#/components/schemas/SearchResponse"
                 }
               }
             },

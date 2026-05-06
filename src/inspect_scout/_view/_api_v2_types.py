@@ -15,7 +15,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo
 from .._recorder.recorder import Status as RecorderStatus
 from .._recorder.summary import Summary
-from .._scanner.result import Error
+from .._scanner.result import Error, Result
 from .._scanspec import ScanSpec
 from .._transcript.types import EventFilter, MessageFilter, TranscriptInfo
 
@@ -366,3 +366,11 @@ class SearchInputListResponse:
     """Response from the list search inputs endpoint."""
 
     items: list[SearchInput]
+
+
+@dataclass
+class SearchResponse:
+    """Response from running a transcript search."""
+
+    id: str
+    result: Result

@@ -85,10 +85,11 @@ class TestAncestorChain:
         root = _span(id="r", content=[_model("R1")], branches=[b])
         assert _completions(splice(_tl(root), b)) == ["B1"]
 
-    def test_anchor_not_found_includes_full_ancestor(self) -> None:
+    def test_anchor_not_found_raises(self) -> None:
         b = _span(id="b", branched_from="missing", content=[_model("B1")])
         root = _span(id="r", content=[_model("R1"), _model("R2")], branches=[b])
-        assert _completions(splice(_tl(root), b)) == ["R1", "R2", "B1"]
+        with pytest.raises(ValueError, match="anchor 'missing' not found"):
+            splice(_tl(root), b)
 
     def test_unreachable_target_raises(self) -> None:
         root = _span(id="r", content=[])

@@ -139,9 +139,6 @@ allow-direct-references = true
 [tool.uv]
 managed = true
 
-[tool.uv.sources]
-inspect-ai = { path = "../inspect_ai", editable = true }
-
 [tool.ruff]
 extend-exclude = ["docs"]
 src = ["."]

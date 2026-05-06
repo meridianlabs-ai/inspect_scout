@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.37">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -1108,10 +1108,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="depth-control">Depth Control</h3>
 <p>Use the <code>depth</code> parameter to limit how deep into the span tree to scan:</p>
 <ul>
-<li><code>depth=1</code> — scan only the root span</li>
-<li><code>depth=2</code> — scan the root and its immediate children</li>
+<li><code>depth=1</code> — scan only the top-level agent/solver spans (the outermost scannable spans on each branch)</li>
+<li><code>depth=2</code> — also scan their immediate scannable descendants (e.g.&nbsp;sub-agents called from a top-level agent)</li>
+<li><code>depth=N</code> — scan up to N nested levels of scannable spans</li>
 <li><code>depth=None</code> (default) — scan all levels</li>
 </ul>
+<p>Container and utility spans (such as the synthetic top-level wrapper inserted around an entire conversation, or internal helper spans) are transparent for the purposes of this count — they are traversed so their children are reached, but they do not consume a level of <code>depth</code>.</p>
 
 
 </section>

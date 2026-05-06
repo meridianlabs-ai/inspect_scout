@@ -480,6 +480,9 @@ For simple answer types (boolean, numeric), the result from each span is reduced
 
 Use the `depth` parameter to limit how deep into the span tree to scan:
 
-- `depth=1` — scan only the root span
-- `depth=2` — scan the root and its immediate children
+- `depth=1` — scan only the top-level agent/solver spans (the outermost scannable spans on each branch)
+- `depth=2` — also scan their immediate scannable descendants (e.g. sub-agents called from a top-level agent)
+- `depth=N` — scan up to N nested levels of scannable spans
 - `depth=None` (default) — scan all levels
+
+Container and utility spans (such as the synthetic top-level wrapper inserted around an entire conversation, or internal helper spans) are transparent for the purposes of this count — they are traversed so their children are reached, but they do not consume a level of `depth`.

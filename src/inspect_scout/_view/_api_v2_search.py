@@ -26,8 +26,9 @@ from ._api_v2_types import (
     SearchInput,
     SearchInputListResponse,
     SearchRequest,
+    SearchResponse,
 )
-from ._server_common import decode_base64url
+from ._server_common import InspectPydanticJSONResponse, decode_base64url
 
 LLM_SEARCH_TEMPLATE = """\
 You are a search assistant for LLM transcript analysis. A user is searching \
@@ -205,12 +206,17 @@ def create_search_router() -> APIRouter:
         items = [SEARCH_INPUT_ADAPTER.validate_json(value) for _, value in rows[:count]]
         return SearchInputListResponse(items=items)
 
-    @router.post("/transcripts/{dir}/{id}/search", summary="Search a transcript")
+    @router.post(
+        "/transcripts/{dir}/{id}/search",
+        response_model=SearchResponse,
+        response_class=InspectPydanticJSONResponse,
+        summary="Search a transcript",
+    )
     async def search(
         request: SearchRequest,
         dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         id: str = Path(description="Transcript ID"),
-    ) -> Result:
+    ) -> SearchResponse:
         """Search a transcript using grep or LLM-based search.
 
         Returns cached results if the same search was run before.
@@ -277,7 +283,7 @@ def create_search_router() -> APIRouter:
         with _search_result_store() as store:
             store.put(key, output.model_dump_json())
 
-        return output
+        return SearchResponse(id=sid, result=output)
 
     @router.get(
         "/transcripts/{dir}/{id}/searches/{search_id}",

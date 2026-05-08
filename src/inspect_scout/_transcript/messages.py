@@ -87,7 +87,7 @@ async def segment_messages(
     if isinstance(source, TimelineSpan):
         messages = span_messages(source, compaction=compaction)
     elif source and isinstance(source[0], ChatMessageBase):
-        messages = list(source)  # type: ignore[arg-type,unused-ignore]
+        messages = list(source)
     elif source:
         messages = span_messages(source, compaction=compaction)  # type: ignore[arg-type]
     else:

@@ -49,8 +49,7 @@
       "event": "branch",
       "uuid": "b-001",
       "span_id": "branch-span",
-      "from_span": "agent-a",
-      "from_message": "nonexistent-msg",
+      "from_anchor": "nonexistent-msg",
       "timestamp": "2024-01-01T00:00:04Z"
     },
     {

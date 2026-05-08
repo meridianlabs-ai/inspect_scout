@@ -817,47 +817,222 @@ async def test_timeline_messages_from_timeline_object() -> None:
 
 
 @pytest.mark.anyio
-async def test_timeline_messages_depth_1() -> None:
-    """depth=1 processes only the root span, not children."""
-    child = _make_timeline_span(
-        "Child",
-        events=[_make_model_event(input=[_user2], output_content="From child")],
+async def test_timeline_messages_depth_1_skips_synthetic_root() -> None:
+    """depth=1 yields the outermost scannable spans, not the synthetic root.
+
+    The synthetic root from ``timeline_build`` has no direct ModelEvents
+    (events live in agent children). depth=1 must reach the first
+    scannable level under that root rather than yielding nothing.
+    """
+    a = _make_timeline_span(
+        "A",
+        events=[_make_model_event(input=[_user1], output_content="From A")],
     )
-    root = _make_timeline_span(
-        "Root",
-        events=[_make_model_event(input=[_user1], output_content="From root")],
-        children=[child],
+    b = _make_timeline_span(
+        "B",
+        events=[_make_model_event(input=[_user2], output_content="From B")],
     )
+    root = _make_timeline_span("Root", children=[a, b])  # no direct events
+
+    results = await _collect_timeline(root, depth=1)
+
+    assert len(results) == 2
+    assert results[0].span is a
+    assert results[1].span is b
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_2_with_synthetic_root() -> None:
+    """depth=2 reaches scannable grandchildren under a synthetic root."""
+    e = _make_timeline_span(
+        "E",
+        events=[_make_model_event(input=[_user1], output_content="From E")],
+    )
+    c = _make_timeline_span(
+        "C",
+        events=[_make_model_event(input=[_user2], output_content="From C")],
+    )
+    d = _make_timeline_span(
+        "D",
+        events=[_make_model_event(input=[_user3], output_content="From D")],
+        children=[e],
+    )
+    a = _make_timeline_span(
+        "A",
+        events=[_make_model_event(input=[_user1], output_content="From A")],
+        children=[c],
+    )
+    b = _make_timeline_span(
+        "B",
+        events=[_make_model_event(input=[_user2], output_content="From B")],
+        children=[d],
+    )
+    root = _make_timeline_span("Root", children=[a, b])  # no direct events
+
+    results = await _collect_timeline(root, depth=2)
+    assert [r.span.name for r in results] == ["a", "c", "b", "d"]
+
+    results_d1 = await _collect_timeline(root, depth=1)
+    assert [r.span.name for r in results_d1] == ["a", "b"]
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_skips_pure_container() -> None:
+    """A non-scannable container span does not consume a depth level."""
+    agent = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="From agent")],
+    )
+    container = _make_timeline_span("Container", children=[agent])  # no events
+    root = _make_timeline_span("Root", children=[container])  # no events
 
     results = await _collect_timeline(root, depth=1)
 
     assert len(results) == 1
-    assert results[0].span is root
+    assert results[0].span is agent
 
 
 @pytest.mark.anyio
-async def test_timeline_messages_depth_2() -> None:
-    """depth=2 processes root + immediate children, not grandchildren."""
-    grandchild = _make_timeline_span(
-        "Grandchild",
-        events=[_make_model_event(input=[_user3], output_content="From grandchild")],
+async def test_timeline_messages_depth_with_utility_in_chain() -> None:
+    """Utility spans are transparent for depth counting (and yielding)."""
+    agent = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user2], output_content="From agent")],
     )
-    child = _make_timeline_span(
-        "Child",
-        events=[_make_model_event(input=[_user2], output_content="From child")],
-        children=[grandchild],
+    util = _make_timeline_span(
+        "Util",
+        events=[_make_model_event(input=[_user1], output_content="From util")],
+        children=[agent],
+        utility=True,
     )
-    root = _make_timeline_span(
-        "Root",
-        events=[_make_model_event(input=[_user1], output_content="From root")],
-        children=[child],
-    )
+    root = _make_timeline_span("Root", children=[util])  # no events
 
-    results = await _collect_timeline(root, depth=2)
+    results = await _collect_timeline(root, depth=1)
 
-    assert len(results) == 2
-    assert results[0].span is root
-    assert results[1].span is child
+    assert len(results) == 1
+    assert results[0].span is agent
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_zero_yields_nothing() -> None:
+    """depth=0 yields nothing even when scannable spans exist."""
+    agent = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], output_content="From agent")],
+    )
+    root = _make_timeline_span("Root", children=[agent])
+
+    results = await _collect_timeline(root, depth=0)
+
+    assert results == []
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_unlimited_matches_none() -> None:
+    """A sufficiently large explicit depth matches depth=None."""
+    e = _make_timeline_span(
+        "E",
+        events=[_make_model_event(input=[_user1], output_content="From E")],
+    )
+    d = _make_timeline_span(
+        "D",
+        events=[_make_model_event(input=[_user3], output_content="From D")],
+        children=[e],
+    )
+    b = _make_timeline_span(
+        "B",
+        events=[_make_model_event(input=[_user2], output_content="From B")],
+        children=[d],
+    )
+    root = _make_timeline_span("Root", children=[b])
+
+    none_results = await _collect_timeline(root, depth=None)
+    big_results = await _collect_timeline(root, depth=99)
+
+    assert [r.span.name for r in none_results] == [r.span.name for r in big_results]
+    assert [r.span.name for r in none_results] == ["b", "d", "e"]
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_nested_agents() -> None:
+    """Three-level realistic nesting (top → sub → tool agent)."""
+    tool_agent = _make_timeline_span(
+        "ToolAgent",
+        events=[_make_model_event(input=[_user1], output_content="From tool")],
+    )
+    sub_agent = _make_timeline_span(
+        "SubAgent",
+        events=[_make_model_event(input=[_user2], output_content="From sub")],
+        children=[tool_agent],
+    )
+    top_agent = _make_timeline_span(
+        "TopAgent",
+        events=[_make_model_event(input=[_user3], output_content="From top")],
+        children=[sub_agent],
+    )
+    root = _make_timeline_span("Root", children=[top_agent])  # no events
+
+    d1 = await _collect_timeline(root, depth=1)
+    d2 = await _collect_timeline(root, depth=2)
+    d3 = await _collect_timeline(root, depth=3)
+
+    assert [r.span.name for r in d1] == ["topagent"]
+    assert [r.span.name for r in d2] == ["topagent", "subagent"]
+    assert [r.span.name for r in d3] == ["topagent", "subagent", "toolagent"]
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_does_not_descend_below_yielded_span() -> None:
+    """When a span is yielded at the depth limit, its subtree is not walked."""
+    c = _make_timeline_span(
+        "C",
+        events=[_make_model_event(input=[_user1], output_content="From C")],
+    )
+    b = _make_timeline_span(
+        "B",
+        events=[_make_model_event(input=[_user2], output_content="From B")],
+        children=[c],
+    )
+    a = _make_timeline_span(
+        "A",
+        events=[_make_model_event(input=[_user3], output_content="From A")],
+        children=[b],
+    )
+    root = _make_timeline_span("Root", children=[a])
+
+    results = await _collect_timeline(root, depth=1)
+
+    assert [r.span.name for r in results] == ["a"]
+
+
+@pytest.mark.anyio
+async def test_timeline_messages_depth_branches_independent() -> None:
+    """Depth applies per-branch, not as a global count."""
+    a1 = _make_timeline_span(
+        "A1",
+        events=[_make_model_event(input=[_user1], output_content="From A1")],
+    )
+    b1 = _make_timeline_span(
+        "B1",
+        events=[_make_model_event(input=[_user2], output_content="From B1")],
+    )
+    a = _make_timeline_span(
+        "A",
+        events=[_make_model_event(input=[_user3], output_content="From A")],
+        children=[a1],
+    )
+    b = _make_timeline_span(
+        "B",
+        events=[_make_model_event(input=[_user1], output_content="From B")],
+        children=[b1],
+    )
+    root = _make_timeline_span("Root", children=[a, b])
+
+    d1 = await _collect_timeline(root, depth=1)
+    d2 = await _collect_timeline(root, depth=2)
+
+    assert [r.span.name for r in d1] == ["a", "b"]
+    assert [r.span.name for r in d2] == ["a", "a1", "b", "b1"]
 
 
 # -- transcript_messages tests --

@@ -153,9 +153,10 @@ class TestSearchEndpoint:
 
             assert create_response.status_code == 200
             created = create_response.json()
-            assert created["value"] == 1
-            assert created["explanation"] == "Matched one message."
-            assert created["references"] == []
+            created_result = created["result"]
+            assert created_result["value"] == 1
+            assert created_result["explanation"] == "Matched one message."
+            assert created_result["references"] == []
             assert grep_calls == [
                 {
                     "query": "needle",
@@ -170,6 +171,7 @@ class TestSearchEndpoint:
             listed = list_response.json()["items"]
             assert len(listed) == 1
             search_id = listed[0]["search_id"]
+            assert created["id"] == search_id
             assert listed[0] == {
                 "created_at": listed[0]["created_at"],
                 "ignore_case": False,
@@ -184,17 +186,17 @@ class TestSearchEndpoint:
                 f"/transcripts/{encoded_dir}/t001/searches/{search_id}?messages=all"
             )
             assert get_response.status_code == 200
-            assert get_response.json() == created
+            assert get_response.json() == created_result
 
             missing_response = client.get(
                 f"/transcripts/{encoded_dir}/t001/searches/{search_id}?events=all"
             )
             assert missing_response.status_code == 404
 
-    def test_llm_search_uses_cache(
+    def test_llm_search_always_runs(
         self, client: TestClient, transcript_location: Path, tmp_path: Path
     ) -> None:
-        """Identical LLM searches return the cached saved search."""
+        """Identical LLM POST searches each run the scanner and produce a new saved search."""
         llm_calls: list[dict[str, str | None]] = []
 
         def fake_llm_scanner(
@@ -254,18 +256,22 @@ class TestSearchEndpoint:
         assert second_response.status_code == 200
         first = first_response.json()
         second = second_response.json()
-        assert first == second
-        assert first["value"] == "The assistant says the needle is in the haystack."
-        assert first["explanation"] == "LLM summary."
-        assert first["references"] == []
-        assert llm_calls == [
-            {
-                "question": "Where is the needle?",
-                "answer": "string",
-                "template": LLM_SEARCH_TEMPLATE,
-                "model": "openai/gpt-5.4-mini",
-            }
-        ]
+        assert first["id"] == second["id"]
+        assert first["result"]["uuid"] != second["result"]["uuid"]
+        for response in (first, second):
+            result = response["result"]
+            assert (
+                result["value"] == "The assistant says the needle is in the haystack."
+            )
+            assert result["explanation"] == "LLM summary."
+            assert result["references"] == []
+        expected_call = {
+            "question": "Where is the needle?",
+            "answer": "string",
+            "template": LLM_SEARCH_TEMPLATE,
+            "model": "openai/gpt-5.4-mini",
+        }
+        assert llm_calls == [expected_call, expected_call]
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),

@@ -976,9 +976,7 @@ async def _scan_one(
                 result = await job.scanner(loader_result)
 
             # handle lists
-            final_result = (
-                as_resultset(result) if isinstance(result, list) else result
-            )
+            final_result = as_resultset(result) if isinstance(result, list) else result
 
             # do validation if we have one for this scanner/id
             if validation and job.scanner_name in validation:

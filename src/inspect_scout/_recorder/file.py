@@ -115,9 +115,7 @@ class FileRecorder(ScanRecorder):
         # fresh start: clear any stale buffer state from a prior scan that
         # used the same scan_location (the buffer dir is deterministic per
         # scan_location, so unrelated remnants would otherwise carry over)
-        cleanup_buffer_dir(
-            RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
-        )
+        cleanup_buffer_dir(RecorderBuffer.buffer_dir(self._scan_dir.as_posix()))
 
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),

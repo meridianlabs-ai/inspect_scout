@@ -362,7 +362,7 @@ def scanner_table(
     # set of paths whose batches need transcript_id filtering against
     # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
     extra_paths_set: set[str] = set(extra_paths)
-    buffer_tid_array: pa.Array | None = (
+    buffer_tid_array: pa.Array[Any] | None = (
         pa.array(buffer_tids, type=pa.string()) if buffer_tids else None
     )
 

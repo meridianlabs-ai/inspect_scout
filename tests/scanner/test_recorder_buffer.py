@@ -204,8 +204,7 @@ async def test_scanner_table_dedupes_extra_inputs_against_buffer(
     sample_results: list[ResultReport],
     tmp_path: Path,
 ) -> None:
-    """`scanner_table` drops `extra_inputs` rows whose transcript_id is
-    already covered by a buffer file.
+    """Drop `extra_inputs` rows whose transcript_id is in the buffer.
 
     Otherwise, calling `scanner_table` against a buffer that wasn't
     cleaned up after a prior compaction (e.g. inspect_ai's eval_set
@@ -214,7 +213,6 @@ async def test_scanner_table_dedupes_extra_inputs_against_buffer(
     both — once from the buffer file, once from the prior compacted.
     """
     from upath import UPath
-    from inspect_ai.model import ChatMessageUser
 
     scanner_name = "test_scanner"
     # write two transcripts to the buffer

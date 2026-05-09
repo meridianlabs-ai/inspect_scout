@@ -341,6 +341,7 @@ class GoogleProvider:
 
         request = data["request"]
         response = data["response"]
+        error = data.get("error")
         # For streaming, we accumulate parts across chunks
         accumulated_parts = data.get("accumulated_parts")
 
@@ -427,6 +428,7 @@ class GoogleProvider:
             tool_choice=tool_choice if tool_choice else "auto",
             config=config,
             output=output,
+            error=repr(error) if error is not None else None,
         )
 
 
@@ -604,12 +606,20 @@ class GoogleStreamCapture:
         self._accumulator = GoogleStreamAccumulator()
 
     def __iter__(self) -> Iterator[Any]:
-        for chunk in self._stream:
-            self._accumulator.accumulate_chunk(chunk)
-            yield chunk
-
-        if self._accumulator.last_chunk is not None:
-            self._emit(self._accumulator.get_response_data(self._request_kwargs))
+        error: Exception | None = None
+        try:
+            for chunk in self._stream:
+                self._accumulator.accumulate_chunk(chunk)
+                yield chunk
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if self._accumulator.last_chunk is not None:
+                data = self._accumulator.get_response_data(self._request_kwargs)
+                if error is not None:
+                    data["error"] = error
+                self._emit(data)
 
 
 class GoogleAsyncStreamCapture:
@@ -627,9 +637,17 @@ class GoogleAsyncStreamCapture:
         self._accumulator = GoogleStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
-        async for chunk in self._stream:
-            self._accumulator.accumulate_chunk(chunk)
-            yield chunk
-
-        if self._accumulator.last_chunk is not None:
-            self._emit(self._accumulator.get_response_data(self._request_kwargs))
+        error: Exception | None = None
+        try:
+            async for chunk in self._stream:
+                self._accumulator.accumulate_chunk(chunk)
+                yield chunk
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if self._accumulator.last_chunk is not None:
+                data = self._accumulator.get_response_data(self._request_kwargs)
+                if error is not None:
+                    data["error"] = error
+                self._emit(data)

@@ -3,12 +3,32 @@
 from typing import Any, AsyncIterator, Iterator
 
 from inspect_ai.event import Event, ModelEvent
+from inspect_ai.model import StopReason
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_choice import ToolChoice
 from inspect_ai.tool._tool_info import ToolInfo
 from wrapt import ObjectProxy  # type: ignore[import-untyped]
 
 from .provider import ObserveEmit
+
+
+def _stop_reason_from_openai_error(error: Exception) -> StopReason | None:
+    """Map an OpenAI ``APIError`` raised mid-stream to an inspect ``StopReason``.
+
+    Mirrors the error-code detection in
+    ``inspect_ai.model._openai.openai_handle_bad_request``.
+    """
+    code = getattr(error, "code", None)
+    if code in (
+        "invalid_prompt",
+        "content_policy_violation",
+        "content_filter",
+        "cyber_policy",
+    ):
+        return "content_filter"
+    if code == "context_length_exceeded":
+        return "model_length"
+    return None
 
 
 class OpenAIProvider:
@@ -139,11 +159,21 @@ class OpenAIProvider:
         request = data["request"]
         response = data["response"]
         api = data.get("api", "completions")
+        error = data.get("error")
 
         if api == "responses":
-            return await self._build_responses_event(request, response)
+            event = await self._build_responses_event(request, response)
         else:
-            return await self._build_completions_event(request, response)
+            event = await self._build_completions_event(request, response)
+
+        if error is not None:
+            event.error = repr(error)
+            stop_reason = _stop_reason_from_openai_error(error)
+            if stop_reason is not None:
+                for choice in event.output.choices:
+                    if choice.stop_reason == "unknown":
+                        choice.stop_reason = stop_reason
+        return event
 
     async def _build_completions_event(
         self, request: dict[str, Any], response: Any
@@ -160,7 +190,21 @@ class OpenAIProvider:
             request.get("messages", []),
             model=request.get("model"),
         )
+
+        # A stream that errored mid-way has choices with finish_reason=None,
+        # which ChatCompletion.model_validate rejects. Fill a placeholder so the
+        # converter runs, then mark the resulting stop_reason as 'unknown'.
+        unfinished: set[int] = set()
+        if isinstance(response, dict):
+            for choice in response.get("choices", []):
+                if choice.get("finish_reason") is None:
+                    unfinished.add(choice.get("index", 0))
+                    choice["finish_reason"] = "stop"
+
         output = await model_output_from_openai(response)
+        for i in unfinished:
+            if i < len(output.choices):
+                output.choices[i].stop_reason = "unknown"
 
         tools: list[ToolInfo] = []
         tool_choice: ToolChoice | None = None
@@ -359,17 +403,23 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_accumulator = OpenAIChatStreamAccumulator()
 
     def __iter__(self) -> Iterator[Any]:
-        for chunk in self.__wrapped__:
-            self._self_accumulator.accumulate_chunk(chunk)
-            yield chunk
-
-        self._self_emit(
-            {
+        error: Exception | None = None
+        try:
+            for chunk in self.__wrapped__:
+                self._self_accumulator.accumulate_chunk(chunk)
+                yield chunk
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            data: dict[str, Any] = {
                 "request": self._self_request_kwargs,
                 "response": self._self_accumulator.get_response(),
                 "api": "completions",
             }
-        )
+            if error is not None:
+                data["error"] = error
+            self._self_emit(data)
 
 
 class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
@@ -387,17 +437,23 @@ class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_accumulator = OpenAIChatStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
-        async for chunk in self.__wrapped__:
-            self._self_accumulator.accumulate_chunk(chunk)
-            yield chunk
-
-        self._self_emit(
-            {
+        error: Exception | None = None
+        try:
+            async for chunk in self.__wrapped__:
+                self._self_accumulator.accumulate_chunk(chunk)
+                yield chunk
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            data: dict[str, Any] = {
                 "request": self._self_request_kwargs,
                 "response": self._self_accumulator.get_response(),
                 "api": "completions",
             }
-        )
+            if error is not None:
+                data["error"] = error
+            self._self_emit(data)
 
 
 class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
@@ -412,28 +468,31 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_complete_response: Any = None
+        self._self_response_snapshot: Any = None
 
     def __iter__(self) -> Iterator[Any]:
-        for event in self.__wrapped__:
-            # Capture response from completed or incomplete events
-            if hasattr(event, "type") and event.type in (
-                "response.completed",
-                "response.incomplete",
-            ):
+        error: Exception | None = None
+        try:
+            for event in self.__wrapped__:
+                # Track the latest Response snapshot from any lifecycle event
+                # (created/queued/in_progress/completed/incomplete/failed) so a
+                # mid-stream error still has something to emit.
                 if hasattr(event, "response"):
-                    self._self_complete_response = event.response
-            yield event
-
-        # Stream complete - emit if we captured a response
-        if self._self_complete_response is not None:
-            self._self_emit(
-                {
+                    self._self_response_snapshot = event.response
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if self._self_response_snapshot is not None:
+                data: dict[str, Any] = {
                     "request": self._self_request_kwargs,
-                    "response": self._self_complete_response,
+                    "response": self._self_response_snapshot,
                     "api": "responses",
                 }
-            )
+                if error is not None:
+                    data["error"] = error
+                self._self_emit(data)
 
 
 class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
@@ -448,24 +507,28 @@ class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_complete_response: Any = None
+        self._self_response_snapshot: Any = None
 
     async def __aiter__(self) -> AsyncIterator[Any]:
-        async for event in self.__wrapped__:
-            # Capture response from completed or incomplete events
-            if hasattr(event, "type") and event.type in (
-                "response.completed",
-                "response.incomplete",
-            ):
+        error: Exception | None = None
+        try:
+            async for event in self.__wrapped__:
+                # Track the latest Response snapshot from any lifecycle event
+                # (created/queued/in_progress/completed/incomplete/failed) so a
+                # mid-stream error still has something to emit.
                 if hasattr(event, "response"):
-                    self._self_complete_response = event.response
-            yield event
-
-        if self._self_complete_response is not None:
-            self._self_emit(
-                {
+                    self._self_response_snapshot = event.response
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if self._self_response_snapshot is not None:
+                data: dict[str, Any] = {
                     "request": self._self_request_kwargs,
-                    "response": self._self_complete_response,
+                    "response": self._self_response_snapshot,
                     "api": "responses",
                 }
-            )
+                if error is not None:
+                    data["error"] = error
+                self._self_emit(data)

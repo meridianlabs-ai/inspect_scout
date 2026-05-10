@@ -1,3 +1,7 @@
+## Unreleased
+
+- Observe: Stream-capture wrappers now emit the accumulated partial response when the underlying SDK stream raises mid-iteration (e.g. `overloaded_error`, connection reset, content-filter `error` SSE event). The resulting `ModelEvent` carries the partial output with `error` set; OpenAI mid-stream errors whose `code` indicates moderation (`invalid_prompt`, `content_policy_violation`, `content_filter`, `cyber_policy`) are mapped to `stop_reason="content_filter"`.
+
 ## 0.4.32 (06 May 2026)
 
 - LLM Scanner: Redefine `depth` semantics for timeline scanning. `depth` now counts levels of *scannable* spans (top-level agents/solvers and their scannable descendants).

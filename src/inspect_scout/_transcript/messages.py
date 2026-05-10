@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Literal, cast, overload
 
 from inspect_ai._util._async import tg_collect
 from inspect_ai.event import (
@@ -87,7 +87,7 @@ async def segment_messages(
     if isinstance(source, TimelineSpan):
         messages = span_messages(source, compaction=compaction)
     elif source and isinstance(source[0], ChatMessageBase):
-        messages = list(source)  # type: ignore[arg-type]
+        messages = list(cast(list[ChatMessage], source))
     elif source:
         messages = span_messages(source, compaction=compaction)  # type: ignore[arg-type]
     else:

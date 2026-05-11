@@ -40,7 +40,8 @@ from inspect_ai.analysis._dataframe.samples.table import (
 from inspect_ai.analysis._dataframe.util import (
     verify_prerequisites as verify_df_prerequisites,
 )
-from inspect_ai.log import EvalLog, EvalSampleSummary
+from inspect_ai.event import Timeline
+from inspect_ai.log import EvalLog, EvalSample, EvalSampleSummary
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
@@ -48,6 +49,7 @@ from inspect_ai.log._recorders import recorder_type_for_location
 from inspect_ai.log._recorders.eval import EvalRecorder
 from inspect_ai.scorer import Value, value_to_float
 from inspect_ai.util import trace_action
+from pydantic import JsonValue
 from typing_extensions import override
 
 from .._query import Query
@@ -671,7 +673,7 @@ def _compute_cache_key_from_logs(logs: Logs) -> str:
     return hashlib.sha256(key_data.encode()).hexdigest()
 
 
-def sample_score(sample: EvalSampleSummary) -> Value | None:
+def sample_score(sample: EvalSample | EvalSampleSummary) -> Value | None:
     if not sample.scores:
         return None
 
@@ -685,7 +687,7 @@ def sample_score(sample: EvalSampleSummary) -> Value | None:
         return score.value
 
 
-def sample_success(sample: EvalSampleSummary) -> bool | None:
+def sample_success(sample: EvalSample | EvalSampleSummary) -> bool | None:
     if not sample.scores:
         return None
 
@@ -705,6 +707,80 @@ def sample_success(sample: EvalSampleSummary) -> bool | None:
     # lists/dicts get None
     else:
         return None
+
+
+def transcript_info_from_eval_sample(
+    eval_sample: EvalSample,
+    *,
+    eval_id: str,
+    log_location: str | None,
+    model: str | None,
+) -> TranscriptInfo:
+    """Build a `TranscriptInfo` from a completed `EvalSample`.
+
+    Companion to the offline parquet reader's `TranscriptInfo` construction.
+    Used by inspect_ai's per-sample scan dispatch (where the EvalSample is
+    available in-memory immediately after the sample completes) so that
+    transcripts originating from a live eval expose the same column set
+    to downstream filters as transcripts read back from an eval log.
+
+    `log_location` is the absolute or relative path the parent eval log
+    will be written to; `eval_id` is the parent eval's id; `model` is
+    the *eval* model (scanners run with their own model via
+    `init_scan_model_context`).
+    """
+    from inspect_ai.analysis._dataframe.samples.extract import auto_sample_id
+
+    return TranscriptInfo(
+        transcript_id=eval_sample.uuid or auto_sample_id(eval_id, eval_sample),
+        source_type=EVAL_LOG_SOURCE_TYPE,
+        source_id=eval_id,
+        source_uri=log_location,
+        date=eval_sample.completed_at or eval_sample.started_at,
+        task_id=str(eval_sample.id),
+        task_repeat=eval_sample.epoch,
+        model=model,
+        score=cast(JsonValue, sample_score(eval_sample)),
+        success=sample_success(eval_sample),
+        message_count=len(eval_sample.messages),
+        total_time=eval_sample.total_time,
+        error=eval_sample.error.message if eval_sample.error is not None else None,
+        metadata=dict(eval_sample.metadata),
+    )
+
+
+def transcript_from_eval_sample(
+    eval_sample: EvalSample,
+    *,
+    eval_id: str,
+    log_location: str | None,
+    model: str | None,
+) -> Transcript:
+    """Build a `Transcript` from a completed `EvalSample`.
+
+    Wraps `transcript_info_from_eval_sample` and attaches `messages` +
+    `events` + `timelines` (synthesizing a timeline from events when
+    none is stored).
+    """
+    from inspect_ai.event import timeline_build
+
+    info = transcript_info_from_eval_sample(
+        eval_sample,
+        eval_id=eval_id,
+        log_location=log_location,
+        model=model,
+    )
+
+    timelines: list[Timeline] = list(eval_sample.timelines or [])
+    if not timelines and eval_sample.events:
+        timelines = [timeline_build(eval_sample.events)]
+
+    return Transcript.model_construct(
+        **info.model_dump(),
+        messages=list(eval_sample.messages),
+        events=list(eval_sample.events),
+        timelines=timelines,
+    )
 
 
 # Standard transcript column extractors

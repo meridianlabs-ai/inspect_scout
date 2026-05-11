@@ -203,10 +203,23 @@ class ScanResultsDB(Status):
 
 class ScanRecorder(abc.ABC):
     @abc.abstractmethod
-    async def init(self, spec: ScanSpec, scans_location: str) -> None: ...
+    async def init(
+        self,
+        spec: ScanSpec,
+        scans_location: str,
+    ) -> None: ...
 
     @abc.abstractmethod
-    async def resume(self, scan_location: str) -> ScanSpec: ...
+    async def resume(
+        self,
+        scan_location: str,
+    ) -> ScanSpec: ...
+
+    @abc.abstractmethod
+    async def attach(
+        self,
+        scan_location: str,
+    ) -> ScanSpec: ...
 
     @abc.abstractmethod
     async def location(self) -> str: ...

@@ -1,9 +1,11 @@
 import json
 import os
 import shutil
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Sequence, Set, TypeVar, cast
 
+import anyio
 import jsonlines
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -25,6 +27,40 @@ from .._transcript.util import LazyJSONDict
 
 SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
+
+
+# Per-buffer-dir in-process state. Multiple `RecorderBuffer` instances
+# targeting the same buffer dir (e.g. inspect_ai's eval_set scans samples
+# concurrently, each via its own ephemeral `FileRecorder`) share both the
+# lock and the live `Summary`. Mutating the shared `Summary` under the
+# lock and persisting it directly (without re-reading disk) keeps the
+# read-modify-write race-free while avoiding a disk round-trip per call.
+@dataclass
+class _BufferState:
+    lock: anyio.Lock
+    summary: Summary | None = None
+
+
+_buffer_states: dict[str, _BufferState] = {}
+
+
+def _buffer_state(buffer_dir: UPath) -> _BufferState:
+    key = buffer_dir.as_posix()
+    state = _buffer_states.get(key)
+    if state is None:
+        state = _BufferState(lock=anyio.Lock())
+        _buffer_states[key] = state
+    return state
+
+
+def _invalidate_buffer_state(buffer_dir: UPath) -> None:
+    """Drop the cached `_BufferState` for `buffer_dir`.
+
+    The next buffer attached to this dir then re-reads `_summary.json`
+    from disk. Called when external code mutates buffer-dir contents
+    out-of-band (e.g. `cleanup_buffer_dir`).
+    """
+    _buffer_states.pop(buffer_dir.as_posix(), None)
 
 
 class RecorderBuffer:
@@ -56,31 +92,41 @@ class RecorderBuffer:
         spec: ScanSpec,
         *,
         pool_dedup: bool = True,
-        reset: bool = False,
     ):
+        """Initialize a buffer attached to `scan_location`.
+
+        This is purely a passive constructor: it reads existing buffer state
+        from disk or creates fresh files only if they don't exist. Mode-
+        specific setup (clearing for a fresh scan, truncating errors for a
+        retry-resume, preserving errors for a continuation) is the caller's
+        responsibility — see `FileRecorder.init` / `resume` / `attach`.
+
+        The in-memory `Summary` is shared via `_buffer_state` across every
+        `RecorderBuffer` constructed for the same buffer dir in this
+        process, so concurrent ephemeral instances see each other's
+        updates without re-reading `_summary.json` from disk on every
+        record.
+        """
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
         self._pool_dedup = pool_dedup
 
-        # establish scan summary
-        scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
-        if reset or not scan_summary_file.exists():
-            self._scan_summary = Summary(
-                complete=False, scanners=list(spec.scanners.keys())
-            )
-            with open(scan_summary_file.as_posix(), "w") as f:
-                f.write(self._scan_summary.model_dump_json(indent=2))
-        else:
-            self._scan_summary = read_scan_summary(self._buffer_dir, spec)
+        self._state = _buffer_state(self._buffer_dir)
+        if self._state.summary is None:
+            # first attach to this buffer dir in-process — populate the
+            # shared `Summary` from disk, or create + persist a fresh one
+            scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
+            if scan_summary_file.exists():
+                self._state.summary = read_scan_summary(self._buffer_dir, spec)
+            else:
+                self._state.summary = Summary(
+                    complete=False, scanners=list(spec.scanners.keys())
+                )
+                with open(scan_summary_file.as_posix(), "w") as f:
+                    f.write(self._state.summary.model_dump_json(indent=2))
 
-        # Always truncate errors. On resume, previously-errored transcripts are
-        # re-processed (is_recorded returns False for errored parquets), so stale
-        # error entries must not persist -- they would incorrectly mark the scan
-        # as incomplete even if the re-run succeeds.
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
-        with self._error_file.open("w"):
-            pass
 
     async def record(
         self,
@@ -195,12 +241,17 @@ class RecorderBuffer:
         )
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
-        # update and write summary
-        self._scan_summary._report(transcript, scanner, results, metrics)
-        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(self._scan_summary.model_dump_json(indent=2))
+        # update and persist summary. the shared in-memory `Summary` is
+        # the source of truth; the lock serializes mutation + write so
+        # concurrent buffer instances against this buffer dir don't lose
+        # updates and never observe a partial state on disk.
+        async with self._state.lock:
+            assert self._state.summary is not None  # set in __init__
+            self._state.summary._report(transcript, scanner, results, metrics)
+            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+                f.write(self._state.summary.model_dump_json(indent=2))
 
-        # record errors
+        # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
             if result.error is not None:
                 with open(str(self._error_file), "at") as f:
@@ -211,10 +262,11 @@ class RecorderBuffer:
         scanner: str,
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        # update and write summary
-        self._scan_summary._report_metrics(scanner, metrics)
-        with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-            f.write(self._scan_summary.model_dump_json(indent=2))
+        async with self._state.lock:
+            assert self._state.summary is not None  # set in __init__
+            self._state.summary._report_metrics(scanner, metrics)
+            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
+                f.write(self._state.summary.model_dump_json(indent=2))
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
@@ -233,7 +285,8 @@ class RecorderBuffer:
         return read_scan_errors(str(self._error_file))
 
     def scan_summary(self) -> Summary:
-        return self._scan_summary
+        assert self._state.summary is not None  # set in __init__
+        return self._state.summary
 
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""
@@ -263,7 +316,12 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
             return None
 
 
-def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
+def scanner_table(
+    buffer_dir: UPath,
+    scanner: str,
+    *,
+    extra_inputs: list[UPath] | None = None,
+) -> bytes | None:
     import pyarrow as pa
     import pyarrow.dataset as ds
     import pyarrow.parquet as pq
@@ -286,15 +344,44 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
     MAX_BYTES: Final[int] = 100_000_000
     DEFAULT_BATCH_ROWS: Final[int] = 1_000
 
-    # resolve input dir
+    # resolve input paths: the per-transcript buffer dir, plus any extra
+    # parquets to merge in (e.g. the previously compacted output from an
+    # earlier sync, so multi-call resume retains prior rows even after
+    # the buffer is cleaned). pyarrow's ds.dataset(list) requires uniform
+    # types in the list, so we expand the directory to its parquet files.
+    #
+    # The buffer's per-transcript file is named `<transcript_id>.parquet`
+    # and is authoritative for that transcript_id: any rows for the same
+    # transcript_id in `extra_inputs` (a previously-compacted output that
+    # was built from an earlier copy of these same buffer files) are
+    # duplicates and must be filtered out — otherwise rows double-count
+    # when `sync` runs more than once without clearing the buffer between
+    # calls (e.g. an `eval_set` resume cycle where `complete=False`).
     sdir = buffer_dir / f"scanner={_sanitize_component(scanner)}"
-    if not sdir.exists():
-        # we avoid creating a schema-less empty Parquet when there is no dataset at all.
-        # If you *must* emit a file even when the directory is missing, you need a known schema.
+    buffer_inputs: list[str] = []
+    buffer_tids: list[str] = []
+    if sdir.exists():
+        for p in sdir.glob("*.parquet"):
+            buffer_inputs.append(str(p))
+            buffer_tids.append(p.stem)
+    extra_paths: list[str] = (
+        [p.as_posix() for p in extra_inputs if p.exists()] if extra_inputs else []
+    )
+    inputs = buffer_inputs + extra_paths
+    if not inputs:
+        # avoid creating a schema-less empty parquet when there's nothing to
+        # compact. If you *must* emit a file in that case, you need a known
+        # schema.
         return None
+    # set of paths whose batches need transcript_id filtering against
+    # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
+    extra_paths_set: set[str] = set(extra_paths)
+    buffer_tid_array: pa.Array[Any] | None = (
+        pa.array(buffer_tids, type=pa.string()) if buffer_tids else None
+    )
 
     # build dataset
-    dataset: ds.Dataset = ds.dataset(str(sdir), format="parquet")
+    dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
 
     # discover the unified schema up-front. This ensures column order/types are stable.
     # if there are absolutely no fragments under sdir, accessing .schema may raise.
@@ -346,6 +433,9 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
     # iterate materialized batches; to keep memory in check we use a small batch_size.
     # We iterate fragments and manually cast to handle schema inconsistencies
     for fragment in dataset.get_fragments():
+        # batches from `extra_inputs` get filtered against buffer_tids
+        # so a transcript represented in the buffer doesn't double-count
+        is_extra = fragment.path in extra_paths_set
         for batch in fragment.to_batches(
             batch_size=DEFAULT_BATCH_ROWS,
             use_threads=False,
@@ -366,6 +456,16 @@ def scanner_table(buffer_dir: UPath, scanner: str) -> bytes | None:
                 batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
             except Exception as e:
                 raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
+
+            # drop rows whose transcript_id is already covered by a
+            # buffer file (the buffer is authoritative for those tids)
+            if is_extra and buffer_tid_array is not None:
+                mask = pc.invert(
+                    pc.is_in(batch.column("transcript_id"), value_set=buffer_tid_array)
+                )
+                batch = batch.filter(mask)
+                if batch.num_rows == 0:
+                    continue
 
             size = batch.nbytes
             if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
@@ -391,6 +491,9 @@ def cleanup_buffer_dir(buffer_dir: UPath) -> None:
         shutil.rmtree(buffer_dir.as_posix(), ignore_errors=True)
     except Exception:
         pass
+    # drop the in-process shared `_BufferState` so a future buffer for
+    # this dir re-reads disk instead of keeping stale `Summary` state
+    _invalidate_buffer_state(buffer_dir)
 
 
 def _sanitize_component(name: str) -> str:

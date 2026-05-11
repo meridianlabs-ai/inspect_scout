@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Counter,
     Sequence,
+    TypeAlias,
     TypedDict,
     TypeVar,
     cast,
@@ -48,6 +49,14 @@ from inspect_scout._validation.validation import validation_set
 from ._concurrency import _mp_common
 from ._scanner.scanner import Scanner, scanner_create
 from ._transcript.transcripts import Transcripts
+
+Scanners: TypeAlias = (
+    Sequence["Scanner[Any] | tuple[str, Scanner[Any]]"]
+    | dict[str, "Scanner[Any]"]
+    | "ScanJob"
+    | ScanJobConfig
+)
+"""Argument shape accepted by `scan`/`scan_async` for the `scanners` parameter."""
 
 
 class ScanDeprecatedArgs(TypedDict, total=False):

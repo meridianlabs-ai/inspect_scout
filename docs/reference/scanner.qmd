@@ -46,6 +46,7 @@ reference: "inspect_scout"
 ### EventType
 ### TranscriptContent
 ### RefusalError
+### Scanners
 
 ## Registration
 

@@ -128,6 +128,7 @@ class AnthropicProvider:
 
         request = data["request"]
         response = data["response"]
+        error = data.get("error")
 
         # Extract system message if present
         system_message = request.get("system")
@@ -185,6 +186,7 @@ class AnthropicProvider:
             tool_choice=tool_choice if tool_choice else "auto",
             config=config,
             output=output,
+            error=repr(error) if error is not None else None,
         )
 
 
@@ -312,16 +314,22 @@ class AnthropicStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_accumulator = AnthropicStreamAccumulator()
 
     def __iter__(self) -> Iterator[Any]:
-        for event in self.__wrapped__:
-            self._self_accumulator.accumulate_event(event)
-            yield event
-
-        self._self_emit(
-            {
+        error: Exception | None = None
+        try:
+            for event in self.__wrapped__:
+                self._self_accumulator.accumulate_event(event)
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            data: dict[str, Any] = {
                 "request": self._self_request_kwargs,
                 "response": self._self_accumulator.accumulated,
             }
-        )
+            if error is not None:
+                data["error"] = error
+            self._self_emit(data)
 
 
 class AnthropicAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
@@ -339,16 +347,22 @@ class AnthropicAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_accumulator = AnthropicStreamAccumulator()
 
     async def __aiter__(self) -> AsyncIterator[Any]:
-        async for event in self.__wrapped__:
-            self._self_accumulator.accumulate_event(event)
-            yield event
-
-        self._self_emit(
-            {
+        error: Exception | None = None
+        try:
+            async for event in self.__wrapped__:
+                self._self_accumulator.accumulate_event(event)
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            data: dict[str, Any] = {
                 "request": self._self_request_kwargs,
                 "response": self._self_accumulator.accumulated,
             }
-        )
+            if error is not None:
+                data["error"] = error
+            self._self_emit(data)
 
 
 class AnthropicStreamManagerCapture(ObjectProxy):  # type: ignore[misc]
@@ -386,38 +400,62 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_final_message: Any = None
+        self._self_emitted: bool = False
 
-    def _emit_if_needed(self, message: Any) -> None:
-        """Emit the message if not already emitted."""
-        if self._self_final_message is None:
-            self._self_final_message = message
-            self._self_emit(
-                {
-                    "request": self._self_request_kwargs,
-                    "response": message,
-                }
-            )
+    def _emit_if_needed(self, message: Any, error: Exception | None = None) -> None:
+        """Emit once with the given message and optional error."""
+        if self._self_emitted:
+            return
+        self._self_emitted = True
+        data: dict[str, Any] = {
+            "request": self._self_request_kwargs,
+            "response": message,
+        }
+        if error is not None:
+            data["error"] = error
+        self._self_emit(data)
+
+    def _snapshot(self) -> Any:
+        """Return the SDK's partial message snapshot, if exposed."""
+        return getattr(self.__wrapped__, "current_message_snapshot", None)
 
     def __iter__(self) -> Iterator[Any]:
-        for event in self.__wrapped__:
-            yield event
-
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._emit_if_needed(self.__wrapped__.get_final_message())
+        error: Exception | None = None
+        try:
+            for event in self.__wrapped__:
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if error is not None:
+                self._emit_if_needed(self._snapshot(), error)
+            elif hasattr(self.__wrapped__, "get_final_message"):
+                self._emit_if_needed(self.__wrapped__.get_final_message())
 
     @property
     def text_stream(self) -> Iterator[str]:
         """Pass through text_stream property."""
-        for text in self.__wrapped__.text_stream:
-            yield text
-
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._emit_if_needed(self.__wrapped__.get_final_message())
+        error: Exception | None = None
+        try:
+            for text in self.__wrapped__.text_stream:
+                yield text
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if error is not None:
+                self._emit_if_needed(self._snapshot(), error)
+            elif hasattr(self.__wrapped__, "get_final_message"):
+                self._emit_if_needed(self.__wrapped__.get_final_message())
 
     def get_final_message(self) -> Any:
         """Get final message and ensure emission."""
-        message = self.__wrapped__.get_final_message()
+        try:
+            message = self.__wrapped__.get_final_message()
+        except Exception as e:
+            self._emit_if_needed(self._snapshot(), e)
+            raise
         self._emit_if_needed(message)
         return message
 
@@ -467,25 +505,38 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy):  # type: ignore[mi
         super().__init__(stream)
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
-        self._self_final_message: Any = None
+        self._self_emitted: bool = False
 
-    def _emit_if_needed(self, message: Any) -> None:
-        """Emit the message if not already emitted."""
-        if self._self_final_message is None:
-            self._self_final_message = message
-            self._self_emit(
-                {
-                    "request": self._self_request_kwargs,
-                    "response": message,
-                }
-            )
+    def _emit_if_needed(self, message: Any, error: Exception | None = None) -> None:
+        """Emit once with the given message and optional error."""
+        if self._self_emitted:
+            return
+        self._self_emitted = True
+        data: dict[str, Any] = {
+            "request": self._self_request_kwargs,
+            "response": message,
+        }
+        if error is not None:
+            data["error"] = error
+        self._self_emit(data)
+
+    def _snapshot(self) -> Any:
+        """Return the SDK's partial message snapshot, if exposed."""
+        return getattr(self.__wrapped__, "current_message_snapshot", None)
 
     async def __aiter__(self) -> AsyncIterator[Any]:
-        async for event in self.__wrapped__:
-            yield event
-
-        if hasattr(self.__wrapped__, "get_final_message"):
-            self._emit_if_needed(await self.__wrapped__.get_final_message())
+        error: Exception | None = None
+        try:
+            async for event in self.__wrapped__:
+                yield event
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            if error is not None:
+                self._emit_if_needed(self._snapshot(), error)
+            elif hasattr(self.__wrapped__, "get_final_message"):
+                self._emit_if_needed(await self.__wrapped__.get_final_message())
 
     @property
     def text_stream(self) -> AsyncIterator[str]:
@@ -493,17 +544,28 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy):  # type: ignore[mi
         parent = self
 
         async def _text_stream() -> AsyncIterator[str]:
-            async for text in parent.__wrapped__.text_stream:
-                yield text
-
-            if hasattr(parent.__wrapped__, "get_final_message"):
-                parent._emit_if_needed(await parent.__wrapped__.get_final_message())
+            error: Exception | None = None
+            try:
+                async for text in parent.__wrapped__.text_stream:
+                    yield text
+            except Exception as e:
+                error = e
+                raise
+            finally:
+                if error is not None:
+                    parent._emit_if_needed(parent._snapshot(), error)
+                elif hasattr(parent.__wrapped__, "get_final_message"):
+                    parent._emit_if_needed(await parent.__wrapped__.get_final_message())
 
         return _text_stream()
 
     async def get_final_message(self) -> Any:
         """Get final message and ensure emission."""
-        message = await self.__wrapped__.get_final_message()
+        try:
+            message = await self.__wrapped__.get_final_message()
+        except Exception as e:
+            self._emit_if_needed(self._snapshot(), e)
+            raise
         self._emit_if_needed(message)
         return message
 

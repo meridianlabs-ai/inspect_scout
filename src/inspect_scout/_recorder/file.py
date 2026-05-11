@@ -102,8 +102,6 @@ class FileRecorder(ScanRecorder):
         self,
         spec: ScanSpec,
         scans_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> None:
         # create the scan dir
         self._scan_dir = _ensure_scan_dir(UPath(scans_location), spec.scan_id)
@@ -120,7 +118,6 @@ class FileRecorder(ScanRecorder):
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
             self._scan_spec,
-            concurrent_writers=concurrent_writers,
         )
 
     async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None:
@@ -132,8 +129,6 @@ class FileRecorder(ScanRecorder):
     async def resume(
         self,
         scan_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> ScanSpec:
         """Resume an interrupted scan, retrying transcripts that errored.
 
@@ -156,15 +151,12 @@ class FileRecorder(ScanRecorder):
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
             self.scan_spec,
-            concurrent_writers=concurrent_writers,
         )
         return self._scan_spec
 
     async def attach(
         self,
         scan_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> ScanSpec:
         """Attach to an existing scan to add records for *new* transcripts.
 
@@ -182,7 +174,6 @@ class FileRecorder(ScanRecorder):
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
             self.scan_spec,
-            concurrent_writers=concurrent_writers,
         )
         return self._scan_spec
 

@@ -37,8 +37,8 @@ async def test_init_resets_summary(tmp_path: Path, scout_buffer_dir: Path) -> No
 
     rec1 = FileRecorder()
     await rec1.init(spec, scans_location)
-    rec1._scan_buffer._scan_summary.scanners["s"].scans = 10
-    rec1._scan_buffer._scan_summary.scanners["s"].results = 50
+    rec1._scan_buffer.scan_summary().scanners["s"].scans = 10
+    rec1._scan_buffer.scan_summary().scanners["s"].results = 50
 
     rec2 = FileRecorder()
     await rec2.init(spec, scans_location)
@@ -54,13 +54,13 @@ async def test_resume_preserves_summary(tmp_path: Path, scout_buffer_dir: Path) 
 
     rec1 = FileRecorder()
     await rec1.init(spec, scans_location)
-    rec1._scan_buffer._scan_summary.scanners["s"].scans = 10
-    rec1._scan_buffer._scan_summary.scanners["s"].results = 50
+    rec1._scan_buffer.scan_summary().scanners["s"].scans = 10
+    rec1._scan_buffer.scan_summary().scanners["s"].results = 50
 
     # mimic FileRecorder.sync persisting the summary into the scan dir
     summary_path = rec1.scan_dir / SCAN_SUMMARY
     with open(str(summary_path), "w") as f:
-        f.write(rec1._scan_buffer._scan_summary.model_dump_json(indent=2))
+        f.write(rec1._scan_buffer.scan_summary().model_dump_json(indent=2))
 
     # simulate post-sync(complete=True) state where the buffer was cleaned
     cleanup_buffer_dir(RecorderBuffer.buffer_dir(rec1.scan_dir.as_posix()))

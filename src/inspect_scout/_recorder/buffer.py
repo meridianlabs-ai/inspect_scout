@@ -1,9 +1,9 @@
-import contextlib
 import json
 import os
 import shutil
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, AsyncIterator, Final, Sequence, Set, TypeVar, cast
+from typing import Any, Final, Sequence, Set, TypeVar, cast
 
 import anyio
 import jsonlines
@@ -29,21 +29,38 @@ SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
 
 
-# In-process locks protecting the read-modify-write of `_summary.json` when
-# multiple ephemeral `RecorderBuffer` instances target the same buffer dir
-# (e.g. inspect_ai's eval_set scans samples concurrently). Opt-in via
-# `concurrent_writers=True`; the default keeps the existing single-writer
-# behavior unchanged.
-_summary_locks: dict[str, anyio.Lock] = {}
+# Per-buffer-dir in-process state. Multiple `RecorderBuffer` instances
+# targeting the same buffer dir (e.g. inspect_ai's eval_set scans samples
+# concurrently, each via its own ephemeral `FileRecorder`) share both the
+# lock and the live `Summary`. Mutating the shared `Summary` under the
+# lock and persisting it directly (without re-reading disk) keeps the
+# read-modify-write race-free while avoiding a disk round-trip per call.
+@dataclass
+class _BufferState:
+    lock: anyio.Lock
+    summary: Summary | None = None
 
 
-def _summary_lock(buffer_dir: UPath) -> anyio.Lock:
+_buffer_states: dict[str, _BufferState] = {}
+
+
+def _buffer_state(buffer_dir: UPath) -> _BufferState:
     key = buffer_dir.as_posix()
-    lock = _summary_locks.get(key)
-    if lock is None:
-        lock = anyio.Lock()
-        _summary_locks[key] = lock
-    return lock
+    state = _buffer_states.get(key)
+    if state is None:
+        state = _BufferState(lock=anyio.Lock())
+        _buffer_states[key] = state
+    return state
+
+
+def _invalidate_buffer_state(buffer_dir: UPath) -> None:
+    """Drop the cached `_BufferState` for `buffer_dir`.
+
+    The next buffer attached to this dir then re-reads `_summary.json`
+    from disk. Called when external code mutates buffer-dir contents
+    out-of-band (e.g. `cleanup_buffer_dir`).
+    """
+    _buffer_states.pop(buffer_dir.as_posix(), None)
 
 
 class RecorderBuffer:
@@ -75,7 +92,6 @@ class RecorderBuffer:
         spec: ScanSpec,
         *,
         pool_dedup: bool = True,
-        concurrent_writers: bool = False,
     ):
         """Initialize a buffer attached to `scan_location`.
 
@@ -84,23 +100,31 @@ class RecorderBuffer:
         specific setup (clearing for a fresh scan, truncating errors for a
         retry-resume, preserving errors for a continuation) is the caller's
         responsibility — see `FileRecorder.init` / `resume` / `attach`.
+
+        The in-memory `Summary` is shared via `_buffer_state` across every
+        `RecorderBuffer` constructed for the same buffer dir in this
+        process, so concurrent ephemeral instances see each other's
+        updates without re-reading `_summary.json` from disk on every
+        record.
         """
         self._buffer_dir = RecorderBuffer.buffer_dir(scan_location)
         self._buffer_dir.mkdir(parents=True, exist_ok=True)
         self._spec = spec
         self._pool_dedup = pool_dedup
-        self._concurrent_writers = concurrent_writers
 
-        # read summary if present, else create fresh
-        scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
-        if scan_summary_file.exists():
-            self._scan_summary = read_scan_summary(self._buffer_dir, spec)
-        else:
-            self._scan_summary = Summary(
-                complete=False, scanners=list(spec.scanners.keys())
-            )
-            with open(scan_summary_file.as_posix(), "w") as f:
-                f.write(self._scan_summary.model_dump_json(indent=2))
+        self._state = _buffer_state(self._buffer_dir)
+        if self._state.summary is None:
+            # first attach to this buffer dir in-process — populate the
+            # shared `Summary` from disk, or create + persist a fresh one
+            scan_summary_file = self._buffer_dir.joinpath(SCAN_SUMMARY)
+            if scan_summary_file.exists():
+                self._state.summary = read_scan_summary(self._buffer_dir, spec)
+            else:
+                self._state.summary = Summary(
+                    complete=False, scanners=list(spec.scanners.keys())
+                )
+                with open(scan_summary_file.as_posix(), "w") as f:
+                    f.write(self._state.summary.model_dump_json(indent=2))
 
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
 
@@ -217,16 +241,15 @@ class RecorderBuffer:
         )
         os.replace(tmp_path.as_posix(), final_path.as_posix())
 
-        # update and write summary. when concurrent_writers is set, serialize
-        # the read-modify-write so concurrent ephemeral instances don't lose
-        # updates; we re-read the on-disk summary inside the lock so this
-        # call's contribution applies on top of any peer writes.
-        async with self._summary_critical_section():
-            if self._concurrent_writers:
-                self._scan_summary = read_scan_summary(self._buffer_dir, self._spec)
-            self._scan_summary._report(transcript, scanner, results, metrics)
+        # update and persist summary. the shared in-memory `Summary` is
+        # the source of truth; the lock serializes mutation + write so
+        # concurrent buffer instances against this buffer dir don't lose
+        # updates and never observe a partial state on disk.
+        async with self._state.lock:
+            assert self._state.summary is not None  # set in __init__
+            self._state.summary._report(transcript, scanner, results, metrics)
             with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._scan_summary.model_dump_json(indent=2))
+                f.write(self._state.summary.model_dump_json(indent=2))
 
         # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
@@ -239,21 +262,11 @@ class RecorderBuffer:
         scanner: str,
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
-        # update and write summary (lock and re-read under concurrent writers)
-        async with self._summary_critical_section():
-            if self._concurrent_writers:
-                self._scan_summary = read_scan_summary(self._buffer_dir, self._spec)
-            self._scan_summary._report_metrics(scanner, metrics)
+        async with self._state.lock:
+            assert self._state.summary is not None  # set in __init__
+            self._state.summary._report_metrics(scanner, metrics)
             with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._scan_summary.model_dump_json(indent=2))
-
-    @contextlib.asynccontextmanager
-    async def _summary_critical_section(self) -> AsyncIterator[None]:
-        if self._concurrent_writers:
-            async with _summary_lock(self._buffer_dir):
-                yield
-        else:
-            yield
+                f.write(self._state.summary.model_dump_json(indent=2))
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
@@ -272,7 +285,8 @@ class RecorderBuffer:
         return read_scan_errors(str(self._error_file))
 
     def scan_summary(self) -> Summary:
-        return self._scan_summary
+        assert self._state.summary is not None  # set in __init__
+        return self._state.summary
 
     def cleanup(self) -> None:
         """Remove the buffer directory for this scan (best-effort)."""
@@ -477,6 +491,9 @@ def cleanup_buffer_dir(buffer_dir: UPath) -> None:
         shutil.rmtree(buffer_dir.as_posix(), ignore_errors=True)
     except Exception:
         pass
+    # drop the in-process shared `_BufferState` so a future buffer for
+    # this dir re-reads disk instead of keeping stale `Summary` state
+    _invalidate_buffer_state(buffer_dir)
 
 
 def _sanitize_component(name: str) -> str:

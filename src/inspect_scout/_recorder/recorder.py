@@ -207,24 +207,18 @@ class ScanRecorder(abc.ABC):
         self,
         spec: ScanSpec,
         scans_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> None: ...
 
     @abc.abstractmethod
     async def resume(
         self,
         scan_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> ScanSpec: ...
 
     @abc.abstractmethod
     async def attach(
         self,
         scan_location: str,
-        *,
-        concurrent_writers: bool = False,
     ) -> ScanSpec: ...
 
     @abc.abstractmethod

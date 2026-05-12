@@ -263,6 +263,88 @@ class TextProgressRich(TextProgress):
         self._progress.update(task_id=self._task_id, text=text, advance=1)
 
 
+def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
+    """Build the per-scanner stats table (results / errors / tokens / ...).
+
+    Exposed as a standalone helper so callers that want only the scanner
+    rundown — without `scan_panel`'s framing, footer, or resources column
+    — can compose their own renderable (e.g. inspect_ai's Textual Scan
+    tab, which already has its own app-level footer).
+
+    Columns:
+      - `scanner` (always)
+      - metric (when any scanner declares one)
+      - validation accuracy (when any scanner has validation entries)
+      - results / errors / tokens-per-scan / blank spacer / total tokens
+    """
+    theme = rich_theme()
+
+    def _has_validation(s: ScannerSummary) -> bool:
+        return s.validation is not None and len(s.validation.entries) > 0
+
+    have_validation = any(
+        _has_validation(summary[scanner]) for scanner in spec.scanners.keys()
+    )
+    have_metric = any(
+        summary[scanner].metrics is not None for scanner in spec.scanners.keys()
+    )
+
+    table = Table.grid(expand=True)
+    table.add_column()  # scanner
+    if have_metric:
+        table.add_column(justify="right")  # metric
+    if have_validation:
+        table.add_column(justify="right")  # validation (accuracy)
+    table.add_column(justify="right")  # results
+    table.add_column(justify="right")  # errors
+    table.add_column(justify="right")  # tokens/scan
+    table.add_column()  # spacer
+    table.add_column(justify="right")  # total tokens
+
+    # columns dynamic based on validation/metrics
+    rowdef = ["[bold]scanner[/bold]"]
+    if have_metric:
+        rowdef.append(f"[bold]{_summary_metric_label(summary.scanners)}[/bold]")
+    if have_validation:
+        rowdef.append("[bold]validation[/bold]")
+    rowdef.extend(
+        [
+            "[bold]results[/bold]",
+            "[bold]errors[/bold]",
+            "[bold]tokens/scan[/bold]",
+            "",
+            "[bold]tokens[/bold]",
+        ]
+    )
+    table.add_row(*rowdef, style=theme.meta)
+    NONE = f"[{theme.light}]-[/{theme.light}]"
+    for scanner in spec.scanners.keys():
+        results = summary[scanner]
+        validation_accuracy = _summary_validation(results.validation)
+        row_data: list[str | None] = [scanner]
+        if have_metric:
+            metric = _summary_metric(results.metrics)
+            row_data.append(metric)
+        if have_validation:
+            row_data.append(validation_accuracy or NONE)
+        row_data.extend(
+            [
+                f"{results.results:,}" if results.results else NONE,
+                f"{results.errors:,}" if results.errors else NONE,
+                (
+                    f"{results.tokens // results.scans:,}"
+                    if results.tokens and results.scans
+                    else NONE
+                ),
+                "",
+                f"{results.tokens:,}" if results.tokens else NONE,
+            ]
+        )
+        table.add_row(*row_data)
+
+    return table
+
+
 def scan_panel(
     *,
     spec: ScanSpec,
@@ -309,70 +391,7 @@ def scan_panel(
                 )
             resources.add_row("max age:", format_progress_time(batch_age))
 
-    # check if any scanners have validation/metrics
-    def _has_validation(s: ScannerSummary) -> bool:
-        return s.validation is not None and len(s.validation.entries) > 0
-
-    have_validation = any(
-        _has_validation(summary[scanner]) for scanner in spec.scanners.keys()
-    )
-    have_metric = any(
-        summary[scanner].metrics is not None for scanner in spec.scanners.keys()
-    )
-
-    # scanners
-    scanners = Table.grid(expand=True)
-    scanners.add_column()  # scanner
-    if have_metric:
-        scanners.add_column(justify="right")  # metric
-    if have_validation:
-        scanners.add_column(justify="right")  # validation (accuracy)
-    scanners.add_column(justify="right")  # results
-    scanners.add_column(justify="right")  # errors
-    scanners.add_column(justify="right")  # tokens/scan
-    scanners.add_column()  # spacer
-    scanners.add_column(justify="right")  # total tokens
-
-    # columns dynamic based on validation/metrics
-    rowdef = ["[bold]scanner[/bold]"]
-    if have_metric:
-        rowdef.append(f"[bold]{_summary_metric_label(summary.scanners)}[/bold]")
-    if have_validation:
-        rowdef.append("[bold]validation[/bold]")
-    rowdef.extend(
-        [
-            "[bold]results[/bold]",
-            "[bold]errors[/bold]",
-            "[bold]tokens/scan[/bold]",
-            "",
-            "[bold]tokens[/bold]",
-        ]
-    )
-    scanners.add_row(*rowdef, style=theme.meta)
-    NONE = f"[{theme.light}]-[/{theme.light}]"
-    for scanner in spec.scanners.keys():
-        results = summary[scanner]
-        validation_accuracy = _summary_validation(results.validation)
-        row_data: list[str | None] = [scanner]
-        if have_metric:
-            metric = _summary_metric(results.metrics)
-            row_data.append(metric)
-        if have_validation:
-            row_data.append(validation_accuracy or NONE)
-        row_data.extend(
-            [
-                f"{results.results:,}" if results.results else NONE,
-                f"{results.errors:,}" if results.errors else NONE,
-                (
-                    f"{results.tokens // results.scans:,}"
-                    if results.tokens and results.scans
-                    else NONE
-                ),
-                "",
-                f"{results.tokens:,}" if results.tokens else NONE,
-            ]
-        )
-        scanners.add_row(*row_data)
+    scanners = scanners_table(spec, summary)
 
     # body
     body = Table.grid(expand=True)

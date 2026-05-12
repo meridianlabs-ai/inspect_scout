@@ -402,17 +402,41 @@ class TestLlmReducer:
         assert result.value == "synthesized answer"
         assert result.answer == "synthesized answer"
 
-        # Explanation comes from merged segments, not the LLM's reasoning
-        assert result.explanation is not None
-        assert "Reason A" in result.explanation
-        assert "Reason B" in result.explanation
-        assert "[Segment 1]" in result.explanation
-        assert "[Segment 2]" in result.explanation
-        assert "LLM synthesis reasoning" not in result.explanation
+        # Explanation is the LLM's synthesized reasoning (not the raw
+        # per-segment concat).
+        assert result.explanation == "LLM synthesis reasoning"
 
         # Metadata and references are merged from segments
         assert result.metadata == {"key_a": 1, "key_b": 2}
         assert len(result.references) == 2
+
+    @pytest.mark.anyio
+    @patch(
+        "inspect_scout._llm_scanner._reducer.generate_answer", new_callable=AsyncMock
+    )
+    async def test_llm_reducer_falls_back_to_segment_concat(
+        self, mock_generate: AsyncMock
+    ) -> None:
+        """When the synthesis produces no reasoning, fall back to the merged segment concat."""
+        mock_generate.return_value = Result(
+            value="synthesized answer",
+            answer="synthesized answer",
+            explanation=None,  # e.g. a custom prompt that doesn't elicit reasoning
+        )
+
+        segment_results = [
+            Result(value="partial A", answer="partial A", explanation="Reason A"),
+            Result(value="partial B", answer="partial B", explanation="Reason B"),
+        ]
+
+        reducer = ResultReducer.llm()
+        result = await reducer(segment_results)
+
+        assert result.explanation is not None
+        assert "[Segment 1]" in result.explanation
+        assert "Reason A" in result.explanation
+        assert "[Segment 2]" in result.explanation
+        assert "Reason B" in result.explanation
 
     @pytest.mark.anyio
     @patch(
@@ -442,6 +466,14 @@ class TestLlmReducer:
 
         # Verify answer type is "string"
         assert call_args.kwargs["answer"] == "string"
+
+    def test_synthesis_prompt_instructs_citation_preservation(self) -> None:
+        """System prompt tells the synthesizer to preserve [M1]-style citations."""
+        # Lock this in so a future prompt edit can't silently drop the
+        # instruction — without it the synthesized explanation loses the
+        # citations that back its claims.
+        assert "[M1]" in _SYNTHESIS_SYSTEM_PROMPT
+        assert "citation" in _SYNTHESIS_SYSTEM_PROMPT.lower()
 
     @pytest.mark.anyio
     @patch(

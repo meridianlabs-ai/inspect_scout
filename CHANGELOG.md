@@ -1,6 +1,7 @@
 ## Unreleased
 
 - LLM Scanner: On timeline scans, reduce within-span chunks to one Result per span before wrapping in a resultset; custom reducers now fire on chunked spans (#431).
+- LLM Scanner: `ResultReducer.llm()` now uses the synthesizer's own reasoning as the reduced `Result.explanation`, instead of a `[Segment N]` concat of the per-chunk explanations. The synthesis prompt also instructs the model to preserve `[M1]`-style message citations so the reduced explanation stays traceable to the merged references.
 
 ## 0.4.34 (12 May 2026)
 

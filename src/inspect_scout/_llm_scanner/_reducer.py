@@ -229,10 +229,17 @@ class ResultReducer:
                 model=model,
             )
 
-            return _build_result(
-                results,
+            # Prefer the synthesized reasoning (everything before "ANSWER:"
+            # in the LLM's completion) over a raw concat of segment
+            # explanations — the LLM was explicitly asked for it. Fall back
+            # to the concat only if the synthesis didn't produce reasoning
+            # (e.g. a custom `prompt=` that doesn't elicit one).
+            return Result(
                 value=result.value,
                 answer=result.answer,
+                explanation=result.explanation or _merge_explanations(results),
+                metadata=_merge_metadata(results),
+                references=_merge_references(results),
             )
 
         return reducer
@@ -241,7 +248,11 @@ class ResultReducer:
 _SYNTHESIS_SYSTEM_PROMPT = """\
 You are an expert analyst synthesizing results from a multi-segment transcript analysis. \
 Your task is to combine per-segment findings into a single coherent answer. \
-Be concise and focus on the overall assessment rather than restating each segment."""
+Be concise and focus on the overall assessment rather than restating each segment.
+
+Preserve any message citations of the form [M1], [M2], ... exactly as they appear \
+in the per-segment explanations so the reader can trace claims back to specific \
+messages. Do not invent new citations."""
 
 _DEFAULT_SYNTHESIS_PROMPT = """\
 The following are results from analyzing different segments of a conversation transcript. \

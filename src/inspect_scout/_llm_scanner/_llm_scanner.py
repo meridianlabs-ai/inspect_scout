@@ -14,7 +14,7 @@ from jinja2 import Environment
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
 from .._scanner.extract import MessagesPreprocessor, message_numbering
-from .._scanner.result import Result, as_resultset
+from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
@@ -22,8 +22,9 @@ from .._scanner.scanner import (
     scanner,
 )
 from .._transcript.messages import transcript_messages
+from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
-from ._reducer import default_reducer, is_resultset_answer
+from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .prompt import (
@@ -175,8 +176,11 @@ def llm_scanner(
             If None, uses a default reducer based on the answer type
             (e.g., ``ResultReducer.any`` for boolean, ``ResultReducer.mean``
             for numeric). Standard reducers are available on
-            :class:`ResultReducer`. Timeline and resultset answers bypass
-            reduction and return a resultset.
+            `ResultReducer`. On timeline scans the reducer is
+            applied *within* each span before the per-span Results are
+            wrapped in a resultset (cross-span attribution is preserved).
+            Resultset answers (e.g. ``list[Model]``) bypass reduction and
+            return a resultset directly.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
@@ -216,7 +220,7 @@ def llm_scanner(
             ),
         )
 
-        results: list[Result] = []
+        results: list[tuple[str | None, Result]] = []
         async for segment in transcript_messages(
             transcript,
             messages_as_str=messages_as_str_fn,
@@ -255,30 +259,30 @@ def llm_scanner(
                     answer=resolved_answer,
                 )
                 call_config = None
+            span_id: str | None = (
+                segment.span.id if isinstance(segment, TimelineMessages) else None
+            )
             results.append(
-                await generate_answer(
-                    prompt,
-                    answer,
-                    model=resolved_model,
-                    config=call_config,
-                    retry_refusals=retry_refusals,
-                    extract_refs=extract_references,
-                    value_to_float=value_to_float,
+                (
+                    span_id,
+                    await generate_answer(
+                        prompt,
+                        answer,
+                        model=resolved_model,
+                        config=call_config,
+                        retry_refusals=retry_refusals,
+                        extract_refs=extract_references,
+                        value_to_float=value_to_float,
+                    ),
                 )
             )
 
-        # single result
-        if len(results) == 1:
-            return results[0]
-
-        # scenarios where resultset is the natural/expected return type
-        elif bool(transcript.timelines) or is_resultset_answer(answer):
-            return as_resultset(results)
-
-        # otherwise reduce
-        else:
-            effective_reducer = reducer or default_reducer(answer)
-            return await effective_reducer(results)
+        return await aggregate_results(
+            results=results,
+            timeline=bool(transcript.timelines),
+            answer=answer,
+            reducer=reducer,
+        )
 
     # set name for collection by @scanner if specified
     if name is not None:

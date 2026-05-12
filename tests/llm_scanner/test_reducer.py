@@ -1,5 +1,6 @@
 """Tests for ResultReducer and reducer dispatch."""
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,8 +8,10 @@ from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_scout._llm_scanner._reducer import (
     _SYNTHESIS_SYSTEM_PROMPT,
     ResultReducer,
+    aggregate_results,
     default_reducer,
     is_resultset_answer,
+    reduce_timeline_results,
 )
 from inspect_scout._llm_scanner.types import AnswerMultiLabel, AnswerStructured
 from inspect_scout._scanner.result import Reference, Result
@@ -459,3 +462,258 @@ class TestLlmReducer:
         messages = mock_generate.call_args.args[0]
         user_content = messages[1].content
         assert custom_prompt in user_content
+
+
+# ---------------------------------------------------------------------------
+# reduce_timeline_results
+# ---------------------------------------------------------------------------
+
+
+class TestReduceTimelineResults:
+    @pytest.mark.anyio
+    async def test_single_span_single_chunk_passes_through(self) -> None:
+        """One span, one chunk: returned unchanged, reducer not called."""
+        only = Result(value=True, answer="yes")
+        reducer = AsyncMock(return_value=Result(value=False, answer="no"))
+
+        out = await reduce_timeline_results([("span-a", only)], reducer)
+
+        assert out is only
+        reducer.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_single_span_multi_chunk_returns_reducer_output_unwrapped(
+        self,
+    ) -> None:
+        """One span with multiple chunks: returns reducer output (no resultset)."""
+        chunks = [
+            Result(value=False, answer="no"),
+            Result(value=True, answer="yes"),
+        ]
+        reduced = Result(value=True, answer="yes")
+        reducer = AsyncMock(return_value=reduced)
+
+        out = await reduce_timeline_results(
+            [("span-a", chunks[0]), ("span-a", chunks[1])], reducer
+        )
+
+        assert out is reduced
+        assert out.type != "resultset"
+        reducer.assert_awaited_once_with(chunks)
+
+    @pytest.mark.anyio
+    async def test_multiple_spans_all_single_chunk_wrapped_as_resultset(self) -> None:
+        """Multiple spans, each single-chunk: resultset preserving walk order."""
+        r1 = Result(value=True, answer="yes")
+        r2 = Result(value=False, answer="no")
+        reducer = AsyncMock()
+
+        out = await reduce_timeline_results([("a", r1), ("b", r2)], reducer)
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        entries = cast(list[dict[str, Any]], out.value)
+        assert len(entries) == 2
+        assert entries[0]["answer"] == "yes"
+        assert entries[1]["answer"] == "no"
+        reducer.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_mixed_chunked_and_single_chunk_spans(self) -> None:
+        """Span ordering and within-span reduction both preserved."""
+        a1 = Result(value=False, answer="no")
+        a2 = Result(value=True, answer="yes")
+        b1 = Result(value=False, answer="no-b")
+        c1 = Result(value=True, answer="yes-c")
+        c2 = Result(value=True, answer="yes-c2")
+        reduced_a = Result(value=True, answer="reduced-a")
+        reduced_c = Result(value=True, answer="reduced-c")
+
+        async def fake_reducer(group: list[Result]) -> Result:
+            if group == [a1, a2]:
+                return reduced_a
+            if group == [c1, c2]:
+                return reduced_c
+            raise AssertionError(f"unexpected group: {group}")
+
+        out = await reduce_timeline_results(
+            [
+                ("a", a1),
+                ("a", a2),
+                ("b", b1),
+                ("c", c1),
+                ("c", c2),
+            ],
+            fake_reducer,
+        )
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        entries = cast(list[dict[str, Any]], out.value)
+        assert [entry["answer"] for entry in entries] == [
+            "reduced-a",
+            "no-b",
+            "reduced-c",
+        ]
+
+    @pytest.mark.anyio
+    async def test_preserves_first_encounter_span_order(self) -> None:
+        """Span order tracks first-seen, even with interleaved chunks."""
+        # Note: real timeline walks are contiguous per span; this guards the
+        # dict-ordering contract regardless.
+        results = [
+            ("a", Result(value=1, answer="a1")),
+            ("b", Result(value=2, answer="b1")),
+            ("a", Result(value=3, answer="a2")),
+        ]
+        reduced_a = Result(value=99, answer="reduced-a")
+
+        async def fake_reducer(group: list[Result]) -> Result:
+            assert [r.answer for r in group] == ["a1", "a2"]
+            return reduced_a
+
+        out = await reduce_timeline_results(results, fake_reducer)
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        entries = cast(list[dict[str, Any]], out.value)
+        assert [entry["answer"] for entry in entries] == ["reduced-a", "b1"]
+
+
+# ---------------------------------------------------------------------------
+# aggregate_results — exercises each dispatch branch directly
+# ---------------------------------------------------------------------------
+
+
+class _Finding(BaseModel):
+    label: str
+
+
+class TestAggregateResults:
+    @pytest.mark.anyio
+    async def test_single_result_returned_unchanged(self) -> None:
+        """len(results) == 1: bypass all aggregation, return the lone Result."""
+        only = Result(value=True, answer="yes")
+        reducer = AsyncMock()
+
+        out = await aggregate_results(
+            results=[("span-a", only)],
+            timeline=True,
+            answer="boolean",
+            reducer=reducer,
+        )
+
+        assert out is only
+        reducer.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_timeline_scalar_uses_reduce_timeline_results(self) -> None:
+        """Timeline + scalar: within-span reduction, single span collapses to Result."""
+        chunks = [
+            Result(value=False, answer="no"),
+            Result(value=True, answer="yes"),
+        ]
+        # default_reducer for "boolean" is ResultReducer.any
+        out = await aggregate_results(
+            results=[("span-a", chunks[0]), ("span-a", chunks[1])],
+            timeline=True,
+            answer="boolean",
+            reducer=None,
+        )
+
+        # Single span -> reduce_timeline_results unwraps it (no resultset)
+        assert out.type != "resultset"
+        assert out.value is True
+
+    @pytest.mark.anyio
+    async def test_timeline_scalar_multi_span_wraps_in_resultset(self) -> None:
+        """Timeline + scalar + multiple spans: per-span Results wrapped in resultset."""
+        out = await aggregate_results(
+            results=[
+                ("span-a", Result(value=True, answer="yes")),
+                ("span-b", Result(value=False, answer="no")),
+            ],
+            timeline=True,
+            answer="boolean",
+            reducer=None,
+        )
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        entries = cast(list[dict[str, Any]], out.value)
+        assert [e["value"] for e in entries] == [True, False]
+
+    @pytest.mark.anyio
+    async def test_resultset_answer_returns_as_resultset(self) -> None:
+        """Resultset-shaped answer keeps each segment as its own entry."""
+        r1 = Result(value=[{"label": "a"}], answer="a")
+        r2 = Result(value=[{"label": "b"}], answer="b")
+        answer = AnswerStructured(type=list[_Finding])
+
+        out = await aggregate_results(
+            results=[(None, r1), (None, r2)],
+            timeline=False,
+            answer=answer,
+            reducer=None,
+        )
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        assert len(out.value) == 2
+
+    @pytest.mark.anyio
+    async def test_timeline_resultset_answer_stays_disaggregated(self) -> None:
+        """Timeline + resultset answer: still as_resultset; no within-span reduction."""
+        r1 = Result(value=[{"label": "a"}], answer="a")
+        r2 = Result(value=[{"label": "b"}], answer="b")
+        answer = AnswerStructured(type=list[_Finding])
+
+        # Two chunks of the SAME span — they should NOT be reduced (because
+        # the answer is a list[Model]) and the resultset keeps both entries.
+        out = await aggregate_results(
+            results=[("span-a", r1), ("span-a", r2)],
+            timeline=True,
+            answer=answer,
+            reducer=None,
+        )
+
+        assert out.type == "resultset"
+        assert isinstance(out.value, list)
+        assert len(out.value) == 2
+
+    @pytest.mark.anyio
+    async def test_plain_multi_segment_uses_reducer(self) -> None:
+        """No timeline, scalar answer: collapse all segments via default reducer."""
+        out = await aggregate_results(
+            results=[
+                (None, Result(value=False, answer="no")),
+                (None, Result(value=True, answer="yes")),
+            ],
+            timeline=False,
+            answer="boolean",
+            reducer=None,
+        )
+
+        # default for "boolean" is ResultReducer.any
+        assert out.type != "resultset"
+        assert out.value is True
+
+    @pytest.mark.anyio
+    async def test_custom_reducer_propagates(self) -> None:
+        """A caller-supplied reducer is used in place of the default."""
+        sentinel = Result(value="from-reducer", answer="from-reducer")
+
+        async def custom(group: list[Result]) -> Result:
+            return sentinel
+
+        out = await aggregate_results(
+            results=[
+                (None, Result(value=False, answer="no")),
+                (None, Result(value=True, answer="yes")),
+            ],
+            timeline=False,
+            answer="boolean",
+            reducer=custom,
+        )
+
+        assert out is sentinel

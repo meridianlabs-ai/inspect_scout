@@ -8,12 +8,12 @@ dispatch and resultset detection.
 import builtins
 import statistics
 from collections.abc import Awaitable, Callable
-from typing import get_args, get_origin
+from typing import cast, get_args, get_origin
 
 from inspect_ai.model import ChatMessage, ChatMessageSystem, ChatMessageUser, Model
 from pydantic import BaseModel, JsonValue
 
-from .._scanner.result import Reference, Result
+from .._scanner.result import Reference, Result, as_resultset
 from .generate import generate_answer
 from .types import AnswerMultiLabel, AnswerSpec, AnswerStructured
 
@@ -274,6 +274,84 @@ def is_resultset_answer(answer: AnswerSpec) -> bool:
                 return True
         return False
     return False
+
+
+async def reduce_timeline_results(
+    results: list[tuple[str, Result]],
+    reducer: Callable[[list[Result]], Awaitable[Result]],
+) -> Result:
+    """Group timeline scan results by span id and reduce within-span chunks.
+
+    Each tuple is ``(span_id, result)`` in walk order. Spans that produced
+    multiple chunks are collapsed via ``reducer``; single-chunk spans pass
+    through unchanged. If the walk produced exactly one span, that span's
+    Result is returned directly. Otherwise the per-span Results are wrapped
+    in a resultset to preserve cross-span attribution.
+    """
+    by_span: dict[str, list[Result]] = {}
+    span_order: list[str] = []
+    for span_id, result in results:
+        if span_id not in by_span:
+            span_order.append(span_id)
+            by_span[span_id] = []
+        by_span[span_id].append(result)
+
+    per_span: list[Result] = []
+    for sid in span_order:
+        group = by_span[sid]
+        per_span.append(group[0] if len(group) == 1 else await reducer(group))
+
+    if len(per_span) == 1:
+        return per_span[0]
+    return as_resultset(per_span)
+
+
+async def aggregate_results(
+    *,
+    results: list[tuple[str | None, Result]],
+    timeline: bool,
+    answer: AnswerSpec,
+    reducer: Callable[[list[Result]], Awaitable[Result]] | None,
+) -> Result:
+    """Aggregate per-segment scanner results into one final Result.
+
+    Decision table on ``(timeline, is_resultset_answer(answer))``:
+
+    - ``len(results) == 1``    → return that Result (no aggregation).
+    - ``(True,  False)``       → :func:`reduce_timeline_results`: group
+      chunks by span and reduce within span; wrap multiple spans in a
+      resultset.
+    - ``(_,     True)``        → :func:`as_resultset`: the answer is
+      inherently a list of findings, so each segment stays an entry.
+    - ``(False, False)``       → collapse all segments to one Result via
+      ``reducer or default_reducer(answer)``.
+
+    Args:
+        results: ``(span_id, Result)`` pairs in walk order. ``span_id`` is
+            ``None`` on non-timeline paths and a string on timeline paths.
+        timeline: Whether the scan produced timeline-aware segments.
+        answer: The answer specification, used to pick the default reducer
+            and to detect resultset-shaped answers.
+        reducer: Optional caller-supplied reducer. When ``None``,
+            :func:`default_reducer` is used.
+    """
+    if len(results) == 1:
+        return results[0][1]
+
+    flat = [r for _, r in results]
+
+    if timeline and not is_resultset_answer(answer):
+        effective_reducer = reducer or default_reducer(answer)
+        return await reduce_timeline_results(
+            cast(list[tuple[str, Result]], results),
+            effective_reducer,
+        )
+
+    if is_resultset_answer(answer):
+        return as_resultset(flat)
+
+    effective_reducer = reducer or default_reducer(answer)
+    return await effective_reducer(flat)
 
 
 def default_reducer(

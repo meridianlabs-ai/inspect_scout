@@ -1,3 +1,7 @@
+## Unreleased
+
+- LLM Scanner: On timeline scans, reduce within-span chunks to one Result per span before wrapping in a resultset; custom reducers now fire on chunked spans (#431).
+
 ## 0.4.34 (12 May 2026)
 
 - Refactor scan panel display for use in Inspect task display. 

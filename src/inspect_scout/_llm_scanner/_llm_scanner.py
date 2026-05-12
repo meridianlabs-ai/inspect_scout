@@ -1,5 +1,7 @@
+from functools import partial
 from typing import Any, Awaitable, Callable, Literal, cast, overload
 
+from inspect_ai._util._async import tg_collect
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     ChatMessage,
@@ -216,15 +218,7 @@ def llm_scanner(
             ),
         )
 
-        results: list[Result] = []
-        async for segment in transcript_messages(
-            transcript,
-            messages_as_str=messages_as_str_fn,
-            model=resolved_model,
-            context_window=context_window,
-            compaction=compaction,
-            depth=depth,
-        ):
+        async def scan_segment(messages_str: str) -> Result:
             prompt: str | list[ChatMessage]
             call_config: GenerateConfig | None
             if isinstance(resolved_template, tuple):
@@ -232,7 +226,7 @@ def llm_scanner(
                     templates=resolved_template,
                     template_variables=template_variables,
                     transcript=transcript,
-                    messages=segment.messages_str,
+                    messages=messages_str,
                     question=question,
                     answer=resolved_answer,
                 )
@@ -250,22 +244,35 @@ def llm_scanner(
                     template=resolved_template,
                     template_variables=template_variables,
                     transcript=transcript,
-                    messages=segment.messages_str,
+                    messages=messages_str,
                     question=question,
                     answer=resolved_answer,
                 )
                 call_config = None
-            results.append(
-                await generate_answer(
-                    prompt,
-                    answer,
-                    model=resolved_model,
-                    config=call_config,
-                    retry_refusals=retry_refusals,
-                    extract_refs=extract_references,
-                    value_to_float=value_to_float,
-                )
+            return await generate_answer(
+                prompt,
+                answer,
+                model=resolved_model,
+                config=call_config,
+                retry_refusals=retry_refusals,
+                extract_refs=extract_references,
+                value_to_float=value_to_float,
             )
+
+        segments = [
+            seg
+            async for seg in transcript_messages(
+                transcript,
+                messages_as_str=messages_as_str_fn,
+                model=resolved_model,
+                context_window=context_window,
+                compaction=compaction,
+                depth=depth,
+            )
+        ]
+        results: list[Result] = await tg_collect(
+            [partial(scan_segment, seg.messages_str) for seg in segments]
+        )
 
         # single result
         if len(results) == 1:

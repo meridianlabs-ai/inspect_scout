@@ -229,9 +229,6 @@ scout.local.yaml
 
 /.luarc.json
 
-# node
-/src/inspect_scout/_view/www/node_modules
-
 # test data
 /examples/test-db
 

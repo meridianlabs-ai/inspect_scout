@@ -1,3 +1,7 @@
+## 0.4.34 (12 May 2026)
+
+- Refactor scan panel display for use in Inspect task display. 
+
 ## 0.4.33 (11 May 2026)
 
 - Scanning: Expose recorder primitives for inspect_ai eval_set scanner integration.

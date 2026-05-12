@@ -2,6 +2,10 @@
 
 - Scanning: Expose recorder primitives for inspect_ai eval_set scanner integration.
 - Observe: Stream-capture wrappers now emit the accumulated partial response when the underlying SDK stream raises mid-iteration (e.g. `overloaded_error`, connection reset, content-filter `error` SSE event). The resulting `ModelEvent` carries the partial output with `error` set; OpenAI mid-stream errors whose `code` indicates moderation (`invalid_prompt`, `content_policy_violation`, `content_filter`, `cyber_policy`) are mapped to `stop_reason="content_filter"`.
+- Scout view: Dark mode in scout viewer (#165)
+- Scout view: Improve narrow-width viewing (#209)
+- Scout view: Outline: align close icon with title and make rootHeader sticky (#197)
+- Scout view: fix model retry event ordering (#189)
 
 ## 0.4.32 (06 May 2026)
 

@@ -16,7 +16,7 @@ from jinja2 import Environment
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
 from .._scanner.extract import MessagesPreprocessor, message_numbering
-from .._scanner.result import Result, as_resultset
+from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
@@ -24,8 +24,9 @@ from .._scanner.scanner import (
     scanner,
 )
 from .._transcript.messages import transcript_messages
+from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
-from ._reducer import default_reducer, is_resultset_answer
+from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .prompt import (
@@ -177,8 +178,11 @@ def llm_scanner(
             If None, uses a default reducer based on the answer type
             (e.g., ``ResultReducer.any`` for boolean, ``ResultReducer.mean``
             for numeric). Standard reducers are available on
-            :class:`ResultReducer`. Timeline and resultset answers bypass
-            reduction and return a resultset.
+            `ResultReducer`. On timeline scans the reducer is
+            applied *within* each span before the per-span Results are
+            wrapped in a resultset (cross-span attribution is preserved).
+            Resultset answers (e.g. ``list[Model]``) bypass reduction and
+            return a resultset directly.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
@@ -270,22 +274,25 @@ def llm_scanner(
                 depth=depth,
             )
         ]
-        results: list[Result] = await tg_collect(
+        segment_results: list[Result] = await tg_collect(
             [partial(scan_segment, seg.messages_str) for seg in segments]
         )
+        # Pair each result with its originating span id (None on non-timeline
+        # paths) so aggregate_results can group timeline chunks by span.
+        results: list[tuple[str | None, Result]] = [
+            (
+                seg.span.id if isinstance(seg, TimelineMessages) else None,
+                result,
+            )
+            for seg, result in zip(segments, segment_results, strict=True)
+        ]
 
-        # single result
-        if len(results) == 1:
-            return results[0]
-
-        # scenarios where resultset is the natural/expected return type
-        elif bool(transcript.timelines) or is_resultset_answer(answer):
-            return as_resultset(results)
-
-        # otherwise reduce
-        else:
-            effective_reducer = reducer or default_reducer(answer)
-            return await effective_reducer(results)
+        return await aggregate_results(
+            results=results,
+            timeline=bool(transcript.timelines),
+            answer=answer,
+            reducer=reducer,
+        )
 
     # set name for collection by @scanner if specified
     if name is not None:

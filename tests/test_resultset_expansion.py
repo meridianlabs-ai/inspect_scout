@@ -1,10 +1,17 @@
 """Tests for resultset expansion in scan_results_df and scan_results_db."""
 
+import json
 import tempfile
 from pathlib import Path
 
+import pandas as pd
+import pyarrow as pa
 from inspect_scout import Result, Scanner, scan, scanner
-from inspect_scout._scanresults import scan_results_db, scan_results_df
+from inspect_scout._scanresults import (
+    _expand_resultset_rows,
+    scan_results_db,
+    scan_results_df,
+)
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
@@ -716,3 +723,40 @@ def test_duckdb_resultset_expansion_with_references() -> None:
         assert len(event_refs_3) == 2
 
         results_db.conn.close()
+
+
+def test_resultset_expansion_handles_pyarrow_all_na_with_numeric_target() -> None:
+    """Regression: numeric resultset + all-NA pyarrow column used to TypeError."""
+    str_dtype = pd.ArrowDtype(pa.large_string())
+    str_cols = [
+        "uuid",
+        "label",
+        "value",
+        "value_type",
+        "answer",
+        "explanation",
+        "metadata",
+        "validation_target",
+        "validation_result",
+        "scan_model_usage",
+    ]
+    na_template = {col: pd.NA for col in str_cols}
+    df = pd.DataFrame(
+        [
+            {
+                **na_template,
+                "value": json.dumps([{"label": "foo", "value": 0}]),
+                "value_type": "resultset",
+                "scan_total_tokens": 0,
+            },
+            {
+                **na_template,
+                "value_type": "boolean",
+                "scan_total_tokens": 0,
+            },
+        ]
+    ).astype({col: str_dtype for col in str_cols})
+
+    # Must not raise.
+    result = _expand_resultset_rows(df)
+    assert len(result) == 2

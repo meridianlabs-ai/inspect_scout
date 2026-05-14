@@ -1,5 +1,6 @@
 import inspect
 import json
+from collections.abc import Sequence
 from typing import (
     Any,
     Callable,
@@ -23,7 +24,7 @@ from inspect_ai.model import (
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
-from inspect_ai.tool import ToolDef, ToolFunction, ToolParams
+from inspect_ai.tool import ToolDef, ToolFunction, ToolInfo, ToolParams
 from inspect_ai.util import JSONSchema
 from pydantic import BaseModel, Field, create_model
 
@@ -36,6 +37,7 @@ async def structured_generate(
     input: str | list[ChatMessage],
     schema: JSONSchema,
     answer_tool: str | None = "answer",
+    context_tools: Sequence[ToolInfo] = (),
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
     max_attempts: int = 3,
@@ -72,7 +74,7 @@ async def structured_generate(
         output = await generate_retry_refusals(
             model,
             input=messages,
-            tools=[answer_tooldef],
+            tools=[*context_tools, answer_tooldef],
             tool_choice=ToolFunction(answer_tooldef.name),
             config=(config or GenerateConfig()).merge(
                 GenerateConfig(parallel_tool_calls=False)

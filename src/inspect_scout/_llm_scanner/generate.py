@@ -6,7 +6,7 @@ generation with optional parsing — usable independently of
 :func:`llm_scanner`.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Literal, overload
 
 from inspect_ai.model import (
@@ -18,6 +18,7 @@ from inspect_ai.model import (
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
+from inspect_ai.tool import ToolInfo
 from jinja2 import Environment
 
 from .._scanner.result import Reference, Result
@@ -63,6 +64,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
+    context_tools: Sequence[ToolInfo] = (),
     retry_refusals: int = 3,
     parse: Literal[True] = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -77,6 +79,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
+    context_tools: Sequence[ToolInfo] = (),
     retry_refusals: int = 3,
     parse: Literal[False],
 ) -> ModelOutput: ...
@@ -88,6 +91,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
+    context_tools: Sequence[ToolInfo] = (),
     retry_refusals: int = 3,
     parse: bool = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -110,6 +114,12 @@ async def generate_answer(
         config: Per-call :class:`GenerateConfig` overrides (e.g. ``cache``,
             ``temperature``). For :class:`AnswerStructured` answers,
             ``parallel_tool_calls`` is always forced to ``False``.
+        context_tools: Additional tool definitions to declare alongside the
+            answer tool. These are never invoked (``tool_choice`` forces the
+            answer tool) — they exist so a ``prompt`` containing prior
+            ``tool_use`` blocks remains a valid API request, e.g. when asking
+            a follow-up question about an existing transcript. Only applies
+            to :class:`AnswerStructured` answers.
         retry_refusals: Number of times to retry on model refusals
             (``stop_reason == "content_filter"``).
         parse: When ``True`` (default), parse the model output into a
@@ -132,6 +142,7 @@ async def generate_answer(
             input=prompt,
             schema=structured_schema(answer),
             answer_tool=answer.answer_tool,
+            context_tools=context_tools,
             model=model,
             config=config,
             max_attempts=answer.max_attempts,

@@ -94,6 +94,32 @@ async def test_generate_forwards_config_structured() -> None:
 
 
 @pytest.mark.anyio
+async def test_generate_structured_context_tools() -> None:
+    from inspect_ai.tool import ToolInfo, ToolParams
+
+    class MyAnswer(BaseModel):
+        explanation: str = Field(description="Reasoning")
+        label: str = Field(description="Answer")
+
+    bash_info = ToolInfo(name="bash", description="run", parameters=ToolParams())
+    with patch(
+        "inspect_scout._llm_scanner.structured.generate_retry_refusals",
+        new_callable=AsyncMock,
+        return_value=ModelOutput.from_content(model="test", content="{}"),
+    ) as mock_gen:
+        await generate_answer(
+            "Q?",
+            AnswerStructured(type=MyAnswer, max_attempts=1),
+            context_tools=[bash_info],
+            model="mockllm/model",
+        )
+    tools = mock_gen.call_args.kwargs["tools"]
+    tool_names = [getattr(t, "name", None) for t in tools]
+    assert tool_names == ["bash", "answer"]
+    assert mock_gen.call_args.kwargs["tool_choice"].name == "answer"
+
+
+@pytest.mark.anyio
 async def test_generate_structured_dispatch() -> None:
     class MyAnswer(BaseModel):
         explanation: str = Field(description="Reasoning")

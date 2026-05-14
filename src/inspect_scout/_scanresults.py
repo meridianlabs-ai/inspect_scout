@@ -588,8 +588,12 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
                 # Add column with correct dtype
                 df_aligned[col] = pd.Series(dtype=column_dtypes[col])
             elif df_aligned[col].isna().all() and col in column_dtypes:
-                # Column exists but is all-NA - ensure it has the right dtype
-                df_aligned[col] = df_aligned[col].astype(column_dtypes[col])
+                # All-NA pyarrow column → non-nullable numpy numeric fails on
+                # int(pd.NA); fall back to object so concat can handle it.
+                try:
+                    df_aligned[col] = df_aligned[col].astype(column_dtypes[col])
+                except (TypeError, ValueError):
+                    df_aligned[col] = df_aligned[col].astype(object)
 
         aligned_rows.append(df_aligned)
 

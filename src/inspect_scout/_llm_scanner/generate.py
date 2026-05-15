@@ -18,7 +18,7 @@ from inspect_ai.model import (
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
-from inspect_ai.tool import ToolInfo
+from inspect_ai.tool import Tool, ToolDef, ToolInfo, ToolSource
 from jinja2 import Environment
 
 from .._scanner.result import Reference, Result
@@ -64,7 +64,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
-    context_tools: Sequence[ToolInfo] = (),
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
     retry_refusals: int = 3,
     parse: Literal[True] = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -79,7 +79,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
-    context_tools: Sequence[ToolInfo] = (),
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
     retry_refusals: int = 3,
     parse: Literal[False],
 ) -> ModelOutput: ...
@@ -91,7 +91,7 @@ async def generate_answer(
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
-    context_tools: Sequence[ToolInfo] = (),
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
     retry_refusals: int = 3,
     parse: bool = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
@@ -195,7 +195,7 @@ async def _text_generate(
     input: str | list[ChatMessage],
     answer: Answer,
     config: GenerateConfig | None,
-    context_tools: Sequence[ToolInfo],
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource],
     retry_refusals: int,
     extract_refs: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None,

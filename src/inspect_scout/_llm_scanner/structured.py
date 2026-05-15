@@ -24,7 +24,14 @@ from inspect_ai.model import (
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
-from inspect_ai.tool import ToolDef, ToolFunction, ToolInfo, ToolParams
+from inspect_ai.tool import (
+    Tool,
+    ToolDef,
+    ToolFunction,
+    ToolInfo,
+    ToolParams,
+    ToolSource,
+)
 from inspect_ai.util import JSONSchema
 from pydantic import BaseModel, Field, create_model
 
@@ -37,7 +44,7 @@ async def structured_generate(
     input: str | list[ChatMessage],
     schema: JSONSchema,
     answer_tool: str | None = "answer",
-    context_tools: Sequence[ToolInfo] = (),
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
     max_attempts: int = 3,

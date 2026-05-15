@@ -114,12 +114,13 @@ async def generate_answer(
         config: Per-call :class:`GenerateConfig` overrides (e.g. ``cache``,
             ``temperature``). For :class:`AnswerStructured` answers,
             ``parallel_tool_calls`` is always forced to ``False``.
-        context_tools: Additional tool definitions to declare alongside the
-            answer tool. These are never invoked (``tool_choice`` forces the
-            answer tool) — they exist so a ``prompt`` containing prior
-            ``tool_use`` blocks remains a valid API request, e.g. when asking
-            a follow-up question about an existing transcript. Only applies
-            to :class:`AnswerStructured` answers.
+        context_tools: Additional tool definitions to declare in the
+            request. These are never invoked — ``tool_choice`` forces the
+            answer tool for :class:`AnswerStructured` and is set to
+            ``"none"`` for textual answers. They exist so a ``prompt``
+            containing prior ``tool_use`` blocks remains a valid API
+            request, e.g. when asking a follow-up question about an
+            existing transcript.
         retry_refusals: Number of times to retry on model refusals
             (``stop_reason == "content_filter"``).
         parse: When ``True`` (default), parse the model output into a
@@ -170,6 +171,7 @@ async def generate_answer(
             prompt,
             resolved_answer,
             config,
+            context_tools,
             retry_refusals,
             extract_refs or _no_references,
             value_to_float,
@@ -178,8 +180,8 @@ async def generate_answer(
         return await generate_retry_refusals(
             get_model(model),
             prompt,
-            tools=[],
-            tool_choice=None,
+            tools=list(context_tools),
+            tool_choice="none" if context_tools else None,
             config=config,
             retry_refusals=retry_refusals,
         )
@@ -193,6 +195,7 @@ async def _text_generate(
     input: str | list[ChatMessage],
     answer: Answer,
     config: GenerateConfig | None,
+    context_tools: Sequence[ToolInfo],
     retry_refusals: int,
     extract_refs: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None,
@@ -212,8 +215,8 @@ async def _text_generate(
         output = await generate_retry_refusals(
             model,
             messages,
-            tools=[],
-            tool_choice=None,
+            tools=list(context_tools),
+            tool_choice="none" if context_tools else None,
             config=config,
             retry_refusals=retry_refusals,
         )

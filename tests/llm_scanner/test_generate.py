@@ -120,6 +120,23 @@ async def test_generate_structured_context_tools() -> None:
 
 
 @pytest.mark.anyio
+async def test_generate_text_context_tools() -> None:
+    from inspect_ai.tool import ToolInfo, ToolParams
+
+    bash_info = ToolInfo(name="bash", description="run", parameters=ToolParams())
+    with patch(
+        "inspect_scout._llm_scanner.generate.generate_retry_refusals",
+        new_callable=AsyncMock,
+        return_value=_make_mock_output(),
+    ) as mock_gen:
+        await generate_answer(
+            "Q?", "boolean", context_tools=[bash_info], model="mockllm/model"
+        )
+    assert [t.name for t in mock_gen.call_args.kwargs["tools"]] == ["bash"]
+    assert mock_gen.call_args.kwargs["tool_choice"] == "none"
+
+
+@pytest.mark.anyio
 async def test_generate_structured_dispatch() -> None:
     class MyAnswer(BaseModel):
         explanation: str = Field(description="Reasoning")

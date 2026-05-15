@@ -16,11 +16,13 @@ from inspect_ai.model import (
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice
+from inspect_ai.tool import ToolInfo
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesSegment,
     segment_messages,
     span_messages,
+    span_tools,
     transcript_messages,
 )
 from inspect_scout._transcript.timeline import (
@@ -38,6 +40,7 @@ def _make_model_event(
     input: Sequence[ChatMessage],
     output_content: str = "response",
     uuid: str | None = None,
+    tools: list[ToolInfo] | None = None,
 ) -> ModelEvent:
     """Create a ModelEvent with the given input and output."""
     return ModelEvent(
@@ -45,7 +48,7 @@ def _make_model_event(
         timestamp=datetime(2024, 1, 1),
         model="test-model",
         input=list(input),
-        tools=[],
+        tools=tools or [],
         tool_choice="auto",
         config=GenerateConfig(),
         output=ModelOutput(
@@ -470,6 +473,50 @@ def test_span_messages_compaction_last_with_trim() -> None:
     assert result[0] is _asst1
     assert result[-1].text == "After"
     assert len(result) == 4  # a1, u2, u3, output
+
+
+# -- span_tools tests --
+
+
+def _tool(name: str, description: str = "") -> ToolInfo:
+    return ToolInfo(name=name, description=description or f"{name} tool")
+
+
+def test_span_tools_dedup_last_wins() -> None:
+    """Tools are deduped by name across ModelEvents, last definition wins."""
+    t_search_v1 = _tool("search", "v1")
+    t_search_v2 = _tool("search", "v2")
+    t_write = _tool("write")
+    events: list[Event] = [
+        _make_model_event(input=[_user1], tools=[t_search_v1]),
+        _make_tool_event(),  # ignored
+        _make_model_event(input=[_user2], tools=[t_search_v2, t_write]),
+    ]
+
+    result = span_tools(events)
+
+    assert [t.name for t in result] == ["search", "write"]
+    assert result[0].description == "v2"  # last-seen wins
+    assert result[1] is t_write
+
+
+def test_span_tools_from_timeline_span() -> None:
+    """Accepts TimelineSpan and extracts tools from its ModelEvents."""
+    t_bash = _tool("bash")
+    span = _make_timeline_span(
+        "Agent",
+        events=[_make_model_event(input=[_user1], tools=[t_bash])],
+    )
+
+    result = span_tools(span)
+
+    assert result == [t_bash]
+
+
+def test_span_tools_empty() -> None:
+    """No ModelEvents (or none with tools) → empty list."""
+    assert span_tools([]) == []
+    assert span_tools([_make_model_event(input=[_user1])]) == []
 
 
 # -- segment_messages tests --

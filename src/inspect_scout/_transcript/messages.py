@@ -21,6 +21,7 @@ from inspect_ai.event import (
 from inspect_ai.model import ChatMessage, Model, get_model
 from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
+from inspect_ai.tool import ToolInfo
 
 from inspect_scout._scanner.extract import MessagesAsStr
 
@@ -409,6 +410,51 @@ def span_messages(
         merged.extend(_segment_messages(current_model_events_merge[-1]))
 
     return merged
+
+
+def span_tools(source: Timeline | TimelineSpan | list[Event]) -> list[ToolInfo]:
+    """Extract the tool definitions that were in scope across a span.
+
+    Companion to ``span_messages()``: where that function reconstructs
+    the message history from ``ModelEvent`` inputs/outputs, this
+    function reconstructs the set of tools that were declared to the
+    model. Callers that want to continue or interrogate a recorded
+    conversation typically need both — the messages to replay and the
+    tool definitions to re-declare.
+
+    Iterates ``ModelEvent.tools`` across the source and returns the
+    union of ``ToolInfo`` definitions, deduplicated by name. When a
+    tool name appears more than once (e.g. tools added or redefined
+    mid-conversation), the last-seen definition wins.
+
+    Args:
+        source: A ``Timeline`` (extracts ``.root``), ``TimelineSpan``
+            (events extracted from its content), or a raw list of
+            events. Non-``ModelEvent`` events are ignored.
+
+    Returns:
+        Deduplicated list of ``ToolInfo`` in first-seen order, with
+        each entry holding the last-seen definition for that name.
+        Empty list if no ``ModelEvent`` declared any tools.
+    """
+    # Normalize Timeline to TimelineSpan
+    if isinstance(source, Timeline):
+        source = source.root
+
+    # Extract events from TimelineSpan if needed
+    if isinstance(source, TimelineSpan):
+        events = [
+            item.event for item in source.content if isinstance(item, TimelineEvent)
+        ]
+    else:
+        events = source
+
+    tools: dict[str, ToolInfo] = {}
+    for event in events:
+        if isinstance(event, ModelEvent):
+            for tool in event.tools:
+                tools[tool.name] = tool
+    return list(tools.values())
 
 
 def _segment_messages(model_event: ModelEvent) -> list[ChatMessage]:

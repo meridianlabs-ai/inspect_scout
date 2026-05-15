@@ -1,6 +1,7 @@
 ## Unreleased
 
 - LLM Scanner: `generate_answer()` and `structured_generate()` accept `context_tools` — additional `ToolInfo` definitions declared in the request but never invoked (`tool_choice` forces the answer tool for structured answers and is `"none"` for textual answers). This lets callers pass a `prompt` containing prior `tool_use` blocks (e.g. when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.
+- Transcript: Add `span_tools()` alongside `span_messages()` to extract the union of `ToolInfo` definitions (deduped by name, last-seen wins) from a `Timeline`/`TimelineSpan`/`list[Event]`. Useful for callers that replay or interrogate a recorded conversation and need to re-declare the tools that were in scope.
 - Scan results: Fix `TypeError: int() argument must be ... not 'NAType'` raised by `_expand_resultset_rows` when aligning an all-NA pyarrow column to a non-nullable numpy numeric dtype. Falls back to object dtype when the target dtype cannot hold NA.
 - LLM Scanner: On timeline scans, reduce within-span chunks to one Result per span before wrapping in a resultset; custom reducers now fire on chunked spans (#431).
 - LLM Scanner: `ResultReducer.llm()` now uses the synthesizer's own reasoning as the reduced `Result.explanation`, instead of a `[Segment N]` concat of the per-chunk explanations. The synthesis prompt also instructs the model to preserve `[M1]`-style message citations so the reduced explanation stays traceable to the merged references.

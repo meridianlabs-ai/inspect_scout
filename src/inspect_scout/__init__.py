@@ -69,6 +69,7 @@ from ._transcript.messages import (
     MessagesSegment,
     segment_messages,
     span_messages,
+    span_tools,
     transcript_messages,
 )
 from ._transcript.sample_metadata import SampleMetadata
@@ -171,6 +172,7 @@ __all__ = [
     "message_numbering",
     "messages_as_str",
     "span_messages",
+    "span_tools",
     "segment_messages",
     "MessagesSegment",
     "transcript_messages",

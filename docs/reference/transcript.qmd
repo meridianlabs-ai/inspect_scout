@@ -34,6 +34,7 @@ reference: "inspect_scout"
 ### timeline_messages
 ### segment_messages
 ### span_messages
+### span_tools
 ### MessagesSegment
 ### TimelineMessages
 

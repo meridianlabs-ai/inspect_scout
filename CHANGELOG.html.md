@@ -1,6 +1,27 @@
 # changelog – Inspect Scout
 
-## 0.4.31 (06 May 2026)
+## 0.4.35 (16 May 2026)
+
+- LLM Scanner: [generate_answer()](./reference/scanner.html.md#generate_answer) and `structured_generate()` accept `context_tools` — additional [ToolInfo](https://inspect.aisi.org.uk/reference/inspect_ai.tool.html#toolinfo) definitions declared in the request but never invoked (`tool_choice` forces the answer tool for structured answers and is `"none"` for textual answers). This lets callers pass a `prompt` containing prior `tool_use` blocks (e.g. when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.
+- Transcript: Add [span_tools()](./reference/transcript.html.md#span_tools) alongside [span_messages()](./reference/transcript.html.md#span_messages) to extract the union of [ToolInfo](https://inspect.aisi.org.uk/reference/inspect_ai.tool.html#toolinfo) definitions (deduped by name, last-seen wins) from a [Timeline](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline)/[TimelineSpan](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timelinespan)/`list[Event]`. Useful for callers that replay or interrogate a recorded conversation and need to re-declare the tools that were in scope.
+- Scan results: Fix `TypeError: int() argument must be ... not 'NAType'` raised by `_expand_resultset_rows` when aligning an all-NA pyarrow column to a non-nullable numpy numeric dtype. Falls back to object dtype when the target dtype cannot hold NA.
+- LLM Scanner: On timeline scans, reduce within-span chunks to one Result per span before wrapping in a resultset; custom reducers now fire on chunked spans (#431).
+- LLM Scanner: `ResultReducer.llm()` now uses the synthesizer’s own reasoning as the reduced `Result.explanation`, instead of a `[Segment N]` concat of the per-chunk explanations. The synthesis prompt also instructs the model to preserve `[M1]`-style message citations so the reduced explanation stays traceable to the merged references.
+
+## 0.4.34 (12 May 2026)
+
+- Refactor scan panel display for use in Inspect task display.
+
+## 0.4.33 (11 May 2026)
+
+- Scanning: Expose recorder primitives for inspect_ai eval_set scanner integration.
+- Observe: Stream-capture wrappers now emit the accumulated partial response when the underlying SDK stream raises mid-iteration (e.g. `overloaded_error`, connection reset, content-filter `error` SSE event). The resulting [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent) carries the partial output with `error` set; OpenAI mid-stream errors whose `code` indicates moderation (`invalid_prompt`, `content_policy_violation`, `content_filter`, `cyber_policy`) are mapped to `stop_reason="content_filter"`.
+- Scout view: Dark mode in scout viewer (#165)
+- Scout view: Improve narrow-width viewing (#209)
+- Scout view: Outline: align close icon with title and make rootHeader sticky (#197)
+- Scout view: fix model retry event ordering (#189)
+
+## 0.4.32 (06 May 2026)
 
 - LLM Scanner: Redefine `depth` semantics for timeline scanning. `depth` now counts levels of *scannable* spans (top-level agents/solvers and their scannable descendants).
 

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.36">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -40,7 +40,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -222,8 +222,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#may-2026" id="toc-may-2026" class="nav-link active" data-scroll-target="#may-2026">0.4.31 (06 May 2026)</a></li>
-  <li><a href="#may-2026-1" id="toc-may-2026-1" class="nav-link" data-scroll-target="#may-2026-1">0.4.29 (05 May 2026)</a></li>
+  <li><a href="#may-2026" id="toc-may-2026" class="nav-link active" data-scroll-target="#may-2026">0.4.35 (16 May 2026)</a></li>
+  <li><a href="#may-2026-1" id="toc-may-2026-1" class="nav-link" data-scroll-target="#may-2026-1">0.4.34 (12 May 2026)</a></li>
+  <li><a href="#may-2026-2" id="toc-may-2026-2" class="nav-link" data-scroll-target="#may-2026-2">0.4.33 (11 May 2026)</a></li>
+  <li><a href="#may-2026-3" id="toc-may-2026-3" class="nav-link" data-scroll-target="#may-2026-3">0.4.32 (06 May 2026)</a></li>
+  <li><a href="#may-2026-4" id="toc-may-2026-4" class="nav-link" data-scroll-target="#may-2026-4">0.4.29 (05 May 2026)</a></li>
   <li><a href="#april-2026" id="toc-april-2026" class="nav-link" data-scroll-target="#april-2026">0.4.28 (29 April 2026)</a></li>
   <li><a href="#april-2026-1" id="toc-april-2026-1" class="nav-link" data-scroll-target="#april-2026-1">0.4.27 (20 April 2026)</a></li>
   <li><a href="#april-2026-2" id="toc-april-2026-2" class="nav-link" data-scroll-target="#april-2026-2">0.4.26 (15 April 2026)</a></li>
@@ -262,13 +265,40 @@ ul.task-list li input[type="checkbox"] {
 
 
 <section id="may-2026" class="level2">
-<h2 class="anchored" data-anchor-id="may-2026">0.4.31 (06 May 2026)</h2>
+<h2 class="anchored" data-anchor-id="may-2026">0.4.35 (16 May 2026)</h2>
+<ul>
+<li>LLM Scanner: <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#generate_answer">generate_answer()</a></span> and <code>structured_generate()</code> accept <code>context_tools</code> — additional <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.tool.html#toolinfo">ToolInfo</a></span> definitions declared in the request but never invoked (<code>tool_choice</code> forces the answer tool for structured answers and is <code>"none"</code> for textual answers). This lets callers pass a <code>prompt</code> containing prior <code>tool_use</code> blocks (e.g.&nbsp;when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.</li>
+<li>Transcript: Add <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_tools">span_tools()</a></span> alongside <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#span_messages">span_messages()</a></span> to extract the union of <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.tool.html#toolinfo">ToolInfo</a></span> definitions (deduped by name, last-seen wins) from a <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timeline">Timeline</a></span>/<span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html#timelinespan">TimelineSpan</a></span>/<code>list[Event]</code>. Useful for callers that replay or interrogate a recorded conversation and need to re-declare the tools that were in scope.</li>
+<li>Scan results: Fix <code>TypeError: int() argument must be ... not 'NAType'</code> raised by <code>_expand_resultset_rows</code> when aligning an all-NA pyarrow column to a non-nullable numpy numeric dtype. Falls back to object dtype when the target dtype cannot hold NA.</li>
+<li>LLM Scanner: On timeline scans, reduce within-span chunks to one Result per span before wrapping in a resultset; custom reducers now fire on chunked spans (#431).</li>
+<li>LLM Scanner: <code>ResultReducer.llm()</code> now uses the synthesizer’s own reasoning as the reduced <code>Result.explanation</code>, instead of a <code>[Segment N]</code> concat of the per-chunk explanations. The synthesis prompt also instructs the model to preserve <code>[M1]</code>-style message citations so the reduced explanation stays traceable to the merged references.</li>
+</ul>
+</section>
+<section id="may-2026-1" class="level2">
+<h2 class="anchored" data-anchor-id="may-2026-1">0.4.34 (12 May 2026)</h2>
+<ul>
+<li>Refactor scan panel display for use in Inspect task display.</li>
+</ul>
+</section>
+<section id="may-2026-2" class="level2">
+<h2 class="anchored" data-anchor-id="may-2026-2">0.4.33 (11 May 2026)</h2>
+<ul>
+<li>Scanning: Expose recorder primitives for inspect_ai eval_set scanner integration.</li>
+<li>Observe: Stream-capture wrappers now emit the accumulated partial response when the underlying SDK stream raises mid-iteration (e.g.&nbsp;<code>overloaded_error</code>, connection reset, content-filter <code>error</code> SSE event). The resulting <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent">ModelEvent</a></span> carries the partial output with <code>error</code> set; OpenAI mid-stream errors whose <code>code</code> indicates moderation (<code>invalid_prompt</code>, <code>content_policy_violation</code>, <code>content_filter</code>, <code>cyber_policy</code>) are mapped to <code>stop_reason="content_filter"</code>.</li>
+<li>Scout view: Dark mode in scout viewer (#165)</li>
+<li>Scout view: Improve narrow-width viewing (#209)</li>
+<li>Scout view: Outline: align close icon with title and make rootHeader sticky (#197)</li>
+<li>Scout view: fix model retry event ordering (#189)</li>
+</ul>
+</section>
+<section id="may-2026-3" class="level2">
+<h2 class="anchored" data-anchor-id="may-2026-3">0.4.32 (06 May 2026)</h2>
 <ul>
 <li>LLM Scanner: Redefine <code>depth</code> semantics for timeline scanning. <code>depth</code> now counts levels of <em>scannable</em> spans (top-level agents/solvers and their scannable descendants).</li>
 </ul>
 </section>
-<section id="may-2026-1" class="level2">
-<h2 class="anchored" data-anchor-id="may-2026-1">0.4.29 (05 May 2026)</h2>
+<section id="may-2026-4" class="level2">
+<h2 class="anchored" data-anchor-id="may-2026-4">0.4.29 (05 May 2026)</h2>
 <ul>
 <li>Transcripts: Treat directories with <code>.eval</code> files as an eval log collection (presence of <code>.parquet</code> no longer prevails).</li>
 <li>Dependencies: Sync to semaphore changes in Inspect v0.3.217.</li>

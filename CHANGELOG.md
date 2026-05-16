@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.35 (16 May 2026)
 
 - LLM Scanner: `generate_answer()` and `structured_generate()` accept `context_tools` — additional `ToolInfo` definitions declared in the request but never invoked (`tool_choice` forces the answer tool for structured answers and is `"none"` for textual answers). This lets callers pass a `prompt` containing prior `tool_use` blocks (e.g. when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.
 - Transcript: Add `span_tools()` alongside `span_messages()` to extract the union of `ToolInfo` definitions (deduped by name, last-seen wins) from a `Timeline`/`TimelineSpan`/`list[Event]`. Useful for callers that replay or interrogate a recorded conversation and need to re-declare the tools that were in scope.

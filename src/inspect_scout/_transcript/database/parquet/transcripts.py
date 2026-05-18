@@ -1793,29 +1793,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        if self._is_s3() or self._is_hf():
-            assert self._fs is not None
-
-            # List all files recursively (returns list of FileInfo objects)
-            fs = filesystem(self._location)
-            all_files = fs.ls(self._location, recursive=True)
-            # Filter for transcript parquet files
-            files = []
-            for f in all_files:
-                name = f.name
-                if name.endswith(".parquet"):
-                    files.append(name)
-            return files
-        else:
-            location_path = UPath(self._location)
-            if not location_path.exists():
-                location_path.mkdir(parents=True, exist_ok=True)
+        async with AsyncFilesystem() as fs:
+            try:
+                return [
+                    uri
+                    async for uri in fs.iter_files(
+                        self._location, PARQUET_TRANSCRIPTS_GLOB, recursive=True
+                    )
+                ]
+            except FileNotFoundError:
+                # On local fs only, create the directory so subsequent writes
+                # can proceed.
+                if not (self._is_s3() or self._is_hf()):
+                    UPath(self._location).mkdir(parents=True, exist_ok=True)
                 return []
-
-            # Recursively discover all transcript parquet files
-            return [
-                str(p) for p in location_path.glob(f"**/{PARQUET_TRANSCRIPTS_GLOB}")
-            ]
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
@@ -2013,27 +2004,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._location is not None
 
         # Pattern to match: transcripts_{session_id}_*.parquet
-        session_pattern = f"transcripts_{session_id}_"
+        pattern = f"transcripts_{session_id}_*.parquet"
 
-        if self._is_s3() or self._is_hf():
-            assert self._fs is not None
-            fs = filesystem(self._location)
-            all_files = fs.ls(self._location, recursive=True)
-            return [
-                f.name
-                for f in all_files
-                if f.name.endswith(".parquet")
-                and Path(f.name).name.startswith(session_pattern)
-            ]
-        else:
-            location_path = UPath(self._location)
-            if not location_path.exists():
+        async with AsyncFilesystem() as fs:
+            try:
+                return [
+                    uri
+                    async for uri in fs.iter_files(
+                        self._location, pattern, recursive=True
+                    )
+                ]
+            except FileNotFoundError:
                 return []
-
-            # Glob for session files
-            return [
-                str(p) for p in location_path.glob(f"**/{session_pattern}*.parquet")
-            ]
 
     def _as_async_iterator(
         self,

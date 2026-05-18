@@ -1,4 +1,6 @@
+import asyncio
 import io
+import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
@@ -104,11 +106,11 @@ class FileRecorder(ScanRecorder):
         scans_location: str,
     ) -> None:
         # create the scan dir
-        self._scan_dir = _ensure_scan_dir(UPath(scans_location), spec.scan_id)
+        self._scan_dir = await _ensure_scan_dir(UPath(scans_location), spec.scan_id)
         self._scanners_completed: list[str] = []
         # save the spec
         self._scan_spec = spec
-        self._write_scan_spec()
+        await self._write_scan_spec()
 
         # fresh start: clear any stale buffer state from a prior scan that
         # used the same scan_location (the buffer dir is deterministic per
@@ -123,7 +125,7 @@ class FileRecorder(ScanRecorder):
     async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None:
         assert self._scan_spec
         self._scan_spec.transcripts = snapshot
-        self._write_scan_spec()
+        await self._write_scan_spec()
 
     @override
     async def resume(
@@ -140,7 +142,7 @@ class FileRecorder(ScanRecorder):
         """
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
-        self._scan_spec = _read_scan_spec(self._scan_dir)
+        self._scan_spec = await _read_scan_spec(self._scan_dir)
 
         self._seed_buffer_summary_from_scan_dir()
         # clear errors of transcripts that are about to be retried
@@ -166,7 +168,7 @@ class FileRecorder(ScanRecorder):
         """
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
-        self._scan_spec = _read_scan_spec(self._scan_dir)
+        self._scan_spec = await _read_scan_spec(self._scan_dir)
 
         self._seed_buffer_summary_from_scan_dir()
         self._seed_buffer_errors_from_scan_dir()
@@ -260,16 +262,19 @@ class FileRecorder(ScanRecorder):
             )
         return self._scan_spec
 
-    def _write_scan_spec(self) -> None:
-        with file((self.scan_dir / SCAN_JSON).as_posix(), "w") as f:
-            f.write(to_json_str_safe(self._scan_spec))
+    async def _write_scan_spec(self) -> None:
+        async with AsyncFilesystem() as fs:
+            await fs.write_file(
+                (self.scan_dir / SCAN_JSON).as_posix(),
+                to_json_str_safe(self._scan_spec).encode("utf-8"),
+            )
 
     @override
     @staticmethod
     async def sync(scan_location: str, complete: bool) -> Status:
         # get state
         scan_dir = UPath(scan_location)
-        scan_spec = _read_scan_spec(scan_dir)
+        scan_spec = await _read_scan_spec(scan_dir)
         scan_buffer_dir = RecorderBuffer.buffer_dir(scan_location)
 
         # write each scanner's compacted parquet. when a prior sync has
@@ -321,7 +326,10 @@ class FileRecorder(ScanRecorder):
     @staticmethod
     async def status(scan_location: str) -> Status:
         buffer_dir = RecorderBuffer.buffer_dir(scan_location)
-        spec = _read_scan_spec(UPath(scan_location))
+        spec = await _read_scan_spec(UPath(scan_location))
+
+        # Buffer dir is always local (see RecorderBuffer.buffer_dir); sync
+        # reads here are microseconds — acceptable on the loop.
         if buffer_dir.exists():
             return Status(
                 complete=False,
@@ -330,15 +338,20 @@ class FileRecorder(ScanRecorder):
                 summary=read_scan_summary(buffer_dir, spec),
                 errors=_read_scan_errors(buffer_dir),
             )
-        else:
-            summary = read_scan_summary(UPath(scan_location), spec)
-            return Status(
-                complete=summary.complete,
-                spec=spec,
-                location=scan_location,
-                summary=summary,
-                errors=_read_scan_errors(UPath(scan_location)),
-            )
+
+        # Scan dir may be remote; use async reads via AsyncFilesystem so
+        # the loop yields during S3 I/O.
+        scan_dir = UPath(scan_location)
+        async with AsyncFilesystem() as fs:
+            summary = await _async_read_scan_summary(fs, scan_dir, spec)
+            errors = await _async_read_scan_errors(fs, scan_dir)
+        return Status(
+            complete=summary.complete,
+            spec=spec,
+            location=scan_location,
+            summary=summary,
+            errors=errors,
+        )
 
     @override
     @staticmethod
@@ -502,12 +515,11 @@ class FileRecorder(ScanRecorder):
         status = await FileRecorder.status(scan_location)
 
         # enumerate the scanners
-        scanners = [
-            file.stem
-            for file in sorted(
-                UPath(scan_location, use_listings_cache=False).glob("*.parquet")
+        async with AsyncFilesystem() as fs:
+            parquet_uris = sorted(
+                [u async for u in fs.iter_files(scan_location, "*.parquet")]
             )
-        ]
+        scanners = [UPath(u).stem for u in parquet_uris]
 
         return _ScanResultsArrowFiles(
             status=status.complete,
@@ -533,7 +545,11 @@ class FileRecorder(ScanRecorder):
         if scanner is not None:
             scanner_names = [scanner]
         else:
-            scanner_names = [f.stem for f in sorted(scan_dir.glob("*.parquet"))]
+            async with AsyncFilesystem() as fs:
+                parquet_uris = sorted(
+                    [u async for u in fs.iter_files(scan_location, "*.parquet")]
+                )
+            scanner_names = [UPath(u).stem for u in parquet_uris]
 
         # Create lazy mapping with a loader that reads DataFrames on demand
         scanners = LazyScannerMapping(
@@ -559,18 +575,22 @@ class FileRecorder(ScanRecorder):
     ) -> ScanResultsDB:
         from upath import UPath
 
-        scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
 
         # Create in-memory DuckDB connection
         conn = duckdb.connect(":memory:")
 
         # Create views for each parquet file
-        for parquet_file in sorted(scan_dir.glob("*.parquet")):
+        async with AsyncFilesystem() as fs:
+            parquet_uris = sorted(
+                [u async for u in fs.iter_files(scan_location, "*.parquet")]
+            )
+        for parquet_uri in parquet_uris:
+            parquet_file = UPath(parquet_uri)
             scanner_name = parquet_file.stem
             # Create a view that references the parquet file
-            # Use absolute path to ensure it works regardless of working directory
-            abs_path = parquet_file.resolve().as_posix()
+            # iter_files already yields absolute URIs.
+            abs_path = parquet_file.as_posix()
 
             # Check if we need to expand resultsets
             if rows == "results" and _has_resultsets(conn, abs_path):
@@ -603,14 +623,22 @@ class FileRecorder(ScanRecorder):
     @override
     @staticmethod
     async def list(scans_location: str) -> list[Status]:
-        scans_dir = UPath(scans_location)
-        scans: list[Status] = []
-        for scan_dir in scans_dir.rglob("scan_id=*"):
+        async with AsyncFilesystem() as fs:
+            scan_dirs = [
+                uri
+                async for uri in fs.iter_dirs(
+                    scans_location, "scan_id=*", recursive=True
+                )
+            ]
+
+        async def _status(scan_dir: str) -> Status | None:
             try:
-                scans.append(await FileRecorder.status(scan_dir.as_posix()))
+                return await FileRecorder.status(scan_dir)
             except FileNotFoundError:
-                pass
-        return scans
+                return None
+
+        results = await asyncio.gather(*(_status(d) for d in scan_dirs))
+        return [s for s in results if s is not None]
 
 
 async def _compact_with_prior(
@@ -645,16 +673,34 @@ def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
     return (scan_dir / f"{scanner}.parquet").as_posix()
 
 
-def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
+async def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
     scan_json = scan_dir / SCAN_JSON
-    fs = filesystem(scan_dir.as_posix())
-    if not fs.exists(scan_json.as_posix()):
-        raise FileNotFoundError(
-            f"The specified directory '{scan_dir}' does not contain a scan."
-        )
+    async with AsyncFilesystem() as fs:
+        try:
+            data = await fs.read_file(scan_json.as_posix())
+        except Exception as e:
+            if _is_not_found(e):
+                raise FileNotFoundError(
+                    f"The specified directory '{scan_dir}' does not contain a scan."
+                ) from e
+            raise
+    return ScanSpec.model_validate_json(data)
 
-    with file(scan_json.as_posix(), "r") as f:
-        return ScanSpec.model_validate_json(f.read())
+
+def _is_not_found(e: BaseException) -> bool:
+    """True if the exception indicates a missing file (local or S3 404).
+
+    Duck-types ``botocore.exceptions.ClientError`` by inspecting the
+    ``.response`` attribute shape; avoids a hard dependency on the type.
+    """
+    if isinstance(e, FileNotFoundError):
+        return True
+    response = getattr(e, "response", None)
+    if isinstance(response, dict):
+        code = response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return True
+    return False
 
 
 def _read_scan_errors(scan_dir: UPath) -> list[Error]:
@@ -662,18 +708,49 @@ def _read_scan_errors(scan_dir: UPath) -> list[Error]:
     return read_scan_errors(str(scan_errors))
 
 
-def _find_scan_dir(scans_path: UPath, scan_id: str) -> UPath | None:
-    _ensure_scans_dir(scans_path)
-    for f in scans_path.glob(f"scan_id={scan_id}"):
-        if f.is_dir():
-            return f
+async def _async_read_scan_summary(
+    fs: AsyncFilesystem, scan_dir: UPath, spec: ScanSpec
+) -> Summary:
+    """Async counterpart to `read_scan_summary` for remote scan dirs."""
+    try:
+        data = await fs.read_file((scan_dir / SCAN_SUMMARY).as_posix())
+    except Exception as e:
+        if _is_not_found(e):
+            return Summary(complete=False, scanners=list(spec.scanners.keys()))
+        raise
+    text = data.decode().strip()
+    if text:
+        return Summary.model_validate_json(text)
+    return Summary(complete=False, scanners=list(spec.scanners.keys()))
 
+
+async def _async_read_scan_errors(fs: AsyncFilesystem, scan_dir: UPath) -> list[Error]:
+    """Async counterpart to `_read_scan_errors` for remote scan dirs."""
+    try:
+        data = await fs.read_file((scan_dir / SCAN_ERRORS).as_posix())
+    except Exception as e:
+        if _is_not_found(e):
+            return []
+        raise
+    errors: list[Error] = []
+    for line in data.decode().splitlines():
+        line = line.strip()
+        if line:
+            errors.append(Error(**json.loads(line)))
+    return errors
+
+
+async def _find_scan_dir(scans_path: UPath, scan_id: str) -> UPath | None:
+    _ensure_scans_dir(scans_path)
+    async with AsyncFilesystem() as fs:
+        async for uri in fs.iter_dirs(scans_path.as_posix(), f"scan_id={scan_id}"):
+            return UPath(uri)
     return None
 
 
-def _ensure_scan_dir(scans_path: UPath, scan_id: str) -> UPath:
+async def _ensure_scan_dir(scans_path: UPath, scan_id: str) -> UPath:
     # look for an existing scan dir
-    scan_dir = _find_scan_dir(scans_path, scan_id)
+    scan_dir = await _find_scan_dir(scans_path, scan_id)
 
     # if there is no scan_dir then create one
     if scan_dir is None:

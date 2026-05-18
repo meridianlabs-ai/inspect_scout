@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._lfs import LFSError, resolve_lfs_directory
+from inspect_ai._util.event_loop_monitor import event_loop_monitor
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
@@ -155,7 +156,7 @@ def view_server(
                 f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
 
-        async with anyio.create_task_group() as tg:
+        async with event_loop_monitor(), anyio.create_task_group() as tg:
             tg.start_soon(announce_when_ready)
             await server.serve()
 

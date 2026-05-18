@@ -59,10 +59,17 @@ async def structured_generate(
 
     # create a dynamic tool definition for the answer tool
     # use module-level function to ensure picklability
+    answer_description = "Use this tool to submit your final answer."
+    if context_tools:
+        answer_description += (
+            f" This is the only tool you should call — the other tools "
+            f"are shown so you can interpret prior tool calls in the "
+            f"conversation, but they are not available to invoke here."
+        )
     answer_tooldef = ToolDef(
         tool=_answer_tool_impl,
         name=answer_tool,
-        description="Use this tool to submit your final answer.",
+        description=answer_description,
         parameters=ToolParams(
             type="object",
             properties=schema.properties or {},

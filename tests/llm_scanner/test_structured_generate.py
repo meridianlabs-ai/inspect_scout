@@ -30,21 +30,22 @@ from inspect_ai.util import JSONSchema
 from inspect_scout._llm_scanner.structured import structured_generate
 
 
-def _assistant_tool_call(
-    call_id: str, function: str, arguments: dict[str, Any]
-) -> ModelOutput:
-    """ModelOutput whose message carries a single tool call."""
-    msg = ChatMessageAssistant(
-        content="",
-        tool_calls=[ToolCall(id=call_id, function=function, arguments=arguments)],
-    )
+def _assistant_with_calls(*calls: ToolCall) -> ModelOutput:
+    """ModelOutput whose assistant message carries ``calls`` (possibly none)."""
+    msg = ChatMessageAssistant(content="", tool_calls=list(calls) or None)
     return ModelOutput.from_message(msg)
 
 
+def _tc(call_id: str, function: str, arguments: dict[str, Any]) -> ToolCall:
+    return ToolCall(id=call_id, function=function, arguments=arguments)
+
+
 class RecordingGenerate:
-    """Stand-in for ``generate_retry_refusals`` that snapshots ``input`` at
-    call time (the real list is mutated in place, so a plain mock would only
-    show the final state)."""
+    """Stand-in for ``generate_retry_refusals`` that snapshots ``input`` per call.
+
+    The real list is mutated in place, so a plain mock would only show the
+    final state.
+    """
 
     def __init__(self, outputs: list[ModelOutput]) -> None:
         self._outputs = iter(outputs)
@@ -56,8 +57,9 @@ class RecordingGenerate:
 
 
 def _assert_tool_calls_paired(messages: list[ChatMessage]) -> None:
-    """Every assistant tool_call must be immediately followed by ChatMessageTool(s)
-    that cover all of its tool_call_ids — the invariant the Anthropic API enforces.
+    """Assert every assistant tool_call is followed by a matching ChatMessageTool.
+
+    This is the invariant the Anthropic API enforces on the next request.
     """
     i = 0
     while i < len(messages):
@@ -70,8 +72,7 @@ def _assert_tool_calls_paired(messages: list[ChatMessage]) -> None:
                 follow = messages[j]
                 if not isinstance(follow, ChatMessageTool):
                     break
-                tcid = follow.tool_call_id
-                got.update(tcid if isinstance(tcid, list) else [tcid or ""])
+                got.add(follow.tool_call_id or "")
                 j += 1
             missing = want - got
             assert not missing, (
@@ -81,6 +82,13 @@ def _assert_tool_calls_paired(messages: list[ChatMessage]) -> None:
             i = j
         else:
             i += 1
+
+
+def _tool_result(messages: list[ChatMessage], call_id: str) -> ChatMessageTool:
+    for m in messages:
+        if isinstance(m, ChatMessageTool) and m.tool_call_id == call_id:
+            return m
+    raise AssertionError(f"no tool result for {call_id}")
 
 
 SCHEMA = JSONSchema.model_validate(
@@ -94,53 +102,109 @@ SCHEMA = JSONSchema.model_validate(
     }
 )
 
+VALID = {"explanation": "x", "score": 5}
 
-@pytest.mark.anyio
-async def test_structured_generate_retry_pairs_invalid_answer_call() -> None:
-    """First attempt: answer() called with bad args (validation error).
-    Second attempt: answer() called with good args.
-    The second generate must receive a conversation where the first
-    tool_use is paired with a tool_result.
-    """
-    gen = RecordingGenerate(
-        [
-            _assistant_tool_call("c1", "answer", {"explanation": "x"}),
-            _assistant_tool_call("c2", "answer", {"explanation": "x", "score": 5}),
-        ]
-    )
+
+async def _run(
+    outputs: list[ModelOutput],
+) -> tuple[dict[str, Any] | None, list[ChatMessage], RecordingGenerate]:
+    gen = RecordingGenerate(outputs)
     with patch(
         "inspect_scout._llm_scanner.structured.generate_retry_refusals", new=gen
     ):
         value, messages, _ = await structured_generate(
             input="rate this", schema=SCHEMA, model="mockllm/model"
         )
-
-    assert len(gen.inputs) == 2
-    _assert_tool_calls_paired(gen.inputs[1])
+    # every conversation handed to generate, plus the final one, must be paired
+    for inp in gen.inputs:
+        _assert_tool_calls_paired(inp)
     _assert_tool_calls_paired(messages)
-    assert value == {"explanation": "x", "score": 5}
+    return value, messages, gen
 
 
 @pytest.mark.anyio
-async def test_structured_generate_retry_pairs_non_answer_call() -> None:
-    """First attempt: model ignores tool_choice and calls some other tool.
-    The retry loop must still pair that tool_use with a tool_result before
-    re-generating, otherwise the next API call is rejected.
-    """
-    gen = RecordingGenerate(
+async def test_valid_answer_first_try() -> None:
+    value, messages, gen = await _run(
+        [_assistant_with_calls(_tc("c1", "answer", VALID))]
+    )
+    assert len(gen.inputs) == 1
+    assert value == VALID
+    assert _tool_result(messages, "c1").error is None
+
+
+@pytest.mark.anyio
+async def test_invalid_answer_args_then_retry() -> None:
+    """answer() called with bad args → parsing error fed back, retry succeeds."""
+    value, messages, gen = await _run(
         [
-            _assistant_tool_call("c1", "lookup", {"q": "hello"}),
-            _assistant_tool_call("c2", "answer", {"explanation": "x", "score": 5}),
+            _assistant_with_calls(_tc("c1", "answer", {"explanation": "x"})),
+            _assistant_with_calls(_tc("c2", "answer", VALID)),
         ]
     )
-    with patch(
-        "inspect_scout._llm_scanner.structured.generate_retry_refusals", new=gen
-    ):
-        value, messages, _ = await structured_generate(
-            input="rate this", schema=SCHEMA, model="mockllm/model"
-        )
-
     assert len(gen.inputs) == 2
-    _assert_tool_calls_paired(gen.inputs[1])
-    _assert_tool_calls_paired(messages)
-    assert value == {"explanation": "x", "score": 5}
+    err = _tool_result(gen.inputs[1], "c1").error
+    assert err is not None and err.type == "parsing"
+    assert "score" in err.message
+    assert value == VALID
+
+
+@pytest.mark.anyio
+async def test_context_tool_call_then_retry() -> None:
+    """Model ignores tool_choice and calls a context tool → rejected, retry."""
+    value, messages, gen = await _run(
+        [
+            _assistant_with_calls(_tc("c1", "lookup", {"q": "hello"})),
+            _assistant_with_calls(_tc("c2", "answer", VALID)),
+        ]
+    )
+    assert len(gen.inputs) == 2
+    err = _tool_result(gen.inputs[1], "c1").error
+    assert err is not None and err.type == "unknown"
+    assert value == VALID
+
+
+@pytest.mark.anyio
+async def test_hallucinated_tool_then_retry() -> None:
+    """Model invents a tool name not in the tool list → same rejection path."""
+    value, _, gen = await _run(
+        [
+            _assistant_with_calls(_tc("c1", "made_up_tool", {})),
+            _assistant_with_calls(_tc("c2", "answer", VALID)),
+        ]
+    )
+    assert len(gen.inputs) == 2
+    err = _tool_result(gen.inputs[1], "c1").error
+    assert err is not None and err.type == "unknown"
+    assert "answer()" in err.message
+    assert value == VALID
+
+
+@pytest.mark.anyio
+async def test_answer_alongside_other_call_is_accepted() -> None:
+    """answer() + something else in one turn → accept the answer, stub the other."""
+    value, messages, gen = await _run(
+        [
+            _assistant_with_calls(
+                _tc("c1", "lookup", {"q": "hello"}),
+                _tc("c2", "answer", VALID),
+            )
+        ]
+    )
+    assert len(gen.inputs) == 1
+    assert value == VALID
+    assert _tool_result(messages, "c1").error is not None
+    assert _tool_result(messages, "c2").error is None
+
+
+@pytest.mark.anyio
+async def test_no_tool_call_then_retry() -> None:
+    """Model returns plain text → nudge with a user message, retry."""
+    value, _, gen = await _run(
+        [
+            _assistant_with_calls(),
+            _assistant_with_calls(_tc("c1", "answer", VALID)),
+        ]
+    )
+    assert len(gen.inputs) == 2
+    assert gen.inputs[1][-1].role == "user"
+    assert value == VALID

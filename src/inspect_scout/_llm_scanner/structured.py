@@ -26,6 +26,7 @@ from inspect_ai.model import (
 from inspect_ai.scorer import ValueToFloat
 from inspect_ai.tool import (
     Tool,
+    ToolCallError,
     ToolDef,
     ToolFunction,
     ToolInfo,
@@ -91,42 +92,42 @@ async def structured_generate(
         messages.append(output.message)
 
         tool_calls = output.message.tool_calls or []
-        answer_tool_call = next(
-            (tc for tc in tool_calls if tc.function == answer_tool), None
-        )
+        answer_calls = [tc for tc in tool_calls if tc.function == answer_tool]
+        other_calls = [tc for tc in tool_calls if tc.function != answer_tool]
 
-        if tool_calls:
-            # execute every tool call so each tool_use is paired with a
-            # tool_result before we re-generate (otherwise the next API call
-            # is rejected with "tool_use ids were found without tool_result
-            # blocks immediately after"). this also validates the answer
-            # tool parameters and provides feedback for invalid cases.
+        if len(answer_calls) == 1 and not other_calls:
+            # exactly one answer call — validate via execute_tools
             execute_messages, execute_output = await execute_tools(
                 messages=messages, tools=[answer_tooldef]
             )
             messages.extend(execute_messages)
             if execute_output is not None:
                 output = execute_output
-
-            # exit if the answer tool was called and executed without error
-            if answer_tool_call is not None:
-                answer_result = next(
-                    (
-                        m
-                        for m in execute_messages
-                        if isinstance(m, ChatMessageTool)
-                        and m.tool_call_id == answer_tool_call.id
-                    ),
-                    None,
+            answer_result = execute_messages[-1]
+            assert isinstance(answer_result, ChatMessageTool)
+            if answer_result.error is None:
+                value = answer_calls[0].arguments
+                output.completion = to_json_str_safe(answer_calls[0].arguments)
+                break
+        else:
+            # No tool calls, or wrong/extra tool(s). Pair every tool_use
+            # with a stub error result so the next API call isn't rejected
+            # with "tool_use ids were found without tool_result blocks
+            # immediately after". context_tools are declarations only
+            # (ToolInfo, no executable) — never try to run them.
+            for tc in tool_calls:
+                messages.append(
+                    ChatMessageTool(
+                        tool_call_id=tc.id,
+                        function=tc.function,
+                        content="",
+                        error=ToolCallError(
+                            "not_available",
+                            f"Tool '{tc.function}' is not available here — "
+                            f"respond using only a single {answer_tool}() call.",
+                        ),
+                    )
                 )
-                if answer_result is not None and answer_result.error is None:
-                    value = answer_tool_call.arguments
-                    output.completion = to_json_str_safe(answer_tool_call.arguments)
-                    break
-
-        # the model either made no tool calls or called the wrong tool —
-        # nudge it toward the answer tool before retrying
-        if answer_tool_call is None:
             messages.append(
                 ChatMessageUser(
                     content=f"Please use the {answer_tool}() tool to report your answer."

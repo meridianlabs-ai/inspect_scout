@@ -90,27 +90,17 @@ async def structured_generate(
         )
         messages.append(output.message)
 
-        # if there we no tool calls then we need to insert a user message to
-        # tell the model to keep going
-        if len(output.message.tool_calls or []) == 0:
-            messages.append(
-                ChatMessageUser(
-                    content=f"Please use the {answer_tool}() tool to report your answer."
-                )
-            )
-
-        # check for a call to the 'answer' tool
+        tool_calls = output.message.tool_calls or []
         answer_tool_call = next(
-            (
-                tool_call
-                for tool_call in (output.message.tool_calls or [])
-                if tool_call.function == answer_tool
-            ),
-            None,
+            (tc for tc in tool_calls if tc.function == answer_tool), None
         )
-        if answer_tool_call:
-            # execute the tool calls (this will take care of validating the
-            # answer tool parameters and providing feedback for invalid cases)
+
+        if tool_calls:
+            # execute every tool call so each tool_use is paired with a
+            # tool_result before we re-generate (otherwise the next API call
+            # is rejected with "tool_use ids were found without tool_result
+            # blocks immediately after"). this also validates the answer
+            # tool parameters and provides feedback for invalid cases.
             execute_messages, execute_output = await execute_tools(
                 messages=messages, tools=[answer_tooldef]
             )
@@ -118,14 +108,30 @@ async def structured_generate(
             if execute_output is not None:
                 output = execute_output
 
-            # exit if there was a successful call of the answer tool
-            if isinstance(messages[-1], ChatMessageTool):
-                tool_message = messages[-1]
-                if tool_message.error is None:
-                    # set the value to the object return by the model and break
+            # exit if the answer tool was called and executed without error
+            if answer_tool_call is not None:
+                answer_result = next(
+                    (
+                        m
+                        for m in execute_messages
+                        if isinstance(m, ChatMessageTool)
+                        and m.tool_call_id == answer_tool_call.id
+                    ),
+                    None,
+                )
+                if answer_result is not None and answer_result.error is None:
                     value = answer_tool_call.arguments
                     output.completion = to_json_str_safe(answer_tool_call.arguments)
                     break
+
+        # the model either made no tool calls or called the wrong tool —
+        # nudge it toward the answer tool before retrying
+        if answer_tool_call is None:
+            messages.append(
+                ChatMessageUser(
+                    content=f"Please use the {answer_tool}() tool to report your answer."
+                )
+            )
 
         # keep going
         attempts += 1

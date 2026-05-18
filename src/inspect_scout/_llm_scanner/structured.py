@@ -20,12 +20,12 @@ from inspect_ai.model import (
     GenerateConfig,
     Model,
     ModelOutput,
+    execute_tools,
     get_model,
 )
 from inspect_ai.scorer import ValueToFloat
 from inspect_ai.tool import (
     Tool,
-    ToolCallError,
     ToolDef,
     ToolFunction,
     ToolInfo,
@@ -33,7 +33,6 @@ from inspect_ai.tool import (
     ToolSource,
 )
 from inspect_ai.util import JSONSchema
-from jsonschema import Draft7Validator
 from pydantic import BaseModel, Field, create_model
 
 from inspect_scout._llm_scanner.types import AnswerStructured
@@ -57,36 +56,42 @@ async def structured_generate(
     # resolve model
     model = get_model(model)
 
-    # the answer tool is a pure declaration — we never execute it, we just
-    # want the model to call it so we can read the arguments
-    answer_tool = answer_tool or "answer"
-    answer_info = ToolInfo(
+    # create a dynamic tool definition for the answer tool
+    # use module-level function to ensure picklability
+    answer_tooldef = ToolDef(
+        tool=_answer_tool_impl,
         name=answer_tool,
-        description=(
-            "Use this tool to submit your final answer. "
-            "This is the only tool you should call."
-        ),
+        description="Use this tool to submit your final answer.",
         parameters=ToolParams(
             type="object",
             properties=schema.properties or {},
             required=schema.required or [],
         ),
     )
-    validator = Draft7Validator(schema.model_dump(exclude_none=True))
+
+    # wrap each context tool in a stub that preserves name/description/schema
+    # but whose body just tells the model to call answer() instead. these are
+    # declarations the model needs to see for the input transcript to be
+    # API-valid; we never want them executed for real.
+    executable_tools: list[ToolDef | ToolSource] = [
+        *(_context_tool_stub(t, answer_tooldef.name) for t in context_tools),
+        answer_tooldef,
+    ]
 
     # setup initial values for messages and output (we will return these)
     value: dict[str, Any] | None = None
     messages = input.copy()
     output: ModelOutput
 
-    # generate until we get a valid answer() call (or run out of attempts)
+    # setup a generate loop that will run until a successful call to the
+    # answer tool is made
     attempts = 0
     while attempts < max_attempts:
         output = await generate_retry_refusals(
             model,
             input=messages,
-            tools=[*context_tools, answer_info],
-            tool_choice=ToolFunction(answer_tool),
+            tools=executable_tools,
+            tool_choice=ToolFunction(answer_tooldef.name),
             config=(config or GenerateConfig()).merge(
                 GenerateConfig(parallel_tool_calls=False)
             ),
@@ -94,53 +99,84 @@ async def structured_generate(
         )
         messages.append(output.message)
 
-        # Pair every tool_use with a tool_result so the conversation stays
-        # well-formed for the next API call. Validate answer() arguments
-        # inline against the schema; reject anything else. context_tools are
-        # declarations only (ToolInfo, no callable) — never executed.
-        valid_answer: dict[str, Any] | None = None
-        tool_calls = output.message.tool_calls or []
-        for tc in tool_calls:
-            error: ToolCallError | None
-            if tc.function != answer_tool:
-                error = ToolCallError(
-                    "unknown",
-                    f"'{tc.function}' is not callable here; "
-                    f"call {answer_tool}() to submit your answer.",
-                )
-            elif schema_errors := list(validator.iter_errors(tc.arguments)):
-                error = ToolCallError(
-                    "parsing", "; ".join(e.message for e in schema_errors)
-                )
-            else:
-                error = None
-                if valid_answer is None:
-                    valid_answer = tc.arguments
-            messages.append(
-                ChatMessageTool(
-                    tool_call_id=tc.id,
-                    function=tc.function,
-                    content="",
-                    error=error,
-                )
+        # execute every tool call so each tool_use is paired with a
+        # tool_result before the next generate. this validates answer()
+        # arguments against the schema, returns "not callable here" for
+        # context-tool stubs, and reports "not found" for hallucinated tools.
+        execute_messages, execute_output = await execute_tools(
+            messages=messages, tools=executable_tools
+        )
+        messages.extend(execute_messages)
+        if execute_output is not None:
+            output = execute_output
+
+        # check for a successful call to the 'answer' tool
+        answer_tool_call = next(
+            (
+                tool_call
+                for tool_call in (output.message.tool_calls or [])
+                if tool_call.function == answer_tool
+            ),
+            None,
+        )
+        if answer_tool_call:
+            answer_result = next(
+                (
+                    m
+                    for m in execute_messages
+                    if isinstance(m, ChatMessageTool)
+                    and m.tool_call_id == answer_tool_call.id
+                ),
+                None,
             )
+            if answer_result is not None and answer_result.error is None:
+                # set the value to the object returned by the model and break
+                value = answer_tool_call.arguments
+                output.completion = to_json_str_safe(answer_tool_call.arguments)
+                break
 
-        if valid_answer is not None:
-            value = valid_answer
-            output.completion = to_json_str_safe(valid_answer)
-            break
-
-        # no answer at all → nudge; otherwise the tool errors are the feedback
-        if not tool_calls:
+        # if there were no tool calls then we need to insert a user message to
+        # tell the model to keep going (otherwise the tool results above are
+        # the feedback)
+        if len(output.message.tool_calls or []) == 0:
             messages.append(
                 ChatMessageUser(
                     content=f"Please use the {answer_tool}() tool to report your answer."
                 )
             )
 
+        # keep going
         attempts += 1
 
+    # return results
     return value, messages, output
+
+
+def _context_tool_stub(
+    tool: Tool | ToolDef | ToolInfo | ToolSource, answer_tool: str
+) -> ToolDef | ToolSource:
+    """Clone a context tool's name/description/schema onto a non-callable stub.
+
+    The stub accepts any arguments and returns a string redirecting the model
+    to the answer tool, so ``execute_tools`` can pair the ``tool_use`` with a
+    ``tool_result`` without running anything real.
+    """
+    if isinstance(tool, ToolSource):
+        return tool
+    info = tool if isinstance(tool, (ToolDef, ToolInfo)) else ToolDef(tool)
+
+    async def stub(**kwargs: Any) -> str:
+        return (
+            f"'{info.name}' is not callable here — please respond using the "
+            f"{answer_tool}() tool."
+        )
+
+    return ToolDef(
+        tool=stub,
+        name=info.name,
+        description=info.description,
+        parameters=info.parameters,
+    )
 
 
 ST = TypeVar("ST", bound=BaseModel)
@@ -495,3 +531,13 @@ def augment_type_with_explanation(type: Type[ST]) -> Type[ST]:
     )
 
     return augmented_type  # type: ignore
+
+
+# Module-level tool function for picklability in multiprocessing
+async def _answer_tool_impl(**kwargs: Any) -> str:
+    """Implementation of the answer tool for structured generation.
+
+    This is defined at module level rather than as a local function
+    to ensure it can be pickled when using multiprocessing.
+    """
+    return ""

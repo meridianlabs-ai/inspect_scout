@@ -25,7 +25,7 @@ from inspect_ai.model import (
     ChatMessageTool,
     ModelOutput,
 )
-from inspect_ai.tool import ToolCall
+from inspect_ai.tool import ToolCall, ToolInfo, ToolParams
 from inspect_ai.util import JSONSchema
 from inspect_scout._llm_scanner.structured import structured_generate
 
@@ -107,13 +107,17 @@ VALID = {"explanation": "x", "score": 5}
 
 async def _run(
     outputs: list[ModelOutput],
+    context_tools: list[ToolInfo] | None = None,
 ) -> tuple[dict[str, Any] | None, list[ChatMessage], RecordingGenerate]:
     gen = RecordingGenerate(outputs)
     with patch(
         "inspect_scout._llm_scanner.structured.generate_retry_refusals", new=gen
     ):
         value, messages, _ = await structured_generate(
-            input="rate this", schema=SCHEMA, model="mockllm/model"
+            input="rate this",
+            schema=SCHEMA,
+            context_tools=context_tools or [],
+            model="mockllm/model",
         )
     # every conversation handed to generate, plus the final one, must be paired
     for inp in gen.inputs:
@@ -150,22 +154,25 @@ async def test_invalid_answer_args_then_retry() -> None:
 
 @pytest.mark.anyio
 async def test_context_tool_call_then_retry() -> None:
-    """Model ignores tool_choice and calls a context tool → rejected, retry."""
+    """Model ignores tool_choice and calls a context tool → stub redirects, retry."""
+    lookup = ToolInfo(name="lookup", description="lookup", parameters=ToolParams())
     value, messages, gen = await _run(
         [
-            _assistant_with_calls(_tc("c1", "lookup", {"q": "hello"})),
+            _assistant_with_calls(_tc("c1", "lookup", {})),
             _assistant_with_calls(_tc("c2", "answer", VALID)),
-        ]
+        ],
+        context_tools=[lookup],
     )
     assert len(gen.inputs) == 2
-    err = _tool_result(gen.inputs[1], "c1").error
-    assert err is not None and err.type == "unknown"
+    result = _tool_result(gen.inputs[1], "c1")
+    assert result.error is None
+    assert "not callable here" in result.text and "answer()" in result.text
     assert value == VALID
 
 
 @pytest.mark.anyio
 async def test_hallucinated_tool_then_retry() -> None:
-    """Model invents a tool name not in the tool list → same rejection path."""
+    """Model invents a tool name not in the tool list → execute_tools rejects it."""
     value, _, gen = await _run(
         [
             _assistant_with_calls(_tc("c1", "made_up_tool", {})),
@@ -174,25 +181,27 @@ async def test_hallucinated_tool_then_retry() -> None:
     )
     assert len(gen.inputs) == 2
     err = _tool_result(gen.inputs[1], "c1").error
-    assert err is not None and err.type == "unknown"
-    assert "answer()" in err.message
+    assert err is not None and err.type == "parsing"
+    assert "made_up_tool" in err.message
     assert value == VALID
 
 
 @pytest.mark.anyio
 async def test_answer_alongside_other_call_is_accepted() -> None:
-    """answer() + something else in one turn → accept the answer, stub the other."""
+    """answer() + a context tool in one turn → accept the answer, stub the other."""
+    lookup = ToolInfo(name="lookup", description="lookup", parameters=ToolParams())
     value, messages, gen = await _run(
         [
             _assistant_with_calls(
-                _tc("c1", "lookup", {"q": "hello"}),
+                _tc("c1", "lookup", {}),
                 _tc("c2", "answer", VALID),
             )
-        ]
+        ],
+        context_tools=[lookup],
     )
     assert len(gen.inputs) == 1
     assert value == VALID
-    assert _tool_result(messages, "c1").error is not None
+    assert "not callable here" in _tool_result(messages, "c1").text
     assert _tool_result(messages, "c2").error is None
 
 

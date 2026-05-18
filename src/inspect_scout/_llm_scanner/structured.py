@@ -176,6 +176,7 @@ def _context_tool_stub(
         name=info.name,
         description=info.description,
         parameters=info.parameters,
+        options=info.options,
     )
 
 

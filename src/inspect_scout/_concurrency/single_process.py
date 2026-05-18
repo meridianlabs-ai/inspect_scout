@@ -15,12 +15,14 @@ from inspect_ai.util._anyio import inner_exception
 
 from .._display import display
 from .._scanner.result import ResultReport
+from .._transcript.transcripts import TranscriptsReader
 from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
 from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
     ParseJob,
+    ReaderCMFactory,
     ScanMetrics,
     ScannerJob,
 )
@@ -84,10 +86,12 @@ def single_process_strategy(
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
+        parse_function: Callable[
+            [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
+        ],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
-        completed: Callable[[], Awaitable[None]],
+        reader_cm_factory: ReaderCMFactory,
     ) -> None:
         metrics = ScanMetrics(1)
         nonlocal overall_start_time
@@ -194,7 +198,7 @@ def single_process_strategy(
             metrics.tasks_idle -= 1
             return 1.0 if current_wait_duration == 0 else 1.0
 
-        async def _perform_parse(worker_id: int) -> bool:
+        async def _perform_parse(worker_id: int, reader: TranscriptsReader) -> bool:
             """Perform the parse action. Returns True if parse job was pulled from the queue, False if there was no parse job to perform."""
             # Pull from parse_jobs iterator and create scanner jobs
             try:
@@ -207,7 +211,7 @@ def single_process_strategy(
             _update_metrics()
 
             try:
-                result = await parse_function(parse_job)
+                result = await parse_function(parse_job, reader)
                 print_diagnostics(
                     f"Worker #{worker_id:02d}",
                     f"Parsed  ({(time.time() - exec_start_time):.3f}s) - ('{parse_job.transcript_info.transcript_id}')",
@@ -266,6 +270,7 @@ def single_process_strategy(
 
         async def _worker_task(
             worker_id: int,
+            reader: TranscriptsReader,
         ) -> None:
             """Worker that dynamically chooses between parsing and scanning."""
             nonlocal parse_jobs_exhausted
@@ -281,7 +286,7 @@ def single_process_strategy(
                         wait_duration = await _perform_wait(wait_duration)
                     elif action == "parse":
                         wait_duration = 0.0
-                        if await _perform_parse(worker_id):
+                        if await _perform_parse(worker_id, reader):
                             parses_completed += 1
                         else:
                             print_diagnostics(
@@ -317,18 +322,21 @@ def single_process_strategy(
                     _update_metrics()
 
         try:
-            async with create_task_group() as tg:
-                ticker_scope = anyio.CancelScope()
-                tg.start_soon(_metrics_ticker, ticker_scope)
+            async with reader_cm_factory() as reader:
+                async with create_task_group() as tg:
+                    ticker_scope = anyio.CancelScope()
+                    tg.start_soon(_metrics_ticker, ticker_scope)
 
-                # Spawn initial workers for faster ramp-up
-                global worker_id_counter
-                async with create_task_group() as worker_tg:
-                    for _ in range(task_count):
-                        worker_id_counter += 1
-                        metrics.task_count += 1
-                        worker_tg.start_soon(_worker_task, worker_id_counter)
-                ticker_scope.cancel()
+                    # Spawn initial workers for faster ramp-up
+                    global worker_id_counter
+                    async with create_task_group() as worker_tg:
+                        for _ in range(task_count):
+                            worker_id_counter += 1
+                            metrics.task_count += 1
+                            worker_tg.start_soon(
+                                _worker_task, worker_id_counter, reader
+                            )
+                    ticker_scope.cancel()
 
         except Exception as ex:
             raise inner_exception(ex) from None
@@ -339,6 +347,5 @@ def single_process_strategy(
             metrics.tasks_scanning = 0
             metrics.tasks_idle = 0
             _update_metrics()
-            await completed()
 
     return the_func

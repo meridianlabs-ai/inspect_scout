@@ -36,6 +36,7 @@ from inspect_ai.util._concurrency import init_concurrency
 from inspect_scout._display._display import display
 
 from .._scanner.result import ResultReport
+from .._transcript.transcripts import TranscriptsReader
 from .._transcript.types import TranscriptInfo
 from ._mp_common import (
     DillCallable,
@@ -58,6 +59,7 @@ from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
     ParseJob,
+    ReaderCMFactory,
     ScanMetrics,
     ScannerJob,
     sum_metrics,
@@ -129,10 +131,12 @@ def multi_process_strategy(
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
+        parse_function: Callable[
+            [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
+        ],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         update_metrics: Callable[[ScanMetrics], None] | None = None,
-        completed: Callable[[], Awaitable[None]],
+        reader_cm_factory: ReaderCMFactory,
     ) -> None:
         all_metrics: dict[int, ScanMetrics] = {}
 
@@ -167,7 +171,7 @@ def multi_process_strategy(
             ipc_ctx = IPCContext(
                 parse_function=DillCallable(parse_function),
                 scan_function=DillCallable(scan_function),
-                completed=DillCallable(completed),
+                reader_cm_factory=DillCallable(reader_cm_factory),
                 prefetch_multiple=prefetch_multiple,
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),

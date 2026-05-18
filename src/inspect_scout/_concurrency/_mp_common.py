@@ -28,12 +28,19 @@ from typing_extensions import TypeVarTuple, Unpack
 
 if TYPE_CHECKING:
     from .._scanner.result import ResultReport
+    from .._transcript.transcripts import TranscriptsReader
     from .._transcript.types import TranscriptInfo
     from ._mp_semaphore import PicklableMPSemaphore
 
     # TODO: This import from .common needs to be within a TYPE_CHECKING check since
     # it creates a circular dependency. We should fix this.
-    from .common import ParseFunctionResult, ParseJob, ScanMetrics, ScannerJob
+    from .common import (
+        ParseFunctionResult,
+        ParseJob,
+        ReaderCMFactory,
+        ScanMetrics,
+        ScannerJob,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -198,14 +205,16 @@ class IPCContext:
     from workers to the main process.
     """
 
-    parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]]
+    parse_function: Callable[
+        [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
+    ]
     """Function that executes a parse job yielding scanner jobs."""
 
     scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
     """Function that executes a scanner job and returns results."""
 
-    completed: Callable[[], Awaitable[None]]
-    """Function to indicate the stragegy is complete."""
+    reader_cm_factory: ReaderCMFactory
+    """Factory that yields a context-managed `TranscriptsReader` for this worker."""
 
     prefetch_multiple: float | None
     """Multiplier for scanner job queue size (base=task_count)."""

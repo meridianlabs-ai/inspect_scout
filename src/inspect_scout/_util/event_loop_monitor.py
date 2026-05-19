@@ -39,10 +39,8 @@ async def _monitor_loop(interval: float, threshold: float, stop: asyncio.Event) 
         lateness = time.monotonic() - next_tick
         if lateness > threshold:
             logger.warning(
-                "event loop stalled: woke %.0fms late "
-                "(interval=%.0fms, threshold=%.0fms)",
+                "event loop blocked for ~%.0fms (threshold=%.0fms)",
                 lateness * 1000,
-                interval * 1000,
                 threshold * 1000,
             )
             # Reset baseline so a single stall doesn't generate

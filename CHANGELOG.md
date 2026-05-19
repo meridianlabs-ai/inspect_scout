@@ -1,3 +1,7 @@
+## Unreleased
+
+- Structured generate: Warn model for orphan tool_use in structured_generate retry loop.
+
 ## 0.4.35 (16 May 2026)
 
 - LLM Scanner: `generate_answer()` and `structured_generate()` accept `context_tools` — additional `ToolInfo` definitions declared in the request but never invoked (`tool_choice` forces the answer tool for structured answers and is `"none"` for textual answers). This lets callers pass a `prompt` containing prior `tool_use` blocks (e.g. when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.

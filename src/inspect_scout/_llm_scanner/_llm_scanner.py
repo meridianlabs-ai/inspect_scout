@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Callable, Literal, cast, overload
 from inspect_ai._util._async import tg_collect
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
+    CachePolicy,
     ChatMessage,
     ChatMessageUser,
     GenerateConfig,
@@ -49,6 +50,7 @@ def llm_scanner(
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     model_role: str | None = None,
+    cache: bool | CachePolicy | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -72,6 +74,7 @@ def llm_scanner(
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     model_role: str | None = None,
+    cache: bool | CachePolicy | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -95,6 +98,7 @@ def llm_scanner(
     preprocessor: MessagesPreprocessor[Transcript] | None = None,
     model: str | Model | None = None,
     model_role: str | None = None,
+    cache: bool | CachePolicy | None = None,
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
@@ -154,6 +158,10 @@ def llm_scanner(
             When set, the model is resolved via ``get_model(model, role=model_role)``
             at scan time, allowing deferred role resolution when roles are not yet
             available at scanner construction time.
+        cache: Response caching policy for the judge model call. Pass
+            ``True`` for default caching, a :class:`CachePolicy` for explicit
+            expiry/scope, or ``None`` (default) for no caching. Threaded
+            through to ``model.generate()`` via ``GenerateConfig.cache``.
         retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
         name: Scanner name.
             Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
@@ -242,7 +250,7 @@ def llm_scanner(
                         ]
                     )
                 ]
-                call_config = GenerateConfig(cache_prompt=True)
+                call_config = GenerateConfig(cache_prompt=True, cache=cache)
             else:
                 prompt = await render_scanner_prompt(
                     template=resolved_template,
@@ -252,7 +260,9 @@ def llm_scanner(
                     question=question,
                     answer=resolved_answer,
                 )
-                call_config = None
+                call_config = (
+                    GenerateConfig(cache=cache) if cache is not None else None
+                )
             return await generate_answer(
                 prompt,
                 answer,

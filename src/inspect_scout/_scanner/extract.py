@@ -158,7 +158,10 @@ async def messages_as_str(
     ) -> tuple[list[dict[str, str]], dict[str, str]]:
         items, id_map = acc
         if (content := message_as_str(message, preprocessor)) is not None:
-            item: dict[str, str] = {"role": message.role, "content": content}
+            item: dict[str, str] = {
+                "role": _role_label(message, upper_fallback=False),
+                "content": content,
+            }
             if include_ids:
                 ordinal = f"M{len(id_map) + 1}"
                 id_map[ordinal] = _message_id(message)
@@ -278,6 +281,11 @@ def message_as_str(
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
+    The default role prefix (``USER:``, ``ASSISTANT:``, ``TOOL:``) can be
+    overridden per message by setting ``message.metadata["role_label"]``
+    to a non-empty string. The label is uppercased to match the default
+    convention.
+
     Args:
         message: The `ChatMessage` to convert.
         preprocessor: Content filter for messages. Defaults to removing system messages.
@@ -295,12 +303,14 @@ def message_as_str(
         message.content, preprocessor.exclude_tool_usage, preprocessor.exclude_reasoning
     )
 
+    role_label = _role_label(message, upper_fallback=True)
+
     if (
         not preprocessor.exclude_tool_usage
         and isinstance(message, ChatMessageAssistant)
         and message.tool_calls
     ):
-        entry = f"{message.role.upper()}:\n{content}\n"
+        entry = f"{role_label}:\n{content}\n"
 
         for tool in message.tool_calls:
             func_name = tool.function
@@ -321,10 +331,10 @@ def message_as_str(
             if message.error
             else ""
         )
-        return f"{message.role.upper()}:\n{content}{error_part}\n"
+        return f"{role_label}:\n{content}{error_part}\n"
 
     else:
-        entry = f"{message.role.upper()}:\n{content}\n"
+        entry = f"{role_label}:\n{content}\n"
 
     if (
         message.role == "assistant"
@@ -334,6 +344,22 @@ def message_as_str(
         entry = f"<prefill>\n{entry}</prefill>"
 
     return entry
+
+
+def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:
+    """Custom role label from ``metadata["role_label"]`` if present, else the canonical role.
+
+    The label is uppercased to match the default ``USER:`` / ``ASSISTANT:``
+    convention. When ``upper_fallback`` is True, the fallback is
+    ``message.role.upper()`` (matches the text-rendering convention); when
+    False, the fallback is the raw ``message.role`` (matches the
+    JSON-rendering convention).
+    """
+    if message.metadata:
+        label = message.metadata.get("role_label")
+        if isinstance(label, str) and label:
+            return label.upper()
+    return message.role.upper() if upper_fallback else message.role
 
 
 def _text_from_content(

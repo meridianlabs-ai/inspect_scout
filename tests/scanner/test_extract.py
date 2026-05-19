@@ -1401,3 +1401,135 @@ async def test_message_numbering_filtered_messages_continue_numbering() -> None:
     assert len(refs) == 2
     assert refs[0].id == "msg1"
     assert refs[1].id == "msg2"
+
+
+# --- metadata["role_label"] tests ---
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        # Already-uppercase label
+        (
+            ChatMessageUser(content="Hello", metadata={"role_label": "PROPOSER"}),
+            "PROPOSER:\nHello\n",
+        ),
+        # Mixed-case label is uppercased to match the default convention
+        (
+            ChatMessageAssistant(content="Reply", metadata={"role_label": "Critic"}),
+            "CRITIC:\nReply\n",
+        ),
+        # Lowercase label is uppercased
+        (
+            ChatMessageTool(
+                content="ok",
+                function="write_file",
+                metadata={"role_label": "worker"},
+            ),
+            "WORKER:\nok\n",
+        ),
+        # Empty string label falls back to canonical role
+        (
+            ChatMessageUser(content="Hello", metadata={"role_label": ""}),
+            "USER:\nHello\n",
+        ),
+        # Missing key falls back to canonical role
+        (
+            ChatMessageUser(content="Hello", metadata={"other": "x"}),
+            "USER:\nHello\n",
+        ),
+        # Non-string label falls back to canonical role
+        (
+            ChatMessageUser(content="Hello", metadata={"role_label": 123}),
+            "USER:\nHello\n",
+        ),
+    ],
+)
+def test_message_as_str_role_label(message: ChatMessage, expected: str) -> None:
+    """`metadata["role_label"]` overrides the role prefix when set to a non-empty string."""
+    assert message_as_str(message) == expected
+
+
+def test_message_as_str_role_label_assistant_with_tool_calls() -> None:
+    """Custom role label applies to the assistant-with-tool_calls branch."""
+    message = ChatMessageAssistant(
+        content="Calling tool",
+        metadata={"role_label": "proposer"},
+        tool_calls=[
+            ToolCall(id="tc1", function="get_weather", arguments={"city": "Paris"})
+        ],
+    )
+
+    expected = (
+        "PROPOSER:\nCalling tool\n\nTool Call: get_weather\nArguments:\ncity: Paris\n"
+    )
+    assert message_as_str(message) == expected
+
+
+def test_message_as_str_role_label_tool_with_error() -> None:
+    """Custom role label applies to the ChatMessageTool error branch."""
+    error = ToolCallError(type="unknown", message="boom")
+    message = ChatMessageTool(
+        content="Failed",
+        function="get_weather",
+        error=error,
+        metadata={"role_label": "worker"},
+    )
+
+    expected = "WORKER:\nFailed\n\nError in tool call 'get_weather':\nboom\n\n"
+    assert message_as_str(message) == expected
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_text_uses_role_label() -> None:
+    """Default text format honors `metadata["role_label"]`."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Q1", metadata={"role_label": "PROPOSER"}),
+        ChatMessageUser(content="Q2", metadata={"role_label": "CRITIC"}),
+    ]
+
+    result = await messages_as_str(messages)
+    assert result == "PROPOSER:\nQ1\n\nCRITIC:\nQ2\n"
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_json_uses_role_label() -> None:
+    """JSON format uppercases `metadata["role_label"]` for the `role` field."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Q1", metadata={"role_label": "proposer"}),
+        ChatMessageAssistant(content="A1", metadata={"role_label": "Critic"}),
+        ChatMessageUser(content="Q2"),  # falls back to lowercase canonical role
+    ]
+
+    result = await messages_as_str(messages, format="json")
+    parsed = json.loads(result)
+
+    assert parsed[0] == {"role": "PROPOSER", "content": "PROPOSER:\nQ1\n"}
+    assert parsed[1] == {"role": "CRITIC", "content": "CRITIC:\nA1\n"}
+    assert parsed[2] == {"role": "user", "content": "USER:\nQ2\n"}
+
+
+@pytest.mark.asyncio
+async def test_messages_as_str_list_uses_role_label() -> None:
+    """List format honors `metadata["role_label"]` in each item."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Q1", metadata={"role_label": "PROPOSER"}),
+        ChatMessageUser(content="Q2", metadata={"role_label": "CRITIC"}),
+    ]
+
+    result = await messages_as_str(messages, format="list")
+    assert result == ["PROPOSER:\nQ1\n", "CRITIC:\nQ2\n"]
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_uses_role_label() -> None:
+    """`message_numbering` rendering uses `metadata["role_label"]` after the [M#] prefix."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Q1", id="msg1", metadata={"role_label": "PROPOSER"}),
+        ChatMessageUser(content="Q2", id="msg2", metadata={"role_label": "CRITIC"}),
+    ]
+
+    messages_as_str_fn, _ = message_numbering()
+    result = await messages_as_str_fn(messages)
+
+    assert result == "[M1] PROPOSER:\nQ1\n\n[M2] CRITIC:\nQ2\n"

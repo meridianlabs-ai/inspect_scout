@@ -731,3 +731,81 @@ class TestFileScannerFunctions:
 
         assert len(files) == 1
         assert files[0] == normal_file
+
+    def test_scan_includes_gitignored_validation_files(self, tmp_path: Path) -> None:
+        """Validation files matching a `.gitignore` pattern must still be found.
+
+        Users frequently ignore data formats wholesale (e.g. `*.csv`); a
+        validation set they create through the UI must remain discoverable.
+        """
+        import subprocess
+
+        from inspect_scout._validation.file_scanner import scan_validation_files
+
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("*.csv\n")
+        subprocess.run(
+            ["git", "add", ".gitignore"], cwd=tmp_path, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+        csv_path = tmp_path / "validations" / "test.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text("id,target\nt1,true\n")
+
+        files = list(scan_validation_files(tmp_path))
+
+        assert csv_path.resolve() in {f.resolve() for f in files}
+
+    def test_scan_in_git_repo_still_excludes_node_modules(self, tmp_path: Path) -> None:
+        """`EXCLUDED_DIRS` must still filter ignored files in node_modules.
+
+        Regression guard: now that we include git-ignored files, ensure the
+        directory-name exclusion still keeps `node_modules` etc. out.
+        """
+        from inspect_scout._validation.file_scanner import scan_validation_files
+
+        _git_init(tmp_path)
+        (tmp_path / ".gitignore").write_text("node_modules/\n")
+
+        node_file = tmp_path / "node_modules" / "valid.csv"
+        node_file.parent.mkdir(parents=True, exist_ok=True)
+        node_file.write_text("id,target\nt1,true\n")
+
+        normal_file = tmp_path / "valid.csv"
+        normal_file.write_text("id,target\nt1,true\n")
+
+        files = {f.resolve() for f in scan_validation_files(tmp_path)}
+
+        assert normal_file.resolve() in files
+        assert node_file.resolve() not in files
+
+
+def _git_init(path: Path) -> None:
+    """Initialize a git repo at `path` with a deterministic identity."""
+    import subprocess
+
+    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "commit.gpgsign", "false"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )

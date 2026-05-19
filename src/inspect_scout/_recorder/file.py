@@ -636,14 +636,20 @@ class FileRecorder(ScanRecorder):
                 )
             ]
 
-        async def _status(scan_dir: str) -> Status | None:
-            try:
-                return await FileRecorder.status(scan_dir)
-            except FileNotFoundError:
-                return None
-
-        results = await asyncio.gather(*(_status(d) for d in scan_dirs))
-        return [s for s in results if s is not None]
+        # Fetch in parallel; skip scans that no longer exist and propagate
+        # any other error. return_exceptions=True keeps one failure from
+        # cancelling its siblings.
+        results = await asyncio.gather(
+            *(FileRecorder.status(d) for d in scan_dirs), return_exceptions=True
+        )
+        scans: list[Status] = []
+        for r in results:
+            if isinstance(r, FileNotFoundError):
+                continue
+            if isinstance(r, BaseException):
+                raise r
+            scans.append(r)
+        return scans
 
 
 async def _compact_with_prior(

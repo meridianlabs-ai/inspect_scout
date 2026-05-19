@@ -625,8 +625,12 @@ class FileRecorder(ScanRecorder):
     @staticmethod
     async def list(scans_location: str) -> list[Status]:
         async with AsyncFilesystem() as fs:
+            # iter_dirs yields URIs with a trailing slash; normalize via
+            # UPath.as_posix() to match the no-slash form used everywhere
+            # else (e.g. sync(), location()) so Status.location compares
+            # equal across code paths.
             scan_dirs = [
-                uri
+                UPath(uri).as_posix()
                 async for uri in fs.iter_dirs(
                     scans_location, "scan_id=*", recursive=True
                 )

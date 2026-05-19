@@ -589,6 +589,7 @@ class FileRecorder(ScanRecorder):
             parquet_file = UPath(parquet_uri)
             scanner_name = parquet_file.stem
             # Create a view that references the parquet file
+            # Use absolute path to ensure it works regardless of working directory
             # iter_files already yields absolute URIs.
             abs_path = parquet_file.as_posix()
 
@@ -711,7 +712,18 @@ def _read_scan_errors(scan_dir: UPath) -> list[Error]:
 async def _async_read_scan_summary(
     fs: AsyncFilesystem, scan_dir: UPath, spec: ScanSpec
 ) -> Summary:
-    """Async counterpart to `read_scan_summary` for remote scan dirs."""
+    """Async counterpart to `read_scan_summary` for remote scan dirs.
+
+    The logic intentionally duplicates `read_scan_summary` rather than
+    delegating. We can't convert `read_scan_summary` itself to async
+    (it has sync callers — `RecorderBuffer.__init__`, `_sync_status_files`,
+    and the test suite), and we don't want to wrap it in
+    `anyio.to_thread.run_sync` because that puts sync fsspec calls inside
+    a thread, which interacts poorly with fsspec's internal loop-in-a-thread
+    + instance cache + adaptive retry behavior. So async callers that may be
+    reading from remote storage call this directly, and `AsyncFilesystem.read_file`
+    handles the async I/O natively.
+    """
     try:
         data = await fs.read_file((scan_dir / SCAN_SUMMARY).as_posix())
     except Exception as e:
@@ -725,7 +737,13 @@ async def _async_read_scan_summary(
 
 
 async def _async_read_scan_errors(fs: AsyncFilesystem, scan_dir: UPath) -> list[Error]:
-    """Async counterpart to `_read_scan_errors` for remote scan dirs."""
+    """Async counterpart to `_read_scan_errors` for remote scan dirs.
+
+    Duplicates the parsing logic intentionally — see
+    `_async_read_scan_summary` for the reasoning. In short: the sync
+    helpers must stay sync for their sync callers, and we don't put
+    sync fsspec inside `to_thread`.
+    """
     try:
         data = await fs.read_file((scan_dir / SCAN_ERRORS).as_posix())
     except Exception as e:

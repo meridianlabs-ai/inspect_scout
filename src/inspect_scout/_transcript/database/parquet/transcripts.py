@@ -1793,20 +1793,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        async with AsyncFilesystem() as fs:
-            try:
-                return [
-                    uri
-                    async for uri in fs.iter_files(
-                        self._location, PARQUET_TRANSCRIPTS_GLOB, recursive=True
-                    )
-                ]
-            except FileNotFoundError:
-                # On local fs only, create the directory so subsequent writes
-                # can proceed.
-                if not (self._is_s3() or self._is_hf()):
-                    UPath(self._location).mkdir(parents=True, exist_ok=True)
+
+        # For local backends, if the location doesn't yet exist, create
+        # it (so subsequent writes succeed) and short-circuit to an empty
+        # result. Remote backends (S3/HF) don't get this treatment: we
+        # don't pre-create remote dirs, and listing errors propagate.
+        if not (self._is_s3() or self._is_hf()):
+            location_path = UPath(self._location)
+            if not location_path.exists():
+                location_path.mkdir(parents=True, exist_ok=True)
                 return []
+
+        async with AsyncFilesystem() as fs:
+            return [
+                uri
+                async for uri in fs.iter_files(
+                    self._location, PARQUET_TRANSCRIPTS_GLOB, recursive=True
+                )
+            ]
 
     def _have_transcript(self, transcript_id: str) -> bool:
         return transcript_id in (self._transcript_ids or set())
@@ -2006,16 +2010,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Pattern to match: transcripts_{session_id}_*.parquet
         pattern = f"transcripts_{session_id}_*.parquet"
 
-        async with AsyncFilesystem() as fs:
-            try:
-                return [
-                    uri
-                    async for uri in fs.iter_files(
-                        self._location, pattern, recursive=True
-                    )
-                ]
-            except FileNotFoundError:
+        # For local backends, short-circuit when the location doesn't
+        # exist (matches origin/main's behavior — no mkdir here, just
+        # an empty result). Remote backends just list; listing errors
+        # propagate.
+        if not (self._is_s3() or self._is_hf()):
+            if not UPath(self._location).exists():
                 return []
+
+        async with AsyncFilesystem() as fs:
+            return [
+                uri
+                async for uri in fs.iter_files(self._location, pattern, recursive=True)
+            ]
 
     def _as_async_iterator(
         self,

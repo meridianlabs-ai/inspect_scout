@@ -3,8 +3,7 @@
 from collections.abc import Iterator
 from pathlib import Path
 
-from .._util.git import get_git_files
-from .._util.venv import is_in_venv, is_venv_directory
+from .._util.venv import is_venv_directory
 
 # Directories to always exclude from scanning
 EXCLUDED_DIRS = frozenset(
@@ -58,30 +57,17 @@ def is_validation_file(path: Path) -> bool:
         return False
 
 
-def _is_in_excluded_path(path: Path) -> bool:
-    """Check if a path is within an excluded directory."""
-    parts = path.parts
-    for part in parts:
-        # Skip hidden directories
-        if part.startswith("."):
-            return True
-        # Skip common excluded directories
-        if part in EXCLUDED_DIRS:
-            return True
-    return False
-
-
 def scan_validation_files(project_dir: Path) -> Iterator[Path]:
     """Scan a project directory for validation files.
 
-    Yields paths to validation files, excluding:
+    Walks the filesystem under `project_dir`, skipping:
     - Hidden directories (starting with '.')
     - Common excluded directories (node_modules, __pycache__, etc.)
     - Python virtual environments
-    - Git-ignored paths
 
-    Uses `git ls-files` for efficient git-ignore handling (single call)
-    instead of checking each file individually.
+    `.gitignore` is intentionally NOT consulted: validation sets are often
+    user-created data files matching common ignore patterns (e.g. `*.csv`)
+    and must remain discoverable regardless of git state.
 
     Args:
         project_dir: The root directory to scan.
@@ -89,77 +75,38 @@ def scan_validation_files(project_dir: Path) -> Iterator[Path]:
     Yields:
         Path objects for each validation file found.
     """
-    project_dir = project_dir.resolve()
-
-    # Try to get non-ignored files from git (single call, much faster)
-    git_files = get_git_files(project_dir)
-
-    if git_files is not None:
-        # Git repo: iterate over non-ignored files from git
-        for file_path in git_files:
-            # Skip files outside project_dir (shouldn't happen, but be safe)
-            try:
-                file_path.relative_to(project_dir)
-            except ValueError:
-                continue
-
-            # Skip files in excluded directories
-            rel_path = file_path.relative_to(project_dir)
-            if _is_in_excluded_path(rel_path):
-                continue
-
-            # Skip files in virtual environments
-            if is_in_venv(file_path):
-                continue
-
-            # Check if it's a validation file
-            if is_validation_file(file_path):
-                yield file_path
-    else:
-        # Not a git repo or git unavailable: fall back to directory walk
-        yield from _scan_directory_no_git(project_dir)
+    yield from _walk(project_dir.resolve())
 
 
-def _scan_directory_no_git(project_dir: Path) -> Iterator[Path]:
-    """Scan directory without git support (fallback for non-git repos)."""
+def _should_skip_dir(dir_path: Path) -> bool:
+    name = dir_path.name
 
-    def should_skip_dir(dir_path: Path) -> bool:
-        """Check if a directory should be skipped."""
-        name = dir_path.name
+    if name.startswith("."):
+        return True
 
-        # Skip hidden directories
-        if name.startswith("."):
+    if name in EXCLUDED_DIRS:
+        return True
+
+    for pattern in EXCLUDED_DIRS:
+        if "*" in pattern and dir_path.match(pattern):
             return True
 
-        # Skip common excluded directories
-        if name in EXCLUDED_DIRS:
-            return True
+    if is_venv_directory(dir_path):
+        return True
 
-        # Skip if it matches a glob pattern in EXCLUDED_DIRS
-        for pattern in EXCLUDED_DIRS:
-            if "*" in pattern and dir_path.match(pattern):
-                return True
+    return False
 
-        # Skip virtual environments
-        if is_venv_directory(dir_path):
-            return True
 
-        return False
+def _walk(dir_path: Path) -> Iterator[Path]:
+    try:
+        entries = list(dir_path.iterdir())
+    except PermissionError:
+        return
 
-    def scan_directory(dir_path: Path) -> Iterator[Path]:
-        """Recursively scan a directory for validation files."""
-        try:
-            entries = list(dir_path.iterdir())
-        except PermissionError:
-            return
-
-        for entry in entries:
-            if entry.is_dir():
-                if not should_skip_dir(entry):
-                    yield from scan_directory(entry)
-            elif entry.is_file():
-                # Check if it's a validation file
-                if is_validation_file(entry):
-                    yield entry
-
-    yield from scan_directory(project_dir)
+    for entry in entries:
+        if entry.is_dir():
+            if not _should_skip_dir(entry):
+                yield from _walk(entry)
+        elif entry.is_file():
+            if is_validation_file(entry):
+                yield entry

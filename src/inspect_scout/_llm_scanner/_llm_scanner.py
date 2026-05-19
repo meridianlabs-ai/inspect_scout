@@ -260,9 +260,7 @@ def llm_scanner(
                     question=question,
                     answer=resolved_answer,
                 )
-                call_config = (
-                    GenerateConfig(cache=cache) if cache is not None else None
-                )
+                call_config = GenerateConfig(cache=cache) if cache is not None else None
             return await generate_answer(
                 prompt,
                 answer,

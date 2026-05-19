@@ -102,21 +102,7 @@ class LocalFilesCache:
 
 async def _download_file(fs: AsyncFilesystem, uri: str, dest_path: Path) -> None:
     """Download remote file to local path."""
-    # The streaming approach is leaking something that causes aiobotocore to raise
-    # errors on shutdown. Though harmless, it's disconcerting.
-    #
-    # TODO: We'll continue trying to get to the bottom of it, but we'll revert to
-    # fsspec.get_file for now.
-    use_streaming = False
-
-    if use_streaming:
-        file_size = await fs.get_size(uri)
-        async with await fs.read_file_bytes(uri, 0, file_size) as stream:
-            with open(dest_path, "wb") as f:
-                async for chunk in stream:
-                    f.write(chunk)
-    else:
-        filesystem(uri).get_file(uri, dest_path.as_posix())
+    await fs.get_file(uri, dest_path.as_posix())
 
 
 def _try_create_marker(marker_file: Path) -> bool:

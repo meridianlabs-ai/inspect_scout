@@ -1793,28 +1793,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
             List of file paths (local or S3 URIs).
         """
         assert self._location is not None
-        if self._is_s3() or self._is_hf():
-            assert self._fs is not None
 
-            # List all files recursively (returns list of FileInfo objects)
-            fs = filesystem(self._location)
-            all_files = fs.ls(self._location, recursive=True)
-            # Filter for transcript parquet files
-            files = []
-            for f in all_files:
-                name = f.name
-                if name.endswith(".parquet"):
-                    files.append(name)
-            return files
-        else:
+        # For local backends, if the location doesn't yet exist, create
+        # it (so subsequent writes succeed) and short-circuit to an empty
+        # result. Remote backends (S3/HF) don't get this treatment: we
+        # don't pre-create remote dirs, and listing errors propagate.
+        if not (self._is_s3() or self._is_hf()):
             location_path = UPath(self._location)
             if not location_path.exists():
                 location_path.mkdir(parents=True, exist_ok=True)
                 return []
 
-            # Recursively discover all transcript parquet files
+        async with AsyncFilesystem() as fs:
             return [
-                str(p) for p in location_path.glob(f"**/{PARQUET_TRANSCRIPTS_GLOB}")
+                uri
+                async for uri in fs.iter_files(
+                    self._location, PARQUET_TRANSCRIPTS_GLOB, recursive=True
+                )
             ]
 
     def _have_transcript(self, transcript_id: str) -> bool:
@@ -2013,26 +2008,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._location is not None
 
         # Pattern to match: transcripts_{session_id}_*.parquet
-        session_pattern = f"transcripts_{session_id}_"
+        pattern = f"transcripts_{session_id}_*.parquet"
 
-        if self._is_s3() or self._is_hf():
-            assert self._fs is not None
-            fs = filesystem(self._location)
-            all_files = fs.ls(self._location, recursive=True)
-            return [
-                f.name
-                for f in all_files
-                if f.name.endswith(".parquet")
-                and Path(f.name).name.startswith(session_pattern)
-            ]
-        else:
-            location_path = UPath(self._location)
-            if not location_path.exists():
+        # For local backends, short-circuit when the location doesn't
+        # exist (matches origin/main's behavior — no mkdir here, just
+        # an empty result). Remote backends just list; listing errors
+        # propagate.
+        if not (self._is_s3() or self._is_hf()):
+            if not UPath(self._location).exists():
                 return []
 
-            # Glob for session files
+        async with AsyncFilesystem() as fs:
             return [
-                str(p) for p in location_path.glob(f"**/{session_pattern}*.parquet")
+                uri
+                async for uri in fs.iter_files(self._location, pattern, recursive=True)
             ]
 
     def _as_async_iterator(

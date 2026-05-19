@@ -16,7 +16,6 @@ The discovery priority ensures concurrent operations work correctly:
 3. If no manifest exists, use all `index_*.idx` files
 """
 
-import glob
 import os
 import re
 import tempfile
@@ -28,10 +27,10 @@ import duckdb
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_message
 from shortuuid import uuid
-from upath import UPath
 
 from ..schema import CONTENT_COLUMNS
 from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
@@ -381,21 +380,14 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
     """
     index_dir = storage.index_dir_path()
 
-    if storage.is_remote():
-        # Remote storage: use filesystem listing
-        fs = filesystem(storage.location)
+    async with AsyncFilesystem() as fs:
         try:
-            all_files = fs.ls(index_dir, recursive=False)
+            all_idx_files = [
+                uri async for uri in fs.iter_files(index_dir, "*" + INDEX_EXTENSION)
+            ]
         except FileNotFoundError:
             # Index directory doesn't exist yet
             return []
-        all_idx_files = [f.name for f in all_files if _is_index_file(f.name)]
-    else:
-        # Local storage: use glob
-        index_path = UPath(index_dir)
-        if not index_path.exists():
-            return []
-        all_idx_files = [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
 
     if not all_idx_files:
         return []
@@ -441,18 +433,13 @@ async def _list_all_index_files(storage: IndexStorage) -> list[str]:
     """
     index_dir = storage.index_dir_path()
 
-    if storage.is_remote():
-        fs = filesystem(storage.location)
+    async with AsyncFilesystem() as fs:
         try:
-            all_files = fs.ls(index_dir, recursive=False)
+            return [
+                uri async for uri in fs.iter_files(index_dir, "*" + INDEX_EXTENSION)
+            ]
         except FileNotFoundError:
             return []
-        return [f.name for f in all_files if _is_index_file(f.name)]
-    else:
-        index_path = UPath(index_dir)
-        if not index_path.exists():
-            return []
-        return [str(p) for p in index_path.glob("*" + INDEX_EXTENSION)]
 
 
 async def _discover_data_files(storage: IndexStorage) -> list[str]:
@@ -464,25 +451,17 @@ async def _discover_data_files(storage: IndexStorage) -> list[str]:
     Returns:
         List of data file paths.
     """
-    if storage.is_remote():
-        fs = filesystem(storage.location)
-        all_files = fs.ls(storage.location, recursive=True)
-        return [
-            f.name
-            for f in all_files
-            if f.name.endswith(".parquet") and f"/{INDEX_DIR}/" not in f.name
-        ]
-    else:
-        location_path = UPath(storage.location)
-        if not location_path.exists():
+    async with AsyncFilesystem() as fs:
+        try:
+            return [
+                uri
+                async for uri in fs.iter_files(
+                    storage.location, "*.parquet", recursive=True
+                )
+                if f"/{INDEX_DIR}/" not in uri and f"\\{INDEX_DIR}\\" not in uri
+            ]
+        except FileNotFoundError:
             return []
-
-        all_parquet = glob.glob(str(location_path / "**" / "*.parquet"), recursive=True)
-        return [
-            p
-            for p in all_parquet
-            if f"/{INDEX_DIR}/" not in p and f"\\{INDEX_DIR}\\" not in p
-        ]
 
 
 def _write_parquet_table(

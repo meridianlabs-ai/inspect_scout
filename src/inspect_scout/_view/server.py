@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from inspect_ai._lfs import LFSError, resolve_lfs_directory
+from inspect_ai._util.event_loop_monitor import event_loop_monitor
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
@@ -125,6 +126,25 @@ def view_server(
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI(lifespan=notify_lifespan)
+
+    if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    ):
+
+        async def log_and_monitor(
+            request: Request, call_next: RequestResponseEndpoint
+        ) -> Response:
+            method, path = request.method, request.url.path
+            print(f"-> {method} {path}", flush=True)
+            async with event_loop_monitor():
+                response = await call_next(request)
+            print(f"<- {method} {path} {response.status_code}", flush=True)
+            return response
+
+        app.middleware("http")(log_and_monitor)
+
     app.mount("/api/v2", v2_api)
 
     app.mount(

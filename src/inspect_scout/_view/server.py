@@ -127,6 +127,25 @@ def view_server(
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
     app = FastAPI(lifespan=notify_lifespan)
+
+    if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    ):
+
+        async def log_and_monitor(
+            request: Request, call_next: RequestResponseEndpoint
+        ) -> Response:
+            method, path = request.method, request.url.path
+            print(f"-> {method} {path}", flush=True)
+            async with event_loop_monitor():
+                response = await call_next(request)
+            print(f"<- {method} {path} {response.status_code}", flush=True)
+            return response
+
+        app.middleware("http")(log_and_monitor)
+
     app.mount("/api/v2", v2_api)
 
     app.mount(
@@ -157,13 +176,7 @@ def view_server(
                 f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
 
-        monitor = (
-            event_loop_monitor()
-            if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower()
-            in ("true", "1", "yes")
-            else contextlib.nullcontext()
-        )
-        async with monitor, anyio.create_task_group() as tg:
+        async with anyio.create_task_group() as tg:
             tg.start_soon(announce_when_ready)
             await server.serve()
 

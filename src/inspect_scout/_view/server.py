@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 from pathlib import Path
@@ -156,7 +157,13 @@ def view_server(
                 f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
 
-        async with event_loop_monitor(), anyio.create_task_group() as tg:
+        monitor = (
+            event_loop_monitor()
+            if os.getenv("SCOUT_EVENT_LOOP_MONITOR", "false").lower()
+            in ("true", "1", "yes")
+            else contextlib.nullcontext()
+        )
+        async with monitor, anyio.create_task_group() as tg:
             tg.start_soon(announce_when_ready)
             await server.serve()
 

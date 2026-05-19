@@ -159,7 +159,7 @@ def view_server(
 
         monitor = (
             event_loop_monitor()
-            if os.getenv("SCOUT_EVENT_LOOP_MONITOR", "false").lower()
+            if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower()
             in ("true", "1", "yes")
             else contextlib.nullcontext()
         )

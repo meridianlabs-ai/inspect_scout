@@ -3,6 +3,7 @@ from functools import reduce
 from typing import (
     AbstractSet,
     Any,
+    AsyncContextManager,
     AsyncIterator,
     Awaitable,
     Callable,
@@ -14,6 +15,7 @@ from typing import (
 
 from .._scanner.result import ResultReport
 from .._scanner.scanner import Scanner
+from .._transcript.transcripts import TranscriptsReader
 from .._transcript.types import Transcript, TranscriptInfo
 
 
@@ -104,6 +106,16 @@ affected scanner — parse failure is recorded as an error per scanner.
 """
 
 
+ReaderCMFactory = Callable[[], AsyncContextManager[TranscriptsReader]]
+"""Factory that yields a context-managed `TranscriptsReader`.
+
+The strategy opens the CM once at startup and passes the resulting reader
+to each ``parse_function`` call. In single-process mode the factory yields
+an already-open reader (no-close wrapper); in multi-process mode each
+worker creates its own.
+"""
+
+
 class ConcurrencyStrategy(Protocol):
     """Callable strategy interface (Strategy Pattern) for executing scanner work.
 
@@ -118,11 +130,13 @@ class ConcurrencyStrategy(Protocol):
         self,
         *,
         parse_jobs: AsyncIterator[ParseJob],
-        parse_function: Callable[[ParseJob], Awaitable[ParseFunctionResult]],
+        parse_function: Callable[
+            [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
+        ],
         scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
         record_results: Callable[
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],
         update_metrics: Callable[[ScanMetrics], None],
-        completed: Callable[[], Awaitable[None]],
+        reader_cm_factory: ReaderCMFactory,
     ) -> None: ...

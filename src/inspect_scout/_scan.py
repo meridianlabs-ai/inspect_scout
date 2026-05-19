@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
 from typing import Any, AsyncIterator, Mapping, Sequence, cast
@@ -577,23 +578,10 @@ async def _scan_async_inner(
                 # create metrics accumulator
                 metrics_accum = metrics_accumulators(scan.scanners)
 
-                async def _transcripts_reader() -> TranscriptsReader:
-                    global _process_transcripts_reader
-                    if _process_transcripts_reader is None:
-                        _process_transcripts_reader = await transcripts.reader(
-                            snapshot
-                        ).__aenter__()
-                    return _process_transcripts_reader
-
-                async def _strategy_completed() -> None:
-                    global _process_transcripts_reader
-                    if _process_transcripts_reader is not None:
-                        await _process_transcripts_reader.__aexit__(None, None, None)
-                        _process_transcripts_reader = None
-
-                async def _parse_function(job: ParseJob) -> ParseFunctionResult:
+                async def _parse_function(
+                    job: ParseJob, reader: TranscriptsReader
+                ) -> ParseFunctionResult:
                     try:
-                        reader = await _transcripts_reader()
                         union_transcript = await reader.read(
                             job.transcript_info, union_content
                         )
@@ -668,11 +656,21 @@ async def _scan_async_inner(
                     )
                 )
 
-                # if we are single process then re-use the tr we are holding
-                # (otherwise this will be initialized on demand in children)
+                # Build a reader CM factory that the strategy will open exactly
+                # once. In single-process mode, reuse the parent's already-open
+                # reader (no-close wrapper). In multi-process mode, each worker
+                # opens its own from the snapshot.
                 if single_process:
-                    global _process_transcripts_reader
-                    _process_transcripts_reader = tr
+
+                    @asynccontextmanager
+                    async def _reader_cm_factory() -> AsyncIterator[TranscriptsReader]:
+                        yield tr
+                else:
+
+                    @asynccontextmanager
+                    async def _reader_cm_factory() -> AsyncIterator[TranscriptsReader]:
+                        async with transcripts.reader(snapshot) as worker_reader:
+                            yield worker_reader
 
                 def accumulate_metrics(
                     scanner: str, results: Sequence[ResultReport]
@@ -714,7 +712,7 @@ async def _scan_async_inner(
                             scan_function=_scan_function,
                             record_results=record_results,
                             update_metrics=update_metrics,
-                            completed=_strategy_completed,
+                            reader_cm_factory=_reader_cm_factory,
                         )
 
                         # we've been throttle metrics calculation, now report it all
@@ -1211,7 +1209,3 @@ async def _validate_scan(
                 )
     else:
         return None
-
-
-# initialized on demand in child processes
-_process_transcripts_reader: TranscriptsReader | None = None

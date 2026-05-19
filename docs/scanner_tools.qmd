@@ -113,6 +113,37 @@ messages_as_str, extract_refs = message_numbering(
 
 When no preprocessor is provided, the default behaviour is to exclude system messages only.
 
+### Custom Role Labels
+
+By default the role prefix in each rendered message is the uppercased `ChatMessage.role` (e.g. `USER:`, `ASSISTANT:`, `TOOL:`). Set `ChatMessage.metadata["role_label"]` to a non-empty string to override the prefix for that message. The label is uppercased to match the default convention:
+
+``` python
+from inspect_ai.model import ChatMessageUser
+
+ChatMessageUser(content="...", metadata={"role_label": "student"})
+# renders as:
+# STUDENT:
+# ...
+```
+
+The label is honored by `message_as_str`, `messages_as_str` (text, list, and `format="json"` — where it becomes the `"role"` field), `message_numbering` (it appears after the `[M1]` prefix), and any scanner built on these (including `llm_scanner`).
+
+If your messages don't already carry `role_label` metadata (e.g. transcripts loaded from an external source), you can attach it on the fly with `MessagesPreprocessor.transform`:
+
+``` python
+from inspect_ai.model import ChatMessage
+from inspect_scout import MessagesPreprocessor
+
+async def add_role_labels(messages: list[ChatMessage]) -> list[ChatMessage]:
+    for m in messages:
+        # derive a label from whatever signal applies (turn index, agent
+        # name in another metadata field, content prefix, etc.)
+        m.metadata = (m.metadata or {}) | {"role_label": "..."}
+    return messages
+
+preprocessor = MessagesPreprocessor(transform=add_role_labels)
+```
+
 ## Prompt Construction
 
 The `scanner_prompt()` function renders the default scanner template---the same template used internally by `llm_scanner()`. It combines the transcript messages, question, and answer type into a complete prompt:

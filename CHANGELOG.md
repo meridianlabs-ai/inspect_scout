@@ -2,6 +2,7 @@
 
 - Structured generate: Warn model for orphan tool_use in structured_generate retry loop.
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don't skip gitignored files).
+- Support custom role labels for transcript message rendering. 
 
 ## 0.4.35 (16 May 2026)
 

@@ -878,3 +878,140 @@ def test_sync_chat_wrapper_emits_on_bad_request(
     assert data["api"] == "completions"
     assert data["response"] is None
     assert data["error"] is error
+
+
+@pytest.mark.asyncio
+async def test_openai_responses_build_event_synthesizes_from_error_when_empty() -> None:
+    """Responses API: empty snapshot + error → synthesized content-filter event."""
+    from inspect_ai.event import ModelEvent
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    error = _openai_bad_request_error()
+    event = await OpenAIProvider().build_event(
+        {
+            "request": {"model": "gpt-test", "input": "hi"},
+            "response": None,
+            "api": "responses",
+            "error": error,
+        }
+    )
+    assert isinstance(event, ModelEvent)
+    assert event.error == repr(error)
+    assert event.model == "gpt-test"
+    assert len(event.output.choices) == 1
+    assert event.output.choices[0].stop_reason == "content_filter"
+    assert "blocked by content policy" in event.output.choices[0].message.text
+
+
+@pytest.mark.asyncio
+async def test_async_responses_wrapper_emits_on_bad_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-streaming responses wrapper records an event when the SDK raises."""
+    import openai
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    async def raising_create(self: Any, *args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(
+        "openai.resources.responses.AsyncResponses.create",
+        raising_create,
+    )
+    OpenAIProvider().install(emit)
+
+    client = openai.AsyncOpenAI(api_key="test", base_url="http://test")
+    with pytest.raises(type(error)):
+        await client.responses.create(model="gpt-test", input="hi")
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "responses"
+    assert data["response"] is None
+    assert data["error"] is error
+
+
+def test_sync_responses_wrapper_emits_on_bad_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sync non-streaming responses wrapper records an event when the SDK raises."""
+    import openai
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    def raising_create(self: Any, *args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(
+        "openai.resources.responses.Responses.create",
+        raising_create,
+    )
+    OpenAIProvider().install(emit)
+
+    client = openai.OpenAI(api_key="test", base_url="http://test")
+    with pytest.raises(type(error)):
+        client.responses.create(model="gpt-test", input="hi")
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "responses"
+    assert data["response"] is None
+    assert data["error"] is error
+
+
+@pytest.mark.asyncio
+async def test_async_responses_stream_emits_on_error_before_first_event() -> None:
+    """Responses async stream: error before any event still emits (response=None)."""
+    from inspect_scout._observe.providers.openai import (
+        OpenAIResponsesAsyncStreamCapture,
+    )
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    async def failing_stream() -> AsyncIterator[Any]:
+        raise error
+        yield  # pragma: no cover — make this an async generator
+
+    wrapper = OpenAIResponsesAsyncStreamCapture(
+        failing_stream(), {"model": "gpt-test", "input": "hi"}, emit
+    )
+    with pytest.raises(type(error)):
+        async for _ in wrapper:
+            pass
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "responses"
+    assert data["response"] is None
+    assert data["error"] is error
+
+
+def test_sync_responses_stream_emits_on_error_before_first_event() -> None:
+    """Responses sync stream: error before any event still emits (response=None)."""
+    from inspect_scout._observe.providers.openai import OpenAIResponsesStreamCapture
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    def failing_stream() -> Iterator[Any]:
+        raise error
+        yield  # pragma: no cover — make this a generator
+
+    wrapper = OpenAIResponsesStreamCapture(
+        failing_stream(), {"model": "gpt-test", "input": "hi"}, emit
+    )
+    with pytest.raises(type(error)):
+        for _ in wrapper:
+            pass
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "responses"
+    assert data["response"] is None
+    assert data["error"] is error

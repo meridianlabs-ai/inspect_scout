@@ -45,14 +45,16 @@ def _error_message(error: Exception) -> str:
 def _response_is_empty(response: Any) -> bool:
     """True if the captured response carries no usable data.
 
-    Happens when an error fires before any chunk is accumulated, or when a
-    non-streaming call raised before returning a response.
+    Happens when an error fires before any chunk/event is accumulated, or
+    when a non-streaming call raised before returning a response. Handles
+    both the Chat Completions accumulator-dict shape and the Responses API
+    Response-object shape.
     """
     if response is None:
         return True
     if isinstance(response, dict):
         return not response.get("id") and not response.get("choices")
-    return False
+    return not getattr(response, "id", None) and not getattr(response, "output", None)
 
 
 class OpenAIProvider:
@@ -148,7 +150,20 @@ class OpenAIProvider:
         def sync_responses_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
-            response = wrapped(*args, **kwargs)
+            from openai import APIStatusError
+
+            try:
+                response = wrapped(*args, **kwargs)
+            except APIStatusError as e:
+                emit(
+                    {
+                        "request": kwargs,
+                        "response": None,
+                        "api": "responses",
+                        "error": e,
+                    }
+                )
+                raise
 
             # Check for ResponseStream (high-level) or Stream (with stream=True)
             if _is_stream_type(
@@ -162,8 +177,21 @@ class OpenAIProvider:
         def async_responses_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
+            from openai import APIStatusError
+
             async def _async_wrapper() -> Any:
-                response = await wrapped(*args, **kwargs)
+                try:
+                    response = await wrapped(*args, **kwargs)
+                except APIStatusError as e:
+                    emit(
+                        {
+                            "request": kwargs,
+                            "response": None,
+                            "api": "responses",
+                            "error": e,
+                        }
+                    )
+                    raise
 
                 # Check for AsyncResponseStream (high-level) or AsyncStream (with stream=True)
                 if _is_stream_type(
@@ -211,14 +239,14 @@ class OpenAIProvider:
         api = data.get("api", "completions")
         error = data.get("error")
 
-        if api == "responses":
-            event = await self._build_responses_event(request, response)
-        elif error is not None and _response_is_empty(response):
+        if error is not None and _response_is_empty(response):
             # Error fired before any usable response data — e.g. content-policy
             # 400 (non-streaming) or an SSE error event before the first chunk
             # (streaming). Synthesize the event from request + error rather than
-            # validating an empty ChatCompletion dict (id/model required).
-            event = await self._build_completions_error_event(request, error)
+            # validating an empty response payload.
+            event = await self._build_error_event(request, error, api)
+        elif api == "responses":
+            event = await self._build_responses_event(request, response)
         else:
             event = await self._build_completions_event(request, response)
 
@@ -231,24 +259,35 @@ class OpenAIProvider:
                         choice.stop_reason = stop_reason
         return event
 
-    async def _build_completions_error_event(
-        self, request: dict[str, Any], error: Exception
+    async def _build_error_event(
+        self, request: dict[str, Any], error: Exception, api: str
     ) -> ModelEvent:
-        """Build a ModelEvent from a Chat Completions call that produced no response.
+        """Build a ModelEvent from a call that produced no response payload.
 
         Triggered by a non-streaming content-policy 400 or an SSE error event
-        before the first chunk. Mirrors
+        before the first chunk/event. Mirrors
         ``inspect_ai.model._openai.openai_handle_bad_request``: a synthetic
         single-choice output carrying the error message as content, with
         stop_reason inferred from the error code. Caller sets ``event.error``.
         """
-        from inspect_ai.model import ModelOutput, messages_from_openai
+        from inspect_ai.model import (
+            ModelOutput,
+            messages_from_openai,
+            messages_from_openai_responses,
+        )
 
         model = request.get("model", "unknown")
-        input_messages = await messages_from_openai(
-            request.get("messages", []),
-            model=model,
-        )
+        if api == "responses":
+            input_param = request.get("input", [])
+            if isinstance(input_param, str):
+                input_param = [{"role": "user", "content": input_param}]
+            input_messages = await messages_from_openai_responses(
+                input_param, model=model
+            )
+        else:
+            input_messages = await messages_from_openai(
+                request.get("messages", []), model=model
+            )
         stop_reason = _stop_reason_from_openai_error(error) or "unknown"
         output = ModelOutput.from_content(
             model=model,
@@ -573,7 +612,11 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
             error = e
             raise
         finally:
-            if self._self_response_snapshot is not None:
+            # Emit when we have a snapshot, OR when an error fired before any
+            # event arrived (so build_event can synthesize a content-filter
+            # event from request + error). A clean iteration with no events
+            # and no error stays silent.
+            if self._self_response_snapshot is not None or error is not None:
                 data: dict[str, Any] = {
                     "request": self._self_request_kwargs,
                     "response": self._self_response_snapshot,
@@ -612,7 +655,11 @@ class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
             error = e
             raise
         finally:
-            if self._self_response_snapshot is not None:
+            # Emit when we have a snapshot, OR when an error fired before any
+            # event arrived (so build_event can synthesize a content-filter
+            # event from request + error). A clean iteration with no events
+            # and no error stays silent.
+            if self._self_response_snapshot is not None or error is not None:
                 data: dict[str, Any] = {
                     "request": self._self_request_kwargs,
                     "response": self._self_response_snapshot,

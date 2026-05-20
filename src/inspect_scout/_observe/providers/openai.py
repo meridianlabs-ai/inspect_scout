@@ -31,6 +31,30 @@ def _stop_reason_from_openai_error(error: Exception) -> StopReason | None:
     return None
 
 
+def _error_message(error: Exception) -> str:
+    """Extract the human-readable message from an OpenAI error.
+
+    Mirrors ``inspect_ai.model._openai.openai_handle_bad_request``.
+    """
+    body = getattr(error, "body", None)
+    if isinstance(body, dict) and "message" in body:
+        return str(body.get("message"))
+    return getattr(error, "message", None) or str(error)
+
+
+def _response_is_empty(response: Any) -> bool:
+    """True if the captured response carries no usable data.
+
+    Happens when an error fires before any chunk is accumulated, or when a
+    non-streaming call raised before returning a response.
+    """
+    if response is None:
+        return True
+    if isinstance(response, dict):
+        return not response.get("id") and not response.get("choices")
+    return False
+
+
 class OpenAIProvider:
     """Provider for capturing OpenAI SDK calls.
 
@@ -73,7 +97,20 @@ class OpenAIProvider:
         def sync_chat_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
-            response = wrapped(*args, **kwargs)
+            from openai import APIStatusError
+
+            try:
+                response = wrapped(*args, **kwargs)
+            except APIStatusError as e:
+                emit(
+                    {
+                        "request": kwargs,
+                        "response": None,
+                        "api": "completions",
+                        "error": e,
+                    }
+                )
+                raise
 
             if _is_stream_type(response, "openai", "Stream"):
                 return OpenAIChatStreamCapture(response, kwargs, emit)
@@ -84,8 +121,21 @@ class OpenAIProvider:
         def async_chat_wrapper(
             wrapped: Any, instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]
         ) -> Any:
+            from openai import APIStatusError
+
             async def _async_wrapper() -> Any:
-                response = await wrapped(*args, **kwargs)
+                try:
+                    response = await wrapped(*args, **kwargs)
+                except APIStatusError as e:
+                    emit(
+                        {
+                            "request": kwargs,
+                            "response": None,
+                            "api": "completions",
+                            "error": e,
+                        }
+                    )
+                    raise
 
                 if _is_stream_type(response, "openai", "AsyncStream"):
                     return OpenAIChatAsyncStreamCapture(response, kwargs, emit)
@@ -163,6 +213,12 @@ class OpenAIProvider:
 
         if api == "responses":
             event = await self._build_responses_event(request, response)
+        elif error is not None and _response_is_empty(response):
+            # Error fired before any usable response data — e.g. content-policy
+            # 400 (non-streaming) or an SSE error event before the first chunk
+            # (streaming). Synthesize the event from request + error rather than
+            # validating an empty ChatCompletion dict (id/model required).
+            event = await self._build_completions_error_event(request, error)
         else:
             event = await self._build_completions_event(request, response)
 
@@ -174,6 +230,39 @@ class OpenAIProvider:
                     if choice.stop_reason == "unknown":
                         choice.stop_reason = stop_reason
         return event
+
+    async def _build_completions_error_event(
+        self, request: dict[str, Any], error: Exception
+    ) -> ModelEvent:
+        """Build a ModelEvent from a Chat Completions call that produced no response.
+
+        Triggered by a non-streaming content-policy 400 or an SSE error event
+        before the first chunk. Mirrors
+        ``inspect_ai.model._openai.openai_handle_bad_request``: a synthetic
+        single-choice output carrying the error message as content, with
+        stop_reason inferred from the error code. Caller sets ``event.error``.
+        """
+        from inspect_ai.model import ModelOutput, messages_from_openai
+
+        model = request.get("model", "unknown")
+        input_messages = await messages_from_openai(
+            request.get("messages", []),
+            model=model,
+        )
+        stop_reason = _stop_reason_from_openai_error(error) or "unknown"
+        output = ModelOutput.from_content(
+            model=model,
+            content=_error_message(error),
+            stop_reason=stop_reason,
+        )
+        return ModelEvent(
+            model=model,
+            input=input_messages,
+            tools=[],
+            tool_choice="auto",
+            config=GenerateConfig(),
+            output=output,
+        )
 
     async def _build_completions_event(
         self, request: dict[str, Any], response: Any

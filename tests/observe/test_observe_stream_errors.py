@@ -741,3 +741,140 @@ async def test_google_build_event_carries_error() -> None:
     assert isinstance(event, ModelEvent)
     assert event.error == repr(error)
     assert event.output is not None
+
+
+# --------------------------------------------------------------------------- #
+# OpenAI — empty-response errors (no chunk ever arrived, or non-streaming 400)
+# --------------------------------------------------------------------------- #
+
+
+def _openai_bad_request_error() -> Exception:
+    """Shape of ``BadRequestError`` for a content-policy 400 with no body.
+
+    The HTTP response body is ``{"error": {...}}`` only — no id, no model,
+    no choices — so a downstream ``ChatCompletion.model_validate`` would
+    reject it. We need the event built from request + error alone.
+    """
+    import openai
+
+    err = openai.BadRequestError(
+        message="blocked by content policy",
+        response=httpx.Response(400, request=httpx.Request("POST", "http://test")),
+        body={
+            "type": "invalid_request_error",
+            "code": "content_policy_violation",
+            "message": "blocked by content policy",
+            "param": None,
+        },
+    )
+    err.code = "content_policy_violation"
+    err.type = "invalid_request_error"
+    return err
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response",
+    [
+        None,
+        {"id": None, "object": "chat.completion", "model": None, "choices": []},
+    ],
+    ids=["response_none", "empty_accumulator_dict"],
+)
+async def test_openai_build_event_synthesizes_from_error_when_empty(
+    response: Any,
+) -> None:
+    """Error fires before any usable response — build event from request+error.
+
+    Two shapes hit this path: a non-streaming wrapper that caught the
+    exception before getting a response (``response=None``), and a streaming
+    wrapper whose accumulator never saw a chunk (``id=None``, no choices).
+    Both should produce a ``ModelEvent`` with the error message as content
+    and stop_reason mapped from the error code.
+    """
+    from inspect_ai.event import ModelEvent
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    error = _openai_bad_request_error()
+    event = await OpenAIProvider().build_event(
+        {
+            "request": {
+                "model": "gpt-test",
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+            "response": response,
+            "api": "completions",
+            "error": error,
+        }
+    )
+    assert isinstance(event, ModelEvent)
+    assert event.error == repr(error)
+    assert event.model == "gpt-test"
+    assert len(event.output.choices) == 1
+    assert event.output.choices[0].stop_reason == "content_filter"
+    assert "blocked by content policy" in event.output.choices[0].message.text
+
+
+@pytest.mark.asyncio
+async def test_async_chat_wrapper_emits_on_bad_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-streaming chat wrapper records an event when the SDK raises."""
+    import openai
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    async def raising_create(self: Any, *args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(
+        "openai.resources.chat.completions.AsyncCompletions.create",
+        raising_create,
+    )
+    OpenAIProvider().install(emit)
+
+    client = openai.AsyncOpenAI(api_key="test", base_url="http://test")
+    with pytest.raises(type(error)):
+        await client.chat.completions.create(
+            model="gpt-test", messages=[{"role": "user", "content": "hi"}]
+        )
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "completions"
+    assert data["response"] is None
+    assert data["error"] is error
+
+
+def test_sync_chat_wrapper_emits_on_bad_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sync non-streaming chat wrapper records an event when the SDK raises."""
+    import openai
+    from inspect_scout._observe.providers.openai import OpenAIProvider
+
+    captures, emit = _record_emit()
+    error = _openai_bad_request_error()
+
+    def raising_create(self: Any, *args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(
+        "openai.resources.chat.completions.Completions.create",
+        raising_create,
+    )
+    OpenAIProvider().install(emit)
+
+    client = openai.OpenAI(api_key="test", base_url="http://test")
+    with pytest.raises(type(error)):
+        client.chat.completions.create(
+            model="gpt-test", messages=[{"role": "user", "content": "hi"}]
+        )
+
+    assert len(captures) == 1
+    data = captures[0]
+    assert data["api"] == "completions"
+    assert data["response"] is None
+    assert data["error"] is error

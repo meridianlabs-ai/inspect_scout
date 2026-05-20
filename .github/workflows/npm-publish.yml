@@ -37,6 +37,8 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -48,8 +50,10 @@ jobs:
 
       - name: Upgrade npm (for Trusted Publishing)
         run: |
-          npm i -g npm@^11.5.1
-          npm --version
+          # Install via prefix to avoid npm self-upgrade rebuild bug on Node 22.
+          npm install --prefix "$RUNNER_TEMP/npm-upgrade" --no-audit --no-fund npm@^11.5.1
+          echo "$RUNNER_TEMP/npm-upgrade/node_modules/.bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/npm-upgrade/node_modules/.bin/npm" --version
 
       - name: Install dependencies
         working-directory: src/inspect_scout/_view/ts-mono

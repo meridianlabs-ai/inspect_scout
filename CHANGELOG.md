@@ -9,6 +9,13 @@
 - Bugfix: Resolve nested schema references for `AnswerStructured`.
 - Bugfix: `llm_scanner` now reserves tokens for the rendered scanner template when sizing segments, so long templates no longer push the prompt past `context_window`.
 - Bugfix: Serialize metadata flds with pydantic_core.to_json
+- Scout View: Refine scanner result header and All Scores dialog
+- Scout View: Don't allow malformed metadata to blow up entire scan (#245)
+- Scout View: Refine scanner result header and All Scores dialog (#243)
+- Scout View: Stop polling scans list (#234)
+- Scout View: Redesign MetaDataGrid with section cards and striping (#228)
+- Scout View: Prevent horizontal scroll on messages tab (#225)
+- Scout View: Scout scan UI fixes and negative filter (#226)
 
 ## 0.4.35 (16 May 2026)
 

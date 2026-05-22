@@ -1040,8 +1040,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if value is None:
                 row[key] = None
             elif isinstance(value, (dict, list)):
-                # to_json with str fallback so nested non-JSON-native values
-                # (e.g. pathlib.Path) stringify cleanly instead of raising.
+                # Complex types: serialize to JSON string
                 row[key] = to_json(value, fallback=str).decode("utf-8")
             elif isinstance(value, (str, int, float, bool)):
                 # Scalar types: store directly

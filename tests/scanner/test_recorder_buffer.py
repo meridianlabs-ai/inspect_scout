@@ -334,14 +334,11 @@ async def test_record_serializes_path_in_metadata_as_json(
     recorder_buffer: RecorderBuffer,
     sample_results: list[ResultReport],
 ) -> None:
-    """transcript_metadata containing pathlib.Path must serialize as JSON.
+    """pathlib.Path in transcript metadata must serialize as JSON strings.
 
-    Regression for the online-scanner path where eval_sample.metadata
-    flows directly into TranscriptInfo.metadata without prior stringification.
-    Previously, a Path inside the dict would make json.dumps raise, and the
-    fallback `str(dict)` would store Python repr text (`{'k': PosixPath(...)}`)
-    in the parquet column — which the viewer can't parse, leaving the user
-    with "No scan results are available."
+    Previously, a Path inside the dict made json.dumps raise; the str(dict)
+    fallback then stored Python repr text (`{'k': PosixPath(...)}`) in the
+    parquet column, which the viewer can't parse.
     """
     scanner_name = "test_scanner"
     transcript = TranscriptInfo(
@@ -365,15 +362,15 @@ async def test_record_serializes_path_in_metadata_as_json(
     )
     table = pq.read_table(parquet_path.as_posix())
     values = table.column("transcript_metadata").to_pylist()
-    assert values, "expected at least one row"
+    assert len(values) == 1
 
     serialized = values[0]
     assert isinstance(serialized, str)
-    # Must be valid JSON (not Python repr from the str(dict) fallback)
-    assert "PosixPath" not in serialized, (
+    assert "PosixPath(" not in serialized, (
         f"Path leaked as Python repr into parquet column: {serialized!r}"
     )
-    parsed = json.loads(serialized)
-    assert parsed["eval_name"] == "refusal_classifier"
-    assert parsed["eval_file_path"] == "/home/foo/eval.yaml"
-    assert parsed["nested"] == {"inner_path": "/home/foo/inner.yaml"}
+    assert json.loads(serialized) == {
+        "eval_name": "refusal_classifier",
+        "eval_file_path": "/home/foo/eval.yaml",
+        "nested": {"inner_path": "/home/foo/inner.yaml"},
+    }

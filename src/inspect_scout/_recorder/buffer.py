@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
 from inspect_ai.scorer import value_to_float
 from pydantic import JsonValue
+from pydantic_core import to_json
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
@@ -524,7 +524,7 @@ def _normalize_scalar(v: Any) -> Any:
         return v.to_json_string()
     # Decimal, lists, dicts, sets, tuples -> JSON text if possible
     try:
-        return json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+        return to_json(v, fallback=str).decode("utf-8")
     except Exception:
         return str(v)
 

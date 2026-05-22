@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import tempfile
 from pathlib import Path
 from typing import Generator
@@ -326,3 +327,47 @@ def test_buffer_dir_expands_tilde(
     monkeypatch.setenv("HOME", str(tmp_path))
     result = RecorderBuffer.buffer_dir("/some/scan/location")
     assert result.parent == tmp_path / "my_scout_buffer"
+
+
+@pytest.mark.asyncio
+async def test_record_serializes_path_in_metadata_as_json(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+) -> None:
+    """pathlib.Path in transcript metadata must serialize as JSON strings.
+
+    Previously, a Path inside the dict made json.dumps raise; the str(dict)
+    fallback then stored Python repr text (`{'k': PosixPath(...)}`) in the
+    parquet column, which the viewer can't parse.
+    """
+    scanner_name = "test_scanner"
+    transcript = TranscriptInfo(
+        transcript_id="path-metadata-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+        metadata={
+            "eval_name": "refusal_classifier",
+            "eval_file_path": Path("/home/foo/eval.yaml"),
+            "nested": {"inner_path": Path("/home/foo/inner.yaml")},
+        },
+    )
+
+    await recorder_buffer.record(transcript, scanner_name, sample_results, None)
+
+    parquet_path = (
+        recorder_buffer._buffer_dir
+        / f"scanner={scanner_name}"
+        / "path-metadata-1.parquet"
+    )
+    table = pq.read_table(parquet_path.as_posix())
+    serialized = table.column("transcript_metadata")[0].as_py()
+    assert isinstance(serialized, str)
+    assert "PosixPath(" not in serialized, (
+        f"Path leaked as Python repr into parquet column: {serialized!r}"
+    )
+    assert json.loads(serialized) == {
+        "eval_name": "refusal_classifier",
+        "eval_file_path": "/home/foo/eval.yaml",
+        "nested": {"inner_path": "/home/foo/inner.yaml"},
+    }

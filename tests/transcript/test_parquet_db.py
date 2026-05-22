@@ -830,6 +830,43 @@ async def test_nested_metadata_stored_as_json(parquet_db: ParquetTranscriptsDB) 
 
 
 @pytest.mark.asyncio
+async def test_path_in_nested_metadata_stringified(
+    parquet_db: ParquetTranscriptsDB,
+) -> None:
+    """pathlib.Path inside dict/list metadata round-trips as a path string.
+
+    Regression: ``_transcript_to_row`` used bare ``json.dumps(value)`` for
+    dict/list metadata values, which raises on a nested Path.
+    """
+    transcript = create_sample_transcript(
+        id="path-meta-1",
+        metadata={
+            "config": {
+                "eval_file_path": Path("/home/foo/eval.yaml"),
+                "nested": {"inner_path": Path("/home/foo/inner.yaml")},
+            },
+            "paths": [Path("/home/foo/a.yaml"), Path("/home/foo/b.yaml")],
+        },
+    )
+
+    await parquet_db.insert([transcript])
+
+    results = [
+        info
+        async for info in parquet_db.select(
+            Query(where=[c.transcript_id == "path-meta-1"])
+        )
+    ]
+    assert len(results) == 1
+    metadata = results[0].metadata
+    assert metadata["config"] == {
+        "eval_file_path": "/home/foo/eval.yaml",
+        "nested": {"inner_path": "/home/foo/inner.yaml"},
+    }
+    assert metadata["paths"] == ["/home/foo/a.yaml", "/home/foo/b.yaml"]
+
+
+@pytest.mark.asyncio
 async def test_reserved_column_validation(parquet_db: ParquetTranscriptsDB) -> None:
     """Test that reserved column names in metadata raise error."""
     from inspect_scout._transcript.database.parquet.transcripts import (

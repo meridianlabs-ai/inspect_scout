@@ -1491,11 +1491,10 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.218"
+version = "0.3.224"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioboto3" },
-    { name = "aiohttp" },
     { name = "anyio" },
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -1503,6 +1502,7 @@ dependencies = [
     { name = "debugpy" },
     { name = "docstring-parser" },
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "fastapi" },
     { name = "fsspec" },
     { name = "httpx" },
     { name = "ijson" },
@@ -1530,13 +1530,14 @@ dependencies = [
     { name = "tiktoken" },
     { name = "typing-extensions" },
     { name = "universal-pathlib" },
+    { name = "uvicorn" },
     { name = "zipfile-zstd", marker = "python_full_version < '3.14'" },
     { name = "zipp" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/9b/5156547224e94615b273faa2091da34c5daa4e85cba385fdc34b589a1f8c/inspect_ai-0.3.218.tar.gz", hash = "sha256:3d59e63652855078ad0ad4bbf951026816d8e504a27dfd79dbdce8bde3d5d5c7", size = 45633639, upload-time = "2026-05-06T13:42:23.88Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/b2/dfe0e2724a0ea146f406f6d8e1ab922623b10ad49e66986fea1552e578d6/inspect_ai-0.3.224.tar.gz", hash = "sha256:d3b2b4dd04a34f7662744c29b082fbdbb0e1974de980e5a8225cf81ffa1b24af", size = 45866722, upload-time = "2026-05-20T20:40:49.109Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/b1/00925248d5e7a144c563a067ee46efe836b4c227757e103d90ca20acee29/inspect_ai-0.3.218-py3-none-any.whl", hash = "sha256:3c9299f047164d9eb8b510fefabd3e5d0c0df3a45137e01f3e71e50b24347a18", size = 36103714, upload-time = "2026-05-06T13:42:14.844Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/13/2285ad3b8cc918064cdbfc5a928670bd7dc4084d31f4196bfc9502ec464b/inspect_ai-0.3.224-py3-none-any.whl", hash = "sha256:9487bef3f8f5d4d8cbbd48696bb5552400582aad86362ed6a546f38960807d8a", size = 36211398, upload-time = "2026-05-20T20:40:42.736Z" },
 ]
 
 [[package]]
@@ -1667,7 +1668,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", specifier = ">=0.3.218" },
+    { name = "inspect-ai", specifier = ">=0.3.224" },
     { name = "inspect-swe", specifier = ">=0.2.42" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },

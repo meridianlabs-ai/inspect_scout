@@ -1,4 +1,4 @@
-## 0.4.36 (22 May 2026)
+## 0.4.37 (22 May 2026)
 
 - Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped.
 - Structured generate: Warn model for orphan tool_use in structured_generate retry loop.

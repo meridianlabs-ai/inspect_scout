@@ -33,6 +33,7 @@ from inspect_ai.tool import (
     ToolSource,
 )
 from inspect_ai.util import JSONSchema
+from inspect_ai.util._json import resolve_schema_references
 from pydantic import BaseModel, Field, create_model
 
 from inspect_scout._llm_scanner.types import AnswerStructured
@@ -195,13 +196,18 @@ def structured_schema(answer: AnswerStructured) -> JSONSchema:
     if missing_descriptions:
         raise_missing_descriptions(missing_descriptions)
 
+    # Pydantic emits nested BaseModel fields as $ref/$defs, but JSONSchema has
+    # no fields for these — validating through it would silently drop the
+    # references and leave the model with an unspecified item shape (see #447).
+    # Inline all $ref definitions before validating.
+    item_schema = resolve_schema_references(
+        augmented_type.model_json_schema(by_alias=False)
+    )
+
     # For result sets, synthesize a wrapper schema with a single list field
     if result_set is not False:
         # Determine the field name for the results list
         field_name = "results" if result_set is True else result_set
-
-        # Get the schema for the item type
-        item_schema = augmented_type.model_json_schema(by_alias=False)
 
         # Create a wrapper schema with a single list field containing items of this type
         wrapper_schema = {
@@ -216,16 +222,10 @@ def structured_schema(answer: AnswerStructured) -> JSONSchema:
             "required": [field_name],
         }
 
-        # If the item schema has $defs, include them in the wrapper
-        if "$defs" in item_schema:
-            wrapper_schema["$defs"] = item_schema["$defs"]
-
         return JSONSchema.model_validate(wrapper_schema)
     else:
         # For single results, return the schema as-is
-        return JSONSchema.model_validate(
-            augmented_type.model_json_schema(by_alias=False)
-        )
+        return JSONSchema.model_validate(item_schema)
 
 
 def structured_answer_type(answer: AnswerStructured) -> tuple[type[BaseModel], bool]:

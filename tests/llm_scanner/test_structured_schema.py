@@ -72,6 +72,31 @@ class TestSingleResultValid:
         schema = structured_schema(AnswerStructured(type=ArrayAnswer))
         assert schema is not None
 
+    def test_single_result_with_list_of_nested_models(self) -> None:
+        """Test list[NestedModel] field has properly inlined item schema.
+
+        Pydantic emits list[NestedModel] as $ref/$defs; ensure the item
+        schema is inlined rather than dropped (see #447).
+        """
+
+        class Item(BaseModel):
+            index: int = Field(description="Item index")
+            flag: bool = Field(description="Item flag")
+
+        class Wrapper(BaseModel):
+            explanation: str = Field(description="The explanation")
+            items: list[Item] = Field(description="List of items")
+
+        schema = structured_schema(AnswerStructured(type=Wrapper))
+        assert schema.properties is not None
+        items_field = schema.properties["items"]
+        assert items_field.type == "array"
+        assert items_field.items is not None
+        assert items_field.items.type == "object"
+        assert items_field.items.properties is not None
+        assert "index" in items_field.items.properties
+        assert "flag" in items_field.items.properties
+
 
 class TestMultipleResultsValid:
     """Tests for valid multiple results schemas."""

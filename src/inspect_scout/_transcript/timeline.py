@@ -171,6 +171,7 @@ async def timeline_messages(
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
+    reserved_tokens: int = 0,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
@@ -204,6 +205,9 @@ async def timeline_messages(
             each branch (typically top-level agents/solvers); ``N``
             allows up to N nested scannable layers. ``None`` (default)
             recurses without limit. ``0`` yields nothing.
+        reserved_tokens: Tokens to reserve for prompt overhead that
+            wraps the messages (e.g. a scanner template). Forwarded to
+            ``segment_messages()``.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -220,6 +224,7 @@ async def timeline_messages(
             model=model,
             context_window=context_window,
             compaction=compaction,
+            reserved_tokens=reserved_tokens,
         ):
             yield TimelineMessages(
                 messages=seg.messages,

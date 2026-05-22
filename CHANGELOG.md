@@ -5,6 +5,9 @@
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don't skip gitignored files).
 - Support custom role labels for transcript message rendering.
 - Bugfix: Stop doing blocking S3 file I/O on hot paths.
+- Bugfix: Resolve nested schema references for `AnswerStructured`.
+- Bugfix: `llm_scanner` now reserves tokens for the rendered scanner template when sizing segments, so long templates no longer push the prompt past `context_window`.
+- Scout View: Refine scanner result header and All Scores dialog
 
 ## 0.4.35 (16 May 2026)
 

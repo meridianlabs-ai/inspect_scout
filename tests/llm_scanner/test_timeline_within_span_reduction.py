@@ -89,6 +89,11 @@ def _yes_no_outputs(answers: list[str]) -> list[ModelOutput]:
     ]
 
 
+def _repeated_words(count: int) -> str:
+    """Create predictable text long enough to force chunking when needed."""
+    return " ".join(["word"] * count)
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -102,14 +107,16 @@ async def test_single_span_multi_chunk_reduces_to_single_result() -> None:
         name="agent",
         events=[
             _model_event(
-                input_texts=["first user msg"], output_text="asst reply", uuid="m1"
+                input_texts=[_repeated_words(20)],
+                output_text=_repeated_words(20),
+                uuid="m1",
             ),
         ],
     )
     transcript = _transcript_with_spans([span])
 
-    # context_window=1 forces each rendered message into its own segment
-    # (2 messages -> 2 segments). Prime 2 distinct answers.
+    # The default scanner template consumes most of a small context window,
+    # so 20-word input/output messages are split into two segments here.
     mock_model = get_model(
         "mockllm/model",
         custom_outputs=_yes_no_outputs(["no", "yes"]),
@@ -119,7 +126,7 @@ async def test_single_span_multi_chunk_reduces_to_single_result() -> None:
         question="Is this helpful?",
         answer="boolean",
         model=mock_model,
-        context_window=1,
+        context_window=200,
     )
 
     out = await scan_fn(transcript)
@@ -139,7 +146,9 @@ async def test_multi_span_one_chunked_returns_resultset() -> None:
         name="agent-a",
         events=[
             _model_event(
-                input_texts=["user msg a"], output_text="asst reply a", uuid="ma"
+                input_texts=[_repeated_words(20)],
+                output_text=_repeated_words(20),
+                uuid="ma",
             ),
         ],
     )
@@ -164,7 +173,7 @@ async def test_multi_span_one_chunked_returns_resultset() -> None:
         question="Is this helpful?",
         answer="boolean",
         model=mock_model,
-        context_window=1,
+        context_window=200,
     )
 
     out = await scan_fn(transcript)
@@ -186,7 +195,9 @@ async def test_custom_reducer_invoked_on_timeline_scans() -> None:
         name="agent",
         events=[
             _model_event(
-                input_texts=["first user msg"], output_text="asst reply", uuid="m1"
+                input_texts=[_repeated_words(20)],
+                output_text=_repeated_words(20),
+                uuid="m1",
             ),
         ],
     )
@@ -209,7 +220,7 @@ async def test_custom_reducer_invoked_on_timeline_scans() -> None:
         question="Is this helpful?",
         answer="boolean",
         model=mock_model,
-        context_window=1,
+        context_window=200,
         reducer=recording_reducer,
     )
 

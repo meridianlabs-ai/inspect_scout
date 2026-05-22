@@ -24,7 +24,7 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import transcript_messages
+from .._transcript.messages import _effective_segment_budget, transcript_messages
 from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import aggregate_results
@@ -271,6 +271,31 @@ def llm_scanner(
                 value_to_float=value_to_float,
             )
 
+        # Measure template overhead by rendering with messages="" so the
+        # segmenter can subtract it from the per-segment budget. Without
+        # this, a long template can push the rendered prompt past the
+        # model's context window even when the messages alone fit.
+        reserved_tokens = await _template_overhead_tokens(
+            template=resolved_template,
+            template_variables=template_variables,
+            transcript=transcript,
+            question=question,
+            answer=resolved_answer,
+            model=resolved_model,
+        )
+        effective_budget = _effective_segment_budget(
+            model=resolved_model,
+            context_window=context_window,
+            reserved_tokens=reserved_tokens,
+        )
+        if effective_budget <= 0:
+            raise RuntimeError(
+                "Scanner template overhead exceeds the available context window "
+                f"budget: template overhead={reserved_tokens} tokens, available "
+                f"discounted budget={effective_budget + reserved_tokens} tokens. "
+                "Increase context_window or shorten the scanner template."
+            )
+
         segments = [
             seg
             async for seg in transcript_messages(
@@ -280,6 +305,7 @@ def llm_scanner(
                 context_window=context_window,
                 compaction=compaction,
                 depth=depth,
+                reserved_tokens=reserved_tokens,
             )
         ]
         segment_results: list[Result] = await tg_collect(
@@ -430,3 +456,40 @@ async def _render_split_prompt(
     )
     prefix, suffix = templates
     return _render_template(prefix, kwargs), _render_template(suffix, kwargs)
+
+
+async def _template_overhead_tokens(
+    *,
+    template: str | tuple[str, str],
+    template_variables: dict[str, Any] | Callable[[Transcript], dict[str, Any]] | None,
+    transcript: Transcript,
+    question: str | Callable[[Transcript], Awaitable[str]] | None,
+    answer: Answer,
+    model: Model,
+) -> int:
+    """Count tokens of the rendered prompt template with no messages.
+
+    Used by the segmenter to reserve budget for prompt scaffolding so
+    the rendered prompt (template + messages) fits in the context
+    window.
+    """
+    if isinstance(template, tuple):
+        prefix_str, suffix_str = await _render_split_prompt(
+            templates=template,
+            template_variables=template_variables,
+            transcript=transcript,
+            messages="",
+            question=question,
+            answer=answer,
+        )
+        rendered = prefix_str + suffix_str
+    else:
+        rendered = await render_scanner_prompt(
+            template=template,
+            template_variables=template_variables,
+            transcript=transcript,
+            messages="",
+            question=question,
+            answer=answer,
+        )
+    return await model.count_tokens(rendered)

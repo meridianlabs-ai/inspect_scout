@@ -7,7 +7,7 @@
 - Scout View: Refine scanner result header and All Scores dialog
 - Bugfix: Stop doing blocking S3 file I/O on hot paths.
 - Bugfix: Resolve nested schema references for `AnswerStructured`.
-- Bugfix: `llm_scanner` now reserves tokens for the rendered scanner template when sizing segments, so long templates no longer push the prompt past `context_window`.
+- LLM Scanner / messages API: Sizing segments now subtracts the rendered scanner template's tokens from the per-segment budget, so long templates no longer push the prompt past `context_window`.
 - Bugfix: Serialize metadata flds with pydantic_core.to_json
 - Scout View: Refine scanner result header and All Scores dialog
 - Scout View: Don't allow malformed metadata to blow up entire scan (#245)

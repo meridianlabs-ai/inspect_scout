@@ -275,7 +275,7 @@ def llm_scanner(
         # segmenter can subtract it from the per-segment budget. Without
         # this, a long template can push the rendered prompt past the
         # model's context window even when the messages alone fit.
-        reserved_tokens = await _template_overhead_tokens(
+        template_tokens = await _template_overhead_tokens(
             template=resolved_template,
             template_variables=template_variables,
             transcript=transcript,
@@ -286,14 +286,15 @@ def llm_scanner(
         effective_budget = _effective_segment_budget(
             model=resolved_model,
             context_window=context_window,
-            reserved_tokens=reserved_tokens,
+            prompt_reserve=template_tokens,
         )
         if effective_budget <= 0:
             raise RuntimeError(
                 "Scanner template overhead exceeds the available context window "
-                f"budget: template overhead={reserved_tokens} tokens, available "
-                f"discounted budget={effective_budget + reserved_tokens} tokens. "
-                "Increase context_window or shorten the scanner template."
+                f"budget: template overhead={template_tokens} tokens, available "
+                f"budget={effective_budget + template_tokens} tokens (after "
+                "tokenizer safety margin). Increase context_window or shorten "
+                "the scanner template."
             )
 
         segments = [
@@ -305,7 +306,7 @@ def llm_scanner(
                 context_window=context_window,
                 compaction=compaction,
                 depth=depth,
-                reserved_tokens=reserved_tokens,
+                prompt_reserve=template_tokens,
             )
         ]
         segment_results: list[Result] = await tg_collect(

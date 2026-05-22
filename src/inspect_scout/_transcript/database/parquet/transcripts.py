@@ -20,6 +20,7 @@ from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.path import pretty_path
 from inspect_ai.log import condense_events, expand_events
 from inspect_ai.util import trace_action, trace_message
+from pydantic_core import to_json
 from typing_extensions import override
 from upath import UPath
 
@@ -1039,8 +1040,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             if value is None:
                 row[key] = None
             elif isinstance(value, (dict, list)):
-                # Complex types: serialize to JSON string
-                row[key] = json.dumps(value)
+                # to_json with str fallback so nested non-JSON-native values
+                # (e.g. pathlib.Path) stringify cleanly instead of raising.
+                row[key] = to_json(value, fallback=str).decode("utf-8")
             elif isinstance(value, (str, int, float, bool)):
                 # Scalar types: store directly
                 row[key] = value

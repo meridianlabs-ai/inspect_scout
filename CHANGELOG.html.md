@@ -1,5 +1,24 @@
 # changelog – Inspect Scout
 
+## 0.4.37 (22 May 2026)
+
+- Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent) instead of being dropped.
+- Structured generate: Warn model for orphan tool_use in structured_generate retry loop.
+- Enumerate all CSV, YAML, and JSON files when looking for validation sets (don’t skip gitignored files).
+- LLM Scanner / messages API: Sizing segments now subtracts the rendered scanner template’s tokens from the per-segment budget, so long templates no longer push the prompt past `context_window`.
+- Bugfix: Serialize metadata flds with pydantic_core.to_json
+- Scout View: Refine scanner result header and All Scores dialog
+- Scout View: Don’t allow malformed metadata to blow up entire scan (#245)
+- Scout View: Refine scanner result header and All Scores dialog (#243)
+- Scout View: Stop polling scans list (#234)
+- Scout View: Redesign MetaDataGrid with section cards and striping (#228)
+- Scout View: Prevent horizontal scroll on messages tab (#225)
+- Scout View: Scout scan UI fixes and negative filter (#226)
+- Scout View: Refine scanner result header and All Scores dialog
+- Scout View: Support custom role labels for transcript message rendering.
+- Bugfix: Stop doing blocking S3 file I/O on hot paths.
+- Bugfix: Resolve nested schema references for [AnswerStructured](./reference/scanner.html.md#answerstructured).
+
 ## 0.4.35 (16 May 2026)
 
 - LLM Scanner: [generate_answer()](./reference/scanner.html.md#generate_answer) and `structured_generate()` accept `context_tools` — additional [ToolInfo](https://inspect.aisi.org.uk/reference/inspect_ai.tool.html#toolinfo) definitions declared in the request but never invoked (`tool_choice` forces the answer tool for structured answers and is `"none"` for textual answers). This lets callers pass a `prompt` containing prior `tool_use` blocks (e.g. when asking a follow-up question about an existing transcript) without the API rejecting the request for referencing undeclared tools.

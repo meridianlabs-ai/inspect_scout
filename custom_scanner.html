@@ -747,6 +747,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p><code>extract_refs()</code> resolves citations like <code>[M3]</code> in model output back to message IDs, producing <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#reference">Reference</a></span> objects suitable for <code>Result.references</code>.</p></li>
 </ul>
 <p>You can optionally pass a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span> to control which messages are included. Available options include <code>exclude_system</code>, <code>exclude_reasoning</code>, and <code>exclude_tool_usage</code>.</p>
+<p>To override the default role prefix (<code>USER:</code>, <code>ASSISTANT:</code>, etc.) in each rendered message, set <code>ChatMessage.metadata["role_label"]</code> to a non-empty string — the renderer will use it as the prefix verbatim. See <a href="./scanner_tools.html#custom-role-labels">Custom Role Labels</a> for details.</p>
 </section>
 </section>
 <section id="events" class="level2">

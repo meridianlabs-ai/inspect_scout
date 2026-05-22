@@ -194,6 +194,8 @@ The [message_numbering()](./reference/scanner.html.md#message_numbering) functio
 
 You can optionally pass a [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) to [message_numbering()](./reference/scanner.html.md#message_numbering) to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
 
+To override the default role prefix (`USER:`, `ASSISTANT:`, etc.) in each rendered message, set `ChatMessage.metadata["role_label"]` to a non-empty string — the renderer will use it as the prefix verbatim. See [Custom Role Labels](./scanner_tools.html.md#custom-role-labels) for details.
+
 ## Event Scanners
 
 To write a scanner that targets events, write a function that takes the event type(s) you want to process. For example, this scanner will see only model events:

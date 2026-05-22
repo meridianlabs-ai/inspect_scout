@@ -32,6 +32,26 @@ DEFAULT_CONTEXT_WINDOW = 128_000
 _BUDGET_DISCOUNT = 0.8
 
 
+def _effective_segment_budget(
+    *,
+    model: Model,
+    context_window: int | None,
+    reserved_tokens: int = 0,
+) -> int:
+    """Compute the discounted token budget available for rendered messages."""
+    if context_window is not None:
+        budget = context_window
+    else:
+        model_info = get_model_info(model)
+        budget = (
+            model_info.input_tokens
+            if model_info is not None and model_info.input_tokens is not None
+            else DEFAULT_CONTEXT_WINDOW
+        )
+
+    return int(budget * _BUDGET_DISCOUNT) - reserved_tokens
+
+
 @dataclass(frozen=True)
 class MessagesSegment:
     """A segment of rendered messages that fits within a token budget.
@@ -54,12 +74,14 @@ async def segment_messages(
     model: Model | str | None = None,
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
+    reserved_tokens: int = 0,
 ) -> AsyncIterator[MessagesSegment]:
     """Render messages and split them into segments that fit within a token budget.
 
     Renders each message individually via ``messages_as_str``, counts
     tokens in parallel via ``tg_collect``, then accumulates segments that
-    fit within the effective budget (context window * 80%).
+    fit within the effective budget (context window * 80% minus
+    ``reserved_tokens``).
 
     When given events or a ``TimelineSpan``, delegates to
     ``span_messages()`` to extract and merge messages (handling
@@ -76,6 +98,10 @@ async def segment_messages(
             looked up via ``get_model_info(model)``.
         compaction: How to handle compaction boundaries when source
             contains events. Passed through to ``span_messages()``.
+        reserved_tokens: Tokens to reserve for prompt overhead that
+            wraps the messages (e.g. a scanner template). Subtracted
+            from the effective budget so the rendered prompt fits in
+            the context window.
 
     Yields:
         MessagesSegment instances, each fitting within the token budget.
@@ -98,16 +124,14 @@ async def segment_messages(
         return
 
     # Compute effective budget
-    if context_window is not None:
-        budget = context_window
-    else:
-        model_info = get_model_info(model)
-        budget = (
-            model_info.input_tokens
-            if model_info is not None and model_info.input_tokens is not None
-            else DEFAULT_CONTEXT_WINDOW
-        )
-    effective_budget = int(budget * _BUDGET_DISCOUNT)
+    effective_budget = max(
+        1,
+        _effective_segment_budget(
+            model=model,
+            context_window=context_window,
+            reserved_tokens=reserved_tokens,
+        ),
+    )
 
     # Pass 1: Render each message sequentially (counter ordering matters)
     rendered: list[tuple[ChatMessage, str]] = []
@@ -164,6 +188,7 @@ async def transcript_messages(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     include_scorers: bool = False,
+    reserved_tokens: int = 0,
 ) -> AsyncIterator[MessagesSegment]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -199,6 +224,9 @@ async def transcript_messages(
             events-only or messages-only paths.
         include_scorers: Whether to include scorer events in message
             extraction. Defaults to ``False``.
+        reserved_tokens: Tokens to reserve for prompt overhead that
+            wraps the messages (e.g. a scanner template). Forwarded to
+            ``segment_messages()`` / ``timeline_messages()``.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -226,6 +254,7 @@ async def transcript_messages(
             context_window=context_window,
             compaction=compaction,
             depth=depth,
+            reserved_tokens=reserved_tokens,
         ):
             yield timeline_seg  # type: ignore[misc]
     else:
@@ -234,6 +263,7 @@ async def transcript_messages(
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
+            reserved_tokens=reserved_tokens,
         ):
             yield seg
 

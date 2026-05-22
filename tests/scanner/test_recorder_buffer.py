@@ -361,10 +361,7 @@ async def test_record_serializes_path_in_metadata_as_json(
         / "path-metadata-1.parquet"
     )
     table = pq.read_table(parquet_path.as_posix())
-    values = table.column("transcript_metadata").to_pylist()
-    assert len(values) == 1
-
-    serialized = values[0]
+    serialized = table.column("transcript_metadata")[0].as_py()
     assert isinstance(serialized, str)
     assert "PosixPath(" not in serialized, (
         f"Path leaked as Python repr into parquet column: {serialized!r}"

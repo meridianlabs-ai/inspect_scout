@@ -32,6 +32,26 @@ DEFAULT_CONTEXT_WINDOW = 128_000
 _BUDGET_DISCOUNT = 0.8
 
 
+def _effective_segment_budget(
+    *,
+    model: Model,
+    context_window: int | None,
+    reserved_tokens: int = 0,
+) -> int:
+    """Compute the discounted token budget available for rendered messages."""
+    if context_window is not None:
+        budget = context_window
+    else:
+        model_info = get_model_info(model)
+        budget = (
+            model_info.input_tokens
+            if model_info is not None and model_info.input_tokens is not None
+            else DEFAULT_CONTEXT_WINDOW
+        )
+
+    return int(budget * _BUDGET_DISCOUNT) - reserved_tokens
+
+
 @dataclass(frozen=True)
 class MessagesSegment:
     """A segment of rendered messages that fits within a token budget.
@@ -104,16 +124,14 @@ async def segment_messages(
         return
 
     # Compute effective budget
-    if context_window is not None:
-        budget = context_window
-    else:
-        model_info = get_model_info(model)
-        budget = (
-            model_info.input_tokens
-            if model_info is not None and model_info.input_tokens is not None
-            else DEFAULT_CONTEXT_WINDOW
-        )
-    effective_budget = max(1, int(budget * _BUDGET_DISCOUNT) - reserved_tokens)
+    effective_budget = max(
+        1,
+        _effective_segment_budget(
+            model=model,
+            context_window=context_window,
+            reserved_tokens=reserved_tokens,
+        ),
+    )
 
     # Pass 1: Render each message sequentially (counter ordering matters)
     rendered: list[tuple[ChatMessage, str]] = []

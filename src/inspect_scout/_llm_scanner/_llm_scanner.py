@@ -24,7 +24,7 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import transcript_messages
+from .._transcript.messages import _effective_segment_budget, transcript_messages
 from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import aggregate_results
@@ -283,6 +283,18 @@ def llm_scanner(
             answer=resolved_answer,
             model=resolved_model,
         )
+        effective_budget = _effective_segment_budget(
+            model=resolved_model,
+            context_window=context_window,
+            reserved_tokens=reserved_tokens,
+        )
+        if effective_budget <= 0:
+            raise RuntimeError(
+                "Scanner template overhead exceeds the available context window "
+                f"budget: template overhead={reserved_tokens} tokens, available "
+                f"discounted budget={effective_budget + reserved_tokens} tokens. "
+                "Increase context_window or shorten the scanner template."
+            )
 
         segments = [
             seg

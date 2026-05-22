@@ -1,6 +1,6 @@
-## Unreleased
+## 0.4.36 (22 May 2026)
 
-- Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped. Covers (a) non-streaming `BadRequestError` / `APIStatusError` (previously the wrappers had no try/except and emitted nothing), and (b) streaming SSE `error` events that fire before the first chunk/event (previously Chat Completions' accumulator was empty and failed `ChatCompletion.model_validate`; Responses streams with no snapshot silently dropped the capture). Mirrors `inspect_ai.model._openai.openai_handle_bad_request`: a synthetic single-choice output carrying the error message as content, with `stop_reason` inferred from the error code.
+- Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped.
 - Structured generate: Warn model for orphan tool_use in structured_generate retry loop.
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don't skip gitignored files).
 - Support custom role labels for transcript message rendering.

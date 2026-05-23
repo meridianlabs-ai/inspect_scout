@@ -1,13 +1,9 @@
-## Unreleased
+## 0.4.37 (22 May 2026)
 
-- Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped. Covers (a) non-streaming `BadRequestError` / `APIStatusError` (previously the wrappers had no try/except and emitted nothing), and (b) streaming SSE `error` events that fire before the first chunk/event (previously Chat Completions' accumulator was empty and failed `ChatCompletion.model_validate`; Responses streams with no snapshot silently dropped the capture). Mirrors `inspect_ai.model._openai.openai_handle_bad_request`: a synthetic single-choice output carrying the error message as content, with `stop_reason` inferred from the error code.
+- Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped.
 - Structured generate: Warn model for orphan tool_use in structured_generate retry loop.
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don't skip gitignored files).
-- Support custom role labels for transcript message rendering.
-- Scout View: Refine scanner result header and All Scores dialog
-- Bugfix: Stop doing blocking S3 file I/O on hot paths.
-- Bugfix: Resolve nested schema references for `AnswerStructured`.
-- Bugfix: `llm_scanner` now reserves tokens for the rendered scanner template when sizing segments, so long templates no longer push the prompt past `context_window`.
+- LLM Scanner / messages API: Sizing segments now subtracts the rendered scanner template's tokens from the per-segment budget, so long templates no longer push the prompt past `context_window`.
 - Bugfix: Serialize metadata flds with pydantic_core.to_json
 - Include task_id and task_repeat in validations data files (as optional informational fields)
 - Scout View: Refine scanner result header and All Scores dialog
@@ -17,6 +13,10 @@
 - Scout View: Redesign MetaDataGrid with section cards and striping (#228)
 - Scout View: Prevent horizontal scroll on messages tab (#225)
 - Scout View: Scout scan UI fixes and negative filter (#226)
+- Scout View: Refine scanner result header and All Scores dialog
+- Scout View: Support custom role labels for transcript message rendering.
+- Bugfix: Stop doing blocking S3 file I/O on hot paths.
+- Bugfix: Resolve nested schema references for `AnswerStructured`.
 
 ## 0.4.35 (16 May 2026)
 

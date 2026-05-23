@@ -813,6 +813,22 @@ def test_upsert_case_with_metadata(client: TestClient, validation_csv: Path) -> 
     assert get_data["task_repeat"] == 3
 
 
+def test_upsert_case_without_metadata(client: TestClient, validation_csv: Path) -> None:
+    """task_id and task_repeat are absent from response when not provided."""
+    uri = validation_csv.as_uri()
+    encoded_uri = _base64url(uri)
+    case_id = _base64url("t_no_meta")
+
+    resp = client.post(
+        f"/validations/{encoded_uri}/{case_id}",
+        json={"target": True},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "task_id" not in data
+    assert "task_repeat" not in data
+
+
 def _git_init(path: Path) -> None:
     """Initialize a git repo at `path` with a deterministic identity."""
     import subprocess

@@ -829,6 +829,32 @@ def test_upsert_case_without_metadata(client: TestClient, validation_csv: Path) 
     assert "task_repeat" not in data
 
 
+def test_metadata_persists_in_csv(client: TestClient, validation_csv: Path) -> None:
+    """task_id and task_repeat appear as columns in the CSV file."""
+    uri = validation_csv.as_uri()
+    encoded_uri = _base64url(uri)
+    case_id = _base64url("t_csv_meta")
+
+    client.post(
+        f"/validations/{encoded_uri}/{case_id}",
+        json={"target": True, "task_id": "sample_7", "task_repeat": 2},
+    )
+
+    # Read the raw CSV and verify columns exist
+    csv_content = validation_csv.read_text()
+    assert "task_id" in csv_content
+    assert "task_repeat" in csv_content
+    assert "sample_7" in csv_content
+
+    # Read back via API — list all cases
+    all_resp = client.get(f"/validations/{encoded_uri}")
+    assert all_resp.status_code == 200
+    cases = all_resp.json()
+    meta_case = next(c for c in cases if c["id"] == "t_csv_meta")
+    assert meta_case["task_id"] == "sample_7"
+    assert meta_case["task_repeat"] == 2
+
+
 def _git_init(path: Path) -> None:
     """Initialize a git repo at `path` with a deterministic identity."""
     import subprocess

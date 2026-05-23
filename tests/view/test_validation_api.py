@@ -786,6 +786,33 @@ class TestFileScannerFunctions:
         assert node_file.resolve() not in files
 
 
+def test_upsert_case_with_metadata(client: TestClient, validation_csv: Path) -> None:
+    """task_id and task_repeat are stored and returned when provided."""
+    uri = validation_csv.as_uri()
+    encoded_uri = _base64url(uri)
+    case_id = _base64url("t_meta")
+
+    resp = client.post(
+        f"/validations/{encoded_uri}/{case_id}",
+        json={
+            "target": True,
+            "task_id": "sample_42",
+            "task_repeat": 3,
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task_id"] == "sample_42"
+    assert data["task_repeat"] == 3
+
+    # Read back
+    get_resp = client.get(f"/validations/{encoded_uri}/{case_id}")
+    assert get_resp.status_code == 200
+    get_data = get_resp.json()
+    assert get_data["task_id"] == "sample_42"
+    assert get_data["task_repeat"] == 3
+
+
 def _git_init(path: Path) -> None:
     """Initialize a git repo at `path` with a deterministic identity."""
     import subprocess

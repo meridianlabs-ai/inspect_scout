@@ -43,6 +43,12 @@ class ValidationCase(BaseModel):
     split: str | None = Field(default=None)
     """Optional split name for organizing cases (e.g., 'dev', 'test', 'train')."""
 
+    task_id: str | None = Field(default=None)
+    """Optional sample identifier from the source eval log (informational only)."""
+
+    task_repeat: int | None = Field(default=None)
+    """Optional epoch/repeat number from the source eval log (informational only)."""
+
     @field_validator("labels", mode="before")
     @classmethod
     def coerce_labels_to_bool(cls, v: Any) -> dict[str, bool] | None:

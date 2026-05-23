@@ -96,6 +96,8 @@ def create_validation_router(
                     labels=case_req.labels,
                     split=case_req.split,
                     predicate=cast(PredicateType | None, case_req.predicate),
+                    task_id=case_req.task_id,
+                    task_repeat=case_req.task_repeat,
                 )
             )
 
@@ -289,6 +291,8 @@ def create_validation_router(
                 labels=body.labels,
                 split=body.split,
                 predicate=cast(PredicateType | None, body.predicate),
+                task_id=body.task_id,
+                task_repeat=body.task_repeat,
             )
 
             writer.upsert_case(case)

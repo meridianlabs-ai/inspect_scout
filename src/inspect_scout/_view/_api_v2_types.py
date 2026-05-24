@@ -204,6 +204,12 @@ class ValidationCaseRequest:
     predicate: str | None = None
     """Optional predicate for comparing scanner result to target."""
 
+    task_id: str | None = None
+    """Optional sample identifier (informational, written to file but not used in validation)."""
+
+    task_repeat: int | None = None
+    """Optional epoch/repeat number (informational, written to file but not used in validation)."""
+
 
 @dataclass
 class CreateValidationSetRequest:

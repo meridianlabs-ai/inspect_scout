@@ -5,6 +5,7 @@
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don't skip gitignored files).
 - LLM Scanner / messages API: Sizing segments now subtracts the rendered scanner template's tokens from the per-segment budget, so long templates no longer push the prompt past `context_window`.
 - Bugfix: Serialize metadata flds with pydantic_core.to_json
+- Include task_id and task_repeat in validations data files (as optional informational fields)
 - Scout View: Refine scanner result header and All Scores dialog
 - Scout View: Don't allow malformed metadata to blow up entire scan (#245)
 - Scout View: Refine scanner result header and All Scores dialog (#243)

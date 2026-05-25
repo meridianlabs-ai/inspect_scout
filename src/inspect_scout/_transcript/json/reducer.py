@@ -15,7 +15,6 @@ EVENTS_ITEM_PREFIX = "events.item"
 TIMELINES_ITEM_PREFIX = "timelines.item"
 MESSAGE_POOL_ITEM_PREFIX = "message_pool.item"
 CALL_POOL_ITEM_PREFIX = "call_pool.item"
-EVENTS_DATA_PREFIX = "events_data"
 EVENTS_DATA_MESSAGES_ITEM_PREFIX = "events_data.messages.item"
 EVENTS_DATA_CALLS_ITEM_PREFIX = "events_data.calls.item"
 METADATA_PREFIX = "metadata."
@@ -56,13 +55,6 @@ class ParseState:
     scores: dict[str, Any] = field(default_factory=dict)
     message_pool: list[dict[str, Any]] = field(default_factory=list)
     call_pool: list[dict[str, Any]] = field(default_factory=list)
-    # Separate buckets for the post-PR-#3519 "events_data" schema. Keeping
-    # them distinct from the legacy lists lets the parser detect which
-    # schema authored a file even when both happen to be present, instead
-    # of silently concatenating into one pool with bad index alignment.
-    message_pool_v2: list[dict[str, Any]] = field(default_factory=list)
-    call_pool_v2: list[dict[str, Any]] = field(default_factory=list)
-    events_data_present: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -181,23 +173,17 @@ def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
 def message_pool_item_coroutine(
     state: ParseState, item_prefix: str = MESSAGE_POOL_ITEM_PREFIX
 ) -> CoroutineGen:
-    target = (
-        state.message_pool_v2
-        if item_prefix == EVENTS_DATA_MESSAGES_ITEM_PREFIX
-        else state.message_pool
+    return cast(
+        CoroutineGen, _unfiltered_item_coroutine(state.message_pool, item_prefix)
     )
-    return cast(CoroutineGen, _unfiltered_item_coroutine(target, item_prefix))
 
 
 def call_pool_item_coroutine(
     state: ParseState, item_prefix: str = CALL_POOL_ITEM_PREFIX
 ) -> CoroutineGen:
-    target = (
-        state.call_pool_v2
-        if item_prefix == EVENTS_DATA_CALLS_ITEM_PREFIX
-        else state.call_pool
+    return cast(
+        CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix)
     )
-    return cast(CoroutineGen, _unfiltered_item_coroutine(target, item_prefix))
 
 
 @_ijson_coroutine  # type: ignore
@@ -327,7 +313,6 @@ __all__ = [
     "TIMELINES_ITEM_PREFIX",
     "MESSAGE_POOL_ITEM_PREFIX",
     "CALL_POOL_ITEM_PREFIX",
-    "EVENTS_DATA_PREFIX",
     "EVENTS_DATA_MESSAGES_ITEM_PREFIX",
     "EVENTS_DATA_CALLS_ITEM_PREFIX",
     "METADATA_PREFIX",

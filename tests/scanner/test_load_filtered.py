@@ -1126,14 +1126,16 @@ async def test_pool_resolution_events_data_schema() -> None:
 @pytest.mark.asyncio
 async def test_pool_resolution_events_data_json5_fallback() -> None:
     """events_data pools resolve through the json5 fallback path too."""
-    # NaN forces the streaming parser to error and the json5 path to take over.
+    # A bare NaN value is invalid JSON but accepted by the json5 fallback,
+    # so passing one through json.dumps (allow_nan=True is the default)
+    # forces the streaming parser to error out and triggers the fallback.
     sample_json = json.dumps(
         {
             "id": "test-pool-ed-j5",
             "target": "expected",
             "messages": [],
             "scores": {},
-            "metadata": {"nan_value": 0.0},
+            "metadata": {"nan_value": math.nan},
             "events": [
                 {
                     "span_id": "s1",
@@ -1154,7 +1156,7 @@ async def test_pool_resolution_events_data_json5_fallback() -> None:
                 "calls": [],
             },
         }
-    ).replace('"nan_value": 0.0', '"nan_value": NaN')
+    )
     result = await load_filtered_transcript(
         io.BytesIO(sample_json.encode()),
         TranscriptInfo(

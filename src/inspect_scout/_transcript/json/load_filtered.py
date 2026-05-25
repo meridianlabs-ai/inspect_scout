@@ -25,6 +25,7 @@ from .reducer import (
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
     EVENTS_DATA_MESSAGES_ITEM_PREFIX,
+    EVENTS_DATA_PREFIX,
     EVENTS_ITEM_PREFIX,
     MESSAGE_POOL_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
@@ -83,6 +84,8 @@ _MIN_SECTION_PREFIX_LEN = min(
     _TARGET_PREFIX_LEN,
     _MESSAGE_POOL_ITEM_PREFIX_LEN,
     _CALL_POOL_ITEM_PREFIX_LEN,
+    _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN,
+    _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN,
 )
 
 
@@ -227,15 +230,24 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
 def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
     """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
 
-    Supports both the legacy top-level "message_pool" / "call_pool" arrays
-    and the consolidated "events_data" object introduced in inspect_ai
-    PR #3519 (March 2026). No-op when neither schema is present.
+    The two pool schemas are mutually exclusive: if ``events_data`` is
+    present (PR #3519, March 2026) it is authoritative even when its
+    inner arrays are empty, so a stale legacy ``message_pool`` /
+    ``call_pool`` from a partially-converted producer cannot leak in.
+    Falls back to the legacy keys only when ``events_data`` is absent.
+    Non-dict ``events_data`` values are treated as empty pools.
     """
     from .pool import _resolve_events_pools
 
-    events_data = data.get("events_data") or {}
-    message_pool = events_data.get("messages") or data.get("message_pool", [])
-    call_pool = events_data.get("calls") or data.get("call_pool", [])
+    if "events_data" in data:
+        ev = data["events_data"]
+        if not isinstance(ev, dict):
+            ev = {}
+        message_pool = ev.get("messages") or []
+        call_pool = ev.get("calls") or []
+    else:
+        message_pool = data.get("message_pool", [])
+        call_pool = data.get("call_pool", [])
     _resolve_events_pools(data.get("events", []), message_pool, call_pool)
 
 
@@ -329,8 +341,10 @@ async def _parse_and_filter(
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
         # Early exit: skip events/attachments when they aren't needed.
         # JSON field order is: ...target, messages, output, scores, metadata,
-        # store, events, attachments — so by the time we see "events" start_array,
-        # metadata and scores have already been parsed.
+        # store, events, attachments, events_data — so by the time we see
+        # "events" start_array, metadata and scores have already been parsed.
+        # Note: events_data (the PR #3519 pool object) trails attachments; when
+        # events_coro is None we never need that pool, so the early-exit is safe.
         if (
             events_coro is None
             and prefix == "events"
@@ -381,8 +395,10 @@ async def _parse_and_filter(
                     current_section = _SECTION_OTHER
             elif prefix[0] == "e":
                 # "events.item" (events array) vs "events_data.{messages,calls}.item"
-                # (consolidated pool, inspect_ai PR #3519). Discriminate on the
-                # 7th char: 's' for events.item, '_' for events_data.*.
+                # (consolidated pool, inspect_ai PR #3519). Both literals start
+                # with "events", so prefix-slice rather than a single-char
+                # discriminator. Bare "events_data" is also recognized so that
+                # an empty pool object still marks the file as v2-schema.
                 if (
                     p_len >= _EVENTS_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
@@ -394,13 +410,22 @@ async def _parse_and_filter(
                     == EVENTS_DATA_MESSAGES_ITEM_PREFIX
                 ):
                     current_section = _SECTION_MESSAGE_POOL
+                    state.events_data_present = True
                 elif (
                     p_len >= _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN]
                     == EVENTS_DATA_CALLS_ITEM_PREFIX
                 ):
                     current_section = _SECTION_CALL_POOL
+                    state.events_data_present = True
                 else:
+                    if prefix == EVENTS_DATA_PREFIX or prefix.startswith(
+                        EVENTS_DATA_PREFIX + "."
+                    ):
+                        # Empty / non-pool sub-fields of events_data still
+                        # mean "the file uses the v2 schema"; record that
+                        # so legacy pool keys aren't picked up by mistake.
+                        state.events_data_present = True
                     current_section = _SECTION_OTHER
             elif (
                 prefix[0] == "a"
@@ -453,6 +478,14 @@ async def _parse_and_filter(
         elif current_section == _SECTION_CALL_POOL and call_pool_coros:
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
+
+    # Pool schemas are mutually exclusive: if the file used the PR #3519
+    # "events_data" schema, those pools win even when empty, so a partially-
+    # converted producer that still emits stale legacy "message_pool" /
+    # "call_pool" arrays can't leak the wrong messages into ModelEvent.input.
+    if state.events_data_present:
+        state.message_pool = state.message_pool_v2
+        state.call_pool = state.call_pool_v2
 
     # Resolve v3 pool references before returning
     resolve_pools(state)

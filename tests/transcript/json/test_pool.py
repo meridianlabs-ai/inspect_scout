@@ -233,7 +233,9 @@ class TestPoolCoroutines:
         coro.send(("events_data.messages.item", "map_key", "content"))
         coro.send(("events_data.messages.item.content", "string", "hi"))
         coro.send(("events_data.messages.item", "end_map", None))
-        assert state.message_pool == [{"role": "user", "content": "hi"}]
+        # v2-prefix coros target the v2 list so legacy data can't drown them.
+        assert state.message_pool_v2 == [{"role": "user", "content": "hi"}]
+        assert state.message_pool == []
 
     def test_call_pool_coroutine_events_data_prefix(self) -> None:
         from inspect_scout._transcript.json.reducer import (
@@ -246,7 +248,8 @@ class TestPoolCoroutines:
         coro.send(("events_data.calls.item", "map_key", "role"))
         coro.send(("events_data.calls.item.role", "string", "assistant"))
         coro.send(("events_data.calls.item", "end_map", None))
-        assert state.call_pool == [{"role": "assistant"}]
+        assert state.call_pool_v2 == [{"role": "assistant"}]
+        assert state.call_pool == []
 
     def test_pool_coroutine_ignores_non_matching_prefix(self) -> None:
         """A coroutine bound to one prefix must not consume events on another.
@@ -341,3 +344,72 @@ class TestResolvePoolsFromDict:
         _resolve_pools_from_dict(data)
         events = data["events"]  # type: ignore[assignment]
         assert events[0]["input"] == [{"role": "user", "content": "inline"}]  # type: ignore[index]
+
+    def test_events_data_present_but_empty_does_not_fall_back_to_legacy(
+        self,
+    ) -> None:
+        """events_data presence is authoritative — empty new-schema pools
+        must NOT silently fall back to stale legacy ``message_pool`` /
+        ``call_pool`` keys that a transitional producer might have left in.
+        """
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "events_data": {"messages": [], "calls": []},
+            # stale, must not be used
+            "message_pool": [{"role": "user", "content": "STALE"}],
+            "call_pool": [{"role": "user", "content": "STALE_CALL"}],
+            "events": [
+                {"event": "model", "input": [], "input_refs": [[0, 1]]},
+                {"event": "model", "call": {"call_refs": [[0, 1]]}},
+            ],
+        }
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        # message_pool empty -> input stays [] (inspect_ai's resolver leaves
+        # input_refs intact when pool is empty; what matters here is that the
+        # stale legacy entry was NOT substituted).
+        assert events[0]["input"] == []  # type: ignore[index]
+        # call_pool empty -> request.messages should not be set to STALE_CALL.
+        # _resolve_events_pools short-circuits on empty pool, so call_refs
+        # stays — but the legacy value definitely doesn't surface.
+        assert events[1]["call"].get("request", {}).get("messages") != [  # type: ignore[index]
+            {"role": "user", "content": "STALE_CALL"}
+        ]
+
+    def test_events_data_null_treated_as_empty_pool_not_legacy(self) -> None:
+        """`events_data: null` still flips the file to v2-schema semantics."""
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "events_data": None,
+            "message_pool": [{"role": "user", "content": "STALE"}],
+            "events": [
+                {"event": "model", "input": [], "input_refs": [[0, 1]]},
+            ],
+        }
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        # Stale legacy pool must not be substituted.
+        assert events[0]["input"] == []  # type: ignore[index]
+
+    def test_events_data_non_dict_does_not_crash(self) -> None:
+        """Malformed `events_data: "string"` must not raise AttributeError."""
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "events_data": "unsupported",
+            "events": [
+                {"event": "model", "input": [{"role": "user", "content": "x"}]},
+            ],
+        }
+        # Should not raise — falls through to empty pools, events unchanged.
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        assert events[0]["input"] == [{"role": "user", "content": "x"}]  # type: ignore[index]

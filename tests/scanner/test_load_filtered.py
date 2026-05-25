@@ -1051,3 +1051,124 @@ async def test_call_pool_resolution() -> None:
     assert model_event.call.request["messages"] == [
         {"role": "user", "content": "pooled call msg"}
     ]
+
+
+@pytest.mark.asyncio
+async def test_pool_resolution_events_data_schema() -> None:
+    """Pools written under the consolidated events_data schema are resolved.
+
+    Inspect AI PR #3519 (March 2026) replaced the top-level message_pool /
+    call_pool arrays with a single ``events_data`` object holding
+    ``messages`` and ``calls``. Logs produced after that change must still
+    have ModelEvent.input populated.
+    """
+    sample_data = {
+        "id": "test-pool-ed",
+        "target": "expected",
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "input_refs": [[0, 2]],
+                "output": {"model": "test-model", "choices": []},
+                "call": {
+                    "request": {"model": "test-model"},
+                    "response": {},
+                    "call_refs": [[0, 1]],
+                    "call_key": "messages",
+                },
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+        "events_data": {
+            "messages": [
+                {"role": "system", "content": "You are helpful"},
+                {"role": "user", "content": "Solve this"},
+            ],
+            "calls": [
+                {"role": "user", "content": "pooled call msg"},
+            ],
+        },
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample_data),
+        TranscriptInfo(
+            transcript_id="test-pool-ed",
+            source_type="test",
+            source_id="source-pool-ed",
+            source_uri="/test-pool-ed.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert len(model_event.input) == 2
+    assert model_event.input[0].role == "system"
+    assert model_event.input[1].content == "Solve this"
+    assert model_event.call is not None
+    assert model_event.call.request["messages"] == [
+        {"role": "user", "content": "pooled call msg"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_pool_resolution_events_data_json5_fallback() -> None:
+    """events_data pools resolve through the json5 fallback path too."""
+    # NaN forces the streaming parser to error and the json5 path to take over.
+    sample_json = json.dumps(
+        {
+            "id": "test-pool-ed-j5",
+            "target": "expected",
+            "messages": [],
+            "scores": {},
+            "metadata": {"nan_value": 0.0},
+            "events": [
+                {
+                    "span_id": "s1",
+                    "timestamp": "2022-01-01T00:00:00+00:00",
+                    "event": "model",
+                    "model": "test-model",
+                    "input": [],
+                    "input_refs": [[0, 1]],
+                    "output": {"model": "test-model", "choices": []},
+                    "tools": [],
+                    "tool_choice": "auto",
+                    "config": {},
+                },
+            ],
+            "attachments": {},
+            "events_data": {
+                "messages": [{"role": "user", "content": "from pool"}],
+                "calls": [],
+            },
+        }
+    ).replace('"nan_value": 0.0', '"nan_value": NaN')
+    result = await load_filtered_transcript(
+        io.BytesIO(sample_json.encode()),
+        TranscriptInfo(
+            transcript_id="test-pool-ed-j5",
+            source_type="test",
+            source_id="source-pool-ed-j5",
+            source_uri="/test-pool-ed-j5.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert len(model_event.input) == 1
+    assert model_event.input[0].content == "from pool"

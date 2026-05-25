@@ -15,6 +15,8 @@ EVENTS_ITEM_PREFIX = "events.item"
 TIMELINES_ITEM_PREFIX = "timelines.item"
 MESSAGE_POOL_ITEM_PREFIX = "message_pool.item"
 CALL_POOL_ITEM_PREFIX = "call_pool.item"
+EVENTS_DATA_MESSAGES_ITEM_PREFIX = "events_data.messages.item"
+EVENTS_DATA_CALLS_ITEM_PREFIX = "events_data.calls.item"
 METADATA_PREFIX = "metadata."
 
 
@@ -168,17 +170,21 @@ def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
     )
 
 
-def message_pool_item_coroutine(state: ParseState) -> CoroutineGen:
+def message_pool_item_coroutine(
+    state: ParseState, item_prefix: str = MESSAGE_POOL_ITEM_PREFIX
+) -> CoroutineGen:
     return cast(
         CoroutineGen,
-        _unfiltered_item_coroutine(state.message_pool, MESSAGE_POOL_ITEM_PREFIX),
+        _unfiltered_item_coroutine(state.message_pool, item_prefix),
     )
 
 
-def call_pool_item_coroutine(state: ParseState) -> CoroutineGen:
+def call_pool_item_coroutine(
+    state: ParseState, item_prefix: str = CALL_POOL_ITEM_PREFIX
+) -> CoroutineGen:
     return cast(
         CoroutineGen,
-        _unfiltered_item_coroutine(state.call_pool, CALL_POOL_ITEM_PREFIX),
+        _unfiltered_item_coroutine(state.call_pool, item_prefix),
     )
 
 
@@ -309,5 +315,7 @@ __all__ = [
     "TIMELINES_ITEM_PREFIX",
     "MESSAGE_POOL_ITEM_PREFIX",
     "CALL_POOL_ITEM_PREFIX",
+    "EVENTS_DATA_MESSAGES_ITEM_PREFIX",
+    "EVENTS_DATA_CALLS_ITEM_PREFIX",
     "METADATA_PREFIX",
 ]

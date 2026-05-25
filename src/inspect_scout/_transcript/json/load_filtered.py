@@ -23,6 +23,8 @@ from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
+    EVENTS_DATA_CALLS_ITEM_PREFIX,
+    EVENTS_DATA_MESSAGES_ITEM_PREFIX,
     EVENTS_ITEM_PREFIX,
     MESSAGE_POOL_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
@@ -67,6 +69,8 @@ _SCORES_PREFIX_LEN = len(SCORES_PREFIX)
 _TARGET_PREFIX_LEN = len(TARGET_PREFIX)
 _MESSAGE_POOL_ITEM_PREFIX_LEN = len(MESSAGE_POOL_ITEM_PREFIX)
 _CALL_POOL_ITEM_PREFIX_LEN = len(CALL_POOL_ITEM_PREFIX)
+_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN = len(EVENTS_DATA_MESSAGES_ITEM_PREFIX)
+_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN = len(EVENTS_DATA_CALLS_ITEM_PREFIX)
 # "target" vs "timelines" — discriminate on 2nd char (derived from constant)
 _TARGET_CHAR1 = TARGET_PREFIX[1]
 _MIN_SECTION_PREFIX_LEN = min(
@@ -223,15 +227,16 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
 def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
     """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
 
-    No-op when pools are absent or empty (v2 files).
+    Supports both the legacy top-level "message_pool" / "call_pool" arrays
+    and the consolidated "events_data" object introduced in inspect_ai
+    PR #3519 (March 2026). No-op when neither schema is present.
     """
     from .pool import _resolve_events_pools
 
-    _resolve_events_pools(
-        data.get("events", []),
-        data.get("message_pool", []),
-        data.get("call_pool", []),
-    )
+    events_data = data.get("events_data") or {}
+    message_pool = events_data.get("messages") or data.get("message_pool", [])
+    call_pool = events_data.get("calls") or data.get("call_pool", [])
+    _resolve_events_pools(data.get("events", []), message_pool, call_pool)
 
 
 def _merge_unthinned_from_dict(
@@ -295,8 +300,28 @@ async def _parse_and_filter(
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)
-    message_pool_coro = message_pool_item_coroutine(state) if events_coro else None
-    call_pool_coro = call_pool_item_coroutine(state) if events_coro else None
+    # Pool coroutines: one per accepted prefix. Inspect AI changed the schema
+    # in PR #3519 (March 2026), consolidating the legacy top-level "message_pool"
+    # / "call_pool" arrays into "events_data.messages" / "events_data.calls".
+    # Each coroutine activates only on its matching prefix; the others ignore
+    # dispatches whose prefix doesn't match. Logs written before or after the
+    # consolidation both resolve correctly.
+    message_pool_coros = (
+        [
+            message_pool_item_coroutine(state, MESSAGE_POOL_ITEM_PREFIX),
+            message_pool_item_coroutine(state, EVENTS_DATA_MESSAGES_ITEM_PREFIX),
+        ]
+        if events_coro
+        else []
+    )
+    call_pool_coros = (
+        [
+            call_pool_item_coroutine(state, CALL_POOL_ITEM_PREFIX),
+            call_pool_item_coroutine(state, EVENTS_DATA_CALLS_ITEM_PREFIX),
+        ]
+        if events_coro
+        else []
+    )
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -354,12 +379,29 @@ async def _parse_and_filter(
                     current_section = _SECTION_MESSAGE_POOL
                 else:
                     current_section = _SECTION_OTHER
-            elif (
-                prefix[0] == "e"
-                and p_len >= _EVENTS_ITEM_PREFIX_LEN
-                and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
-            ):
-                current_section = _SECTION_EVENTS
+            elif prefix[0] == "e":
+                # "events.item" (events array) vs "events_data.{messages,calls}.item"
+                # (consolidated pool, inspect_ai PR #3519). Discriminate on the
+                # 7th char: 's' for events.item, '_' for events_data.*.
+                if (
+                    p_len >= _EVENTS_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_EVENTS
+                elif (
+                    p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]
+                    == EVENTS_DATA_MESSAGES_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_MESSAGE_POOL
+                elif (
+                    p_len >= _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN]
+                    == EVENTS_DATA_CALLS_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_CALL_POOL
+                else:
+                    current_section = _SECTION_OTHER
             elif (
                 prefix[0] == "a"
                 and p_len >= _ATTACHMENTS_PREFIX_LEN
@@ -405,10 +447,12 @@ async def _parse_and_filter(
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES:
             scores_coro.send((prefix, event, value))
-        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coro:
-            message_pool_coro.send((prefix, event, value))
-        elif current_section == _SECTION_CALL_POOL and call_pool_coro:
-            call_pool_coro.send((prefix, event, value))
+        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
+            for coro in message_pool_coros:
+                coro.send((prefix, event, value))
+        elif current_section == _SECTION_CALL_POOL and call_pool_coros:
+            for coro in call_pool_coros:
+                coro.send((prefix, event, value))
 
     # Resolve v3 pool references before returning
     resolve_pools(state)

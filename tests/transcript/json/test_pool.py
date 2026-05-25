@@ -214,3 +214,130 @@ class TestPoolCoroutines:
         coro.send(("call_pool.item.content", "string", "hello"))
         coro.send(("call_pool.item", "end_map", None))
         assert state.call_pool == [{"role": "user", "content": "hello"}]
+
+    def test_message_pool_coroutine_events_data_prefix(self) -> None:
+        """Inspect AI PR #3519 consolidated pools under events_data.{messages,calls}.
+
+        The coroutine accepts an explicit prefix so a single ParseState can
+        host coroutines listening on either schema.
+        """
+        from inspect_scout._transcript.json.reducer import (
+            EVENTS_DATA_MESSAGES_ITEM_PREFIX,
+        )
+
+        state = ParseState()
+        coro = message_pool_item_coroutine(state, EVENTS_DATA_MESSAGES_ITEM_PREFIX)
+        coro.send(("events_data.messages.item", "start_map", None))
+        coro.send(("events_data.messages.item", "map_key", "role"))
+        coro.send(("events_data.messages.item.role", "string", "user"))
+        coro.send(("events_data.messages.item", "map_key", "content"))
+        coro.send(("events_data.messages.item.content", "string", "hi"))
+        coro.send(("events_data.messages.item", "end_map", None))
+        assert state.message_pool == [{"role": "user", "content": "hi"}]
+
+    def test_call_pool_coroutine_events_data_prefix(self) -> None:
+        from inspect_scout._transcript.json.reducer import (
+            EVENTS_DATA_CALLS_ITEM_PREFIX,
+        )
+
+        state = ParseState()
+        coro = call_pool_item_coroutine(state, EVENTS_DATA_CALLS_ITEM_PREFIX)
+        coro.send(("events_data.calls.item", "start_map", None))
+        coro.send(("events_data.calls.item", "map_key", "role"))
+        coro.send(("events_data.calls.item.role", "string", "assistant"))
+        coro.send(("events_data.calls.item", "end_map", None))
+        assert state.call_pool == [{"role": "assistant"}]
+
+    def test_pool_coroutine_ignores_non_matching_prefix(self) -> None:
+        """A coroutine bound to one prefix must not consume events on another.
+
+        The streaming parser instantiates two coroutines per pool — one for
+        each accepted schema — and dispatches every pool-section event to
+        both. Only the one whose prefix matches must activate.
+        """
+        state = ParseState()
+        legacy = message_pool_item_coroutine(state)  # message_pool.item
+        # Send events_data-schema events; legacy coro should ignore them.
+        legacy.send(("events_data.messages.item", "start_map", None))
+        legacy.send(("events_data.messages.item", "map_key", "role"))
+        legacy.send(("events_data.messages.item.role", "string", "user"))
+        legacy.send(("events_data.messages.item", "end_map", None))
+        assert state.message_pool == []
+
+
+class TestResolvePoolsFromDict:
+    """Tests for the JSON5 fallback path's pool resolution.
+
+    The streaming parser does not handle JSON5 extensions (NaN, Inf, ...),
+    so a fully-buffered json5 parse is used as fallback. That path resolves
+    pools via ``_resolve_pools_from_dict`` rather than coroutines.
+    """
+
+    def test_events_data_schema(self) -> None:
+        """Consolidated events_data schema (inspect_ai PR #3519) is resolved."""
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "events_data": {
+                "messages": [
+                    {"role": "system", "content": "You are helpful"},
+                    {"role": "user", "content": "Hello"},
+                ],
+                "calls": [{"role": "user", "content": "call_msg"}],
+            },
+            "events": [
+                {"event": "model", "input": [], "input_refs": [[0, 2]]},
+                {
+                    "event": "model",
+                    "call": {"call_refs": [[0, 1]]},
+                },
+            ],
+        }
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        assert events[0]["input"] == [  # type: ignore[index]
+            {"role": "system", "content": "You are helpful"},
+            {"role": "user", "content": "Hello"},
+        ]
+        assert "input_refs" not in events[0]  # type: ignore[operator]
+        assert events[1]["call"]["request"]["messages"] == [  # type: ignore[index]
+            {"role": "user", "content": "call_msg"}
+        ]
+
+    def test_legacy_top_level_pool_schema(self) -> None:
+        """Pre-PR#3519 top-level message_pool / call_pool still resolves."""
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "message_pool": [{"role": "user", "content": "pooled"}],
+            "call_pool": [{"role": "user", "content": "call_pooled"}],
+            "events": [
+                {"event": "model", "input": [], "input_refs": [[0, 1]]},
+                {"event": "model", "call": {"call_refs": [[0, 1]]}},
+            ],
+        }
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        assert events[0]["input"] == [{"role": "user", "content": "pooled"}]  # type: ignore[index]
+        assert events[1]["call"]["request"]["messages"] == [  # type: ignore[index]
+            {"role": "user", "content": "call_pooled"}
+        ]
+
+    def test_noop_when_neither_pool_present(self) -> None:
+        """A v2 log (no pools either schema) is left unchanged."""
+        from inspect_scout._transcript.json.load_filtered import (
+            _resolve_pools_from_dict,
+        )
+
+        data: dict[str, object] = {
+            "events": [
+                {"event": "model", "input": [{"role": "user", "content": "inline"}]},
+            ],
+        }
+        _resolve_pools_from_dict(data)
+        events = data["events"]  # type: ignore[assignment]
+        assert events[0]["input"] == [{"role": "user", "content": "inline"}]  # type: ignore[index]

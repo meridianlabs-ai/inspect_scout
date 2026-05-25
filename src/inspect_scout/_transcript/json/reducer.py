@@ -174,7 +174,7 @@ def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
 
 
 def message_pool_item_coroutine(
-    state: ParseState, item_prefix: str = MESSAGE_POOL_ITEM_PREFIX
+    state: ParseState, item_prefix: str
 ) -> CoroutineGen:
     return cast(
         CoroutineGen, _unfiltered_item_coroutine(state.message_pool, item_prefix)
@@ -182,7 +182,7 @@ def message_pool_item_coroutine(
 
 
 def call_pool_item_coroutine(
-    state: ParseState, item_prefix: str = CALL_POOL_ITEM_PREFIX
+    state: ParseState, item_prefix: str
 ) -> CoroutineGen:
     return cast(
         CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix)

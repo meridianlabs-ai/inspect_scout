@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from inspect_scout._transcript.json.pool import _expand_refs_raw, resolve_pools
 from inspect_scout._transcript.json.reducer import (
+    CALL_POOL_ITEM_PREFIX,
+    MESSAGE_POOL_ITEM_PREFIX,
     ParseState,
     call_pool_item_coroutine,
     message_pool_item_coroutine,
@@ -194,7 +196,7 @@ class TestPoolCoroutines:
 
     def test_message_pool_coroutine_collects_items(self) -> None:
         state = ParseState()
-        coro = message_pool_item_coroutine(state)
+        coro = message_pool_item_coroutine(state, MESSAGE_POOL_ITEM_PREFIX)
         # Simulate ijson events for: message_pool: [{role: "user", content: "hi"}]
         coro.send(("message_pool.item", "start_map", None))
         coro.send(("message_pool.item", "map_key", "role"))
@@ -206,7 +208,7 @@ class TestPoolCoroutines:
 
     def test_call_pool_coroutine_collects_items(self) -> None:
         state = ParseState()
-        coro = call_pool_item_coroutine(state)
+        coro = call_pool_item_coroutine(state, CALL_POOL_ITEM_PREFIX)
         coro.send(("call_pool.item", "start_map", None))
         coro.send(("call_pool.item", "map_key", "role"))
         coro.send(("call_pool.item.role", "string", "user"))

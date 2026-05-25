@@ -13,8 +13,11 @@ ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
 TIMELINES_ITEM_PREFIX = "timelines.item"
-MESSAGE_POOL_ITEM_PREFIX = "message_pool.item"
-CALL_POOL_ITEM_PREFIX = "call_pool.item"
+# Pool prefixes for deduplicated ChatMessage / call payloads. Two on-disk
+# shapes carry identical data: legacy top-level arrays, and the post-PR-#3519
+# nesting under events_data. Both resolve to the same state.{message,call}_pool.
+MESSAGE_POOL_ITEM_PREFIX = "message_pool.item"  # legacy
+CALL_POOL_ITEM_PREFIX = "call_pool.item"  # legacy
 EVENTS_DATA_MESSAGES_ITEM_PREFIX = "events_data.messages.item"
 EVENTS_DATA_CALLS_ITEM_PREFIX = "events_data.calls.item"
 METADATA_PREFIX = "metadata."

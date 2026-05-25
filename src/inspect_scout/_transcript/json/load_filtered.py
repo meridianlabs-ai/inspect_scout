@@ -229,9 +229,7 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
 def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
     """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
 
-    Reads the pool from ``events_data`` (inspect_ai PR #3519, March 2026)
-    when that key is a dict, else falls back to the legacy top-level
-    ``message_pool`` / ``call_pool`` keys. No-op when neither is present.
+    Accepts either pool shape (see reducer.py); no-op if neither present.
     """
     from .pool import _resolve_events_pools
 
@@ -306,15 +304,8 @@ async def _parse_and_filter(
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)
-    # One pool coroutine per accepted prefix. Inspect AI PR #3519 (March 2026)
-    # moved the pool from top-level "message_pool" / "call_pool" into
-    # "events_data.messages" / "events_data.calls"; both feed the same
-    # state.message_pool / state.call_pool here, so downstream resolution
-    # is schema-agnostic. A real log only ever uses one shape — each
-    # coroutine activates only on its matching prefix, so the unused one is
-    # a near-no-op. When inspect_ai eventually drops legacy logs entirely,
-    # delete the MESSAGE_POOL_ITEM_PREFIX / CALL_POOL_ITEM_PREFIX coroutine
-    # and the matching section-detection branches.
+    # One coroutine per pool prefix (see reducer.py for the two shapes);
+    # both target the same state field, so only the matching one activates.
     message_pool_coros = (
         [
             message_pool_item_coroutine(state, MESSAGE_POOL_ITEM_PREFIX),
@@ -340,8 +331,7 @@ async def _parse_and_filter(
         # JSON field order is: ...target, messages, output, scores, metadata,
         # store, events, attachments, events_data — so by the time we see
         # "events" start_array, metadata and scores have already been parsed.
-        # Note: events_data (the PR #3519 pool object) trails attachments; when
-        # events_coro is None we never need that pool, so the early-exit is safe.
+        # Exiting before events_data is safe: it only matters when events do.
         if (
             events_coro is None
             and prefix == "events"
@@ -391,11 +381,7 @@ async def _parse_and_filter(
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "e":
-                # "events.item" (events array) vs "events_data.{messages,calls}.item"
-                # (the same condensed pool reorganized by inspect_ai PR #3519).
-                # Both shapes feed _SECTION_MESSAGE_POOL / _SECTION_CALL_POOL and
-                # ultimately write into the same state.message_pool /
-                # state.call_pool, so the rest of the parser is schema-agnostic.
+                # events array, or one of the events_data.* pool sub-arrays.
                 if (
                     p_len >= _EVENTS_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX

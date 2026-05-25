@@ -2,6 +2,7 @@
 
 - Update `inspect-ai` dependency to 0.3.226
 - Update `inspect-swe` dependency to 0.2.56
+- Bugfix: Correct resolution of relative paths in transcript database index.
 
 ## 0.4.37 (22 May 2026)
 

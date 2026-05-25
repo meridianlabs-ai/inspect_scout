@@ -2143,7 +2143,19 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._location is None:
             return absolute_path
 
-        location_prefix = str(UPath(self._location)) + "/"
+        # For local paths, resolve to absolute so a relative `self._location`
+        # (e.g. passed via `-T transcripts`) still matches the absolute paths
+        # that fsspec returns from `iter_files`. The view server also sends
+        # `file://` URIs as the location, so strip that scheme first. S3/HF
+        # locations are URIs and must not be touched by Path().
+        if self._is_s3() or self._is_hf():
+            location_str = str(UPath(self._location))
+        else:
+            loc = self._location
+            if loc.startswith("file://"):
+                loc = loc[len("file://") :]
+            location_str = str(Path(loc).absolute())
+        location_prefix = location_str + "/"
         if absolute_path.startswith(location_prefix):
             return absolute_path[len(location_prefix) :]
 

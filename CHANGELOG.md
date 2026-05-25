@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.38 (25 May 2026)
 
 - Update `inspect-ai` dependency to 0.3.226
 - Update `inspect-swe` dependency to 0.2.56

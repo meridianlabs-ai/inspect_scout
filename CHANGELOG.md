@@ -1,3 +1,8 @@
+## Unreleased
+
+- Update `inspect-ai` dependency to 0.3.226
+- Update `inspect-swe` dependency to 0.2.56
+
 ## 0.4.37 (22 May 2026)
 
 - Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a `ModelEvent` instead of being dropped.

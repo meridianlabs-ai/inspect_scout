@@ -549,10 +549,39 @@ def _build_scan_archive_zip(scan_path: object, out_path: PathlibPath) -> None:
 async def _bundle_validations(api_dir: PathlibPath) -> int:
     """Pre-bake validation sets (sets list + per-set cases).
 
-    Returns the number of validation sets written. Implemented in a follow-up
-    commit; for the scaffold we emit an empty sets file.
+    Discovers .csv/.yaml/.json/.jsonl validation files in the current
+    project directory and emits them under api/validations/. The static
+    client base64-url-encodes the URI to look up per-set cases.
+
+    Returns the number of validation sets written.
     """
+    import base64
+
+    from .._validation.file_scanner import scan_validation_files
+    from .._validation.writer import ValidationFileWriter, _unflatten_columns
+
     target = api_dir / "validations"
     target.mkdir(parents=True, exist_ok=True)
-    await _write_json(target / "sets.json", [])
-    return 0
+
+    uris: list[str] = []
+    project_dir = PathlibPath.cwd().resolve()
+    for file_path in scan_validation_files(project_dir):
+        try:
+            uri = UPath(file_path).resolve().as_uri()
+        except Exception:
+            continue
+        uris.append(uri)
+
+        try:
+            writer = ValidationFileWriter(file_path)
+            cases = _unflatten_columns(writer.read_cases())
+        except FileNotFoundError:
+            continue
+
+        encoded = (
+            base64.urlsafe_b64encode(uri.encode()).rstrip(b"=").decode()
+        )
+        await _write_json(target / encoded / "cases.json", cases)
+
+    await _write_json(target / "sets.json", uris)
+    return len(uris)

@@ -6,6 +6,7 @@ import json
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path as PathlibPath
+from typing import TYPE_CHECKING
 
 from inspect_ai._util.json import to_json_safe
 from upath import UPath
@@ -16,6 +17,10 @@ from .._util.constants import DEFAULT_SCANS_DIR
 from ._api_v2_types import AppConfig, AppDir, ScannersResponse
 from .server import _resolve_dist_directory
 from .types import ViewConfig
+
+if TYPE_CHECKING:
+    from .._transcript.database.database import TranscriptsView
+    from .._transcript.types import TranscriptInfo
 
 BUNDLE_VERSION = 1
 SCOUT_CONTEXT_PLACEHOLDER = "</head>"
@@ -277,18 +282,95 @@ async def _bundle_transcripts(
     transcripts_dir: str,
     api_dir: PathlibPath,
 ) -> int:
-    """Pre-bake transcripts (listing, distinct, per-id payloads).
+    """Pre-bake transcripts (listing + per-id info + messages-events).
 
-    Returns the number of transcripts written. Implemented in a follow-up
-    commit; for the scaffold we emit an empty listing so the SPA renders.
+    Listing matches TranscriptsResponse shape; per-id payloads sit under
+    ``transcripts/<id>/`` mirroring the live endpoint paths. messages-events
+    bytes are decompressed at bundle time so the static client only needs
+    a plain ``fetch().json()`` to read them.
+
+    Returns the number of transcripts written.
     """
+    from .._query import Query
+    from .._transcript.database.factory import transcripts_view
+
     target = api_dir / "transcripts"
     target.mkdir(parents=True, exist_ok=True)
-    await _write_json(
-        target / "listing.json",
-        {"items": [], "total_count": 0, "next_cursor": None},
-    )
-    return 0
+
+    try:
+        async with transcripts_view(transcripts_dir) as view:
+            infos = [info async for info in view.select(Query())]
+            total = await view.count(Query())
+
+            # Listing matches the TranscriptsResponse shape returned by the
+            # live POST /transcripts/{dir} endpoint.
+            await _write_json(
+                target / "listing.json",
+                {
+                    "items": [info.model_dump() for info in infos],
+                    "total_count": total,
+                    "next_cursor": None,
+                },
+            )
+
+            for info in infos:
+                await _write_transcript_payload(view, info, target)
+    except FileNotFoundError:
+        await _write_json(
+            target / "listing.json",
+            {"items": [], "total_count": 0, "next_cursor": None},
+        )
+        return 0
+
+    return len(infos)
+
+
+async def _write_transcript_payload(
+    view: "TranscriptsView",
+    info: "TranscriptInfo",
+    target: PathlibPath,
+) -> None:
+    """Write info.json + decoded messages-events.json for a single transcript."""
+    # Slashes are valid in transcript_id strings — make a filesystem-safe dir.
+    safe_id = info.transcript_id.replace("/", "_").replace("\\", "_")
+    transcript_dir = target / safe_id
+    transcript_dir.mkdir(parents=True, exist_ok=True)
+
+    await _write_json(transcript_dir / "info.json", info.model_dump())
+
+    result = await view.read_messages_events(info)
+    raw_chunks: list[bytes] = []
+    async with result.data as data:
+        async for chunk in data:
+            raw_chunks.append(chunk)
+    raw = b"".join(raw_chunks)
+
+    decoded = _decompress_payload(raw, result.compression_method)
+    (transcript_dir / "messages-events.json").write_bytes(decoded)
+
+
+def _decompress_payload(
+    raw: bytes,
+    compression: object,
+) -> bytes:
+    """Decompress raw transcript bytes to plain UTF-8 JSON."""
+    from inspect_ai._util.zip_common import ZipCompressionMethod
+
+    if compression is None or compression == ZipCompressionMethod.STORED:
+        return raw
+    if compression == ZipCompressionMethod.ZSTD:
+        import zstandard
+
+        # Use streaming API — server-emitted zstd frames omit the content
+        # size in the header, so the one-shot .decompress() can't size the
+        # output buffer.
+        return zstandard.ZstdDecompressor().stream_reader(raw).read()
+    if compression == ZipCompressionMethod.DEFLATE:
+        import zlib
+
+        # ZIP DEFLATE is raw (RFC 1951), not zlib-wrapped (RFC 1950).
+        return zlib.decompress(raw, -zlib.MAX_WBITS)
+    raise ValueError(f"Unsupported compression method: {compression}")
 
 
 async def _bundle_scans(

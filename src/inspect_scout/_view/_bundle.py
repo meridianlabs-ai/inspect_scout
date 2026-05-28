@@ -19,6 +19,7 @@ from .server import _resolve_dist_directory
 from .types import ViewConfig
 
 if TYPE_CHECKING:
+    from .._recorder.recorder import ScanResultsArrow
     from .._transcript.database.database import TranscriptsView
     from .._transcript.types import TranscriptInfo
 
@@ -378,17 +379,171 @@ async def _bundle_scans(
     api_dir: PathlibPath,
     max_details: int | None,
 ) -> int:
-    """Pre-bake scans (listing, distinct, per-scan payloads).
+    """Pre-bake scans (listing + per-scan status, dataframes, details, archive).
 
-    Returns the number of scans written. Implemented in a follow-up commit.
+    Returns the number of scans written.
     """
+    from upath import UPath
+
+    from .._query import Query
+    from .._scanjobs.duckdb import scan_jobs_view
+    from .._scanresults import scan_results_arrow_async, scan_results_df_async
+
     target = api_dir / "scans"
     target.mkdir(parents=True, exist_ok=True)
+
+    try:
+        async with await scan_jobs_view(scans_dir) as view:
+            rows = [row async for row in view.select(Query())]
+            total = await view.count(Query())
+    except Exception:
+        # Scans dir missing or unreadable — emit empty listing and bail.
+        await _write_json(
+            target / "listing.json",
+            {"items": [], "total_count": 0, "next_cursor": None},
+        )
+        return 0
+
     await _write_json(
         target / "listing.json",
-        {"items": [], "total_count": 0, "next_cursor": None},
+        {
+            "items": [row.model_dump() for row in rows],
+            "total_count": total,
+            "next_cursor": None,
+        },
     )
-    return 0
+
+    scans_base = UPath(scans_dir)
+    for row in rows:
+        scan_path_abs = UPath(row.location)
+        try:
+            scan_rel = str(scan_path_abs.relative_to(scans_base))
+        except ValueError:
+            scan_rel = scan_path_abs.name
+        scan_target = target / scan_rel
+        scan_target.mkdir(parents=True, exist_ok=True)
+
+        # status.json — mirror the live GET /scans/{dir}/{scan} JSON shape.
+        status = await scan_results_df_async(row.location, rows="transcripts")
+        if status.spec.transcripts:
+            status.spec.transcripts = status.spec.transcripts.model_copy(
+                update={"data": None}
+            )
+        await _write_json(scan_target / "status.json", status)
+
+        arrow = await scan_results_arrow_async(row.location)
+        scanners_dir = scan_target / "scanners"
+        scanners_dir.mkdir(exist_ok=True)
+        details_dir = scan_target / "details"
+
+        for scanner in arrow.scanners:
+            _write_scanner_dataframe(arrow, scanner, scanners_dir / f"{scanner}.arrow")
+            _write_scanner_details(
+                arrow,
+                scanner,
+                details_dir / scanner,
+                max_details=max_details,
+            )
+
+        _build_scan_archive_zip(scan_path_abs, scan_target / "archive.zip")
+
+    return len(rows)
+
+
+def _write_scanner_dataframe(
+    arrow: "ScanResultsArrow",
+    scanner: str,
+    out_path: PathlibPath,
+) -> None:
+    """Serialize a scanner's Arrow record batches to an IPC stream file.
+
+    Mirrors the live /scans/{dir}/{scan}/{scanner} endpoint (LZ4 compression).
+    """
+    import io
+
+    import pyarrow.ipc as pa_ipc
+
+    buf = io.BytesIO()
+    with arrow.reader(scanner) as reader:
+        with pa_ipc.new_stream(
+            buf,
+            reader.schema,
+            options=pa_ipc.IpcWriteOptions(compression="lz4"),
+        ) as writer:
+            for batch in reader:
+                writer.write_batch(batch)
+    out_path.write_bytes(buf.getvalue())
+
+
+def _write_scanner_details(
+    arrow: "ScanResultsArrow",
+    scanner: str,
+    out_dir: PathlibPath,
+    max_details: int | None,
+) -> None:
+    """Bake per-row detail JSON blobs containing the columns the UI fetches."""
+    from .._transcript.eval_log import JSON_COLUMNS
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    detail_columns = ["input", "input_type", "input_data", "scan_events"]
+    json_cols = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
+
+    with arrow.reader(scanner) as reader:
+        written = 0
+        for batch in reader:
+            uuids = batch.column("uuid").to_pylist()
+            for uuid in uuids:
+                if max_details is not None and written >= max_details:
+                    return
+                fields = arrow.get_fields(scanner, "uuid", uuid, detail_columns)
+                _write_detail_blob(out_dir / f"{uuid}.json", fields, json_cols)
+                written += 1
+
+
+def _write_detail_blob(
+    path: PathlibPath,
+    fields: dict[str, object],
+    json_cols: frozenset[str],
+) -> None:
+    """Write a detail blob, preserving pre-serialized JSON columns verbatim.
+
+    Matches the live endpoint's encoding: columns in JSON_COLUMNS are already
+    JSON strings in parquet — embedded raw to avoid double-encoding.
+    """
+    parts: list[str] = []
+    for col, value in fields.items():
+        if value is None:
+            serialized = "null"
+        elif col in json_cols and isinstance(value, str) and value:
+            serialized = value
+        else:
+            serialized = json.dumps(value)
+        parts.append(json.dumps(col) + ":" + serialized)
+
+    path.write_text("{" + ",".join(parts) + "}")
+
+
+def _build_scan_archive_zip(scan_path: object, out_path: PathlibPath) -> None:
+    """Zip all files in the scan directory into a single archive.
+
+    Mirrors the live GET /scans/{dir}/{scan} Accept: application/zip handler.
+    """
+    import io
+    import zipfile
+
+    from inspect_ai._util.file import file as fs_open
+
+    # scan_path is a UPath but we only use the universal interface here.
+    if not scan_path.exists():  # type: ignore[attr-defined]
+        return
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for child in scan_path.iterdir():  # type: ignore[attr-defined]
+            if child.is_file():
+                with fs_open(child.as_posix(), "rb") as f:
+                    zf.writestr(child.name, f.read())
+    out_path.write_bytes(buf.getvalue())
 
 
 async def _bundle_validations(api_dir: PathlibPath) -> int:

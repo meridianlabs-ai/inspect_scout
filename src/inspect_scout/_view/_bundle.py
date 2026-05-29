@@ -161,10 +161,16 @@ def _inject_bundle_context(
         "transcriptsDir": transcripts_path,
         "scansDir": scans_path,
     }
+    # The flag-setting script must run BEFORE the SPA's ESM bundle so that
+    # module-init code (e.g. router activities.tsx) sees the static-bundle
+    # flag before it computes its filtered list. Both go inside <head>
+    # before the </head> placeholder, and so are evaluated before the
+    # <script type="module"> in the original template.
     script = (
         '<script id="scout_context" type="application/json">'
         f"{json.dumps(context)}"
         "</script>\n"
+        "<script>window.__SCOUT_STATIC_BUNDLE__=true;</script>\n"
     )
     if SCOUT_CONTEXT_PLACEHOLDER not in html:
         raise RuntimeError(

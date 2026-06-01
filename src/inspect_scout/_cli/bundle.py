@@ -72,7 +72,7 @@ def bundle_command(
     """Bundle a project view as a static directory that can be hosted anywhere.
 
     The bundle contains the frontend SPA plus Parquet catalogs and static data
-    files representing the project's transcripts, scans, and validations. It
+    files representing the project's transcripts and scans. It
     can be deployed to any static host with HTTP range request support.
     """
     process_common_options(common)

@@ -92,7 +92,7 @@ async def bundle_view(
 
     The output directory will contain:
     - The frontend SPA (copied from the resolved dist directory)
-    - An ``api/`` subdirectory with pre-baked JSON / Arrow / zstd payloads
+    - An ``api/`` subdirectory with Parquet catalogs and static payloads
     - A ``scout-bundle.json`` manifest
 
     Args:
@@ -161,10 +161,7 @@ async def bundle_view(
         max_details=max_details,
     )
 
-    # 6. Bake validations.
-    counts["validations"] = await _bundle_validations(api_dir=api_dir)
-
-    # 7. Write bundle manifest.
+    # 6. Write bundle manifest.
     manifest = {
         "version": BUNDLE_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -183,7 +180,7 @@ async def bundle_view(
 
     display().print(
         f"Bundle complete: {counts['transcripts']} transcripts, "
-        f"{counts['scans']} scans, {counts['validations']} validation sets"
+        f"{counts['scans']} scans"
     )
 
 
@@ -639,44 +636,3 @@ def _copy_scanner_parquet(source: UPath, target: PathlibPath) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     with fs_open(source.as_posix(), "rb") as src, target.open("wb") as dst:
         shutil.copyfileobj(src, dst)
-
-
-async def _bundle_validations(api_dir: PathlibPath) -> int:
-    """Pre-bake validation sets (sets list + per-set cases).
-
-    Discovers .csv/.yaml/.json/.jsonl validation files in the current
-    project directory and emits them under api/validations/. The static
-    client base64-url-encodes the URI to look up per-set cases.
-
-    Returns the number of validation sets written.
-    """
-    import base64
-
-    from .._validation.file_scanner import scan_validation_files
-    from .._validation.writer import ValidationFileWriter, _unflatten_columns
-
-    target = api_dir / "validations"
-    target.mkdir(parents=True, exist_ok=True)
-
-    uris: list[str] = []
-    project_dir = PathlibPath.cwd().resolve()
-    for file_path in scan_validation_files(project_dir):
-        try:
-            uri = UPath(file_path).resolve().as_uri()
-        except Exception:
-            continue
-        uris.append(uri)
-
-        try:
-            writer = ValidationFileWriter(file_path)
-            cases = _unflatten_columns(writer.read_cases())
-        except FileNotFoundError:
-            continue
-
-        encoded = (
-            base64.urlsafe_b64encode(uri.encode()).rstrip(b"=").decode()
-        )
-        await _write_json(target / encoded / "cases.json", cases)
-
-    await _write_json(target / "sets.json", uris)
-    return len(uris)

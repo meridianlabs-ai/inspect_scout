@@ -400,7 +400,7 @@ class OpenAIProvider:
                 # Convert Tool to ToolInfo if needed
                 if isinstance(tool_or_info, ToolInfo):
                     tools.append(tool_or_info)
-                else:
+                elif tool_or_info is not None:
                     tools.append(tool_to_tool_info(tool_or_info))
         except Exception:
             pass

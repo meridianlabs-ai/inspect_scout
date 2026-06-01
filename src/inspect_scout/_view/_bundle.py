@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import shutil
+from base64 import urlsafe_b64encode
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path as PathlibPath
 from typing import TYPE_CHECKING
 
@@ -19,12 +21,65 @@ from .server import _resolve_dist_directory
 from .types import ViewConfig
 
 if TYPE_CHECKING:
-    from .._recorder.recorder import ScanResultsArrow
+    from .._query.condition import Condition
     from .._transcript.database.database import TranscriptsView
     from .._transcript.types import TranscriptInfo
+    from .._view._api_v2_types import ScanRow
 
-BUNDLE_VERSION = 1
+BUNDLE_VERSION = 2
 SCOUT_CONTEXT_PLACEHOLDER = "</head>"
+TRANSCRIPT_CATALOG_COLUMNS = [
+    "bundle_id",
+    "transcript_id",
+    "source_type",
+    "source_id",
+    "source_uri",
+    "date",
+    "task_set",
+    "task_id",
+    "task_repeat",
+    "agent",
+    "agent_args",
+    "model",
+    "model_options",
+    "score",
+    "success",
+    "message_count",
+    "total_time",
+    "total_tokens",
+    "error",
+    "limit",
+    "metadata",
+    "content_path",
+    "row_json",
+]
+SCAN_CATALOG_COLUMNS = [
+    "bundle_id",
+    "scan_id",
+    "scan_name",
+    "scan_file",
+    "timestamp",
+    "packages",
+    "metadata",
+    "scan_args",
+    "location",
+    "status",
+    "scanners",
+    "model",
+    "tags",
+    "revision_version",
+    "revision_commit",
+    "revision_origin",
+    "total_results",
+    "total_errors",
+    "total_tokens",
+    "active_completion_pct",
+    "transcript_count",
+    "static_path",
+    "status_path",
+    "scanner_paths_json",
+    "row_json",
+]
 
 
 async def bundle_view(
@@ -94,6 +149,7 @@ async def bundle_view(
         counts["transcripts"] = await _bundle_transcripts(
             transcripts_dir=transcripts_path,
             api_dir=api_dir,
+            project_filter=project.filter,
         )
     else:
         counts["transcripts"] = 0
@@ -114,6 +170,13 @@ async def bundle_view(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "transcripts_dir": transcripts_path,
         "scans_dir": scans_path,
+        "catalogs": {
+            "transcripts": "api/transcripts/catalog.parquet",
+            "scans": "api/scans/catalog.parquet",
+        },
+        "host_requirements": {
+            "http_range_requests": True,
+        },
         "counts": counts,
     }
     await _write_json(output_dir / "scout-bundle.json", manifest)
@@ -282,19 +345,121 @@ async def _write_json(path: PathlibPath, value: object) -> None:
     path.write_bytes(payload)
 
 
-# ---- placeholders for follow-up commits -----------------------------------
+def _write_parquet_catalog(
+    path: PathlibPath,
+    rows: list[dict[str, object]],
+    *,
+    empty_columns: list[str],
+) -> None:
+    """Write a Parquet metadata catalog for static DuckDB-WASM queries."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if rows:
+        table = pa.Table.from_pylist(rows)
+    else:
+        schema = pa.schema([(column, pa.string()) for column in empty_columns])
+        table = pa.Table.from_pylist([], schema=schema)
+    pq.write_table(table, path, compression="zstd")
+
+
+def _bundle_id(value: str) -> str:
+    """Return a stable filesystem-safe id for a bundle payload."""
+    return urlsafe_b64encode(sha256(value.encode("utf-8")).digest()).rstrip(
+        b"="
+    ).decode("ascii")
+
+
+def _project_filter_conditions(project_filter: object) -> list["Condition"]:
+    """Convert configured project filters to query conditions."""
+    from .._query.condition_sql import condition_from_sql
+
+    filters = project_filter if isinstance(project_filter, list) else [project_filter]
+    return [condition_from_sql(f) for f in filters if isinstance(f, str) and f]
+
+
+def _transcript_catalog_row(
+    info: "TranscriptInfo",
+    bundle_id: str,
+    content_path: str,
+) -> dict[str, object]:
+    """Build one transcript catalog row with scalar query columns."""
+    values = info.model_dump()
+    row = _catalog_row(values, TRANSCRIPT_CATALOG_COLUMNS)
+    for column in ("agent_args", "model_options", "score", "metadata"):
+        row[column] = _json_cell(values.get(column))
+    row["bundle_id"] = bundle_id
+    row["content_path"] = content_path
+    row["row_json"] = _json_text(values)
+    return row
+
+
+def _scan_catalog_row(
+    scan: "ScanRow",
+    bundle_id: str,
+    *,
+    static_path: str,
+    status_path: str,
+    scanner_paths: dict[str, str],
+) -> dict[str, object]:
+    """Build one scan catalog row with scalar query columns."""
+    values = scan.model_dump()
+    row = _catalog_row(values, SCAN_CATALOG_COLUMNS)
+    for column in ("packages", "metadata", "scan_args"):
+        row[column] = _json_cell(values.get(column))
+    row["bundle_id"] = bundle_id
+    row["static_path"] = static_path
+    row["status_path"] = status_path
+    row["scanner_paths_json"] = _json_text(scanner_paths)
+    row["row_json"] = _json_text(values)
+    return row
+
+
+def _catalog_row(
+    values: dict[str, object],
+    columns: list[str],
+) -> dict[str, object]:
+    """Return catalog columns where complex values are compact JSON strings."""
+    return {
+        column: _catalog_cell(values.get(column)) if column in values else None
+        for column in columns
+    }
+
+
+def _catalog_cell(value: object) -> object:
+    """Convert values to Parquet cells that DuckDB can filter and sort."""
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+
+    decoded = json.loads(to_json_safe(value))
+    if decoded is None or isinstance(decoded, str | int | float | bool):
+        return decoded
+    return json.dumps(decoded, separators=(",", ":"), sort_keys=True)
+
+
+def _json_cell(value: object) -> str | None:
+    """Return compact JSON text for catalog columns that may mix JSON types."""
+    if value is None:
+        return None
+    return json.dumps(json.loads(to_json_safe(value)), separators=(",", ":"))
+
+
+def _json_text(value: object) -> str:
+    """Serialize with Inspect's JSON encoder and return UTF-8 text."""
+    return to_json_safe(value).decode("utf-8")
 
 
 async def _bundle_transcripts(
     transcripts_dir: str,
     api_dir: PathlibPath,
+    project_filter: object,
 ) -> int:
-    """Pre-bake transcripts (listing + per-id info + messages-events).
+    """Pre-bake transcript catalog and compressed content payloads.
 
-    Listing matches TranscriptsResponse shape; per-id payloads sit under
-    ``transcripts/<id>/`` mirroring the live endpoint paths. messages-events
-    bytes are decompressed at bundle time so the static client only needs
-    a plain ``fetch().json()`` to read them.
+    The catalog is queryable by DuckDB-WASM in the browser. Large transcript
+    message/event payloads stay out of the catalog and are written as zstd
+    files that the static client fetches only when a transcript is opened.
 
     Returns the number of transcripts written.
     """
@@ -302,82 +467,85 @@ async def _bundle_transcripts(
     from .._transcript.database.factory import transcripts_view
 
     target = api_dir / "transcripts"
+    content_dir = target / "content"
     target.mkdir(parents=True, exist_ok=True)
+    content_dir.mkdir(parents=True, exist_ok=True)
+    filters = _project_filter_conditions(project_filter)
 
     try:
         async with transcripts_view(transcripts_dir) as view:
-            infos = [info async for info in view.select(Query())]
-            total = await view.count(Query())
-
-            # Listing matches the TranscriptsResponse shape returned by the
-            # live POST /transcripts/{dir} endpoint.
-            await _write_json(
-                target / "listing.json",
-                {
-                    "items": [info.model_dump() for info in infos],
-                    "total_count": total,
-                    "next_cursor": None,
-                },
-            )
-
+            infos = [info async for info in view.select(Query(where=filters))]
+            rows: list[dict[str, object]] = []
             for info in infos:
-                await _write_transcript_payload(view, info, target)
+                bundle_id = _bundle_id(info.transcript_id)
+                content_path = f"transcripts/content/{bundle_id}.json.zst"
+                rows.append(_transcript_catalog_row(info, bundle_id, content_path))
+                await _write_transcript_content_zstd(
+                    view,
+                    info,
+                    target / "content" / f"{bundle_id}.json.zst",
+                )
+            _write_parquet_catalog(
+                target / "catalog.parquet",
+                rows,
+                empty_columns=TRANSCRIPT_CATALOG_COLUMNS,
+            )
     except FileNotFoundError:
-        await _write_json(
-            target / "listing.json",
-            {"items": [], "total_count": 0, "next_cursor": None},
+        _write_parquet_catalog(
+            target / "catalog.parquet",
+            [],
+            empty_columns=TRANSCRIPT_CATALOG_COLUMNS,
         )
         return 0
 
     return len(infos)
 
 
-async def _write_transcript_payload(
+async def _write_transcript_content_zstd(
     view: "TranscriptsView",
     info: "TranscriptInfo",
-    target: PathlibPath,
+    path: PathlibPath,
 ) -> None:
-    """Write info.json + decoded messages-events.json for a single transcript."""
-    # Slashes are valid in transcript_id strings — make a filesystem-safe dir.
-    safe_id = info.transcript_id.replace("/", "_").replace("\\", "_")
-    transcript_dir = target / safe_id
-    transcript_dir.mkdir(parents=True, exist_ok=True)
+    """Write a transcript's messages/events stream as a zstd JSON payload."""
+    import zlib
 
-    await _write_json(transcript_dir / "info.json", info.model_dump())
-
-    result = await view.read_messages_events(info)
-    raw_chunks: list[bytes] = []
-    async with result.data as data:
-        async for chunk in data:
-            raw_chunks.append(chunk)
-    raw = b"".join(raw_chunks)
-
-    decoded = _decompress_payload(raw, result.compression_method)
-    (transcript_dir / "messages-events.json").write_bytes(decoded)
-
-
-def _decompress_payload(
-    raw: bytes,
-    compression: object,
-) -> bytes:
-    """Decompress raw transcript bytes to plain UTF-8 JSON."""
+    import zstandard
     from inspect_ai._util.zip_common import ZipCompressionMethod
 
-    if compression is None or compression == ZipCompressionMethod.STORED:
-        return raw
-    if compression == ZipCompressionMethod.ZSTD:
-        import zstandard
+    result = await view.read_messages_events(info)
 
-        # Use streaming API — server-emitted zstd frames omit the content
-        # size in the header, so the one-shot .decompress() can't size the
-        # output buffer.
-        return zstandard.ZstdDecompressor().stream_reader(raw).read()
-    if compression == ZipCompressionMethod.DEFLATE:
-        import zlib
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as out:
+        if result.compression_method == ZipCompressionMethod.ZSTD:
+            async with result.data as data:
+                async for chunk in data:
+                    out.write(chunk)
+            return
 
-        # ZIP DEFLATE is raw (RFC 1951), not zlib-wrapped (RFC 1950).
-        return zlib.decompress(raw, -zlib.MAX_WBITS)
-    raise ValueError(f"Unsupported compression method: {compression}")
+        compressor = zstandard.ZstdCompressor()
+        with compressor.stream_writer(out, closefd=False) as writer:
+            if (
+                result.compression_method is None
+                or result.compression_method == ZipCompressionMethod.STORED
+            ):
+                async with result.data as data:
+                    async for chunk in data:
+                        writer.write(chunk)
+                return
+
+            if result.compression_method == ZipCompressionMethod.DEFLATE:
+                decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+                async with result.data as data:
+                    async for chunk in data:
+                        decoded = decompressor.decompress(chunk)
+                        if decoded:
+                            writer.write(decoded)
+                tail = decompressor.flush()
+                if tail:
+                    writer.write(tail)
+                return
+
+    raise ValueError(f"Unsupported compression method: {result.compression_method}")
 
 
 async def _bundle_scans(
@@ -385,7 +553,7 @@ async def _bundle_scans(
     api_dir: PathlibPath,
     max_details: int | None,
 ) -> int:
-    """Pre-bake scans (listing + per-scan status, dataframes, details, archive).
+    """Pre-bake scan catalog, status snapshots, and scanner Parquet files.
 
     Returns the number of scans written.
     """
@@ -397,28 +565,22 @@ async def _bundle_scans(
 
     target = api_dir / "scans"
     target.mkdir(parents=True, exist_ok=True)
+    data_dir = target / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         async with await scan_jobs_view(scans_dir) as view:
             rows = [row async for row in view.select(Query())]
-            total = await view.count(Query())
     except Exception:
-        # Scans dir missing or unreadable — emit empty listing and bail.
-        await _write_json(
-            target / "listing.json",
-            {"items": [], "total_count": 0, "next_cursor": None},
+        # Scans dir missing or unreadable — emit an empty catalog and bail.
+        _write_parquet_catalog(
+            target / "catalog.parquet",
+            [],
+            empty_columns=SCAN_CATALOG_COLUMNS,
         )
         return 0
 
-    await _write_json(
-        target / "listing.json",
-        {
-            "items": [row.model_dump() for row in rows],
-            "total_count": total,
-            "next_cursor": None,
-        },
-    )
-
+    catalog_rows: list[dict[str, object]] = []
     scans_base = UPath(scans_dir)
     for row in rows:
         scan_path_abs = UPath(row.location)
@@ -426,7 +588,8 @@ async def _bundle_scans(
             scan_rel = str(scan_path_abs.relative_to(scans_base))
         except ValueError:
             scan_rel = scan_path_abs.name
-        scan_target = target / scan_rel
+        bundle_id = _bundle_id(row.location)
+        scan_target = data_dir / bundle_id
         scan_target.mkdir(parents=True, exist_ok=True)
 
         # status.json — mirror the live GET /scans/{dir}/{scan} JSON shape.
@@ -440,116 +603,42 @@ async def _bundle_scans(
         arrow = await scan_results_arrow_async(row.location)
         scanners_dir = scan_target / "scanners"
         scanners_dir.mkdir(exist_ok=True)
-        details_dir = scan_target / "details"
+        scanner_paths: dict[str, str] = {}
 
         for scanner in arrow.scanners:
-            _write_scanner_dataframe(arrow, scanner, scanners_dir / f"{scanner}.arrow")
-            _write_scanner_details(
-                arrow,
-                scanner,
-                details_dir / scanner,
-                max_details=max_details,
+            rel_path = f"scans/data/{bundle_id}/scanners/{scanner}.parquet"
+            _copy_scanner_parquet(
+                UPath(row.location) / f"{scanner}.parquet",
+                scanners_dir / f"{scanner}.parquet",
             )
+            scanner_paths[scanner] = rel_path
 
-        _build_scan_archive_zip(scan_path_abs, scan_target / "archive.zip")
+        catalog_rows.append(
+            _scan_catalog_row(
+                row,
+                bundle_id,
+                static_path=scan_rel,
+                status_path=f"scans/data/{bundle_id}/status.json",
+                scanner_paths=scanner_paths,
+            )
+        )
+
+    _write_parquet_catalog(
+        target / "catalog.parquet",
+        catalog_rows,
+        empty_columns=SCAN_CATALOG_COLUMNS,
+    )
 
     return len(rows)
 
 
-def _write_scanner_dataframe(
-    arrow: "ScanResultsArrow",
-    scanner: str,
-    out_path: PathlibPath,
-) -> None:
-    """Serialize a scanner's Arrow record batches to an IPC stream file.
-
-    Mirrors the live /scans/{dir}/{scan}/{scanner} endpoint (LZ4 compression).
-    """
-    import io
-
-    import pyarrow.ipc as pa_ipc
-
-    buf = io.BytesIO()
-    with arrow.reader(scanner) as reader:
-        with pa_ipc.new_stream(
-            buf,
-            reader.schema,
-            options=pa_ipc.IpcWriteOptions(compression="lz4"),
-        ) as writer:
-            for batch in reader:
-                writer.write_batch(batch)
-    out_path.write_bytes(buf.getvalue())
-
-
-def _write_scanner_details(
-    arrow: "ScanResultsArrow",
-    scanner: str,
-    out_dir: PathlibPath,
-    max_details: int | None,
-) -> None:
-    """Bake per-row detail JSON blobs containing the columns the UI fetches."""
-    from .._transcript.eval_log import JSON_COLUMNS
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    detail_columns = ["input", "input_type", "input_data", "scan_events"]
-    json_cols = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
-
-    with arrow.reader(scanner) as reader:
-        written = 0
-        for batch in reader:
-            uuids = batch.column("uuid").to_pylist()
-            for uuid in uuids:
-                if max_details is not None and written >= max_details:
-                    return
-                fields = arrow.get_fields(scanner, "uuid", uuid, detail_columns)
-                _write_detail_blob(out_dir / f"{uuid}.json", fields, json_cols)
-                written += 1
-
-
-def _write_detail_blob(
-    path: PathlibPath,
-    fields: dict[str, object],
-    json_cols: frozenset[str],
-) -> None:
-    """Write a detail blob, preserving pre-serialized JSON columns verbatim.
-
-    Matches the live endpoint's encoding: columns in JSON_COLUMNS are already
-    JSON strings in parquet — embedded raw to avoid double-encoding.
-    """
-    parts: list[str] = []
-    for col, value in fields.items():
-        if value is None:
-            serialized = "null"
-        elif col in json_cols and isinstance(value, str) and value:
-            serialized = value
-        else:
-            serialized = json.dumps(value)
-        parts.append(json.dumps(col) + ":" + serialized)
-
-    path.write_text("{" + ",".join(parts) + "}")
-
-
-def _build_scan_archive_zip(scan_path: object, out_path: PathlibPath) -> None:
-    """Zip all files in the scan directory into a single archive.
-
-    Mirrors the live GET /scans/{dir}/{scan} Accept: application/zip handler.
-    """
-    import io
-    import zipfile
-
+def _copy_scanner_parquet(source: UPath, target: PathlibPath) -> None:
+    """Copy a scanner parquet file without materializing it as Arrow/JSON."""
     from inspect_ai._util.file import file as fs_open
 
-    # scan_path is a UPath but we only use the universal interface here.
-    if not scan_path.exists():  # type: ignore[attr-defined]
-        return
-
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for child in scan_path.iterdir():  # type: ignore[attr-defined]
-            if child.is_file():
-                with fs_open(child.as_posix(), "rb") as f:
-                    zf.writestr(child.name, f.read())
-    out_path.write_bytes(buf.getvalue())
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with fs_open(source.as_posix(), "rb") as src, target.open("wb") as dst:
+        shutil.copyfileobj(src, dst)
 
 
 async def _bundle_validations(api_dir: PathlibPath) -> int:

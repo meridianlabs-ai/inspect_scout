@@ -49,8 +49,8 @@ logger = getLogger(__name__)
     type=int,
     default=None,
     help=(
-        "Maximum number of scanner detail rows to pre-bake per scanner. "
-        "Detail blobs can dominate bundle size for large scans; omit to bake all."
+        "Deprecated; ignored by static bundle v2 because scanner details "
+        "are read from Parquet on demand."
     ),
 )
 @click.option(
@@ -71,10 +71,9 @@ def bundle_command(
 ) -> None:
     """Bundle a project view as a static directory that can be hosted anywhere.
 
-    The bundle contains the frontend SPA plus pre-baked JSON/Arrow files
-    representing the project's transcripts, scans, and validations. It can be
-    deployed to any static host (S3, GitHub Pages, nginx) without the scout
-    backend.
+    The bundle contains the frontend SPA plus Parquet catalogs and static data
+    files representing the project's transcripts, scans, and validations. It
+    can be deployed to any static host with HTTP range request support.
     """
     process_common_options(common)
     from inspect_ai._util.path import chdir

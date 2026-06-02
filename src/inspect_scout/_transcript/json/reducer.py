@@ -173,20 +173,14 @@ def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
     )
 
 
-def message_pool_item_coroutine(
-    state: ParseState, item_prefix: str
-) -> CoroutineGen:
+def message_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGen:
     return cast(
         CoroutineGen, _unfiltered_item_coroutine(state.message_pool, item_prefix)
     )
 
 
-def call_pool_item_coroutine(
-    state: ParseState, item_prefix: str
-) -> CoroutineGen:
-    return cast(
-        CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix)
-    )
+def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGen:
+    return cast(CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix))
 
 
 @_ijson_coroutine  # type: ignore

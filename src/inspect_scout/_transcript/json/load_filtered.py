@@ -23,6 +23,8 @@ from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
+    EVENTS_DATA_CALLS_ITEM_PREFIX,
+    EVENTS_DATA_MESSAGES_ITEM_PREFIX,
     EVENTS_ITEM_PREFIX,
     MESSAGE_POOL_ITEM_PREFIX,
     MESSAGES_ITEM_PREFIX,
@@ -67,6 +69,8 @@ _SCORES_PREFIX_LEN = len(SCORES_PREFIX)
 _TARGET_PREFIX_LEN = len(TARGET_PREFIX)
 _MESSAGE_POOL_ITEM_PREFIX_LEN = len(MESSAGE_POOL_ITEM_PREFIX)
 _CALL_POOL_ITEM_PREFIX_LEN = len(CALL_POOL_ITEM_PREFIX)
+_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN = len(EVENTS_DATA_MESSAGES_ITEM_PREFIX)
+_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN = len(EVENTS_DATA_CALLS_ITEM_PREFIX)
 # "target" vs "timelines" — discriminate on 2nd char (derived from constant)
 _TARGET_CHAR1 = TARGET_PREFIX[1]
 _MIN_SECTION_PREFIX_LEN = min(
@@ -79,6 +83,8 @@ _MIN_SECTION_PREFIX_LEN = min(
     _TARGET_PREFIX_LEN,
     _MESSAGE_POOL_ITEM_PREFIX_LEN,
     _CALL_POOL_ITEM_PREFIX_LEN,
+    _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN,
+    _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN,
 )
 
 
@@ -223,15 +229,18 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
 def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
     """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
 
-    No-op when pools are absent or empty (v2 files).
+    Accepts either pool shape (see reducer.py); no-op if neither present.
     """
     from .pool import _resolve_events_pools
 
-    _resolve_events_pools(
-        data.get("events", []),
-        data.get("message_pool", []),
-        data.get("call_pool", []),
-    )
+    events_data = data.get("events_data")
+    if isinstance(events_data, dict):
+        message_pool = events_data.get("messages") or []
+        call_pool = events_data.get("calls") or []
+    else:
+        message_pool = data.get("message_pool", [])
+        call_pool = data.get("call_pool", [])
+    _resolve_events_pools(data.get("events", []), message_pool, call_pool)
 
 
 def _merge_unthinned_from_dict(
@@ -295,8 +304,24 @@ async def _parse_and_filter(
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)
-    message_pool_coro = message_pool_item_coroutine(state) if events_coro else None
-    call_pool_coro = call_pool_item_coroutine(state) if events_coro else None
+    # One coroutine per pool prefix (see reducer.py for the two shapes);
+    # both target the same state field, so only the matching one activates.
+    message_pool_coros = (
+        [
+            message_pool_item_coroutine(state, MESSAGE_POOL_ITEM_PREFIX),
+            message_pool_item_coroutine(state, EVENTS_DATA_MESSAGES_ITEM_PREFIX),
+        ]
+        if events_coro
+        else []
+    )
+    call_pool_coros = (
+        [
+            call_pool_item_coroutine(state, CALL_POOL_ITEM_PREFIX),
+            call_pool_item_coroutine(state, EVENTS_DATA_CALLS_ITEM_PREFIX),
+        ]
+        if events_coro
+        else []
+    )
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -304,8 +329,9 @@ async def _parse_and_filter(
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
         # Early exit: skip events/attachments when they aren't needed.
         # JSON field order is: ...target, messages, output, scores, metadata,
-        # store, events, attachments — so by the time we see "events" start_array,
-        # metadata and scores have already been parsed.
+        # store, events, attachments, events_data — so by the time we see
+        # "events" start_array, metadata and scores have already been parsed.
+        # Exiting before events_data is safe: it only matters when events do.
         if (
             events_coro is None
             and prefix == "events"
@@ -354,12 +380,27 @@ async def _parse_and_filter(
                     current_section = _SECTION_MESSAGE_POOL
                 else:
                     current_section = _SECTION_OTHER
-            elif (
-                prefix[0] == "e"
-                and p_len >= _EVENTS_ITEM_PREFIX_LEN
-                and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
-            ):
-                current_section = _SECTION_EVENTS
+            elif prefix[0] == "e":
+                # events array, or one of the events_data.* pool sub-arrays.
+                if (
+                    p_len >= _EVENTS_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_EVENTS
+                elif (
+                    p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]
+                    == EVENTS_DATA_MESSAGES_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_MESSAGE_POOL
+                elif (
+                    p_len >= _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN
+                    and prefix[:_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN]
+                    == EVENTS_DATA_CALLS_ITEM_PREFIX
+                ):
+                    current_section = _SECTION_CALL_POOL
+                else:
+                    current_section = _SECTION_OTHER
             elif (
                 prefix[0] == "a"
                 and p_len >= _ATTACHMENTS_PREFIX_LEN
@@ -405,10 +446,12 @@ async def _parse_and_filter(
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES:
             scores_coro.send((prefix, event, value))
-        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coro:
-            message_pool_coro.send((prefix, event, value))
-        elif current_section == _SECTION_CALL_POOL and call_pool_coro:
-            call_pool_coro.send((prefix, event, value))
+        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
+            for coro in message_pool_coros:
+                coro.send((prefix, event, value))
+        elif current_section == _SECTION_CALL_POOL and call_pool_coros:
+            for coro in call_pool_coros:
+                coro.send((prefix, event, value))
 
     # Resolve v3 pool references before returning
     resolve_pools(state)

@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.39 (02 June 2026)
 
 - Transcript: Resolve `ModelEvent` input references from the consolidated `events_data` message and call pools.
 - Compatibility with Pandas 3.0 and DuckDB 1.5.

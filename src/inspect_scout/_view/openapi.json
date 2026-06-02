@@ -1359,7 +1359,7 @@
       },
       "CheckpointEvent": {
         "additionalProperties": true,
-        "description": "A successful checkpoint commit.\n\nEmitted by the checkpointer immediately after the per-checkpoint\nsidecar JSON is written \u2014 see working.md \u00a78a. Carries the full\nsidecar payload flattened into top-level fields (via multiple\ninheritance from :class:`CheckpointDetails`), so a consumer of\n``transcript().events`` (or the ``.eval`` log) reads\n``event.checkpoint_id`` / ``event.trigger`` / ``event.host`` etc.\ndirectly \u2014 same data as someone reading\n``<sample>/ckpt-NNNNN.json`` from disk.",
+        "description": "A successful checkpoint commit.\n\nEmitted by the checkpointer immediately after the per-checkpoint\nfile JSON is written \u2014 see working.md \u00a78a. Carries the full\ncheckpoint payload flattened into top-level fields (via multiple\ninheritance from :class:`Checkpoint`), so a consumer of\n``transcript().events`` (or the ``.eval`` log) reads\n``event.checkpoint_id`` / ``event.trigger`` / ``event.host`` etc.\ndirectly \u2014 same data as someone reading\n``<sample>/ckpt-NNNNN.json`` from disk.",
         "properties": {
           "checkpoint_id": {
             "title": "Checkpoint Id",
@@ -3863,11 +3863,37 @@
       "InputEvent": {
         "description": "Input screen interaction.",
         "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
           "event": {
             "const": "input",
             "default": "input",
             "title": "Event",
             "type": "string"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InputField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
           },
           "input": {
             "title": "Input",
@@ -3876,6 +3902,17 @@
           "input_ansi": {
             "title": "Input Ansi",
             "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
           },
           "metadata": {
             "anyOf": [
@@ -3888,6 +3925,22 @@
               }
             ],
             "title": "Metadata"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "accepted",
+                  "declined",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
           },
           "pending": {
             "anyOf": [
@@ -3939,6 +3992,43 @@
           "input_ansi"
         ],
         "title": "InputEvent",
+        "type": "object"
+      },
+      "InputField": {
+        "description": "One field of an `ask_user` request.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "array"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "InputField",
         "type": "object"
       },
       "InterruptEvent": {
@@ -9017,7 +9107,7 @@
       },
       "SnapshotDetails": {
         "additionalProperties": true,
-        "description": "Per-backup stats captured in the sidecar.\n\nOne per repo (host repo + one per active sandbox repo). Values come\nfrom restic's backup summary \u2014 see :class:`ResticBackupSummary`.",
+        "description": "Per-backup stats captured in the checkpoint file.\n\nOne per repo (host repo + one per active sandbox repo). Values come\nfrom restic's backup summary \u2014 see :class:`ResticBackupSummary`.",
         "properties": {
           "duration_ms": {
             "title": "Duration Ms",

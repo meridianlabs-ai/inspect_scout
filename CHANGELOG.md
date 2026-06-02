@@ -1,3 +1,7 @@
+## Unreleased
+
+- Compatibility with Pandas 3.0 and DuckDB 1.5.
+
 ## 0.4.38 (25 May 2026)
 
 - Update `inspect-ai` dependency to 0.3.226

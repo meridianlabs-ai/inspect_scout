@@ -213,8 +213,14 @@ detail JSON. This is the main scaling property for large scans.
 The static frontend API lives in:
 
 - `apps/scout/src/api/static-http/api-scout-static.ts`
-- `apps/scout/src/api/static-http/condition-sql.ts`
-- `apps/scout/src/api/static-http/duckdb-engine.ts`
+- `packages/query`
+- `packages/query-duckdb`
+
+Scout owns the app-specific static API surface: endpoint names, bundle-relative
+paths, transcript content decompression, scan status parsing, and scanner detail
+expansion. The reusable query and DuckDB pieces live in packages so other apps,
+including Inspect, can adopt the same condition DSL and browser-backed storage
+approach without depending on Scout internals.
 
 ### Boot Detection
 
@@ -239,6 +245,11 @@ Components use `useStaticBundle()` or the early
 
 The static API creates a single DuckDB-WASM instance and registers static files
 with DuckDB's HTTP file protocol.
+
+DuckDB is treated as a storage-layer implementation detail. The Scout app passes
+Vite-resolved DuckDB WASM/worker asset URLs and the local extension repository
+URL into `@tsmono/query-duckdb`; consumers interact with the existing
+`Condition`, `OrderByModel`, and pagination model rather than DuckDB APIs.
 
 Catalog listings use SQL against Parquet:
 
@@ -407,10 +418,13 @@ The validation URL should return `404` for current static bundles.
 - `apps/scout/src/api/useStaticBundle.ts`: React hook for static-mode UI gates.
 - `apps/scout/src/api/static-http/api-scout-static.ts`: static API
   implementation.
-- `apps/scout/src/api/static-http/condition-sql.ts`: filter, sort, and cursor
-  pagination SQL translation.
-- `apps/scout/src/api/static-http/duckdb-engine.ts`: DuckDB-WASM setup, HTTP
-  file registration, and local extension repository configuration.
+- `packages/query`: shared condition builder, condition types, order/pagination
+  types, and in-memory condition evaluation helpers.
+- `packages/query-duckdb`: condition-to-SQL translation, catalog listing and
+  distinct-value helpers, DuckDB-WASM setup, HTTP file registration, and local
+  extension repository configuration.
+- `apps/scout/src/query`: Scout compatibility re-exports plus
+  transcript-specific column definitions.
 - `apps/scout/src/router/activities.tsx`: hides static-unavailable activity
   tabs during module initialization.
 - `apps/scout/src/AppRouter.tsx`: redirects direct static `/validation` routes.

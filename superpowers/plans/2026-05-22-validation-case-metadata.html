@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>validation-case-metadata – Inspect Scout</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../images/scout.svg" rel="icon" type="image/svg+xml">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<meta property="og:title" content="Inspect Scout">
+<meta property="og:description" content="Transcript Analysis for AI Agents">
+<meta property="og:site_name" content="Inspect Scout">
+<meta name="twitter:title" content="Inspect Scout">
+<meta name="twitter:description" content="Transcript Analysis for AI Agents">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../images/scout.svg" alt="" class="navbar-logo light-content">
+    <img src="../../images/scout.svg" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Inspect Scout</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-using" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Using</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-using">    
+        <li>
+    <a class="dropdown-item" href="../../scanners.html">
+ <span class="dropdown-text">Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../transcripts.html">
+ <span class="dropdown-text">Transcripts</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../workflow.html">
+ <span class="dropdown-text">Workflow</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../projects.html">
+ <span class="dropdown-text">Projects</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../results.html">
+ <span class="dropdown-text">Results</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../validation.html">
+ <span class="dropdown-text">Validation</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-scanners" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Scanners</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-scanners">    
+        <li>
+    <a class="dropdown-item" href="../../llm_scanner.html">
+ <span class="dropdown-text">LLM Scanner</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../grep_scanner.html">
+ <span class="dropdown-text">Grep Scanner</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../custom_scanner.html">
+ <span class="dropdown-text">Custom Scanners</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../scanner_tools.html">
+ <span class="dropdown-text">Scanner Tools</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../multi_agent.html">
+ <span class="dropdown-text">Multi Agent</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-transcripts" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Transcripts</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-transcripts">    
+        <li>
+    <a class="dropdown-item" href="../../db_overview.html">
+ <span class="dropdown-text">Transcripts Database</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../db_schema.html">
+ <span class="dropdown-text">Database Schema</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../db_capturing.html">
+ <span class="dropdown-text">Capturing Transcripts</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../db_importing.html">
+ <span class="dropdown-text">Importing Transcripts</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../db_publishing.html">
+ <span class="dropdown-text">Publishing Transcripts</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="../../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../CHANGELOG.html"> 
+<span class="menu-text">Changelog</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="1">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#file-map" id="toc-file-map" class="nav-link active" data-scroll-target="#file-map">File Map</a></li>
+  <li><a href="#branching" id="toc-branching" class="nav-link" data-scroll-target="#branching">Branching</a>
+  <ul class="collapse">
+  <li><a href="#task-1-create-branches" id="toc-task-1-create-branches" class="nav-link" data-scroll-target="#task-1-create-branches">Task 1: Create branches</a></li>
+  <li><a href="#task-2-add-fields-to-validationcase-model" id="toc-task-2-add-fields-to-validationcase-model" class="nav-link" data-scroll-target="#task-2-add-fields-to-validationcase-model">Task 2: Add fields to <span class="element-type-name ref-interlink">ValidationCase</span> model</a></li>
+  <li><a href="#task-3-add-test-for-metadata-omission-optional-fields" id="toc-task-3-add-test-for-metadata-omission-optional-fields" class="nav-link" data-scroll-target="#task-3-add-test-for-metadata-omission-optional-fields">Task 3: Add test for metadata omission (optional fields)</a></li>
+  <li><a href="#task-4-add-test-for-csv-round-trip-with-metadata" id="toc-task-4-add-test-for-csv-round-trip-with-metadata" class="nav-link" data-scroll-target="#task-4-add-test-for-csv-round-trip-with-metadata">Task 4: Add test for CSV round-trip with metadata</a></li>
+  <li><a href="#task-5-run-full-validation-test-suite" id="toc-task-5-run-full-validation-test-suite" class="nav-link" data-scroll-target="#task-5-run-full-validation-test-suite">Task 5: Run full validation test suite</a></li>
+  <li><a href="#task-6-regenerate-openapi-schema-and-typescript-types" id="toc-task-6-regenerate-openapi-schema-and-typescript-types" class="nav-link" data-scroll-target="#task-6-regenerate-openapi-schema-and-typescript-types">Task 6: Regenerate OpenAPI schema and TypeScript types</a></li>
+  <li><a href="#task-7-thread-metadata-through-frontend-upsert" id="toc-task-7-thread-metadata-through-frontend-upsert" class="nav-link" data-scroll-target="#task-7-thread-metadata-through-frontend-upsert">Task 7: Thread metadata through frontend upsert</a></li>
+  <li><a href="#task-8-commit-built-assets-and-update-submodule" id="toc-task-8-commit-built-assets-and-update-submodule" class="nav-link" data-scroll-target="#task-8-commit-built-assets-and-update-submodule">Task 8: Commit built assets and update submodule</a></li>
+  <li><a href="#task-9-final-verification" id="toc-task-9-final-verification" class="nav-link" data-scroll-target="#task-9-final-verification">Task 9: Final verification</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Validation Case Metadata Implementation Plan</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<blockquote class="blockquote">
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Add optional <code>task_id</code> and <code>task_repeat</code> fields to validation case files so they’re human-readable outside the app.</p>
+<p><strong>Architecture:</strong> Add the fields to the Pydantic model, API request dataclass, and API endpoints. Regenerate the OpenAPI schema and TypeScript types. Thread the values from the frontend’s transcript context into upsert requests.</p>
+<p><strong>Tech Stack:</strong> Python (Pydantic, FastAPI, dataclasses), TypeScript (React, React Query), OpenAPI codegen</p>
+<hr>
+<section id="file-map" class="level2">
+<h2 class="anchored" data-anchor-id="file-map">File Map</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Action</th>
+<th>File</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Modify</td>
+<td><code>src/inspect_scout/_validation/types.py</code></td>
+<td>Add <code>task_id</code> and <code>task_repeat</code> to <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span></td>
+</tr>
+<tr class="even">
+<td>Modify</td>
+<td><code>src/inspect_scout/_view/_api_v2_types.py</code></td>
+<td>Add fields to <code>ValidationCaseRequest</code> dataclass</td>
+</tr>
+<tr class="odd">
+<td>Modify</td>
+<td><code>src/inspect_scout/_view/_api_v2_validations.py</code></td>
+<td>Thread fields through <code>create_validation</code> and <code>upsert_validation_case</code></td>
+</tr>
+<tr class="even">
+<td>Modify</td>
+<td><code>src/inspect_scout/openapi.json</code></td>
+<td>Regenerated (not hand-edited)</td>
+</tr>
+<tr class="odd">
+<td>Modify</td>
+<td><code>src/inspect_scout/_view/ts-mono/apps/scout/src/types/generated.ts</code></td>
+<td>Regenerated (not hand-edited)</td>
+</tr>
+<tr class="even">
+<td>Modify</td>
+<td><code>src/inspect_scout/_view/ts-mono/apps/scout/src/app/validation/components/ValidationCaseEditor.tsx</code></td>
+<td>Pass <code>task_id</code> / <code>task_repeat</code> in upsert requests</td>
+</tr>
+<tr class="odd">
+<td>Test</td>
+<td><code>tests/view/test_validation_api.py</code></td>
+<td>Add tests for metadata round-trip</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="branching" class="level2">
+<h2 class="anchored" data-anchor-id="branching">Branching</h2>
+<p>This feature requires coordinated branches in two repos:</p>
+<ol type="1">
+<li><strong>inspect_scout</strong> (base repo): branch <code>feat/validation-case-metadata</code></li>
+<li><strong>ts-mono</strong> (submodule): branch <code>feat/validation-case-metadata</code></li>
+</ol>
+<p>Create the ts-mono branch first (Tasks 1-2), then the base repo branch (remaining tasks). The submodule pointer update happens when committing the base repo.</p>
+<hr>
+<section id="task-1-create-branches" class="level3">
+<h3 class="anchored" data-anchor-id="task-1-create-branches">Task 1: Create branches</h3>
+<p><strong>Files:</strong> None (git operations only)</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Create the ts-mono feature branch</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> checkout <span class="at">-b</span> feat/validation-case-metadata</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Create the base repo feature branch</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> checkout <span class="at">-b</span> feat/validation-case-metadata</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-2-add-fields-to-validationcase-model" class="level3">
+<h3 class="anchored" data-anchor-id="task-2-add-fields-to-validationcase-model">Task 2: Add fields to <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span> model</h3>
+<p><strong>Files:</strong> - Modify: <code>src/inspect_scout/_validation/types.py:10-61</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Write the failing test</strong></label></li>
+</ul>
+<p>In <code>tests/view/test_validation_api.py</code>, add a test that creates a case with <code>task_id</code> and <code>task_repeat</code>, then reads it back and verifies the fields are present.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_upsert_case_with_metadata(client: TestClient, validation_csv: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""task_id and task_repeat are stored and returned when provided."""</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    uri <span class="op">=</span> validation_csv.as_uri()</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    encoded_uri <span class="op">=</span> _base64url(uri)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    case_id <span class="op">=</span> _base64url(<span class="st">"t_meta"</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    resp <span class="op">=</span> client.post(</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"/api/v2/validations/</span><span class="sc">{</span>encoded_uri<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>case_id<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        json<span class="op">=</span>{</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">"target"</span>: <span class="va">True</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">"task_id"</span>: <span class="st">"sample_42"</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            <span class="st">"task_repeat"</span>: <span class="dv">3</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> resp.status_code <span class="op">==</span> <span class="dv">200</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> resp.json()</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> data[<span class="st">"task_id"</span>] <span class="op">==</span> <span class="st">"sample_42"</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> data[<span class="st">"task_repeat"</span>] <span class="op">==</span> <span class="dv">3</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Read back</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    get_resp <span class="op">=</span> client.get(<span class="ss">f"/api/v2/validations/</span><span class="sc">{</span>encoded_uri<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>case_id<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> get_resp.status_code <span class="op">==</span> <span class="dv">200</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    get_data <span class="op">=</span> get_resp.json()</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> get_data[<span class="st">"task_id"</span>] <span class="op">==</span> <span class="st">"sample_42"</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> get_data[<span class="st">"task_repeat"</span>] <span class="op">==</span> <span class="dv">3</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Run the test to verify it fails</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py::test_upsert_case_with_metadata -v</code> Expected: FAIL — <code>task_id</code> not in response (fields don’t exist yet on the model).</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Add fields to <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span></strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_validation/types.py</code>, add after the <code>split</code> field (line 44):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> Field(default<span class="op">=</span><span class="va">None</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Optional sample identifier from the source eval log (informational only)."""</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> Field(default<span class="op">=</span><span class="va">None</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Optional epoch/repeat number from the source eval log (informational only)."""</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 4: Add fields to <code>ValidationCaseRequest</code></strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_view/_api_v2_types.py</code>, add after the <code>predicate</code> field (line 204) in the <code>ValidationCaseRequest</code> dataclass:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    task_id: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Optional sample identifier (informational, written to file but not used in validation)."""</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    task_repeat: <span class="bu">int</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Optional epoch/repeat number (informational, written to file but not used in validation)."""</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 5: Thread fields through <code>create_validation</code> endpoint</strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_view/_api_v2_validations.py</code>, in <code>create_validation()</code> (around line 92), update the <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span> constructor to include the new fields:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>            cases.append(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                ValidationCase(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">id</span><span class="op">=</span>case_req.<span class="bu">id</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                    target<span class="op">=</span>case_req.target,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                    labels<span class="op">=</span>case_req.labels,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>                    split<span class="op">=</span>case_req.split,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>                    predicate<span class="op">=</span>cast(PredicateType <span class="op">|</span> <span class="va">None</span>, case_req.predicate),</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>                    task_id<span class="op">=</span>case_req.task_id,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>                    task_repeat<span class="op">=</span>case_req.task_repeat,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>                )</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>            )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 6: Thread fields through <code>upsert_validation_case</code> endpoint</strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_view/_api_v2_validations.py</code>, in <code>upsert_validation_case()</code> (around line 286), update the <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span> constructor:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>            case <span class="op">=</span> ValidationCase(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                <span class="bu">id</span><span class="op">=</span>decoded_case_id,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                target<span class="op">=</span>body.target,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                labels<span class="op">=</span>body.labels,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                split<span class="op">=</span>body.split,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                predicate<span class="op">=</span>cast(PredicateType <span class="op">|</span> <span class="va">None</span>, body.predicate),</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                task_id<span class="op">=</span>body.task_id,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>                task_repeat<span class="op">=</span>body.task_repeat,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>            )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 7: Run the test to verify it passes</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py::test_upsert_case_with_metadata -v</code> Expected: PASS</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 8: Commit</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add src/inspect_scout/_validation/types.py src/inspect_scout/_view/_api_v2_types.py src/inspect_scout/_view/_api_v2_validations.py tests/view/test_validation_api.py</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"feat: add task_id and task_repeat metadata to validation cases"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-3-add-test-for-metadata-omission-optional-fields" class="level3">
+<h3 class="anchored" data-anchor-id="task-3-add-test-for-metadata-omission-optional-fields">Task 3: Add test for metadata omission (optional fields)</h3>
+<p><strong>Files:</strong> - Test: <code>tests/view/test_validation_api.py</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Write test that metadata fields are absent when not provided</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_upsert_case_without_metadata(client: TestClient, validation_csv: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""task_id and task_repeat are absent from response when not provided."""</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    uri <span class="op">=</span> validation_csv.as_uri()</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    encoded_uri <span class="op">=</span> _base64url(uri)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    case_id <span class="op">=</span> _base64url(<span class="st">"t_no_meta"</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    resp <span class="op">=</span> client.post(</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"/api/v2/validations/</span><span class="sc">{</span>encoded_uri<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>case_id<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>        json<span class="op">=</span>{<span class="st">"target"</span>: <span class="va">True</span>},</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> resp.status_code <span class="op">==</span> <span class="dv">200</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> resp.json()</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">"task_id"</span> <span class="kw">not</span> <span class="kw">in</span> data</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">"task_repeat"</span> <span class="kw">not</span> <span class="kw">in</span> data</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Run test to verify it passes</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py::test_upsert_case_without_metadata -v</code> Expected: PASS (fields use <code>exclude_none=True</code> via <code>model_dump</code>)</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Commit</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add tests/view/test_validation_api.py</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"test: verify metadata fields omitted when not provided"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-4-add-test-for-csv-round-trip-with-metadata" class="level3">
+<h3 class="anchored" data-anchor-id="task-4-add-test-for-csv-round-trip-with-metadata">Task 4: Add test for CSV round-trip with metadata</h3>
+<p><strong>Files:</strong> - Test: <code>tests/view/test_validation_api.py</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Write test that metadata persists in CSV file</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_metadata_persists_in_csv(client: TestClient, validation_csv: Path) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""task_id and task_repeat appear as columns in the CSV file."""</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    uri <span class="op">=</span> validation_csv.as_uri()</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    encoded_uri <span class="op">=</span> _base64url(uri)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    case_id <span class="op">=</span> _base64url(<span class="st">"t_csv_meta"</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    client.post(</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"/api/v2/validations/</span><span class="sc">{</span>encoded_uri<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>case_id<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        json<span class="op">=</span>{<span class="st">"target"</span>: <span class="va">True</span>, <span class="st">"task_id"</span>: <span class="st">"sample_7"</span>, <span class="st">"task_repeat"</span>: <span class="dv">2</span>},</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Read the raw CSV and verify columns exist</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    csv_content <span class="op">=</span> validation_csv.read_text()</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">"task_id"</span> <span class="kw">in</span> csv_content</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">"task_repeat"</span> <span class="kw">in</span> csv_content</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">"sample_7"</span> <span class="kw">in</span> csv_content</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Read back via API — list all cases</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    all_resp <span class="op">=</span> client.get(<span class="ss">f"/api/v2/validations/</span><span class="sc">{</span>encoded_uri<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> all_resp.status_code <span class="op">==</span> <span class="dv">200</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    cases <span class="op">=</span> all_resp.json()</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>    meta_case <span class="op">=</span> <span class="bu">next</span>(c <span class="cf">for</span> c <span class="kw">in</span> cases <span class="cf">if</span> c[<span class="st">"id"</span>] <span class="op">==</span> <span class="st">"t_csv_meta"</span>)</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> meta_case[<span class="st">"task_id"</span>] <span class="op">==</span> <span class="st">"sample_7"</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> meta_case[<span class="st">"task_repeat"</span>] <span class="op">==</span> <span class="dv">2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Run test</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py::test_metadata_persists_in_csv -v</code> Expected: PASS</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Commit</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add tests/view/test_validation_api.py</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"test: verify metadata round-trips through CSV files"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-5-run-full-validation-test-suite" class="level3">
+<h3 class="anchored" data-anchor-id="task-5-run-full-validation-test-suite">Task 5: Run full validation test suite</h3>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Run all validation-related tests</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py tests/scanner/test_validation.py tests/validation/ -v</code> Expected: All PASS</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Run type checker</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/mypy src/inspect_scout/_validation/types.py src/inspect_scout/_view/_api_v2_types.py src/inspect_scout/_view/_api_v2_validations.py</code> Expected: No errors</p>
+<hr>
+</section>
+<section id="task-6-regenerate-openapi-schema-and-typescript-types" class="level3">
+<h3 class="anchored" data-anchor-id="task-6-regenerate-openapi-schema-and-typescript-types">Task 6: Regenerate OpenAPI schema and TypeScript types</h3>
+<p><strong>Files:</strong> - Modify: <code>src/inspect_scout/openapi.json</code> (generated) - Modify: <code>src/inspect_scout/_view/ts-mono/apps/scout/src/types/generated.ts</code> (generated)</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Regenerate OpenAPI schema</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/python scripts/export_openapi_schema.py</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Verify the schema includes the new fields</strong></label></li>
+</ul>
+<p>Check that <code>openapi.json</code> now contains <code>task_id</code> and <code>task_repeat</code> in both the <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span> and <code>ValidationCaseRequest</code> schemas.</p>
+<p>Run: <code>grep -A2 task_id src/inspect_scout/openapi.json | head -20</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Build ts-mono to regenerate TypeScript types</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> install</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> build</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 4: Verify generated types include new fields</strong></label></li>
+</ul>
+<p>Check that <code>generated.ts</code> now has <code>task_id</code> and <code>task_repeat</code> on both <span class="element-type-name ref-interlink"><a href="../../reference/results.html#validationcase">ValidationCase</a></span> and <code>ValidationCaseRequest</code>.</p>
+<p>Run: <code>grep -A2 task_id src/inspect_scout/_view/ts-mono/apps/scout/src/types/generated.ts | head -20</code></p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 5: Commit generated files</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add apps/scout/src/types/generated.ts</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"chore: regenerate types with task_id and task_repeat"</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add src/inspect_scout/openapi.json</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"chore: regenerate openapi schema with task_id and task_repeat"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-7-thread-metadata-through-frontend-upsert" class="level3">
+<h3 class="anchored" data-anchor-id="task-7-thread-metadata-through-frontend-upsert">Task 7: Thread metadata through frontend upsert</h3>
+<p><strong>Files:</strong> - Modify: <code>src/inspect_scout/_view/ts-mono/apps/scout/src/app/validation/components/ValidationCaseEditor.tsx:59-62,171-177,256-266,291-297</code></p>
+<p>The <code>ValidationCaseEditor</code> component receives <code>transcriptId</code> but doesn’t have access to <code>task_id</code> / <code>task_repeat</code>. The parent components (<code>TranscriptBody</code> and <code>ScannerResultPanel</code>) have this data. We need to:</p>
+<ol type="1">
+<li>Add optional <code>taskId</code> and <code>taskRepeat</code> props to <code>ValidationCaseEditor</code></li>
+<li>Pass them from both parent call sites</li>
+<li>Include them in the <code>ValidationCaseRequest</code> when upserting</li>
+</ol>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Add props to <code>ValidationCaseEditor</code></strong></label></li>
+</ul>
+<p>In <code>ValidationCaseEditor.tsx</code>, update the <code>ValidationCaseEditorProps</code> interface (line 59):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ValidationCaseEditorProps {</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  transcriptId<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  taskId<span class="op">?:</span> <span class="dt">string</span> <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  taskRepeat<span class="op">?:</span> <span class="dt">number</span> <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  className<span class="op">?:</span> <span class="dt">string</span> <span class="op">|</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Update the component to destructure the new props (line 64):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> ValidationCaseEditor<span class="op">:</span> FC<span class="op">&lt;</span>ValidationCaseEditorProps<span class="op">&gt;</span> <span class="op">=</span> ({</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  transcriptId<span class="op">,</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  taskId<span class="op">,</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  taskRepeat<span class="op">,</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  className<span class="op">,</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>}) <span class="kw">=&gt;</span> {</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Update <code>ValidationCaseEditorComponentProps</code> (line 171):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> ValidationCaseEditorComponentProps {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  transcriptId<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  taskId<span class="op">?:</span> <span class="dt">string</span> <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  taskRepeat<span class="op">?:</span> <span class="dt">number</span> <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  validationSets<span class="op">:</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  editorValidationSetUri<span class="op">?:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  validationCase<span class="op">?:</span> ValidationCase <span class="op">|</span> <span class="dt">null</span><span class="op">;</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  validationCases<span class="op">?:</span> ValidationCase[]<span class="op">;</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  className<span class="op">?:</span> <span class="dt">string</span> <span class="op">|</span> <span class="dt">string</span>[]<span class="op">;</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Pass the props through to <code>ValidationCaseEditorComponent</code> (around line 153):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>            <span class="op">&lt;</span>ValidationCaseEditorComponent</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>              key<span class="op">=</span>{validatedSetUri}</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>              transcriptId<span class="op">=</span>{transcriptId}</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>              taskId<span class="op">=</span>{taskId}</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>              taskRepeat<span class="op">=</span>{taskRepeat}</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>              validationSets<span class="op">=</span>{setsData}</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>              editorValidationSetUri<span class="op">=</span>{validatedSetUri}</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>              validationCase<span class="op">=</span>{caseData}</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>              validationCases<span class="op">=</span>{casesData}</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>              className<span class="op">=</span>{className}</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>            <span class="op">/&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Update the inner component destructuring (line 180):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> ValidationCaseEditorComponent<span class="op">:</span> FC<span class="op">&lt;</span>ValidationCaseEditorComponentProps<span class="op">&gt;</span> <span class="op">=</span> ({</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  transcriptId<span class="op">,</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  taskId<span class="op">,</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  taskRepeat<span class="op">,</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  validationSets<span class="op">,</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  editorValidationSetUri<span class="op">,</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  validationCase<span class="op">:</span> caseData<span class="op">,</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  validationCases<span class="op">,</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  className<span class="op">,</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>}) <span class="kw">=&gt;</span> {</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Include metadata in the upsert request</strong></label></li>
+</ul>
+<p>In <code>handleFieldChange</code> (around line 291), add <code>task_id</code> and <code>task_repeat</code> to the request object:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> request<span class="op">:</span> ValidationCaseRequest <span class="op">=</span> {</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>        id<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">id</span><span class="op">,</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>        target<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">target</span><span class="op">,</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>        labels<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">labels</span><span class="op">,</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>        predicate<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">predicate</span><span class="op">,</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        split<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">split</span><span class="op">,</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>        task_id<span class="op">:</span> updatedCase<span class="op">.</span><span class="at">task_id</span> <span class="op">??</span> (taskId <span class="op">!==</span> <span class="dt">null</span> <span class="op">?</span> taskId <span class="op">:</span> <span class="dt">undefined</span>)<span class="op">,</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>        task_repeat<span class="op">:</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>          updatedCase<span class="op">.</span><span class="at">task_repeat</span> <span class="op">??</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>          (taskRepeat <span class="op">!==</span> <span class="kw">null</span> <span class="op">?</span> taskRepeat <span class="op">:</span> <span class="kw">undefined</span>)<span class="op">,</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>      }<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This logic: use the value already on the case if it exists (e.g., when editing an existing case that already has metadata), otherwise use the prop values from the parent transcript context. This ensures metadata is set on first save but preserved on subsequent edits.</p>
+<p>Also add <code>taskId</code> and <code>taskRepeat</code> to the <code>handleFieldChange</code> <code>useCallback</code> dependency array (around line 317):</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>      editorValidationSetUri<span class="op">,</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>      transcriptId<span class="op">,</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>      caseData<span class="op">,</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>      queryClient<span class="op">,</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>      updateValidationCaseMutation<span class="op">,</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>      taskId<span class="op">,</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>      taskRepeat<span class="op">,</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Pass props from <code>TranscriptBody</code></strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_view/ts-mono/apps/scout/src/app/transcript/TranscriptBody.tsx</code> (line 565), update the <code>ValidationCaseEditor</code> usage:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>            <span class="op">&lt;</span>ValidationCaseEditor</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>              transcriptId<span class="op">=</span>{transcript<span class="op">.</span><span class="at">transcript_id</span>}</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>              taskId<span class="op">=</span>{transcript<span class="op">.</span><span class="at">task_id</span>}</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>              taskRepeat<span class="op">=</span>{transcript<span class="op">.</span><span class="at">task_repeat</span>}</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>            <span class="op">/&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 4: Pass props from <code>ScannerResultPanel</code></strong></label></li>
+</ul>
+<p>In <code>src/inspect_scout/_view/ts-mono/apps/scout/src/app/scannerResult/ScannerResultPanel.tsx</code> (line 486), update the <code>ValidationCaseEditor</code> usage:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>                <span class="op">&lt;</span>ValidationCaseEditor</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>                  transcriptId<span class="op">=</span>{selectedResult<span class="op">.</span><span class="at">transcriptId</span>}</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>                  taskId<span class="op">=</span>{selectedResult<span class="op">.</span><span class="at">transcriptTaskId</span> <span class="op">!=</span> <span class="kw">null</span> <span class="op">?</span> <span class="bu">String</span>(selectedResult<span class="op">.</span><span class="at">transcriptTaskId</span>) <span class="op">:</span> <span class="dt">undefined</span>}</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>                  taskRepeat<span class="op">=</span>{selectedResult<span class="op">.</span><span class="at">transcriptTaskRepeat</span>}</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>                <span class="op">/&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Note: <code>selectedResult.transcriptTaskId</code> is typed as <code>string | number | undefined</code>, so we coerce to string to match the <code>task_id</code> field type.</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 5: Run TypeScript checks</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> check</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Expected: No errors</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 6: Build</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> build</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Expected: Build succeeds</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 7: Commit</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add apps/scout/src/app/validation/components/ValidationCaseEditor.tsx apps/scout/src/app/transcript/TranscriptBody.tsx apps/scout/src/app/scannerResult/ScannerResultPanel.tsx</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"feat: pass task_id and task_repeat through validation case editor"</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-8-commit-built-assets-and-update-submodule" class="level3">
+<h3 class="anchored" data-anchor-id="task-8-commit-built-assets-and-update-submodule">Task 8: Commit built assets and update submodule</h3>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Build final dist assets</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> build</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Commit built dist in base repo</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add src/inspect_scout/_view/dist/</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add src/inspect_scout/_view/ts-mono</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">"chore: update built assets and submodule pointer"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="task-9-final-verification" class="level3">
+<h3 class="anchored" data-anchor-id="task-9-final-verification">Task 9: Final verification</h3>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 1: Run full Python test suite</strong></label></li>
+</ul>
+<p>Run: <code>.venv/bin/pytest tests/view/test_validation_api.py -v</code> Expected: All PASS</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 2: Run Python checks</strong></label></li>
+</ul>
+<p>Run: <code>make check</code> (from repo root) Expected: No errors</p>
+<ul class="task-list">
+<li><label><input type="checkbox"><strong>Step 3: Run TypeScript checks and build</strong></label></li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src/inspect_scout/_view/ts-mono</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> check <span class="kw">&amp;&amp;</span> <span class="ex">pnpm</span> build</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> <span class="at">-</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Expected: No errors</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<div id="copy-page-btn" class="btn-group" style="display:none;">
+  <button type="button" class="btn btn-sm btn-light" id="copy-page-action" title="Copy page as Markdown">
+    <i class="bi bi-clipboard"></i> Copy page
+  </button>
+  <button type="button" class="btn btn-sm btn-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+    <span class="visually-hidden">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="#" id="copy-page-md">
+      <i class="bi bi-clipboard"></i> Copy page as Markdown
+    </a></li>
+    <li><a class="dropdown-item" href="#" id="open-page-md">
+      <i class="bi bi-box-arrow-up-right"></i> Open Markdown
+    </a></li>
+  </ul>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var path = window.location.pathname;
+  var mdUrl = path.endsWith("/")
+    ? path + "index.html.md"
+    : path.replace(/\.html$/, ".html.md");
+  var btn = document.getElementById("copy-page-btn");
+  var cachedMarkdown = null;
+
+  // Pre-fetch the .html.md content
+  fetch(mdUrl)
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      cachedMarkdown = text;
+
+      // Relocate button into the .quarto-title div
+      var titleDiv = document.querySelector(".quarto-title");
+      if (titleDiv) {
+        titleDiv.appendChild(btn);
+        btn.style.display = "";
+      }
+    })
+    .catch(function () {
+      // No .html.md available — remove button entirely
+      btn.remove();
+    });
+
+  function copyMarkdown(e) {
+    e.preventDefault();
+    if (!cachedMarkdown) return;
+    navigator.clipboard.writeText(cachedMarkdown).then(function () {
+      // Brief visual feedback — lock width to prevent layout shift
+      var actionBtn = document.getElementById("copy-page-action");
+      var original = actionBtn.innerHTML;
+      actionBtn.style.minWidth = actionBtn.offsetWidth + "px";
+      actionBtn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+      setTimeout(function () {
+        actionBtn.innerHTML = original;
+        actionBtn.style.minWidth = "";
+      }, 1500);
+    });
+  }
+
+  document.getElementById("copy-page-action").addEventListener("click", copyMarkdown);
+  document.getElementById("copy-page-md").addEventListener("click", copyMarkdown);
+  document.getElementById("open-page-md").addEventListener("click", function (e) {
+    e.preventDefault();
+    window.open(mdUrl, "_blank");
+  });
+});
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/meridianlabs-ai\.github\.io\/inspect_scout");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        const annoteTargets = window.document.querySelectorAll('.code-annotation-anchor');
+        for (let i=0; i<annoteTargets.length; i++) {
+          const annoteTarget = annoteTargets[i];
+          const targetCell = annoteTarget.getAttribute("data-target-cell");
+          const targetAnnotation = annoteTarget.getAttribute("data-target-annotation");
+          const contentFn = () => {
+            const content = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+            if (content) {
+              const tipContent = content.cloneNode(true);
+              tipContent.classList.add("code-annotation-tip-content");
+              return tipContent.outerHTML;
+            }
+          }
+          const config = {
+            allowHTML: true,
+            content: contentFn,
+            onShow: (instance) => {
+              selectCodeLines(instance.reference);
+              instance.reference.classList.add('code-annotation-active');
+              window.tippy.hideAll();
+            },
+            onHide: (instance) => {
+              unselectCodeLines();
+              instance.reference.classList.remove('code-annotation-active');
+            },
+            maxWidth: 300,
+            delay: [50, 0],
+            duration: [200, 0],
+            offset: [5, 10],
+            arrow: true,
+            trigger: 'click',
+            appendTo: function(el) {
+              return el.parentElement.parentElement.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'quarto',
+            placement: 'right',
+            positionFixed: true,
+            popperOptions: {
+              modifiers: [
+              {
+                name: 'flip',
+                options: {
+                  flipVariations: false, // true by default
+                  allowedAutoPlacements: ['right'],
+                  fallbackPlacements: ['right', 'top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end', 'left'],
+                },
+              },
+              {
+                name: 'preventOverflow',
+                options: {
+                  mainAxis: false,
+                  altAxis: false
+                }
+              }
+              ]        
+            }      
+          };
+          window.tippy(annoteTarget, config); 
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai">
+<p>Meridian Labs</p>
+</a>
+  </li>  
+</ul>
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout">
+<p>Code</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/blob/main/CHANGELOG.md">
+<p>Changelog</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/blob/main/LICENSE">
+<p>License</p>
+</a>
+  </li>  
+    <li class="nav-item">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/issues">
+<p>Issues</p>
+</a>
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/meridianlabs-ai/inspect_scout/">
+      <i class="bi bi-github" role="img" aria-label="Inspect Scout on GitHub">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

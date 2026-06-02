@@ -1,5 +1,16 @@
 # changelog – Inspect Scout
 
+## 0.4.39 (02 June 2026)
+
+- Transcript: Resolve [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent) input references from the consolidated `events_data` message and call pools.
+- Compatibility with Pandas 3.0 and DuckDB 1.5.
+
+## 0.4.38 (25 May 2026)
+
+- Update `inspect-ai` dependency to 0.3.226
+- Update `inspect-swe` dependency to 0.2.56
+- Bugfix: Correct resolution of relative paths in transcript database index.
+
 ## 0.4.37 (22 May 2026)
 
 - Observe: OpenAI Chat Completions and Responses API calls that fail before any usable response now produce a [ModelEvent](https://inspect.aisi.org.uk/reference/inspect_ai.event.html#modelevent) instead of being dropped.
@@ -7,6 +18,7 @@
 - Enumerate all CSV, YAML, and JSON files when looking for validation sets (don’t skip gitignored files).
 - LLM Scanner / messages API: Sizing segments now subtracts the rendered scanner template’s tokens from the per-segment budget, so long templates no longer push the prompt past `context_window`.
 - Bugfix: Serialize metadata flds with pydantic_core.to_json
+- Include task_id and task_repeat in validations data files (as optional informational fields)
 - Scout View: Refine scanner result header and All Scores dialog
 - Scout View: Don’t allow malformed metadata to blow up entire scan (#245)
 - Scout View: Refine scanner result header and All Scores dialog (#243)

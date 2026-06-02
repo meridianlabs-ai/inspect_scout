@@ -33,15 +33,63 @@
     <lastmod>2026-05-22T11:56:40.559Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/transcripts.html</loc>
-    <lastmod>2026-04-07T22:18:34.301Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/superpowers/plans/2026-05-19-scan-result-header-redesign.html</loc>
+    <lastmod>2026-05-22T11:56:40.559Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_publishing.html</loc>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanner_tools.html</loc>
+    <lastmod>2026-05-22T11:56:40.559Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_importing.html</loc>
     <lastmod>2026-04-07T22:18:34.297Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/workflow.html</loc>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html</loc>
+    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/multi_agent.html</loc>
+    <lastmod>2026-05-19T12:56:41.682Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/custom_scanner.html</loc>
+    <lastmod>2026-05-22T11:56:40.557Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
+    <lastmod>2026-05-02T18:29:55.003Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/results.html</loc>
+    <lastmod>2026-04-07T22:18:34.300Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html</loc>
+    <lastmod>2026-04-07T22:18:34.296Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
+    <lastmod>2026-05-06T15:02:17.705Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/examples.html</loc>
+    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/CHANGELOG.html</loc>
+    <lastmod>2026-06-02T14:03:18.291Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/projects.html</loc>
+    <lastmod>2026-04-07T22:18:34.298Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_schema.html</loc>
+    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
+  </url>
+  <url>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
     <lastmod>2026-04-07T22:18:34.301Z</lastmod>
   </url>
   <url>
@@ -49,64 +97,20 @@
     <lastmod>2026-04-07T22:18:34.301Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanners.html</loc>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/workflow.html</loc>
     <lastmod>2026-04-07T22:18:34.301Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_schema.html</loc>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_publishing.html</loc>
     <lastmod>2026-04-07T22:18:34.297Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/projects.html</loc>
-    <lastmod>2026-04-07T22:18:34.298Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/transcripts.html</loc>
+    <lastmod>2026-04-07T22:18:34.301Z</lastmod>
   </url>
   <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/CHANGELOG.html</loc>
-    <lastmod>2026-05-22T19:55:39.442Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/examples.html</loc>
-    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/llm_scanner.html</loc>
-    <lastmod>2026-05-06T15:02:17.705Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_capturing.html</loc>
-    <lastmod>2026-04-07T22:18:34.296Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/results.html</loc>
-    <lastmod>2026-04-07T22:18:34.300Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/index.html</loc>
-    <lastmod>2026-05-02T18:29:55.003Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/custom_scanner.html</loc>
-    <lastmod>2026-05-22T11:56:40.557Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/multi_agent.html</loc>
-    <lastmod>2026-05-19T12:56:41.682Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/grep_scanner.html</loc>
-    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/db_importing.html</loc>
-    <lastmod>2026-04-07T22:18:34.297Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/scanner_tools.html</loc>
-    <lastmod>2026-05-22T11:56:40.559Z</lastmod>
-  </url>
-  <url>
-    <loc>https://meridianlabs-ai.github.io/inspect_scout/superpowers/plans/2026-05-19-scan-result-header-redesign.html</loc>
-    <lastmod>2026-05-22T11:56:40.559Z</lastmod>
+    <loc>https://meridianlabs-ai.github.io/inspect_scout/superpowers/plans/2026-05-22-validation-case-metadata.html</loc>
+    <lastmod>2026-05-25T14:18:07.437Z</lastmod>
   </url>
   <url>
     <loc>https://meridianlabs-ai.github.io/inspect_scout/superpowers/specs/2026-05-18-scan-result-legibility-design.html</loc>

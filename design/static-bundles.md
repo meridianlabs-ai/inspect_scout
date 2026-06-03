@@ -43,8 +43,6 @@ Important options:
 - `--scans`: override the project scans location.
 - `-o, --output`: output directory. Required.
 - `--force`: replace the output directory if it already exists.
-- `--max-details`: deprecated and ignored. Scanner details are queried from
-  Parquet on demand in static bundle v2.
 
 The output directory can be served directly:
 
@@ -57,7 +55,7 @@ Then open `http://127.0.0.1:8080/`.
 
 ## Host Requirements
 
-Static bundle v2 requires a host that supports HTTP range requests.
+Static bundles require a host that supports HTTP range requests.
 
 DuckDB-WASM reads Parquet files through HTTP. Range support lets it fetch only
 the file sections required for a query instead of downloading an entire large
@@ -117,7 +115,7 @@ Result details are point queries against scanner Parquet files.
 
 ```json
 {
-  "version": 2,
+  "version": 1,
   "created_at": "2026-06-01T14:35:27.795394+00:00",
   "transcripts_dir": "./logs",
   "scans_dir": "./scans",
@@ -316,19 +314,15 @@ Unavailable in static mode:
 Unsupported API methods reject with `StaticBundleError`, and the UI hides the
 main controls that would call them.
 
-## Why This Scales Better
+## Scaling Strategy
 
-The first static bundle implementation leaned toward prebaked JSON and Arrow
-files. That worked for small projects but scaled poorly because it required
-materializing large indexes, per-row details, and scan data in formats that were
-awkward to query incrementally.
-
-Static bundle v2 changes the scaling profile:
+Static bundles keep the data in formats that remain useful after the backend is
+gone:
 
 - metadata catalogs are Parquet and queryable in place,
 - transcript bodies are compressed and fetched only on open,
 - scanner data stays as Parquet,
-- result details are point queries instead of prebaked JSON files,
+- result details are point queries against scanner Parquet files,
 - validation files are omitted because validation management is not part of
   static mode,
 - DuckDB-WASM performs filtering, sorting, distinct values, and pagination in
@@ -336,8 +330,8 @@ Static bundle v2 changes the scaling profile:
 
 This does not make bundle size disappear. A bundle still contains the transcript
 content and copied scanner Parquet files needed for the snapshot. The important
-difference is that the browser does not need to load all of that data to render
-the first screen or answer a small query.
+property is that the browser does not need to load all of that data to render
+the first screen or answer a targeted query.
 
 ## Tradeoffs
 

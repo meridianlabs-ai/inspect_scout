@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from .._transcript.types import TranscriptInfo
     from .._view._api_v2_types import ScanRow
 
-BUNDLE_VERSION = 2
+BUNDLE_VERSION = 1
 SCOUT_CONTEXT_PLACEHOLDER = "</head>"
 TRANSCRIPT_CATALOG_COLUMNS = [
     "bundle_id",
@@ -85,7 +85,6 @@ SCAN_CATALOG_COLUMNS = [
 async def bundle_view(
     config: ViewConfig,
     output_dir: PathlibPath,
-    max_details: int | None = None,
     force: bool = False,
 ) -> None:
     """Materialize a static bundle of the given project view into ``output_dir``.
@@ -98,7 +97,6 @@ async def bundle_view(
     Args:
         config: View configuration (project + optional CLI dir overrides).
         output_dir: Where to write the bundle. Created if missing.
-        max_details: Cap on number of per-row detail blobs baked per scanner.
         force: If True, remove ``output_dir`` first if it exists.
     """
     output_dir = PathlibPath(output_dir).resolve()
@@ -158,7 +156,6 @@ async def bundle_view(
     counts["scans"] = await _bundle_scans(
         scans_dir=scans_path,
         api_dir=api_dir,
-        max_details=max_details,
     )
 
     # 6. Write bundle manifest.
@@ -179,8 +176,7 @@ async def bundle_view(
     await _write_json(output_dir / "scout-bundle.json", manifest)
 
     display().print(
-        f"Bundle complete: {counts['transcripts']} transcripts, "
-        f"{counts['scans']} scans"
+        f"Bundle complete: {counts['transcripts']} transcripts, {counts['scans']} scans"
     )
 
 
@@ -363,9 +359,11 @@ def _write_parquet_catalog(
 
 def _bundle_id(value: str) -> str:
     """Return a stable filesystem-safe id for a bundle payload."""
-    return urlsafe_b64encode(sha256(value.encode("utf-8")).digest()).rstrip(
-        b"="
-    ).decode("ascii")
+    return (
+        urlsafe_b64encode(sha256(value.encode("utf-8")).digest())
+        .rstrip(b"=")
+        .decode("ascii")
+    )
 
 
 def _project_filter_conditions(project_filter: object) -> list["Condition"]:
@@ -548,7 +546,6 @@ async def _write_transcript_content_zstd(
 async def _bundle_scans(
     scans_dir: str,
     api_dir: PathlibPath,
-    max_details: int | None,
 ) -> int:
     """Pre-bake scan catalog, status snapshots, and scanner Parquet files.
 

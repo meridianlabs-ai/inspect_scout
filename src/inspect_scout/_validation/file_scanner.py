@@ -94,10 +94,9 @@ def _should_skip_dir(dir_path: Path) -> bool:
     if is_venv_directory(dir_path):
         return True
 
-    # A directory carrying a scout-bundle.json marker is a prior `scout bundle`
-    # output and should not be rescanned (its baked validation files would
-    # otherwise be re-discovered, and their already-encoded URIs would
-    # generate absurdly long paths on re-bundling).
+    # Static bundle outputs are derived artifacts. If a bundle is written under
+    # the project directory, do not treat its copied metadata/data files as
+    # source validation data.
     if (dir_path / "scout-bundle.json").is_file():
         return True
 

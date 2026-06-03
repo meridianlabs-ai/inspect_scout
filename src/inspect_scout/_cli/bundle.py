@@ -45,15 +45,6 @@ logger = getLogger(__name__)
     help="Output directory for the static bundle.",
 )
 @click.option(
-    "--max-details",
-    type=int,
-    default=None,
-    help=(
-        "Deprecated; ignored by static bundle v2 because scanner details "
-        "are read from Parquet on demand."
-    ),
-)
-@click.option(
     "--force",
     is_flag=True,
     default=False,
@@ -65,7 +56,6 @@ def bundle_command(
     transcripts: str | None,
     scans: str | None,
     output_dir: Path,
-    max_details: int | None,
     force: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
@@ -90,20 +80,16 @@ def bundle_command(
             scans_cli=scans,
         )
 
-        anyio.run(
-            _run_bundle, config, output_dir, max_details, force
-        )
+        anyio.run(_run_bundle, config, output_dir, force)
 
 
 async def _run_bundle(
     config: ViewConfig,
     output_dir: Path,
-    max_details: int | None,
     force: bool,
 ) -> Any:
     await bundle_view(
         config=config,
         output_dir=output_dir,
-        max_details=max_details,
         force=force,
     )

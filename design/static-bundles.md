@@ -123,9 +123,6 @@ Result details are point queries against scanner Parquet files.
     "transcripts": "api/transcripts/catalog.parquet",
     "scans": "api/scans/catalog.parquet"
   },
-  "host_requirements": {
-    "http_range_requests": true
-  },
   "counts": {
     "transcripts": 209,
     "scans": 6

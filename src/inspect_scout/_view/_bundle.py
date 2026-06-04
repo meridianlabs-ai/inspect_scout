@@ -168,9 +168,6 @@ async def bundle_view(
             "transcripts": "api/transcripts/catalog.parquet",
             "scans": "api/scans/catalog.parquet",
         },
-        "host_requirements": {
-            "http_range_requests": True,
-        },
         "counts": counts,
     }
     await _write_json(output_dir / "scout-bundle.json", manifest)

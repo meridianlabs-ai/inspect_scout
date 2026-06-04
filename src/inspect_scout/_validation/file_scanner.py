@@ -94,6 +94,12 @@ def _should_skip_dir(dir_path: Path) -> bool:
     if is_venv_directory(dir_path):
         return True
 
+    # Static bundle outputs are derived artifacts. If a bundle is written under
+    # the project directory, do not treat its copied metadata/data files as
+    # source validation data.
+    if (dir_path / "scout-bundle.json").is_file():
+        return True
+
     return False
 
 

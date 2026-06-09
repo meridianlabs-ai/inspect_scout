@@ -5,8 +5,11 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_scout._transcript import eval_log as eval_log_mod
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._util.caching_async_zip import CachingAsyncZipReader
 
 TEST_EVAL_LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 
@@ -169,4 +172,54 @@ async def test_read_messages_events_cleans_up_via_aclose() -> None:
     assert close_called, (
         "AsyncFilesystem.close() was not called. "
         "aclose() should clean up resources when context manager is never entered."
+    )
+
+
+@pytest.mark.asyncio
+async def test_read_messages_events_closes_fs_on_internal_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed read must not leak the AsyncFilesystem (its S3 client/session).
+
+    read_messages_events() creates an AsyncFilesystem and only transfers
+    ownership to the returned _OwnedZipStreamContextManager on the final
+    return. If any step in between raises (a stalled/failed S3 read, exactly
+    the scenario in the bug report), fs is dropped without close() — leaking
+    the aiohttp ClientSession/connector ("Unclosed client session").
+    """
+    eval_path = (
+        TEST_EVAL_LOGS_DIR
+        / "2025-11-07T10-59-47-05-00_websearch-addition-problem_LqPDntDnkk4h2fSqQ8i6CE.eval"
+    )
+
+    created: list[AsyncFilesystem] = []
+    closed: list[AsyncFilesystem] = []
+
+    # Track every AsyncFilesystem constructed by eval_log and whether it's closed.
+    class _TrackingFS(AsyncFilesystem):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            created.append(self)
+
+        async def close(self) -> None:
+            closed.append(self)
+            await super().close()
+
+    monkeypatch.setattr(eval_log_mod, "AsyncFilesystem", _TrackingFS)
+
+    # Simulate a read failing after the filesystem has been created.
+    async def _raise(self: CachingAsyncZipReader, member: Any) -> Any:
+        raise RuntimeError("simulated stalled read")
+
+    monkeypatch.setattr(CachingAsyncZipReader, "open_member_raw", _raise)
+
+    async with EvalLogTranscriptsView(str(eval_path)) as view:
+        info = await _get_first_transcript_info(view)
+        with pytest.raises(RuntimeError, match="simulated stalled read"):
+            await view.read_messages_events(info)
+
+    assert len(created) == 1, "expected read_messages_events to create one filesystem"
+    assert closed == created, (
+        "read_messages_events leaked an AsyncFilesystem (S3 client/session) when it "
+        "raised before transferring ownership to the returned context manager."
     )

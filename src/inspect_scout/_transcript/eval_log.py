@@ -520,16 +520,24 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         recorder_type = recorder_type_for_location(t.source_uri)
         if recorder_type is EvalRecorder:
-            # Create filesystem - ownership transfers to returned CM
+            # Create filesystem - ownership transfers to the returned CM only on
+            # success; close it here if anything fails before then so we don't
+            # leak its S3 client/session ("Unclosed client session").
             fs = AsyncFilesystem()
-            source_uri = (
-                await self._files_cache.resolve_remote_uri_to_local(fs, t.source_uri)
-                if self._files_cache
-                else t.source_uri
-            )
-            zip_reader = CachingAsyncZipReader(fs, source_uri)
-            entry = await zip_reader.get_member_entry(sample_filename)
-            inner_cm = await zip_reader.open_member_raw(entry)
+            try:
+                source_uri = (
+                    await self._files_cache.resolve_remote_uri_to_local(
+                        fs, t.source_uri
+                    )
+                    if self._files_cache
+                    else t.source_uri
+                )
+                zip_reader = CachingAsyncZipReader(fs, source_uri)
+                entry = await zip_reader.get_member_entry(sample_filename)
+                inner_cm = await zip_reader.open_member_raw(entry)
+            except BaseException:
+                await fs.close()
+                raise
             return TranscriptMessagesAndEvents(
                 data=_OwnedZipStreamContextManager(fs, inner_cm),
                 compression_method=entry.compression_method,

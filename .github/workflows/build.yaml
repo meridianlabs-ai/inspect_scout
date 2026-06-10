@@ -138,16 +138,45 @@ jobs:
         working-directory: src/inspect_scout/_view/ts-mono
         run: pnpm install --frozen-lockfile
 
-      - name: Export OpenAPI schema and generate types
-        run: python scripts/export_openapi_schema.py
-      - name: Check schema and types are up-to-date
+      # The pipeline is Python → openapi.json → generated.ts. The two arrows
+      # are checked independently: json → ts must match exactly, while
+      # Python → json tolerates docstring-only ("description") drift so that
+      # doc changes don't require regenerating checked-in artifacts. As a
+      # result, description text in the committed artifacts can lag the Python
+      # docstrings until the next structural change forces a regeneration.
+
+      - name: Check generated types are in sync with checked-in schema
+        working-directory: src/inspect_scout/_view/ts-mono
         run: |
-          if [[ $(git status --porcelain) != "" ]]
+          pnpm --filter scout types:generate
+          if ! git diff --exit-code -- apps/scout/src/types/generated.ts
           then
-            echo "❌ Schemas or generated types are out of date. Please run:"
+            echo "❌ generated.ts is out of sync with the committed openapi.json."
+            echo "Regenerate both artifacts and commit them:"
             echo "  .venv/bin/python scripts/export_openapi_schema.py"
+            exit 1
+          fi
+
+      - name: Regenerate schema from Python source
+        run: python scripts/export_openapi_schema.py
+
+      - name: Check schema is up to date (docstring-only drift tolerated)
+        run: python .github/scripts/check_openapi_drift.py
+
+      - name: Ensure regeneration produced no other changes
+        run: |
+          if git status --porcelain \
+              | grep -vE 'src/inspect_scout/_view/(openapi\.json|ts-mono)$' \
+              | grep -q . \
+            || git -C src/inspect_scout/_view/ts-mono status --porcelain \
+              | grep -v 'apps/scout/src/types/generated\.ts$' \
+              | grep -q .
+          then
+            echo "❌ Unexpected changes after regeneration:"
             git status
-            git diff
+            git diff -- . ':!src/inspect_scout/_view/openapi.json'
+            git -C src/inspect_scout/_view/ts-mono status
+            git -C src/inspect_scout/_view/ts-mono diff -- . ':!apps/scout/src/types/generated.ts'
             exit 1
           fi
 

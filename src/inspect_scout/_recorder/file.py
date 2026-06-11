@@ -624,17 +624,24 @@ class FileRecorder(ScanRecorder):
     @override
     @staticmethod
     async def list(scans_location: str) -> list[Status]:
+        base = UPath(scans_location)
         async with AsyncFilesystem() as fs:
-            # iter_dirs yields URIs with a trailing slash; normalize via
-            # UPath.as_posix() to match the no-slash form used everywhere
-            # else (e.g. sync(), location()) so Status.location compares
-            # equal across code paths.
-            scan_dirs = [
-                UPath(uri).as_posix()
-                async for uri in fs.iter_dirs(
-                    scans_location, "scan_id=*", recursive=True
-                )
-            ]
+            # iter_dirs yields trailing-slash URIs for remote filesystems but
+            # plain paths for local ones (fsspec strips the file:// scheme).
+            # Normalize to the no-slash form AND rebase onto scans_location so
+            # Status.location keeps the caller's protocol — callers (e.g. the
+            # VS Code extension, and location()/sync() comparisons) relativize
+            # locations against the scans location they requested.
+            scan_dirs: list[str] = []
+            async for uri in fs.iter_dirs(scans_location, "scan_id=*", recursive=True):
+                entry = UPath(uri)
+                if base.protocol and not entry.protocol:
+                    plain = entry.as_posix()
+                    base_plain = UPath(base.path).as_posix()
+                    if plain.startswith(base_plain):
+                        rel = plain[len(base_plain) :].strip("/")
+                        entry = base / rel if rel else base
+                scan_dirs.append(entry.as_posix())
 
         # Fetch in parallel; skip scans that no longer exist and propagate
         # any other error. return_exceptions=True keeps one failure from

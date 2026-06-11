@@ -1,3 +1,7 @@
+## Unreleased
+
+- Bugfix: Preserve the caller's protocol (e.g. `file://`) in scan locations returned by scan listing (regression in v0.4.36 that broke relative folder display in the VS Code scans panel).
+
 ## 0.4.39 (02 June 2026)
 
 - Transcript: Resolve `ModelEvent` input references from the consolidated `events_data` message and call pools.

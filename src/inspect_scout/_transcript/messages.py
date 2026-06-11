@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, overload
 
+import anyio
 from inspect_ai._util._async import tg_collect
 from inspect_ai.event import (
     CompactionEvent,
@@ -30,6 +31,18 @@ if TYPE_CHECKING:
 
 DEFAULT_CONTEXT_WINDOW = 128_000
 _TOKENIZER_SAFETY_MARGIN = 0.05
+
+# ``count_tokens`` can be a network call (e.g. Anthropic's count_tokens
+# endpoint), so counting each message individually floods the connection
+# pool and rate limits on large transcripts. Messages are instead grouped
+# into chunks targeting a small fraction of the segment budget (sized via
+# a rough chars-per-token estimate), each chunk is counted with a single
+# call, and only a handful of calls are in flight at once. Segments are
+# then packed from whole chunks, trading a small amount of packing
+# headroom (at most one chunk's worth per segment) for far fewer calls.
+_COUNT_CHUNK_BUDGET_FRACTION = 0.05
+_COUNT_EST_CHARS_PER_TOKEN = 4
+_COUNT_MAX_CONCURRENCY = 8
 
 
 def _effective_segment_budget(
@@ -87,10 +100,11 @@ async def segment_messages(
 ) -> AsyncIterator[MessagesSegment]:
     """Render messages and split them into segments that fit within a token budget.
 
-    Renders each message individually via ``messages_as_str``, counts
-    tokens in parallel via ``tg_collect``, then accumulates segments that
-    fit within the effective budget (context window minus the portion
-    reserved by ``prompt_reserve``).
+    Renders each message individually via ``messages_as_str``, groups
+    the rendered messages into chunks and counts tokens per chunk (one
+    ``count_tokens`` call each, with bounded concurrency), then packs
+    chunks into segments that fit within the effective budget (context
+    window minus the portion reserved by ``prompt_reserve``).
 
     When given events or a ``TimelineSpan``, delegates to
     ``span_messages()`` to extract and merge messages (handling
@@ -155,18 +169,41 @@ async def segment_messages(
     if not rendered:
         return
 
-    # Pass 2: Count tokens in parallel
+    # Pass 2: Group messages into chunks and count tokens per chunk
+    # (see _COUNT_* constants above for why counting is chunked).
+    chunk_char_target = max(
+        1,
+        int(
+            effective_budget * _COUNT_CHUNK_BUDGET_FRACTION * _COUNT_EST_CHARS_PER_TOKEN
+        ),
+    )
+    chunks: list[list[tuple[ChatMessage, str]]] = [[]]
+    chunk_chars = 0
+    for msg, text in rendered:
+        if chunks[-1] and chunk_chars + len(text) > chunk_char_target:
+            chunks.append([])
+            chunk_chars = 0
+        chunks[-1].append((msg, text))
+        chunk_chars += len(text)
+
+    count_limiter = anyio.Semaphore(_COUNT_MAX_CONCURRENCY)
+
+    async def count_chunk(text: str) -> int:
+        async with count_limiter:
+            return await model.count_tokens(text)
+
+    chunk_texts = ["\n".join(text for _, text in chunk) for chunk in chunks]
     token_counts = await tg_collect(
-        [lambda t=text: model.count_tokens(t) for _, text in rendered]  # type: ignore[misc]
+        [lambda t=text: count_chunk(t) for text in chunk_texts]  # type: ignore[misc]
     )
 
-    # Pass 3: Segment based on accumulated token counts
+    # Pass 3: Segment based on accumulated chunk token counts
     segment_counter = 0
     current_messages: list[ChatMessage] = []
     current_texts: list[str] = []
     running_tokens = 0
 
-    for (msg, text), tokens in zip(rendered, token_counts, strict=False):
+    for chunk, tokens in zip(chunks, token_counts, strict=True):
         if current_messages and running_tokens + tokens > effective_budget:
             yield MessagesSegment(
                 messages=current_messages,
@@ -178,8 +215,8 @@ async def segment_messages(
             current_texts = []
             running_tokens = 0
 
-        current_messages.append(msg)
-        current_texts.append(text)
+        current_messages.extend(msg for msg, _ in chunk)
+        current_texts.extend(text for _, text in chunk)
         running_tokens += tokens
 
     # Yield remaining segment

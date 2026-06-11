@@ -2111,40 +2111,27 @@ async def test_pool_dedup_content_size_includes_pools(
     test_location: Path,
 ) -> None:
     """Content size from pool-dedup file accounts for pool columns, not just shrunken events."""
-    original = _transcript_with_repeated_inputs()
-
-    # Insert without pools — baseline size
-    no_pool_dir = test_location / "no_pool"
-    no_pool_dir.mkdir()
-    db_no = ParquetTranscriptsDB(str(no_pool_dir), pool_dedup=False)
-    await db_no.connect()
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
     try:
-        await db_no.insert([original])
-        infos = [info async for info in db_no.select(Query(limit=1))]
-        result_no = await db_no.read_messages_events(infos[0])
-        size_no_pool = result_no.uncompressed_size
-    finally:
-        await db_no.disconnect()
+        await db.insert([_transcript_with_repeated_inputs()])
+        infos = [info async for info in db.select(Query(limit=1))]
+        result = await db.read_messages_events(infos[0])
+        size = result.uncompressed_size
 
-    # Insert with pools — size should include pool data
-    pool_dir = test_location / "pool"
-    pool_dir.mkdir()
-    db_pool = ParquetTranscriptsDB(str(pool_dir))
-    await db_pool.connect()
-    try:
-        await db_pool.insert([original])
-        infos = [info async for info in db_pool.select(Query(limit=1))]
-        result_pool = await db_pool.read_messages_events(infos[0])
-        size_pool = result_pool.uncompressed_size
+        chunks: list[bytes] = []
+        async with result.data as stream:
+            async for chunk in stream:
+                chunks.append(chunk)
+        streamed_size = len(b"".join(chunks))
     finally:
-        await db_pool.disconnect()
+        await db.disconnect()
 
-    # Pool size should be in the same ballpark as non-pool — not drastically smaller.
-    # Without Phase 4 fix, events shrink to just refs and pools aren't counted,
-    # so size_pool would be much less than size_no_pool.
-    assert size_no_pool is not None
-    assert size_pool is not None
-    assert size_pool > 0
-    assert size_pool >= size_no_pool * 0.5, (
-        f"Pool content size {size_pool} is suspiciously small vs non-pool {size_no_pool}"
+    # Reported size must account for everything streamed — including the
+    # events_data pool column, not just the shrunken events. The stream adds
+    # a small amount of JSON framing on top of the raw column contents.
+    assert size is not None
+    assert size <= streamed_size
+    assert size >= streamed_size * 0.9, (
+        f"Content size {size} omits pool data (streamed {streamed_size} bytes)"
     )

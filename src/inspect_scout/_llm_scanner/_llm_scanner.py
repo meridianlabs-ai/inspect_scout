@@ -55,6 +55,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
+    timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
@@ -79,6 +80,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
+    timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
@@ -103,6 +105,7 @@ def llm_scanner(
     name: str | None = None,
     content: TranscriptContent | None = None,
     context_window: int | None = None,
+    timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
@@ -171,6 +174,9 @@ def llm_scanner(
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
+        timeline: Name of the timeline to extract messages from. ``None``
+            (default) uses the transcript's first timeline. Raises
+            ``ValueError`` if no timeline with the given name exists.
         compaction: How to handle compaction boundaries when extracting
             messages from events. ``"all"`` (default) scans all compaction
             segments; ``"last"`` scans only the most recent.
@@ -304,6 +310,7 @@ def llm_scanner(
                 messages_as_str=messages_as_str_fn,
                 model=resolved_model,
                 context_window=context_window,
+                timeline=timeline,
                 compaction=compaction,
                 depth=depth,
                 prompt_reserve=template_tokens,

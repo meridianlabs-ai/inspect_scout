@@ -649,6 +649,44 @@ async def test_segment_messages_events_with_chunking() -> None:
 
 
 @pytest.mark.anyio
+async def test_segment_messages_counts_in_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Token counting batches messages into chunks, not one call per message."""
+    model = get_model("mockllm/model")
+    count_calls: list[str] = []
+    original_count = model.count_tokens
+
+    async def spy_count_tokens(
+        input: str | list[ChatMessage],
+        config: GenerateConfig | None = None,
+    ) -> int:
+        assert isinstance(input, str)
+        count_calls.append(input)
+        return await original_count(input, config)
+
+    monkeypatch.setattr(model, "count_tokens", spy_count_tokens)
+
+    msgs: list[ChatMessage] = [
+        ChatMessageUser(content=f"Message number {i}", id=f"m-{i}") for i in range(50)
+    ]
+    msgs_as_str, _ = message_numbering()
+    results: list[MessagesSegment] = []
+    async for seg in segment_messages(
+        msgs,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=100_000,
+    ):
+        results.append(seg)
+
+    # All 50 messages fit in a single chunk → a single count_tokens call
+    assert len(count_calls) == 1
+    assert len(results) == 1
+    assert len(results[0].messages) == 50
+
+
+@pytest.mark.anyio
 async def test_segment_messages_empty_input() -> None:
     """Empty list yields nothing."""
     results = await _collect([], context_window=10_000)

@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
+
 ## 0.4.41 (12 June 2026)
 
 - Chunk token counting in segment_messages so large transcripts don't flood the connection pool.

@@ -1202,6 +1202,98 @@ async def test_transcript_messages_with_messages_only() -> None:
     assert not isinstance(results[0], TimelineMessages)
 
 
+async def _collect_transcript(
+    transcript: Transcript, *, timeline: str | None = None
+) -> list[MessagesSegment]:
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    return [
+        seg
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=msgs_as_str,
+            model=model,
+            context_window=10_000,
+            timeline=timeline,
+        )
+    ]
+
+
+def _two_timeline_transcript() -> Transcript:
+    first = Timeline(
+        name="First",
+        description="",
+        root=_make_timeline_span(
+            "Agent",
+            events=[_make_model_event(input=[_user1], output_content="From first")],
+        ),
+    )
+    second = Timeline(
+        name="Second",
+        description="",
+        root=_make_timeline_span(
+            "Agent",
+            events=[_make_model_event(input=[_user1], output_content="From second")],
+        ),
+    )
+    return Transcript(
+        transcript_id="t4",
+        messages=[_user1],
+        timelines=[first, second],
+    )
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_timeline_by_name() -> None:
+    """Selects the named timeline; None still uses the first."""
+    transcript = _two_timeline_transcript()
+
+    named = await _collect_transcript(transcript, timeline="Second")
+    assert len(named) == 1
+    assert "From second" in named[0].messages_str
+
+    default = await _collect_transcript(transcript)
+    assert len(default) == 1
+    assert "From first" in default[0].messages_str
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_timeline_not_found() -> None:
+    """Unknown timeline name raises ValueError listing available names."""
+    transcript = _two_timeline_transcript()
+
+    with pytest.raises(ValueError, match=r"'Missing' not found.*First.*Second"):
+        await _collect_transcript(transcript, timeline="Missing")
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_timeline_with_events() -> None:
+    """Events-only transcripts match against the synthetic timeline's name."""
+    transcript = Transcript(
+        transcript_id="t5",
+        messages=[_user1],
+        events=[_make_model_event(input=[_user1], output_content="Response")],
+    )
+
+    results = await _collect_transcript(transcript, timeline="Default")
+    assert len(results) == 1
+
+    with pytest.raises(ValueError, match="'Missing' not found"):
+        await _collect_transcript(transcript, timeline="Missing")
+
+
+@pytest.mark.anyio
+async def test_transcript_messages_timeline_with_messages_only() -> None:
+    """Naming a timeline on a messages-only transcript raises ValueError."""
+    transcript = Transcript(
+        transcript_id="t6",
+        messages=[_user1, _asst1],
+    )
+
+    with pytest.raises(ValueError, match="no timelines"):
+        await _collect_transcript(transcript, timeline="Default")
+
+
 # -- span_messages split_compactions tests --
 
 

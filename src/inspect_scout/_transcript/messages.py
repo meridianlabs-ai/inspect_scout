@@ -234,6 +234,7 @@ async def transcript_messages(
     messages_as_str: MessagesAsStr,
     model: Model | str | None = None,
     context_window: int | None = None,
+    timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     include_scorers: bool = False,
@@ -263,6 +264,9 @@ async def transcript_messages(
         messages_as_str: Rendering function from ``message_numbering()``.
         model: The model used for scanning.
         context_window: Override for the model's context window size.
+        timeline: Name of the timeline to extract from. ``None``
+            (default) uses the transcript's first timeline. Raises
+            ``ValueError`` if no timeline with the given name exists.
         compaction: How to handle compaction boundaries when extracting
             messages from events.
         depth: Maximum nesting level of scannable spans to process when
@@ -283,6 +287,10 @@ async def transcript_messages(
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
+
+    Raises:
+        ValueError: If ``timeline`` names a timeline that does not
+            exist on the transcript.
     """
     if transcript.timelines or transcript.events:
         from inspect_ai.event import timeline_build, timeline_filter
@@ -291,17 +299,27 @@ async def transcript_messages(
 
         # must deal with a timeline for sane message extraction
         if transcript.timelines:
-            timeline = transcript.timelines[0]
+            timelines = transcript.timelines
         else:
-            timeline = timeline_build(
-                transcript.events
-            )  # build a synthetic timeline from events
+            # build a synthetic timeline from events
+            timelines = [timeline_build(transcript.events)]
+
+        if timeline is not None:
+            selected = next((t for t in timelines if t.name == timeline), None)
+            if selected is None:
+                raise ValueError(
+                    f"Timeline '{timeline}' not found in transcript "
+                    f"'{transcript.transcript_id}'. Available timelines: "
+                    f"{[t.name for t in timelines]}"
+                )
+        else:
+            selected = timelines[0]
 
         if not include_scorers:
-            timeline = timeline_filter(timeline, lambda s: s.span_type != "scorers")
+            selected = timeline_filter(selected, lambda s: s.span_type != "scorers")
 
         async for timeline_seg in timeline_messages(
-            timeline,
+            selected,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
@@ -311,6 +329,11 @@ async def transcript_messages(
         ):
             yield timeline_seg  # type: ignore[misc]
     else:
+        if timeline is not None:
+            raise ValueError(
+                f"Timeline '{timeline}' not found in transcript "
+                f"'{transcript.transcript_id}'. Transcript has no timelines."
+            )
         async for seg in segment_messages(
             transcript.messages,
             messages_as_str=messages_as_str,

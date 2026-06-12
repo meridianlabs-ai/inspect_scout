@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Chunk token counting in segment_messages so large transcripts don't flood the connection pool.
 - Bugfix: Preserve the caller's protocol (e.g. `file://`) in scan locations returned by scan listing (regression in v0.4.36 that broke relative folder display in the VS Code scans panel).
 
 ## 0.4.39 (02 June 2026)

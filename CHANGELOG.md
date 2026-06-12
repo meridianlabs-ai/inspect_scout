@@ -1,3 +1,7 @@
+## Unreleased
+
+- Chunk token counting in segment_messages so large transcripts don't flood the connection pool.
+
 ## 0.4.39 (02 June 2026)
 
 - Transcript: Resolve `ModelEvent` input references from the consolidated `events_data` message and call pools.

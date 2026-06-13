@@ -159,12 +159,25 @@ def compute_validation_metrics(
         # Per-key metrics
         per_key: dict[str, ValidationMetrics] = {}
         for entry in with_targets:
-            target_positive = is_positive_value(entry.target)
+            target_is_dict = isinstance(entry.target, dict)
+            entry_target_positive = is_positive_value(entry.target)
             if isinstance(entry.valid, dict):
                 for key, valid in entry.valid.items():
                     if key not in per_key:
                         per_key[key] = ValidationMetrics()
-                    _update_metrics(per_key[key], target_positive, valid)
+                    # For dict / multi-label targets each key has its own ground
+                    # truth, so use that key's target positivity. A whole non-empty
+                    # dict is always "positive", which would otherwise treat every
+                    # key as a positive case (e.g. a key whose target is False would
+                    # be booked TP/FN instead of TN/FP, inflating precision and
+                    # specificity). Fall back to the entry-level positivity when the
+                    # target is a scalar.
+                    key_target_positive = (
+                        is_positive_value(entry.target.get(key))
+                        if target_is_dict
+                        else entry_target_positive
+                    )
+                    _update_metrics(per_key[key], key_target_positive, valid)
 
         # Total is sum of per-key
         total = ValidationMetrics()

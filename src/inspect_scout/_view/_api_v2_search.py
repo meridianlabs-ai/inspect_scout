@@ -9,6 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Path
 from fastapi import Query as QueryParam
 from inspect_ai._util.kvstore import KVStore
+from inspect_ai.model import GenerateConfig, get_model
 from pydantic import TypeAdapter
 
 from .._grep_scanner._grep_scanner import grep_scanner
@@ -54,6 +55,33 @@ If nothing in the transcript matches the query, say so briefly.
 MAX_ENTRIES = 500
 SEARCH_RESULT_ADAPTER: TypeAdapter[Result] = TypeAdapter(Result)
 SEARCH_INPUT_ADAPTER: TypeAdapter[SearchInput] = TypeAdapter(SearchInput)
+
+
+def _search_reasoning_config(model: str | None) -> GenerateConfig:
+    """Reasoning config for LLM search generation, tuned per provider.
+
+    Search ("does this transcript contain X?") is a lightweight
+    classification task that doesn't benefit from heavy reasoning, so we
+    minimize reasoning latency. The right setting differs by provider
+    because their *default* reasoning behavior is opposite:
+
+    - OpenAI reasoning models (gpt-5, o-series) reason at ``medium`` effort
+      by default, which can add tens of seconds of hidden reasoning to a
+      single search. Capping them to ``"minimal"`` is a large speedup, and
+      ``"minimal"`` is safe across all OpenAI models: non-reasoning models
+      (e.g. gpt-4o) silently ignore it. (``"none"`` is *not* safe — gpt-5
+      rejects it with a 400.)
+
+    - Anthropic Claude (and other providers) leave extended thinking *off*
+      by default for these calls. Setting any effort would *enable*
+      thinking and make search slower, so we leave reasoning unset and
+      inherit the provider default.
+
+    Keyed off the ``openai/`` provider prefix.
+    """
+    if model is not None and model.startswith("openai/"):
+        return GenerateConfig(reasoning_effort="minimal")
+    return GenerateConfig()
 
 
 def _normalize_filter(
@@ -217,10 +245,7 @@ def create_search_router() -> APIRouter:
         dir: str = Path(description="Transcripts directory (base64url-encoded)"),
         id: str = Path(description="Transcript ID"),
     ) -> SearchResponse:
-        """Search a transcript using grep or LLM-based search.
-
-        Returns cached results if the same search was run before.
-        """
+        """Search a transcript using grep or LLM-based search."""
         transcript_dir = decode_base64url(dir)
         sid = _search_id(request)
         key = _result_key(
@@ -255,12 +280,19 @@ def create_search_router() -> APIRouter:
             )(transcript)
         else:
             try:
+                # Resolve the model once with a search-tuned reasoning config
+                # so both the per-segment scans and the reducer's synthesis
+                # call inherit it (see _search_reasoning_config). Passing the
+                # resolved Model also avoids re-resolving it twice.
+                search_model = get_model(
+                    request.model, config=_search_reasoning_config(request.model)
+                )
                 output = await llm_scanner(
                     question=request.query,
                     answer="string",
                     template=LLM_SEARCH_TEMPLATE,
-                    model=request.model,
-                    reducer=ResultReducer.llm(model=request.model),
+                    model=search_model,
+                    reducer=ResultReducer.llm(model=search_model),
                 )(transcript)
             except Exception as err:
                 raise HTTPException(

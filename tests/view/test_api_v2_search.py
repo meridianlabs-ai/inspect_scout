@@ -13,11 +13,15 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from google.genai.errors import ClientError as GoogleClientError
 from inspect_ai._util.error import PrerequisiteError
+from inspect_ai.model import Model
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_scout._scanner.result import Result
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._view._api_v2 import v2_api_app
-from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
+from inspect_scout._view._api_v2_search import (
+    LLM_SEARCH_TEMPLATE,
+    _search_reasoning_config,
+)
 from inspect_scout._view._api_v2_types import SearchRequest
 from pydantic import TypeAdapter
 
@@ -197,14 +201,14 @@ class TestSearchEndpoint:
         self, client: TestClient, transcript_location: Path, tmp_path: Path
     ) -> None:
         """Identical LLM POST searches each run the scanner and produce a new saved search."""
-        llm_calls: list[dict[str, str | None]] = []
+        llm_calls: list[dict[str, object]] = []
 
         def fake_llm_scanner(
             *,
             question: str,
             answer: str,
             template: str,
-            model: str | None,
+            model: object,
             reducer: object,
         ) -> Callable[[Transcript], Awaitable[Result]]:
             llm_calls.append(
@@ -240,7 +244,9 @@ class TestSearchEndpoint:
                 json={
                     "query": "Where is the needle?",
                     "type": "llm",
-                    "model": "openai/gpt-5.4-mini",
+                    # Offline-resolvable: the handler resolves the model
+                    # before invoking the (patched) scanner.
+                    "model": "mockllm/model",
                 },
             )
             second_response = client.post(
@@ -248,7 +254,7 @@ class TestSearchEndpoint:
                 json={
                     "query": "Where is the needle?",
                     "type": "llm",
-                    "model": "openai/gpt-5.4-mini",
+                    "model": "mockllm/model",
                 },
             )
 
@@ -269,9 +275,12 @@ class TestSearchEndpoint:
             "question": "Where is the needle?",
             "answer": "string",
             "template": LLM_SEARCH_TEMPLATE,
-            "model": "openai/gpt-5.4-mini",
         }
-        assert llm_calls == [expected_call, expected_call]
+        assert [
+            {k: v for k, v in call.items() if k != "model"} for call in llm_calls
+        ] == [expected_call, expected_call]
+        # The handler resolves the model before calling the scanner.
+        assert all(isinstance(call["model"], Model) for call in llm_calls)
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),
@@ -396,7 +405,7 @@ class TestSearchEndpoint:
             question: str,
             answer: str,
             template: str,
-            model: str | None,
+            model: object,
             reducer: object,
         ) -> Callable[[Transcript], Awaitable[Result]]:
             async def _scan(_: Transcript) -> Result:
@@ -420,9 +429,36 @@ class TestSearchEndpoint:
                 json={
                     "query": "Where is the needle?",
                     "type": "llm",
-                    "model": "some/model",
+                    # Offline-resolvable model so the handler's get_model()
+                    # succeeds and the patched scanner's error is what surfaces.
+                    "model": "mockllm/model",
                 },
             )
 
         assert response.status_code == 502
         assert expected_detail_substring in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("model", "expected_effort"),
+    [
+        # OpenAI reasoning models reason at medium by default; cap to minimal.
+        ("openai/gpt-5", "minimal"),
+        ("openai/o3", "minimal"),
+        # Safe for non-reasoning OpenAI models too (provider ignores it).
+        ("openai/gpt-4o", "minimal"),
+        # Other providers default thinking off; leave unset so we don't
+        # *enable* reasoning and slow search down.
+        ("anthropic/claude-opus-4-5", None),
+        ("anthropic/claude-haiku-4-5", None),
+        ("google/gemini-2.5-flash", None),
+        # Unknown / unspecified model: can't infer provider, leave unset.
+        (None, None),
+        ("gpt-5", None),
+    ],
+)
+def test_search_reasoning_config(
+    model: str | None, expected_effort: str | None
+) -> None:
+    """Search caps OpenAI reasoning effort but leaves other providers unset."""
+    assert _search_reasoning_config(model).reasoning_effort == expected_effort

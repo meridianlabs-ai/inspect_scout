@@ -111,6 +111,26 @@ class TestScansEndpointPagination:
         assert data["total_count"] in [7, 8]
         assert len(data["items"]) == data["total_count"]
 
+    def test_scans_post_invalid_filter_returns_empty(self, scans_dir: Path) -> None:
+        """A filter the backend rejects degrades to an empty response, not a 500."""
+        client = TestClient(v2_api_app())
+
+        response = client.post(
+            f"/scans/{_base64url(str(scans_dir))}",
+            json={
+                "filter": {
+                    "left": "nonexistent_column",
+                    "operator": "=",
+                    "right": "x",
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"] == []
+        assert data["total_count"] == 0
+
     def test_scans_post_with_order_by(self, scans_dir: Path) -> None:
         """Results are sorted by specified column."""
         client = TestClient(v2_api_app())

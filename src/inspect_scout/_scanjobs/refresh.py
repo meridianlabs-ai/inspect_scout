@@ -8,6 +8,7 @@ whose directories vanished are deleted.
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from logging import getLogger
 from typing import Protocol
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
@@ -18,6 +19,8 @@ from .._recorder.active_scans_store import active_scans_store
 from .._recorder.file import FileRecorder, _is_not_found
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
+
+logger = getLogger(__name__)
 
 _SCAN_ID_SEGMENT = "scan_id="
 _SUMMARY_FILE = "_summary.json"
@@ -204,10 +207,21 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
 
     rows = []
     for listing, status in zip(delta.to_read, statuses, strict=True):
-        if isinstance(status, FileNotFoundError):
-            continue
         if isinstance(status, BaseException):
-            raise status
+            # A single unreadable scan must not fail the whole listing. Missing
+            # scans (deleted between listing and read) are skipped silently;
+            # other errors — corrupt or version-incompatible status files,
+            # transient remote errors — skip just that scan with a warning. A
+            # previously-indexed scan keeps its last-good row: it stays in the
+            # store (not in to_delete, since its dir still exists) and is
+            # retried on the next refresh.
+            if not isinstance(status, FileNotFoundError):
+                logger.warning(
+                    "Skipping scan %s: could not read status: %s",
+                    listing.scan_id,
+                    status,
+                )
+            continue
         rows.append(
             (
                 scan_row_from_status(

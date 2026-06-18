@@ -107,3 +107,25 @@ async def test_uses_isolated_cache(
     await view.connect()
     assert await view.count(Query()) == 1
     await view.disconnect()
+
+
+def _write_corrupt_scan(scans_dir: Path, scan_id: str) -> None:
+    """Write a scan dir whose _scan.json fails ScanSpec validation."""
+    scan_dir = scans_dir / f"scan_id={scan_id}"
+    scan_dir.mkdir(parents=True)
+    # Missing required scan_name/scanners -> ValidationError when read back.
+    (scan_dir / _SCAN_JSON).write_text('{"garbage": true}')
+
+
+@pytest.mark.asyncio
+async def test_corrupt_scan_is_skipped_not_fatal(scans_dir: Path) -> None:
+    """A single unreadable scan is skipped; the rest of the listing survives."""
+    _write_corrupt_scan(scans_dir, "corrupt")
+
+    async with await scan_jobs_view(str(scans_dir)) as view:
+        rows = [r async for r in view.select(Query())]
+        count = await view.count(Query())
+
+    # The corrupt scan is skipped; the three good scans still list.
+    assert {r.scan_id for r in rows} == {"a", "b", "c"}
+    assert count == 3

@@ -1,7 +1,11 @@
 # tests/scanjobs/test_refresh.py
+from collections.abc import AsyncIterator
+
+import pytest
 from inspect_ai._util.file import FileInfo
 from inspect_scout._scanjobs.refresh import (
     ScanListing,
+    async_listing_to_scans,
     compute_delta,
     listing_to_scans,
 )
@@ -9,6 +13,24 @@ from inspect_scout._scanjobs.refresh import (
 
 def _file(name: str, *, mtime: float, size: int, etag: str | None = None) -> FileInfo:
     return FileInfo(name=name, type="file", size=size, mtime=mtime, etag=etag)
+
+
+class _FakeAsyncFilesystem:
+    def __init__(self, dirs: list[str], infos: dict[str, FileInfo]) -> None:
+        self._dirs = dirs
+        self._infos = infos
+
+    async def iter_dirs(
+        self, base: str, pattern: str = "*", *, recursive: bool = False
+    ) -> AsyncIterator[str]:
+        for dirname in self._dirs:
+            yield dirname
+
+    async def info(self, filename: str) -> FileInfo:
+        info = self._infos.get(filename)
+        if info is None:
+            raise FileNotFoundError(filename)
+        return info
 
 
 def test_listing_token_prefers_summary_etag() -> None:
@@ -20,6 +42,32 @@ def test_listing_token_prefers_summary_etag() -> None:
     listed = listing_to_scans("/s", infos)
 
     assert listed["a"] == ScanListing("a", "/s/scan_id=a", "E")
+
+
+@pytest.mark.asyncio
+async def test_async_listing_to_scans_uses_async_dir_and_metadata_apis() -> None:
+    fs = _FakeAsyncFilesystem(
+        dirs=["/s/scan_id=a/", "/s/scan_id=b/", "/s/scan_id=c/"],
+        infos={
+            "/s/scan_id=a/_summary.json": _file(
+                "/s/scan_id=a/_summary.json", mtime=2.0, size=20, etag="E"
+            ),
+            "/s/scan_id=a/_scan.json": _file(
+                "/s/scan_id=a/_scan.json", mtime=1.0, size=10
+            ),
+            "/s/scan_id=b/_scan.json": _file(
+                "/s/scan_id=b/_scan.json", mtime=5.0, size=7
+            ),
+        },
+    )
+
+    listed = await async_listing_to_scans(fs, "/s")
+
+    assert listed == {
+        "a": ScanListing("a", "/s/scan_id=a", "E"),
+        "b": ScanListing("b", "/s/scan_id=b", "5.0:7"),
+        "c": ScanListing("c", "/s/scan_id=c", "new"),
+    }
 
 
 def test_listing_token_falls_back_to_mtime_size_then_scan_json() -> None:

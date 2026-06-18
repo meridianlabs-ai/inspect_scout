@@ -6,18 +6,31 @@ whose directories vanished are deleted.
 """
 
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from typing import Protocol
 
-from inspect_ai._util.file import FileInfo, filesystem
+from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.file import FileInfo
+from upath import UPath
 
 from .._recorder.active_scans_store import active_scans_store
-from .._recorder.file import FileRecorder
+from .._recorder.file import FileRecorder, _is_not_found
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
 
 _SCAN_ID_SEGMENT = "scan_id="
 _SUMMARY_FILE = "_summary.json"
 _SPEC_FILE = "_scan.json"
+_METADATA_CONCURRENCY = 50
+
+
+class ScanListingFilesystem(Protocol):
+    def iter_dirs(
+        self, base: str, pattern: str = "*", *, recursive: bool = False
+    ) -> AsyncIterator[str]: ...
+
+    async def info(self, filename: str) -> FileInfo: ...
 
 
 @dataclass
@@ -45,6 +58,87 @@ def _scan_id_and_dir(file_path: str) -> tuple[str, str] | None:
 
 def _token(info: FileInfo) -> str:
     return info.etag or f"{info.mtime}:{info.size}"
+
+
+def _join_uri(base: str, name: str) -> str:
+    return f"{base.rstrip('/')}/{name}"
+
+
+def _normalize_scan_dir(location: str, uri: str) -> str:
+    """Normalize iter_dirs output while preserving the caller's location protocol."""
+    base = UPath(location)
+    entry = UPath(uri.rstrip("/"))
+    if base.protocol and not entry.protocol:
+        plain = entry.as_posix()
+        base_plain = UPath(base.path).as_posix()
+        if plain.startswith(base_plain):
+            rel = plain[len(base_plain) :].strip("/")
+            entry = base / rel if rel else base
+    return entry.as_posix()
+
+
+async def _optional_info(fs: ScanListingFilesystem, filename: str) -> FileInfo | None:
+    try:
+        return await fs.info(filename)
+    except Exception as exc:
+        if _is_not_found(exc):
+            return None
+        raise
+
+
+async def _listing_from_scan_dir(
+    fs: ScanListingFilesystem,
+    scan_dir: str,
+    semaphore: asyncio.Semaphore,
+) -> ScanListing | None:
+    parsed = _scan_id_and_dir(scan_dir.rstrip("/"))
+    if parsed is None:
+        return None
+    scan_id, normalized_scan_dir = parsed
+
+    async with semaphore:
+        summary_info = await _optional_info(
+            fs, _join_uri(normalized_scan_dir, _SUMMARY_FILE)
+        )
+        spec_info = (
+            None
+            if summary_info is not None
+            else await _optional_info(fs, _join_uri(normalized_scan_dir, _SPEC_FILE))
+        )
+
+    if summary_info is not None:
+        token = _token(summary_info)
+    elif spec_info is not None:
+        token = _token(spec_info)
+    else:
+        token = "new"
+
+    return ScanListing(scan_id, normalized_scan_dir, token)
+
+
+async def async_listing_to_scans(
+    fs: ScanListingFilesystem, location: str
+) -> dict[str, ScanListing]:
+    """List scan dirs and compute change tokens without sync recursive file walks."""
+    scan_dirs: list[str] = []
+    try:
+        async for uri in fs.iter_dirs(location, "scan_id=*", recursive=True):
+            scan_dirs.append(_normalize_scan_dir(location, uri))
+    except Exception as exc:
+        if _is_not_found(exc):
+            return {}
+        raise
+
+    semaphore = asyncio.Semaphore(_METADATA_CONCURRENCY)
+    listings = await asyncio.gather(
+        *(_listing_from_scan_dir(fs, scan_dir, semaphore) for scan_dir in scan_dirs)
+    )
+
+    result: dict[str, ScanListing] = {}
+    for listing in listings:
+        if listing is not None:
+            result[listing.scan_id] = listing
+    return result
 
 
 def listing_to_scans(location: str, infos: list[FileInfo]) -> dict[str, ScanListing]:
@@ -93,25 +187,20 @@ def compute_delta(
 
 
 async def refresh_index(store: ScanIndexStore, location: str) -> None:
-    fs = filesystem(location)
-    try:
-        infos = fs.ls(location, recursive=True)
-    except FileNotFoundError:
-        infos = []
+    async with AsyncFilesystem() as fs:
+        listed = await async_listing_to_scans(fs, location)
 
-    listed = listing_to_scans(location, infos)
+        with active_scans_store() as active_store:
+            active = active_store.read_all()
+        active_ids = {sid for sid in active if sid in listed}
 
-    with active_scans_store() as active_store:
-        active = active_store.read_all()
-    active_ids = {sid for sid in active if sid in listed}
+        delta = compute_delta(listed, store.stored_tokens(), active_ids)
 
-    delta = compute_delta(listed, store.stored_tokens(), active_ids)
-
-    # Read Status for the delta in parallel; missing scans are skipped.
-    statuses = await asyncio.gather(
-        *(FileRecorder.status(listing.dir_path) for listing in delta.to_read),
-        return_exceptions=True,
-    )
+        # Read Status for the delta in parallel; missing scans are skipped.
+        statuses = await asyncio.gather(
+            *(FileRecorder.status(listing.dir_path) for listing in delta.to_read),
+            return_exceptions=True,
+        )
 
     rows = []
     for listing, status in zip(delta.to_read, statuses, strict=True):

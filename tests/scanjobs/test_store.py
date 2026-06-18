@@ -26,7 +26,7 @@ def make_row(
         metadata={"k": "v"},
         scan_args={"a": 1},
         location=f"/scans/scan_id={scan_id}",
-        status=status,  # type: ignore[arg-type]
+        status=status,  # type: ignore[arg-type]  # arbitrary status string for test
         scanners="refusal",
         model="openai/gpt-4",
         tags="",

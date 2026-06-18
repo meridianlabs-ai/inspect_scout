@@ -19,15 +19,6 @@ from .._view._api_v2_types import ScanRow
 SCAN_JOBS_TABLE = "scan_jobs"
 JSON_COLUMNS = ("packages", "metadata", "scan_args")
 
-# Columns whose ScanRow value must be stored numerically so SQL ORDER BY /
-# comparisons are numeric, not lexical.
-_INT_COLUMNS = (
-    "total_results",
-    "total_errors",
-    "total_tokens",
-    "active_completion_pct",
-    "transcript_count",
-)
 
 # DDL: scan_id is the natural key for upsert; timestamp stored as ISO text
 # (sorts correctly); JSON columns as TEXT; integer aggregates as INTEGER.

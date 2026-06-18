@@ -1,4 +1,5 @@
 # tests/scanjobs/test_sqlite_view.py
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -79,8 +80,6 @@ async def test_refresh_picks_up_new_and_removed_scans(scans_dir: Path) -> None:
 
     # Add one scan, remove another, then reconnect (new view => fresh refresh).
     _write_scan(scans_dir, "d", complete=True, when=4)
-    import shutil
-
     shutil.rmtree(scans_dir / "scan_id=a")
 
     async with await scan_jobs_view(str(scans_dir)) as view:

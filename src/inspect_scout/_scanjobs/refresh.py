@@ -33,7 +33,7 @@ class IndexDelta:
     to_delete: list[str]
 
 
-def _scan_id_and_dir(location: str, file_path: str) -> tuple[str, str] | None:
+def _scan_id_and_dir(file_path: str) -> tuple[str, str] | None:
     """Extract (scan_id, scan_dir) from a file path under a scan_id=<id> dir."""
     parts = file_path.split("/")
     for i, part in enumerate(parts):
@@ -55,7 +55,7 @@ def listing_to_scans(location: str, infos: list[FileInfo]) -> dict[str, ScanList
     for info in infos:
         if info.type != "file":
             continue
-        parsed = _scan_id_and_dir(location, info.name)
+        parsed = _scan_id_and_dir(info.name)
         if parsed is None:
             continue
         scan_id, scan_dir = parsed
@@ -95,7 +95,7 @@ def compute_delta(
 async def refresh_index(store: ScanIndexStore, location: str) -> None:
     fs = filesystem(location)
     try:
-        infos = [fi for fi in fs.ls(location, recursive=True) if fi.type == "file"]
+        infos = fs.ls(location, recursive=True)
     except FileNotFoundError:
         infos = []
 
@@ -128,5 +128,8 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
             )
         )
 
+    # The listing snapshot, upsert, and delete are not one atomic transaction:
+    # a scan created between another process's listing and its delete may be
+    # dropped, but the next refresh re-inserts it from disk — transient, self-healing.
     store.upsert(rows)
     store.delete(delta.to_delete)

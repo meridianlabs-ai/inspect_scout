@@ -2,15 +2,11 @@
 
 import base64
 from datetime import datetime
-from typing import AsyncIterator
-from unittest.mock import patch
+from pathlib import Path
 
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
-from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
-from inspect_scout._scanjobs.duckdb import DuckDBScanJobsView
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._view._api_v2 import v2_api_app
 
@@ -20,19 +16,18 @@ def _base64url(s: str) -> str:
     return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
 
 
-def _create_test_status(
+def _write_scan(
+    scans_dir: Path,
+    *,
     scan_id: str,
-    scan_name: str = "test_scan",
-    complete: bool = True,
-    scanners: list[str] | None = None,
-    timestamp: datetime | None = None,
-) -> Status:
-    """Create a test Status object."""
-    if scanners is None:
-        scanners = ["refusal"]
-    if timestamp is None:
-        timestamp = datetime.now()
-
+    scan_name: str,
+    complete: bool,
+    timestamp: datetime,
+    scanners: list[str],
+) -> None:
+    """Write a real on-disk scan dir using real model serialization."""
+    scan_dir = scans_dir / f"scan_id={scan_id}"
+    scan_dir.mkdir(parents=True)
     spec = ScanSpec(
         scan_id=scan_id,
         scan_name=scan_name,
@@ -40,52 +35,71 @@ def _create_test_status(
         model=None,
         scanners={s: ScannerSpec(name=s) for s in scanners},
     )
+    (scan_dir / "_scan.json").write_text(spec.model_dump_json())
+    summary = Summary(scanners=scanners)
+    summary.complete = complete
+    (scan_dir / "_summary.json").write_text(summary.model_dump_json())
 
-    return Status(
-        complete=complete,
-        spec=spec,
-        location=f"/path/to/scans/scan_id={scan_id}",
-        summary=Summary(scanners=scanners),
-        errors=[],
+
+@pytest.fixture
+def scans_dir(tmp_path: Path) -> Path:
+    """Create a real scans directory with test data mirroring the prior fixture."""
+    d = tmp_path / "scans"
+    d.mkdir()
+    _write_scan(
+        d,
+        scan_id="scan-001",
+        scan_name="math_eval",
+        complete=True,
+        timestamp=datetime(2025, 1, 1, 1, 0, 0),
+        scanners=["refusal"],
     )
-
-
-@pytest_asyncio.fixture
-async def mock_scan_jobs_view() -> AsyncIterator[DuckDBScanJobsView]:
-    """Create a mock ScanJobsView with test data."""
-    statuses = [
-        _create_test_status("scan-001", scan_name="math_eval", scanners=["refusal"]),
-        _create_test_status("scan-002", scan_name="math_eval", scanners=["deception"]),
-        _create_test_status("scan-003", scan_name="coding_eval", scanners=["refusal"]),
-        _create_test_status(
-            "scan-004", scan_name="coding_eval", scanners=["efficiency"]
-        ),
-        _create_test_status("scan-005", scan_name="qa_eval", scanners=["refusal"]),
-    ]
-    view = DuckDBScanJobsView(statuses)
-    await view.connect()
-    yield view
-    await view.disconnect()
+    _write_scan(
+        d,
+        scan_id="scan-002",
+        scan_name="math_eval",
+        complete=True,
+        timestamp=datetime(2025, 1, 1, 2, 0, 0),
+        scanners=["deception"],
+    )
+    _write_scan(
+        d,
+        scan_id="scan-003",
+        scan_name="coding_eval",
+        complete=True,
+        timestamp=datetime(2025, 1, 1, 3, 0, 0),
+        scanners=["refusal"],
+    )
+    _write_scan(
+        d,
+        scan_id="scan-004",
+        scan_name="coding_eval",
+        complete=True,
+        timestamp=datetime(2025, 1, 1, 4, 0, 0),
+        scanners=["efficiency"],
+    )
+    _write_scan(
+        d,
+        scan_id="scan-005",
+        scan_name="qa_eval",
+        complete=True,
+        timestamp=datetime(2025, 1, 1, 5, 0, 0),
+        scanners=["refusal"],
+    )
+    return d
 
 
 class TestScansDistinctEndpoint:
     """Tests for POST /scans/{dir}/distinct endpoint."""
 
-    @pytest.mark.asyncio
-    async def test_distinct_no_filter(
-        self, mock_scan_jobs_view: DuckDBScanJobsView
-    ) -> None:
+    def test_distinct_no_filter(self, scans_dir: Path) -> None:
         """Get distinct values without filter."""
         client = TestClient(v2_api_app())
 
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_jobs_view",
-            return_value=mock_scan_jobs_view,
-        ):
-            response = client.post(
-                f"/scans/{_base64url('/tmp')}/distinct",
-                json={"column": "scan_name"},
-            )
+        response = client.post(
+            f"/scans/{_base64url(str(scans_dir))}/distinct",
+            json={"column": "scan_name"},
+        )
 
         assert response.status_code == 200
         values = response.json()
@@ -93,93 +107,65 @@ class TestScansDistinctEndpoint:
         # Verify sorted ascending
         assert values == sorted(values)
 
-    @pytest.mark.asyncio
-    async def test_distinct_with_filter(
-        self, mock_scan_jobs_view: DuckDBScanJobsView
-    ) -> None:
+    def test_distinct_with_filter(self, scans_dir: Path) -> None:
         """Get distinct values with filter condition."""
         client = TestClient(v2_api_app())
 
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_jobs_view",
-            return_value=mock_scan_jobs_view,
-        ):
-            response = client.post(
-                f"/scans/{_base64url('/tmp')}/distinct",
-                json={
-                    "column": "scan_name",
-                    "filter": {
-                        "is_compound": False,
-                        "left": "scanners",
-                        "operator": "=",
-                        "right": "refusal",
-                    },
+        response = client.post(
+            f"/scans/{_base64url(str(scans_dir))}/distinct",
+            json={
+                "column": "scan_name",
+                "filter": {
+                    "is_compound": False,
+                    "left": "scanners",
+                    "operator": "=",
+                    "right": "refusal",
                 },
-            )
+            },
+        )
 
         assert response.status_code == 200
         values = response.json()
         # Only scan_names with refusal scanner
         assert set(values) == {"coding_eval", "math_eval", "qa_eval"}
 
-    @pytest.mark.asyncio
-    async def test_distinct_empty_result(
-        self, mock_scan_jobs_view: DuckDBScanJobsView
-    ) -> None:
+    def test_distinct_empty_result(self, scans_dir: Path) -> None:
         """Get distinct values with no matching results."""
         client = TestClient(v2_api_app())
 
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_jobs_view",
-            return_value=mock_scan_jobs_view,
-        ):
-            response = client.post(
-                f"/scans/{_base64url('/tmp')}/distinct",
-                json={
-                    "column": "scan_name",
-                    "filter": {
-                        "is_compound": False,
-                        "left": "scanners",
-                        "operator": "=",
-                        "right": "nonexistent_scanner",
-                    },
+        response = client.post(
+            f"/scans/{_base64url(str(scans_dir))}/distinct",
+            json={
+                "column": "scan_name",
+                "filter": {
+                    "is_compound": False,
+                    "left": "scanners",
+                    "operator": "=",
+                    "right": "nonexistent_scanner",
                 },
-            )
+            },
+        )
 
         assert response.status_code == 200
         assert response.json() == []
 
-    @pytest.mark.asyncio
-    async def test_distinct_no_body(
-        self, mock_scan_jobs_view: DuckDBScanJobsView
-    ) -> None:
+    def test_distinct_no_body(self, scans_dir: Path) -> None:
         """Request with no body returns empty list."""
         client = TestClient(v2_api_app())
 
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_jobs_view",
-            return_value=mock_scan_jobs_view,
-        ):
-            response = client.post(f"/scans/{_base64url('/tmp')}/distinct")
+        response = client.post(f"/scans/{_base64url(str(scans_dir))}/distinct")
 
         assert response.status_code == 200
         assert response.json() == []
 
-    @pytest.mark.asyncio
-    async def test_distinct_different_column(
-        self, mock_scan_jobs_view: DuckDBScanJobsView
-    ) -> None:
+    def test_distinct_different_column(self, scans_dir: Path) -> None:
         """Get distinct values for different column."""
         client = TestClient(v2_api_app())
 
-        with patch(
-            "inspect_scout._view._api_v2_scans.scan_jobs_view",
-            return_value=mock_scan_jobs_view,
-        ):
-            response = client.post(
-                f"/scans/{_base64url('/tmp')}/distinct",
-                json={"column": "scanners"},
-            )
+        response = client.post(
+            f"/scans/{_base64url(str(scans_dir))}/distinct",
+            json={"column": "scanners"},
+        )
 
         assert response.status_code == 200
         values = response.json()

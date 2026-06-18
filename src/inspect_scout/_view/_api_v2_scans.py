@@ -33,7 +33,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._scanjob_config import ScanJobConfig
-from .._scanjobs.duckdb import scan_jobs_view
+from .._scanjobs import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from .._transcript.eval_log import JSON_COLUMNS
 from ._api_v2_types import (

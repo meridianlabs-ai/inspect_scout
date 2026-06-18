@@ -31,6 +31,8 @@ _INT_COLUMNS = (
 
 # DDL: scan_id is the natural key for upsert; timestamp stored as ISO text
 # (sorts correctly); JSON columns as TEXT; integer aggregates as INTEGER.
+# DDL column order is documentation only; reads/writes are keyed positionally
+# by _SCAN_ROW_COLUMNS, so DDL order need not match ScanRow field order.
 _CREATE_TABLE = f"""
 CREATE TABLE IF NOT EXISTS {SCAN_JOBS_TABLE} (
     scan_id TEXT PRIMARY KEY,
@@ -118,6 +120,8 @@ class ScanIndexStore:
         return int(result[0])
 
     def distinct(self, column: str, condition: Condition | None) -> list[ScalarValue]:
+        if column not in _SCAN_ROW_COLUMNS:
+            raise ValueError(f"Unknown column: {column!r}")
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "sqlite")
             sql = (

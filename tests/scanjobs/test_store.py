@@ -2,6 +2,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from inspect_scout._query import Column, Query
 from inspect_scout._query.order_by import OrderBy
 from inspect_scout._scanjobs.store import ScanIndexStore
@@ -109,3 +110,11 @@ def test_persists_across_connections(tmp_path: Path) -> None:
     assert {r.scan_id for r in s2.select(Query())} == {"a"}
     assert s2.stored_tokens() == {"a": "tok"}
     s2.close()
+
+
+def test_distinct_rejects_unknown_column(tmp_path: Path) -> None:
+    store = ScanIndexStore(tmp_path / "scans.sqlite")
+    store.upsert([(make_row("a"), "t")])
+    with pytest.raises(ValueError):
+        store.distinct('x" FROM scan_jobs; --', None)
+    store.close()

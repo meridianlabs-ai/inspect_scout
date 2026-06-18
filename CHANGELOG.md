@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
+- Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.
 
 ## 0.4.41 (12 June 2026)
 

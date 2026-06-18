@@ -14,7 +14,6 @@ from typing import Any, Iterable
 
 import anyio
 import pyarrow.ipc as pa_ipc
-from duckdb import InvalidInputException
 from fastapi import APIRouter, HTTPException, Path, Request, Response
 from fastapi import Query as QueryParam
 from fastapi.responses import StreamingResponse
@@ -33,7 +32,7 @@ from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
 from .._scanjob_config import ScanJobConfig
-from .._scanjobs.duckdb import scan_jobs_view
+from .._scanjobs import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from .._transcript.eval_log import JSON_COLUMNS
 from ._api_v2_types import (
@@ -111,21 +110,18 @@ def create_scans_router(
 
         ctx = build_pagination_context(body, "scan_id")
 
-        try:
-            async with await scan_jobs_view(scans_dir) as view:
-                count = await view.count(Query(where=ctx.filter_conditions or []))
-                results = [
-                    scan_row
-                    async for scan_row in view.select(
-                        Query(
-                            where=ctx.conditions or [],
-                            limit=ctx.limit,
-                            order_by=ctx.db_order_columns or [],
-                        )
+        async with await scan_jobs_view(scans_dir) as view:
+            count = await view.count(Query(where=ctx.filter_conditions or []))
+            results = [
+                scan_row
+                async for scan_row in view.select(
+                    Query(
+                        where=ctx.conditions or [],
+                        limit=ctx.limit,
+                        order_by=ctx.db_order_columns or [],
                     )
-                ]
-        except InvalidInputException:
-            return ScansResponse(items=[], total_count=0)
+                )
+            ]
 
         if ctx.needs_reverse:
             results = list(reversed(results))

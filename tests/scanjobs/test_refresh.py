@@ -1,14 +1,26 @@
 # tests/scanjobs/test_refresh.py
-from collections.abc import AsyncIterator
+import asyncio
+import logging
+import sys
+from collections.abc import AsyncIterator, Iterator
+from contextlib import contextmanager
+from pathlib import Path
+from types import TracebackType
 
+import inspect_scout._scanjobs.refresh as refresh_module
 import pytest
 from inspect_ai._util.file import FileInfo
+from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._scanjobs.refresh import (
     ScanListing,
     async_listing_to_scans,
     compute_delta,
     listing_to_scans,
 )
+from inspect_scout._scanjobs.store import ScanIndexStore
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
 
 
 def _file(name: str, *, mtime: float, size: int, etag: str | None = None) -> FileInfo:
@@ -31,6 +43,57 @@ class _FakeAsyncFilesystem:
         if info is None:
             raise FileNotFoundError(filename)
         return info
+
+
+class _MetadataErrorFilesystem(_FakeAsyncFilesystem):
+    def __init__(
+        self,
+        dirs: list[str],
+        infos: dict[str, FileInfo],
+        error_prefixes: list[str],
+    ) -> None:
+        super().__init__(dirs, infos)
+        self._error_prefixes = error_prefixes
+
+    async def info(self, filename: str) -> FileInfo:
+        if any(filename.startswith(prefix) for prefix in self._error_prefixes):
+            raise PermissionError(filename)
+        return await super().info(filename)
+
+
+class _AsyncFilesystemContext:
+    def __init__(self, fs: _FakeAsyncFilesystem) -> None:
+        self._fs = fs
+
+    async def __aenter__(self) -> _FakeAsyncFilesystem:
+        return self._fs
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        return None
+
+
+class _EmptyActiveScansStore:
+    def read_all(self) -> dict[str, object]:
+        return {}
+
+
+@contextmanager
+def _empty_active_scans_store() -> Iterator[_EmptyActiveScansStore]:
+    yield _EmptyActiveScansStore()
+
+
+def _patch_refresh_filesystem(
+    monkeypatch: pytest.MonkeyPatch, fs: _FakeAsyncFilesystem
+) -> None:
+    def async_filesystem() -> _AsyncFilesystemContext:
+        return _AsyncFilesystemContext(fs)
+
+    monkeypatch.setattr(refresh_module, "AsyncFilesystem", async_filesystem)
 
 
 def test_listing_token_prefers_summary_etag() -> None:
@@ -70,6 +133,25 @@ async def test_async_listing_to_scans_uses_async_dir_and_metadata_apis() -> None
     }
 
 
+@pytest.mark.asyncio
+async def test_async_listing_to_scans_skips_scan_with_unreadable_metadata() -> None:
+    fs = _MetadataErrorFilesystem(
+        dirs=["/s/scan_id=bad/", "/s/scan_id=good/"],
+        infos={
+            "/s/scan_id=good/_summary.json": _file(
+                "/s/scan_id=good/_summary.json", mtime=2.0, size=20
+            )
+        },
+        error_prefixes=["/s/scan_id=bad/"],
+    )
+
+    listed = await async_listing_to_scans(fs, "/s")
+
+    assert listed == {
+        "good": ScanListing("good", "/s/scan_id=good", "2.0:20"),
+    }
+
+
 def test_listing_token_falls_back_to_mtime_size_then_scan_json() -> None:
     summary_only = listing_to_scans(
         "/s", [_file("/s/scan_id=a/_summary.json", mtime=2.0, size=20)]
@@ -105,3 +187,65 @@ def test_compute_delta_new_changed_unchanged_deleted_active() -> None:
 
     assert {s.scan_id for s in delta.to_read} == {"new", "changed", "active"}
     assert delta.to_delete == ["gone"]
+
+
+@pytest.mark.asyncio
+async def test_refresh_index_logs_inner_exception_for_grouped_status_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fs = _FakeAsyncFilesystem(
+        dirs=["/s/scan_id=bad/"],
+        infos={
+            "/s/scan_id=bad/_summary.json": _file(
+                "/s/scan_id=bad/_summary.json", mtime=2.0, size=20
+            )
+        },
+    )
+    _patch_refresh_filesystem(monkeypatch, fs)
+    monkeypatch.setattr(refresh_module, "active_scans_store", _empty_active_scans_store)
+
+    async def status(_location: str) -> object:
+        raise ExceptionGroup("outer", [PermissionError("metadata denied")])
+
+    monkeypatch.setattr(FileRecorder, "status", staticmethod(status))
+    caplog.set_level(logging.WARNING, logger=refresh_module.__name__)
+    store = ScanIndexStore(tmp_path / "index.db")
+
+    try:
+        await refresh_module.refresh_index(store, "/s")
+    finally:
+        store.close()
+
+    assert "metadata denied" in caplog.text
+    assert "outer (1 sub-exception)" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_refresh_index_propagates_cancelled_status_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fs = _FakeAsyncFilesystem(
+        dirs=["/s/scan_id=cancelled/"],
+        infos={
+            "/s/scan_id=cancelled/_summary.json": _file(
+                "/s/scan_id=cancelled/_summary.json", mtime=2.0, size=20
+            )
+        },
+    )
+    _patch_refresh_filesystem(monkeypatch, fs)
+    monkeypatch.setattr(refresh_module, "active_scans_store", _empty_active_scans_store)
+
+    async def status(_location: str) -> object:
+        raise asyncio.CancelledError("stop refresh")
+
+    monkeypatch.setattr(FileRecorder, "status", staticmethod(status))
+    store = ScanIndexStore(tmp_path / "index.db")
+
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await refresh_module.refresh_index(store, "/s")
+    finally:
+        store.close()

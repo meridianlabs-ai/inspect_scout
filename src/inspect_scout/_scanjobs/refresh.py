@@ -6,6 +6,7 @@ whose directories vanished are deleted.
 """
 
 import asyncio
+import sys
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from logging import getLogger
@@ -13,12 +14,16 @@ from typing import Protocol
 
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import FileInfo
+from inspect_ai.util._anyio import inner_exception
 from upath import UPath
 
 from .._recorder.active_scans_store import active_scans_store
 from .._recorder.file import FileRecorder, _is_not_found
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
 
 logger = getLogger(__name__)
 
@@ -99,15 +104,25 @@ async def _listing_from_scan_dir(
         return None
     scan_id, normalized_scan_dir = parsed
 
-    async with semaphore:
-        summary_info = await _optional_info(
-            fs, _join_uri(normalized_scan_dir, _SUMMARY_FILE)
+    try:
+        async with semaphore:
+            summary_info = await _optional_info(
+                fs, _join_uri(normalized_scan_dir, _SUMMARY_FILE)
+            )
+            spec_info = (
+                None
+                if summary_info is not None
+                else await _optional_info(
+                    fs, _join_uri(normalized_scan_dir, _SPEC_FILE)
+                )
+            )
+    except Exception as exc:
+        logger.warning(
+            "Skipping scan %s: could not read metadata: %s",
+            scan_id,
+            exc,
         )
-        spec_info = (
-            None
-            if summary_info is not None
-            else await _optional_info(fs, _join_uri(normalized_scan_dir, _SPEC_FILE))
-        )
+        return None
 
     if summary_info is not None:
         token = _token(summary_info)
@@ -207,7 +222,9 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
 
     rows = []
     for listing, status in zip(delta.to_read, statuses, strict=True):
-        if isinstance(status, BaseException):
+        if isinstance(status, ExceptionGroup):
+            status = inner_exception(status)
+        if isinstance(status, Exception):
             # A single unreadable scan must not fail the whole listing. Missing
             # scans (deleted between listing and read) are skipped silently;
             # other errors — corrupt or version-incompatible status files,
@@ -222,6 +239,8 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
                     status,
                 )
             continue
+        if isinstance(status, BaseException):
+            raise status
         rows.append(
             (
                 scan_row_from_status(

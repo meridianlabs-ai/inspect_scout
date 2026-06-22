@@ -26,12 +26,18 @@ from inspect_ai.event import (
     timeline_filter,
     timeline_load,
 )
-from inspect_ai.event._timeline import (
-    Outline,
-    OutlineNode,
-    TimelineContentItem,
-    _timeline_content_discriminator,
-)
+try:
+    from inspect_ai.event._timeline import (
+        Outline,
+        OutlineNode,
+        TimelineContentItem,
+        _timeline_content_discriminator,
+    )
+except ImportError:
+    Outline = None  # type: ignore[assignment,misc]
+    OutlineNode = None  # type: ignore[assignment,misc]
+    TimelineContentItem = TimelineEvent | TimelineSpan  # type: ignore[assignment,misc]
+    _timeline_content_discriminator = None  # type: ignore[assignment,misc]
 from inspect_ai.model import ChatMessage, Model
 
 # Re-export everything that moved to inspect_ai.event

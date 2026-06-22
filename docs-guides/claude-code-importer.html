@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Importing Claude Code sessions · Scout field guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ground:   #0F1C1E;
+    --panel:    #15282B;
+    --panel-2:  #1A3034;
+    --line:     #2A4145;
+    --text:     #EAE4D7;
+    --muted:    #94A8A5;
+    --warm:     #E9A23B; /* Claude Code — raw, incoming */
+    --cool:     #74C4BC; /* Scout — structured, organized */
+
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --disp: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+
+    --maxw: 1080px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* faint grid atmosphere — kept very low intensity */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    opacity: 0.05;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+
+  a { color: var(--cool); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--cool) 35%, transparent); }
+  a:hover { border-bottom-color: var(--cool); }
+  :focus-visible { outline: 2px solid var(--warm); outline-offset: 3px; border-radius: 2px; }
+
+  code, .mono { font-family: var(--mono); font-feature-settings: "liga" 0; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .eyebrow .dot { color: var(--warm); }
+
+  /* ---------- header ---------- */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 0;
+    position: sticky;
+    top: 0;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    z-index: 5;
+  }
+  .top .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .brand { font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); }
+  .brand b { color: var(--warm); font-weight: 600; }
+  .top nav { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; color: var(--muted); display: flex; gap: 20px; }
+  .top nav a { border: none; color: var(--muted); }
+  .top nav a:hover { color: var(--text); }
+  @media (max-width: 720px) { .top nav { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 86px 0 64px; border-top: none; }
+  .hero h1 {
+    font-family: var(--disp);
+    font-weight: 700;
+    font-size: clamp(42px, 8vw, 92px);
+    line-height: 0.96;
+    letter-spacing: -0.015em;
+    margin: 22px 0 0;
+  }
+  .hero h1 .w { color: var(--warm); }
+  .hero h1 .c { color: var(--cool); }
+  .lede {
+    max-width: 60ch;
+    color: color-mix(in srgb, var(--text) 86%, var(--ground));
+    font-size: 19px;
+    margin: 26px 0 0;
+  }
+  .cmd {
+    display: inline-flex; align-items: center; gap: 12px;
+    margin-top: 30px;
+    font-family: var(--mono); font-size: 15px;
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 12px 18px; border-radius: 8px;
+  }
+  .cmd .p { color: var(--warm); }
+  .cmd .t { color: var(--text); }
+  .cmd .a { color: var(--muted); }
+
+  /* ---------- transform diagram ---------- */
+  .transform { margin-top: 54px; display: grid; gap: 0; }
+  .slab {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 20px 22px;
+    overflow-x: auto;
+  }
+  .slab .tag {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 9px; margin-bottom: 14px;
+  }
+  .slab .tag .swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .slab.src { border-left: 3px solid var(--warm); }
+  .slab.src .tag { color: var(--warm); }
+  .slab.src .tag .swatch { background: var(--warm); }
+  .slab.dst { border-left: 3px solid var(--cool); }
+  .slab.dst .tag { color: var(--cool); }
+  .slab.dst .tag .swatch { background: var(--cool); }
+
+  pre.jsonl, pre.struct { margin: 0; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; white-space: pre; }
+  .jsonl .k { color: var(--cool); }
+  .jsonl .s { color: color-mix(in srgb, var(--warm) 78%, var(--text)); }
+  .jsonl .n { color: #C7B6E6; }
+  .jsonl .b { color: var(--muted); }
+  .jsonl .field { transition: background-color .5s ease, color .5s ease; border-radius: 3px; }
+  .jsonl .field.lit { background: color-mix(in srgb, var(--warm) 22%, transparent); }
+
+  .struct .row { display: flex; gap: 14px; padding: 3px 0; }
+  .struct .fname { color: var(--cool); min-width: 168px; display: inline-block; }
+  .struct .fval { color: var(--text); }
+  .struct .fval .muted { color: var(--muted); }
+  .struct .row.lit .fname { color: var(--warm); }
+
+  .pipe {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 14px 0; color: var(--muted);
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .pipe .bar { height: 22px; width: 1px; background: var(--line); }
+  .pipe .arrow { color: var(--warm); font-size: 16px; }
+
+  /* ---------- generic section ---------- */
+  section { padding: 64px 0; border-top: 1px solid var(--line); }
+  .sec-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 8px; }
+  section h2 {
+    font-family: var(--disp); font-weight: 700; font-size: clamp(28px, 4.5vw, 44px);
+    letter-spacing: -0.01em; margin: 0; line-height: 1.04;
+  }
+  .sec-intro { max-width: 68ch; color: color-mix(in srgb, var(--text) 84%, var(--ground)); margin: 14px 0 0; }
+
+  /* two worlds orientation strip */
+  .worlds { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: stretch; margin-top: 18px; }
+  .world { padding: 26px; border: 1px solid var(--line); }
+  .world.src { border-left: 3px solid var(--warm); border-radius: 12px 0 0 12px; }
+  .world.dst { border-right: 3px solid var(--cool); border-radius: 0 12px 12px 0; border-left: none; }
+  .world h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 14px; }
+  .world.src h3 { color: var(--warm); }
+  .world.dst h3 { color: var(--cool); }
+  .world p { margin: 0 0 10px; font-size: 15px; color: color-mix(in srgb, var(--text) 88%, var(--ground)); }
+  .world .path { font-family: var(--mono); font-size: 13px; color: var(--muted); word-break: break-all; }
+  .world ul { margin: 12px 0 0; padding-left: 0; list-style: none; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .world ul li { padding: 3px 0 3px 16px; position: relative; }
+  .world ul li::before { content: "·"; position: absolute; left: 2px; }
+  .crossing { display: flex; align-items: center; justify-content: center; padding: 0 18px; color: var(--warm); font-family: var(--mono); font-size: 13px; }
+  @media (max-width: 760px) {
+    .worlds { grid-template-columns: 1fr; }
+    .world.src { border-radius: 12px 12px 0 0; border-left: 3px solid var(--warm); }
+    .world.dst { border-radius: 0 0 12px 12px; border-right: 1px solid var(--line); border-left: 3px solid var(--cool); border-top: none; }
+    .crossing { padding: 12px 0; transform: rotate(90deg); }
+  }
+
+  /* ---------- pipeline stages ---------- */
+  .stage { display: grid; grid-template-columns: 92px 1fr; gap: 28px; padding: 40px 0; border-top: 1px dashed var(--line); }
+  .stage:first-of-type { border-top: none; }
+  .stage .num { font-family: var(--disp); font-weight: 700; font-size: 52px; line-height: 1; color: var(--warm); opacity: 0.92; }
+  .stage .sub { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .stage h3 { font-family: var(--disp); font-weight: 700; font-size: 27px; margin: 0 0 4px; letter-spacing: -0.005em; }
+  .stage .body p { margin: 0 0 14px; }
+  .stage .body p:last-child { margin-bottom: 0; }
+  .ref { font-family: var(--mono); font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+  .stage code { background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 1px 6px; border-radius: 4px; font-size: 14px; color: var(--cool); }
+  .refline { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 640px) {
+    .stage { grid-template-columns: 1fr; gap: 8px; }
+    .stage .num { font-size: 40px; }
+  }
+
+  /* code block (neutral) */
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.6; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 16px 0 0; color: color-mix(in srgb, var(--text) 92%, var(--ground)); }
+  pre.code .cm { color: var(--muted); }
+  pre.code .fn { color: var(--cool); }
+  pre.code .kw { color: var(--warm); }
+
+  /* mapping table */
+  .maptable { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 14.5px; }
+  .maptable th { text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); padding: 0 14px 12px; border-bottom: 1px solid var(--line); font-weight: 500; }
+  .maptable td { padding: 13px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .maptable td.from { font-family: var(--mono); font-size: 13px; color: var(--warm); white-space: nowrap; }
+  .maptable td.to { font-family: var(--mono); font-size: 13px; color: var(--cool); white-space: nowrap; }
+  .maptable td.how { color: color-mix(in srgb, var(--text) 86%, var(--ground)); }
+  .maptable tr:hover td { background: color-mix(in srgb, var(--panel) 55%, transparent); }
+  .scroller { overflow-x: auto; }
+  @media (max-width: 680px) { .maptable td.from, .maptable td.to { white-space: normal; } }
+
+  /* tricks gallery */
+  .tricks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
+  @media (max-width: 720px) { .tricks { grid-template-columns: 1fr; } }
+  .trick { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+  .trick .idx { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; color: var(--warm); }
+  .trick h4 { font-family: var(--disp); font-weight: 700; font-size: 21px; margin: 0; letter-spacing: -0.005em; }
+  .trick p { margin: 0; font-size: 14.5px; color: color-mix(in srgb, var(--text) 86%, var(--ground)); }
+  .trick .ex { font-family: var(--mono); font-size: 12.5px; color: var(--muted); background: var(--panel-2); border-radius: 6px; padding: 10px 12px; line-height: 1.5; }
+  .trick .ex .ar { color: var(--warm); }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding: 56px 0 80px; }
+  footer h2 { font-family: var(--disp); font-weight: 700; font-size: 26px; margin: 0 0 18px; }
+  .files { display: grid; gap: 2px; font-family: var(--mono); font-size: 13.5px; }
+  .files .f { display: flex; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .files .f .path { color: var(--cool); }
+  .files .f .role { color: var(--muted); font-family: var(--body); font-size: 14px; }
+  .endnote { margin-top: 30px; color: var(--muted); font-size: 14px; max-width: 70ch; }
+  .endnote .p { font-family: var(--mono); color: var(--warm); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand"><b>scout</b> · import field guide</span>
+    <nav>
+      <a href="#pipeline">pipeline</a>
+      <a href="#mapping">mapping</a>
+      <a href="#tricks">tricks</a>
+      <a href="#source">source</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="title">
+  <div class="wrap">
+    <p class="eyebrow"><span class="dot">●</span>&nbsp; reading your Claude Code sessions into Scout</p>
+    <h1 id="title">A flat <span class="w">.jsonl</span> log<br />becomes a structured <span class="c">Transcript</span>.</h1>
+    <p class="lede">
+      Every Claude Code session you run leaves an append-only log on disk. <code style="font-family:var(--mono);font-size:15px;color:var(--cool)">scout import claude_code</code>
+      finds those logs, reconstructs the conversation that produced them, and rewrites it in the shape Scout
+      scans and analyzes. This guide walks the whole crossing — what's read, how it maps, and the quiet tricks
+      that make two very different data models line up.
+    </p>
+
+    <div class="cmd" role="img" aria-label="Terminal command: scout import claude_code">
+      <span class="p">$</span><span class="t">scout import claude_code</span><span class="a">--limit 10</span>
+    </div>
+
+    <!-- transform diagram (the one orchestrated motion moment) -->
+    <div class="transform" id="transform">
+      <div class="slab src">
+        <div class="tag"><span class="swatch"></span> one line of <code style="color:inherit">~/.claude/projects/&hellip;/session.jsonl</code></div>
+        <pre class="jsonl" aria-hidden="true"><span class="b">{</span><span class="field" data-f="uuid"><span class="k">"uuid"</span>:<span class="s">"tool-002"</span></span>, <span class="field" data-f="parent"><span class="k">"parentUuid"</span>:<span class="s">"tool-001"</span></span>, <span class="field" data-f="type"><span class="k">"type"</span>:<span class="s">"assistant"</span></span>, <span class="field" data-f="sid"><span class="k">"sessionId"</span>:<span class="s">"test-session-002"</span></span>, <span class="field" data-f="slug"><span class="k">"slug"</span>:<span class="s">"tool-call-slug"</span></span>,
+ <span class="k">"message"</span>:<span class="b">{</span><span class="field" data-f="model"><span class="k">"model"</span>:<span class="s">"claude-opus-4-5"</span></span>, <span class="k">"content"</span>:[
+   <span class="field" data-f="think"><span class="b">{</span><span class="k">"type"</span>:<span class="s">"thinking"</span>,<span class="k">"thinking"</span>:<span class="s">"&hellip;use the Read tool"</span><span class="b">}</span></span>,
+   <span class="field" data-f="text"><span class="b">{</span><span class="k">"type"</span>:<span class="s">"text"</span>,<span class="k">"text"</span>:<span class="s">"I'll read the README."</span><span class="b">}</span></span>,
+   <span class="field" data-f="tool"><span class="b">{</span><span class="k">"type"</span>:<span class="s">"tool_use"</span>,<span class="k">"name"</span>:<span class="s">"Read"</span>,<span class="k">"input"</span>:<span class="b">{</span>&hellip;<span class="b">}}</span></span>],
+   <span class="field" data-f="usage"><span class="k">"usage"</span>:<span class="b">{</span><span class="k">"input_tokens"</span>:<span class="n">200</span>,<span class="k">"output_tokens"</span>:<span class="n">50</span><span class="b">}</span></span><span class="b">}</span>,
+ <span class="field" data-f="ts"><span class="k">"timestamp"</span>:<span class="s">"2026-01-31T11:00:01Z"</span></span><span class="b">}</span></pre>
+      </div>
+
+      <div class="pipe" aria-hidden="true">
+        <span class="bar"></span><span class="arrow">▼</span><span>parse · tree · convert</span><span class="arrow">▼</span><span class="bar"></span>
+      </div>
+
+      <div class="slab dst">
+        <div class="tag"><span class="swatch"></span> Scout <code style="color:inherit">Transcript</code></div>
+        <div class="struct" aria-hidden="true">
+          <div class="row" data-f="sid"><span class="fname">source_id</span><span class="fval">"test-session-002"</span></div>
+          <div class="row" data-f="slug"><span class="fname">task_id</span><span class="fval">"tool-call-slug" <span class="muted">— the slug</span></span></div>
+          <div class="row" data-f="model"><span class="fname">model</span><span class="fval">"claude-opus-4-5"</span></div>
+          <div class="row" data-f="ts"><span class="fname">date</span><span class="fval">"2026-01-31T11:00:01Z"</span></div>
+          <div class="row" data-f="usage"><span class="fname">total_tokens</span><span class="fval">250 <span class="muted">— summed across events</span></span></div>
+          <div class="row" data-f="tool"><span class="fname">events</span><span class="fval">[ ModelEvent, ToolEvent(Read), &hellip; ]</span></div>
+          <div class="row" data-f="text"><span class="fname">messages</span><span class="fval">[ ChatMessageAssistant{ text, reasoning, tool_calls } ]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- two worlds -->
+<section aria-labelledby="worlds-h">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">the two sides</span></div>
+    <h2 id="worlds-h">Two formats that were never meant to meet.</h2>
+    <p class="sec-intro">Claude Code writes a forensic, append-only stream — one JSON object per line, in the order things happened, with no notion of a finished conversation. Scout wants the opposite: a closed, queryable record with messages, a typed event timeline, and roll-up stats. The importer is the bridge between them.</p>
+
+    <div class="worlds">
+      <div class="world src">
+        <h3>Claude Code · on disk</h3>
+        <p class="path">~/.claude/projects/<br />&nbsp;&nbsp;-Users-you-dev-project/<br />&nbsp;&nbsp;&nbsp;&nbsp;9f3c&hellip;.jsonl</p>
+        <p>An append-only JSONL log. Each line is one event, linked to its predecessor by <code style="font-family:var(--mono);color:var(--warm)">parentUuid</code>.</p>
+        <ul>
+          <li>user / assistant / system events</li>
+          <li>content blocks: text · thinking · tool_use</li>
+          <li>sidechains for subagents</li>
+          <li>slugs, /clear markers, compaction</li>
+        </ul>
+      </div>
+      <div class="crossing" aria-hidden="true">→ import →</div>
+      <div class="world dst">
+        <h3>Scout · Transcript</h3>
+        <p>A single Pydantic <code style="font-family:var(--mono);color:var(--cool)">Transcript</code> with everything resolved up front.</p>
+        <ul>
+          <li>messages: list[ChatMessage]</li>
+          <li>events: typed timeline (Model / Tool / Span)</li>
+          <li>model · date · total_tokens · total_time</li>
+          <li>source_id · source_uri · task_set · metadata</li>
+        </ul>
+        <p style="margin-top:14px;color:var(--muted);font-size:13px;font-family:var(--mono)">scan-ready, deterministic, self-contained</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- pipeline -->
+<section id="pipeline" aria-labelledby="pipeline-h">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">the crossing, step by step</span></div>
+    <h2 id="pipeline-h">Six stages from log line to Transcript.</h2>
+    <p class="sec-intro">The pipeline reads top-to-bottom but isn't a straight pass: it has to rebuild structure the log threw away, then split and merge sessions before any conversion happens.</p>
+
+    <div class="stage">
+      <div><div class="num">01</div><div class="sub">discover</div></div>
+      <div class="body">
+        <h3>Find the session files</h3>
+        <p>With no path given, the importer scans <code>~/.claude/projects/</code> for every project directory, collects the <code>*.jsonl</code> files (skipping the <code>agent-*.jsonl</code> subagent logs), and sorts them newest-first by modification time so <code>--limit</code> can stop early. <code>--from</code> / <code>--to</code> filter by mtime; <code>session_id</code> filters by filename stem.</p>
+        <p>The directory name is itself encoded data — see the path-decoding trick below.</p>
+        <div class="refline"><span class="ref">sources/_claude_code/client.py · discover_session_files</span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><div class="num">02</div><div class="sub">parse + consolidate</div></div>
+      <div class="body">
+        <h3>Read JSONL into typed events</h3>
+        <p>Each line is loaded as a dict, then validated into Pydantic models — <code>UserEvent</code>, <code>AssistantEvent</code>, <code>SystemEvent</code> — by <code>parse_events()</code>. Then <code>consolidate_assistant_events()</code> merges fragments: Claude Code may emit one assistant turn as several lines (a thinking block, then text, then a tool call), all sharing the same <code>message.id</code>. They're folded back into a single assistant event with combined content.</p>
+        <div class="refline"><span class="ref">inspect_swe · parse_events · consolidate_assistant_events</span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><div class="num">03</div><div class="sub">rebuild structure</div></div>
+      <div class="body">
+        <h3>Reassemble the conversation tree</h3>
+        <p>The log is flat, but every event carries a <code>parentUuid</code>. <code>build_event_tree()</code> uses those links to reconstruct the branching tree of the session, then <code>flatten_tree_chronological()</code> walks it back into a single ordered sequence — preserving structure while restoring clean chronological order.</p>
+        <div class="refline"><span class="ref">sources/_claude_code/transcripts.py</span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><div class="num">04</div><div class="sub">split + merge</div></div>
+      <div class="body">
+        <h3>Decide the transcript boundaries</h3>
+        <p>One file isn't always one transcript, and one transcript isn't always one file. <code>split_on_clear()</code> cuts the event stream at each <code>/clear</code> command — a fresh context deserves its own transcript, so a single file can yield several. In the other direction, plan-mode and execution write <em>separate</em> files that share a <code>slug</code>; those are grouped and later merged into one transcript. (Both are detailed under Tricks.)</p>
+        <div class="refline"><span class="ref">transcripts.py · split_on_clear · _merge_transcripts</span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><div class="num">05</div><div class="sub">convert</div></div>
+      <div class="body">
+        <h3>Translate into Scout events</h3>
+        <p><code>process_parsed_events()</code> is an async generator that turns each parsed event into a Scout <code>Event</code>: an assistant turn becomes a <code>ModelEvent</code> (its <code>text</code> → <code>ContentText</code>, <code>thinking</code> → <code>ContentReasoning</code>, <code>tool_use</code> → tool calls); a tool result becomes a <code>ToolEvent</code>; compaction becomes a <code>CompactionEvent</code>.</p>
+        <p>Scout's version supplies a file-based <em>agent loader</em>: when it hits a <code>Task</code> tool call, it pulls the subagent's own <code>agent-*.jsonl</code> log and splices that whole sub-conversation in as a nested span — recursively, up to <code>max_depth</code>.</p>
+        <div class="refline"><span class="ref">sources/_claude_code/events.py · _load_agent_events</span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><div class="num">06</div><div class="sub">assemble</div></div>
+      <div class="body">
+        <h3>Build the Transcript</h3>
+        <p>From the Scout events, <code>timeline_build()</code> + <code>span_messages(compaction="all")</code> extract the flat message list (subagent messages stay nested, not duplicated). Stable, deterministic IDs are stamped on with <code>stable_message_ids()</code>. Then the roll-ups: model name, summed tokens, and <code>total_time</code> computed as wall-clock minus idle gaps. The finished <code>Transcript</code> is handed to the database.</p>
+        <div class="refline"><span class="ref">transcripts.py · _create_transcript</span><span class="ref">_transcript/types.py · Transcript</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- mapping table -->
+<section id="mapping" aria-labelledby="mapping-h">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">field by field</span></div>
+    <h2 id="mapping-h">Where each value lands.</h2>
+    <p class="sec-intro">The headline mappings between a Claude Code session and the resulting Scout <code>Transcript</code>. Warm is what's read; cool is where it ends up.</p>
+
+    <div class="scroller">
+    <table class="maptable">
+      <thead>
+        <tr><th>From Claude Code</th><th>Scout field</th><th>How it's derived</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="from">sessionId</td><td class="to">source_id</td><td class="how">The base session UUID, recovered with <code>get_session_id()</code>.</td></tr>
+        <tr><td class="from">slug · else sessionId</td><td class="to">task_id</td><td class="how">The plan/execution slug when present; otherwise it falls back to the session UUID.</td></tr>
+        <tr><td class="from">project directory name</td><td class="to">task_set</td><td class="how"><code>decode_project_path()</code> turns <code>-Users-you-dev-x</code> back into <code>/Users/you/dev/x</code>.</td></tr>
+        <tr><td class="from">session file path</td><td class="to">source_uri</td><td class="how"><code>file://&lt;path&gt;#&lt;transcript_id&gt;</code> — points back to the exact line range.</td></tr>
+        <tr><td class="from">first event timestamp</td><td class="to">date</td><td class="how"><code>get_first_timestamp(events)</code>, ISO 8601.</td></tr>
+        <tr><td class="from">message.model</td><td class="to">model</td><td class="how">The primary assistant model, via <code>extract_model_name()</code>.</td></tr>
+        <tr><td class="from">usage.*_tokens (all events)</td><td class="to">total_tokens</td><td class="how">Summed across every ModelEvent, including nested subagents.</td></tr>
+        <tr><td class="from">timeline span</td><td class="to">total_time</td><td class="how"><code>end_time − start_time − idle_time</code> from the built timeline.</td></tr>
+        <tr><td class="from">assistant/user turns</td><td class="to">messages</td><td class="how">Extracted by <code>span_messages()</code>; count becomes <code>message_count</code>.</td></tr>
+        <tr><td class="from">slug · session_ids</td><td class="to">metadata</td><td class="how">Source-specific extras; merged sessions list every UUID they came from.</td></tr>
+        <tr><td class="from">— (constant)</td><td class="to">source_type · agent</td><td class="how">Always <code>"claude_code"</code> and <code>"claude-code"</code> respectively.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- tricks -->
+<section id="tricks" aria-labelledby="tricks-h">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">the parts that bite</span></div>
+    <h2 id="tricks-h">Surprises &amp; tricks.</h2>
+    <p class="sec-intro">The straight-line mapping above hides the real work. These are the places where the two formats genuinely disagree, and what the importer does about it.</p>
+
+    <div class="tricks">
+      <div class="trick">
+        <span class="idx">T1</span>
+        <h4>The lossy directory name</h4>
+        <p>Project paths are encoded by replacing every <code style="font-family:var(--mono);color:var(--warm)">/</code> with <code style="font-family:var(--mono);color:var(--warm)">-</code> — which is ambiguous the moment a real directory contains a hyphen. The decoder does a filesystem-validated DFS, trying each hyphen as a separator <em>or</em> a literal character, and returns the first interpretation that actually exists on disk.</p>
+        <div class="ex">-Users-my-project-foo<span class="ar"> →</span><br />/Users/my-project/foo &nbsp;<span style="color:var(--cool)">(if it exists)</span><br />/Users/my/project-foo &nbsp;<span style="color:var(--cool)">(otherwise)</span></div>
+      </div>
+
+      <div class="trick">
+        <span class="idx">T2</span>
+        <h4>One turn, many lines</h4>
+        <p>A single assistant turn can be written as several JSONL lines that share a <code style="font-family:var(--mono);color:var(--warm)">message.id</code>. Left alone they'd become several events. <code>consolidate_assistant_events()</code> merges them by id into one turn; lines without an id pass through untouched.</p>
+        <div class="ex">thinking line<span class="ar"> +</span> text line<span class="ar"> +</span> tool_use line<br /><span class="ar">→</span> one AssistantEvent</div>
+      </div>
+
+      <div class="trick">
+        <span class="idx">T3</span>
+        <h4>Plan and execute, rejoined</h4>
+        <p>Plan mode and the execution that follows are written as two files with different <code style="font-family:var(--mono);color:var(--warm)">sessionId</code>s but a shared <code>slug</code>. The importer groups by slug and merges them into one transcript — even backfilling a partner file that a time filter would otherwise have hidden — inserting an <code>InfoEvent</code> boundary between phases and recording both UUIDs in <code>metadata.session_ids</code>.</p>
+        <div class="ex">slug "x" · session-aaa &nbsp;<span class="ar">⟶</span><br />slug "x" · session-bbb &nbsp;<span class="ar">⟶</span> one Transcript</div>
+      </div>
+
+      <div class="trick">
+        <span class="idx">T4</span>
+        <h4>/clear cuts the tape</h4>
+        <p>A <code>/clear</code> resets the context mid-file. The importer treats each side as its own transcript, splitting the stream on those boundaries and dropping the <code>/clear</code> marker itself. Multi-segment files get suffixed ids like <code style="font-family:var(--mono);color:var(--cool)">&lt;session&gt;-0</code>, <code style="font-family:var(--mono);color:var(--cool)">&lt;session&gt;-1</code>.</p>
+        <div class="ex">[ msgs ] <span class="ar">/clear</span> [ msgs ]<br /><span class="ar">→</span> transcript-0 &nbsp;+&nbsp; transcript-1</div>
+      </div>
+
+      <div class="trick">
+        <span class="idx">T5</span>
+        <h4>Subagents arrive out of order</h4>
+        <p>A <code>Task</code> spawns a subagent whose events live in a separate sidechain log and may stream in <em>before</em> the parent tool call is seen. They're buffered by <code>sessionId</code> and matched FIFO to Task calls; the matching <code>agentId</code> is dug out of the tool result by JSON-parse first, then regex fallback. Team agents — human-readable ids over hashed filenames — are matched by comparing the spawn prompt text against each candidate log.</p>
+        <div class="ex">tool_result <span class="ar">→</span> {"agentId":"&hellip;"}<br /><span style="color:var(--cool)">load agent-*.jsonl · nest as span</span></div>
+      </div>
+
+      <div class="trick">
+        <span class="idx">T6</span>
+        <h4>Compaction is kept, not erased</h4>
+        <p>When Claude Code compacts history, that system event becomes a <code>CompactionEvent</code> carrying the trigger (<code>auto</code>/<code>manual</code>) and pre/post token counts. The conversation is still stitched back together — <code>span_messages(compaction="all")</code> reads across the boundary — but the boundary stays in the event timeline for analysis.</p>
+        <div class="ex">system · compact_boundary<br /><span class="ar">→</span> CompactionEvent{ preTokens, postTokens }</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- source map / footer -->
+<footer id="source" aria-labelledby="source-h">
+  <div class="wrap">
+    <span class="eyebrow">read the code</span>
+    <h2 id="source-h" style="margin-top:8px;">Where this lives in the tree.</h2>
+    <div class="files">
+      <div class="f"><span class="path">_cli/import_command.py</span><span class="role">the <code style="font-family:var(--mono);color:var(--warm)">scout import</code> command, source discovery, dry-run, filters</span></div>
+      <div class="f"><span class="path">sources/__init__.py</span><span class="role">registers <code style="font-family:var(--mono);color:var(--warm)">claude_code</code> as an importable source</span></div>
+      <div class="f"><span class="path">sources/_claude_code/client.py</span><span class="role">file discovery + the lossy path-decode DFS</span></div>
+      <div class="f"><span class="path">sources/_claude_code/transcripts.py</span><span class="role">the orchestration: tree, split, slug-merge, assemble</span></div>
+      <div class="f"><span class="path">sources/_claude_code/events.py</span><span class="role">event conversion + the file-based subagent loader</span></div>
+      <div class="f"><span class="path">_transcript/types.py</span><span class="role">the <code style="font-family:var(--mono);color:var(--cool)">Transcript</code> model you end up with</span></div>
+    </div>
+    <p class="endnote">
+      Heavy lifting on the parsing side — <span class="p">parse_events</span>, <span class="p">consolidate_assistant_events</span>,
+      <span class="p">process_parsed_events</span> — comes from the <span class="p">inspect_swe</span> package; Scout layers the
+      file-based agent loader and the transcript assembly on top. Once imported, open the result with
+      <span class="p">scout view</span> and scan it like any other transcript.
+    </p>
+  </div>
+</footer>
+</main>
+
+<script>
+  // The one orchestrated motion moment: walk the raw JSONL fields, lighting each
+  // one and its destination row, so the eye learns the mapping once.
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var order = ["uuid", "type", "sid", "slug", "model", "ts", "usage", "tool", "text"];
+    var fields = document.querySelectorAll("#transform .jsonl .field");
+    var rows = document.querySelectorAll("#transform .struct .row");
+
+    function rowFor(key) {
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].getAttribute("data-f") === key) return rows[i];
+      }
+      return null;
+    }
+    function fieldFor(key) {
+      for (var i = 0; i < fields.length; i++) {
+        if (fields[i].getAttribute("data-f") === key) return fields[i];
+      }
+      return null;
+    }
+
+    if (reduce) return; // static is the accessible default
+
+    var started = false;
+    function run() {
+      if (started) return;
+      started = true;
+      var i = 0;
+      (function step() {
+        if (i >= order.length) return;
+        var key = order[i];
+        var f = fieldFor(key);
+        var r = rowFor(key);
+        if (f) { f.classList.add("lit"); setTimeout(function () { f.classList.remove("lit"); }, 720); }
+        if (r) { r.classList.add("lit"); setTimeout(function () { r.classList.remove("lit"); }, 720); }
+        i++;
+        setTimeout(step, 360);
+      })();
+    }
+
+    var hero = document.getElementById("transform");
+    if ("IntersectionObserver" in window && hero) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { setTimeout(run, 500); io.disconnect(); } });
+      }, { threshold: 0.4 });
+      io.observe(hero);
+    } else {
+      setTimeout(run, 700);
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 ## Unreleased
 
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
+- Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.
+- Scout View: Fix event panel nav pills never expanding back from picker mode 
+- Scout View: Cap oversized tool/text output to prevent resize layerization stalls
+- Scout View: Fix broken commit links for ssh-style GitHub origins
+- Scout View: Improve MathJax Sanitization
 - Bugfix: Per-key validation metrics for dict/multi-label targets now bucket each key against its own target value. Previously the whole-dict positivity (always positive for a non-empty dict) was applied to every key, so a key whose target was `False`/negative was scored TP/FN instead of TN/FP, inflating per-key precision and specificity.
 
 ## 0.4.41 (12 June 2026)

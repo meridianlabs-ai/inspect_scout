@@ -274,8 +274,8 @@ def test_predicate_serialization() -> None:
     assert restored.predicate == "gt"
 
 
-def test_custom_predicate_serialization() -> None:
-    """Test that custom predicates serialize via dill."""
+def test_custom_predicate_model_dump_does_not_encode_executable_state() -> None:
+    """Runtime predicates are not converted to executable artifact strings."""
 
     async def custom(result: Result, target: object) -> bool:
         return result.value == target
@@ -284,14 +284,8 @@ def test_custom_predicate_serialization() -> None:
         cases=[ValidationCase(id="test1", target=10)], predicate=custom
     )
 
-    # Serialize to dict
     data = validation.model_dump()
-    assert isinstance(data["predicate"], str)
-    assert data["predicate"] != "eq"  # Should be base64-encoded dill
-
-    # Deserialize from dict
-    restored = ValidationSet.model_validate(data)
-    assert callable(restored.predicate)
+    assert data["predicate"] is custom
 
 
 def test_predicate_serialization_with_dict_target() -> None:

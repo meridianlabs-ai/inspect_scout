@@ -840,15 +840,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dill"
-version = "0.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa", size = 187315, upload-time = "2026-01-19T02:36:56.85Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
-]
-
-[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1544,7 +1535,6 @@ dependencies = [
     { name = "anyio" },
     { name = "click" },
     { name = "cloudpickle" },
-    { name = "dill" },
     { name = "duckdb" },
     { name = "fastapi" },
     { name = "ijson" },
@@ -1657,7 +1647,6 @@ requires-dist = [
     { name = "build", marker = "extra == 'dist'" },
     { name = "click", specifier = ">=8.1.3,!=8.2.0,<8.2.2" },
     { name = "cloudpickle", specifier = ">=3.0.0" },
-    { name = "dill", specifier = ">=0.4.0" },
     { name = "duckdb", specifier = ">=1.4.0" },
     { name = "fastapi", specifier = ">=0.128.1" },
     { name = "google-genai", marker = "extra == 'dev'", specifier = ">=1.69.0" },

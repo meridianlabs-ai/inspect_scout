@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Security: Stop storing custom validation predicates as executable dill payloads; registered predicates remain resumable and anonymous predicates require an explicit override.
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
 - Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.
 - Scout View: Fix event panel nav pills never expanding back from picker mode 

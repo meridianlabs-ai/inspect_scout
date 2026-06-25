@@ -462,7 +462,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Output"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -6230,7 +6230,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Input"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -6516,7 +6516,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Output"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -6623,6 +6623,57 @@
           "id"
         ],
         "title": "Reference",
+        "type": "object"
+      },
+      "RegisteredPredicateSpec": {
+        "description": "Portable reference to a registered custom predicate.",
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Args",
+            "type": "object"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "kind": {
+            "const": "registered",
+            "default": "registered",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "package_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Version"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "args"
+        ],
+        "title": "RegisteredPredicateSpec",
         "type": "object"
       },
       "RenameValidationSetRequest": {
@@ -7557,7 +7608,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Input"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -8050,7 +8101,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/ValidationSet-Output"
+                  "$ref": "#/components/schemas/ValidationSetSpec"
                 },
                 "type": "object"
               },
@@ -11336,6 +11387,42 @@
         "title": "TurnInterval",
         "type": "object"
       },
+      "UnavailablePredicateSpec": {
+        "description": "Inert marker for a custom predicate unavailable during resume.",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "kind": {
+            "const": "unavailable",
+            "default": "unavailable",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "anonymous",
+              "legacy"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "UnavailablePredicateSpec",
+        "type": "object"
+      },
       "UrlCitation": {
         "description": "A citation that refers to a URL.",
         "properties": {
@@ -11831,7 +11918,7 @@
         "title": "ValidationResults",
         "type": "object"
       },
-      "ValidationSet-Input": {
+      "ValidationSet": {
         "description": "Validation set for a scanner.",
         "properties": {
           "cases": {
@@ -11890,8 +11977,8 @@
         "title": "ValidationSet",
         "type": "object"
       },
-      "ValidationSet-Output": {
-        "description": "Validation set for a scanner.",
+      "ValidationSetSpec": {
+        "description": "Data-only validation set stored in portable scan specifications.",
         "properties": {
           "cases": {
             "items": {
@@ -11903,12 +11990,32 @@
           "predicate": {
             "anyOf": [
               {
+                "enum": [
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "eq",
+                  "ne",
+                  "contains",
+                  "startswith",
+                  "endswith",
+                  "icontains",
+                  "iequals"
+                ],
                 "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/RegisteredPredicateSpec"
+              },
+              {
+                "$ref": "#/components/schemas/UnavailablePredicateSpec"
               },
               {
                 "type": "null"
               }
             ],
+            "default": "eq",
             "title": "Predicate"
           },
           "split": {
@@ -11932,7 +12039,7 @@
         "required": [
           "cases"
         ],
-        "title": "ValidationSet",
+        "title": "ValidationSetSpec",
         "type": "object"
       },
       "Worklist": {

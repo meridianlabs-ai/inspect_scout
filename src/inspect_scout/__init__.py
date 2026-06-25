@@ -93,6 +93,7 @@ from ._validation import (
     ValidationCase,
     ValidationPredicate,
     ValidationSet,
+    validation_predicate,
     validation_set,
 )
 
@@ -198,6 +199,7 @@ __all__ = [
     "ValidationPredicate",
     "PredicateType",
     "PredicateFn",
+    "validation_predicate",
     "validation_set",
     # version
     "__version__",

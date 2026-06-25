@@ -166,6 +166,75 @@ SiEXpECj7U9nNAvM3H7JqB,10,
 validation_set(cases="validation.csv", predicate="gte")
 ```
 
+### Custom Predicates
+
+Use `@validation_predicate` when a custom predicate must be recorded and
+recreated for scan resume:
+
+``` python
+from pydantic import JsonValue
+
+from inspect_scout import (
+    Result,
+    ValidationPredicate,
+    validation_predicate,
+    validation_set,
+)
+
+
+@validation_predicate
+def within_range(distance: float = 10) -> ValidationPredicate:
+    async def check(result: Result, target: JsonValue) -> bool:
+        if not isinstance(result.value, (int, float)):
+            return False
+        if not isinstance(target, (int, float)):
+            return False
+        return abs(result.value - target) <= distance
+
+    return check
+
+
+validation = validation_set(
+    "validation.csv",
+    predicate=within_range(distance=5),
+)
+```
+
+Scout records the registered predicate's name and arguments, not its Python
+implementation. The predicate's module or package must be available when the
+scan is resumed.
+
+An unregistered async callable can still be used for the current scan:
+
+``` python
+async def normalized_equal(result: Result, target: JsonValue) -> bool:
+    return str(result.value).strip().lower() == str(target).strip().lower()
+
+
+validation = validation_set(
+    "validation.csv",
+    predicate=normalized_equal,
+)
+```
+
+Unregistered callables are not stored in the portable scan specification.
+Resume from Python by supplying the trusted callable again:
+
+``` python
+from inspect_scout import scan_resume
+
+scan_resume(
+    scan_location,
+    predicate_overrides={
+        "my_scanner": normalized_equal,
+    },
+)
+```
+
+Completed scans remain viewable without loading predicate code. A scan with an
+unregistered or legacy custom predicate cannot be resumed by location alone,
+and Scout never substitutes a missing predicate with equality.
+
 ## Advanced
 
 ### Non-Transcript IDs

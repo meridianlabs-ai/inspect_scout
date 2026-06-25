@@ -43,6 +43,7 @@ from inspect_scout._transcript.local_files_cache import (
 )
 from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._util.refusal import RefusalError
+from inspect_scout._validation.predicates import PredicateFn
 from inspect_scout._validation.types import ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
@@ -337,6 +338,7 @@ def scan_resume(
     display: DisplayType | None = None,
     log_level: str | None = None,
     fail_on_error: bool = False,
+    predicate_overrides: Mapping[str, PredicateFn] | None = None,
 ) -> Status:
     """Resume a previous scan.
 
@@ -346,6 +348,8 @@ def scan_resume(
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
+       predicate_overrides: Trusted custom validation predicates keyed by scanner
+            name. Required when the portable scan spec cannot recreate a predicate.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -353,13 +357,19 @@ def scan_resume(
     top_level_sync_init(display)
     return run_coroutine(
         scan_resume_async(
-            scan_location, log_level=log_level, fail_on_error=fail_on_error
+            scan_location,
+            log_level=log_level,
+            fail_on_error=fail_on_error,
+            predicate_overrides=predicate_overrides,
         )
     )
 
 
 async def scan_resume_async(
-    scan_location: str, log_level: str | None = None, fail_on_error: bool = False
+    scan_location: str,
+    log_level: str | None = None,
+    fail_on_error: bool = False,
+    predicate_overrides: Mapping[str, PredicateFn] | None = None,
 ) -> Status:
     """Resume a previous scan.
 
@@ -368,6 +378,8 @@ async def scan_resume_async(
        log_level: Level for logging to the console: "debug", "http", "sandbox",
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
        fail_on_error: Re-raise exceptions instead of capturing them in results.
+       predicate_overrides: Trusted custom validation predicates keyed by scanner
+            name. Required when the portable scan spec cannot recreate a predicate.
 
     Returns:
        ScanStatus: Status of scan (spec, completion, summary, errors, etc.)
@@ -375,7 +387,7 @@ async def scan_resume_async(
     top_level_async_init(log_level or read_project().log_level)
 
     # resume job
-    scan = await resume_scan(scan_location)
+    scan = await resume_scan(scan_location, predicate_overrides)
 
     # can't resume a job with non-deterministic shuffling
     if scan.spec.options.shuffle is True:

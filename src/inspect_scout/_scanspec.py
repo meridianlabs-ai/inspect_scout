@@ -14,7 +14,7 @@ from typing_extensions import Literal, NotRequired, Required, TypedDict
 
 from inspect_scout._query.condition import Condition
 from inspect_scout._query.condition_sql import condition_as_sql
-from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.types import ValidationSetSpec
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 
@@ -196,7 +196,7 @@ class ScanSpec(BaseModel):
     worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: dict[str, ValidationSet] | None = Field(default=None)
+    validation: dict[str, ValidationSetSpec] | None = Field(default=None)
     """Validation cases to apply for scanners."""
 
     @field_serializer("timestamp")

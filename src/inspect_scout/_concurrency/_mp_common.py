@@ -82,7 +82,7 @@ copyreg.pickle(Model, _reduce_model)
 
 
 class DillCallable:
-    """Wrapper for callables that uses dill for pickling.
+    """Wrapper for callables that uses cloudpickle for pickling.
 
     This allows closures and other complex callables to be serialized
     for use with spawn multiprocessing context.

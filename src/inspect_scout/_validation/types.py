@@ -1,8 +1,7 @@
-import base64
 from typing import Any
 
-import dill  # type: ignore
-from pydantic import BaseModel, Field, JsonValue, field_serializer, field_validator
+from pydantic import BaseModel, Field, JsonValue, field_validator
+from typing_extensions import Literal
 
 from .predicates import PREDICATES, PredicateType, ValidationPredicate
 
@@ -86,32 +85,40 @@ class ValidationSet(BaseModel):
     split: str | list[str] | None = Field(default=None)
     """Active split filter applied to this validation set (informational)."""
 
-    @field_serializer("predicate")
-    def serialize_predicate(
-        self, predicate: ValidationPredicate | None, _info: Any
-    ) -> str | None:
-        if predicate is None:
-            return None
-        if isinstance(predicate, str):
-            return predicate  # String literals serialize as-is
-        # Callable - use dill encoding
-        pickled = dill.dumps(predicate)
-        return base64.b64encode(pickled).decode("ascii")
+
+class RegisteredPredicateSpec(BaseModel):
+    """Portable reference to a registered custom predicate."""
+
+    kind: Literal["registered"] = "registered"
+    name: str
+    args: dict[str, JsonValue] = Field(default_factory=dict)
+    file: str | None = None
+    package_version: str | None = None
+
+
+class UnavailablePredicateSpec(BaseModel):
+    """Inert marker for a custom predicate unavailable during resume."""
+
+    kind: Literal["unavailable"] = "unavailable"
+    display_name: str | None = None
+    reason: Literal["anonymous", "legacy"]
+
+
+PredicateSpec = (
+    PredicateType | RegisteredPredicateSpec | UnavailablePredicateSpec | None
+)
+
+
+class ValidationSetSpec(BaseModel):
+    """Data-only validation set stored in portable scan specifications."""
+
+    cases: list[ValidationCase]
+    predicate: PredicateSpec = Field(default="eq")
+    split: str | list[str] | None = Field(default=None)
 
     @field_validator("predicate", mode="before")
     @classmethod
-    def deserialize_predicate(cls, v: Any) -> ValidationPredicate | None:
-        if v is None or callable(v):
-            return v  # type: ignore[no-any-return]
-        if isinstance(v, str):
-            # Check if it's a known predicate name
-            if v in PREDICATES:
-                return v  # type: ignore[return-value]
-            # Try to decode as pickled callable
-            try:
-                pickled = base64.b64decode(v.encode("ascii"))
-                return dill.loads(pickled)  # type: ignore[no-any-return]
-            except Exception:
-                # Return as string, will be validated later
-                return v  # type: ignore[return-value]
-        return v  # type: ignore[no-any-return]
+    def legacy_predicate_marker(cls, value: Any) -> Any:
+        if isinstance(value, str) and value not in PREDICATES:
+            return UnavailablePredicateSpec(reason="legacy")
+        return value

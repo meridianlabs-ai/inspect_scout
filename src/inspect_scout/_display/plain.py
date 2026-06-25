@@ -4,6 +4,7 @@ from typing import Any, Callable, Iterator, Sequence
 
 import rich
 from inspect_ai._util.format import format_progress_time
+from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.util import throttle
 from typing_extensions import override
 
@@ -36,6 +37,10 @@ class DisplayPlain(Display):
         highlight: bool | None = None,
     ) -> None:
         console = rich.get_console()
+        objects = tuple(
+            clean_control_characters(obj) if isinstance(obj, str) else obj
+            for obj in objects
+        )
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
     @contextlib.contextmanager
@@ -146,12 +151,13 @@ class TextProgressPlain(TextProgress):
         count: bool | int,
         print: Callable[..., None],
     ):
-        self._caption = caption
+        self._caption = clean_control_characters(caption)
         self._count = count
         self._print = print
         self._total = 0
 
     def update(self, text: str) -> None:
+        text = clean_control_characters(text)
         self._total += 1
         msg = f"{self._caption}: {text}"
         if self._count:

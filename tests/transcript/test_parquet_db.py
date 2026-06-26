@@ -1117,13 +1117,19 @@ async def test_file_uri_discovery(test_location: Path) -> None:
 
     # Now create a new database using file: URI
     file_uri = test_location.as_uri()  # Converts to file:///path/to/dir
-    db_uri = ParquetTranscriptsDB(file_uri)
+    db_uri = ParquetTranscriptsDB(file_uri, read_only=True)
     await db_uri.connect()
 
     try:
         # Should discover and read all transcripts
         transcript_ids = await db_uri.transcript_ids(Query())
         assert len(transcript_ids) == 3
+        [info, *_] = [item async for item in db_uri.select(Query(limit=1))]
+        transcript = await db_uri.read(
+            info,
+            TranscriptContent(messages="all", events="all"),
+        )
+        assert transcript.messages
     finally:
         await db_uri.disconnect()
 

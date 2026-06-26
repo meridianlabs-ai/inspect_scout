@@ -17,6 +17,9 @@ Note: Both approaches are read-only compatible. Writes must use the original col
 
 import duckdb
 
+from ...._query.sql import quote_identifier
+from ...._util.duckdb import generated_identifier
+
 EVAL_LOG_COLUMN_MAP = {
     "task_name": "task_set",
     "eval_created": "date",
@@ -39,72 +42,86 @@ def migrate_table(
 
     column_map: {old_name: new_name, ...}
     """
-    columns = conn.execute(f"""
+    columns = conn.execute(
+        """
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_name = '{table_name}'
-    """).fetchall()
+        WHERE table_name = ?
+        """,
+        [table_name],
+    ).fetchall()
     column_names = {row[0] for row in columns}
 
     # Build list of aliases needed
     aliases = [
-        f"{old} AS {new}"
+        f"{quote_identifier(old)} AS {quote_identifier(new)}"
         for old, new in column_map.items()
         if old in column_names and new not in column_names
     ]
 
     if aliases:
         alias_clause = ", ".join(aliases)
-        temp_table = f"{table_name}_migration_temp"
+        temp_table = generated_identifier("migration_table")
 
         # Create new table with original columns plus aliases
         conn.execute(f"""
-            CREATE TABLE {temp_table} AS
-            SELECT *, {alias_clause} FROM {table_name}
+            CREATE TABLE {quote_identifier(temp_table)} AS
+            SELECT *, {alias_clause} FROM {quote_identifier(table_name)}
         """)
 
         # Replace original table
-        conn.execute(f"DROP TABLE {table_name}")
-        conn.execute(f"ALTER TABLE {temp_table} RENAME TO {table_name}")
+        conn.execute(f"DROP TABLE {quote_identifier(table_name)}")
+        conn.execute(
+            f"ALTER TABLE {quote_identifier(temp_table)} "
+            f"RENAME TO {quote_identifier(table_name)}"
+        )
 
 
 def migrate_view(
     conn: duckdb.DuckDBPyConnection,
     view_name: str,
     column_map: dict[str, str] = EVAL_LOG_COLUMN_MAP,
-) -> None:
+) -> str | None:
     """
     Modify a view in place to add column aliases for backward compatibility.
 
     column_map: {old_name: new_name, ...}
     """
-    columns = conn.execute(f"""
+    columns = conn.execute(
+        """
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_name = '{view_name}'
-    """).fetchall()
+        WHERE table_name = ?
+        """,
+        [view_name],
+    ).fetchall()
     column_names = {row[0] for row in columns}
 
     aliases = [
-        f"{old} AS {new}"
+        f"{quote_identifier(old)} AS {quote_identifier(new)}"
         for old, new in column_map.items()
         if old in column_names and new not in column_names
     ]
 
     if aliases:
-        result = conn.execute(f"""
-            SELECT sql FROM duckdb_views() WHERE view_name = '{view_name}'
-        """).fetchone()
-        if result is None:
-            return
-        view_sql = result[0]
-
-        # Extract the SELECT part after "CREATE VIEW name AS "
-        # and strip trailing semicolon if present
-        select_part = view_sql.split(" AS ", 1)[1].rstrip(";").strip()
+        base_view = generated_identifier("migration_view")
         alias_clause = ", ".join(aliases)
 
-        conn.execute(f"""
-            CREATE OR REPLACE VIEW {view_name} AS
-            SELECT *, {alias_clause} FROM ({select_part}) AS _base
-        """)
+        conn.execute(
+            f"ALTER VIEW {quote_identifier(view_name)} "
+            f"RENAME TO {quote_identifier(base_view)}"
+        )
+        try:
+            conn.execute(f"""
+                CREATE VIEW {quote_identifier(view_name)} AS
+                SELECT *, {alias_clause} FROM {quote_identifier(base_view)}
+            """)
+        except Exception:
+            conn.execute(
+                f"ALTER VIEW {quote_identifier(base_view)} "
+                f"RENAME TO {quote_identifier(view_name)}"
+            )
+            raise
+        return base_view
+
+    return None

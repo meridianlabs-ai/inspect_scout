@@ -55,6 +55,7 @@ from typing_extensions import override
 from .._query import Query
 from .._query.condition import Condition, ScalarValue
 from .._query.condition_sql import condition_as_sql, conditions_as_filter
+from .._query.sql import quote_identifier, validate_column
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .._util.caching_async_zip import CachingAsyncZipReader
@@ -257,6 +258,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         # sqlite connection (starts out none)
         self._conn: sqlite3.Connection | None = None
+        self._columns: set[str] = set()
 
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
@@ -292,6 +294,13 @@ class EvalLogTranscriptsView(TranscriptsView):
 
             df.to_sql(TRANSCRIPTS, self._conn, index=False, if_exists="replace")
 
+        self._columns = {
+            str(row[0])
+            for row in self._conn.execute(
+                "SELECT name FROM pragma_table_info(?)", [TRANSCRIPTS]
+            ).fetchall()
+        }
+
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
@@ -299,12 +308,14 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = query.to_sql_suffix(
-            "sqlite", shuffle_column="sample_id"
+            "sqlite",
+            shuffle_column="sample_id",
+            available_columns=self._columns,
         )
         if register_shuffle:
             register_shuffle(self._conn)
 
-        sql = f"SELECT * FROM {TRANSCRIPTS}{suffix}"
+        sql = f"SELECT * FROM {quote_identifier(TRANSCRIPTS)}{suffix}"
         cursor = self._conn.execute(sql, params)
 
         # get column names
@@ -398,7 +409,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
         suffix, params, _ = count_query.to_sql_suffix("sqlite")
-        sql = f"SELECT COUNT(*) FROM {TRANSCRIPTS}{suffix}"
+        sql = f"SELECT COUNT(*) FROM {quote_identifier(TRANSCRIPTS)}{suffix}"
         result = self._conn.execute(sql, params).fetchone()
         assert result is not None
         return int(result[0])
@@ -408,13 +419,21 @@ class EvalLogTranscriptsView(TranscriptsView):
         self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
-        col_name = column
+        col_name = validate_column(column, self._columns)
+        quoted_column = quote_identifier(col_name)
+        quoted_table = quote_identifier(TRANSCRIPTS)
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "sqlite")
-            sql = f'SELECT DISTINCT "{col_name}" FROM {TRANSCRIPTS} WHERE {where_sql} ORDER BY "{col_name}" ASC'
+            sql = (
+                f"SELECT DISTINCT {quoted_column} FROM {quoted_table} "
+                f"WHERE {where_sql} ORDER BY {quoted_column} ASC"
+            )
         else:
             params = []
-            sql = f'SELECT DISTINCT "{col_name}" FROM {TRANSCRIPTS} ORDER BY "{col_name}" ASC'
+            sql = (
+                f"SELECT DISTINCT {quoted_column} FROM {quoted_table} "
+                f"ORDER BY {quoted_column} ASC"
+            )
         result = self._conn.execute(sql, params).fetchall()
         return [row[0] for row in result]
 
@@ -424,12 +443,14 @@ class EvalLogTranscriptsView(TranscriptsView):
         query = query or Query()
 
         suffix, params, register_shuffle = query.to_sql_suffix(
-            "sqlite", shuffle_column="sample_id"
+            "sqlite",
+            shuffle_column="sample_id",
+            available_columns=self._columns,
         )
         if register_shuffle:
             register_shuffle(self._conn)
 
-        sql = f"SELECT * FROM {TRANSCRIPTS}{suffix}"
+        sql = f"SELECT * FROM {quote_identifier(TRANSCRIPTS)}{suffix}"
         cursor = self._conn.execute(sql, params)
         column_names = [desc[0] for desc in cursor.description]
 
@@ -557,6 +578,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+            self._columns = set()
 
         if self._fs is not None:
             await self._fs.close()
@@ -566,7 +588,8 @@ class EvalLogTranscriptsView(TranscriptsView):
         """Get sample id and epoch from database."""
         assert self._conn is not None
         cursor = self._conn.execute(
-            f"SELECT id, epoch FROM {TRANSCRIPTS} WHERE sample_id = ?",
+            f"SELECT id, epoch FROM {quote_identifier(TRANSCRIPTS)} "
+            "WHERE sample_id = ?",
             (t.transcript_id,),
         )
         row = cursor.fetchone()

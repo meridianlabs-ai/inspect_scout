@@ -33,6 +33,16 @@ from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 from ...._query import Query
 from ...._query.condition import Condition, ScalarValue
 from ...._query.condition_sql import condition_as_sql
+from ...._query.sql import quote_identifier, validate_column
+from ...._util.duckdb import (
+    create_parquet_view,
+    drop_view,
+    escape_duckdb_glob,
+    generated_identifier,
+    parquet_view,
+    relation_columns,
+    restrict_external_access,
+)
 from ...json.load_filtered import load_filtered_transcript
 from ...transcripts import (
     Transcripts,
@@ -85,6 +95,8 @@ class _ParquetStreamContextManager:
     async def __aenter__(self) -> "_ParquetStreamContextManager":
         # Create fresh connection for streaming
         self._conn = duckdb.connect(":memory:")
+        if not self._parquet_path.startswith(("s3://", "hf://")):
+            restrict_external_access(self._conn, allowed_paths=[self._parquet_path])
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -122,7 +134,8 @@ class _ParquetStreamContextManager:
                 " WHERE transcript_id = ?"
             )
             result = self._conn.execute(
-                sql, [self._parquet_path, self._transcript_id]
+                sql,
+                [escape_duckdb_glob(self._parquet_path), self._transcript_id],
             ).fetchone()
         except duckdb.BinderException:
             # Old file missing events_data/timelines columns — retry without
@@ -133,7 +146,8 @@ class _ParquetStreamContextManager:
                     " WHERE transcript_id = ?"
                 )
                 result = self._conn.execute(
-                    sql, [self._parquet_path, self._transcript_id]
+                    sql,
+                    [escape_duckdb_glob(self._parquet_path), self._transcript_id],
                 ).fetchone()
             except duckdb.BinderException:
                 try:
@@ -143,7 +157,11 @@ class _ParquetStreamContextManager:
                         " WHERE transcript_id = ?"
                     )
                     result = self._conn.execute(
-                        sql, [self._parquet_path, self._transcript_id]
+                        sql,
+                        [
+                            escape_duckdb_glob(self._parquet_path),
+                            self._transcript_id,
+                        ],
                     ).fetchone()
                 except duckdb.BinderException:
                     result = None
@@ -218,6 +236,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         query: Query | None = None,
         snapshot: ScanTranscripts | None = None,
         pool_dedup: bool = True,
+        read_only: bool = False,
     ) -> None:
         """Initialize Parquet transcript database.
 
@@ -236,6 +255,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 which we can use to avoid crawling.
             pool_dedup: Condense repeated messages/calls into pools on write.
                 Exposed for testing; production callers should leave as True.
+            read_only: Restrict DuckDB external access after intended sources
+                are registered.
         """
         self._location = location
         self._target_file_size_mb = target_file_size_mb
@@ -243,6 +264,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._query = query
         self._snapshot = snapshot
         self._pool_dedup = pool_dedup
+        self._read_only = read_only
 
         # could be called in a spawed worker where there are no fs deps yet
         ensure_filesystem_dependencies(location)
@@ -258,9 +280,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._index_storage: IndexStorage | None = None
         self._transcript_ids: set[str] = set()
         self._file_columns_cache: dict[str, set[str]] = {}
-        self._parquet_pattern: str | None = None
+        self._parquet_source_view: str | None = None
+        self._migration_source_view: str | None = None
         self._exclude_clause: str = ""
         self._parquet_columns: set[str] = set()
+        self._transcript_columns: set[str] = set()
+        self._index_columns: set[str] = set()
+        self._allowed_parquet_paths: set[str] = set()
 
     @override
     async def connect(self) -> None:
@@ -312,6 +338,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Discover and register Parquet files
         await self._create_transcripts_table()
+
+        if self._read_only:
+            self._allowed_parquet_paths = set(await self._discover_parquet_files())
+            restrict_external_access(
+                self._conn,
+                allowed_paths=sorted(self._allowed_parquet_paths),
+            )
 
     @override
     async def disconnect(self) -> None:
@@ -437,7 +470,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = effective_query.to_sql_suffix(
-            "duckdb", shuffle_column="transcript_id"
+            "duckdb",
+            shuffle_column="transcript_id",
+            available_columns=self._transcript_columns,
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -543,13 +578,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
-        col_name = column
+        col_name = validate_column(column, self._transcript_columns)
+        quoted_column = quote_identifier(col_name)
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "duckdb")
-            sql = f'SELECT DISTINCT "{col_name}" FROM transcripts WHERE {where_sql} ORDER BY "{col_name}" ASC'
+            sql = (
+                f"SELECT DISTINCT {quoted_column} FROM transcripts "
+                f"WHERE {where_sql} ORDER BY {quoted_column} ASC"
+            )
         else:
             params = []
-            sql = f'SELECT DISTINCT "{col_name}" FROM transcripts ORDER BY "{col_name}" ASC'
+            sql = (
+                f"SELECT DISTINCT {quoted_column} FROM transcripts "
+                f"ORDER BY {quoted_column} ASC"
+            )
         result = self._conn.execute(sql, params).fetchall()
         return [row[0] for row in result]
 
@@ -578,7 +620,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 order_by=query.order_by,
             )
             suffix, params, register_shuffle = index_query.to_sql_suffix(
-                "duckdb", shuffle_column="transcript_id"
+                "duckdb",
+                shuffle_column="transcript_id",
+                available_columns=self._index_columns,
             )
             if register_shuffle:
                 register_shuffle(self._conn)
@@ -605,7 +649,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                      + COALESCE(LENGTH(events_data), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
-                [full_path, transcript_id],
+                [escape_duckdb_glob(full_path), transcript_id],
             ).fetchone()
         except duckdb.BinderException:
             result = self._conn.execute(
@@ -613,7 +657,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
-                [full_path, transcript_id],
+                [escape_duckdb_glob(full_path), transcript_id],
             ).fetchone()
         return result[0] if result else 0
 
@@ -710,9 +754,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             # Try optimistic read first (fast path for files with all columns)
             try:
-                sql = f"SELECT {', '.join(columns)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = (
+                    "SELECT "
+                    + ", ".join(quote_identifier(column) for column in columns)
+                    + " FROM read_parquet(?, union_by_name=true) "
+                    "WHERE transcript_id = ?"
+                )
                 result = self._conn.execute(
-                    sql, [full_path, t.transcript_id]
+                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
                 ).fetchone()
                 columns_read = columns  # All requested columns were available
             except duckdb.BinderException:
@@ -725,9 +774,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                     return transcript_no_content()
 
                 # Retry with only available columns
-                sql = f"SELECT {', '.join(columns_read)} FROM read_parquet(?, union_by_name=true) WHERE transcript_id = ?"
+                sql = (
+                    "SELECT "
+                    + ", ".join(quote_identifier(column) for column in columns_read)
+                    + " FROM read_parquet(?, union_by_name=true) "
+                    "WHERE transcript_id = ?"
+                )
                 result = self._conn.execute(
-                    sql, [full_path, t.transcript_id]
+                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
                 ).fetchone()
 
             if not result:
@@ -1198,7 +1252,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             assert self._conn is not None
             schema_result = self._conn.execute(
                 "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
-                [filename],
+                [escape_duckdb_glob(filename)],
             ).fetchall()
             self._file_columns_cache[filename] = {row[0] for row in schema_result}
         return self._file_columns_cache[filename]
@@ -1420,7 +1474,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Drop existing structures
             # DuckDB is type-strict: DROP TABLE IF EXISTS fails on VIEW and vice versa
             # Use try/except to handle both cases
-            self._conn.execute("DROP TABLE IF EXISTS transcript_index")
             try:
                 self._conn.execute("DROP TABLE IF EXISTS transcripts")
             except duckdb.CatalogException:
@@ -1429,6 +1482,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 self._conn.execute("DROP VIEW IF EXISTS transcripts")
             except duckdb.CatalogException:
                 pass
+            if self._migration_source_view is not None:
+                drop_view(self._conn, self._migration_source_view)
+                self._migration_source_view = None
+            if self._parquet_source_view is not None:
+                drop_view(self._conn, self._parquet_source_view)
+                self._parquet_source_view = None
+            self._conn.execute("DROP TABLE IF EXISTS transcript_index")
+            self._allowed_parquet_paths = set()
 
             # Decision point: use index files if available, otherwise scan parquet
             idx_files: list[str] = []
@@ -1447,6 +1508,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             else:
                 # Initialize from parquet files (warning is issued inside if files exist)
                 await self._init_from_parquet(warn_missing_index=should_check)
+
+            self._index_columns = relation_columns(self._conn, "transcript_index")
+            self._transcript_columns = relation_columns(self._conn, "transcripts")
 
     async def _init_from_index(self, check_coverage: bool = False) -> None:
         """Initialize from index files (fast path).
@@ -1470,6 +1534,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if row_count == 0:
             self._create_empty_structures()
             return
+
+        self._allowed_parquet_paths = {
+            self._full_parquet_path(str(row[0]))
+            for row in self._conn.execute(
+                "SELECT DISTINCT filename FROM transcript_index "
+                "WHERE filename IS NOT NULL"
+            ).fetchall()
+        }
 
         # Synthesize missing schema columns as NULL
         self._ensure_index_schema()
@@ -1520,7 +1592,11 @@ class ParquetTranscriptsDB(TranscriptsDB):
         if self._snapshot and self._snapshot.transcript_ids:
             # Fast path: extract filenames from snapshot (no crawl needed)
             file_paths = sorted(
-                {f for f in self._snapshot.transcript_ids.values() if f is not None}
+                {
+                    self._full_parquet_path(f)
+                    for f in self._snapshot.transcript_ids.values()
+                    if f is not None
+                }
             )
         else:
             # Standard path: discover parquet files
@@ -1539,9 +1615,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 f"Queries will be slower. Run `scout db index {pretty_path(self._location)}` to build an index."
             )
 
-        # Build pattern for read_parquet
-        pattern = self._build_parquet_pattern(file_paths)
-        self._parquet_pattern = pattern
+        self._allowed_parquet_paths = set(file_paths)
+        self._parquet_source_view = create_parquet_view(
+            self._conn,
+            file_paths,
+            union_by_name=True,
+            filename=True,
+        )
 
         # Infer exclude clause from first file
         self._exclude_clause, self._parquet_columns = self._infer_exclude_clause(
@@ -1554,7 +1634,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             self._create_index_from_snapshot()
         else:
             # Standard path: query parquet files
-            self._create_index_from_parquet(pattern)
+            self._create_index_from_parquet(self._parquet_source_view)
 
         # Create index on transcript_id for fast lookups
         self._conn.execute(
@@ -1562,7 +1642,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         )
 
         # Create transcripts VIEW for memory-efficient metadata queries
-        self._create_transcripts_view(pattern)
+        self._create_transcripts_view(self._parquet_source_view)
 
     def _apply_query_filter_to_tables(self) -> None:
         """Apply pre-filter query to in-memory tables (indexed path only).
@@ -1576,7 +1656,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # Build SQL suffix using Query
         suffix, params, register_shuffle = self._query.to_sql_suffix(
-            "duckdb", shuffle_column="transcript_id"
+            "duckdb",
+            shuffle_column="transcript_id",
+            available_columns=relation_columns(self._conn, "transcript_index"),
         )
         if register_shuffle:
             register_shuffle(self._conn)
@@ -1618,7 +1700,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
         for field in TRANSCRIPT_SCHEMA_FIELDS:
             duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
             default_value = _duckdb_default_value(field.pyarrow_type)
-            column_defs.append(f'{default_value}::{duckdb_type} AS "{field.name}"')
+            column_defs.append(
+                f"{default_value}::{duckdb_type} AS {quote_identifier(field.name)}"
+            )
         # Add filename column (internal)
         column_defs.append("''::VARCHAR AS filename")
 
@@ -1630,13 +1714,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             WHERE FALSE
         """)
 
-    def _build_parquet_pattern(self, file_paths: list[str]) -> str:
-        """Build DuckDB pattern string for read_parquet."""
-        if len(file_paths) == 1:
-            return f"'{file_paths[0]}'"
-        else:
-            return "[" + ", ".join(f"'{p}'" for p in file_paths) + "]"
-
     def _create_index_from_snapshot(self) -> None:
         """Create transcript_index table directly from snapshot data."""
         assert self._conn is not None
@@ -1645,27 +1722,32 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ids = list(self._snapshot.transcript_ids.keys())
         filenames = [self._snapshot.transcript_ids[tid] for tid in ids]
         arrow_table = pa.table({"transcript_id": ids, "filename": filenames})
-        self._conn.register("snapshot_data", arrow_table)
-        self._conn.execute("""
-            CREATE TABLE transcript_index AS
-            SELECT * FROM snapshot_data
-        """)
-        self._conn.unregister("snapshot_data")
+        snapshot_data = generated_identifier("snapshot")
+        self._conn.register(snapshot_data, arrow_table)
+        try:
+            self._conn.execute(
+                "CREATE TABLE transcript_index AS "
+                f"SELECT * FROM {quote_identifier(snapshot_data)}"
+            )
+        finally:
+            self._conn.unregister(snapshot_data)
 
-    def _create_index_from_parquet(self, pattern: str) -> None:
+    def _create_index_from_parquet(self, source_view: str) -> None:
         """Create transcript_index table by querying parquet files."""
         assert self._conn is not None
 
         base_sql = f"""
             SELECT transcript_id, filename
-            FROM read_parquet({pattern}, union_by_name=true, filename=true)
+            FROM {quote_identifier(source_view)}
         """
 
         # Apply pre-filter query if provided
         params: list[Any] = []
         if self._query:
             suffix, params, register_shuffle = self._query.to_sql_suffix(
-                "duckdb", shuffle_column="transcript_id"
+                "duckdb",
+                shuffle_column="transcript_id",
+                available_columns=relation_columns(self._conn, source_view),
             )
             if register_shuffle:
                 register_shuffle(self._conn)
@@ -1689,35 +1771,45 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
 
         schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{file_path}'))"
+            "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
+            [escape_duckdb_glob(file_path)],
         ).fetchall()
         existing_columns = {row[0] for row in schema_result}
         exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        clause = (
+            " EXCLUDE ("
+            + ", ".join(quote_identifier(column) for column in exclude_columns)
+            + ")"
+            if exclude_columns
+            else ""
+        )
         return clause, existing_columns
 
-    def _infer_exclude_clause_full(self, pattern: str) -> tuple[str, set[str]]:
+    def _infer_exclude_clause_full(self, source_view: str) -> tuple[str, set[str]]:
         """Infer EXCLUDE clause by scanning all files' schemas.
 
         Slower fallback that unions schemas from all files to handle
         cases where schema differs across files.
 
         Args:
-            pattern: DuckDB file pattern for read_parquet.
+            source_view: Generated view over the intended Parquet files.
 
         Returns:
             Tuple of (EXCLUDE clause string, set of existing column names).
         """
         assert self._conn is not None
 
-        schema_result = self._conn.execute(
-            f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({pattern}, union_by_name=true))"
-        ).fetchall()
-        existing_columns = {row[0] for row in schema_result}
+        existing_columns = relation_columns(self._conn, source_view)
         exclude_columns = [col for col in CONTENT_COLUMNS if col in existing_columns]
 
-        clause = f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
+        clause = (
+            " EXCLUDE ("
+            + ", ".join(quote_identifier(column) for column in exclude_columns)
+            + ")"
+            if exclude_columns
+            else ""
+        )
         return clause, existing_columns
 
     def _missing_columns_clause(self) -> str:
@@ -1733,19 +1825,21 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 and field.name not in CONTENT_COLUMNS
             ):
                 duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
-                missing_exprs.append(f'NULL::{duckdb_type} AS "{field.name}"')
+                missing_exprs.append(
+                    f"NULL::{duckdb_type} AS {quote_identifier(field.name)}"
+                )
         if missing_exprs:
             return ", " + ", ".join(missing_exprs)
         return ""
 
-    def _create_transcripts_view(self, pattern: str) -> None:
+    def _create_transcripts_view(self, source_view: str) -> None:
         """Create the transcripts VIEW with appropriate EXCLUDE clause.
 
         Tries with exclude clause inferred from first file. If that fails
         (schema differs across files), falls back to full schema scan.
 
         Args:
-            pattern: DuckDB file pattern for read_parquet.
+            source_view: Generated view over the intended Parquet files.
         """
         assert self._conn is not None
 
@@ -1759,7 +1853,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT p.*{exclude_clause}{missing_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true) p
+                    FROM {quote_identifier(source_view)} p
                     INNER JOIN transcript_index i ON p.transcript_id = i.transcript_id
                 """
             else:
@@ -1767,7 +1861,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 return f"""
                     CREATE VIEW transcripts AS
                     SELECT *{exclude_clause}{missing_clause}
-                    FROM read_parquet({pattern}, union_by_name=true, filename=true)
+                    FROM {quote_identifier(source_view)}
                 """
 
         missing_clause = self._missing_columns_clause()
@@ -1779,13 +1873,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             # Schema differs across files - fall back to full scan
             self._conn.execute("DROP VIEW IF EXISTS transcripts")
             self._exclude_clause, self._parquet_columns = (
-                self._infer_exclude_clause_full(pattern)
+                self._infer_exclude_clause_full(source_view)
             )
             missing_clause = self._missing_columns_clause()
             self._conn.execute(build_view_sql(self._exclude_clause, missing_clause))
 
         # migrate view for databases imported from eval_log
-        migrate_view(self._conn, "transcripts")
+        self._migration_source_view = migrate_view(self._conn, "transcripts")
 
     async def _discover_parquet_files(self) -> list[str]:
         """Discover all Parquet files in location.
@@ -1954,12 +2048,12 @@ class ParquetTranscriptsDB(TranscriptsDB):
             f"Compacting {len(session_files)} files for session {session_id}",
         ):
             # 2. Read all session data via DuckDB
-            pattern = self._build_parquet_pattern(session_files)
-
-            # Query and get a RecordBatchReader for streaming
-            result = self._conn.execute(f"""
-                SELECT * FROM read_parquet({pattern}, union_by_name=true)
-            """)
+            with parquet_view(
+                self._conn, session_files, union_by_name=True
+            ) as source_view:
+                table = self._conn.execute(
+                    f"SELECT * FROM {quote_identifier(source_view)}"
+                ).fetch_arrow_table()
 
             # 3. Write to new file(s) WITHOUT session_id using existing logic
             # Fetch batches manually since we need to write in batches
@@ -1968,7 +2062,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             target_size_bytes = self._target_file_size_mb * 1024 * 1024
 
             # Fetch as Arrow table and convert to batches
-            table = result.fetch_arrow_table()
             for batch in table.to_batches():
                 batch_size = self._estimate_batch_size(batch)
 
@@ -2192,12 +2285,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
         assert self._conn is not None
         hf_token = os.environ.get("HF_TOKEN", None)
         if hf_token:
-            self._conn.execute(f"""
+            self._conn.execute(
+                """
                 CREATE SECRET hf_token (
                     TYPE huggingface,
-                    TOKEN '{hf_token}'
+                    TOKEN ?
                 )
-            """)
+                """,
+                [hf_token],
+            )
         else:
             self._conn.execute("""
                 CREATE SECRET hf_token (
@@ -2240,7 +2336,12 @@ class ParquetTranscripts(Transcripts):
                 reader more efficient (e.g. by preventing a full scan to find
                 transcript_id => filename mappings)
         """
-        db = ParquetTranscriptsDB(self._location, query=self._query, snapshot=snapshot)
+        db = ParquetTranscriptsDB(
+            self._location,
+            query=self._query,
+            snapshot=snapshot,
+            read_only=True,
+        )
         return TranscriptsViewReader(db, self._location, self._query.where)
 
     @staticmethod
@@ -2285,7 +2386,8 @@ def _ensure_index_schema(conn: duckdb.DuckDBPyConnection) -> None:
         if field.name not in existing and field.name not in CONTENT_COLUMNS:
             duckdb_type = _pyarrow_to_duckdb_type(field.pyarrow_type)
             conn.execute(
-                f'ALTER TABLE transcript_index ADD COLUMN "{field.name}" {duckdb_type}'
+                f"ALTER TABLE transcript_index ADD COLUMN "
+                f"{quote_identifier(field.name)} {duckdb_type}"
             )
 
 

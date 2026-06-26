@@ -1,10 +1,10 @@
 import shlex
 
 import click
-from inspect_ai._util.path import pretty_path
 from rich.table import Column, Table
 from typing_extensions import Unpack
 
+from inspect_scout._display.util import terminal_path
 from inspect_scout._project._project import read_project
 
 from .._display import display
@@ -53,7 +53,7 @@ def scan_list_command(
     for scan in scans:
         table.add_row(
             scan.spec.timestamp.strftime("%d-%b %H:%M:%S %Z"),
-            shlex.quote(pretty_path(scan.location)),
+            shlex.quote(terminal_path(scan.location)),
             "complete" if scan.complete else "pending",
             str(len(scan.errors)),
         )

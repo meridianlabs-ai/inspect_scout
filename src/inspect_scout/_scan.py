@@ -19,6 +19,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
+from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
 from inspect_ai.model._model_config import (
@@ -904,7 +905,10 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
     )
 
     for name in scanner_names:
-        table.add_row(name, f"{per_scanner_counts[name]:,}")
+        table.add_row(
+            clean_control_characters(name),
+            f"{per_scanner_counts[name]:,}",
+        )
 
     table.add_section()
 
